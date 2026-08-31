@@ -46,7 +46,33 @@ from `main` to `dev` automatically. Review and merge it promptly.
 
 ```bash
 npm install
+cp .env.example .env.local
 ```
+
+Fill in `.env.local`:
+
+| Variable | Value |
+|---|---|
+| `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_...` from the Clerk dashboard → API keys (use a **development** instance with Google OAuth enabled) |
+| `VITE_CORE_API_URL` | `http://localhost:8080` (default) |
+| `VITE_EVENTS_API_URL` | `http://localhost:8081` (default) |
+
+`.env.local` is gitignored — never commit it.
+
+## Local development
+
+```bash
+npm run dev          # http://localhost:5173
+```
+
+The app needs the Clerk key to load. To exercise the authenticated views
+(`/path`), also run the backend — see
+[motifpath-core README → Running the services locally](../motifpath-core/README.md#running-the-services-locally).
+Without `core-domain` running, `/path` shows its error state (expected) — the
+public pages, sign-in, and routing still work.
+
+`core-domain` allows the Vite dev origin (`http://localhost:5173`) via CORS out
+of the box.
 
 ## Commands
 
