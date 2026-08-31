@@ -10,20 +10,39 @@ declare module 'vue-router' {
   }
 }
 
-/**
- * Route table for the PB-8b foundation. The authenticated app shell and its
- * routes (`/path`, 404, layouts) are added in Phase 5.
- */
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'home',
-    component: () => import('@/features/student/views/HomeView.vue'),
+    component: () => import('@/shared/components/PublicLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'home',
+        component: () => import('@/features/student/views/HomeView.vue'),
+      },
+      {
+        path: 'sign-in',
+        name: 'sign-in',
+        component: () => import('@/features/auth/views/SignInView.vue'),
+      },
+    ],
   },
   {
-    path: '/sign-in',
-    name: 'sign-in',
-    component: () => import('@/features/auth/views/SignInView.vue'),
+    path: '/path',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'path',
+        component: () => import('@/features/student/views/PathView.vue'),
+      },
+    ],
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/shared/components/NotFoundView.vue'),
   },
 ]
 
