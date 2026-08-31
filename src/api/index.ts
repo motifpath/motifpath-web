@@ -1,7 +1,7 @@
 import { createApiClient } from '@/api/createApiClient'
 import type { paths as CorePaths } from '@/api/generated/core-domain'
 import type { paths as EventPaths } from '@/api/generated/event-ingestion'
-import { getAuthToken } from '@/features/auth/getAuthToken'
+import { getAuthToken } from '@/features/auth/authBridge'
 
 /** Typed client for the Core Domain Service (identity, content, learning paths). */
 export const coreApi = createApiClient<CorePaths>({
