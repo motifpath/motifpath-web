@@ -8,6 +8,9 @@
 
 type TokenGetter = () => Promise<string | null>
 
+/** Mirrors `CurrentUserState` from the currentUser store without importing Pinia here. */
+export type RegistrationState = 'idle' | 'registering' | 'registered' | 'failed'
+
 let tokenGetter: TokenGetter = async () => null
 let signedIn = false
 let readyResolved = false
@@ -15,6 +18,7 @@ let resolveReady!: () => void
 const readyPromise = new Promise<void>((resolve) => {
   resolveReady = resolve
 })
+let registrationState: RegistrationState = 'idle'
 
 export interface AuthBridgeState {
   isLoaded: boolean
@@ -31,13 +35,19 @@ export function updateAuthBridge(state: AuthBridgeState): void {
   }
 }
 
+/** Pushes the currentUser store's latest registration state into the bridge. */
+export function updateRegistrationBridge(state: RegistrationState): void {
+  registrationState = state
+}
+
 /** Current session JWT for outbound API requests, or `null` when signed out. */
 export function getAuthToken(): Promise<string | null> {
   return tokenGetter()
 }
 
-/** Read-only view of auth state for the router guard. */
+/** Read-only view of auth and registration state for the router guard. */
 export const authChecker = {
   isReady: (): Promise<void> => readyPromise,
   isSignedIn: (): boolean => signedIn,
+  getRegistrationState: (): RegistrationState => registrationState,
 }

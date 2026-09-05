@@ -11,7 +11,7 @@ vi.mock('@clerk/vue', () => ({
 }))
 
 import { router } from '@/router'
-import { updateAuthBridge } from '@/features/auth/authBridge'
+import { updateAuthBridge, updateRegistrationBridge } from '@/features/auth/authBridge'
 
 describe('router', () => {
   beforeEach(async () => {
@@ -32,12 +32,32 @@ describe('router', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/path')
   })
 
-  it('lets an authenticated visitor reach a protected route', async () => {
+  it('lets a registered visitor reach a protected route', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
 
     await router.push('/path')
 
     expect(router.currentRoute.value.name).toBe('path')
+  })
+
+  it('sends a signed-in visitor whose registration has not settled to the registering route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registering')
+
+    await router.push('/path')
+
+    expect(router.currentRoute.value.name).toBe('registering')
+    expect(router.currentRoute.value.query.redirect).toBe('/path')
+  })
+
+  it('sends a signed-in visitor whose registration failed to the registration-error route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('failed')
+
+    await router.push('/path')
+
+    expect(router.currentRoute.value.name).toBe('registration-error')
   })
 
   it('resolves an unknown path to the not-found route', async () => {

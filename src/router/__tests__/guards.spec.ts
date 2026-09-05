@@ -10,7 +10,7 @@ function route(partial: Partial<RouteLocationNormalized>): RouteLocationNormaliz
 describe('createAuthGuard', () => {
   it('allows a public route without consulting auth', async () => {
     const isReady = vi.fn(() => Promise.resolve())
-    const guard = createAuthGuard({ isReady, isSignedIn: () => false })
+    const guard = createAuthGuard({ isReady, isSignedIn: () => false, getRegistrationState: () => 'idle' })
 
     const result = await guard(route({ fullPath: '/' }))
 
@@ -26,7 +26,7 @@ describe('createAuthGuard', () => {
           resolveReady = resolve
         }),
     )
-    const guard = createAuthGuard({ isReady, isSignedIn: () => true })
+    const guard = createAuthGuard({ isReady, isSignedIn: () => true, getRegistrationState: () => 'registered' })
 
     const pending = guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
     let settled = false
@@ -41,18 +41,62 @@ describe('createAuthGuard', () => {
   })
 
   it('redirects an unauthenticated user on a protected route to sign-in', async () => {
-    const guard = createAuthGuard({ isReady: () => Promise.resolve(), isSignedIn: () => false })
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => false,
+      getRegistrationState: () => 'idle',
+    })
 
     const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
 
     expect(result).toEqual({ name: 'sign-in', query: { redirect: '/path' } })
   })
 
-  it('lets an authenticated user through to a protected route', async () => {
-    const guard = createAuthGuard({ isReady: () => Promise.resolve(), isSignedIn: () => true })
+  it('lets a registered user through to a protected route', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+    })
 
     const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
 
     expect(result).toBe(true)
+  })
+
+  it('sends a signed-in user whose registration is still in flight to the registering route', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registering',
+    })
+
+    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+
+    expect(result).toEqual({ name: 'registering', query: { redirect: '/path' } })
+  })
+
+  it('sends a signed-in user whose registration has not started yet to the registering route', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'idle',
+    })
+
+    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+
+    expect(result).toEqual({ name: 'registering', query: { redirect: '/path' } })
+  })
+
+  it('sends a signed-in user whose registration failed to the registration-error route', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'failed',
+    })
+
+    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+
+    expect(result).toEqual({ name: 'registration-error' })
   })
 })

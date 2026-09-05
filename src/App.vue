@@ -2,7 +2,7 @@
 import { watch, watchEffect } from 'vue'
 import { RouterView } from 'vue-router'
 
-import { updateAuthBridge } from '@/features/auth/authBridge'
+import { updateAuthBridge, updateRegistrationBridge } from '@/features/auth/authBridge'
 import { useAuth } from '@/features/auth/composables/useAuth'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -15,6 +15,10 @@ watchEffect(() => {
     isSignedIn: isSignedIn.value,
     getToken,
   })
+})
+
+watchEffect(() => {
+  updateRegistrationBridge(currentUser.state)
 })
 
 watch(isSignedIn, (signedIn) => {

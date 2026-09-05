@@ -50,4 +50,23 @@ describe('authBridge', () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => null })
     expect(authChecker.isSignedIn()).toBe(true)
   })
+
+  it('reports idle registration state by default', async () => {
+    const { authChecker } = await freshBridge()
+
+    expect(authChecker.getRegistrationState()).toBe('idle')
+  })
+
+  it('reports the latest registration state pushed via updateRegistrationBridge', async () => {
+    const { authChecker, updateRegistrationBridge } = await freshBridge()
+
+    updateRegistrationBridge('registering')
+    expect(authChecker.getRegistrationState()).toBe('registering')
+
+    updateRegistrationBridge('registered')
+    expect(authChecker.getRegistrationState()).toBe('registered')
+
+    updateRegistrationBridge('failed')
+    expect(authChecker.getRegistrationState()).toBe('failed')
+  })
 })

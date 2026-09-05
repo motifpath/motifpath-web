@@ -25,6 +25,16 @@ const routes: RouteRecordRaw[] = [
         name: 'sign-in',
         component: () => import('@/features/auth/views/SignInView.vue'),
       },
+      {
+        path: 'welcome',
+        name: 'registering',
+        component: () => import('@/features/auth/views/RegisteringView.vue'),
+      },
+      {
+        path: 'welcome/error',
+        name: 'registration-error',
+        component: () => import('@/features/auth/views/RegistrationErrorView.vue'),
+      },
     ],
   },
   {
