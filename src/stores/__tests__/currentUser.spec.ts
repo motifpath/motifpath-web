@@ -24,7 +24,6 @@ describe('useCurrentUserStore', () => {
 
     expect(store.state).toBe('idle')
     expect(store.isRegistered).toBe(false)
-    expect(store.isResolving).toBe(false)
     expect(GET).not.toHaveBeenCalled()
     expect(POST).not.toHaveBeenCalled()
   })
@@ -154,6 +153,52 @@ describe('useCurrentUserStore', () => {
 
     expect(store.state).toBe('idle')
     expect(store.profile).toBeNull()
+  })
+
+  it('does not let a stale attempt clobber a newer in-flight registration', async () => {
+    let resolveFirstGet!: (value: unknown) => void
+    GET.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFirstGet = resolve
+      }),
+    )
+    const store = useCurrentUserStore()
+
+    void store.ensure() // attempt #1 starts; GET pending
+    store.reset() // invalidates #1 via the epoch bump, clears inFlight
+
+    let resolveSecondGet!: (value: unknown) => void
+    GET.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSecondGet = resolve
+      }),
+    )
+    void store.ensure() // attempt #2 starts; GET pending
+
+    // The stale attempt #1 resolves now. Its `finally` must not clear the
+    // in-flight slot that attempt #2 actually owns.
+    resolveFirstGet({ data: undefined, error: { message: 'stale' }, response: { status: 404 } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // A third call while #2 is still genuinely in flight must return #2's
+    // real promise, not a bogus already-resolved one. Proven without relying
+    // on exact tick counts: attempt #2's GET is still deliberately unresolved
+    // here, so a macrotask flush can never settle a promise genuinely tied to it.
+    const third = store.ensure()
+    let thirdResolved = false
+    void third.then(() => {
+      thirdResolved = true
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(thirdResolved).toBe(false)
+    expect(GET).toHaveBeenCalledTimes(2)
+
+    resolveSecondGet({ data: profile, error: undefined, response: { status: 200 } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(thirdResolved).toBe(true)
+    expect(store.state).toBe('registered')
+    expect(store.profile).toEqual(profile)
   })
 
   it('retry does not start a second attempt while one is already in flight', async () => {

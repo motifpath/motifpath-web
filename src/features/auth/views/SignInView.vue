@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { SignIn } from '@clerk/vue'
 
 const route = useRoute()
+const router = useRouter()
 
 // The guard preserves the visitor's original destination as ?redirect= on
-// this route. Every entry still goes through /welcome first (registration
-// bridge), so the target is forwarded as /welcome's own ?redirect= rather
-// than handed straight to Clerk.
+// this route. Every entry still goes through the registering route first
+// (registration bridge), so the target is forwarded as that route's own
+// ?redirect= rather than handed straight to Clerk. Resolved via the named
+// route, not a hardcoded path, per this repo's CLAUDE.md.
 const welcomeUrl = computed(() => {
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
-  return redirect ? `/welcome?redirect=${encodeURIComponent(redirect)}` : '/welcome'
+  const redirect =
+    typeof route.query.redirect === 'string' && route.query.redirect.length > 0
+      ? route.query.redirect
+      : undefined
+  return router.resolve({ name: 'registering', query: redirect ? { redirect } : undefined }).href
 })
 </script>
 

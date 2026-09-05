@@ -16,7 +16,10 @@ watch(
   () => currentUser.state,
   (state) => {
     if (state === 'registered') {
-      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : undefined
+      const redirect =
+        typeof route.query.redirect === 'string' && route.query.redirect.length > 0
+          ? route.query.redirect
+          : undefined
       void router.push(redirect ?? { name: 'path' })
     } else if (state === 'failed') {
       void router.push({ name: 'registration-error' })

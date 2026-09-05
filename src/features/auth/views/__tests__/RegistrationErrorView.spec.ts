@@ -33,7 +33,7 @@ describe('RegistrationErrorView', () => {
 
     const wrapper = mount(RegistrationErrorView, { global: { plugins: [router] } })
 
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="registration-failed"]').exists()).toBe(true)
   })
 
   it('retries registration when the try-again control is used', async () => {

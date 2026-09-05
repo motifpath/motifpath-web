@@ -73,6 +73,16 @@ describe('RegisteringView', () => {
     expect(router.currentRoute.value.name).toBe('path')
   })
 
+  it('falls back to the path route when the redirect target is an empty string', async () => {
+    await router.push('/welcome?redirect=')
+    mount(RegisteringView, { global: { plugins: [router] } })
+
+    currentUser.state = 'registered'
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(router.currentRoute.value.name).toBe('path')
+  })
+
   it('navigates to the registration-error route if registration fails', async () => {
     mount(RegisteringView, { global: { plugins: [router] } })
 

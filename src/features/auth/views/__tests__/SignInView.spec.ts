@@ -15,7 +15,10 @@ import SignInView from '@/features/auth/views/SignInView.vue'
 function testRouter() {
   return createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/sign-in', name: 'sign-in', component: SignInView }],
+    routes: [
+      { path: '/sign-in', name: 'sign-in', component: SignInView },
+      { path: '/welcome', name: 'registering', component: { template: '<div />' } },
+    ],
   })
 }
 
@@ -45,7 +48,9 @@ describe('SignInView', () => {
     const wrapper = await mountAt('/sign-in?redirect=%2Fpath')
     const signIn = wrapper.findComponent({ name: 'SignIn' })
 
-    expect(signIn.props('forceRedirectUrl')).toBe('/welcome?redirect=%2Fpath')
-    expect(signIn.props('signUpForceRedirectUrl')).toBe('/welcome?redirect=%2Fpath')
+    // vue-router's own query stringification, via router.resolve() — not a
+    // hand-built string — so `/` comes through literal rather than %2F.
+    expect(signIn.props('forceRedirectUrl')).toBe('/welcome?redirect=/path')
+    expect(signIn.props('signUpForceRedirectUrl')).toBe('/welcome?redirect=/path')
   })
 })

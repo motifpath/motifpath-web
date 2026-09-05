@@ -21,18 +21,17 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
   const profile = ref<UserProfile | null>(null)
 
   const isRegistered = computed(() => state.value === 'registered')
-  const isResolving = computed(() => state.value === 'registering')
 
   let inFlight: Promise<void> | null = null
 
-  // Bumped by every register() call and by reset(). A register() attempt
-  // checks its own epoch against the current one before each write — if
-  // reset() (or a newer attempt) ran while it was awaiting, its epoch is
-  // stale and it must not apply its result.
+  // Bumped by every runRegistration() call and by reset(). An attempt checks
+  // its own epoch against the current one before each write — if reset() (or
+  // a newer attempt) ran while it was awaiting, its epoch is stale and it
+  // must not apply its result, including clearing `inFlight` out from under
+  // whichever newer attempt actually owns it.
   let epoch = 0
 
-  async function register(): Promise<void> {
-    const myEpoch = ++epoch
+  async function register(myEpoch: number): Promise<void> {
     state.value = 'registering'
 
     const me = await coreApi.GET('/users/me')
@@ -75,10 +74,16 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
       return inFlight ?? Promise.resolve()
     }
 
-    inFlight = register().finally(() => {
-      inFlight = null
+    const myEpoch = ++epoch
+    const attempt = register(myEpoch).finally(() => {
+      // Only clear the slot if it's still this attempt's — a reset() or a
+      // newer attempt may have already moved epoch on and replaced it.
+      if (myEpoch === epoch) {
+        inFlight = null
+      }
     })
-    return inFlight
+    inFlight = attempt
+    return attempt
   }
 
   function ensure(): Promise<void> {
@@ -99,5 +104,5 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     inFlight = null
   }
 
-  return { state, profile, isRegistered, isResolving, ensure, retry, reset }
+  return { state, profile, isRegistered, ensure, retry, reset }
 })
