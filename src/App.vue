@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { watchEffect } from 'vue'
+import { watch, watchEffect } from 'vue'
 import { RouterView } from 'vue-router'
 
 import { updateAuthBridge } from '@/features/auth/authBridge'
 import { useAuth } from '@/features/auth/composables/useAuth'
+import { useCurrentUserStore } from '@/stores/currentUser'
 
 const { isLoaded, isSignedIn, getToken } = useAuth()
+const currentUser = useCurrentUserStore()
 
 watchEffect(() => {
   updateAuthBridge({
@@ -13,6 +15,14 @@ watchEffect(() => {
     isSignedIn: isSignedIn.value,
     getToken,
   })
+})
+
+watch(isSignedIn, (signedIn) => {
+  if (signedIn) {
+    void currentUser.ensure()
+  } else {
+    currentUser.reset()
+  }
 })
 </script>
 
