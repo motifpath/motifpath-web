@@ -31,6 +31,20 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
   // whichever newer attempt actually owns it.
   let epoch = 0
 
+  // Shared by every await point in register(): stale (a reset() or a newer
+  // attempt already moved epoch on) tells the caller to stop without
+  // touching state; otherwise applies a successful profile and tells the
+  // caller to stop, or reports "not resolved yet, keep going".
+  function applyIfRegistered(myEpoch: number, data: UserProfile | undefined): boolean {
+    if (myEpoch !== epoch) return true
+    if (data) {
+      profile.value = data
+      state.value = 'registered'
+      return true
+    }
+    return false
+  }
+
   async function register(myEpoch: number): Promise<void> {
     state.value = 'registering'
 
@@ -40,12 +54,7 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     // outcome, instead of leaving state stuck at 'registering' forever.
     try {
       const me = await coreApi.GET('/users/me')
-      if (myEpoch !== epoch) return
-      if (me.data) {
-        profile.value = me.data
-        state.value = 'registered'
-        return
-      }
+      if (applyIfRegistered(myEpoch, me.data)) return
 
       if (me.response?.status !== 404) {
         state.value = 'failed'
@@ -53,21 +62,11 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
       }
 
       const created = await coreApi.POST('/users', { body: { role: 'student' } })
-      if (myEpoch !== epoch) return
-      if (created.data) {
-        profile.value = created.data
-        state.value = 'registered'
-        return
-      }
+      if (applyIfRegistered(myEpoch, created.data)) return
 
       if (created.response?.status === 409) {
         const reconciled = await coreApi.GET('/users/me')
-        if (myEpoch !== epoch) return
-        if (reconciled.data) {
-          profile.value = reconciled.data
-          state.value = 'registered'
-          return
-        }
+        if (applyIfRegistered(myEpoch, reconciled.data)) return
       }
 
       state.value = 'failed'

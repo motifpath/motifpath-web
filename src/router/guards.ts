@@ -1,6 +1,7 @@
 import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 
 import type { RegistrationState } from '@/features/auth/authBridge'
+import { routeWithRedirect } from '@/features/auth/utils/routeWithRedirect'
 
 export interface AuthChecker {
   /** Resolves once Clerk has settled the session state. */
@@ -33,7 +34,7 @@ export function createAuthGuard(auth: AuthChecker) {
     await auth.isReady()
 
     if (!auth.isSignedIn()) {
-      return { name: 'sign-in', query: { redirect: to.fullPath } }
+      return routeWithRedirect('sign-in', to.fullPath)
     }
 
     if (to.meta.skipRegistrationGate) {
@@ -43,11 +44,11 @@ export function createAuthGuard(auth: AuthChecker) {
     const registration = auth.getRegistrationState()
 
     if (registration === 'failed') {
-      return { name: 'registration-error', query: { redirect: to.fullPath } }
+      return routeWithRedirect('registration-error', to.fullPath)
     }
 
     if (registration !== 'registered') {
-      return { name: 'registering', query: { redirect: to.fullPath } }
+      return routeWithRedirect('registering', to.fullPath)
     }
 
     return true

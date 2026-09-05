@@ -24,6 +24,7 @@ function testRouter() {
       { path: '/welcome/error', name: 'registration-error', component: { template: '<div />' } },
       { path: '/path', name: 'path', component: { template: '<div />' } },
       { path: '/', name: 'home', component: { template: '<div />' } },
+      { path: '/sign-in', name: 'sign-in', component: { template: '<div />' } },
     ],
   })
 }
@@ -49,10 +50,28 @@ describe('RegisteringView', () => {
     expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
   })
 
-  it('calls ensure on mount, defensively, in case App.vue has not triggered it yet', () => {
+  it('calls ensure on mount, defensively, if reached before App.vue has triggered it yet', () => {
+    currentUser.state = 'idle'
+
     mount(RegisteringView, { global: { plugins: [router] } })
 
     expect(currentUser.ensure).toHaveBeenCalledOnce()
+  })
+
+  it('does not call ensure when a registration attempt is already in flight', () => {
+    currentUser.state = 'registering'
+
+    mount(RegisteringView, { global: { plugins: [router] } })
+
+    expect(currentUser.ensure).not.toHaveBeenCalled()
+  })
+
+  it('does not silently restart a genuinely failed registration (e.g. reached again via the back button)', () => {
+    currentUser.state = 'failed'
+
+    mount(RegisteringView, { global: { plugins: [router] } })
+
+    expect(currentUser.ensure).not.toHaveBeenCalled()
   })
 
   // Full state-transition coverage (redirect target, empty-redirect fallback,

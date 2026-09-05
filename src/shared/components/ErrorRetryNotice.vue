@@ -1,5 +1,10 @@
 <script setup lang="ts">
-withDefaults(defineProps<{ message: string; testId?: string }>(), {
+interface ErrorRetryNoticeProps {
+  message: string
+  testId?: string
+}
+
+withDefaults(defineProps<ErrorRetryNoticeProps>(), {
   testId: 'error',
 })
 

@@ -82,4 +82,41 @@ describe('useRegistrationRedirect', () => {
 
     expect(router.currentRoute.value.name).toBe('sign-in')
   })
+
+  it('preserves the redirect target through a failure, so a later retry can still honor it', async () => {
+    currentUser.state = 'registering'
+    const router = await mountAt('/welcome?redirect=%2Fpath')
+
+    currentUser.state = 'failed'
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(router.currentRoute.value.name).toBe('registration-error')
+    expect(router.currentRoute.value.query.redirect).toBe('/path')
+  })
+
+  it('preserves the redirect target through a sign-out mid-flight', async () => {
+    currentUser.state = 'registering'
+    const router = await mountAt('/welcome?redirect=%2Fpath')
+
+    currentUser.state = 'idle'
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.query.redirect).toBe('/path')
+  })
+
+  it('does not redundantly re-push registration-error when already sitting there on normal entry', async () => {
+    currentUser.state = 'failed'
+    const router = testRouter()
+    await router.push('/welcome/error')
+    await router.isReady()
+    const pushSpy = vi.spyOn(router, 'push')
+
+    // The immediate watch fires at mount with state already 'failed' and the
+    // route already registration-error — must not push to where it already is.
+    mount(HostComponent, { global: { plugins: [router] } })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(pushSpy).not.toHaveBeenCalled()
+  })
 })
