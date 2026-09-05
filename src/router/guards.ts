@@ -43,7 +43,7 @@ export function createAuthGuard(auth: AuthChecker) {
     const registration = auth.getRegistrationState()
 
     if (registration === 'failed') {
-      return { name: 'registration-error' }
+      return { name: 'registration-error', query: { redirect: to.fullPath } }
     }
 
     if (registration !== 'registered') {

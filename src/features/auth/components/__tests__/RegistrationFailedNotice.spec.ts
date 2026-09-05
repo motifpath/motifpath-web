@@ -9,6 +9,12 @@ vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
 
+const signOut = vi.fn(async () => {})
+
+vi.mock('@/features/auth/composables/useAuth', () => ({
+  useAuth: () => ({ signOut }),
+}))
+
 import RegistrationFailedNotice from '@/features/auth/components/RegistrationFailedNotice.vue'
 
 describe('RegistrationFailedNotice', () => {
@@ -24,5 +30,13 @@ describe('RegistrationFailedNotice', () => {
     await wrapper.get('[data-test="retry"]').trigger('click')
 
     expect(currentUser.retry).toHaveBeenCalledOnce()
+  })
+
+  it('offers a sign-out escape hatch for when retrying keeps failing', async () => {
+    const wrapper = mount(RegistrationFailedNotice)
+
+    await wrapper.get('[data-test="sign-out"]').trigger('click')
+
+    expect(signOut).toHaveBeenCalledOnce()
   })
 })

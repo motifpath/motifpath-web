@@ -58,6 +58,7 @@ describe('router', () => {
     await router.push('/path')
 
     expect(router.currentRoute.value.name).toBe('registration-error')
+    expect(router.currentRoute.value.query.redirect).toBe('/path')
   })
 
   it('sends an unauthenticated visitor away from the registering route to sign-in', async () => {

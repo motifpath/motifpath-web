@@ -3,8 +3,10 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 
+import type { CurrentUserState } from '@/stores/currentUser'
+
 const currentUser = reactive({
-  state: ref<'idle' | 'registering' | 'registered' | 'failed'>('registering'),
+  state: ref<CurrentUserState>('registering'),
   ensure: vi.fn(async () => {}),
 })
 

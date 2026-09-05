@@ -2,6 +2,8 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 
+import type { CurrentUserState } from '@/stores/currentUser'
+
 const auth = {
   isLoaded: ref(true),
   isSignedIn: ref(false),
@@ -15,7 +17,7 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
 // `reactive()` mirrors Pinia's own auto-unwrapping of a setup store's refs, so
 // `currentUser.state` reads/writes like the real store property, not a raw ref.
 const currentUser = reactive({
-  state: ref<'idle' | 'registering' | 'registered' | 'failed'>('idle'),
+  state: ref<CurrentUserState>('idle'),
   ensure: vi.fn(async () => {}),
   reset: vi.fn(),
 })

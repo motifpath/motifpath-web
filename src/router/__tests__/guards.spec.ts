@@ -97,7 +97,7 @@ describe('createAuthGuard', () => {
 
     const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
 
-    expect(result).toEqual({ name: 'registration-error' })
+    expect(result).toEqual({ name: 'registration-error', query: { redirect: '/path' } })
   })
 
   it('redirects an unauthenticated visitor away from a skip-registration-gate route (e.g. /welcome)', async () => {

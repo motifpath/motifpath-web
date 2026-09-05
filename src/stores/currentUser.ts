@@ -34,38 +34,48 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
   async function register(myEpoch: number): Promise<void> {
     state.value = 'registering'
 
-    const me = await coreApi.GET('/users/me')
-    if (myEpoch !== epoch) return
-    if (me.data) {
-      profile.value = me.data
-      state.value = 'registered'
-      return
-    }
-
-    if (me.response?.status !== 404) {
-      state.value = 'failed'
-      return
-    }
-
-    const created = await coreApi.POST('/users', { body: { role: 'student' } })
-    if (myEpoch !== epoch) return
-    if (created.data) {
-      profile.value = created.data
-      state.value = 'registered'
-      return
-    }
-
-    if (created.response?.status === 409) {
-      const reconciled = await coreApi.GET('/users/me')
+    // A network-level failure (unreachable core-domain, DNS, CORS preflight)
+    // rejects rather than resolving with a {data,error,response} shape —
+    // caught here so it lands on 'failed' like any other unsuccessful
+    // outcome, instead of leaving state stuck at 'registering' forever.
+    try {
+      const me = await coreApi.GET('/users/me')
       if (myEpoch !== epoch) return
-      if (reconciled.data) {
-        profile.value = reconciled.data
+      if (me.data) {
+        profile.value = me.data
         state.value = 'registered'
         return
       }
-    }
 
-    state.value = 'failed'
+      if (me.response?.status !== 404) {
+        state.value = 'failed'
+        return
+      }
+
+      const created = await coreApi.POST('/users', { body: { role: 'student' } })
+      if (myEpoch !== epoch) return
+      if (created.data) {
+        profile.value = created.data
+        state.value = 'registered'
+        return
+      }
+
+      if (created.response?.status === 409) {
+        const reconciled = await coreApi.GET('/users/me')
+        if (myEpoch !== epoch) return
+        if (reconciled.data) {
+          profile.value = reconciled.data
+          state.value = 'registered'
+          return
+        }
+      }
+
+      state.value = 'failed'
+    } catch {
+      if (myEpoch === epoch) {
+        state.value = 'failed'
+      }
+    }
   }
 
   /** Starts a registration attempt, or returns the one already running. */

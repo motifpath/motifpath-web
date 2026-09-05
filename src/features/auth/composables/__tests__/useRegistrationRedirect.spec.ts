@@ -3,8 +3,10 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import { defineComponent, reactive, ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { CurrentUserState } from '@/stores/currentUser'
+
 const currentUser = reactive({
-  state: ref<'idle' | 'registering' | 'registered' | 'failed'>('registering'),
+  state: ref<CurrentUserState>('registering'),
 })
 
 vi.mock('@/stores/currentUser', () => ({

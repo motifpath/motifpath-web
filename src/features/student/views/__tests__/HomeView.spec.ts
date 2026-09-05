@@ -2,9 +2,12 @@ import { mount, RouterLinkStub } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 
+import type { CurrentUserState } from '@/stores/currentUser'
+
 const auth = {
   isLoaded: ref(true),
   isSignedIn: ref(false),
+  signOut: vi.fn(async () => {}),
 }
 
 vi.mock('@/features/auth/composables/useAuth', () => ({
@@ -15,7 +18,7 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
 // `currentUser.isRegistered` reads like the real store property, not a raw ref.
 const currentUser = reactive({
   isRegistered: ref(false),
-  state: ref<'idle' | 'registering' | 'registered' | 'failed'>('idle'),
+  state: ref<CurrentUserState>('idle'),
   retry: vi.fn(async () => {}),
 })
 

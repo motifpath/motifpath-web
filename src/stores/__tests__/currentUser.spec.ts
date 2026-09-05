@@ -75,6 +75,27 @@ describe('useCurrentUserStore', () => {
     expect(store.profile).toBeNull()
   })
 
+  it('fails when GET /users/me rejects outright (network failure, not an HTTP error)', async () => {
+    GET.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    const store = useCurrentUserStore()
+    await store.ensure()
+
+    expect(store.state).toBe('failed')
+    expect(store.profile).toBeNull()
+  })
+
+  it('fails when POST /users rejects outright (network failure, not an HTTP error)', async () => {
+    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+    POST.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    const store = useCurrentUserStore()
+    await store.ensure()
+
+    expect(store.state).toBe('failed')
+    expect(store.profile).toBeNull()
+  })
+
   it('fails when POST /users errors with anything other than 409', async () => {
     GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
     POST.mockResolvedValueOnce({ data: undefined, error: { message: 'bad request' }, response: { status: 400 } })
