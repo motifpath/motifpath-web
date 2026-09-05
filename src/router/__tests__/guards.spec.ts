@@ -100,7 +100,25 @@ describe('createAuthGuard', () => {
     expect(result).toEqual({ name: 'registration-error', query: { redirect: '/path' } })
   })
 
-  it('redirects an unauthenticated visitor away from a skip-registration-gate route (e.g. /welcome)', async () => {
+  it('redirects an unauthenticated visitor away from a skip-registration-gate route without a self-referential redirect', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => false,
+      getRegistrationState: () => 'idle',
+    })
+
+    // /welcome and /welcome/error are bridge routes, not real destinations —
+    // preserving one of them as ?redirect= would send the user right back to
+    // the same self-referential URL once they're signed in, since nothing
+    // remounts RegisteringView on a query-only navigation to the same route.
+    const result = await guard(
+      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome' }),
+    )
+
+    expect(result).toEqual({ name: 'sign-in' })
+  })
+
+  it('redirects an unauthenticated visitor away from /welcome/error without a self-referential redirect either', async () => {
     const guard = createAuthGuard({
       isReady: () => Promise.resolve(),
       isSignedIn: () => false,
@@ -108,10 +126,10 @@ describe('createAuthGuard', () => {
     })
 
     const result = await guard(
-      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome' }),
+      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome/error' }),
     )
 
-    expect(result).toEqual({ name: 'sign-in', query: { redirect: '/welcome' } })
+    expect(result).toEqual({ name: 'sign-in' })
   })
 
   it('lets a signed-in user through a skip-registration-gate route regardless of registration state', async () => {

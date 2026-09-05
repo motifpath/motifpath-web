@@ -61,13 +61,13 @@ describe('router', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/path')
   })
 
-  it('sends an unauthenticated visitor away from the registering route to sign-in', async () => {
+  it('sends an unauthenticated visitor away from the registering route to sign-in, without a self-referential redirect', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/welcome')
 
     expect(router.currentRoute.value.name).toBe('sign-in')
-    expect(router.currentRoute.value.query.redirect).toBe('/welcome')
+    expect(router.currentRoute.value.query.redirect).toBeUndefined()
   })
 
   it('sends an unauthenticated visitor away from the registration-error route to sign-in', async () => {

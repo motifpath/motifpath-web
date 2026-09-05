@@ -16,4 +16,14 @@ describe('readRedirectQuery', () => {
     expect(readRedirectQuery(null)).toBeUndefined()
     expect(readRedirectQuery(['a', 'b'])).toBeUndefined()
   })
+
+  it('rejects the bridge routes themselves as redirect targets — never real destinations', () => {
+    expect(readRedirectQuery('/sign-in')).toBeUndefined()
+    expect(readRedirectQuery('/welcome')).toBeUndefined()
+    expect(readRedirectQuery('/welcome/error')).toBeUndefined()
+  })
+
+  it('still accepts a real destination that merely starts with a bridge path segment', () => {
+    expect(readRedirectQuery('/welcome-back')).toBe('/welcome-back')
+  })
 })
