@@ -74,6 +74,34 @@ public pages, sign-in, and routing still work.
 `core-domain` allows the Vite dev origin (`http://localhost:5173`) via CORS out
 of the box.
 
+### Manual onboarding smoke test (PB-8c)
+
+Automated tests cover the registration bridge, guard, and views in isolation
+(mocked `coreApi`). This walks the real chain end to end — Clerk → transport →
+CORS → `core-domain` → generated types → store → guard/views — with a real
+Clerk secret key and `core-domain` running locally
+(see [motifpath-core README → Running the services locally](../motifpath-core/README.md#running-the-services-locally)).
+
+**Happy path — first sign-in for an identity:**
+
+1. `npm run dev`, open http://localhost:5173, sign in with Google
+2. Land on `/welcome` — "Setting up your account…"
+3. `POST /users {role: student}` fires exactly once (check the network tab)
+4. Redirected to `/path` — the holding state renders ("Your teacher is
+   building your personalized path")
+
+**409 reconciliation — sign out, sign back in with the same identity:**
+
+1. Sign out, sign in again with the same Google account
+2. `GET /users/me` returns 200 immediately — no second `POST /users` fires
+3. Straight to `/path`, no `/welcome` detour
+
+**Failure and retry:**
+
+1. Stop `core-domain`, then sign in
+2. `/welcome/error` renders — "We couldn't finish setting up your account"
+3. Restart `core-domain`, click "Try again" — lands on `/path`
+
 ## Commands
 
 ```bash
