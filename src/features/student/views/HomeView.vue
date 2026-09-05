@@ -2,8 +2,10 @@
 import { RouterLink } from 'vue-router'
 
 import { useAuth } from '@/features/auth/composables/useAuth'
+import { useCurrentUserStore } from '@/stores/currentUser'
 
 const { isLoaded, isSignedIn } = useAuth()
+const currentUser = useCurrentUserStore()
 </script>
 
 <template>
@@ -12,7 +14,7 @@ const { isLoaded, isSignedIn } = useAuth()
 
     <p v-if="!isLoaded" data-test="loading" class="text-motif-ink/60">Loading…</p>
 
-    <template v-else-if="isSignedIn">
+    <template v-else-if="isSignedIn && currentUser.isRegistered">
       <p class="text-motif-ink/70">You're signed in.</p>
       <RouterLink
         :to="{ name: 'path' }"
@@ -21,6 +23,10 @@ const { isLoaded, isSignedIn } = useAuth()
         Go to my path
       </RouterLink>
     </template>
+
+    <p v-else-if="isSignedIn" data-test="registering" class="text-motif-ink/60">
+      Setting up your account…
+    </p>
 
     <template v-else>
       <p class="text-motif-ink/70">Sign in to start practising.</p>

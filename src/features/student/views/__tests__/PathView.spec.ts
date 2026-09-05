@@ -46,4 +46,16 @@ describe('PathView', () => {
 
     expect(mountView().text()).toContain('Blues Foundations')
   })
+
+  it('shows a first-class holding state when no path is assigned yet', () => {
+    state.isLoading.value = false
+    state.error.value = 'no-path'
+    state.data.value = null
+
+    const wrapper = mountView()
+    const holding = wrapper.get('[data-test="no-path"]')
+
+    expect(holding.text()).toContain('teacher')
+    expect(holding.text().toLowerCase()).toContain('personalized path')
+  })
 })
