@@ -60,6 +60,32 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('registration-error')
   })
 
+  it('sends an unauthenticated visitor away from the registering route to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/welcome')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.query.redirect).toBe('/welcome')
+  })
+
+  it('sends an unauthenticated visitor away from the registration-error route to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/welcome/error')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+  })
+
+  it('lets a signed-in visitor stay on the registering route regardless of registration state', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registering')
+
+    await router.push('/welcome')
+
+    expect(router.currentRoute.value.name).toBe('registering')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 

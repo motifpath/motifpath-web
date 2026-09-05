@@ -6,10 +6,17 @@
  * `App.vue` pushes the current state here via `updateAuthBridge` on every change.
  */
 
+import type { CurrentUserState } from '@/stores/currentUser'
+
 type TokenGetter = () => Promise<string | null>
 
-/** Mirrors `CurrentUserState` from the currentUser store without importing Pinia here. */
-export type RegistrationState = 'idle' | 'registering' | 'registered' | 'failed'
+/**
+ * Alias of the currentUser store's own state type. A type-only import is
+ * erased entirely at compile time, so this costs nothing at runtime (no
+ * Pinia, no store instantiation) — it just keeps the two from drifting
+ * apart as separate hand-maintained copies of the same union.
+ */
+export type RegistrationState = CurrentUserState
 
 let tokenGetter: TokenGetter = async () => null
 let signedIn = false

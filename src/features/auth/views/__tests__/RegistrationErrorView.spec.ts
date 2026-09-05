@@ -48,6 +48,8 @@ describe('RegistrationErrorView', () => {
     expect(currentUser.retry).toHaveBeenCalledOnce()
   })
 
+  // Full state-transition coverage lives in useRegistrationRedirect.spec.ts —
+  // this is just a wiring smoke test confirming the view uses that composable.
   it('navigates to the path route once a retry succeeds', async () => {
     currentUser.state = 'failed'
     const router = testRouter()

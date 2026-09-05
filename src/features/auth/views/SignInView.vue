@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SignIn } from '@clerk/vue'
 
+import { readRedirectQuery } from '@/features/auth/utils/redirectQuery'
+
 const route = useRoute()
 const router = useRouter()
 
@@ -12,10 +14,7 @@ const router = useRouter()
 // ?redirect= rather than handed straight to Clerk. Resolved via the named
 // route, not a hardcoded path, per this repo's CLAUDE.md.
 const welcomeUrl = computed(() => {
-  const redirect =
-    typeof route.query.redirect === 'string' && route.query.redirect.length > 0
-      ? route.query.redirect
-      : undefined
+  const redirect = readRedirectQuery(route.query.redirect)
   return router.resolve({ name: 'registering', query: redirect ? { redirect } : undefined }).href
 })
 </script>

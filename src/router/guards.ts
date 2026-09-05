@@ -17,6 +17,12 @@ export interface AuthChecker {
  * `registered` is sent to the registering route (also preserving `?redirect=`),
  * or to the registration-error route if it failed. Public routes pass through
  * untouched.
+ *
+ * Routes also marked `meta.skipRegistrationGate` (the registering and
+ * registration-error routes themselves) still require a signed-in session,
+ * but skip the registration-state branch above — otherwise a signed-in
+ * visitor whose registration isn't yet 'registered' would be redirected
+ * from /welcome back to /welcome, looping forever.
  */
 export function createAuthGuard(auth: AuthChecker) {
   return async (to: RouteLocationNormalized): Promise<boolean | RouteLocationRaw> => {
@@ -28,6 +34,10 @@ export function createAuthGuard(auth: AuthChecker) {
 
     if (!auth.isSignedIn()) {
       return { name: 'sign-in', query: { redirect: to.fullPath } }
+    }
+
+    if (to.meta.skipRegistrationGate) {
+      return true
     }
 
     const registration = auth.getRegistrationState()

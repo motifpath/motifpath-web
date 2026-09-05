@@ -99,4 +99,32 @@ describe('createAuthGuard', () => {
 
     expect(result).toEqual({ name: 'registration-error' })
   })
+
+  it('redirects an unauthenticated visitor away from a skip-registration-gate route (e.g. /welcome)', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => false,
+      getRegistrationState: () => 'idle',
+    })
+
+    const result = await guard(
+      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome' }),
+    )
+
+    expect(result).toEqual({ name: 'sign-in', query: { redirect: '/welcome' } })
+  })
+
+  it('lets a signed-in user through a skip-registration-gate route regardless of registration state', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registering',
+    })
+
+    const result = await guard(
+      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome' }),
+    )
+
+    expect(result).toBe(true)
+  })
 })

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ErrorRetryNotice from '@/shared/components/ErrorRetryNotice.vue'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 
 const { data, error, isLoading, retry } = useStudentPath()
@@ -18,17 +19,7 @@ const { data, error, isLoading, retry } = useStudentPath()
       </p>
     </div>
 
-    <div v-else-if="error" data-test="error" class="flex flex-col items-start gap-3">
-      <p class="text-motif-ink/70">We couldn't load your path.</p>
-      <button
-        type="button"
-        data-test="retry"
-        class="rounded bg-motif-blue px-4 py-2 text-sm text-motif-blue-fg"
-        @click="retry()"
-      >
-        Try again
-      </button>
-    </div>
+    <ErrorRetryNotice v-else-if="error" message="We couldn't load your path." @retry="retry()" />
 
     <div v-else-if="data" data-test="path">
       <h2 class="text-lg font-medium">{{ data.title }}</h2>

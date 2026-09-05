@@ -53,42 +53,15 @@ describe('RegisteringView', () => {
     expect(currentUser.ensure).toHaveBeenCalledOnce()
   })
 
-  it('navigates to the redirect target once registration completes', async () => {
-    await router.push('/welcome?redirect=%2Fpath')
-    mount(RegisteringView, { global: { plugins: [router] } })
-
-    currentUser.state = 'registered'
-    await router.isReady()
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    expect(router.currentRoute.value.name).toBe('path')
-  })
-
-  it('falls back to the path route when there is no redirect target', async () => {
+  // Full state-transition coverage (redirect target, empty-redirect fallback,
+  // failure, idle/sign-out) lives in useRegistrationRedirect.spec.ts — this is
+  // just a wiring smoke test confirming the view actually uses that composable.
+  it('wires up useRegistrationRedirect: navigates to path once registered', async () => {
     mount(RegisteringView, { global: { plugins: [router] } })
 
     currentUser.state = 'registered'
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(router.currentRoute.value.name).toBe('path')
-  })
-
-  it('falls back to the path route when the redirect target is an empty string', async () => {
-    await router.push('/welcome?redirect=')
-    mount(RegisteringView, { global: { plugins: [router] } })
-
-    currentUser.state = 'registered'
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    expect(router.currentRoute.value.name).toBe('path')
-  })
-
-  it('navigates to the registration-error route if registration fails', async () => {
-    mount(RegisteringView, { global: { plugins: [router] } })
-
-    currentUser.state = 'failed'
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    expect(router.currentRoute.value.name).toBe('registration-error')
   })
 })
