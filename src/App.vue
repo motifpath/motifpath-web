@@ -21,13 +21,17 @@ watchEffect(() => {
   updateRegistrationBridge(currentUser.state)
 })
 
-watch(isSignedIn, (signedIn) => {
-  if (signedIn) {
-    void currentUser.ensure()
-  } else {
-    currentUser.reset()
-  }
-})
+watch(
+  isSignedIn,
+  (signedIn) => {
+    if (signedIn) {
+      void currentUser.ensure()
+    } else {
+      currentUser.reset()
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

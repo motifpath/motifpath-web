@@ -69,6 +69,14 @@ describe('App', () => {
     expect(currentUser.ensure).toHaveBeenCalledOnce()
   })
 
+  it('ensures registration immediately when already signed in at mount', () => {
+    auth.isSignedIn.value = true
+
+    mountApp()
+
+    expect(currentUser.ensure).toHaveBeenCalledOnce()
+  })
+
   it('resets the current-user store on sign-out', async () => {
     auth.isSignedIn.value = true
     const wrapper = mountApp()

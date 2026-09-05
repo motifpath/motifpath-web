@@ -24,6 +24,22 @@ const currentUser = useCurrentUserStore()
       </RouterLink>
     </template>
 
+    <div
+      v-else-if="isSignedIn && currentUser.state === 'failed'"
+      data-test="registration-failed"
+      class="flex flex-col items-start gap-3"
+    >
+      <p class="text-motif-ink/70">We couldn't finish setting up your account.</p>
+      <button
+        type="button"
+        data-test="retry"
+        class="rounded bg-motif-blue px-4 py-2 text-sm text-motif-blue-fg"
+        @click="currentUser.retry()"
+      >
+        Try again
+      </button>
+    </div>
+
     <p v-else-if="isSignedIn" data-test="registering" class="text-motif-ink/60">
       Setting up your account…
     </p>

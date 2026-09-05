@@ -137,4 +137,41 @@ describe('useCurrentUserStore', () => {
     expect(store.state).toBe('idle')
     expect(store.profile).toBeNull()
   })
+
+  it('ignores a stale response that resolves after reset() (sign-out race)', async () => {
+    let resolveGet!: (value: unknown) => void
+    GET.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveGet = resolve
+      }),
+    )
+    const store = useCurrentUserStore()
+
+    const pending = store.ensure()
+    store.reset()
+    resolveGet({ data: profile, error: undefined, response: { status: 200 } })
+    await pending
+
+    expect(store.state).toBe('idle')
+    expect(store.profile).toBeNull()
+  })
+
+  it('retry does not start a second attempt while one is already in flight', async () => {
+    let resolveGet!: (value: unknown) => void
+    GET.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveGet = resolve
+      }),
+    )
+    const store = useCurrentUserStore()
+
+    const first = store.retry()
+    const second = store.retry()
+
+    resolveGet({ data: profile, error: undefined, response: { status: 200 } })
+    await Promise.all([first, second])
+
+    expect(GET).toHaveBeenCalledTimes(1)
+    expect(store.state).toBe('registered')
+  })
 })

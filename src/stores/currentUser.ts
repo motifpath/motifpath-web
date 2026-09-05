@@ -25,10 +25,18 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
 
   let inFlight: Promise<void> | null = null
 
+  // Bumped by every register() call and by reset(). A register() attempt
+  // checks its own epoch against the current one before each write — if
+  // reset() (or a newer attempt) ran while it was awaiting, its epoch is
+  // stale and it must not apply its result.
+  let epoch = 0
+
   async function register(): Promise<void> {
+    const myEpoch = ++epoch
     state.value = 'registering'
 
     const me = await coreApi.GET('/users/me')
+    if (myEpoch !== epoch) return
     if (me.data) {
       profile.value = me.data
       state.value = 'registered'
@@ -41,6 +49,7 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     }
 
     const created = await coreApi.POST('/users', { body: { role: 'student' } })
+    if (myEpoch !== epoch) return
     if (created.data) {
       profile.value = created.data
       state.value = 'registered'
@@ -49,6 +58,7 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
 
     if (created.response?.status === 409) {
       const reconciled = await coreApi.GET('/users/me')
+      if (myEpoch !== epoch) return
       if (reconciled.data) {
         profile.value = reconciled.data
         state.value = 'registered'
@@ -59,8 +69,9 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     state.value = 'failed'
   }
 
-  function ensure(): Promise<void> {
-    if (state.value === 'registering' || state.value === 'registered') {
+  /** Starts a registration attempt, or returns the one already running. */
+  function runRegistration(): Promise<void> {
+    if (state.value === 'registering') {
       return inFlight ?? Promise.resolve()
     }
 
@@ -70,14 +81,19 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     return inFlight
   }
 
+  function ensure(): Promise<void> {
+    if (state.value === 'registered') {
+      return Promise.resolve()
+    }
+    return runRegistration()
+  }
+
   function retry(): Promise<void> {
-    inFlight = register().finally(() => {
-      inFlight = null
-    })
-    return inFlight
+    return runRegistration()
   }
 
   function reset(): void {
+    epoch++
     state.value = 'idle'
     profile.value = null
     inFlight = null

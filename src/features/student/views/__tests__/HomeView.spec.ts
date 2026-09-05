@@ -15,6 +15,8 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
 // `currentUser.isRegistered` reads like the real store property, not a raw ref.
 const currentUser = reactive({
   isRegistered: ref(false),
+  state: ref<'idle' | 'registering' | 'registered' | 'failed'>('idle'),
+  retry: vi.fn(async () => {}),
 })
 
 vi.mock('@/stores/currentUser', () => ({
@@ -47,6 +49,7 @@ describe('HomeView', () => {
     auth.isLoaded.value = true
     auth.isSignedIn.value = true
     currentUser.isRegistered = true
+    currentUser.state = 'registered'
 
     const link = mountView().getComponent(RouterLinkStub)
 
@@ -57,10 +60,25 @@ describe('HomeView', () => {
     auth.isLoaded.value = true
     auth.isSignedIn.value = true
     currentUser.isRegistered = false
+    currentUser.state = 'registering'
 
     const wrapper = mountView()
 
     expect(wrapper.find('[data-test="registering"]').exists()).toBe(true)
     expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
+  })
+
+  it('offers a retry control, not a dead end, when registration failed', async () => {
+    auth.isLoaded.value = true
+    auth.isSignedIn.value = true
+    currentUser.isRegistered = false
+    currentUser.state = 'failed'
+
+    const wrapper = mountView()
+    const retryButton = wrapper.get('[data-test="registration-failed"] [data-test="retry"]')
+    await retryButton.trigger('click')
+
+    expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
+    expect(currentUser.retry).toHaveBeenCalledOnce()
   })
 })
