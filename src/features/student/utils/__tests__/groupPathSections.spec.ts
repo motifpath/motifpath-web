@@ -1,20 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
-import type { components } from '@/api/generated/core-domain'
-
-type StudentPathItem = components['schemas']['StudentPathItem']
-
-function item(position: number, sectionLabel?: string): StudentPathItem {
-  return {
-    position,
-    content_node_id: `node-${position}`,
-    title: `Step ${position}`,
-    content_type: 'video',
-    status: 'not_started',
-    ...(sectionLabel === undefined ? {} : { section_label: sectionLabel }),
-  }
-}
+import { makeStudentPathItem as item } from '@/features/student/testing/studentPathItem'
 
 describe('groupPathSections', () => {
   it('returns no groups for an empty path', () => {
@@ -85,5 +72,19 @@ describe('groupPathSections', () => {
     const groups = groupPathSections([item(1, '')])
 
     expect(groups).toEqual([{ label: null, items: [item(1, '')] }])
+  })
+
+  it('treats a whitespace-only label as no label', () => {
+    const groups = groupPathSections([item(1, '   ')])
+
+    expect(groups).toEqual([{ label: null, items: [item(1, '   ')] }])
+  })
+
+  it('trims surrounding whitespace and groups labels that differ only by it', () => {
+    const items = [item(1, 'Open chords '), item(2, ' Open chords')]
+
+    const groups = groupPathSections(items)
+
+    expect(groups).toEqual([{ label: 'Open chords', items }])
   })
 })

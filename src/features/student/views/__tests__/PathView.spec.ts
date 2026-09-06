@@ -3,20 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import { makeStudentPathItem as step } from '@/features/student/testing/studentPathItem'
 
-type StudentPathItem = components['schemas']['StudentPathItem']
-type StudentPathView = { title: string; items: StudentPathItem[] }
-
-function step(position: number, sectionLabel?: string): StudentPathItem {
-  return {
-    position,
-    content_node_id: `node-${position}`,
-    title: `Step ${position}`,
-    content_type: 'video',
-    status: 'not_started',
-    ...(sectionLabel === undefined ? {} : { section_label: sectionLabel }),
-  }
-}
+type StudentPathView = Pick<components['schemas']['StudentPathView'], 'title' | 'items'>
 
 const state = {
   data: ref<StudentPathView | null>(null),
@@ -98,6 +87,26 @@ describe('PathView', () => {
     const headings = mountView().findAll('[data-test="section-heading"]')
 
     expect(headings.map((h) => h.text())).toEqual(['Open chords', 'Open chords'])
+  })
+
+  it('keeps one continuous 1..N ordering across section lists', () => {
+    state.isLoading.value = false
+    state.error.value = null
+    state.data.value = {
+      title: 'Rhythm Foundations',
+      items: [
+        step(1, 'Open chords'),
+        step(2, 'Open chords'),
+        step(3, 'Strumming patterns'),
+        step(4, 'Strumming patterns'),
+      ],
+    }
+
+    const lists = mountView().findAll('[data-test="path-section"] ol')
+
+    expect(lists).toHaveLength(2)
+    expect(lists[0].attributes('start')).toBe('1')
+    expect(lists[1].attributes('start')).toBe('3')
   })
 
   it('shows a first-class holding state when no path is assigned yet', () => {

@@ -31,8 +31,8 @@ const sections = computed(() => (data.value ? groupPathSections(data.value.items
       <p class="mb-4 text-sm text-motif-ink/60">{{ data.items.length }} steps</p>
 
       <div
-        v-for="(section, index) in sections"
-        :key="index"
+        v-for="section in sections"
+        :key="section.items[0].content_node_id"
         data-test="path-section"
         class="mb-4"
       >
@@ -43,7 +43,7 @@ const sections = computed(() => (data.value ? groupPathSections(data.value.items
         >
           {{ section.label }}
         </h3>
-        <ol class="flex flex-col gap-1">
+        <ol :start="section.items[0].position" class="flex flex-col gap-1">
           <li
             v-for="step in section.items"
             :key="step.content_node_id"
