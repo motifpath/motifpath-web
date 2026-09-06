@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
+import RegisteringNotice from '@/features/auth/components/RegisteringNotice.vue'
 import RegistrationFailedNotice from '@/features/auth/components/RegistrationFailedNotice.vue'
 import { useAuth } from '@/features/auth/composables/useAuth'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -27,9 +28,7 @@ const currentUser = useCurrentUserStore()
 
     <RegistrationFailedNotice v-else-if="isSignedIn && currentUser.state === 'failed'" />
 
-    <p v-else-if="isSignedIn" data-test="registering" class="text-motif-ink/60">
-      Setting up your account…
-    </p>
+    <RegisteringNotice v-else-if="isSignedIn" />
 
     <template v-else>
       <p class="text-motif-ink/70">Sign in to start practising.</p>

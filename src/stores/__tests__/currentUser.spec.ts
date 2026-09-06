@@ -106,6 +106,19 @@ describe('useCurrentUserStore', () => {
     expect(store.state).toBe('failed')
   })
 
+  it('ensure does not restart a genuinely failed registration — that is what retry() is for', async () => {
+    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+    const store = useCurrentUserStore()
+    await store.ensure()
+    expect(store.state).toBe('failed')
+
+    GET.mockClear()
+    await store.ensure()
+
+    expect(GET).not.toHaveBeenCalled()
+    expect(store.state).toBe('failed')
+  })
+
   it('retry re-runs registration after a failure', async () => {
     GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
     const store = useCurrentUserStore()

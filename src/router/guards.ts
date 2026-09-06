@@ -12,25 +12,34 @@ export interface AuthChecker {
 }
 
 /**
+ * The route a signed-in visitor's registration state belongs on, or `null`
+ * if any route is fine (once `registered`, nothing forces a destination —
+ * useRegistrationRedirect moves them on if they're still sitting on a
+ * bridge route). `idle` and `registering` share the same destination:
+ * registration either hasn't started yet or is already in flight, and
+ * either way `/welcome` is where it happens.
+ */
+function bridgeRouteFor(registration: RegistrationState): string | null {
+  if (registration === 'failed') return 'registration-error'
+  if (registration === 'registered') return null
+  return 'registering'
+}
+
+/**
  * Navigation guard: routes marked `meta.requiresAuth` wait for Clerk to load,
  * then send signed-out visitors to the sign-in route (preserving their target
- * as `?redirect=`). A signed-in visitor whose registration has not yet reached
- * `registered` is sent to the registering route (also preserving `?redirect=`),
- * or to the registration-error route if it failed. Public routes pass through
- * untouched.
+ * as `?redirect=`; `readRedirectQuery` rejects a bridge route's own path as a
+ * redirect value, so this never produces a self-referential loop even when
+ * `to` is itself `/welcome` or `/welcome/error`).
  *
- * Routes also marked `meta.skipRegistrationGate` (the registering and
- * registration-error routes themselves) still require a signed-in session,
- * but skip the registration-state branch above — otherwise a signed-in
- * visitor whose registration isn't yet 'registered' would be redirected
- * from /welcome back to /welcome, looping forever.
- *
- * An unauthenticated visit to one of those same skip-gate routes never
- * preserves its own path as the sign-in `?redirect=` — they're bridge
- * routes, not real destinations, and a self-referential redirect (sign in
- * → bounced right back to /welcome?redirect=/welcome) would strand the
- * visitor once registered, since navigating to the same route with only
- * the query changed doesn't remount the component that would act on it.
+ * A signed-in visitor is then checked against `bridgeRouteFor` — if `to` is
+ * already the route their registration state belongs on (including the two
+ * bridge routes themselves matching their own state), they pass through;
+ * otherwise they're redirected to the route that *does* match. This means
+ * reaching `/welcome/error` directly while registration hasn't actually
+ * failed (or `/welcome` while it already has) is corrected by the guard
+ * itself, before any component ever mounts — not left for the view to
+ * notice and correct after the fact.
  */
 export function createAuthGuard(auth: AuthChecker) {
   return async (to: RouteLocationNormalized): Promise<boolean | RouteLocationRaw> => {
@@ -41,21 +50,13 @@ export function createAuthGuard(auth: AuthChecker) {
     await auth.isReady()
 
     if (!auth.isSignedIn()) {
-      return routeWithRedirect('sign-in', to.meta.skipRegistrationGate ? undefined : to.fullPath)
+      return routeWithRedirect('sign-in', to.fullPath)
     }
 
-    if (to.meta.skipRegistrationGate) {
-      return true
-    }
+    const bridgeRoute = bridgeRouteFor(auth.getRegistrationState())
 
-    const registration = auth.getRegistrationState()
-
-    if (registration === 'failed') {
-      return routeWithRedirect('registration-error', to.fullPath)
-    }
-
-    if (registration !== 'registered') {
-      return routeWithRedirect('registering', to.fullPath)
+    if (bridgeRoute !== null && to.name !== bridgeRoute) {
+      return routeWithRedirect(bridgeRoute, to.fullPath)
     }
 
     return true

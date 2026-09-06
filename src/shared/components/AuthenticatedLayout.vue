@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 
-import { useAuth } from '@/features/auth/composables/useAuth'
-
-const { signOut } = useAuth()
+import SignOutLink from '@/shared/components/SignOutLink.vue'
 </script>
 
 <template>
@@ -17,14 +15,7 @@ const { signOut } = useAuth()
           <RouterLink :to="{ name: 'path' }" class="hover:text-motif-blue">My path</RouterLink>
         </nav>
 
-        <button
-          type="button"
-          data-test="sign-out"
-          class="ml-auto text-sm text-motif-ink/60 hover:text-motif-blue"
-          @click="signOut()"
-        >
-          Sign out
-        </button>
+        <SignOutLink class="ml-auto" />
       </div>
     </header>
 

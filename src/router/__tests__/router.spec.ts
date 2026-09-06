@@ -61,13 +61,17 @@ describe('router', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/path')
   })
 
-  it('sends an unauthenticated visitor away from the registering route to sign-in, without a self-referential redirect', async () => {
+  it('sends an unauthenticated visitor away from the registering route to sign-in', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/welcome')
 
+    // The guard preserves ?redirect= the same as for any other protected
+    // route — the self-referential-loop defense lives downstream, in
+    // readRedirectQuery rejecting a bridge route's own path as a value
+    // (see redirectQuery.spec.ts), not in the guard omitting it here.
     expect(router.currentRoute.value.name).toBe('sign-in')
-    expect(router.currentRoute.value.query.redirect).toBeUndefined()
+    expect(router.currentRoute.value.query.redirect).toBe('/welcome')
   })
 
   it('sends an unauthenticated visitor away from the registration-error route to sign-in', async () => {
@@ -78,11 +82,29 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('sign-in')
   })
 
-  it('lets a signed-in visitor stay on the registering route regardless of registration state', async () => {
+  it('lets a signed-in visitor stay on the registering route while idle/in-flight', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registering')
 
     await router.push('/welcome')
+
+    expect(router.currentRoute.value.name).toBe('registering')
+  })
+
+  it('redirects a signed-in visitor away from the registering route once registration has actually failed', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('failed')
+
+    await router.push('/welcome')
+
+    expect(router.currentRoute.value.name).toBe('registration-error')
+  })
+
+  it('redirects a signed-in visitor away from registration-error back to registering if reached without an actual failure', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('idle')
+
+    await router.push('/welcome/error')
 
     expect(router.currentRoute.value.name).toBe('registering')
   })

@@ -7,12 +7,6 @@ declare module 'vue-router' {
   interface RouteMeta {
     /** Route requires an authenticated Clerk session. */
     requiresAuth?: boolean
-    /**
-     * Skip the guard's registration-state branch even though the route
-     * requires auth — for the registering/registration-error routes
-     * themselves, which would otherwise redirect to themselves in a loop.
-     */
-    skipRegistrationGate?: boolean
   }
 }
 
@@ -34,13 +28,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'welcome',
         name: 'registering',
-        meta: { requiresAuth: true, skipRegistrationGate: true },
+        meta: { requiresAuth: true },
         component: () => import('@/features/auth/views/RegisteringView.vue'),
       },
       {
         path: 'welcome/error',
         name: 'registration-error',
-        meta: { requiresAuth: true, skipRegistrationGate: true },
+        meta: { requiresAuth: true },
         component: () => import('@/features/auth/views/RegistrationErrorView.vue'),
       },
     ],

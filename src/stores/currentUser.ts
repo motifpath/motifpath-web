@@ -96,7 +96,10 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
   }
 
   function ensure(): Promise<void> {
-    if (state.value === 'registered') {
+    // 'failed' is a terminal outcome only retry() may re-run — ensure() is
+    // called defensively and on every sign-in, and must never turn either
+    // of those into a silent, un-asked-for retry of a real failure.
+    if (state.value === 'registered' || state.value === 'failed') {
       return Promise.resolve()
     }
     return runRegistration()

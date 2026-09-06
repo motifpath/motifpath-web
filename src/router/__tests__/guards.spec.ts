@@ -4,7 +4,7 @@ import type { RouteLocationNormalized } from 'vue-router'
 import { createAuthGuard } from '@/router/guards'
 
 function route(partial: Partial<RouteLocationNormalized>): RouteLocationNormalized {
-  return { meta: {}, fullPath: '/', ...partial } as RouteLocationNormalized
+  return { meta: {}, fullPath: '/', name: undefined, ...partial } as RouteLocationNormalized
 }
 
 describe('createAuthGuard', () => {
@@ -28,7 +28,7 @@ describe('createAuthGuard', () => {
     )
     const guard = createAuthGuard({ isReady, isSignedIn: () => true, getRegistrationState: () => 'registered' })
 
-    const pending = guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+    const pending = guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
     let settled = false
     void pending.then(() => {
       settled = true
@@ -47,7 +47,7 @@ describe('createAuthGuard', () => {
       getRegistrationState: () => 'idle',
     })
 
-    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+    const result = await guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
 
     expect(result).toEqual({ name: 'sign-in', query: { redirect: '/path' } })
   })
@@ -59,7 +59,7 @@ describe('createAuthGuard', () => {
       getRegistrationState: () => 'registered',
     })
 
-    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+    const result = await guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
 
     expect(result).toBe(true)
   })
@@ -71,7 +71,7 @@ describe('createAuthGuard', () => {
       getRegistrationState: () => 'registering',
     })
 
-    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+    const result = await guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
 
     expect(result).toEqual({ name: 'registering', query: { redirect: '/path' } })
   })
@@ -83,7 +83,7 @@ describe('createAuthGuard', () => {
       getRegistrationState: () => 'idle',
     })
 
-    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+    const result = await guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
 
     expect(result).toEqual({ name: 'registering', query: { redirect: '/path' } })
   })
@@ -95,30 +95,12 @@ describe('createAuthGuard', () => {
       getRegistrationState: () => 'failed',
     })
 
-    const result = await guard(route({ meta: { requiresAuth: true }, fullPath: '/path' }))
+    const result = await guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
 
     expect(result).toEqual({ name: 'registration-error', query: { redirect: '/path' } })
   })
 
-  it('redirects an unauthenticated visitor away from a skip-registration-gate route without a self-referential redirect', async () => {
-    const guard = createAuthGuard({
-      isReady: () => Promise.resolve(),
-      isSignedIn: () => false,
-      getRegistrationState: () => 'idle',
-    })
-
-    // /welcome and /welcome/error are bridge routes, not real destinations —
-    // preserving one of them as ?redirect= would send the user right back to
-    // the same self-referential URL once they're signed in, since nothing
-    // remounts RegisteringView on a query-only navigation to the same route.
-    const result = await guard(
-      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome' }),
-    )
-
-    expect(result).toEqual({ name: 'sign-in' })
-  })
-
-  it('redirects an unauthenticated visitor away from /welcome/error without a self-referential redirect either', async () => {
+  it('redirects an unauthenticated visitor away from the registering route to sign-in', async () => {
     const guard = createAuthGuard({
       isReady: () => Promise.resolve(),
       isSignedIn: () => false,
@@ -126,13 +108,13 @@ describe('createAuthGuard', () => {
     })
 
     const result = await guard(
-      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome/error' }),
+      route({ meta: { requiresAuth: true }, name: 'registering', fullPath: '/welcome' }),
     )
 
-    expect(result).toEqual({ name: 'sign-in' })
+    expect(result).toEqual({ name: 'sign-in', query: { redirect: '/welcome' } })
   })
 
-  it('lets a signed-in user through a skip-registration-gate route regardless of registration state', async () => {
+  it('lets a signed-in user with idle/registering state stay on the registering route', async () => {
     const guard = createAuthGuard({
       isReady: () => Promise.resolve(),
       isSignedIn: () => true,
@@ -140,7 +122,67 @@ describe('createAuthGuard', () => {
     })
 
     const result = await guard(
-      route({ meta: { requiresAuth: true, skipRegistrationGate: true }, fullPath: '/welcome' }),
+      route({ meta: { requiresAuth: true }, name: 'registering', fullPath: '/welcome' }),
+    )
+
+    expect(result).toBe(true)
+  })
+
+  it('redirects a signed-in user away from the registering route once registration has actually failed', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'failed',
+    })
+
+    const result = await guard(
+      route({ meta: { requiresAuth: true }, name: 'registering', fullPath: '/welcome' }),
+    )
+
+    expect(result).toEqual({ name: 'registration-error', query: { redirect: '/welcome' } })
+  })
+
+  it('lets a signed-in user with failed registration stay on the registration-error route', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'failed',
+    })
+
+    const result = await guard(
+      route({ meta: { requiresAuth: true }, name: 'registration-error', fullPath: '/welcome/error' }),
+    )
+
+    expect(result).toBe(true)
+  })
+
+  it('redirects a signed-in user away from registration-error back to registering if reached with idle/in-flight state', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'idle',
+    })
+
+    // Direct/bookmarked visit to /welcome/error while registration hasn't
+    // actually failed (e.g. a fresh session) must not leave the visitor
+    // stuck looking at a stale failure notice — send them where registration
+    // actually happens instead.
+    const result = await guard(
+      route({ meta: { requiresAuth: true }, name: 'registration-error', fullPath: '/welcome/error' }),
+    )
+
+    expect(result).toEqual({ name: 'registering', query: { redirect: '/welcome/error' } })
+  })
+
+  it('lets a registered user stay on a bridge route (useRegistrationRedirect moves them on)', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+    })
+
+    const result = await guard(
+      route({ meta: { requiresAuth: true }, name: 'registering', fullPath: '/welcome' }),
     )
 
     expect(result).toBe(true)

@@ -7,7 +7,6 @@ import type { CurrentUserState } from '@/stores/currentUser'
 
 const currentUser = reactive({
   state: ref<CurrentUserState>('failed'),
-  ensure: vi.fn(async () => {}),
   retry: vi.fn(async () => {}),
 })
 
@@ -54,30 +53,6 @@ describe('RegistrationErrorView', () => {
     await wrapper.get('[data-test="retry"]').trigger('click')
 
     expect(currentUser.retry).toHaveBeenCalledOnce()
-  })
-
-  it('calls ensure defensively if somehow reached while still idle (App.vue watcher ordering fragility)', async () => {
-    currentUser.state = 'idle'
-    currentUser.ensure.mockClear()
-    const router = testRouter()
-    await router.push('/welcome/error')
-    await router.isReady()
-
-    mount(RegistrationErrorView, { global: { plugins: [router] } })
-
-    expect(currentUser.ensure).toHaveBeenCalledOnce()
-  })
-
-  it('does not call ensure when state is genuinely failed — "Try again" is what retries, not a silent auto-retry on mount', async () => {
-    currentUser.state = 'failed'
-    currentUser.ensure.mockClear()
-    const router = testRouter()
-    await router.push('/welcome/error')
-    await router.isReady()
-
-    mount(RegistrationErrorView, { global: { plugins: [router] } })
-
-    expect(currentUser.ensure).not.toHaveBeenCalled()
   })
 
   // Full state-transition coverage lives in useRegistrationRedirect.spec.ts —

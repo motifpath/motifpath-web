@@ -50,28 +50,16 @@ describe('RegisteringView', () => {
     expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
   })
 
-  it('calls ensure on mount, defensively, if reached before App.vue has triggered it yet', () => {
+  // ensure() is called unconditionally on mount — safe regardless of state,
+  // since ensure() itself (currentUser.spec.ts) no-ops once registered or
+  // failed and reuses the in-flight attempt if one is already running. The
+  // view no longer needs to know or check the state itself.
+  it('calls ensure on mount, defensively, in case App.vue has not triggered it yet', () => {
     currentUser.state = 'idle'
 
     mount(RegisteringView, { global: { plugins: [router] } })
 
     expect(currentUser.ensure).toHaveBeenCalledOnce()
-  })
-
-  it('does not call ensure when a registration attempt is already in flight', () => {
-    currentUser.state = 'registering'
-
-    mount(RegisteringView, { global: { plugins: [router] } })
-
-    expect(currentUser.ensure).not.toHaveBeenCalled()
-  })
-
-  it('does not silently restart a genuinely failed registration (e.g. reached again via the back button)', () => {
-    currentUser.state = 'failed'
-
-    mount(RegisteringView, { global: { plugins: [router] } })
-
-    expect(currentUser.ensure).not.toHaveBeenCalled()
   })
 
   // Full state-transition coverage (redirect target, empty-redirect fallback,
