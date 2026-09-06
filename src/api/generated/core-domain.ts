@@ -448,6 +448,8 @@ export interface components {
                  * @description The ID of the content node at this position. Must exist in the system.
                  */
                 content_node_id: string;
+                /** @description Optional label grouping this item with its immediate neighbors under a named section in the resulting path view. Consecutive items that share the same label render together under that heading in the teacher, admin, and student path views; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area — never a time period or schedule. */
+                section_label?: string;
             }[];
         };
         /** @description A single content node within a learning path at a given position. */
@@ -466,6 +468,8 @@ export interface components {
              * @enum {string}
              */
             content_type: "video" | "article";
+            /** @description Optional label grouping this item with its immediate neighbors under a named section. Consecutive items that share the same label render together under that heading; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area, not a time period. */
+            section_label?: string;
         };
         /** @description An ordered sequence of content nodes assigned to students as a structured curriculum. */
         LearningPath: {
@@ -551,6 +555,8 @@ export interface components {
              * @enum {string}
              */
             status: "completed" | "in_progress" | "not_started" | "locked";
+            /** @description Optional label grouping this item with its immediate neighbors under a named section in the student's path view. Consecutive items that share the same label render together under that heading; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area, not a time period. */
+            section_label?: string;
         };
         /**
          * @description The student's active learning path with per-item progress state.
