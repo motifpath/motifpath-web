@@ -6,7 +6,17 @@
  * `App.vue` pushes the current state here via `updateAuthBridge` on every change.
  */
 
+import type { CurrentUserState } from '@/stores/currentUser'
+
 type TokenGetter = () => Promise<string | null>
+
+/**
+ * Alias of the currentUser store's own state type. A type-only import is
+ * erased entirely at compile time, so this costs nothing at runtime (no
+ * Pinia, no store instantiation) — it just keeps the two from drifting
+ * apart as separate hand-maintained copies of the same union.
+ */
+export type RegistrationState = CurrentUserState
 
 let tokenGetter: TokenGetter = async () => null
 let signedIn = false
@@ -15,6 +25,7 @@ let resolveReady!: () => void
 const readyPromise = new Promise<void>((resolve) => {
   resolveReady = resolve
 })
+let registrationState: RegistrationState = 'idle'
 
 export interface AuthBridgeState {
   isLoaded: boolean
@@ -31,13 +42,19 @@ export function updateAuthBridge(state: AuthBridgeState): void {
   }
 }
 
+/** Pushes the currentUser store's latest registration state into the bridge. */
+export function updateRegistrationBridge(state: RegistrationState): void {
+  registrationState = state
+}
+
 /** Current session JWT for outbound API requests, or `null` when signed out. */
 export function getAuthToken(): Promise<string | null> {
   return tokenGetter()
 }
 
-/** Read-only view of auth state for the router guard. */
+/** Read-only view of auth and registration state for the router guard. */
 export const authChecker = {
   isReady: (): Promise<void> => readyPromise,
   isSignedIn: (): boolean => signedIn,
+  getRegistrationState: (): RegistrationState => registrationState,
 }
