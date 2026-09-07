@@ -16,11 +16,13 @@ export interface PathSection {
  * Partitions a flat, ordered list of student path items into sections by
  * collapsing consecutive items that share the same non-empty `section_label`.
  *
- * An item with no label (or one that is empty or whitespace-only) is always
- * its own `label: null` section — unlabelled items never merge, and a label
- * reused after a gap starts a fresh section rather than joining the earlier
- * one. Labels are compared and displayed trimmed, so items whose labels
- * differ only by surrounding whitespace still group together.
+ * A run of consecutive items with no label (or one that is empty or
+ * whitespace-only) collapses into a single `label: null` section, so an
+ * entirely unlabelled path is one flat run rather than N one-item ones. A
+ * label reused after a gap starts a fresh section rather than joining the
+ * earlier one. Labels are compared and displayed trimmed, so items whose
+ * labels differ only by surrounding whitespace still group together (the
+ * API normalises this too — this is belt and braces for an older backend).
  */
 export function groupPathSections(items: StudentPathItem[]): PathSection[] {
   const sections: PathSection[] = []
@@ -30,7 +32,7 @@ export function groupPathSections(items: StudentPathItem[]): PathSection[] {
     const label = trimmed ? trimmed : null
     const current = sections[sections.length - 1]
 
-    if (label !== null && current !== undefined && current.label === label) {
+    if (current !== undefined && current.label === label) {
       current.items.push(item)
     } else {
       sections.push({ label, items: [item] })

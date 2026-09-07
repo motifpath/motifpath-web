@@ -32,7 +32,7 @@ const sections = computed(() => (data.value ? groupPathSections(data.value.items
 
       <div
         v-for="section in sections"
-        :key="section.items[0].content_node_id"
+        :key="section.items[0].position"
         data-test="path-section"
         class="mb-4"
       >
@@ -46,11 +46,18 @@ const sections = computed(() => (data.value ? groupPathSections(data.value.items
         <ol :start="section.items[0].position" class="flex flex-col gap-1">
           <li
             v-for="step in section.items"
-            :key="step.content_node_id"
+            :key="step.position"
             data-test="path-step"
-            class="flex items-baseline justify-between gap-3"
+            class="flex items-baseline gap-3"
           >
-            <span>{{ step.title }}</span>
+            <!-- The ordinal is rendered rather than left to the <ol> marker:
+                 Tailwind's preflight sets list-style:none, and a flex <li>
+                 drops its marker anyway. `start` above keeps the semantics
+                 right for assistive tech. -->
+            <span data-test="step-position" class="tabular-nums text-xs text-motif-ink/50">{{
+              step.position
+            }}</span>
+            <span class="flex-1">{{ step.title }}</span>
             <span data-test="step-status" class="text-xs text-motif-ink/50">{{ step.status }}</span>
           </li>
         </ol>

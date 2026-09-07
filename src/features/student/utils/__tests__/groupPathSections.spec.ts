@@ -8,15 +8,23 @@ describe('groupPathSections', () => {
     expect(groupPathSections([])).toEqual([])
   })
 
-  it('puts every item in its own unlabelled group when no item has a section label', () => {
+  it('keeps an entirely unlabelled path as one ungrouped run', () => {
     const items = [item(1), item(2), item(3)]
 
     const groups = groupPathSections(items)
 
+    expect(groups).toEqual([{ label: null, items }])
+  })
+
+  it('collapses consecutive unlabelled items between two sections into one run', () => {
+    const items = [item(1, 'Open chords'), item(2), item(3), item(4, 'Bar chords')]
+
+    const groups = groupPathSections(items)
+
     expect(groups).toEqual([
-      { label: null, items: [items[0]] },
-      { label: null, items: [items[1]] },
-      { label: null, items: [items[2]] },
+      { label: 'Open chords', items: [items[0]] },
+      { label: null, items: [items[1], items[2]] },
+      { label: 'Bar chords', items: [items[3]] },
     ])
   })
 

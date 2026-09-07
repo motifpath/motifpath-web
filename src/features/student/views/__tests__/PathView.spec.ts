@@ -63,6 +63,17 @@ describe('PathView', () => {
     expect(wrapper.find('[data-test="section-heading"]').exists()).toBe(false)
   })
 
+  it('renders an unlabelled path as a single flat list, not one list per step', () => {
+    state.isLoading.value = false
+    state.error.value = null
+    state.data.value = { title: 'Blues Foundations', items: [step(1), step(2), step(3)] }
+
+    const wrapper = mountView()
+
+    expect(wrapper.findAll('[data-test="path-section"]')).toHaveLength(1)
+    expect(wrapper.findAll('ol')).toHaveLength(1)
+  })
+
   it('renders a section heading above each labelled run of steps', () => {
     state.isLoading.value = false
     state.error.value = null
@@ -102,11 +113,18 @@ describe('PathView', () => {
       ],
     }
 
-    const lists = mountView().findAll('[data-test="path-section"] ol')
+    const wrapper = mountView()
+    const lists = wrapper.findAll('[data-test="path-section"] ol')
 
     expect(lists).toHaveLength(2)
     expect(lists[0].attributes('start')).toBe('1')
     expect(lists[1].attributes('start')).toBe('3')
+
+    // Tailwind's preflight strips list markers, so the ordinal has to be
+    // rendered rather than left to `start` alone — otherwise the continuous
+    // numbering this test guards is invisible to the student.
+    const numbers = wrapper.findAll('[data-test="step-position"]').map((n) => n.text())
+    expect(numbers).toEqual(['1', '2', '3', '4'])
   })
 
   it('shows a first-class holding state when no path is assigned yet', () => {
