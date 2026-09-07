@@ -61,15 +61,27 @@ Fill in `.env.local`:
 
 ## Local development
 
+Frontend only:
+
 ```bash
 npm run dev          # http://localhost:5173
 ```
 
-The app needs the Clerk key to load. To exercise the authenticated views
-(`/path`), also run the backend — see
-[motifpath-core README → Running the services locally](../motifpath-core/README.md#running-the-services-locally).
-Without `core-domain` running, `/path` shows its error state (expected) — the
-public pages, sign-in, and routing still work.
+Whole stack in one command — from `motifpath-core`, with this repo checked out
+as a sibling and `npm install` already run here:
+
+```bash
+cd ../motifpath-core
+make dev                                                        # dependency containers
+devbox services up core-domain event-ingestion aggregation-worker web
+```
+
+`web` runs `npm run dev` for this repo; the backend services rebuild on save.
+See [motifpath-core README → Running the services locally](../motifpath-core/README.md#running-the-services-locally).
+
+The app needs the Clerk key to load. Without `core-domain` running, `/path`
+shows its error state (expected) — the public pages, sign-in, and routing still
+work.
 
 `core-domain` allows the Vite dev origin (`http://localhost:5173`) via CORS out
 of the box.
@@ -78,9 +90,13 @@ of the box.
 
 Automated tests cover the registration bridge, guard, and views in isolation
 (mocked `coreApi`). This walks the real chain end to end — Clerk → transport →
-CORS → `core-domain` → generated types → store → guard/views — with a real
-Clerk secret key and `core-domain` running locally
-(see [motifpath-core README → Running the services locally](../motifpath-core/README.md#running-the-services-locally)).
+CORS → `core-domain` → generated types → store → guard/views.
+
+Run the full stack via `motifpath-core`'s `devbox services up … web` (above).
+`core-domain`'s `CLERK_SECRET_KEY` must be the **secret** key (`sk_test_…`) from
+the same Clerk instance as `VITE_CLERK_PUBLISHABLE_KEY` here — a `pk_test_…`
+value there makes every authenticated call 401 and sign-in dead-ends at
+`/welcome/error`.
 
 **Happy path — first sign-in for an identity:**
 
