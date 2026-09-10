@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import Icon from '@/shared/components/Icon.vue'
 import type { PathStepView } from '@/features/student/utils/pathProgress'
 
 const props = defineProps<PathStepView>()
 
 const isLocked = computed(() => props.status === 'locked')
 
-const marker = computed(() => {
-  if (props.status === 'completed') return '✓'
-  if (props.isCurrent) return '▸'
-  if (isLocked.value) return '🔒'
-  return '·'
+const iconName = computed<'completed' | 'current' | 'locked' | 'todo'>(() => {
+  if (props.status === 'completed') return 'completed'
+  if (props.isCurrent) return 'current'
+  if (isLocked.value) return 'locked'
+  return 'todo'
 })
 
 const statusLabel = computed(
@@ -45,14 +46,13 @@ const affordance = computed(() => {
     <span data-test="step-position" class="tabular-nums text-xs text-motif-ink/50">{{
       position
     }}</span>
-    <span aria-hidden="true" class="text-xs">{{ marker }}</span>
-    <span class="flex-1">{{ title }}</span>
-    <span
-      data-test="step-status"
-      class="text-xs"
+    <Icon
+      :name="iconName"
+      class="shrink-0 self-center"
       :class="status === 'completed' ? 'text-motif-success' : 'text-motif-ink/50'"
-      >{{ statusLabel }}</span
-    >
+    />
+    <span class="flex-1">{{ title }}</span>
+    <span data-test="step-status" class="sr-only">{{ statusLabel }}</span>
     <RouterLink
       v-if="affordance"
       data-test="step-affordance"

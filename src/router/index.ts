@@ -60,6 +60,12 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // PB-34 spike — throwaway, never merged (see src/spike/).
+    path: '/spike',
+    name: 'spike',
+    component: () => import('@/spike/SpikeView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/shared/components/NotFoundView.vue'),

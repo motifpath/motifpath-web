@@ -23,6 +23,9 @@ export default defineConfigWithVueTs(
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      // PB-34: the owned component library deliberately includes single-word
+      // primitives (`Icon`) named to match their role, per ADR-018 decision 3.
+      'vue/multi-word-component-names': ['error', { ignores: ['Icon'] }],
     },
   },
 

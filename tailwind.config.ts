@@ -1,31 +1,43 @@
 import type { Config } from 'tailwindcss'
 import defaultTheme from 'tailwindcss/defaultTheme'
 
+import tokens from './src/design/tokens.json'
+
 /**
  * Design tokens for MotifPath.
  *
- * The `motif-*` color values are PLACEHOLDERS. The brand palette is still `TBD`
- * in `motifpath-brand/colors.json`; replace these hex values once the brand
- * tokens are finalised. Components must reference the token names (e.g.
- * `bg-motif-blue`, `text-motif-ink`) — never raw hex values.
+ * Values come from `src/design/tokens.json` — the single source of truth for the
+ * spike. Those values are PLACEHOLDERS; the real palette/scale is a
+ * `motifpath-brand` decision (PB-34 phase 2). Components must reference token
+ * names (e.g. `bg-surface`, `text-ink`, `text-ink/60`) — never raw hex/px.
  */
+
+// tokens.json types `font.size` entries as `string[]`; Tailwind wants the
+// `[fontSize, lineHeight]` tuple. Narrow it here rather than in the JSON.
+const fontSize = Object.fromEntries(
+  Object.entries(tokens.font.size).map(([name, [size, lineHeight]]) => [
+    name,
+    [size, lineHeight] as [string, string],
+  ]),
+)
+
 const config: Config = {
   content: ['./index.html', './src/**/*.{vue,ts}'],
   theme: {
     extend: {
       colors: {
-        'motif-blue': {
-          DEFAULT: '#1d4ed8',
-          fg: '#f8f5ec',
-        },
-        'motif-ink': '#1a1a2e',
-        'motif-cream': '#f8f5ec',
-        // Semantic status roles (PB-8j §"Semantic token roles"). PLACEHOLDER
-        // hex — the real values are a motifpath-brand decision, tracked in
-        // that section's action items alongside the other `motif-*` tokens.
-        'motif-success': '#15803d',
-        'motif-danger': '#b91c1c',
+        ...tokens.color,
+        // Retained placeholder aliases so PB-8c/8d markup keeps compiling until
+        // the phase-2 restyle migrates every `motif-*` reference.
+        'motif-blue': { DEFAULT: tokens.color.accent, fg: tokens.color['accent-fg'] },
+        'motif-ink': tokens.color.ink,
+        'motif-cream': tokens.color.surface,
+        'motif-success': tokens.color.success,
+        'motif-danger': tokens.color.danger,
       },
+      fontSize,
+      spacing: tokens.space,
+      borderRadius: tokens.radius,
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
       },
