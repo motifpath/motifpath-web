@@ -49,6 +49,14 @@ const routes: RouteRecordRaw[] = [
         name: 'path',
         component: () => import('@/features/student/views/PathView.vue'),
       },
+      {
+        // Node-keyed and path-agnostic — not nested under a path/assignment
+        // id, so it needs no change when a student has more than one path
+        // (ADR-017 multi-path readiness). PB-8e replaces the placeholder body.
+        path: 'nodes/:nodeId',
+        name: 'node',
+        component: () => import('@/features/student/views/NodeView.vue'),
+      },
     ],
   },
   {
