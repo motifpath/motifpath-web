@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import ErrorRetryNotice from '@/shared/components/ErrorRetryNotice.vue'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import { groupPathSections } from '@/features/student/utils/groupPathSections'
 
 const { data, error, isLoading, retry } = useStudentPath()
+
+const sections = computed(() => (data.value ? groupPathSections(data.value.items) : []))
 </script>
 
 <template>
@@ -23,7 +28,40 @@ const { data, error, isLoading, retry } = useStudentPath()
 
     <div v-else-if="data" data-test="path">
       <h2 class="text-lg font-medium">{{ data.title }}</h2>
-      <p class="text-sm text-motif-ink/60">{{ data.items.length }} steps</p>
+      <p class="mb-4 text-sm text-motif-ink/60">{{ data.items.length }} steps</p>
+
+      <div
+        v-for="section in sections"
+        :key="section.items[0].position"
+        data-test="path-section"
+        class="mb-4"
+      >
+        <h3
+          v-if="section.label"
+          data-test="section-heading"
+          class="mb-1 text-sm font-semibold uppercase tracking-wide text-motif-ink/70"
+        >
+          {{ section.label }}
+        </h3>
+        <ol :start="section.items[0].position" class="flex flex-col gap-1">
+          <li
+            v-for="step in section.items"
+            :key="step.position"
+            data-test="path-step"
+            class="flex items-baseline gap-3"
+          >
+            <!-- The ordinal is rendered rather than left to the <ol> marker:
+                 Tailwind's preflight sets list-style:none, and a flex <li>
+                 drops its marker anyway. `start` above keeps the semantics
+                 right for assistive tech. -->
+            <span data-test="step-position" class="tabular-nums text-xs text-motif-ink/50">{{
+              step.position
+            }}</span>
+            <span class="flex-1">{{ step.title }}</span>
+            <span data-test="step-status" class="text-xs text-motif-ink/50">{{ step.status }}</span>
+          </li>
+        </ol>
+      </div>
     </div>
   </section>
 </template>
