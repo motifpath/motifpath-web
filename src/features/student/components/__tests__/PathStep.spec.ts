@@ -51,7 +51,7 @@ describe('PathStep', () => {
     const wrapper = mountStep({ status: 'locked' })
 
     const step = wrapper.get('[data-test="path-step"]')
-    expect(step.classes()).toContain('text-motif-ink/40')
+    expect(step.classes()).toContain('text-ink-subtle')
     expect(step.attributes('aria-disabled')).toBe('true')
     expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
     expect(wrapper.find('[data-test="step-affordance"]').exists()).toBe(false)
