@@ -109,6 +109,25 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('registering')
   })
 
+  it('lets a registered visitor reach a node route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+
+    await router.push('/path/nodes/node-abc')
+
+    expect(router.currentRoute.value.name).toBe('node')
+    expect(router.currentRoute.value.params.nodeId).toBe('node-abc')
+  })
+
+  it('sends an unauthenticated visitor from a node route to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/path/nodes/node-abc')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 

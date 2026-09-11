@@ -20,6 +20,11 @@ const config: Config = {
         },
         'motif-ink': '#1a1a2e',
         'motif-cream': '#f8f5ec',
+        // Semantic status roles (PB-8j §"Semantic token roles"). PLACEHOLDER
+        // hex — the real values are a motifpath-brand decision, tracked in
+        // that section's action items alongside the other `motif-*` tokens.
+        'motif-success': '#15803d',
+        'motif-danger': '#b91c1c',
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
