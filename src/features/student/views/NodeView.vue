@@ -5,7 +5,10 @@ import { useRoute } from 'vue-router'
 // body with the real S6 lesson screen (dynamic video layout, cues,
 // mark-complete). Until then, opening a step lands here.
 const route = useRoute()
-const nodeId = route.params.nodeId as string
+const rawNodeId = route.params.nodeId
+// Vue Router types a param as `string | string[]` (array only for a
+// repeatable segment, which `:nodeId` isn't) — narrow instead of asserting.
+const nodeId = Array.isArray(rawNodeId) ? rawNodeId[0] : rawNodeId
 </script>
 
 <template>
