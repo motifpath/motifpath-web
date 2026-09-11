@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 import PathStep from '@/features/student/components/PathStep.vue'
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
-import { pathProgress, stepViews } from '@/features/student/utils/pathProgress'
+import { pathProgress, stepViews, type PathStepView } from '@/features/student/utils/pathProgress'
 
 const props = defineProps<{ view: components['schemas']['StudentPathView'] }>()
 
@@ -13,6 +13,20 @@ const sections = computed(() => groupPathSections(props.view.items))
 const stepViewByPosition = computed(
   () => new Map(stepViews(props.view).map((s) => [s.position, s])),
 )
+
+/**
+ * `stepViews` and `groupPathSections` both derive from the same
+ * `props.view.items`, so every position rendered by a section should have a
+ * matching view. Fail loudly instead of silently rendering blank props if
+ * that invariant is ever broken.
+ */
+function stepViewFor(position: number): PathStepView {
+  const found = stepViewByPosition.value.get(position)
+  if (!found) {
+    throw new Error(`PathContent: no step view found for position ${position}`)
+  }
+  return found
+}
 
 const progress = computed(() => pathProgress(props.view))
 </script>
@@ -41,7 +55,7 @@ const progress = computed(() => pathProgress(props.view))
         <PathStep
           v-for="item in section.items"
           :key="item.position"
-          v-bind="stepViewByPosition.get(item.position)!"
+          v-bind="stepViewFor(item.position)"
         />
       </ol>
     </div>
