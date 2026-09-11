@@ -46,6 +46,17 @@ describe('PathContent', () => {
     ])
   })
 
+  it('does not merge a label reused after an unlabelled gap', () => {
+    const wrapper = mountContent(
+      view([step(1, 'Open chords'), step(2), step(3, 'Open chords')]),
+    )
+
+    expect(wrapper.findAll('[data-test="section-heading"]').map((h) => h.text())).toEqual([
+      'Open chords',
+      'Open chords',
+    ])
+  })
+
   it('keeps one continuous 1..N ordering across section lists', () => {
     const wrapper = mountContent(
       view([
