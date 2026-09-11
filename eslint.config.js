@@ -23,6 +23,8 @@ export default defineConfigWithVueTs(
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      // ADR-018 decision 3 names the icon wrapper `Icon` deliberately.
+      'vue/multi-word-component-names': ['error', { ignores: ['Icon'] }],
     },
   },
 
