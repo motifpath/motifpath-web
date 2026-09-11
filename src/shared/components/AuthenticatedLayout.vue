@@ -2,6 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 
 import SignOutLink from '@/shared/components/SignOutLink.vue'
+import ThemeToggle from '@/shared/components/ThemeToggle.vue'
 </script>
 
 <template>
@@ -15,7 +16,8 @@ import SignOutLink from '@/shared/components/SignOutLink.vue'
           <RouterLink :to="{ name: 'path' }" class="hover:text-motif-blue">My path</RouterLink>
         </nav>
 
-        <SignOutLink class="ml-auto" />
+        <ThemeToggle class="ml-auto" />
+        <SignOutLink />
       </div>
     </header>
 

@@ -2,6 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme-aware design tokens (source of truth: motifpath-brand/tokens.json,
+ * copied to src/design/tokens.json). Colour custom properties are
+ * space-separated R G B channels so Tailwind opacity modifiers
+ * (e.g. text-ink/60) keep working via rgb(var(--color-x) / <alpha-value>).
+ * Kept in sync with tokens.json by src/design/__tests__/theme-tokens.spec.ts.
+ */
+:root {
+  --color-surface: 251 250 255;
+  --color-surface-raised: 255 255 255;
+  --color-surface-sunken: 243 240 251;
+  --color-border: 228 222 243;
+  --color-ink: 26 22 51;
+  --color-ink-muted: 91 84 112;
+  --color-ink-subtle: 154 148 174;
+  --color-accent: 109 40 224;
+  --color-accent-fg: 255 255 255;
+  --color-accent-muted: 240 233 255;
+  --color-accent-text: 109 40 224;
+  --color-focus: 109 40 224;
+  --color-success: 30 122 76;
+  --color-success-fg: 255 255 255;
+  --color-success-muted: 226 243 233;
+  --color-danger: 196 54 47;
+  --color-danger-fg: 255 255 255;
+  --color-danger-muted: 251 232 231;
+  --elevation-level0: none;
+  --elevation-level1: 0 1px 2px rgba(26,22,51,.06), 0 1px 1px rgba(26,22,51,.04);
+  --elevation-level2: 0 4px 12px rgba(26,22,51,.10);
+  --elevation-level3: 0 12px 32px rgba(26,22,51,.16);
+  --elevation-glow-accent: 0 0 0 rgba(0,0,0,0);
+}
+
+:root.dark {
+  --color-surface: 11 13 46;
+  --color-surface-raised: 22 25 66;
+  --color-surface-sunken: 8 9 39;
+  --color-border: 44 46 88;
+  --color-ink: 236 234 255;
+  --color-ink-muted: 167 162 200;
+  --color-ink-subtle: 110 105 140;
+  --color-accent: 124 60 255;
+  --color-accent-fg: 255 255 255;
+  --color-accent-muted: 36 28 77;
+  --color-accent-text: 183 155 255;
+  --color-focus: 183 155 255;
+  --color-success: 63 185 133;
+  --color-success-fg: 4 18 11;
+  --color-success-muted: 18 48 31;
+  --color-danger: 255 123 124;
+  --color-danger-fg: 26 6 6;
+  --color-danger-muted: 58 20 20;
+  --elevation-level0: none;
+  --elevation-level1: 0 1px 2px rgba(3,4,20,.5);
+  --elevation-level2: 0 6px 18px rgba(3,4,20,.55);
+  --elevation-level3: 0 14px 36px rgba(3,4,20,.65);
+  --elevation-glow-accent: 0 0 24px rgba(124,60,255,.35);
+}
+
 @layer base {
   body {
     @apply bg-motif-cream text-motif-ink antialiased;

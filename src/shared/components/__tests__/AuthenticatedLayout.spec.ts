@@ -1,5 +1,6 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { createPinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const signOut = vi.fn(async () => {})
 
@@ -17,12 +18,26 @@ import AuthenticatedLayout from '@/shared/components/AuthenticatedLayout.vue'
 function mountLayout() {
   return mount(AuthenticatedLayout, {
     global: {
+      plugins: [createPinia()],
       stubs: { RouterLink: RouterLinkStub, RouterView: true },
     },
   })
 }
 
 describe('AuthenticatedLayout', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    document.documentElement.classList.remove('dark')
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+  })
+
   it('renders navigation to the main student routes', () => {
     const wrapper = mountLayout()
 
