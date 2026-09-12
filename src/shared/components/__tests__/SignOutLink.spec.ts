@@ -35,6 +35,6 @@ describe('SignOutLink', () => {
 
     const classes = wrapper.get('[data-test="sign-out"]').classes()
     expect(classes).toContain('ml-auto')
-    expect(classes).toContain('text-motif-ink/60')
+    expect(classes).toContain('text-ink-muted')
   })
 })

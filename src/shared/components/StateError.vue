@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 
-interface ErrorRetryNoticeProps {
-  message: string
-  testId?: string
-}
-
-withDefaults(defineProps<ErrorRetryNoticeProps>(), {
-  testId: 'error',
-})
-
+defineProps<{ message: string }>()
 const emit = defineEmits<{ retry: [] }>()
 </script>
 
 <template>
-  <div :data-test="testId" class="flex flex-col items-start gap-3">
+  <div class="flex flex-col items-start gap-3">
     <p class="text-ink-muted">{{ message }}</p>
     <PrimaryButton data-test="retry" @click="emit('retry')">Try again</PrimaryButton>
   </div>

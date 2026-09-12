@@ -49,12 +49,12 @@ describe('PathView', () => {
     expect(state.retry).toHaveBeenCalled()
   })
 
-  it('shows a first-class holding state when no path is assigned yet', () => {
+  it('shows a first-class holding state when no path is assigned yet, with no teacher-bound copy', () => {
     set({ error: ref('no-path') })
 
     const holding = mountView().get('[data-test="no-path"]')
 
-    expect(holding.text()).toContain('teacher')
+    expect(holding.text()).not.toContain('teacher')
     expect(holding.text().toLowerCase()).toContain('personalized path')
   })
 
