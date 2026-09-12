@@ -34,7 +34,7 @@ const progress = computed(() => pathProgress(props.view))
 <template>
   <div data-test="path">
     <h2 class="text-lg font-medium">{{ view.title }}</h2>
-    <p data-test="path-progress" class="mb-4 text-sm text-motif-ink/60">
+    <p data-test="path-progress" class="mb-4 text-sm text-ink-muted">
       {{ progress.completed }} of {{ progress.total }} steps complete
     </p>
 
@@ -47,7 +47,7 @@ const progress = computed(() => pathProgress(props.view))
       <h3
         v-if="section.label"
         data-test="section-heading"
-        class="mb-1 text-sm font-semibold uppercase tracking-wide text-motif-ink/70"
+        class="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-muted"
       >
         {{ section.label }}
       </h3>
