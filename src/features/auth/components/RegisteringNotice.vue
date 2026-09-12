@@ -9,5 +9,5 @@ withDefaults(defineProps<RegisteringNoticeProps>(), {
 </script>
 
 <template>
-  <p :data-test="testId" class="text-motif-ink/60">Setting up your account…</p>
+  <p :data-test="testId" class="text-ink-muted">Setting up your account…</p>
 </template>

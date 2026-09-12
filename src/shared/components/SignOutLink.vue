@@ -16,7 +16,7 @@ const { signOut } = useAuth()
   <button
     type="button"
     data-test="sign-out"
-    class="text-sm text-motif-ink/60 hover:text-motif-blue"
+    class="text-sm text-ink-muted hover:text-accent-text"
     @click="signOut()"
   >
     {{ label }}

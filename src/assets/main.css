@@ -63,6 +63,6 @@
 
 @layer base {
   body {
-    @apply bg-motif-cream text-motif-ink antialiased;
+    @apply bg-surface text-ink antialiased;
   }
 }

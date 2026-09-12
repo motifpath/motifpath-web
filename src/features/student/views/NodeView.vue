@@ -13,11 +13,11 @@ const nodeId = Array.isArray(rawNodeId) ? rawNodeId[0] : rawNodeId
 
 <template>
   <section data-test="node" class="flex flex-col items-start gap-3">
-    <h1 class="text-2xl font-semibold text-motif-blue">Lesson</h1>
-    <p class="text-motif-ink/70">This lesson isn't available yet.</p>
-    <p class="text-sm text-motif-ink/50">We're still building it — check back soon.</p>
+    <h1 class="text-2xl font-semibold text-accent-text">Lesson</h1>
+    <p class="text-ink-muted">This lesson isn't available yet.</p>
+    <p class="text-sm text-ink-muted">We're still building it — check back soon.</p>
     <p class="sr-only" data-test="node-id">{{ nodeId }}</p>
-    <RouterLink :to="{ name: 'path' }" class="text-sm font-medium text-motif-blue underline">
+    <RouterLink :to="{ name: 'path' }" class="text-sm font-medium text-accent-text underline">
       ‹ Back to your path
     </RouterLink>
   </section>

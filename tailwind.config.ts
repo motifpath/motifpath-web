@@ -52,16 +52,7 @@ const config: Config = {
   content: ['./index.html', './src/**/*.{vue,ts}'],
   theme: {
     extend: {
-      colors: {
-        ...colors,
-        // Retained placeholder aliases so PB-8c/8d markup keeps compiling
-        // until the Phase 4 restyle migrates every `motif-*` reference.
-        'motif-blue': { DEFAULT: colors.accent, fg: colors['accent-fg'] },
-        'motif-ink': colors.ink,
-        'motif-cream': colors.surface,
-        'motif-success': colors.success,
-        'motif-danger': colors.danger,
-      },
+      colors,
       fontSize,
       spacing: scaleValues<string>(tokens.space),
       borderRadius: scaleValues<string>(tokens.radius),

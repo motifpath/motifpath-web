@@ -14,7 +14,7 @@ useRegistrationRedirect()
 
 <template>
   <section class="flex flex-col items-start gap-4">
-    <h1 class="text-2xl font-semibold text-motif-blue">MotifPath</h1>
+    <h1 class="text-2xl font-semibold text-accent-text">MotifPath</h1>
     <RegistrationFailedNotice />
   </section>
 </template>

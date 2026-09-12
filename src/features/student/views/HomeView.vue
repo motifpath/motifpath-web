@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
-
 import RegisteringNotice from '@/features/auth/components/RegisteringNotice.vue'
 import RegistrationFailedNotice from '@/features/auth/components/RegistrationFailedNotice.vue'
 import { useAuth } from '@/features/auth/composables/useAuth'
+import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import StateLoading from '@/shared/components/StateLoading.vue'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const { isLoaded, isSignedIn } = useAuth()
@@ -12,18 +12,13 @@ const currentUser = useCurrentUserStore()
 
 <template>
   <section class="flex flex-col items-start gap-4">
-    <h1 class="text-2xl font-semibold text-motif-blue">MotifPath</h1>
+    <h1 class="text-2xl font-semibold text-accent-text">MotifPath</h1>
 
-    <p v-if="!isLoaded" data-test="loading" class="text-motif-ink/60">Loading…</p>
+    <StateLoading v-if="!isLoaded" data-test="loading" />
 
     <template v-else-if="isSignedIn && currentUser.isRegistered">
-      <p class="text-motif-ink/70">You're signed in.</p>
-      <RouterLink
-        :to="{ name: 'path' }"
-        class="rounded bg-motif-blue px-4 py-2 text-sm text-motif-blue-fg"
-      >
-        Go to my path
-      </RouterLink>
+      <p class="text-ink-muted">You're signed in.</p>
+      <PrimaryButton as="RouterLink" :to="{ name: 'path' }">Go to my path</PrimaryButton>
     </template>
 
     <RegistrationFailedNotice v-else-if="isSignedIn && currentUser.state === 'failed'" />
@@ -31,13 +26,8 @@ const currentUser = useCurrentUserStore()
     <RegisteringNotice v-else-if="isSignedIn" />
 
     <template v-else>
-      <p class="text-motif-ink/70">Sign in to start practising.</p>
-      <RouterLink
-        :to="{ name: 'sign-in' }"
-        class="rounded bg-motif-blue px-4 py-2 text-sm text-motif-blue-fg"
-      >
-        Sign in
-      </RouterLink>
+      <p class="text-ink-muted">Sign in to start practising.</p>
+      <PrimaryButton as="RouterLink" :to="{ name: 'sign-in' }">Sign in</PrimaryButton>
     </template>
   </section>
 </template>
