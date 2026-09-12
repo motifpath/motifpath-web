@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import Icon from '@/shared/components/Icon.vue'
+import StepRow from '@/shared/components/StepRow.vue'
 import type { PathStepView } from '@/features/student/utils/pathProgress'
 
 const props = defineProps<PathStepView>()
@@ -34,33 +35,31 @@ const affordance = computed(() => {
 </script>
 
 <template>
-  <li
+  <StepRow
     data-test="path-step"
-    class="flex items-baseline gap-3"
-    :class="{
-      'font-medium text-ink': isCurrent,
-      'text-ink-subtle': isLocked,
-    }"
+    :position="position"
+    :emphasis="isCurrent"
+    :muted="isLocked"
     :aria-disabled="isLocked ? 'true' : undefined"
   >
-    <span data-test="step-position" class="tabular-nums text-xs text-ink-muted">{{
-      position
-    }}</span>
-    <span class="flex-1">{{ title }}</span>
-    <span
-      data-test="step-status"
-      class="inline-flex items-center text-xs"
-      :class="status === 'completed' ? 'text-success' : 'text-ink-muted'"
-    >
-      <Icon :name="iconRole" :size="14" />
-      <span class="sr-only">{{ statusLabel }}</span>
-    </span>
-    <RouterLink
-      v-if="affordance"
-      data-test="step-affordance"
-      :to="{ name: 'node', params: { nodeId: contentNodeId } }"
-      class="text-xs font-medium text-accent-text underline"
-      >{{ affordance }}</RouterLink
-    >
-  </li>
+    {{ title }}
+    <template #status>
+      <span
+        data-test="step-status"
+        class="inline-flex items-center text-xs"
+        :class="status === 'completed' ? 'text-success' : 'text-ink-muted'"
+      >
+        <Icon :name="iconRole" :size="14" />
+        <span class="sr-only">{{ statusLabel }}</span>
+      </span>
+    </template>
+    <template v-if="affordance" #action>
+      <RouterLink
+        data-test="step-affordance"
+        :to="{ name: 'node', params: { nodeId: contentNodeId } }"
+        class="text-xs font-medium text-accent-text underline"
+        >{{ affordance }}</RouterLink
+      >
+    </template>
+  </StepRow>
 </template>

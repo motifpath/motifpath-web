@@ -1,28 +1,21 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterView } from 'vue-router'
 
+import AppShell from '@/shared/components/AppShell.vue'
 import SignOutLink from '@/shared/components/SignOutLink.vue'
-import ThemeToggle from '@/shared/components/ThemeToggle.vue'
+
+const nav = [
+  { to: { name: 'home' }, label: 'Home' },
+  { to: { name: 'path' }, label: 'My path' },
+]
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col">
-    <header class="border-b border-motif-ink/10">
-      <div class="mx-auto flex max-w-4xl items-center gap-6 px-4 py-4">
-        <span class="text-lg font-semibold text-motif-blue">MotifPath</span>
+  <AppShell :nav="nav">
+    <template #header-actions>
+      <SignOutLink />
+    </template>
 
-        <nav class="flex gap-4 text-sm">
-          <RouterLink :to="{ name: 'home' }" class="hover:text-motif-blue">Home</RouterLink>
-          <RouterLink :to="{ name: 'path' }" class="hover:text-motif-blue">My path</RouterLink>
-        </nav>
-
-        <ThemeToggle class="ml-auto" />
-        <SignOutLink />
-      </div>
-    </header>
-
-    <main class="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
-      <RouterView />
-    </main>
-  </div>
+    <RouterView />
+  </AppShell>
 </template>
