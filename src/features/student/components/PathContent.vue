@@ -5,6 +5,7 @@ import type { components } from '@/api/generated/core-domain'
 import PathStep from '@/features/student/components/PathStep.vue'
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
 import { pathProgress, stepViews, type PathStepView } from '@/features/student/utils/pathProgress'
+import ProgressMeter from '@/shared/components/ProgressMeter.vue'
 
 const props = defineProps<{ view: components['schemas']['StudentPathView'] }>()
 
@@ -34,9 +35,12 @@ const progress = computed(() => pathProgress(props.view))
 <template>
   <div data-test="path">
     <h2 class="text-lg font-medium">{{ view.title }}</h2>
-    <p data-test="path-progress" class="mb-4 text-sm text-ink-muted">
-      {{ progress.completed }} of {{ progress.total }} steps complete
-    </p>
+    <ProgressMeter
+      data-test="path-progress"
+      class="mb-4"
+      :completed="progress.completed"
+      :total="progress.total"
+    />
 
     <div
       v-for="section in sections"
