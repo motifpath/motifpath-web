@@ -16,6 +16,8 @@ const props = withDefaults(
     name: 'completed' | 'current' | 'locked' | 'todo'
     label?: string
     size?: number
+    /** Wraps the glyph in a role-coloured circular badge (PB-35 Direction B/D card look). */
+    badge?: boolean
   }>(),
   { size: 16 },
 )
@@ -23,10 +25,35 @@ const props = withDefaults(
 const glyph = computed(
   () => ({ completed: CircleCheck, current: CircleDot, locked: Lock, todo: Circle })[props.name],
 )
+
+const badgeClass = computed(
+  () =>
+    ({
+      completed: 'bg-success text-success-fg',
+      current: 'bg-accent text-accent-fg',
+      locked: 'bg-surface-sunken text-ink-subtle',
+      todo: 'bg-surface-sunken text-ink-subtle',
+    })[props.name],
+)
 </script>
 
 <template>
+  <span
+    v-if="badge"
+    data-test="icon-badge"
+    class="inline-flex items-center justify-center rounded-full p-1"
+    :class="badgeClass"
+  >
+    <component
+      :is="glyph"
+      :size="size"
+      :aria-hidden="label ? undefined : 'true'"
+      :role="label ? 'img' : undefined"
+      :aria-label="label"
+    />
+  </span>
   <component
+    v-else
     :is="glyph"
     :size="size"
     :aria-hidden="label ? undefined : 'true'"

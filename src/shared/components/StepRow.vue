@@ -12,13 +12,19 @@ defineProps<{
   emphasis?: boolean
   /** Visually de-emphasises the row (e.g. a locked step). */
   muted?: boolean
+  /** Renders as a bordered card instead of a plain row (PB-35 Direction B/D). */
+  card?: boolean
 }>()
 </script>
 
 <template>
   <li
     class="flex items-baseline gap-3"
-    :class="{ 'font-medium text-ink': emphasis, 'text-ink-subtle': muted }"
+    :class="{
+      'font-medium text-ink': emphasis,
+      'text-ink-subtle': muted,
+      'rounded-md border border-border bg-surface p-3': card,
+    }"
   >
     <span data-test="step-position" class="tabular-nums text-xs text-ink-muted">{{
       position

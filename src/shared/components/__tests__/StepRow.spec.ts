@@ -47,6 +47,19 @@ describe('StepRow', () => {
     expect(wrapper.find('[data-test="probe-action"]').exists()).toBe(true)
   })
 
+  it('renders as a plain row by default (no card container classes)', () => {
+    const wrapper = mount(StepRow, { props: { position: 1 } })
+
+    expect(wrapper.classes()).not.toContain('border')
+  })
+
+  it('renders as a bordered card when card is true', () => {
+    const wrapper = mount(StepRow, { props: { position: 1, card: true } })
+
+    expect(wrapper.classes()).toContain('border')
+    expect(wrapper.classes()).toContain('rounded-md')
+  })
+
   it('forwards arbitrary attributes to the root element', () => {
     const wrapper = mount(StepRow, {
       props: { position: 1 },

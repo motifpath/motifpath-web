@@ -79,13 +79,16 @@ describe('PathContent', () => {
     ])
   })
 
-  it('delegates per-step status rendering to PathStep', () => {
+  it('delegates per-step status rendering to PathStep for non-current steps', () => {
+    // Position 2 (in_progress) is current here, so it renders as a focus
+    // card (no step-status pill) rather than a status-pill card — see the
+    // next test for the current step's own rendering.
     const wrapper = mountContent(
       view([step(1, undefined, 'completed'), step(2, undefined, 'in_progress'), step(3, undefined, 'locked')]),
     )
 
     const statuses = wrapper.findAll('[data-test="step-status"]').map((s) => s.text())
-    expect(statuses).toEqual(['Completed', 'In progress', 'Locked'])
+    expect(statuses).toEqual(['Completed', 'Locked'])
   })
 
   it('shows an overall progress line reflecting completed vs total steps', () => {
@@ -107,13 +110,17 @@ describe('PathContent', () => {
     expect(affordances).toEqual(['Review', 'Review'])
   })
 
-  it('offers Open on the current step only', () => {
+  it('renders exactly one focus card, for the current step, with an Open lesson CTA', () => {
     const wrapper = mountContent(
       view([step(1, undefined, 'completed'), step(2, undefined, 'in_progress'), step(3, undefined, 'locked')]),
     )
 
+    const focusCards = wrapper.findAll('[data-variant="focus"]')
+    expect(focusCards).toHaveLength(1)
+    expect(focusCards[0].text()).toContain('Open lesson')
+
     const affordances = wrapper.findAll('[data-test="step-affordance"]').map((a) => a.text())
-    expect(affordances).toEqual(['Review', 'Open'])
+    expect(affordances).toEqual(['Review'])
   })
 
   it('contains no time-box language in the progress line', () => {
