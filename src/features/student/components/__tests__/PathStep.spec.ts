@@ -37,14 +37,22 @@ describe('PathStep', () => {
     expect(link.props('to')).toEqual({ name: 'node', params: { nodeId: 'node-abc' } })
   })
 
-  it('emphasises the current step and offers an Open affordance to the node route', () => {
+  it('shows the current in-progress step as a focus card offering to continue', () => {
     const wrapper = mountStep({ status: 'in_progress', isCurrent: true })
 
-    expect(wrapper.get('[data-test="path-step"]').classes()).toContain('font-medium')
+    const focusCard = wrapper.get('[data-variant="focus"]')
+    expect(focusCard.text()).toContain('Continue')
+    expect(focusCard.text()).toContain('Minor pentatonic shape 1')
 
     const link = wrapper.getComponent(RouterLinkStub)
-    expect(link.text()).toBe('Open')
+    expect(link.text()).toBe('Open lesson')
     expect(link.props('to')).toEqual({ name: 'node', params: { nodeId: 'node-abc' } })
+  })
+
+  it('shows the current not-started step as a focus card offering to start', () => {
+    const wrapper = mountStep({ status: 'not_started', isCurrent: true })
+
+    expect(wrapper.get('[data-variant="focus"]').text()).toContain('Start')
   })
 
   it('dims a locked step, marks it aria-disabled and offers no affordance', () => {
@@ -61,5 +69,12 @@ describe('PathStep', () => {
     const wrapper = mountStep({ status: 'not_started', isCurrent: false })
 
     expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+  })
+
+  it('renders a non-current step as a card, not a focus card', () => {
+    const wrapper = mountStep({ status: 'not_started', isCurrent: false })
+
+    expect(wrapper.get('[data-test="path-step"]').classes()).toContain('border')
+    expect(wrapper.find('[data-variant="focus"]').exists()).toBe(false)
   })
 })

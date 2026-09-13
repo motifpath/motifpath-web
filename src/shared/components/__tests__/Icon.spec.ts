@@ -32,4 +32,23 @@ describe('Icon', () => {
     expect(svg.attributes('role')).toBe('img')
     expect(svg.attributes('aria-label')).toBe('Locked')
   })
+
+  it('renders without a badge wrapper by default', () => {
+    const wrapper = mount(Icon, { props: { name: 'completed' } })
+
+    expect(wrapper.find('[data-test="icon-badge"]').exists()).toBe(false)
+  })
+
+  it.each([
+    ['completed', 'bg-success'],
+    ['current', 'bg-accent'],
+    ['locked', 'bg-surface-sunken'],
+    ['todo', 'bg-surface-sunken'],
+  ] as const)('wraps the %s role in a %s badge when badge is true', (name, bgClass) => {
+    const wrapper = mount(Icon, { props: { name, badge: true } })
+
+    const badge = wrapper.get('[data-test="icon-badge"]')
+    expect(badge.classes()).toContain(bgClass)
+    expect(badge.find('svg').exists()).toBe(true)
+  })
 })
