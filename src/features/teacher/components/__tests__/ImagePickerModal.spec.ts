@@ -7,7 +7,7 @@ describe('ImagePickerModal', () => {
   it('does not render when closed', () => {
     const wrapper = mount(ImagePickerModal, { props: { open: false } })
 
-    expect(wrapper.find('[data-test="image-picker-modal"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
   })
 
   it('emits select with the raw file, without uploading it', async () => {

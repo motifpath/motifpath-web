@@ -17,7 +17,7 @@ describe('ExercisePreviewModal', () => {
       props: { open: false, prompt: 'p', exerciseType: 'text_response', options },
     })
 
-    expect(wrapper.find('[data-test="preview-modal"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
   })
 
   it('mounts the real ExerciseView with the given prompt and options when open', () => {
@@ -62,7 +62,7 @@ describe('ExercisePreviewModal', () => {
       props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
     })
 
-    await wrapper.get('[data-test="close-preview"]').trigger('click')
+    await wrapper.get('[data-test="close-modal"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
@@ -72,7 +72,7 @@ describe('ExercisePreviewModal', () => {
       props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
     })
 
-    await wrapper.get('[data-test="preview-modal"]').trigger('click')
+    await wrapper.get('[data-test="modal-overlay"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })

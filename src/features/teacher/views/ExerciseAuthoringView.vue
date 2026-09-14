@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
-import { computed, reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref } from 'vue'
 
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
@@ -8,10 +8,10 @@ import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import SkillTagsInput from '@/features/teacher/components/SkillTagsInput.vue'
 import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.vue'
+import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import AppBar from '@/shared/components/AppBar.vue'
-import { useApi } from '@/shared/composables/useApi'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -25,8 +25,12 @@ const canAuthor = computed(
 const { isCompact } = useIsCompact()
 
 const form = useExerciseForm()
-const { coreApi } = useApi()
+const { createExercise } = useCreateExercise()
 const { upload } = useMediaUpload()
+
+function revokeIfBlob(url: string | undefined | null): void {
+  if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
+}
 
 const exerciseTypes: { value: ExerciseType; label: string; icon: typeof Image }[] = [
   { value: 'image_recognition', label: 'Image recognition', icon: Image },
@@ -38,7 +42,9 @@ const exerciseTypes: { value: ExerciseType; label: string; icon: typeof Image }[
 // Nothing is uploaded until save — picking a file only sets a local blob:
 // preview, so an abandoned edit never leaves an orphaned object in storage.
 const stimulusPickerOpen = ref(false)
-const stimulusFile = ref<File | null>(null)
+// Captures which kind the file was picked for at pick time, not whichever
+// type happens to be selected later — exerciseType can change before save.
+const stimulusFile = ref<{ file: File; kind: 'image' | 'audio' } | null>(null)
 const optionFiles = reactive<Record<string, File>>({})
 
 const stimulusKind = computed(() => (form.exerciseType.value === 'audio_recognition' ? 'audio' : 'image'))
@@ -46,14 +52,15 @@ const hasStimulus = computed(() =>
   stimulusKind.value === 'audio' ? !!form.audioUrl.value : !!form.imageUrl.value,
 )
 const stimulusImageLabel = computed(() =>
-  form.imageUrl.value ? (stimulusFile.value?.name ?? 'Image selected') : 'No image selected',
+  form.imageUrl.value ? (stimulusFile.value?.file.name ?? 'Image selected') : 'No image selected',
 )
 
 function onStimulusPicked(file: File) {
-  stimulusFile.value = file
-  const previewUrl = URL.createObjectURL(file)
-  if (form.exerciseType.value === 'audio_recognition') form.audioUrl.value = previewUrl
-  else form.imageUrl.value = previewUrl
+  const kind = stimulusKind.value
+  const target = kind === 'audio' ? form.audioUrl : form.imageUrl
+  revokeIfBlob(target.value)
+  stimulusFile.value = { file, kind }
+  target.value = URL.createObjectURL(file)
   stimulusPickerOpen.value = false
 }
 
@@ -61,53 +68,72 @@ function onOptionFile(id: string, file: File) {
   optionFiles[id] = file
 }
 
+function onRemoveImageOption(id: string) {
+  delete optionFiles[id]
+  revokeIfBlob(form.imageOptions.value.find((o) => o.id === id)?.imageUrl)
+  form.removeImageOption(id)
+}
+
 async function uploadPendingMedia() {
-  if (stimulusFile.value) {
-    const url = await upload(stimulusFile.value, stimulusKind.value)
-    if (form.exerciseType.value === 'audio_recognition') form.audioUrl.value = url
-    else form.imageUrl.value = url
-    stimulusFile.value = null
-  }
-  for (const [id, file] of Object.entries(optionFiles)) {
+  const pendingStimulus = stimulusFile.value
+  const stimulusUpload = pendingStimulus
+    ? (async () => {
+        const target = pendingStimulus.kind === 'audio' ? form.audioUrl : form.imageUrl
+        const previousBlobUrl = target.value
+        const url = await upload(pendingStimulus.file, pendingStimulus.kind)
+        revokeIfBlob(previousBlobUrl)
+        target.value = url
+        stimulusFile.value = null
+      })()
+    : Promise.resolve()
+
+  const optionUploads = Object.entries(optionFiles).map(async ([id, file]) => {
+    const previousBlobUrl = form.imageOptions.value.find((o) => o.id === id)?.imageUrl
     const url = await upload(file, 'image')
+    revokeIfBlob(previousBlobUrl)
     form.setImageOptionURL(id, url)
     delete optionFiles[id]
-  }
+  })
+
+  await Promise.all([stimulusUpload, ...optionUploads])
 }
 
 const previewOpen = ref(false)
+// Only computed while the preview is actually open, so editing the form
+// doesn't re-run the options mapping on every keystroke for no observer.
+const previewOptions = computed(() => (previewOpen.value ? form.toCreateExerciseRequest().options : []))
 const saving = ref(false)
 const saveError = ref('')
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
+onUnmounted(() => clearTimeout(justSavedTimeout))
 
 async function save() {
+  // Re-checked here, not just via the AppBar button's disabled state — the
+  // button is the only other line of defense, and this one doesn't depend
+  // on a click ever happening through it.
+  if (!form.hasCorrectOption.value) return
+
   saving.value = true
   saveError.value = ''
   savedExerciseId.value = ''
 
   try {
     await uploadPendingMedia()
+    const exercise = await createExercise(form.toCreateExerciseRequest())
+    savedExerciseId.value = exercise.exercise_id
+    linkedChallengeIds.value = exercise.challenge_ids
+
+    justSaved.value = true
+    clearTimeout(justSavedTimeout)
+    justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
   } catch (e) {
-    saveError.value = e instanceof Error ? e.message : 'Failed to upload media'
+    saveError.value = e instanceof Error ? e.message : 'Failed to save the exercise'
+  } finally {
     saving.value = false
-    return
   }
-
-  const { data, error } = await coreApi.POST('/exercises', { body: form.toCreateExerciseRequest() })
-  saving.value = false
-  if (!data) {
-    saveError.value = error?.message ?? 'Failed to create the exercise'
-    return
-  }
-  savedExerciseId.value = data.exercise_id
-  linkedChallengeIds.value = data.challenge_ids
-
-  justSaved.value = true
-  clearTimeout(justSavedTimeout)
-  justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
 }
 </script>
 
@@ -253,7 +279,7 @@ async function save() {
           @set-file="onOptionFile"
           @edit-caption="form.editImageOptionCaption"
           @toggle="form.toggleImageOption"
-          @remove="form.removeImageOption"
+          @remove="onRemoveImageOption"
           @add="form.addImageOption"
         />
 
@@ -319,7 +345,7 @@ async function save() {
       :open="previewOpen"
       :prompt="form.prompt.value"
       :exercise-type="form.exerciseType.value"
-      :options="form.toCreateExerciseRequest().options"
+      :options="previewOptions"
       @close="previewOpen = false"
     />
   </div>

@@ -34,14 +34,15 @@ export interface Region {
 const REGION_MIN_SIZE = { circle: 18, rectangle: { width: 18, height: 16 } }
 const REGION_MAX_SIZE = { width: 160, height: 110 }
 
-function clamp(value: number, min: number, max: number): number {
+export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-let nextId = 0
+// A real UUID, not a locally-scoped placeholder — the API requires option_id
+// to be one (CreateExerciseRequest's Option schema is Format: uuid), so a
+// client-generated id that ever reaches the wire has to already be valid.
 function makeId(): string {
-  nextId += 1
-  return `local-${nextId}`
+  return crypto.randomUUID()
 }
 
 /**
@@ -168,6 +169,11 @@ export function useExerciseForm() {
           is_correct: r.correct,
           region: { x: r.x / 100, y: r.y / 100, width: r.width / 100, height: r.height / 100, shape: r.shape },
         }))
+      default:
+        // A stale generated client could see a type value this build
+        // doesn't recognize yet — fail safe with no options (still rejected
+        // by hasCorrectOption/the API) rather than returning undefined.
+        return []
     }
   }
 

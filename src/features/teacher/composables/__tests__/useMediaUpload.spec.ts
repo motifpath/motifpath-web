@@ -38,9 +38,34 @@ describe('useMediaUpload', () => {
     })
     expect(fetchMock).toHaveBeenCalledWith(
       'https://storage.example.com/put?sig=1',
-      expect.objectContaining({ method: 'PUT', body: file }),
+      expect.objectContaining({
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': 'image/png' },
+      }),
     )
     expect(objectUrl).toBe('https://cdn.example.com/library/abc.png')
+  })
+
+  it("PUTs with audio/mpeg for content type 'audio' — the backend signs the presigned URL against this exact fixed MIME type per category, not the file's own type", async () => {
+    POST.mockResolvedValueOnce({
+      data: {
+        upload_url: 'https://storage.example.com/put?sig=2',
+        object_url: 'https://cdn.example.com/library/clip.mp3',
+        expires_at: '2026-01-01T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    fetchMock.mockResolvedValueOnce({ ok: true })
+
+    const { upload } = useMediaUpload()
+    await upload(new File(['data'], 'clip.wav', { type: 'audio/wav' }), 'audio')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://storage.example.com/put?sig=2',
+      expect.objectContaining({ headers: { 'Content-Type': 'audio/mpeg' } }),
+    )
   })
 
   it('throws when requesting the upload URL fails', async () => {

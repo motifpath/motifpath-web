@@ -1,11 +1,16 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import type { ImageOption } from '@/features/teacher/composables/useExerciseForm'
 
-vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:local-preview') })
+const revokeObjectURL = vi.fn()
+vi.stubGlobal('URL', {
+  ...URL,
+  createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+  revokeObjectURL,
+})
 
 const options: ImageOption[] = [
   { id: 'o1', imageUrl: 'https://cdn.example.com/a.png', caption: 'Open position', correct: true },
@@ -13,6 +18,10 @@ const options: ImageOption[] = [
 ]
 
 describe('ImageChoiceOptionsEditor', () => {
+  beforeEach(() => {
+    revokeObjectURL.mockClear()
+  })
+
   it('renders a caption input and correct state per option', () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
 
@@ -26,13 +35,34 @@ describe('ImageChoiceOptionsEditor', () => {
     const file = new File(['data'], 'new.png', { type: 'image/png' })
 
     await wrapper.findAll('[data-test="choose-image"]')[1]!.trigger('click')
-    expect(wrapper.find('[data-test="image-picker-modal"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
 
     await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
 
-    expect(wrapper.emitted('setPreview')).toEqual([['o2', 'blob:local-preview']])
+    expect(wrapper.emitted('setPreview')).toEqual([['o2', 'blob:new.png']])
     expect(wrapper.emitted('setFile')).toEqual([['o2', file]])
-    expect(wrapper.find('[data-test="image-picker-modal"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
+  })
+
+  it('revokes the previous blob preview when an option image is replaced', async () => {
+    const blobOptions: ImageOption[] = [
+      { id: 'o1', imageUrl: 'blob:old-preview.png', caption: '', correct: false },
+    ]
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options: blobOptions } })
+
+    await wrapper.get('[data-test="choose-image"]').trigger('click')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['data'], 'new.png'))
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:old-preview.png')
+  })
+
+  it('does not try to revoke a real (non-blob) CDN URL when an option image is replaced', async () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    await wrapper.findAll('[data-test="choose-image"]')[0]!.trigger('click')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['data'], 'new.png'))
+
+    expect(revokeObjectURL).not.toHaveBeenCalled()
   })
 
   it('emits caption edits, toggle, remove, and add', async () => {

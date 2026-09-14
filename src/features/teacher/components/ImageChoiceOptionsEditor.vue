@@ -5,7 +5,7 @@ import { ref } from 'vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import type { ImageOption } from '@/features/teacher/composables/useExerciseForm'
 
-withDefaults(defineProps<{ options: ImageOption[]; compact?: boolean }>(), { compact: false })
+const props = withDefaults(defineProps<{ options: ImageOption[]; compact?: boolean }>(), { compact: false })
 const emit = defineEmits<{
   /** A local preview URL to show immediately — not yet uploaded. */
   setPreview: [id: string, previewUrl: string]
@@ -24,6 +24,8 @@ function openPicker(id: string) {
 }
 function onPicked(file: File) {
   if (pickerTargetId.value) {
+    const previous = props.options.find((o) => o.id === pickerTargetId.value)?.imageUrl
+    if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous)
     emit('setPreview', pickerTargetId.value, URL.createObjectURL(file))
     emit('setFile', pickerTargetId.value, file)
   }

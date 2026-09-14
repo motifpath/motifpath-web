@@ -1,0 +1,43 @@
+import { describe, expect, it, vi } from 'vitest'
+
+const POST = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { POST }, eventApi: {} }),
+}))
+
+import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
+
+describe('useCreateExercise', () => {
+  it('posts the request and returns the created exercise', async () => {
+    const exercise = { exercise_id: 'e-1', challenge_ids: [] }
+    POST.mockResolvedValueOnce({ data: exercise, error: undefined, response: { status: 201 } })
+
+    const { createExercise } = useCreateExercise()
+    const request = { title: 't', prompt: 'p', exercise_type: 'text_response' as const, options: [] }
+
+    const result = await createExercise(request)
+
+    expect(POST).toHaveBeenCalledWith('/exercises', { body: request })
+    expect(result).toEqual(exercise)
+  })
+
+  it('throws with the server error message when creation fails', async () => {
+    POST.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 400 } })
+
+    const { createExercise } = useCreateExercise()
+
+    await expect(
+      createExercise({ title: 't', prompt: 'p', exercise_type: 'text_response', options: [] }),
+    ).rejects.toThrow('boom')
+  })
+
+  it('throws a fallback message when the server gives no error message', async () => {
+    POST.mockResolvedValueOnce({ data: undefined, error: undefined, response: { status: 500 } })
+
+    const { createExercise } = useCreateExercise()
+
+    await expect(
+      createExercise({ title: 't', prompt: 'p', exercise_type: 'text_response', options: [] }),
+    ).rejects.toThrow('Failed to create the exercise')
+  })
+})

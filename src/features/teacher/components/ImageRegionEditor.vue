@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Circle, ImageOff, Minus, Plus, Square, X } from 'lucide-vue-next'
 
-import type { Region } from '@/features/teacher/composables/useExerciseForm'
+import { clamp, type Region } from '@/features/teacher/composables/useExerciseForm'
 
 const props = defineProps<{
   imageUrl: string
@@ -20,8 +20,8 @@ const emit = defineEmits<{
 
 function percentFromEvent(container: HTMLElement, clientX: number, clientY: number) {
   const rect = container.getBoundingClientRect()
-  const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
-  const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+  const x = clamp(((clientX - rect.left) / rect.width) * 100, 0, 100)
+  const y = clamp(((clientY - rect.top) / rect.height) * 100, 0, 100)
   return { x, y }
 }
 

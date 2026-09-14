@@ -9,6 +9,17 @@ describe('useExerciseForm', () => {
     expect(form.hasCorrectOption.value).toBe(false)
   })
 
+  it('assigns real UUIDs to new options — the API requires option_id to be a UUID', () => {
+    const form = useExerciseForm()
+    form.exerciseType.value = 'text_response'
+
+    form.addTextOption()
+
+    expect(form.textOptions.value[0]!.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    )
+  })
+
   describe('text_response / audio_recognition options', () => {
     it('adds, edits, toggles, and removes a text option', () => {
       const form = useExerciseForm()
@@ -216,6 +227,20 @@ describe('useExerciseForm', () => {
       const request = form.toCreateExerciseRequest()
 
       expect(request.skill_tags).toBeUndefined()
+    })
+
+    it('falls back to an empty options array for an unrecognized exercise type, instead of undefined', () => {
+      const form = useExerciseForm()
+      form.title.value = 'title'
+      form.prompt.value = 'prompt'
+      // Simulates a stale generated client seeing a type value the backend
+      // added but this build doesn't know about yet — never a real value
+      // the type picker itself can produce.
+      form.exerciseType.value = 'future_type' as never
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request.options).toEqual([])
     })
   })
 })

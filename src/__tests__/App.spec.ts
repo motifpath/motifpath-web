@@ -31,6 +31,7 @@ const updateRegistrationBridge = vi.fn()
 vi.mock('@/features/auth/authBridge', () => ({
   updateAuthBridge: vi.fn(),
   updateRegistrationBridge: (...args: unknown[]) => updateRegistrationBridge(...args),
+  updateRoleBridge: vi.fn(),
 }))
 
 import App from '@/App.vue'

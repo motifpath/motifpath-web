@@ -1,12 +1,14 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { authChecker } from '@/features/auth/authBridge'
-import { createAuthGuard } from '@/router/guards'
+import { createAuthGuard, type Role } from '@/router/guards'
 
 declare module 'vue-router' {
   interface RouteMeta {
     /** Route requires an authenticated Clerk session. */
     requiresAuth?: boolean
+    /** Route additionally requires the signed-in identity's role to be one of these. */
+    requiresRole?: Role[]
   }
 }
 
@@ -62,7 +64,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/teacher/exercises/new',
     name: 'teacher-exercise-new',
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
     component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
   },
   {

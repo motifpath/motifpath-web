@@ -30,7 +30,12 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
   }),
 }))
 
-vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:local-preview'), revokeObjectURL: vi.fn() })
+const revokeObjectURL = vi.fn()
+vi.stubGlobal('URL', {
+  ...URL,
+  createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+  revokeObjectURL,
+})
 
 function mockMatchMedia(compact: boolean): void {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -186,7 +191,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
 
     expect(upload).not.toHaveBeenCalled()
-    expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).props('imageUrl')).toBe('blob:local-preview')
+    expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).props('imageUrl')).toBe('blob:fret.png')
   })
 
   it('adds and removes skill tags', async () => {
@@ -310,7 +315,167 @@ describe('ExerciseAuthoringView', () => {
 
     await wrapper.get('[data-test="open-preview"]').trigger('click')
 
-    expect(wrapper.find('[data-test="preview-modal"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
     expect(wrapper.findComponent({ name: 'ExerciseView' }).exists()).toBe(true)
+  })
+
+  it('uploads a stale stimulus file under the type it was picked for, not the type switched to afterward', async () => {
+    upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    const file = new File(['data'], 'fret.png', { type: 'image/png' })
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+
+    // Switch away before saving -- the picked file must still upload as
+    // 'image', not whatever type happens to be selected at save time.
+    await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.get('textarea').setValue('p')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    await wrapper.get('input[placeholder="Option text"]').setValue('a')
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).toHaveBeenCalledWith(file, 'image')
+  })
+
+  it('does not upload a removed image-choice option file on save', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.get('textarea').setValue('p')
+
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
+    const removedId = (editor.props('options') as { id: string }[])[0]!.id
+    await editor.vm.$emit('setFile', removedId, new File(['data'], 'a.png', { type: 'image/png' }))
+    await editor.vm.$emit('remove', removedId)
+
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('revokes the previous blob URL when a new stimulus image replaces it', async () => {
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'first.png'))
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['b'], 'second.png'))
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:first.png')
+  })
+
+  it('revokes the stimulus blob URL once it is replaced by the real uploaded URL', async () => {
+    upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.get('textarea').setValue('p')
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'fret.png'))
+    await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+    await wrapper.get('[data-test="region-toggle"]').trigger('click')
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:fret.png')
+  })
+
+  it('never calls the create-exercise API when invoked without a correct option, even bypassing the disabled button', async () => {
+    const wrapper = mountView()
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+
+    // The button is disabled (covered by the earlier test); this calls the
+    // save handler directly to prove the guard is in the handler itself,
+    // not only the disabled attribute on the button.
+    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')()
+    await flushPromises()
+
+    expect(POST).not.toHaveBeenCalled()
+  })
+
+  it('does not call onSave when the disabled AppBar Save button is clicked', async () => {
+    const wrapper = mountView()
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST).not.toHaveBeenCalled()
+  })
+
+  it('shows an error and stops saving when the create-exercise call itself rejects (not just returns an error)', async () => {
+    POST.mockRejectedValueOnce(new Error('network down'))
+    const wrapper = mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="save-error"]').text()).toContain('network down')
+    expect(wrapper.get('[data-test="app-bar-save"]').text()).not.toContain('Saving')
+  })
+
+  it('uploads multiple pending option images concurrently, not one after another', async () => {
+    let resolveFirst!: (url: string) => void
+    let resolveSecond!: (url: string) => void
+    upload.mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+    upload.mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)))
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.get('textarea').setValue('p')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
+    const ids = (editor.props('options') as { id: string }[]).map((o) => o.id)
+    await editor.vm.$emit('setFile', ids[0], new File(['a'], 'a.png'))
+    await editor.vm.$emit('setFile', ids[1], new File(['b'], 'b.png'))
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+
+    const savePromise = wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Both uploads should be in flight before either resolves.
+    expect(upload).toHaveBeenCalledTimes(2)
+
+    resolveFirst('https://cdn.example.com/a.png')
+    resolveSecond('https://cdn.example.com/b.png')
+    await savePromise
+    await flushPromises()
+
+    expect(POST).toHaveBeenCalled()
   })
 })

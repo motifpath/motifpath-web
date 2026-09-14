@@ -3,12 +3,16 @@ import type { RouteLocationNormalized, RouteLocationRaw } from 'vue-router'
 import type { RegistrationState } from '@/features/auth/authBridge'
 import { routeWithRedirect } from '@/features/auth/utils/routeWithRedirect'
 
+export type Role = 'student' | 'teacher' | 'admin' | null
+
 export interface AuthChecker {
   /** Resolves once Clerk has settled the session state. */
   isReady: () => Promise<void>
   isSignedIn: () => boolean
   /** Current registration state of the signed-in identity's MotifPath profile. */
   getRegistrationState: () => RegistrationState
+  /** Current registered role, if resolved yet. Only consulted when a route sets `meta.requiresRole`. */
+  getRole?: () => Role
 }
 
 /**
@@ -57,6 +61,10 @@ export function createAuthGuard(auth: AuthChecker) {
 
     if (bridgeRoute !== null && to.name !== bridgeRoute) {
       return routeWithRedirect(bridgeRoute, to.fullPath)
+    }
+
+    if (to.meta.requiresRole && !to.meta.requiresRole.includes(auth.getRole?.() ?? null)) {
+      return { name: 'home' }
     }
 
     return true
