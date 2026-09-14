@@ -129,7 +129,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/challenges/{challenge_id}/exercises": {
+    "/exercises": {
         parameters: {
             query?: never;
             header?: never;
@@ -139,14 +139,46 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create an exercise within a challenge
-         * @description Creates a pre-defined exercise within the specified challenge. An exercise
-         *     is a single practice item — for MVP this is a fretboard region interaction
-         *     with a binary correct/incorrect outcome. The exercise_id returned is the
-         *     value the SPA must supply in exercise-family tracking events.
+         * Create a standalone exercise
+         * @description Creates a reusable exercise, independent of any challenge. An exercise
+         *     is a single practice item, checked by option selection: the student's
+         *     selected option ID(s) must match the option(s) marked is_correct. The
+         *     exercise_id returned is the value the SPA must supply in
+         *     exercise-family tracking events. Link the exercise into one or more
+         *     challenges afterward with
+         *     POST /challenges/{challenge_id}/exercises/{exercise_id}.
          */
         post: operations["createExercise"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/challenges/{challenge_id}/exercises/{exercise_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link an existing exercise to a challenge
+         * @description Links an existing, standalone exercise into the specified challenge.
+         *     The same exercise may be linked to any number of challenges — linking
+         *     it into a second challenge does not duplicate the exercise or affect
+         *     its other links.
+         */
+        post: operations["linkExerciseToChallenge"];
+        /**
+         * Unlink an exercise from a challenge
+         * @description Removes the link between the specified exercise and challenge. The
+         *     exercise itself is not deleted and remains linked to any other
+         *     challenges it is part of.
+         */
+        delete: operations["unlinkExerciseFromChallenge"];
         options?: never;
         head?: never;
         patch?: never;
@@ -224,12 +256,42 @@ export interface paths {
         };
         /**
          * Get an exercise by ID
-         * @description Returns the exercise with the given ID. Any authenticated user may
+         * @description Returns the exercise with the given ID, including its options and
+         *     the challenges it is currently linked to. Any authenticated user may
          *     retrieve an exercise.
          */
         get: operations["getExercise"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a presigned URL to upload a content-authoring media asset
+         * @description Issues a short-lived presigned URL the caller uploads a file to directly
+         *     (object storage — S3 in production, MinIO in local development), without
+         *     proxying the file's bytes through this service. The response also returns
+         *     the object's eventual read URL, which the caller stores in the relevant
+         *     `media_url` / `image_url` / `audio_url` field once the upload completes.
+         *
+         *     This endpoint does not verify the upload happened — the presigned URL
+         *     itself enforces who may write to the target object, and for how long.
+         *     Callers are responsible for actually performing the PUT before the
+         *     returned `expires_at`.
+         */
+        post: operations["createMediaUploadUrl"];
         delete?: never;
         options?: never;
         head?: never;
@@ -358,10 +420,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Liveness probe
+         * @description Returns 200 if the service process is running. Used by the deployment
+         *     platform to determine whether to restart the container. Does not check
+         *     downstream dependencies.
+         */
+        get: operations["livenessCheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readiness probe
+         * @description Returns 200 if the service is ready to accept traffic — the learning-graph
+         *     store (holding users, content, and learning paths) and the completion-state
+         *     store (holding aggregated node-completion state) are both reachable. The
+         *     deployment platform withholds traffic until this probe succeeds. Returns 503
+         *     during startup or if a dependency becomes unavailable, with the checks map
+         *     naming the failed dependency.
+         */
+        get: operations["readinessCheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Response body for liveness and readiness probes. Shared by every MotifPath
+         *     service that exposes an HTTP health surface so the contract cannot drift
+         *     between services.
+         */
+        HealthStatus: {
+            /**
+             * @description ok — all checks passed. degraded — one or more dependency checks failed;
+             *     used only on the readiness probe when the service should be taken out of rotation.
+             * @enum {string}
+             */
+            status: "ok" | "degraded";
+            /**
+             * @description Map of dependency name to its check result. Present on the readiness probe;
+             *     omitted on the liveness probe (which has no dependency checks).
+             */
+            checks?: {
+                [key: string]: "ok" | "fail";
+            };
+        };
         /** @description Payload for creating a new content node. */
         CreateContentNodeRequest: {
             /** @description Human-readable title of the content node, displayed to students. */
@@ -723,27 +852,60 @@ export interface components {
              */
             created_at: string;
         };
-        /** @description Payload for creating a pre-defined exercise within a challenge. */
+        /** @description Payload for creating a standalone, reusable exercise. */
         CreateExerciseRequest: {
             /**
-             * @description The type of practice interaction. For MVP the only supported type is
-             *     fretboard_region — a fretboard image with clickable regions where
-             *     the student taps to identify the correct position. Additional types
-             *     may be added in future without breaking this contract.
-             * @enum {string}
+             * @description A short, authoring-only name for this exercise (e.g. "Alternate
+             *     picking — descending run"), used to identify it in authoring
+             *     tools. Not shown to students.
              */
-            exercise_type: "fretboard_region";
+            title: string;
             /**
              * @description The instruction displayed to the student for this exercise
              *     (e.g. "Identify the root position of a C major triad").
              */
             prompt: string;
+            /**
+             * @description The type of practice interaction, which determines how its
+             *     options are authored and rendered. text_response and
+             *     audio_recognition options carry a text label; image_recognition
+             *     options carry a region on image_url; image_choice options each
+             *     carry their own image_url.
+             * @enum {string}
+             */
+            exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice";
+            /**
+             * @description Freeform tags naming the skill(s) or technique(s) this exercise
+             *     targets (e.g. "alternate_picking"), used to classify and discover
+             *     the exercise independent of any challenge. Each tag must be a
+             *     non-empty string.
+             */
+            skill_tags?: string[];
+            /**
+             * Format: uri
+             * @description The stimulus image for this exercise. Required when exercise_type
+             *     is image_recognition; absent otherwise.
+             */
+            image_url?: string;
+            /**
+             * Format: uri
+             * @description The stimulus audio for this exercise. Required when exercise_type
+             *     is audio_recognition; absent otherwise.
+             */
+            audio_url?: string;
+            /**
+             * @description The exercise's selectable answer choices. At least one option
+             *     must have is_correct set to true — an exercise with no correct
+             *     option cannot be graded.
+             */
+            options: components["schemas"]["Option"][];
         };
         /**
-         * @description A pre-defined practice item within a challenge. The exercise_id is the
-         *     value the SPA supplies in exercise-family tracking events. For MVP all
-         *     exercises are fretboard region interactions with a binary correct/incorrect
-         *     outcome.
+         * @description A reusable, standalone practice item classified by skill tags and
+         *     independent of any single challenge. The exercise_id is the value
+         *     the SPA supplies in exercise-family tracking events. An exercise is
+         *     checked by option selection: the student's selected option ID(s)
+         *     must match the option(s) marked is_correct.
          */
         Exercise: {
             /**
@@ -751,23 +913,145 @@ export interface components {
              * @description Stable identifier for this exercise. Used as exercise_id in tracking events.
              */
             exercise_id: string;
-            /**
-             * Format: uuid
-             * @description The challenge this exercise belongs to.
-             */
-            challenge_id: string;
+            /** @description Short, authoring-only name for this exercise. Not shown to students. */
+            title: string;
+            /** @description The instruction displayed to the student for this exercise. */
+            prompt: string;
             /**
              * @description The type of practice interaction.
              * @enum {string}
              */
-            exercise_type: "fretboard_region";
-            /** @description The instruction displayed to the student for this exercise. */
-            prompt: string;
+            exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice";
+            /** @description Freeform tags naming the skill(s) this exercise targets. */
+            skill_tags?: string[];
+            /**
+             * Format: uri
+             * @description The stimulus image for this exercise, present when exercise_type is image_recognition.
+             */
+            image_url?: string;
+            /**
+             * Format: uri
+             * @description The stimulus audio for this exercise, present when exercise_type is audio_recognition.
+             */
+            audio_url?: string;
+            /** @description The exercise's selectable answer choices. */
+            options: components["schemas"]["Option"][];
+            /**
+             * @description The challenges this exercise is currently linked to. May be
+             *     empty — an exercise can exist without being linked to any
+             *     challenge.
+             */
+            challenge_ids: string[];
             /**
              * Format: date-time
              * @description Timestamp at which the exercise was created.
              */
             created_at: string;
+        };
+        /**
+         * @description One selectable answer choice within an exercise. An exercise's
+         *     correct answer is expressed by marking one or more options as
+         *     is_correct. The fields expected beyond option_id and is_correct
+         *     depend on the parent exercise's exercise_type: image_recognition
+         *     options carry region, image_choice options carry image_url, and
+         *     text_response / audio_recognition options carry label.
+         */
+        Option: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this option.
+             */
+            option_id: string;
+            /** @description Whether selecting this option counts as a correct answer. */
+            is_correct: boolean;
+            /**
+             * @description The text shown for this option. Required for text_response and
+             *     audio_recognition options; absent otherwise.
+             */
+            label?: string;
+            /**
+             * Format: uri
+             * @description The image shown for this option. Required for image_choice
+             *     options; absent otherwise.
+             */
+            image_url?: string;
+            region?: components["schemas"]["OptionRegion"];
+        };
+        /**
+         * @description A rectangular or circular region on the parent exercise's image_url,
+         *     used by image_recognition options — selecting the region is
+         *     selecting the option.
+         */
+        OptionRegion: {
+            /** @description Horizontal position of the region's top-left corner, as a fraction (0-1) of the image width. */
+            x: number;
+            /** @description Vertical position of the region's top-left corner, as a fraction (0-1) of the image height. */
+            y: number;
+            /** @description Region width, as a fraction (0-1) of the image width. */
+            width: number;
+            /** @description Region height, as a fraction (0-1) of the image height. */
+            height: number;
+            /**
+             * @description The rendered shape of the region.
+             * @enum {string}
+             */
+            shape: "rectangle" | "circle";
+        };
+        /**
+         * @description Payload requesting a presigned URL to upload a content-authoring media
+         *     asset (exercise/prompt image or audio, or an addition to the shared
+         *     image-picker library).
+         */
+        CreateMediaUploadUrlRequest: {
+            /**
+             * @description What the uploaded object is for. exercise_asset requires
+             *     exercise_id and stores the object under that exercise's prefix.
+             *     library_asset stores the object under the shared, predefined
+             *     image-picker library's prefix.
+             * @enum {string}
+             */
+            purpose: "exercise_asset" | "library_asset";
+            /**
+             * Format: uuid
+             * @description The exercise this upload belongs to. Required when purpose is
+             *     exercise_asset; must be absent when purpose is library_asset.
+             */
+            exercise_id?: string;
+            /**
+             * @description The media type of the file being uploaded.
+             * @enum {string}
+             */
+            content_type: "image" | "audio";
+            /**
+             * @description The original file name, used to derive the stored object's file
+             *     extension. Not used as the object's storage key.
+             */
+            file_name: string;
+        };
+        /**
+         * @description A presigned upload URL and the object's eventual read URL. The caller
+         *     performs an HTTP PUT of the file's raw bytes to upload_url, then stores
+         *     object_url in the relevant media_url / image_url / audio_url field.
+         */
+        MediaUploadUrl: {
+            /**
+             * Format: uri
+             * @description Short-lived presigned URL to PUT the file's raw bytes to. Expires
+             *     at expires_at.
+             */
+            upload_url: string;
+            /**
+             * Format: uri
+             * @description The URL the uploaded object is readable at once the upload
+             *     completes (a CloudFront URL in production, the local object
+             *     store's equivalent in development).
+             */
+            object_url: string;
+            /**
+             * Format: date-time
+             * @description The time after which upload_url can no longer be used.
+             */
+            expires_at: string;
         };
         /** @description Returned when the authenticated user lacks permission for the requested operation. */
         ForbiddenError: {
@@ -847,6 +1131,7 @@ export interface components {
     headers: never;
     pathItems: never;
 }
+export type SchemaHealthStatus = components['schemas']['HealthStatus'];
 export type SchemaCreateContentNodeRequest = components['schemas']['CreateContentNodeRequest'];
 export type SchemaClassificationInput = components['schemas']['ClassificationInput'];
 export type SchemaClassification = components['schemas']['Classification'];
@@ -864,6 +1149,10 @@ export type SchemaCreateChallengeRequest = components['schemas']['CreateChalleng
 export type SchemaChallenge = components['schemas']['Challenge'];
 export type SchemaCreateExerciseRequest = components['schemas']['CreateExerciseRequest'];
 export type SchemaExercise = components['schemas']['Exercise'];
+export type SchemaOption = components['schemas']['Option'];
+export type SchemaOptionRegion = components['schemas']['OptionRegion'];
+export type SchemaCreateMediaUploadUrlRequest = components['schemas']['CreateMediaUploadUrlRequest'];
+export type SchemaMediaUploadUrl = components['schemas']['MediaUploadUrl'];
 export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
 export type SchemaUserProfile = components['schemas']['UserProfile'];
@@ -1139,10 +1428,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @description The ID of the challenge this exercise belongs to. */
-                challenge_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -1160,7 +1446,10 @@ export interface operations {
                     "application/json": components["schemas"]["Exercise"];
                 };
             };
-            /** @description The request body failed schema validation. */
+            /**
+             * @description The request body failed schema validation, or no option has
+             *     is_correct set to true.
+             */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1190,7 +1479,119 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
-            /** @description No challenge exists with the given challenge_id. */
+        };
+    };
+    linkExerciseToChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the challenge to link the exercise into. */
+                challenge_id: string;
+                /** @description The ID of the exercise to link. */
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exercise linked. Returns the updated exercise. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to link exercises.
+             *     Only teachers and admins may link exercises to challenges.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No challenge exists with challenge_id, or no exercise exists with exercise_id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The exercise is already linked to this challenge. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    unlinkExerciseFromChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the challenge to unlink the exercise from. */
+                challenge_id: string;
+                /** @description The ID of the exercise to unlink. */
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exercise unlinked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to unlink exercises.
+             *     Only teachers and admins may unlink exercises from challenges.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description No challenge exists with challenge_id, no exercise exists with
+             *     exercise_id, or the exercise is not currently linked to this
+             *     challenge.
+             */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1388,6 +1789,73 @@ export interface operations {
                 };
             };
             /** @description No exercise exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    createMediaUploadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMediaUploadUrlRequest"];
+            };
+        };
+        responses: {
+            /** @description Presigned upload URL issued. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaUploadUrl"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation, or purpose is
+             *     exercise_asset without an exercise_id.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to upload
+             *     content-authoring media. Only teachers and admins may request an
+             *     upload URL.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description purpose is exercise_asset but no exercise exists with the given exercise_id. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1652,6 +2120,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    livenessCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service is alive. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthStatus"];
+                };
+            };
+        };
+    };
+    readinessCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Service is ready to accept traffic. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthStatus"];
+                };
+            };
+            /** @description Service is not ready. One or more dependencies are unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthStatus"];
                 };
             };
         };

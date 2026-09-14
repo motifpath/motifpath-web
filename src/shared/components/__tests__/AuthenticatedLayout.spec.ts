@@ -10,6 +10,7 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
     isSignedIn: { value: true },
     getToken: async () => 'jwt',
     signOut,
+    displayInitial: { value: 'G' },
   }),
 }))
 
@@ -38,20 +39,17 @@ describe('AuthenticatedLayout', () => {
     }))
   })
 
-  it('renders navigation to the main student routes', () => {
+  it('renders the AppBar with a link to the student path', () => {
     const wrapper = mountLayout()
 
     const targets = wrapper.findAllComponents(RouterLinkStub).map((link) => link.props('to'))
 
-    expect(targets).toContainEqual({ name: 'home' })
     expect(targets).toContainEqual({ name: 'path' })
   })
 
-  it('signs the user out when the sign-out control is used', async () => {
+  it('renders the routed view', () => {
     const wrapper = mountLayout()
 
-    await wrapper.get('[data-test="sign-out"]').trigger('click')
-
-    expect(signOut).toHaveBeenCalledOnce()
+    expect(wrapper.findComponent({ name: 'RouterView' }).exists()).toBe(true)
   })
 })

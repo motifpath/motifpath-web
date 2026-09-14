@@ -8,12 +8,22 @@ const clerk = {
   signOut: vi.fn(async () => {}),
 }
 
+interface ClerkUserStub {
+  firstName: string | null
+  primaryEmailAddress: { emailAddress: string } | null
+}
+
+const clerkUser = ref<ClerkUserStub | null | undefined>(undefined)
+
 vi.mock('@clerk/vue', () => ({
   useAuth: () => ({
     isLoaded: computed(() => clerk.isLoaded.value),
     isSignedIn: computed(() => clerk.isSignedIn.value),
     getToken: computed(() => clerk.getToken),
     signOut: computed(() => clerk.signOut),
+  }),
+  useUser: () => ({
+    user: computed(() => clerkUser.value),
   }),
 }))
 
@@ -44,5 +54,23 @@ describe('useAuth', () => {
     await useAuth().signOut()
 
     expect(clerk.signOut).toHaveBeenCalled()
+  })
+
+  it("resolves the display initial from the user's first name", () => {
+    clerkUser.value = { firstName: 'Gilson', primaryEmailAddress: { emailAddress: 'g@x.com' } }
+
+    expect(useAuth().displayInitial.value).toBe('G')
+  })
+
+  it('falls back to the primary email address when there is no first name', () => {
+    clerkUser.value = { firstName: null, primaryEmailAddress: { emailAddress: 'ana@x.com' } }
+
+    expect(useAuth().displayInitial.value).toBe('A')
+  })
+
+  it('falls back to "?" when no user data is available yet', () => {
+    clerkUser.value = null
+
+    expect(useAuth().displayInitial.value).toBe('?')
   })
 })

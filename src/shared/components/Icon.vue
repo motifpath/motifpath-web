@@ -8,10 +8,10 @@
  * otherwise present in the DOM — it becomes the accessible name and the SVG
  * is exposed to assistive tech as an image instead of hidden.
  */
-import { Circle, CircleCheck, CircleDot, Lock, Moon, Sun } from 'lucide-vue-next'
+import { ChevronRight, Circle, CircleCheck, CircleDot, Lock, Menu, Moon, Sun } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-type IconName = 'completed' | 'current' | 'locked' | 'todo' | 'sun' | 'moon'
+type IconName = 'completed' | 'current' | 'locked' | 'todo' | 'menu' | 'chevron-right' | 'sun' | 'moon'
 
 const props = withDefaults(
   defineProps<{
@@ -31,6 +31,8 @@ const glyph = computed(
       current: CircleDot,
       locked: Lock,
       todo: Circle,
+      menu: Menu,
+      'chevron-right': ChevronRight,
       sun: Sun,
       moon: Moon,
     })[props.name],

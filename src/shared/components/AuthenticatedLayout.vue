@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 
-import AppShell from '@/shared/components/AppShell.vue'
-import SignOutLink from '@/shared/components/SignOutLink.vue'
+import AppBar from '@/shared/components/AppBar.vue'
+import { useIsCompact } from '@/shared/composables/useIsCompact'
 
-const nav = [
-  { to: { name: 'home' }, label: 'Home' },
-  { to: { name: 'path' }, label: 'My path' },
-]
+const { isCompact } = useIsCompact()
 </script>
 
 <template>
-  <AppShell :nav="nav">
-    <template #header-actions>
-      <SignOutLink />
-    </template>
+  <div class="flex min-h-screen flex-col">
+    <AppBar context="student" :compact="isCompact" :primary-nav-to="{ name: 'path' }" />
 
-    <RouterView />
-  </AppShell>
+    <main class="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
+      <RouterView />
+    </main>
+  </div>
 </template>

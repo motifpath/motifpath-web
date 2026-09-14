@@ -38,9 +38,14 @@ const fontSize = Object.fromEntries(
 // so opacity modifiers (e.g. `text-ink/60`) keep working against whichever
 // theme's custom properties are active.
 const colorRoles = Object.keys(tokens.color).filter((key) => !key.startsWith('$'))
-const colors = Object.fromEntries(
+const colors: Record<string, string> = Object.fromEntries(
   colorRoles.map((role) => [role, `rgb(var(--color-${role}) / <alpha-value>)`]),
 )
+
+// brand.ground is a fixed, theme-independent value (unlike the semantic
+// color roles above) — a scrim/overlay stays the same dark tint in both
+// themes, so it skips the custom-property indirection.
+colors['brand-ground'] = tokens.brand.ground.$value
 
 // Elevation shadows are full box-shadow strings (already colour-complete per
 // theme), so they resolve straight from the custom property.

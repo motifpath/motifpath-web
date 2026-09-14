@@ -244,7 +244,11 @@ export interface components {
              */
             reason?: string;
         };
-        /** @description Response body for liveness and readiness probes. */
+        /**
+         * @description Response body for liveness and readiness probes. Shared by every MotifPath
+         *     service that exposes an HTTP health surface so the contract cannot drift
+         *     between services.
+         */
         HealthStatus: {
             /**
              * @description ok — all checks passed. degraded — one or more dependency checks failed;

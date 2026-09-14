@@ -1,5 +1,5 @@
 import { computed, type ComputedRef } from 'vue'
-import { useAuth as useClerkAuth } from '@clerk/vue'
+import { useAuth as useClerkAuth, useUser as useClerkUser } from '@clerk/vue'
 
 export interface AuthContext {
   /** `true` once Clerk has resolved the session state. */
@@ -9,6 +9,8 @@ export interface AuthContext {
   /** Resolves the current session JWT, or `null` when signed out. */
   getToken: () => Promise<string | null>
   signOut: () => Promise<void>
+  /** Single uppercase letter for an avatar badge — first name, else email, else "?". */
+  displayInitial: ComputedRef<string>
 }
 
 /**
@@ -17,11 +19,17 @@ export interface AuthContext {
  */
 export function useAuth(): AuthContext {
   const clerk = useClerkAuth()
+  const clerkUser = useClerkUser()
 
   return {
     isLoaded: computed(() => clerk.isLoaded.value === true),
     isSignedIn: computed(() => clerk.isSignedIn.value === true),
     getToken: () => clerk.getToken.value(),
     signOut: () => clerk.signOut.value(),
+    displayInitial: computed(() => {
+      const user = clerkUser.user.value
+      const source = user?.firstName || user?.primaryEmailAddress?.emailAddress
+      return source ? source.charAt(0).toUpperCase() : '?'
+    }),
   }
 }
