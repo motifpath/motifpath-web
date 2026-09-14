@@ -187,4 +187,76 @@ describe('createAuthGuard', () => {
 
     expect(result).toBe(true)
   })
+
+  it('sends a registered student away from a route requiring teacher/admin to home', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+      getRole: () => 'student',
+    })
+
+    const result = await guard(
+      route({
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        name: 'teacher-exercise-new',
+        fullPath: '/teacher/exercises/new',
+      }),
+    )
+
+    expect(result).toEqual({ name: 'home' })
+  })
+
+  it('lets a registered teacher through a route requiring teacher/admin', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+      getRole: () => 'teacher',
+    })
+
+    const result = await guard(
+      route({
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        name: 'teacher-exercise-new',
+        fullPath: '/teacher/exercises/new',
+      }),
+    )
+
+    expect(result).toBe(true)
+  })
+
+  it('lets a registered admin through a route requiring teacher/admin', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+      getRole: () => 'admin',
+    })
+
+    const result = await guard(
+      route({
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        name: 'teacher-exercise-new',
+        fullPath: '/teacher/exercises/new',
+      }),
+    )
+
+    expect(result).toBe(true)
+  })
+
+  it('does not consult role at all for a route with no requiresRole meta', async () => {
+    const getRole = vi.fn(() => 'student' as const)
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+      getRole,
+    })
+
+    const result = await guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
+
+    expect(result).toBe(true)
+    expect(getRole).not.toHaveBeenCalled()
+  })
 })

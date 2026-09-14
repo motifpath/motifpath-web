@@ -18,6 +18,9 @@ type TokenGetter = () => Promise<string | null>
  */
 export type RegistrationState = CurrentUserState
 
+/** Alias of the currentUser store profile's role, for the same reason as RegistrationState above. */
+export type Role = 'student' | 'teacher' | 'admin' | null
+
 let tokenGetter: TokenGetter = async () => null
 let signedIn = false
 let readyResolved = false
@@ -26,6 +29,7 @@ const readyPromise = new Promise<void>((resolve) => {
   resolveReady = resolve
 })
 let registrationState: RegistrationState = 'idle'
+let role: Role = null
 
 export interface AuthBridgeState {
   isLoaded: boolean
@@ -47,6 +51,11 @@ export function updateRegistrationBridge(state: RegistrationState): void {
   registrationState = state
 }
 
+/** Pushes the currentUser store's latest resolved role into the bridge. */
+export function updateRoleBridge(newRole: Role): void {
+  role = newRole
+}
+
 /** Current session JWT for outbound API requests, or `null` when signed out. */
 export function getAuthToken(): Promise<string | null> {
   return tokenGetter()
@@ -57,4 +66,5 @@ export const authChecker = {
   isReady: (): Promise<void> => readyPromise,
   isSignedIn: (): boolean => signedIn,
   getRegistrationState: (): RegistrationState => registrationState,
+  getRole: (): Role => role,
 }

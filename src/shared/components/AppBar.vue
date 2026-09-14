@@ -17,10 +17,11 @@ const props = withDefaults(
     /** When set in teacher context, renders as a breadcrumb: Exercises › label. */
     breadcrumbLabel?: string
     showSave?: boolean
+    saveDisabled?: boolean
     justSaved?: boolean
     onSave?: () => void
   }>(),
-  { compact: false, showSave: false, justSaved: false },
+  { compact: false, showSave: false, saveDisabled: false, justSaved: false },
 )
 
 const { displayInitial } = useAuth()
@@ -116,7 +117,8 @@ function closeAccountMenu(): void {
       v-if="showSave"
       type="button"
       data-test="app-bar-save"
-      class="rounded-full bg-accent px-[18px] py-2 text-[13px] font-bold text-accent-fg"
+      :disabled="saveDisabled"
+      class="rounded-full bg-accent px-[18px] py-2 text-[13px] font-bold text-accent-fg disabled:opacity-50"
       @click="onSave?.()"
     >
       Save

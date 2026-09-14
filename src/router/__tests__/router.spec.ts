@@ -11,10 +11,11 @@ vi.mock('@clerk/vue', () => ({
 }))
 
 import { router } from '@/router'
-import { updateAuthBridge, updateRegistrationBridge } from '@/features/auth/authBridge'
+import { updateAuthBridge, updateRegistrationBridge, updateRoleBridge } from '@/features/auth/authBridge'
 
 describe('router', () => {
   beforeEach(async () => {
+    updateRoleBridge(null)
     await router.replace('/')
     await router.isReady()
   })
@@ -126,6 +127,45 @@ describe('router', () => {
 
     expect(router.currentRoute.value.name).toBe('sign-in')
     expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc')
+  })
+
+  it('lets a registered teacher reach the teacher exercise-authoring route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('teacher')
+
+    await router.push('/teacher/exercises/new')
+
+    expect(router.currentRoute.value.name).toBe('teacher-exercise-new')
+  })
+
+  it('lets a registered admin reach the teacher exercise-authoring route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('admin')
+
+    await router.push('/teacher/exercises/new')
+
+    expect(router.currentRoute.value.name).toBe('teacher-exercise-new')
+  })
+
+  it('sends a registered student away from the teacher exercise-authoring route to home', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/teacher/exercises/new')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('sends an unauthenticated visitor from the teacher exercise-authoring route to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/teacher/exercises/new')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.query.redirect).toBe('/teacher/exercises/new')
   })
 
   it('resolves an unknown path to the not-found route', async () => {

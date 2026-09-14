@@ -47,6 +47,7 @@ interface Props {
   primaryNavTo?: { name: string }
   breadcrumbLabel?: string
   showSave?: boolean
+  saveDisabled?: boolean
   justSaved?: boolean
   onSave?: () => void
 }
@@ -152,6 +153,18 @@ describe('AppBar', () => {
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
 
     expect(onSave).toHaveBeenCalled()
+  })
+
+  it('disables the Save button when saveDisabled is true', () => {
+    const wrapper = mountBar({ context: 'teacher', showSave: true, saveDisabled: true })
+
+    expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('does not disable the Save button by default', () => {
+    const wrapper = mountBar({ context: 'teacher', showSave: true })
+
+    expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
   })
 
   it('renders a "Saved" indicator when justSaved is true', () => {
