@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 
 const POST = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -9,6 +10,13 @@ vi.mock('@/shared/composables/useApi', () => ({
 const upload = vi.fn()
 vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
   useMediaUpload: () => ({ upload }),
+}))
+
+// Defaults to a teacher, matching this route's normal caller — individual
+// tests override .role for the permission-gating cases.
+const currentUser = reactive({ profile: { role: 'teacher' as 'student' | 'teacher' | 'admin' } })
+vi.mock('@/stores/currentUser', () => ({
+  useCurrentUserStore: () => currentUser,
 }))
 
 vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:local-preview'), revokeObjectURL: vi.fn() })
@@ -28,6 +36,7 @@ describe('ExerciseAuthoringView', () => {
   beforeEach(() => {
     POST.mockReset()
     upload.mockReset()
+    currentUser.profile.role = 'teacher'
   })
 
   it('starts on text_response with the validation banner showing (no correct option yet)', () => {
@@ -35,6 +44,29 @@ describe('ExerciseAuthoringView', () => {
 
     expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
     expect(wrapper.findComponent({ name: 'TextOptionsEditor' }).exists()).toBe(true)
+  })
+
+  it('shows the form for a teacher', () => {
+    currentUser.profile.role = 'teacher'
+    const wrapper = mount(ExerciseAuthoringView)
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(false)
+    expect(wrapper.find('input[placeholder="Untitled exercise"]').exists()).toBe(true)
+  })
+
+  it('shows the form for an admin', () => {
+    currentUser.profile.role = 'admin'
+    const wrapper = mount(ExerciseAuthoringView)
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(false)
+  })
+
+  it('shows a permission-denied state for a student instead of the form', () => {
+    currentUser.profile.role = 'student'
+    const wrapper = mount(ExerciseAuthoringView)
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
+    expect(wrapper.find('input[placeholder="Untitled exercise"]').exists()).toBe(false)
   })
 
   it('shows the reuse indicator as not-yet-linked before saving', () => {

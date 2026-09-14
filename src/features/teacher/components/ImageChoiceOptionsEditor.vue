@@ -32,7 +32,7 @@ function onPicked(file: File) {
 </script>
 
 <template>
-  <div class="grid grid-cols-3 gap-3">
+  <div class="grid grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-5">
     <div
       v-for="option in options"
       :key="option.id"

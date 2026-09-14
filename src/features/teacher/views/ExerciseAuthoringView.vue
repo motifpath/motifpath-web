@@ -11,6 +11,14 @@ import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.v
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import { useApi } from '@/shared/composables/useApi'
+import { useCurrentUserStore } from '@/stores/currentUser'
+
+const currentUser = useCurrentUserStore()
+// Admins carry every permission a teacher has (canManageContent on the
+// backend already treats them the same) — students never author content.
+const canAuthor = computed(
+  () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
+)
 
 const form = useExerciseForm()
 const { coreApi } = useApi()
@@ -100,7 +108,7 @@ async function save() {
         <ChevronRight :size="14" aria-hidden="true" />
         <span class="text-ink">New exercise</span>
       </div>
-      <div class="flex items-center gap-2">
+      <div v-if="canAuthor" class="flex items-center gap-2">
         <button
           type="button"
           data-test="save-exercise"
@@ -113,8 +121,14 @@ async function save() {
       </div>
     </header>
 
-    <div class="flex flex-1">
-      <main class="mx-auto flex w-full max-w-3xl flex-col gap-8 p-10">
+    <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
+      <p class="max-w-md text-center text-ink-muted">
+        This page is for teachers and admins only — your account doesn't have permission to author exercises.
+      </p>
+    </div>
+
+    <div v-else class="flex flex-1">
+      <main class="flex min-w-0 flex-1 flex-col gap-8 p-10">
         <div class="flex flex-col gap-1.5">
           <input
             v-model="form.title.value"
