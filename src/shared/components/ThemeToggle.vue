@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import Icon from '@/shared/components/Icon.vue'
 import { useThemeStore } from '@/stores/theme'
 
 const themeStore = useThemeStore()
 
 const isDark = computed(() => themeStore.theme === 'dark')
-const label = computed(() => (isDark.value ? 'Dark' : 'Light'))
 </script>
 
 <template>
@@ -14,9 +14,10 @@ const label = computed(() => (isDark.value ? 'Dark' : 'Light'))
     type="button"
     data-test="theme-toggle"
     :aria-pressed="isDark"
-    class="rounded border border-border px-2 py-1 text-xs text-ink-muted hover:text-ink"
+    aria-label="Toggle theme"
+    class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
     @click="themeStore.toggle()"
   >
-    {{ label }}
+    <Icon :name="isDark ? 'sun' : 'moon'" :size="15" />
   </button>
 </template>
