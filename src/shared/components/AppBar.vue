@@ -49,7 +49,7 @@ function closeAccountMenu(): void {
 
 <template>
   <div
-    class="relative flex h-16 items-center gap-4 bg-surface-raised px-[24px] shadow-level1"
+    class="relative flex h-16 items-center gap-4 bg-surface-raised px-5 shadow-level1"
   >
     <button
       v-if="compact"
@@ -127,7 +127,7 @@ function closeAccountMenu(): void {
       data-test="app-bar-theme-toggle"
       :aria-pressed="themeStore.theme === 'dark'"
       aria-label="Toggle theme"
-      class="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
+      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
       @click="themeStore.toggle()"
     >
       <Icon :name="themeStore.theme === 'dark' ? 'sun' : 'moon'" :size="15" />
@@ -137,7 +137,7 @@ function closeAccountMenu(): void {
       type="button"
       data-test="app-bar-avatar"
       aria-label="Account menu"
-      class="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-fg"
+      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-fg"
       @click="toggleAccountMenu"
     >
       {{ displayInitial }}
@@ -151,7 +151,7 @@ function closeAccountMenu(): void {
       />
       <div
         data-test="app-bar-account-menu"
-        class="absolute right-[24px] top-16 z-40 rounded-lg border border-border bg-surface-raised p-1.5 shadow-level2"
+        class="absolute right-5 top-16 z-40 rounded-lg border border-border bg-surface-raised p-1.5 shadow-level2"
         @click="closeAccountMenu"
       >
         <SignOutLink class="block w-full px-2.5 py-1.5 text-left" />
@@ -160,7 +160,7 @@ function closeAccountMenu(): void {
 
     <template v-if="compact && drawerOpen">
       <div
-        class="fixed inset-x-0 bottom-0 top-16 z-30 bg-[#05072C]/45"
+        class="fixed inset-x-0 bottom-0 top-16 z-30 bg-brand-ground/45"
         @click="closeDrawer"
       />
       <div

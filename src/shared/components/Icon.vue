@@ -11,9 +11,11 @@
 import { ChevronRight, Circle, CircleCheck, CircleDot, Lock, Menu, Moon, Sun } from 'lucide-vue-next'
 import { computed } from 'vue'
 
+type IconName = 'completed' | 'current' | 'locked' | 'todo' | 'menu' | 'chevron-right' | 'sun' | 'moon'
+
 const props = withDefaults(
   defineProps<{
-    name: 'completed' | 'current' | 'locked' | 'todo' | 'menu' | 'chevron-right' | 'sun' | 'moon'
+    name: IconName
     label?: string
     size?: number
     /** Wraps the glyph in a role-coloured circular badge (PB-35 Direction B/D card look). */
@@ -36,17 +38,13 @@ const glyph = computed(
     })[props.name],
 )
 
-const badgeClass = computed(
-  () =>
-    (
-      {
-        completed: 'bg-success text-success-fg',
-        current: 'bg-accent text-accent-fg',
-        locked: 'bg-surface-sunken text-ink-subtle',
-        todo: 'bg-surface-sunken text-ink-subtle',
-      } as Partial<Record<typeof props.name, string>>
-    )[props.name],
-)
+const badgeClassByName: Partial<Record<IconName, string>> = {
+  completed: 'bg-success text-success-fg',
+  current: 'bg-accent text-accent-fg',
+  locked: 'bg-surface-sunken text-ink-subtle',
+  todo: 'bg-surface-sunken text-ink-subtle',
+}
+const badgeClass = computed(() => badgeClassByName[props.name])
 </script>
 
 <template>

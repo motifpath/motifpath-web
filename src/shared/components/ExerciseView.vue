@@ -6,6 +6,13 @@ import type { components } from '@/api/generated/core-domain'
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 
+/**
+ * image_recognition renders a decorative placeholder fretboard, not the
+ * exercise's own image_url — audio_recognition's play control has no real
+ * audio source either. Neither stimulus is wired to live data yet; this
+ * component only takes exerciseType/prompt/options because nothing upstream
+ * produces the real stimulus URLs to pass it yet.
+ */
 const props = withDefaults(
   defineProps<{
     exerciseType: ExerciseType
@@ -95,7 +102,7 @@ const isLandscape = computed(() => props.direction === 'row')
           data-test="exercise-audio-play"
           class="mb-2 flex items-center gap-2 rounded-md bg-surface-sunken px-[11px] py-[9px]"
         >
-          <div class="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-accent">
+          <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent">
             <svg width="10" height="10" viewBox="0 0 24 24" class="fill-accent-fg"><path d="M8 5v14l11-7z" /></svg>
           </div>
           <span class="text-xs text-ink-muted">Listen · 0:07</span>
