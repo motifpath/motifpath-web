@@ -9,6 +9,8 @@ describe('Icon', () => {
     ['current', 'circle-dot'],
     ['locked', 'lock'],
     ['todo', 'circle'],
+    ['sun', 'sun'],
+    ['moon', 'moon'],
   ] as const)('renders the %s role as the %s glyph', (name, iconClass) => {
     const wrapper = mount(Icon, { props: { name } })
 
