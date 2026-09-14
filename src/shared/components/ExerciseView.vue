@@ -41,7 +41,7 @@ const isLandscape = computed(() => props.direction === 'row')
 </script>
 
 <template>
-  <div class="flex w-full gap-3.5" :class="isLandscape ? 'flex-row' : 'flex-col'">
+  <div data-test="exercise-view-root" class="flex w-full gap-3.5" :class="isLandscape ? 'flex-row' : 'flex-col'">
     <div
       class="text-[15px] font-semibold leading-[1.375rem] text-ink"
       :class="isLandscape ? 'flex-[0_0_40%]' : 'flex-[0_0_auto]'"

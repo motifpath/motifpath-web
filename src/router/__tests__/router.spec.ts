@@ -128,6 +128,24 @@ describe('router', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc')
   })
 
+  it('lets a registered visitor reach the teacher exercise-authoring route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+
+    await router.push('/teacher/exercises/new')
+
+    expect(router.currentRoute.value.name).toBe('teacher-exercise-new')
+  })
+
+  it('sends an unauthenticated visitor from the teacher exercise-authoring route to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/teacher/exercises/new')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.query.redirect).toBe('/teacher/exercises/new')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 
