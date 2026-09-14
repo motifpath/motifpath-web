@@ -58,7 +58,16 @@ const stimulusImageLabel = computed(() =>
 function onStimulusPicked(file: File) {
   const kind = stimulusKind.value
   const target = kind === 'audio' ? form.audioUrl : form.imageUrl
+  const other = kind === 'audio' ? form.imageUrl : form.audioUrl
+
+  // A stimulus only ever makes sense for one kind at a time. Clearing the
+  // other field here (not just when its own type is re-selected) stops a
+  // stale, no-longer-referenced blob: URL from resurfacing if the teacher
+  // switches exercise type back without re-picking.
   revokeIfBlob(target.value)
+  revokeIfBlob(other.value)
+  other.value = ''
+
   stimulusFile.value = { file, kind }
   target.value = URL.createObjectURL(file)
   stimulusPickerOpen.value = false
@@ -87,13 +96,20 @@ async function uploadPendingMedia() {
       })()
     : Promise.resolve()
 
-  const optionUploads = Object.entries(optionFiles).map(async ([id, file]) => {
-    const previousBlobUrl = form.imageOptions.value.find((o) => o.id === id)?.imageUrl
-    const url = await upload(file, 'image')
-    revokeIfBlob(previousBlobUrl)
-    form.setImageOptionURL(id, url)
-    delete optionFiles[id]
-  })
+  // Only image_choice's options actually make it into the saved request
+  // (optionsForRequest() only serializes imageOptions for that type) -- a
+  // pending file left over from a type the teacher has since switched away
+  // from would otherwise still get uploaded for nothing it ends up in.
+  const optionUploads =
+    form.exerciseType.value === 'image_choice'
+      ? Object.entries(optionFiles).map(async ([id, file]) => {
+          const previousBlobUrl = form.imageOptions.value.find((o) => o.id === id)?.imageUrl
+          const url = await upload(file, 'image')
+          revokeIfBlob(previousBlobUrl)
+          form.setImageOptionURL(id, url)
+          delete optionFiles[id]
+        })
+      : []
 
   await Promise.all([stimulusUpload, ...optionUploads])
 }

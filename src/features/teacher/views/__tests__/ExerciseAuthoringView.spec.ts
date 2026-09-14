@@ -385,6 +385,52 @@ describe('ExerciseAuthoringView', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:first.png')
   })
 
+  it('clears the stale image blob when a stimulus is later picked for audio instead, so switching back does not resurrect it', async () => {
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'fret.png'))
+
+    // Switch to audio and pick a stimulus there instead -- the image pick
+    // is now abandoned and should not resurface if we switch back.
+    await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['b'], 'clip.mp3'))
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:fret.png')
+
+    // Switch back to image_recognition without re-picking: the abandoned
+    // blob must not resurface as if it were still a valid selection.
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+    expect(wrapper.get('[data-test="choose-stimulus"]').text()).toContain('No image selected')
+    expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).props('imageUrl')).toBe('')
+  })
+
+  it('does not upload a pending image_choice option file when saving under a different exercise type', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
+    const id = (editor.props('options') as { id: string }[])[0]!.id
+    await editor.vm.$emit('setFile', id, new File(['data'], 'a.png'))
+
+    // Switch away to a type that actually gets saved -- the abandoned
+    // image_choice option's file must not be uploaded.
+    await wrapper.get('[data-test="type-tab-text_response"]').trigger('click')
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+  })
+
   it('revokes the stimulus blob URL once it is replaced by the real uploaded URL', async () => {
     upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
     POST.mockResolvedValueOnce({
