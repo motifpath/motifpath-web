@@ -386,8 +386,9 @@ export interface paths {
          *     - not_started — the student has not yet reached this content node.
          *     - locked — the student must complete an earlier node before accessing this one.
          *
-         *     Only accessible by authenticated users with role student. Returns 404 if
-         *     the student has no active path assignment.
+         *     Accessible by authenticated users with role student, teacher, or admin,
+         *     returning the caller's own active assignment in every case. Returns 404
+         *     if the caller has no active path assignment.
          */
         get: operations["getMyPath"];
         put?: never;
@@ -2045,7 +2046,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The student's current learning path with per-item progress state. */
+            /** @description The caller's current learning path with per-item progress state. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2063,16 +2064,7 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description Only students may access this endpoint. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
-                };
-            };
-            /** @description The authenticated student has no active path assignment. */
+            /** @description The authenticated caller has no active path assignment. */
             404: {
                 headers: {
                     [name: string]: unknown;
