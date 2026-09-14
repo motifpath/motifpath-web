@@ -102,6 +102,22 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.get('[data-test="authoring-body"]').classes()).toContain('flex-row')
   })
 
+  it('shows a chevron-style image trigger with no thumbnail, updating its label once an image is picked', async () => {
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+    const trigger = wrapper.get('[data-test="choose-stimulus"]')
+    expect(trigger.text()).toContain('No image selected')
+    expect(trigger.text()).toContain('Choose image')
+    expect(trigger.find('img').exists()).toBe(false)
+
+    await trigger.trigger('click')
+    const file = new File(['data'], 'fret.png', { type: 'image/png' })
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+
+    expect(wrapper.get('[data-test="choose-stimulus"]').text()).toContain('fret.png')
+  })
+
   it('renders an icon on every exercise-type tab', () => {
     const wrapper = mountView()
 

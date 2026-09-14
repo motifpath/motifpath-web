@@ -74,4 +74,23 @@ describe('ImageRegionEditor', () => {
 
     expect(wrapper.emitted('update:newRegionShape')).toEqual([['rectangle']])
   })
+
+  it('shows a placeholder instead of a broken image when no image is chosen yet', () => {
+    const wrapper = mount(ImageRegionEditor, {
+      props: { imageUrl: '', regions: [], newRegionShape: 'circle' },
+    })
+
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.find('[data-test="no-image-placeholder"]').exists()).toBe(true)
+  })
+
+  it('does not add a region from a click when no image is chosen yet', async () => {
+    const wrapper = mount(ImageRegionEditor, {
+      props: { imageUrl: '', regions: [], newRegionShape: 'circle' },
+    })
+
+    await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 10, clientY: 10 })
+
+    expect(wrapper.emitted('add-region')).toBeUndefined()
+  })
 })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlignLeft, AudioLines, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
+import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
@@ -44,6 +44,9 @@ const optionFiles = reactive<Record<string, File>>({})
 const stimulusKind = computed(() => (form.exerciseType.value === 'audio_recognition' ? 'audio' : 'image'))
 const hasStimulus = computed(() =>
   stimulusKind.value === 'audio' ? !!form.audioUrl.value : !!form.imageUrl.value,
+)
+const stimulusImageLabel = computed(() =>
+  form.imageUrl.value ? (stimulusFile.value?.name ?? 'Image selected') : 'No image selected',
 )
 
 function onStimulusPicked(file: File) {
@@ -193,13 +196,23 @@ async function save() {
           </span>
         </div>
 
-        <div
-          v-if="form.exerciseType.value === 'image_recognition' || form.exerciseType.value === 'audio_recognition'"
-          class="flex flex-col gap-2"
-        >
-          <label class="text-sm font-semibold">
-            {{ stimulusKind === 'audio' ? 'Audio stimulus — what the student listens to' : 'Stimulus image' }}
-          </label>
+        <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-2">
+          <button
+            type="button"
+            data-test="choose-stimulus"
+            class="flex w-fit items-center gap-2.5 rounded-md border border-border bg-surface-raised py-2 pl-2.5 pr-2"
+            @click="stimulusPickerOpen = true"
+          >
+            <span class="text-left">
+              <span class="block text-[0.8125rem] font-semibold text-ink">{{ stimulusImageLabel }}</span>
+              <span class="block text-xs text-ink-subtle">Choose image</span>
+            </span>
+            <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
+          <label class="text-sm font-semibold">Audio stimulus — what the student listens to</label>
           <button
             type="button"
             data-test="choose-stimulus"
@@ -208,7 +221,7 @@ async function save() {
           >
             {{ hasStimulus ? 'Change' : 'Choose' }} stimulus {{ stimulusKind }}
           </button>
-          <audio v-if="stimulusKind === 'audio' && form.audioUrl.value" :src="form.audioUrl.value" controls class="w-full" />
+          <audio v-if="form.audioUrl.value" :src="form.audioUrl.value" controls class="w-full" />
         </div>
 
         <ImageRegionEditor

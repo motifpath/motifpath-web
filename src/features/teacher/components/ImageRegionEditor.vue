@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Circle, Minus, Plus, Square, X } from 'lucide-vue-next'
+import { Circle, ImageOff, Minus, Plus, Square, X } from 'lucide-vue-next'
 
 import type { Region } from '@/features/teacher/composables/useExerciseForm'
 
@@ -26,6 +26,7 @@ function percentFromEvent(container: HTMLElement, clientX: number, clientY: numb
 }
 
 function onCanvasClick(event: MouseEvent) {
+  if (!props.imageUrl) return
   const container = event.currentTarget as HTMLElement
   const { x, y } = percentFromEvent(container, event.clientX, event.clientY)
   emit('add-region', x, y)
@@ -79,10 +80,19 @@ function startDrag(region: Region, event: MouseEvent) {
 
     <div
       data-test="region-canvas"
-      class="relative cursor-crosshair overflow-hidden rounded-lg border border-border bg-surface-sunken"
+      class="relative overflow-hidden rounded-lg border border-border bg-surface-sunken"
+      :class="props.imageUrl ? 'cursor-crosshair' : 'cursor-default'"
       @click="onCanvasClick"
     >
-      <img :src="props.imageUrl" alt="" class="block h-60 w-full object-cover" draggable="false" />
+      <div
+        v-if="!props.imageUrl"
+        data-test="no-image-placeholder"
+        class="flex h-60 w-full flex-col items-center justify-center gap-2 text-ink-subtle"
+      >
+        <ImageOff :size="26" aria-hidden="true" />
+        <span class="text-[0.8125rem]">Choose a stimulus image to place regions</span>
+      </div>
+      <img v-else :src="props.imageUrl" alt="" class="block h-60 w-full object-cover" draggable="false" />
       <div
         v-for="(region, index) in props.regions"
         :key="region.id"
