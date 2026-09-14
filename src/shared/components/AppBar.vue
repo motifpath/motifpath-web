@@ -49,7 +49,7 @@ function closeAccountMenu(): void {
 
 <template>
   <div
-    class="relative flex h-16 items-center gap-4 bg-surface-raised px-6 shadow-level1"
+    class="relative flex h-16 items-center gap-4 bg-surface-raised px-[24px] shadow-level1"
   >
     <button
       v-if="compact"
@@ -127,7 +127,7 @@ function closeAccountMenu(): void {
       data-test="app-bar-theme-toggle"
       :aria-pressed="themeStore.theme === 'dark'"
       aria-label="Toggle theme"
-      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
+      class="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
       @click="themeStore.toggle()"
     >
       <Icon :name="themeStore.theme === 'dark' ? 'sun' : 'moon'" :size="15" />
@@ -137,7 +137,7 @@ function closeAccountMenu(): void {
       type="button"
       data-test="app-bar-avatar"
       aria-label="Account menu"
-      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-fg"
+      class="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-fg"
       @click="toggleAccountMenu"
     >
       {{ displayInitial }}
@@ -151,7 +151,7 @@ function closeAccountMenu(): void {
       />
       <div
         data-test="app-bar-account-menu"
-        class="absolute right-6 top-14 z-40 rounded-lg border border-border bg-surface-raised p-1.5 shadow-level2"
+        class="absolute right-[24px] top-16 z-40 rounded-lg border border-border bg-surface-raised p-1.5 shadow-level2"
         @click="closeAccountMenu"
       >
         <SignOutLink class="block w-full px-2.5 py-1.5 text-left" />

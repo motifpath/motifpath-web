@@ -95,7 +95,7 @@ const isLandscape = computed(() => props.direction === 'row')
           data-test="exercise-audio-play"
           class="mb-2 flex items-center gap-2 rounded-md bg-surface-sunken px-[11px] py-[9px]"
         >
-          <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent">
+          <div class="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full bg-accent">
             <svg width="10" height="10" viewBox="0 0 24 24" class="fill-accent-fg"><path d="M8 5v14l11-7z" /></svg>
           </div>
           <span class="text-xs text-ink-muted">Listen · 0:07</span>
