@@ -1,9 +1,11 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import type { ImageOption } from '@/features/teacher/composables/useExerciseForm'
+
+vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:local-preview') })
 
 const options: ImageOption[] = [
   { id: 'o1', imageUrl: 'https://cdn.example.com/a.png', caption: 'Open position', correct: true },
@@ -19,15 +21,17 @@ describe('ImageChoiceOptionsEditor', () => {
     expect(wrapper.findAll('[data-test="option-correct"][aria-pressed="true"]')).toHaveLength(1)
   })
 
-  it('opens the image picker for an option and applies the picked URL', async () => {
+  it('opens the image picker for an option, previews it locally, and defers upload', async () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+    const file = new File(['data'], 'new.png', { type: 'image/png' })
 
     await wrapper.findAll('[data-test="choose-image"]')[1]!.trigger('click')
     expect(wrapper.find('[data-test="image-picker-modal"]').exists()).toBe(true)
 
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', 'https://cdn.example.com/new.png')
+    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
 
-    expect(wrapper.emitted('setImage')).toEqual([['o2', 'https://cdn.example.com/new.png']])
+    expect(wrapper.emitted('setPreview')).toEqual([['o2', 'blob:local-preview']])
+    expect(wrapper.emitted('setFile')).toEqual([['o2', file]])
     expect(wrapper.find('[data-test="image-picker-modal"]').exists()).toBe(false)
   })
 

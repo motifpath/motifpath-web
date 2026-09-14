@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Check, ImagePlus, X } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
@@ -6,7 +7,10 @@ import type { ImageOption } from '@/features/teacher/composables/useExerciseForm
 
 defineProps<{ options: ImageOption[] }>()
 const emit = defineEmits<{
-  setImage: [id: string, url: string]
+  /** A local preview URL to show immediately — not yet uploaded. */
+  setPreview: [id: string, previewUrl: string]
+  /** The raw file, uploaded only when the exercise is saved. */
+  setFile: [id: string, file: File]
   editCaption: [id: string, caption: string]
   toggle: [id: string]
   remove: [id: string]
@@ -18,8 +22,11 @@ const pickerTargetId = ref<string | null>(null)
 function openPicker(id: string) {
   pickerTargetId.value = id
 }
-function onPicked(url: string) {
-  if (pickerTargetId.value) emit('setImage', pickerTargetId.value, url)
+function onPicked(file: File) {
+  if (pickerTargetId.value) {
+    emit('setPreview', pickerTargetId.value, URL.createObjectURL(file))
+    emit('setFile', pickerTargetId.value, file)
+  }
   pickerTargetId.value = null
 }
 </script>
@@ -51,7 +58,7 @@ function onPicked(url: string) {
           class="absolute right-1 top-1 flex h-[22px] w-[22px] items-center justify-center rounded bg-surface-raised text-ink-subtle"
           @click="emit('remove', option.id)"
         >
-          ×
+          <X :size="12" aria-hidden="true" />
         </button>
       </div>
       <input
@@ -69,6 +76,7 @@ function onPicked(url: string) {
         :class="option.correct ? 'border-success bg-success-muted text-success' : 'border-border bg-surface-raised text-ink-muted'"
         @click="emit('toggle', option.id)"
       >
+        <Check v-if="option.correct" :size="12" aria-hidden="true" />
         Correct answer
       </button>
     </div>
@@ -78,7 +86,8 @@ function onPicked(url: string) {
       class="flex min-h-[150px] flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-accent"
       @click="emit('add')"
     >
-      + Add image option
+      <ImagePlus :size="18" aria-hidden="true" />
+      Add image option
     </button>
 
     <ImagePickerModal :open="pickerTargetId !== null" @select="onPicked" @close="pickerTargetId = null" />

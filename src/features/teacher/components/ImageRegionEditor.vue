@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Circle, Minus, Plus, Square, X } from 'lucide-vue-next'
+
 import type { Region } from '@/features/teacher/composables/useExerciseForm'
 
 const props = defineProps<{
@@ -61,7 +63,7 @@ function startDrag(region: Region, event: MouseEvent) {
           :class="props.newRegionShape === 'circle' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
           @click="emit('update:newRegionShape', 'circle')"
         >
-          ○
+          <Circle :size="14" aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -70,7 +72,7 @@ function startDrag(region: Region, event: MouseEvent) {
           :class="props.newRegionShape === 'rectangle' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
           @click="emit('update:newRegionShape', 'rectangle')"
         >
-          ▭
+          <Square :size="14" aria-hidden="true" />
         </button>
       </div>
     </div>
@@ -133,7 +135,7 @@ function startDrag(region: Region, event: MouseEvent) {
             class="flex h-6 w-6 items-center justify-center rounded text-ink-subtle"
             @click="emit('remove-region', region.id)"
           >
-            ×
+            <X :size="14" aria-hidden="true" />
           </button>
         </div>
 
@@ -142,19 +144,15 @@ function startDrag(region: Region, event: MouseEvent) {
           <button
             type="button"
             data-test="shrink"
-            class="h-6 w-6 rounded border border-border bg-surface-sunken font-bold"
+            class="flex h-6 w-6 items-center justify-center rounded border border-border bg-surface-sunken"
             @click="emit('resize-region', region.id, -8, -8)"
-          >
-            −
-          </button>
+          ><Minus :size="14" aria-hidden="true" /></button>
           <button
             type="button"
             data-test="grow"
-            class="h-6 w-6 rounded border border-border bg-surface-sunken font-bold"
+            class="flex h-6 w-6 items-center justify-center rounded border border-border bg-surface-sunken"
             @click="emit('resize-region', region.id, 8, 8)"
-          >
-            +
-          </button>
+          ><Plus :size="14" aria-hidden="true" /></button>
         </div>
         <div v-else class="flex items-center gap-4 pl-10">
           <div class="flex items-center gap-2">
@@ -162,38 +160,30 @@ function startDrag(region: Region, event: MouseEvent) {
             <button
               type="button"
               data-test="shrink-width"
-              class="h-6 w-6 rounded border border-border bg-surface-sunken font-bold"
+              class="flex h-6 w-6 items-center justify-center rounded border border-border bg-surface-sunken"
               @click="emit('resize-region', region.id, -8, 0)"
-            >
-              −
-            </button>
+            ><Minus :size="14" aria-hidden="true" /></button>
             <button
               type="button"
               data-test="grow-width"
-              class="h-6 w-6 rounded border border-border bg-surface-sunken font-bold"
+              class="flex h-6 w-6 items-center justify-center rounded border border-border bg-surface-sunken"
               @click="emit('resize-region', region.id, 8, 0)"
-            >
-              +
-            </button>
+            ><Plus :size="14" aria-hidden="true" /></button>
           </div>
           <div class="flex items-center gap-2">
             <span class="text-xs text-ink-subtle">Height</span>
             <button
               type="button"
               data-test="shrink-height"
-              class="h-6 w-6 rounded border border-border bg-surface-sunken font-bold"
+              class="flex h-6 w-6 items-center justify-center rounded border border-border bg-surface-sunken"
               @click="emit('resize-region', region.id, 0, -8)"
-            >
-              −
-            </button>
+            ><Minus :size="14" aria-hidden="true" /></button>
             <button
               type="button"
               data-test="grow-height"
-              class="h-6 w-6 rounded border border-border bg-surface-sunken font-bold"
+              class="flex h-6 w-6 items-center justify-center rounded border border-border bg-surface-sunken"
               @click="emit('resize-region', region.id, 0, 8)"
-            >
-              +
-            </button>
+            ><Plus :size="14" aria-hidden="true" /></button>
           </div>
         </div>
       </div>

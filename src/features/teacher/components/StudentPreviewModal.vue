@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 import type { ExerciseType, ImageOption, Region, TextOption } from '@/features/teacher/composables/useExerciseForm'
@@ -55,7 +56,7 @@ const orientation = ref<'portrait' | 'landscape'>('portrait')
             class="flex h-7 w-7 items-center justify-center rounded bg-surface-sunken text-ink-muted"
             @click="emit('close')"
           >
-            ×
+            <X :size="14" aria-hidden="true" />
           </button>
         </div>
       </div>

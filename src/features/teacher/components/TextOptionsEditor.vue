@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Check, Plus, X } from 'lucide-vue-next'
+
 import type { TextOption } from '@/features/teacher/composables/useExerciseForm'
 
 defineProps<{ options: TextOption[] }>()
@@ -22,7 +24,7 @@ const emit = defineEmits<{
         :class="option.correct ? 'border-success bg-success text-success-fg' : 'border-border bg-surface-raised'"
         @click="emit('toggle', option.id)"
       >
-        <span v-if="option.correct">✓</span>
+        <Check v-if="option.correct" :size="14" aria-hidden="true" />
       </button>
       <input
         type="text"
@@ -38,16 +40,16 @@ const emit = defineEmits<{
         class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded text-ink-subtle"
         @click="emit('remove', option.id)"
       >
-        ×
+        <X :size="14" aria-hidden="true" />
       </button>
     </div>
     <button
       type="button"
       data-test="add-option"
-      class="mt-1 self-start rounded-md border border-dashed border-border px-3.5 py-2 text-sm font-semibold text-accent"
+      class="mt-1 flex items-center gap-1.5 self-start rounded-md border border-dashed border-border px-3.5 py-2 text-sm font-semibold text-accent"
       @click="emit('add')"
     >
-      + Add option
+      <Plus :size="14" aria-hidden="true" /> Add option
     </button>
   </div>
 </template>

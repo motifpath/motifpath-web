@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 defineProps<{ tags: string[] }>()
@@ -28,7 +29,7 @@ function submit() {
         :aria-label="`Remove tag ${tag}`"
         @click="emit('remove', tag)"
       >
-        ×
+        <X :size="12" aria-hidden="true" />
       </button>
     </span>
     <input
