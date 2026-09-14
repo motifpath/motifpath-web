@@ -8,12 +8,14 @@
  * otherwise present in the DOM — it becomes the accessible name and the SVG
  * is exposed to assistive tech as an image instead of hidden.
  */
-import { Circle, CircleCheck, CircleDot, Lock } from 'lucide-vue-next'
+import { Circle, CircleCheck, CircleDot, Lock, Moon, Sun } from 'lucide-vue-next'
 import { computed } from 'vue'
+
+type IconName = 'completed' | 'current' | 'locked' | 'todo' | 'sun' | 'moon'
 
 const props = withDefaults(
   defineProps<{
-    name: 'completed' | 'current' | 'locked' | 'todo'
+    name: IconName
     label?: string
     size?: number
     /** Wraps the glyph in a role-coloured circular badge (PB-35 Direction B/D card look). */
@@ -23,18 +25,24 @@ const props = withDefaults(
 )
 
 const glyph = computed(
-  () => ({ completed: CircleCheck, current: CircleDot, locked: Lock, todo: Circle })[props.name],
-)
-
-const badgeClass = computed(
   () =>
     ({
-      completed: 'bg-success text-success-fg',
-      current: 'bg-accent text-accent-fg',
-      locked: 'bg-surface-sunken text-ink-subtle',
-      todo: 'bg-surface-sunken text-ink-subtle',
+      completed: CircleCheck,
+      current: CircleDot,
+      locked: Lock,
+      todo: Circle,
+      sun: Sun,
+      moon: Moon,
     })[props.name],
 )
+
+const badgeClassByName: Partial<Record<IconName, string>> = {
+  completed: 'bg-success text-success-fg',
+  current: 'bg-accent text-accent-fg',
+  locked: 'bg-surface-sunken text-ink-subtle',
+  todo: 'bg-surface-sunken text-ink-subtle',
+}
+const badgeClass = computed(() => badgeClassByName[props.name])
 </script>
 
 <template>

@@ -43,4 +43,21 @@ describe('ThemeToggle', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false)
     expect(wrapper.get('[data-test="theme-toggle"]').attributes('aria-pressed')).toBe('false')
   })
+
+  it('shows a moon icon and an accessible label in light theme', () => {
+    const wrapper = mount(ThemeToggle)
+
+    const button = wrapper.get('[data-test="theme-toggle"]')
+    expect(button.attributes('aria-label')).toBe('Toggle theme')
+    expect(button.find('svg.lucide-moon').exists()).toBe(true)
+  })
+
+  it('shows a sun icon once toggled to dark theme', async () => {
+    const wrapper = mount(ThemeToggle)
+
+    await wrapper.get('[data-test="theme-toggle"]').trigger('click')
+
+    expect(wrapper.find('svg.lucide-sun').exists()).toBe(true)
+    expect(wrapper.find('svg.lucide-moon').exists()).toBe(false)
+  })
 })
