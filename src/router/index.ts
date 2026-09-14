@@ -60,6 +60,18 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/teacher',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'exercises/new',
+        name: 'exercise-authoring',
+        component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
+      },
+    ],
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/shared/components/NotFoundView.vue'),
