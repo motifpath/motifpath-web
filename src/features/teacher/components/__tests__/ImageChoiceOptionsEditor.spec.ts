@@ -50,4 +50,12 @@ describe('ImageChoiceOptionsEditor', () => {
     await wrapper.get('[data-test="add-option"]').trigger('click')
     expect(wrapper.emitted('add')).toHaveLength(1)
   })
+
+  it('uses a 3-column grid by default and 2 columns when compact', () => {
+    const wide = mount(ImageChoiceOptionsEditor, { props: { options } })
+    expect(wide.classes()).toContain('grid-cols-3')
+
+    const narrow = mount(ImageChoiceOptionsEditor, { props: { options, compact: true } })
+    expect(narrow.classes()).toContain('grid-cols-2')
+  })
 })

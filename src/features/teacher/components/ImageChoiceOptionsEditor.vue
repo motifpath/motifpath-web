@@ -5,7 +5,7 @@ import { ref } from 'vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import type { ImageOption } from '@/features/teacher/composables/useExerciseForm'
 
-defineProps<{ options: ImageOption[] }>()
+withDefaults(defineProps<{ options: ImageOption[]; compact?: boolean }>(), { compact: false })
 const emit = defineEmits<{
   /** A local preview URL to show immediately — not yet uploaded. */
   setPreview: [id: string, previewUrl: string]
@@ -32,7 +32,7 @@ function onPicked(file: File) {
 </script>
 
 <template>
-  <div class="grid grid-cols-3 gap-3">
+  <div class="grid gap-3" :class="compact ? 'grid-cols-2' : 'grid-cols-3'">
     <div
       v-for="option in options"
       :key="option.id"

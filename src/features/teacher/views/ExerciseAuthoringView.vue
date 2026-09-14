@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye, TriangleAlert } from 'lucide-vue-next'
+import { AlignLeft, AudioLines, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
 
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
@@ -28,11 +28,11 @@ const form = useExerciseForm()
 const { coreApi } = useApi()
 const { upload } = useMediaUpload()
 
-const exerciseTypes: { value: ExerciseType; label: string }[] = [
-  { value: 'image_recognition', label: 'Image recognition' },
-  { value: 'text_response', label: 'Text response' },
-  { value: 'audio_recognition', label: 'Audio recognition' },
-  { value: 'image_choice', label: 'Image choice' },
+const exerciseTypes: { value: ExerciseType; label: string; icon: typeof Image }[] = [
+  { value: 'image_recognition', label: 'Image recognition', icon: Image },
+  { value: 'text_response', label: 'Text response', icon: AlignLeft },
+  { value: 'audio_recognition', label: 'Audio recognition', icon: AudioLines },
+  { value: 'image_choice', label: 'Image choice', icon: Images },
 ]
 
 // Nothing is uploaded until save — picking a file only sets a local blob:
@@ -127,14 +127,23 @@ async function save() {
       </p>
     </div>
 
-    <div v-else class="flex flex-1">
-      <main class="flex min-w-0 flex-1 flex-col gap-6 px-[48px] pb-[80px] pt-10">
+    <div
+      v-else
+      data-test="authoring-body"
+      class="flex flex-1"
+      :class="isCompact ? 'flex-col' : 'flex-row'"
+    >
+      <main
+        class="flex min-w-0 flex-1 flex-col gap-6"
+        :class="isCompact ? 'px-4 pb-6 pt-[20px]' : 'px-[48px] pb-[80px] pt-10'"
+      >
         <div class="flex flex-col gap-1.5">
           <input
             v-model="form.title.value"
             type="text"
             placeholder="Untitled exercise"
-            class="border-none bg-transparent text-xl font-bold text-ink outline-none"
+            class="border-none bg-transparent font-bold text-ink outline-none"
+            :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
           />
           <span class="text-sm text-ink-subtle">Internal title — for the content library, not shown to students</span>
         </div>
@@ -154,16 +163,17 @@ async function save() {
 
         <div class="flex flex-col gap-2.5">
           <label class="text-sm font-semibold">Exercise type</label>
-          <div class="flex w-fit gap-2 rounded-lg bg-surface-sunken p-1">
+          <div class="flex w-fit gap-2 rounded-lg bg-surface-sunken p-1" :class="{ 'flex-wrap': isCompact }">
             <button
               v-for="type in exerciseTypes"
               :key="type.value"
               type="button"
               :data-test="`type-tab-${type.value}`"
-              class="rounded-md px-4 py-2 text-sm font-semibold"
+              class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold"
               :class="form.exerciseType.value === type.value ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
               @click="form.exerciseType.value = type.value"
             >
+              <component :is="type.icon" :size="16" aria-hidden="true" />
               {{ type.label }}
             </button>
           </div>
@@ -225,6 +235,7 @@ async function save() {
         <ImageChoiceOptionsEditor
           v-else-if="form.exerciseType.value === 'image_choice'"
           :options="form.imageOptions.value"
+          :compact="isCompact"
           @set-preview="form.setImageOptionURL"
           @set-file="onOptionFile"
           @edit-caption="form.editImageOptionCaption"
@@ -249,7 +260,14 @@ async function save() {
         </div>
       </main>
 
-      <aside class="flex w-[360px] flex-shrink-0 flex-col gap-5 border-l border-border bg-surface-raised px-[28px] py-[32px]">
+      <aside
+        class="flex flex-col gap-5 bg-surface-raised"
+        :class="
+          isCompact
+            ? 'w-full border-t border-border px-4 py-5'
+            : 'w-[360px] flex-shrink-0 border-l border-border px-[28px] py-[32px]'
+        "
+      >
         <div data-test="reuse-indicator" class="flex flex-col gap-3">
           <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">Used in challenges</span>
           <p v-if="!savedExerciseId" class="text-sm text-ink-subtle">Not yet linked to any challenge — save the exercise first.</p>

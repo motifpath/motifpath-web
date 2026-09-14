@@ -32,6 +32,17 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
 
 vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:local-preview'), revokeObjectURL: vi.fn() })
 
+function mockMatchMedia(compact: boolean): void {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: compact,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}
+
 function mountView() {
   return mount(ExerciseAuthoringView, {
     global: {
@@ -59,14 +70,7 @@ describe('ExerciseAuthoringView', () => {
     currentUser.profile.role = 'teacher'
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
-    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }))
+    mockMatchMedia(false)
   })
 
   it('renders the AppBar in teacher context with a New exercise breadcrumb', () => {
@@ -81,6 +85,30 @@ describe('ExerciseAuthoringView', () => {
 
     expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
     expect(wrapper.findComponent({ name: 'TextOptionsEditor' }).exists()).toBe(true)
+  })
+
+  it('stacks main content above the sidebar instead of side by side when compact', async () => {
+    mockMatchMedia(true)
+    const wrapper = mountView()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-test="authoring-body"]').classes()).toContain('flex-col')
+    expect(wrapper.get('[data-test="reuse-indicator"]').element.closest('aside')?.className).toContain('w-full')
+  })
+
+  it('lays main content beside the sidebar when not compact', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="authoring-body"]').classes()).toContain('flex-row')
+  })
+
+  it('renders an icon on every exercise-type tab', () => {
+    const wrapper = mountView()
+
+    for (const type of ['image_recognition', 'text_response', 'audio_recognition', 'image_choice']) {
+      const tab = wrapper.get(`[data-test="type-tab-${type}"]`)
+      expect(tab.find('svg').exists()).toBe(true)
+    }
   })
 
   it('shows the form for a teacher', () => {
