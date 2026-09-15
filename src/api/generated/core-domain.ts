@@ -89,7 +89,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List the challenges attached to a content node
+         * @description Returns the challenges attached to the specified content node, so a client
+         *     can discover whether a node has a practice step before linking into it. A
+         *     node with no challenge returns an empty array — completion for that node
+         *     comes from its content alone. Any authenticated user may list a node's
+         *     challenges.
+         */
+        get: operations["listContentNodeChallenges"];
         put?: never;
         /**
          * Create a challenge for a content node
@@ -155,6 +163,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/practice-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start a randomized, skill-targeted practice session
+         * @description Selects up to count exercises tagged with skill_tag from the reusable
+         *     exercise pool, in random order with each exercise's options also
+         *     shuffled, and returns them grouped under a new practice_session_id.
+         *     A practice session is not a stored resource — nothing is persisted by
+         *     this call, and repeating it returns a different selection and a new
+         *     practice_session_id. The returned exercises include which option(s)
+         *     are correct, on the same client-side-scoring basis as challenge
+         *     exercises.
+         *
+         *     This is the entry point for a student's self-directed practice
+         *     between lessons — for example on a commute or a work break — rather
+         *     than practice tied to a specific content node. The client threads the
+         *     returned practice_session_id through the trigger_context of the
+         *     exercise.* tracking events it emits while attempting the session, so
+         *     the recommendation engine can evaluate outcomes per skill tag.
+         *
+         *     Any authenticated user may start a practice session.
+         */
+        get: operations["startPracticeSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/challenges/{challenge_id}/exercises": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the exercises linked to a challenge
+         * @description Returns the exercises currently linked to the specified challenge, in the
+         *     shape a client needs to run a practice attempt — each exercise's prompt,
+         *     type, and options, including which option(s) are correct. Any authenticated
+         *     user may list a challenge's exercises; the client is responsible for
+         *     withholding correctness from the student's own view while the attempt is
+         *     in progress and using it only to score the attempt once submitted.
+         *
+         *     Exercise and option order follow the challenge's shuffle_exercises and
+         *     shuffle_options settings — when either is true, that ordering is
+         *     randomized fresh on every call and is not stable across requests.
+         */
+        get: operations["listChallengeExercises"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/challenges/{challenge_id}/exercises/{exercise_id}": {
         parameters: {
             query?: never;
@@ -179,6 +252,59 @@ export interface paths {
          *     challenges it is part of.
          */
         delete: operations["unlinkExerciseFromChallenge"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/content-nodes/{content_node_id}/exercises": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a content node's path exercises
+         * @description Returns the exercises linked to the specified content node as path
+         *     exercises — the static, teacher-curated introductory practice for that
+         *     node. Unlike a challenge, a path exercise is not an assessment: it
+         *     carries no pass threshold and is always returned in link order, never
+         *     shuffled. Any authenticated user may list a node's path exercises.
+         */
+        get: operations["listContentNodePathExercises"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/content-nodes/{content_node_id}/exercises/{exercise_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link an existing exercise to a content node as a path exercise
+         * @description Links an existing, standalone exercise into the specified content node
+         *     as a path exercise. The same exercise may be linked as a path exercise
+         *     on any number of nodes, and independently linked into any number of
+         *     challenges — these are separate relationships.
+         */
+        post: operations["linkExerciseToContentNode"];
+        /**
+         * Unlink an exercise from a content node
+         * @description Removes the path-exercise link between the specified exercise and
+         *     content node. The exercise itself is not deleted and remains linked to
+         *     any other nodes or challenges it is part of.
+         */
+        delete: operations["unlinkExerciseFromContentNode"];
         options?: never;
         head?: never;
         patch?: never;
@@ -820,6 +946,20 @@ export interface components {
              *     failure.
              */
             remediation_target_content_node_id?: string;
+            /**
+             * @description When true, the order in which this challenge's exercises are
+             *     returned varies per request. When false, exercises are always
+             *     returned in link order. Defaults to false — an assessment the
+             *     teacher wants comparable across attempts should keep a fixed order.
+             * @default false
+             */
+            shuffle_exercises: boolean;
+            /**
+             * @description When true, each returned exercise's options are reordered per
+             *     request, independent of shuffle_exercises. Defaults to false.
+             * @default false
+             */
+            shuffle_options: boolean;
         };
         /**
          * @description A challenge is the assessment unit for a content node. It groups exercises
@@ -847,6 +987,10 @@ export interface components {
              * @description Content node recommended when the student fails this challenge. Absent if not configured.
              */
             remediation_target_content_node_id?: string;
+            /** @description Whether this challenge's exercise order varies per request. */
+            shuffle_exercises: boolean;
+            /** @description Whether each exercise's option order varies per request, independent of shuffle_exercises. */
+            shuffle_options: boolean;
             /**
              * Format: date-time
              * @description Timestamp at which the challenge was created.
@@ -900,6 +1044,12 @@ export interface components {
              *     option cannot be graded.
              */
             options: components["schemas"]["Option"][];
+            /**
+             * @description Authoring estimate of the time a student needs to attempt this
+             *     exercise once. Optional — used to fit practice sessions and
+             *     challenges to a student's available time.
+             */
+            estimated_duration_seconds?: number;
         };
         /**
          * @description A reusable, standalone practice item classified by skill tags and
@@ -944,10 +1094,47 @@ export interface components {
              */
             challenge_ids: string[];
             /**
+             * @description The content nodes this exercise is currently linked to as a path
+             *     exercise. May be empty. Independent of challenge_ids — an exercise
+             *     can be a path exercise on a node, part of a challenge, both, or
+             *     neither (practice-session-only).
+             */
+            content_node_ids: string[];
+            /**
+             * @description Authoring estimate of the time a student needs to attempt this
+             *     exercise once. Used to fit a practice session to the time a
+             *     student reports having available, and to size a challenge's
+             *     expected length. Absent when the author has not estimated it.
+             */
+            estimated_duration_seconds?: number;
+            /**
              * Format: date-time
              * @description Timestamp at which the exercise was created.
              */
             created_at: string;
+        };
+        /**
+         * @description A generated, skill-targeted set of exercises for self-directed
+         *     practice, returned by GET /practice-sessions. Not a stored resource —
+         *     exists only in the response that generated it.
+         */
+        PracticeSession: {
+            /**
+             * Format: uuid
+             * @description Identifier for this generated session. Carried as
+             *     practice_session_id in trigger_context on the exercise.* tracking
+             *     events emitted while attempting it, so outcomes can be grouped
+             *     back to the session and skill tag that produced them.
+             */
+            practice_session_id: string;
+            /** @description The skill tag this session was generated for. */
+            skill_tag: string;
+            /**
+             * @description The session's exercises, in randomized order, each with its
+             *     options also randomized. May contain fewer than the requested
+             *     count if the tagged pool is smaller.
+             */
+            exercises: components["schemas"]["Exercise"][];
         };
         /**
          * @description One selectable answer choice within an exercise. An exercise's
@@ -1150,6 +1337,7 @@ export type SchemaCreateChallengeRequest = components['schemas']['CreateChalleng
 export type SchemaChallenge = components['schemas']['Challenge'];
 export type SchemaCreateExerciseRequest = components['schemas']['CreateExerciseRequest'];
 export type SchemaExercise = components['schemas']['Exercise'];
+export type SchemaPracticeSession = components['schemas']['PracticeSession'];
 export type SchemaOption = components['schemas']['Option'];
 export type SchemaOptionRegion = components['schemas']['OptionRegion'];
 export type SchemaCreateMediaUploadUrlRequest = components['schemas']['CreateMediaUploadUrlRequest'];
@@ -1308,6 +1496,47 @@ export interface operations {
                 };
             };
             /** @description No content node exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listContentNodeChallenges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the content node whose challenges are requested. */
+                content_node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The content node's challenges, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No content node exists with the given content_node_id. */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1482,6 +1711,93 @@ export interface operations {
             };
         };
     };
+    startPracticeSession: {
+        parameters: {
+            query: {
+                /** @description The skill or technique tag to select exercises for (e.g. "alternate_picking"). */
+                skill_tag: string;
+                /**
+                 * @description The number of exercises requested. The response may contain fewer
+                 *     if the exercise pool tagged with skill_tag is smaller than count.
+                 */
+                count?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The generated practice session, possibly with fewer exercises than requested. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeSession"];
+                };
+            };
+            /** @description skill_tag was omitted or empty, or count was outside 1-50. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    listChallengeExercises: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the challenge whose exercises are requested. */
+                challenge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The challenge's linked exercises, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No challenge exists with the given challenge_id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     linkExerciseToChallenge: {
         parameters: {
             query?: never;
@@ -1592,6 +1908,168 @@ export interface operations {
              * @description No challenge exists with challenge_id, no exercise exists with
              *     exercise_id, or the exercise is not currently linked to this
              *     challenge.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listContentNodePathExercises: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the content node whose path exercises are requested. */
+                content_node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The node's path exercises, in link order, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No content node exists with the given content_node_id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    linkExerciseToContentNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the content node to link the exercise into. */
+                content_node_id: string;
+                /** @description The ID of the exercise to link. */
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exercise linked. Returns the updated exercise. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to link exercises.
+             *     Only teachers and admins may link exercises to content nodes.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No content node exists with content_node_id, or no exercise exists with exercise_id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The exercise is already linked to this content node. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    unlinkExerciseFromContentNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the content node to unlink the exercise from. */
+                content_node_id: string;
+                /** @description The ID of the exercise to unlink. */
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exercise unlinked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to unlink exercises.
+             *     Only teachers and admins may unlink exercises from content nodes.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description No content node exists with content_node_id, no exercise exists
+             *     with exercise_id, or the exercise is not currently linked to this
+             *     content node.
              */
             404: {
                 headers: {
