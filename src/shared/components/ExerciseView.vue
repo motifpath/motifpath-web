@@ -24,13 +24,27 @@ const props = withDefaults(
      */
     options: Option[]
     direction?: 'column' | 'row'
+    /**
+     * Uncontrolled when omitted (the authoring preview never binds it, and
+     * still shows the click highlight from its own local state). A caller
+     * that does bind it — Practice, to restore an answer on Back — owns the
+     * value from then on and must handle `update:selectedOptionId` itself.
+     */
+    selectedOptionId?: string | null
   }>(),
-  { direction: 'column' },
+  { direction: 'column', selectedOptionId: undefined },
 )
 
-const selected = ref<string | null>(null)
+const emit = defineEmits<{ 'update:selectedOptionId': [optionId: string] }>()
+
+const internalSelected = ref<string | null>(null)
+const selected = computed(() =>
+  props.selectedOptionId !== undefined ? props.selectedOptionId : internalSelected.value,
+)
+
 function select(optionId: string): void {
-  selected.value = optionId
+  internalSelected.value = optionId
+  emit('update:selectedOptionId', optionId)
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')

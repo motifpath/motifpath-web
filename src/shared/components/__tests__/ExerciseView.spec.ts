@@ -113,4 +113,30 @@ describe('ExerciseView', () => {
 
     expect(wrapper.classes()).toContain('flex-col')
   })
+
+  it('emits update:selectedOptionId with the clicked option id', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[1]?.trigger('click')
+
+    expect(wrapper.emitted('update:selectedOptionId')).toEqual([['o2']])
+  })
+
+  it('renders a caller-supplied selectedOptionId as already selected', () => {
+    const wrapper = mount(ExerciseView, {
+      props: {
+        exerciseType: 'text_response',
+        prompt: 'p',
+        options: textOptions,
+        selectedOptionId: 'o2',
+      },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    expect(rows[1]?.attributes('data-selected')).toBe('true')
+    expect(rows[0]?.attributes('data-selected')).toBe('false')
+  })
 })
