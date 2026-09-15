@@ -111,7 +111,14 @@ function startDrag(region: Region, event: MouseEvent) {
         <ImageOff :size="26" aria-hidden="true" />
         <span class="text-[0.8125rem]">Choose a stimulus image to place regions</span>
       </div>
-      <img v-else :src="props.imageUrl" alt="" class="block h-60 w-full object-cover" draggable="false" />
+      <img
+        v-else
+        :src="props.imageUrl"
+        alt=""
+        class="block w-full h-auto"
+        draggable="false"
+        @load="measureStimulusSize"
+      />
       <div
         v-for="(region, index) in props.regions"
         :key="region.id"

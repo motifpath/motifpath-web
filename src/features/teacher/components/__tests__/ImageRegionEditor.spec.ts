@@ -112,6 +112,31 @@ describe('ImageRegionEditor', () => {
     expect(wrapper.emitted('update:stimulus-size')).toEqual([[640, 240]])
   })
 
+  it('re-measures stimulus size once the image finishes loading', async () => {
+    const rect = {
+      left: 0,
+      top: 0,
+      width: 640,
+      height: 0,
+      right: 640,
+      bottom: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    }
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => rect)
+
+    const wrapper = mountEditor()
+    rect.height = 480
+
+    await wrapper.get('img').trigger('load')
+
+    expect(wrapper.emitted('update:stimulus-size')).toEqual([
+      [640, 0],
+      [640, 480],
+    ])
+  })
+
   it('re-measures and emits stimulus size on window resize', async () => {
     const rect = {
       left: 0,
