@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Circle, ImageOff, Minus, Plus, Square, X } from 'lucide-vue-next'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { clamp, type Region } from '@/features/teacher/composables/useExerciseForm'
 
@@ -16,7 +17,43 @@ const emit = defineEmits<{
   'toggle-region': [id: string]
   'remove-region': [id: string]
   'update:newRegionShape': [shape: 'circle' | 'rectangle']
+  'update:stimulus-size': [width: number, height: number]
 }>()
+
+const stimulusImage = ref<HTMLImageElement | null>(null)
+// True only once the current imageUrl has actually finished loading — until
+// then the image has no reliable rendered size, and clicking/dragging would
+// compute a position against a layout that's about to change size.
+const imageLoaded = ref(false)
+
+function measureStimulusSize() {
+  if (!stimulusImage.value) return
+  const rect = stimulusImage.value.getBoundingClientRect()
+  emit('update:stimulus-size', rect.width, rect.height)
+}
+
+function onImageLoad() {
+  imageLoaded.value = true
+  measureStimulusSize()
+}
+
+watch(
+  () => props.imageUrl,
+  () => {
+    imageLoaded.value = false
+  },
+)
+
+function onWindowResize() {
+  if (imageLoaded.value) measureStimulusSize()
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onWindowResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', onWindowResize)
+})
 
 function percentFromEvent(container: HTMLElement, clientX: number, clientY: number) {
   const rect = container.getBoundingClientRect()
@@ -26,13 +63,14 @@ function percentFromEvent(container: HTMLElement, clientX: number, clientY: numb
 }
 
 function onCanvasClick(event: MouseEvent) {
-  if (!props.imageUrl) return
+  if (!props.imageUrl || !imageLoaded.value) return
   const container = event.currentTarget as HTMLElement
   const { x, y } = percentFromEvent(container, event.clientX, event.clientY)
   emit('add-region', x, y)
 }
 
 function startDrag(region: Region, event: MouseEvent) {
+  if (!imageLoaded.value) return
   event.stopPropagation()
   event.preventDefault()
   const container = (event.currentTarget as HTMLElement).parentElement
@@ -92,7 +130,15 @@ function startDrag(region: Region, event: MouseEvent) {
         <ImageOff :size="26" aria-hidden="true" />
         <span class="text-[0.8125rem]">Choose a stimulus image to place regions</span>
       </div>
-      <img v-else :src="props.imageUrl" alt="" class="block h-60 w-full object-cover" draggable="false" />
+      <img
+        v-else
+        ref="stimulusImage"
+        :src="props.imageUrl"
+        alt=""
+        class="block w-full h-auto"
+        draggable="false"
+        @load="onImageLoad"
+      />
       <div
         v-for="(region, index) in props.regions"
         :key="region.id"

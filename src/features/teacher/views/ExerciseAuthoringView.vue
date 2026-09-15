@@ -276,6 +276,7 @@ async function save() {
           @resize-region="form.resizeRegion"
           @toggle-region="form.toggleRegion"
           @remove-region="form.removeRegion"
+          @update:stimulus-size="form.setStimulusImageSize"
         />
 
         <TextOptionsEditor

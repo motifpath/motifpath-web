@@ -171,12 +171,13 @@ describe('useExerciseForm', () => {
       })
     })
 
-    it('maps an image_recognition exercise with image_url and regions', () => {
+    it('maps an image_recognition exercise with image_url and regions, sizing width/height against the measured stimulus image', () => {
       const form = useExerciseForm()
       form.title.value = 'Root position'
       form.prompt.value = 'Identify the root position'
       form.exerciseType.value = 'image_recognition'
       form.imageUrl.value = 'https://cdn.example.com/fretboard.png'
+      form.setStimulusImageSize(800, 240)
       form.addRegion(20, 30, 'rectangle')
       form.toggleRegion(form.regions.value[0]!.id)
 
@@ -190,12 +191,28 @@ describe('useExerciseForm', () => {
           region: {
             x: form.regions.value[0]!.x / 100,
             y: form.regions.value[0]!.y / 100,
-            width: form.regions.value[0]!.width / 100,
-            height: form.regions.value[0]!.height / 100,
+            width: form.regions.value[0]!.width / 800,
+            height: form.regions.value[0]!.height / 240,
             shape: 'rectangle',
           },
         },
       ])
+    })
+
+    it('falls back to a 0 fraction for region width/height when the stimulus image has not been measured yet', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Root position'
+      form.prompt.value = 'Identify the root position'
+      form.exerciseType.value = 'image_recognition'
+      form.imageUrl.value = 'https://cdn.example.com/fretboard.png'
+      form.addRegion(20, 30, 'rectangle')
+      form.toggleRegion(form.regions.value[0]!.id)
+
+      const request = form.toCreateExerciseRequest()
+
+      const region = (request.options[0] as { region: { width: number; height: number } }).region
+      expect(region.width).toBe(0)
+      expect(region.height).toBe(0)
     })
 
     it('maps an image_choice exercise with per-option image_url', () => {

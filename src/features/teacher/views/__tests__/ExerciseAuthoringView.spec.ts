@@ -253,6 +253,7 @@ describe('ExerciseAuthoringView', () => {
     const file = new File(['data'], 'fret.png', { type: 'image/png' })
     await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
 
+    await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
 
@@ -274,6 +275,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('textarea').setValue('Identify the root position')
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['data'], 'fret.png', { type: 'image/png' }))
+    await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
 
@@ -444,6 +446,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('textarea').setValue('p')
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'fret.png'))
+    await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
 
