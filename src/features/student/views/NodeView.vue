@@ -17,6 +17,13 @@ const nodeId = Array.isArray(rawNodeId) ? rawNodeId[0] : rawNodeId
     <p class="text-ink-muted">This lesson isn't available yet.</p>
     <p class="text-sm text-ink-muted">We're still building it — check back soon.</p>
     <p class="sr-only" data-test="node-id">{{ nodeId }}</p>
+    <RouterLink
+      :to="{ name: 'practice', params: { nodeId } }"
+      data-test="practice-link"
+      class="text-sm font-medium text-accent-text underline"
+    >
+      Practice this lesson ›
+    </RouterLink>
     <RouterLink :to="{ name: 'path' }" class="text-sm font-medium text-accent-text underline">
       ‹ Back to your path
     </RouterLink>
