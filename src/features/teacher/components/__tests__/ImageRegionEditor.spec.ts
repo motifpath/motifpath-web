@@ -93,4 +93,48 @@ describe('ImageRegionEditor', () => {
 
     expect(wrapper.emitted('add-region')).toBeUndefined()
   })
+
+  it('emits update:stimulus-size with the container\'s rendered size on mount', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 640,
+      height: 240,
+      right: 640,
+      bottom: 240,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    })
+
+    const wrapper = mountEditor()
+
+    expect(wrapper.emitted('update:stimulus-size')).toEqual([[640, 240]])
+  })
+
+  it('re-measures and emits stimulus size on window resize', async () => {
+    const rect = {
+      left: 0,
+      top: 0,
+      width: 640,
+      height: 240,
+      right: 640,
+      bottom: 240,
+      x: 0,
+      y: 0,
+      toJSON: () => '',
+    }
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(() => rect)
+
+    const wrapper = mountEditor()
+    rect.width = 320
+
+    window.dispatchEvent(new Event('resize'))
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('update:stimulus-size')).toEqual([
+      [640, 240],
+      [320, 240],
+    ])
+  })
 })

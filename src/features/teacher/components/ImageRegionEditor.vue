@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Circle, ImageOff, Minus, Plus, Square, X } from 'lucide-vue-next'
+import { onMounted, onUnmounted, ref } from 'vue'
 
 import { clamp, type Region } from '@/features/teacher/composables/useExerciseForm'
 
@@ -16,7 +17,24 @@ const emit = defineEmits<{
   'toggle-region': [id: string]
   'remove-region': [id: string]
   'update:newRegionShape': [shape: 'circle' | 'rectangle']
+  'update:stimulus-size': [width: number, height: number]
 }>()
+
+const canvas = ref<HTMLElement | null>(null)
+
+function measureStimulusSize() {
+  if (!canvas.value) return
+  const rect = canvas.value.getBoundingClientRect()
+  emit('update:stimulus-size', rect.width, rect.height)
+}
+
+onMounted(() => {
+  measureStimulusSize()
+  window.addEventListener('resize', measureStimulusSize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', measureStimulusSize)
+})
 
 function percentFromEvent(container: HTMLElement, clientX: number, clientY: number) {
   const rect = container.getBoundingClientRect()
@@ -79,6 +97,7 @@ function startDrag(region: Region, event: MouseEvent) {
     </div>
 
     <div
+      ref="canvas"
       data-test="region-canvas"
       class="relative overflow-hidden rounded-lg border border-border bg-surface-sunken"
       :class="props.imageUrl ? 'cursor-crosshair' : 'cursor-default'"

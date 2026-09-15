@@ -64,6 +64,7 @@ export function useExerciseForm() {
   const imageOptions = ref<ImageOption[]>([])
   const regions = ref<Region[]>([])
   const newRegionShape = ref<RegionShape>('circle')
+  const stimulusImageSize = ref({ width: 0, height: 0 })
 
   const hasCorrectOption = computed(() => {
     switch (exerciseType.value) {
@@ -142,6 +143,9 @@ export function useExerciseForm() {
   function removeRegion(id: string) {
     regions.value = regions.value.filter((r) => r.id !== id)
   }
+  function setStimulusImageSize(width: number, height: number) {
+    stimulusImageSize.value = { width, height }
+  }
 
   function addTag(raw: string) {
     const tag = raw.trim()
@@ -163,12 +167,20 @@ export function useExerciseForm() {
           is_correct: o.correct,
           image_url: o.imageUrl,
         }))
-      case 'image_recognition':
+      case 'image_recognition': {
+        const { width: imageWidth, height: imageHeight } = stimulusImageSize.value
         return regions.value.map((r) => ({
           option_id: r.id,
           is_correct: r.correct,
-          region: { x: r.x / 100, y: r.y / 100, width: r.width / 100, height: r.height / 100, shape: r.shape },
+          region: {
+            x: r.x / 100,
+            y: r.y / 100,
+            width: imageWidth > 0 ? r.width / imageWidth : 0,
+            height: imageHeight > 0 ? r.height / imageHeight : 0,
+            shape: r.shape,
+          },
         }))
+      }
       default:
         // A stale generated client could see a type value this build
         // doesn't recognize yet — fail safe with no options (still rejected
@@ -216,6 +228,7 @@ export function useExerciseForm() {
     resizeRegion,
     toggleRegion,
     removeRegion,
+    setStimulusImageSize,
     addTag,
     removeTag,
     toCreateExerciseRequest,
