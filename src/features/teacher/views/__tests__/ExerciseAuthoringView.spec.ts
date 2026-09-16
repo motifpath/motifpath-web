@@ -162,10 +162,64 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.find('[data-test="app-bar-save"]').exists()).toBe(false)
   })
 
-  it('shows the reuse indicator as not-yet-linked before saving', () => {
+  it('shows the reuse indicator as not-yet-available before saving', () => {
     const wrapper = mountView()
 
-    expect(wrapper.get('[data-test="reuse-indicator"]').text()).toContain('Not yet linked to any challenge')
+    expect(wrapper.get('[data-test="reuse-indicator"]').text()).toContain("Save the exercise to see where it's used")
+  })
+
+  it('shows all three usage contexts as empty right after creating a fresh exercise', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    const indicator = wrapper.get('[data-test="reuse-indicator"]')
+    expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('Not linked to any challenge yet')
+    expect(indicator.get('[data-test="usage-path-exercises"]').text()).toContain('Not linked to any path node yet')
+    expect(indicator.get('[data-test="usage-practice-sessions"]').text()).toContain('Not eligible')
+  })
+
+  it('lists linked challenges and path exercises after saving', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: ['c-1', 'c-2'], content_node_ids: ['n-1'] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    const indicator = wrapper.get('[data-test="reuse-indicator"]')
+    expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('c-1')
+    expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('c-2')
+    expect(indicator.get('[data-test="usage-path-exercises"]').text()).toContain('n-1')
+  })
+
+  it('shows practice-session eligibility once a skill tag is added', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await fillMinimalTextResponse(wrapper)
+    const input = wrapper.get('input[placeholder="Type a skill and press Enter"]')
+    await input.setValue('alternate_picking')
+    await input.trigger('keydown.enter')
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="usage-practice-sessions"]').text()).toContain('alternate_picking')
   })
 
   it('switches editors when the exercise type tab changes', async () => {

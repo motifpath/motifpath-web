@@ -122,6 +122,7 @@ const saving = ref(false)
 const saveError = ref('')
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])
+const linkedContentNodeIds = ref<string[]>([])
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
 onUnmounted(() => clearTimeout(justSavedTimeout))
@@ -141,6 +142,7 @@ async function save() {
     const exercise = await createExercise(form.toCreateExerciseRequest())
     savedExerciseId.value = exercise.exercise_id
     linkedChallengeIds.value = exercise.challenge_ids
+    linkedContentNodeIds.value = exercise.content_node_ids ?? []
 
     justSaved.value = true
     clearTimeout(justSavedTimeout)
@@ -324,20 +326,48 @@ async function save() {
             : 'w-[360px] flex-shrink-0 border-l border-border px-[28px] py-[32px]'
         "
       >
-        <div data-test="reuse-indicator" class="flex flex-col gap-3">
-          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">Used in challenges</span>
-          <p v-if="!savedExerciseId" class="text-sm text-ink-subtle">Not yet linked to any challenge — save the exercise first.</p>
-          <p v-else-if="linkedChallengeIds.length === 0" class="text-sm text-ink-subtle">Not linked to any challenge yet.</p>
-          <ul v-else class="flex flex-col gap-2">
-            <li
-              v-for="id in linkedChallengeIds"
-              :key="id"
-              class="flex items-center gap-2.5 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-[0.8125rem]"
-            >
-              <span class="h-2 w-2 flex-shrink-0 rounded-full bg-accent"></span>
-              {{ id }}
-            </li>
-          </ul>
+        <div data-test="reuse-indicator" class="flex flex-col gap-4">
+          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">Where this exercise is used</span>
+          <p v-if="!savedExerciseId" class="text-sm text-ink-subtle">Save the exercise to see where it's used.</p>
+          <template v-else>
+            <div data-test="usage-challenges" class="flex flex-col gap-2">
+              <span class="text-xs font-semibold text-ink-muted">Challenges</span>
+              <p v-if="linkedChallengeIds.length === 0" class="text-sm text-ink-subtle">Not linked to any challenge yet.</p>
+              <ul v-else class="flex flex-col gap-2">
+                <li
+                  v-for="id in linkedChallengeIds"
+                  :key="id"
+                  class="flex items-center gap-2.5 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-[0.8125rem]"
+                >
+                  <span class="h-2 w-2 flex-shrink-0 rounded-full bg-accent"></span>
+                  {{ id }}
+                </li>
+              </ul>
+            </div>
+
+            <div data-test="usage-path-exercises" class="flex flex-col gap-2">
+              <span class="text-xs font-semibold text-ink-muted">Path exercises</span>
+              <p v-if="linkedContentNodeIds.length === 0" class="text-sm text-ink-subtle">Not linked to any path node yet.</p>
+              <ul v-else class="flex flex-col gap-2">
+                <li
+                  v-for="id in linkedContentNodeIds"
+                  :key="id"
+                  class="flex items-center gap-2.5 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-[0.8125rem]"
+                >
+                  <span class="h-2 w-2 flex-shrink-0 rounded-full bg-accent"></span>
+                  {{ id }}
+                </li>
+              </ul>
+            </div>
+
+            <div data-test="usage-practice-sessions" class="flex flex-col gap-2">
+              <span class="text-xs font-semibold text-ink-muted">Practice sessions</span>
+              <p v-if="form.skillTags.value.length === 0" class="text-sm text-ink-subtle">
+                Not eligible — add a skill tag to make this exercise selectable for a skill-targeted practice session.
+              </p>
+              <p v-else class="text-sm text-ink-subtle">Eligible for practice sessions matching: {{ form.skillTags.value.join(', ') }}</p>
+            </div>
+          </template>
         </div>
 
         <div class="h-px bg-border"></div>
