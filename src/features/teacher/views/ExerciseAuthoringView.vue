@@ -171,12 +171,16 @@ async function save() {
   if (!form.hasCorrectOption.value) return
 
   saving.value = true
-  if (!isEditMode) savedExerciseId.value = ''
+  // The exercise this form is currently backing, not the route it was
+  // opened from — a save on the /new route sets this on success, and every
+  // save after that (still on the same, un-navigated /new URL) must PUT
+  // that same exercise instead of POSTing a duplicate.
+  const isUpdate = !!savedExerciseId.value
 
   try {
     await uploadPendingMedia()
-    const exercise = exerciseId
-      ? await updateExercise(exerciseId, form.toUpdateExerciseRequest())
+    const exercise = isUpdate
+      ? await updateExercise(savedExerciseId.value, form.toUpdateExerciseRequest())
       : await createExercise(form.toCreateExerciseRequest())
     savedExerciseId.value = exercise.exercise_id
     linkedChallengeIds.value = exercise.challenge_ids
@@ -185,7 +189,7 @@ async function save() {
     justSaved.value = true
     clearTimeout(justSavedTimeout)
     justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
-    toast.success(isEditMode ? 'Exercise updated.' : 'Exercise created.')
+    toast.success(isUpdate ? 'Exercise updated.' : 'Exercise created.')
   } catch (e) {
     toast.error(e instanceof Error ? e.message : 'Failed to save the exercise')
   } finally {

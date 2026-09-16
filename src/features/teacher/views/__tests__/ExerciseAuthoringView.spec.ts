@@ -326,6 +326,35 @@ describe('ExerciseAuthoringView', () => {
     )
   })
 
+  it('updates instead of re-creating when Save is clicked again after a successful create', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    PUT.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 200 },
+    })
+    const wrapper = mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST).toHaveBeenCalledTimes(1)
+    expect(PUT).toHaveBeenCalledWith('/exercises/{exercise_id}', {
+      params: { path: { exercise_id: 'e-1' } },
+      body: expect.objectContaining({ title: 'Name the chord' }),
+    })
+    expect(useToast().toasts.value).toContainEqual(
+      expect.objectContaining({ kind: 'success', message: 'Exercise updated.' }),
+    )
+  })
+
   it('uploads a pending stimulus image before saving, then sends the real URL', async () => {
     upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
     POST.mockResolvedValueOnce({
