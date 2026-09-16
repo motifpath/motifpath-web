@@ -70,6 +70,7 @@ function mountView() {
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
+import { useToast } from '@/shared/composables/useToast'
 
 async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
   await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Name the chord')
@@ -90,6 +91,7 @@ describe('ExerciseAuthoringView', () => {
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     mockMatchMedia(false)
+    useToast().clear()
   })
 
   it('renders the AppBar in teacher context with a New exercise breadcrumb', () => {
@@ -302,7 +304,9 @@ describe('ExerciseAuthoringView', () => {
         options: [expect.objectContaining({ is_correct: true, label: 'G major' })],
       }),
     })
-    expect(wrapper.find('[data-test="save-success"]').exists()).toBe(true)
+    expect(useToast().toasts.value).toContainEqual(
+      expect.objectContaining({ kind: 'success', message: 'Exercise created.' }),
+    )
   })
 
   it('uploads a pending stimulus image before saving, then sends the real URL', async () => {
@@ -351,7 +355,9 @@ describe('ExerciseAuthoringView', () => {
     await flushPromises()
 
     expect(POST).not.toHaveBeenCalled()
-    expect(wrapper.get('[data-test="save-error"]').text()).toContain('Upload failed with status 500')
+    expect(useToast().toasts.value).toContainEqual(
+      expect.objectContaining({ kind: 'error', message: 'Upload failed with status 500' }),
+    )
   })
 
   it('shows an error message when saving fails', async () => {
@@ -362,7 +368,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.find('[data-test="save-error"]').exists()).toBe(true)
+    expect(useToast().toasts.value).toContainEqual(expect.objectContaining({ kind: 'error', message: 'Boom' }))
   })
 
   it('shows Saved on the AppBar right after a successful save', async () => {
@@ -555,7 +561,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-test="save-error"]').text()).toContain('network down')
+    expect(useToast().toasts.value).toContainEqual(expect.objectContaining({ kind: 'error', message: 'network down' }))
     expect(wrapper.get('[data-test="app-bar-save"]').text()).not.toContain('Saving')
   })
 
@@ -691,7 +697,9 @@ describe('ExerciseAuthoringView', () => {
       })
       expect(PUT.mock.calls[0]![1].body).not.toHaveProperty('exercise_type')
       expect(POST).not.toHaveBeenCalled()
-      expect(wrapper.get('[data-test="save-success"]').text()).toContain('Exercise updated')
+      expect(useToast().toasts.value).toContainEqual(
+        expect.objectContaining({ kind: 'success', message: 'Exercise updated.' }),
+      )
     })
 
     it('shows an error state with retry when loading the exercise fails', async () => {

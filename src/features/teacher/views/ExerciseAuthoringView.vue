@@ -18,6 +18,7 @@ import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
+import { useToast } from '@/shared/composables/useToast'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const currentUser = useCurrentUserStore()
@@ -155,10 +156,11 @@ const previewOpen = ref(false)
 // doesn't re-run the options mapping on every keystroke for no observer.
 const previewOptions = computed(() => (previewOpen.value ? form.toCreateExerciseRequest().options : []))
 const saving = ref(false)
-const saveError = ref('')
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
 onUnmounted(() => clearTimeout(justSavedTimeout))
+
+const toast = useToast()
 
 async function save() {
   // Re-checked here, not just via the AppBar button's disabled state — the
@@ -167,7 +169,6 @@ async function save() {
   if (!form.hasCorrectOption.value) return
 
   saving.value = true
-  saveError.value = ''
   if (!isEditMode) savedExerciseId.value = ''
 
   try {
@@ -182,8 +183,9 @@ async function save() {
     justSaved.value = true
     clearTimeout(justSavedTimeout)
     justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
+    toast.success(isEditMode ? 'Exercise updated.' : 'Exercise created.')
   } catch (e) {
-    saveError.value = e instanceof Error ? e.message : 'Failed to save the exercise'
+    toast.error(e instanceof Error ? e.message : 'Failed to save the exercise')
   } finally {
     saving.value = false
   }
@@ -357,12 +359,6 @@ async function save() {
           <SkillTagsInput :tags="form.skillTags.value" @add="form.addTag" @remove="form.removeTag" />
         </div>
 
-        <div class="flex items-center gap-3">
-          <span v-if="justSaved" data-test="save-success" class="text-sm font-semibold text-success">
-            {{ isEditMode ? 'Exercise updated.' : 'Exercise created.' }}
-          </span>
-          <span v-if="saveError" data-test="save-error" class="text-sm font-semibold text-danger">{{ saveError }}</span>
-        </div>
       </main>
 
       <aside
