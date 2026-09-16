@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import Icon from '@/shared/components/Icon.vue'
 import type { components } from '@/api/generated/core-domain'
 
 type Option = components['schemas']['Option']
@@ -20,28 +21,38 @@ const props = withDefaults(
     imageUrl?: string
     /** The exercise's own stimulus, present when exerciseType is audio_recognition. */
     audioUrl?: string
+    /**
+     * Whether this exercise legitimately has more than one correct option.
+     * The caller derives this from options[].is_correct — never inferred
+     * here, since this component must never learn which option(s) are
+     * correct, only how many. false (default): clicking a different option
+     * replaces the selection (radio). true: clicking toggles that option
+     * independently of the others (checkbox).
+     */
+    allowMultiple?: boolean
     direction?: 'column' | 'row'
   }>(),
-  { direction: 'column' },
+  { direction: 'column', allowMultiple: false },
 )
 
 /**
  * Uncontrolled when the caller doesn't bind it (the authoring preview never
  * does, and still shows the click highlight from defineModel's own local
  * fallback ref). A caller that does bind it — Practice, to restore an answer
- * on Back — owns the value from then on. An exercise can have more than one
- * option marked correct, so this is always a set, never a single id.
+ * on Back — owns the value from then on.
  */
 const selected = defineModel<string[]>('selectedOptionIds', { default: () => [] })
 
-function select(optionId: string): void {
-  selected.value = selected.value.includes(optionId)
-    ? selected.value.filter((id) => id !== optionId)
-    : [...selected.value, optionId]
-}
-
 function isSelected(optionId: string): boolean {
   return selected.value.includes(optionId)
+}
+
+function select(optionId: string): void {
+  if (isSelected(optionId)) {
+    selected.value = selected.value.filter((id) => id !== optionId)
+    return
+  }
+  selected.value = props.allowMultiple ? [...selected.value, optionId] : [optionId]
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
@@ -82,11 +93,7 @@ const isLandscape = computed(() => props.direction === 'row')
           :key="option.option_id"
           data-test="exercise-region"
           :data-selected="isSelected(option.option_id)"
-          class="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer border-2"
-          :class="[
-            option.region?.shape === 'circle' ? 'rounded-full' : 'rounded-sm',
-            isSelected(option.option_id) ? 'border-accent bg-accent-muted' : 'border-border bg-transparent',
-          ]"
+          class="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center"
           :style="{
             left: `${(option.region?.x ?? 0) * 100}%`,
             top: `${(option.region?.y ?? 0) * 100}%`,
@@ -94,7 +101,15 @@ const isLandscape = computed(() => props.direction === 'row')
             height: `${(option.region?.height ?? 0) * 100}%`,
           }"
           @click="select(option.option_id)"
-        />
+        >
+          <span
+            v-if="isSelected(option.option_id)"
+            data-test="exercise-region-marker"
+            class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-raised text-accent shadow-level2"
+          >
+            <Icon name="completed" :size="18" />
+          </span>
+        </div>
       </div>
 
       <template v-else-if="isTextResponse || isAudioRecognition">
@@ -124,8 +139,16 @@ const isLandscape = computed(() => props.direction === 'row')
             @click="select(option.option_id)"
           >
             <div
-              class="h-4 w-4 shrink-0 rounded-full border-2"
-              :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
+              data-test="exercise-option-indicator"
+              class="h-4 w-4 shrink-0 border-2"
+              :class="[
+                allowMultiple ? 'rounded-sm' : 'rounded-full',
+                isSelected(option.option_id)
+                  ? allowMultiple
+                    ? 'border-accent bg-accent'
+                    : 'border-accent'
+                  : 'border-border',
+              ]"
             />
             <span class="text-[13px] text-ink">{{ option.label }}</span>
           </div>
@@ -142,9 +165,7 @@ const isLandscape = computed(() => props.direction === 'row')
           :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
           @click="select(option.option_id)"
         >
-          <div class="h-24 w-full overflow-hidden border-b border-border">
-            <img :src="option.image_url" alt="" class="h-full w-full object-cover" />
-          </div>
+          <img :src="option.image_url" alt="" class="block h-auto w-full border-b border-border" />
           <div class="px-2 py-1.5" :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'">
             <span class="text-xs text-ink">{{ option.label }}</span>
           </div>

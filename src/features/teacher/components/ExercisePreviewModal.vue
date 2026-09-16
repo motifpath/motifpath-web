@@ -9,7 +9,7 @@ import type { components } from '@/api/generated/core-domain'
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 type Option = components['schemas']['Option']
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   prompt: string
   exerciseType: ExerciseType
@@ -21,6 +21,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const orientation = ref<'portrait' | 'landscape'>('portrait')
 const direction = computed(() => (orientation.value === 'landscape' ? 'row' : 'column'))
+const allowMultiple = computed(() => props.options.filter((option) => option.is_correct).length > 1)
 </script>
 
 <template>
@@ -70,6 +71,7 @@ const direction = computed(() => (orientation.value === 'landscape' ? 'row' : 'c
           :options="options"
           :image-url="imageUrl"
           :audio-url="audioUrl"
+          :allow-multiple="allowMultiple"
           :direction="direction"
         />
       </div>

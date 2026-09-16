@@ -53,14 +53,14 @@ describe('ExerciseView', () => {
     expect(rows[0]?.text()).toContain('Open G chord')
   })
 
-  it("fills the option image's box via object-cover instead of a short, heavily-cropped thumbnail", () => {
+  it('shows the option image at its natural aspect ratio instead of cropping it to a fixed box', () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
     })
 
     const img = wrapper.get('[data-test="exercise-option"] img')
-    expect(img.classes()).toContain('object-cover')
-    expect(img.classes()).toContain('h-full')
+    expect(img.classes()).not.toContain('object-cover')
+    expect(img.classes()).toContain('h-auto')
   })
 
   it('renders image_recognition options as click regions over the real stimulus image', () => {
@@ -87,18 +87,25 @@ describe('ExerciseView', () => {
     expect(wrapper.find('[data-test="no-stimulus-image"]').exists()).toBe(true)
   })
 
-  it('renders a circle region fully rounded and a rectangle region only corner-rounded', () => {
-    const options: Option[] = [
-      { option_id: 'r1', is_correct: true, region: { x: 0, y: 0, width: 0.1, height: 0.1, shape: 'circle' } },
-      { option_id: 'r2', is_correct: false, region: { x: 0.5, y: 0.5, width: 0.1, height: 0.1, shape: 'rectangle' } },
-    ]
+  it('shows no visible marker over an unselected region, so the image underneath is never obscured', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_recognition', prompt: 'p', options, imageUrl: 'https://x/fretboard.png' },
+      props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions, imageUrl: 'https://x/fretboard.png' },
     })
 
-    const regions = wrapper.findAll('[data-test="exercise-region"]')
-    expect(regions[0]?.classes()).toContain('rounded-full')
-    expect(regions[1]?.classes()).not.toContain('rounded-full')
+    expect(wrapper.find('[data-test="exercise-region-marker"]').exists()).toBe(false)
+  })
+
+  it('shows a small marker at the region, not a filled overlay across the whole region, once selected', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions, imageUrl: 'https://x/fretboard.png' },
+    })
+
+    await wrapper.get('[data-test="exercise-region"]').trigger('click')
+
+    const region = wrapper.get('[data-test="exercise-region"]')
+    expect(region.attributes('data-selected')).toBe('true')
+    expect(region.classes()).not.toContain('bg-accent-muted')
+    expect(wrapper.find('[data-test="exercise-region-marker"]').exists()).toBe(true)
   })
 
   it('renders audio_recognition with a real, playable audio element sourced from audioUrl', () => {
@@ -127,9 +134,22 @@ describe('ExerciseView', () => {
     expect(wrapper.html()).not.toContain('is-correct')
   })
 
-  it('allows selecting more than one option at once', async () => {
+  it('defaults to single-select: clicking a different option replaces the prior selection', async () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[0]?.trigger('click')
+    await rows[1]?.trigger('click')
+
+    expect(rows[0]?.attributes('data-selected')).toBe('false')
+    expect(rows[1]?.attributes('data-selected')).toBe('true')
+  })
+
+  it('allows selecting more than one option at once when allowMultiple is true', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -140,7 +160,7 @@ describe('ExerciseView', () => {
     expect(rows[1]?.attributes('data-selected')).toBe('true')
   })
 
-  it('deselects an option when it is clicked again', async () => {
+  it('deselects an option when it is clicked again, regardless of allowMultiple', async () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
     })
@@ -150,6 +170,18 @@ describe('ExerciseView', () => {
     await rows[0]?.trigger('click')
 
     expect(rows[0]?.attributes('data-selected')).toBe('false')
+  })
+
+  it('renders a checkbox-shaped indicator when allowMultiple is true and a radio-shaped one otherwise', () => {
+    const single = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+    const multi = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
+    })
+
+    expect(single.get('[data-test="exercise-option-indicator"]').classes()).toContain('rounded-full')
+    expect(multi.get('[data-test="exercise-option-indicator"]').classes()).not.toContain('rounded-full')
   })
 
   it('lays out the prompt beside the content in landscape direction', () => {
@@ -170,7 +202,7 @@ describe('ExerciseView', () => {
 
   it('emits update:selectedOptionIds with the full selected set on each click', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -186,6 +218,7 @@ describe('ExerciseView', () => {
         exerciseType: 'text_response',
         prompt: 'p',
         options: textOptions,
+        allowMultiple: true,
         selectedOptionIds: ['o1', 'o2'],
       },
     })
