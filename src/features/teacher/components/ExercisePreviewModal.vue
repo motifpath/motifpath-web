@@ -14,6 +14,8 @@ defineProps<{
   prompt: string
   exerciseType: ExerciseType
   options: Option[]
+  imageUrl?: string
+  audioUrl?: string
 }>()
 const emit = defineEmits<{ close: [] }>()
 
@@ -62,7 +64,14 @@ const direction = computed(() => (orientation.value === 'landscape' ? 'row' : 'c
         correct).
       </span>
       <div class="mt-3 h-[260px] rounded-xl border border-border bg-surface p-[18px]">
-        <ExerciseView :prompt="prompt" :exercise-type="exerciseType" :options="options" :direction="direction" />
+        <ExerciseView
+          :prompt="prompt"
+          :exercise-type="exerciseType"
+          :options="options"
+          :image-url="imageUrl"
+          :audio-url="audioUrl"
+          :direction="direction"
+        />
       </div>
     </div>
   </ModalOverlay>

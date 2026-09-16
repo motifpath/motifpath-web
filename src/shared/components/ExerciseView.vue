@@ -6,13 +6,6 @@ import type { components } from '@/api/generated/core-domain'
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 
-/**
- * image_recognition renders a decorative placeholder fretboard, not the
- * exercise's own image_url — audio_recognition's play control has no real
- * audio source either. Neither stimulus is wired to live data yet; this
- * component only takes exerciseType/prompt/options because nothing upstream
- * produces the real stimulus URLs to pass it yet.
- */
 const props = withDefaults(
   defineProps<{
     exerciseType: ExerciseType
@@ -23,6 +16,10 @@ const props = withDefaults(
      * same way for an authoring preview and a real student attempt.
      */
     options: Option[]
+    /** The exercise's own stimulus, present when exerciseType is image_recognition. */
+    imageUrl?: string
+    /** The exercise's own stimulus, present when exerciseType is audio_recognition. */
+    audioUrl?: string
     direction?: 'column' | 'row'
   }>(),
   { direction: 'column' },
@@ -32,12 +29,19 @@ const props = withDefaults(
  * Uncontrolled when the caller doesn't bind it (the authoring preview never
  * does, and still shows the click highlight from defineModel's own local
  * fallback ref). A caller that does bind it — Practice, to restore an answer
- * on Back — owns the value from then on.
+ * on Back — owns the value from then on. An exercise can have more than one
+ * option marked correct, so this is always a set, never a single id.
  */
-const selected = defineModel<string | null>('selectedOptionId', { default: null })
+const selected = defineModel<string[]>('selectedOptionIds', { default: () => [] })
 
 function select(optionId: string): void {
-  selected.value = optionId
+  selected.value = selected.value.includes(optionId)
+    ? selected.value.filter((id) => id !== optionId)
+    : [...selected.value, optionId]
+}
+
+function isSelected(optionId: string): boolean {
+  return selected.value.includes(optionId)
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
@@ -57,41 +61,31 @@ const isLandscape = computed(() => props.direction === 'row')
     </div>
 
     <div class="min-w-0" :class="isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'">
-      <div v-if="isImageRecognition" class="relative overflow-hidden rounded-[10px] border border-border">
-        <svg width="100%" height="150" viewBox="0 0 760 240" preserveAspectRatio="none" class="block">
-          <rect width="760" height="240" class="fill-surface-sunken" />
-          <line
-            v-for="y in [30, 70, 110, 150, 190]"
-            :key="`string-${y}`"
-            x1="20"
-            :y1="y"
-            x2="740"
-            :y2="y"
-            class="stroke-border"
-            stroke-width="2"
-          />
-          <line
-            v-for="x in [140, 260, 380, 500, 620]"
-            :key="`fret-${x}`"
-            :x1="x"
-            y1="20"
-            :x2="x"
-            y2="220"
-            class="stroke-ink-subtle"
-            stroke-width="3"
-          />
-        </svg>
+      <div v-if="isImageRecognition" class="relative overflow-hidden rounded-[10px] border border-border bg-surface-sunken">
+        <img
+          v-if="imageUrl"
+          data-test="exercise-stimulus-image"
+          :src="imageUrl"
+          alt=""
+          class="block h-auto w-full"
+          draggable="false"
+        />
+        <div
+          v-else
+          data-test="no-stimulus-image"
+          class="flex h-40 items-center justify-center text-xs text-ink-subtle"
+        >
+          No stimulus image
+        </div>
         <div
           v-for="option in options"
           :key="option.option_id"
           data-test="exercise-region"
-          :data-selected="selected === option.option_id"
+          :data-selected="isSelected(option.option_id)"
           class="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer border-2"
           :class="[
-            option.region?.shape === 'circle' ? 'rounded-full' : 'rounded-md',
-            selected === option.option_id
-              ? 'border-accent bg-accent-muted'
-              : 'border-border bg-transparent',
+            option.region?.shape === 'circle' ? 'rounded-full' : 'rounded-sm',
+            isSelected(option.option_id) ? 'border-accent bg-accent-muted' : 'border-border bg-transparent',
           ]"
           :style="{
             left: `${(option.region?.x ?? 0) * 100}%`,
@@ -104,15 +98,19 @@ const isLandscape = computed(() => props.direction === 'row')
       </div>
 
       <template v-else-if="isTextResponse || isAudioRecognition">
-        <div
-          v-if="isAudioRecognition"
+        <audio
+          v-if="isAudioRecognition && audioUrl"
           data-test="exercise-audio-play"
-          class="mb-2 flex items-center gap-2 rounded-md bg-surface-sunken px-[11px] py-[9px]"
+          :src="audioUrl"
+          controls
+          class="mb-2 w-full"
+        />
+        <div
+          v-else-if="isAudioRecognition"
+          data-test="no-stimulus-audio"
+          class="mb-2 rounded-md bg-surface-sunken px-[11px] py-[9px] text-xs text-ink-subtle"
         >
-          <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent">
-            <svg width="10" height="10" viewBox="0 0 24 24" class="fill-accent-fg"><path d="M8 5v14l11-7z" /></svg>
-          </div>
-          <span class="text-xs text-ink-muted">Listen · 0:07</span>
+          No stimulus audio
         </div>
 
         <div class="flex flex-col gap-2">
@@ -120,18 +118,14 @@ const isLandscape = computed(() => props.direction === 'row')
             v-for="option in options"
             :key="option.option_id"
             data-test="exercise-option"
-            :data-selected="selected === option.option_id"
+            :data-selected="isSelected(option.option_id)"
             class="flex cursor-pointer items-center gap-2 rounded-md border px-[11px] py-[9px]"
-            :class="
-              selected === option.option_id
-                ? 'border-accent bg-accent-muted'
-                : 'border-border bg-transparent'
-            "
+            :class="isSelected(option.option_id) ? 'border-accent bg-accent-muted' : 'border-border bg-transparent'"
             @click="select(option.option_id)"
           >
             <div
               class="h-4 w-4 shrink-0 rounded-full border-2"
-              :class="selected === option.option_id ? 'border-accent' : 'border-border'"
+              :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
             />
             <span class="text-[13px] text-ink">{{ option.label }}</span>
           </div>
@@ -143,16 +137,15 @@ const isLandscape = computed(() => props.direction === 'row')
           v-for="option in options"
           :key="option.option_id"
           data-test="exercise-option"
-          :data-selected="selected === option.option_id"
+          :data-selected="isSelected(option.option_id)"
           class="cursor-pointer overflow-hidden rounded-md border-2"
-          :class="selected === option.option_id ? 'border-accent' : 'border-border'"
+          :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
           @click="select(option.option_id)"
         >
-          <img :src="option.image_url" alt="" class="h-16 w-full border-b border-border object-cover" />
-          <div
-            class="px-2 py-1.5"
-            :class="selected === option.option_id ? 'bg-accent-muted' : 'bg-transparent'"
-          >
+          <div class="h-24 w-full overflow-hidden border-b border-border">
+            <img :src="option.image_url" alt="" class="h-full w-full object-cover" />
+          </div>
+          <div class="px-2 py-1.5" :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'">
             <span class="text-xs text-ink">{{ option.label }}</span>
           </div>
         </div>

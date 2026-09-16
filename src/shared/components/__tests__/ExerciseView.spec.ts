@@ -53,12 +53,38 @@ describe('ExerciseView', () => {
     expect(rows[0]?.text()).toContain('Open G chord')
   })
 
-  it('renders image_recognition options as click regions over the fretboard', () => {
+  it("fills the option image's box via object-cover instead of a short, heavily-cropped thumbnail", () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
+    })
+
+    const img = wrapper.get('[data-test="exercise-option"] img')
+    expect(img.classes()).toContain('object-cover')
+    expect(img.classes()).toContain('h-full')
+  })
+
+  it('renders image_recognition options as click regions over the real stimulus image', () => {
+    const wrapper = mount(ExerciseView, {
+      props: {
+        exerciseType: 'image_recognition',
+        prompt: 'p',
+        options: regionOptions,
+        imageUrl: 'https://x/fretboard.png',
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="exercise-region"]')).toHaveLength(1)
+    const img = wrapper.get('[data-test="exercise-stimulus-image"]')
+    expect(img.attributes('src')).toBe('https://x/fretboard.png')
+  })
+
+  it('shows a placeholder instead of a region canvas when image_recognition has no stimulus image yet', () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions },
     })
 
-    expect(wrapper.findAll('[data-test="exercise-region"]')).toHaveLength(1)
+    expect(wrapper.find('[data-test="exercise-stimulus-image"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="no-stimulus-image"]').exists()).toBe(true)
   })
 
   it('renders a circle region fully rounded and a rectangle region only corner-rounded', () => {
@@ -67,7 +93,7 @@ describe('ExerciseView', () => {
       { option_id: 'r2', is_correct: false, region: { x: 0.5, y: 0.5, width: 0.1, height: 0.1, shape: 'rectangle' } },
     ]
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_recognition', prompt: 'p', options },
+      props: { exerciseType: 'image_recognition', prompt: 'p', options, imageUrl: 'https://x/fretboard.png' },
     })
 
     const regions = wrapper.findAll('[data-test="exercise-region"]')
@@ -75,12 +101,15 @@ describe('ExerciseView', () => {
     expect(regions[1]?.classes()).not.toContain('rounded-full')
   })
 
-  it('renders audio_recognition with a play control and options', () => {
+  it('renders audio_recognition with a real, playable audio element sourced from audioUrl', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'audio_recognition', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'audio_recognition', prompt: 'p', options: textOptions, audioUrl: 'https://x/clip.mp3' },
     })
 
-    expect(wrapper.find('[data-test="exercise-audio-play"]').exists()).toBe(true)
+    const audio = wrapper.get('[data-test="exercise-audio-play"]')
+    expect(audio.element.tagName).toBe('AUDIO')
+    expect(audio.attributes('src')).toBe('https://x/clip.mp3')
+    expect(audio.attributes('controls')).toBeDefined()
     expect(wrapper.findAll('[data-test="exercise-option"]')).toHaveLength(2)
   })
 
@@ -96,6 +125,31 @@ describe('ExerciseView', () => {
     expect(rows[0]?.attributes('data-selected')).toBe('false')
     expect(wrapper.html()).not.toContain('is_correct')
     expect(wrapper.html()).not.toContain('is-correct')
+  })
+
+  it('allows selecting more than one option at once', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[0]?.trigger('click')
+    await rows[1]?.trigger('click')
+
+    expect(rows[0]?.attributes('data-selected')).toBe('true')
+    expect(rows[1]?.attributes('data-selected')).toBe('true')
+  })
+
+  it('deselects an option when it is clicked again', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[0]?.trigger('click')
+    await rows[0]?.trigger('click')
+
+    expect(rows[0]?.attributes('data-selected')).toBe('false')
   })
 
   it('lays out the prompt beside the content in landscape direction', () => {
@@ -114,29 +168,30 @@ describe('ExerciseView', () => {
     expect(wrapper.classes()).toContain('flex-col')
   })
 
-  it('emits update:selectedOptionId with the clicked option id', async () => {
+  it('emits update:selectedOptionIds with the full selected set on each click', async () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
     await rows[1]?.trigger('click')
+    await rows[0]?.trigger('click')
 
-    expect(wrapper.emitted('update:selectedOptionId')).toEqual([['o2']])
+    expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['o2']], [['o2', 'o1']]])
   })
 
-  it('renders a caller-supplied selectedOptionId as already selected', () => {
+  it('renders caller-supplied selectedOptionIds as already selected', () => {
     const wrapper = mount(ExerciseView, {
       props: {
         exerciseType: 'text_response',
         prompt: 'p',
         options: textOptions,
-        selectedOptionId: 'o2',
+        selectedOptionIds: ['o1', 'o2'],
       },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
+    expect(rows[0]?.attributes('data-selected')).toBe('true')
     expect(rows[1]?.attributes('data-selected')).toBe('true')
-    expect(rows[0]?.attributes('data-selected')).toBe('false')
   })
 })

@@ -155,16 +155,18 @@ async function save() {
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar
-      context="teacher"
-      :compact="isCompact"
-      :primary-nav-to="{ name: 'teacher-exercise-new' }"
-      breadcrumb-label="New exercise"
-      :show-save="canAuthor"
-      :save-disabled="!form.hasCorrectOption.value || saving"
-      :just-saved="justSaved"
-      :on-save="save"
-    />
+    <div class="sticky top-0 z-20">
+      <AppBar
+        context="teacher"
+        :compact="isCompact"
+        :primary-nav-to="{ name: 'teacher-exercise-new' }"
+        breadcrumb-label="New exercise"
+        :show-save="canAuthor"
+        :save-disabled="!form.hasCorrectOption.value || saving"
+        :just-saved="justSaved"
+        :on-save="save"
+      />
+    </div>
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
@@ -363,6 +365,8 @@ async function save() {
       :prompt="form.prompt.value"
       :exercise-type="form.exerciseType.value"
       :options="previewOptions"
+      :image-url="form.imageUrl.value"
+      :audio-url="form.audioUrl.value"
       @close="previewOpen = false"
     />
   </div>
