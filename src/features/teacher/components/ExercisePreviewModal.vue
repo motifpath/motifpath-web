@@ -28,7 +28,7 @@ const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
 <template>
   <ModalOverlay
     :open="open"
-    panel-class="flex max-h-[720px] w-[640px] flex-col overflow-hidden rounded-xl bg-surface-raised shadow-level2"
+    panel-class="flex max-h-[90vh] w-[720px] flex-col overflow-hidden rounded-xl bg-surface-raised shadow-level2"
     @close="emit('close')"
   >
     <div class="flex items-center justify-between border-b border-border px-5 py-[18px]">
@@ -65,7 +65,11 @@ const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
         what you see here is what they see, ungraded (it never receives which option is marked
         correct).
       </span>
-      <div class="mt-3 h-[260px] rounded-xl border border-border bg-surface p-[18px]">
+      <div
+        data-test="preview-frame"
+        class="mx-auto mt-3 overflow-y-auto rounded-xl border border-border bg-surface p-[18px]"
+        :class="orientation === 'landscape' ? 'h-[375px] w-[667px]' : 'h-[667px] w-[375px]'"
+      >
         <ExerciseView
           :prompt="prompt"
           :exercise-type="exerciseType"
