@@ -68,8 +68,20 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/teacher/exercises',
+    name: 'teacher-exercises',
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    component: () => import('@/features/teacher/views/ExerciseListView.vue'),
+  },
+  {
     path: '/teacher/exercises/new',
     name: 'teacher-exercise-new',
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
+  },
+  {
+    path: '/teacher/exercises/:id/edit',
+    name: 'teacher-exercise-edit',
     meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
     component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
   },
