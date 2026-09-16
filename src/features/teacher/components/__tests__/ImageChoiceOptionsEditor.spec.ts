@@ -35,6 +35,21 @@ describe('ImageChoiceOptionsEditor', () => {
     expect(img.attributes('draggable')).toBe('false')
   })
 
+  it('leaves the choose-image button transparent so the picked image shows through, with no text label covering it', () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    const chooseButton = wrapper.findAll('[data-test="choose-image"]')[0]!
+    expect(chooseButton.classes()).not.toContain('bg-surface-sunken')
+    expect(chooseButton.text()).not.toContain('Change image')
+  })
+
+  it("shows a 'Choose image' placeholder when no image has been picked yet", () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    const chooseButton = wrapper.findAll('[data-test="choose-image"]')[1]!
+    expect(chooseButton.text()).toContain('Choose image')
+  })
+
   it('opens the image picker for an option, previews it locally, and defers upload', async () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
     const file = new File(['data'], 'new.png', { type: 'image/png' })

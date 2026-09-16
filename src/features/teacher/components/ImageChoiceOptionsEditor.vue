@@ -40,24 +40,32 @@ function onPicked(file: File) {
       class="flex flex-col gap-2 rounded-md border p-2.5"
       :class="option.correct ? 'border-success' : 'border-border'"
     >
-      <div class="relative h-[84px] overflow-hidden rounded-sm">
-        <button
-          type="button"
-          data-test="choose-image"
-          class="absolute inset-0 flex items-end border border-border bg-surface-sunken p-0"
-          @click="openPicker(option.id)"
-        >
-          <span class="w-full bg-surface-raised px-1.5 py-1 text-left text-xs text-ink-muted">
-            {{ option.imageUrl ? 'Change image' : 'Choose image' }}
-          </span>
-        </button>
+      <div class="relative h-[84px] overflow-hidden rounded-sm border border-border bg-surface-sunken">
         <img
           v-if="option.imageUrl"
           :src="option.imageUrl"
           alt=""
           draggable="false"
-          class="absolute inset-0 -z-10 h-full w-full object-cover"
+          class="absolute inset-0 h-full w-full object-cover"
         />
+        <button
+          type="button"
+          data-test="choose-image"
+          :aria-label="option.imageUrl ? 'Change image' : 'Choose image'"
+          class="absolute inset-0 flex items-center justify-center"
+          @click="openPicker(option.id)"
+        >
+          <span v-if="!option.imageUrl" class="flex flex-col items-center gap-1 text-ink-muted">
+            <ImagePlus :size="16" aria-hidden="true" />
+            <span class="text-[0.6875rem]">Choose image</span>
+          </span>
+          <span
+            v-else
+            class="absolute bottom-1 left-1 flex h-[22px] w-[22px] items-center justify-center rounded bg-surface-raised text-ink-subtle"
+          >
+            <ImagePlus :size="12" aria-hidden="true" />
+          </span>
+        </button>
         <button
           type="button"
           data-test="option-remove"
