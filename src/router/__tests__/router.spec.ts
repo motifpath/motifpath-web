@@ -129,6 +129,25 @@ describe('router', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc')
   })
 
+  it('lets a registered visitor reach a node practice route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+
+    await router.push('/path/nodes/node-abc/practice')
+
+    expect(router.currentRoute.value.name).toBe('practice')
+    expect(router.currentRoute.value.params.nodeId).toBe('node-abc')
+  })
+
+  it('sends an unauthenticated visitor from a node practice route to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/path/nodes/node-abc/practice')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc/practice')
+  })
+
   it('lets a registered teacher reach the teacher exercise-authoring route', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')

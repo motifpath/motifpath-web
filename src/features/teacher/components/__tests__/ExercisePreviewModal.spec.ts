@@ -29,6 +29,20 @@ describe('ExercisePreviewModal', () => {
     expect(wrapper.findAll('[data-test="exercise-option"]')).toHaveLength(2)
   })
 
+  it('forwards imageUrl/audioUrl through to the real ExerciseView', () => {
+    const wrapper = mount(ExercisePreviewModal, {
+      props: {
+        open: true,
+        prompt: 'p',
+        exerciseType: 'image_recognition',
+        options: [{ option_id: 'r1', is_correct: true, region: { x: 0, y: 0, width: 0.1, height: 0.1, shape: 'circle' } }],
+        imageUrl: 'https://x/fretboard.png',
+      },
+    })
+
+    expect(wrapper.get('[data-test="exercise-stimulus-image"]').attributes('src')).toBe('https://x/fretboard.png')
+  })
+
   it('never leaks which option is correct in its own markup', () => {
     const wrapper = mount(ExercisePreviewModal, {
       props: { open: true, prompt: 'p', exerciseType: 'text_response', options },

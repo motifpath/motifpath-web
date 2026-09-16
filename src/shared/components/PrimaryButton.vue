@@ -19,7 +19,11 @@ withDefaults(
   >
     <slot />
   </RouterLink>
-  <button v-else :type="type" class="rounded bg-accent px-4 py-2 text-sm text-accent-fg">
+  <button
+    v-else
+    :type="type"
+    class="rounded bg-accent px-4 py-2 text-sm text-accent-fg disabled:cursor-not-allowed disabled:opacity-50"
+  >
     <slot />
   </button>
 </template>

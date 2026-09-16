@@ -393,6 +393,8 @@ async function save() {
       :prompt="form.prompt.value"
       :exercise-type="form.exerciseType.value"
       :options="previewOptions"
+      :image-url="form.imageUrl.value"
+      :audio-url="form.audioUrl.value"
       @close="previewOpen = false"
     />
   </div>

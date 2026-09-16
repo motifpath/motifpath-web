@@ -53,34 +53,78 @@ describe('ExerciseView', () => {
     expect(rows[0]?.text()).toContain('Open G chord')
   })
 
-  it('renders image_recognition options as click regions over the fretboard', () => {
+  it("shows the option image uncropped (object-contain), bounded so mixed aspect ratios don't produce a ragged grid", () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
+    })
+
+    const img = wrapper.get('[data-test="exercise-option"] img')
+    expect(img.classes()).not.toContain('object-cover')
+    expect(img.classes()).toContain('object-contain')
+  })
+
+  it('marks the image_choice option image non-draggable, so an accidental drag gesture cannot swallow the click', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
+    })
+
+    expect(wrapper.get('[data-test="exercise-option"] img').attributes('draggable')).toBe('false')
+  })
+
+  it('renders image_recognition options as click regions over the real stimulus image', () => {
+    const wrapper = mount(ExerciseView, {
+      props: {
+        exerciseType: 'image_recognition',
+        prompt: 'p',
+        options: regionOptions,
+        imageUrl: 'https://x/fretboard.png',
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="exercise-region"]')).toHaveLength(1)
+    const img = wrapper.get('[data-test="exercise-stimulus-image"]')
+    expect(img.attributes('src')).toBe('https://x/fretboard.png')
+  })
+
+  it('shows a placeholder instead of a region canvas when image_recognition has no stimulus image yet', () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions },
     })
 
-    expect(wrapper.findAll('[data-test="exercise-region"]')).toHaveLength(1)
+    expect(wrapper.find('[data-test="exercise-stimulus-image"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="no-stimulus-image"]').exists()).toBe(true)
   })
 
-  it('renders a circle region fully rounded and a rectangle region only corner-rounded', () => {
-    const options: Option[] = [
-      { option_id: 'r1', is_correct: true, region: { x: 0, y: 0, width: 0.1, height: 0.1, shape: 'circle' } },
-      { option_id: 'r2', is_correct: false, region: { x: 0.5, y: 0.5, width: 0.1, height: 0.1, shape: 'rectangle' } },
-    ]
+  it('shows no visible marker over an unselected region, so the image underneath is never obscured', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_recognition', prompt: 'p', options },
+      props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions, imageUrl: 'https://x/fretboard.png' },
     })
 
-    const regions = wrapper.findAll('[data-test="exercise-region"]')
-    expect(regions[0]?.classes()).toContain('rounded-full')
-    expect(regions[1]?.classes()).not.toContain('rounded-full')
+    expect(wrapper.find('[data-test="exercise-region-marker"]').exists()).toBe(false)
   })
 
-  it('renders audio_recognition with a play control and options', () => {
+  it('shows a small marker at the region, not a filled overlay across the whole region, once selected', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'audio_recognition', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions, imageUrl: 'https://x/fretboard.png' },
     })
 
-    expect(wrapper.find('[data-test="exercise-audio-play"]').exists()).toBe(true)
+    await wrapper.get('[data-test="exercise-region"]').trigger('click')
+
+    const region = wrapper.get('[data-test="exercise-region"]')
+    expect(region.attributes('data-selected')).toBe('true')
+    expect(region.classes()).not.toContain('bg-accent-muted')
+    expect(wrapper.find('[data-test="exercise-region-marker"]').exists()).toBe(true)
+  })
+
+  it('renders audio_recognition with a real, playable audio element sourced from audioUrl', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'audio_recognition', prompt: 'p', options: textOptions, audioUrl: 'https://x/clip.mp3' },
+    })
+
+    const audio = wrapper.get('[data-test="exercise-audio-play"]')
+    expect(audio.element.tagName).toBe('AUDIO')
+    expect(audio.attributes('src')).toBe('https://x/clip.mp3')
+    expect(audio.attributes('controls')).toBeDefined()
     expect(wrapper.findAll('[data-test="exercise-option"]')).toHaveLength(2)
   })
 
@@ -98,6 +142,56 @@ describe('ExerciseView', () => {
     expect(wrapper.html()).not.toContain('is-correct')
   })
 
+  it('defaults to single-select: clicking a different option replaces the prior selection', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[0]?.trigger('click')
+    await rows[1]?.trigger('click')
+
+    expect(rows[0]?.attributes('data-selected')).toBe('false')
+    expect(rows[1]?.attributes('data-selected')).toBe('true')
+  })
+
+  it('allows selecting more than one option at once when allowMultiple is true', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[0]?.trigger('click')
+    await rows[1]?.trigger('click')
+
+    expect(rows[0]?.attributes('data-selected')).toBe('true')
+    expect(rows[1]?.attributes('data-selected')).toBe('true')
+  })
+
+  it('deselects an option when it is clicked again, regardless of allowMultiple', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[0]?.trigger('click')
+    await rows[0]?.trigger('click')
+
+    expect(rows[0]?.attributes('data-selected')).toBe('false')
+  })
+
+  it('renders a checkbox-shaped indicator when allowMultiple is true and a radio-shaped one otherwise', () => {
+    const single = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+    })
+    const multi = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
+    })
+
+    expect(single.get('[data-test="exercise-option-indicator"]').classes()).toContain('rounded-full')
+    expect(multi.get('[data-test="exercise-option-indicator"]').classes()).not.toContain('rounded-full')
+  })
+
   it('lays out the prompt beside the content in landscape direction', () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, direction: 'row' },
@@ -112,5 +206,33 @@ describe('ExerciseView', () => {
     })
 
     expect(wrapper.classes()).toContain('flex-col')
+  })
+
+  it('emits update:selectedOptionIds with the full selected set on each click', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    await rows[1]?.trigger('click')
+    await rows[0]?.trigger('click')
+
+    expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['o2']], [['o2', 'o1']]])
+  })
+
+  it('renders caller-supplied selectedOptionIds as already selected', () => {
+    const wrapper = mount(ExerciseView, {
+      props: {
+        exerciseType: 'text_response',
+        prompt: 'p',
+        options: textOptions,
+        allowMultiple: true,
+        selectedOptionIds: ['o1', 'o2'],
+      },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    expect(rows[0]?.attributes('data-selected')).toBe('true')
+    expect(rows[1]?.attributes('data-selected')).toBe('true')
   })
 })
