@@ -18,7 +18,6 @@ export interface TextOption {
 export interface ImageOption {
   id: string
   imageUrl: string
-  caption: string
   correct: boolean
 }
 
@@ -103,15 +102,11 @@ export function useExerciseForm() {
   }
 
   function addImageOption() {
-    imageOptions.value.push({ id: makeId(), imageUrl: '', caption: '', correct: false })
+    imageOptions.value.push({ id: makeId(), imageUrl: '', correct: false })
   }
   function setImageOptionURL(id: string, url: string) {
     const option = imageOptions.value.find((o) => o.id === id)
     if (option) option.imageUrl = url
-  }
-  function editImageOptionCaption(id: string, caption: string) {
-    const option = imageOptions.value.find((o) => o.id === id)
-    if (option) option.caption = caption
   }
   function toggleImageOption(id: string) {
     const option = imageOptions.value.find((o) => o.id === id)
@@ -256,7 +251,6 @@ export function useExerciseForm() {
         imageOptions.value = exercise.options.map((o) => ({
           id: o.option_id,
           imageUrl: o.image_url ?? '',
-          caption: '',
           correct: o.is_correct,
         }))
         break
@@ -284,7 +278,6 @@ export function useExerciseForm() {
     removeTextOption,
     addImageOption,
     setImageOptionURL,
-    editImageOptionCaption,
     toggleImageOption,
     removeImageOption,
     addRegion,

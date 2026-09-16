@@ -59,12 +59,10 @@ describe('useExerciseForm', () => {
       form.addImageOption()
       const id = form.imageOptions.value[0]!.id
       form.setImageOptionURL(id, 'https://cdn.example.com/a.png')
-      form.editImageOptionCaption(id, 'Open position')
       form.toggleImageOption(id)
 
       expect(form.imageOptions.value[0]).toMatchObject({
         imageUrl: 'https://cdn.example.com/a.png',
-        caption: 'Open position',
         correct: true,
       })
       expect(form.hasCorrectOption.value).toBe(true)
@@ -299,7 +297,7 @@ describe('useExerciseForm', () => {
       })
 
       expect(form.imageOptions.value).toEqual([
-        { id: 'o-1', imageUrl: 'https://cdn.example.com/e-minor.png', caption: '', correct: false },
+        { id: 'o-1', imageUrl: 'https://cdn.example.com/e-minor.png', correct: false },
       ])
     })
 

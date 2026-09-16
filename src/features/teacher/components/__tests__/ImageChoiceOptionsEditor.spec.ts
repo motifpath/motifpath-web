@@ -13,8 +13,8 @@ vi.stubGlobal('URL', {
 })
 
 const options: ImageOption[] = [
-  { id: 'o1', imageUrl: 'https://cdn.example.com/a.png', caption: 'Open position', correct: true },
-  { id: 'o2', imageUrl: '', caption: '', correct: false },
+  { id: 'o1', imageUrl: 'https://cdn.example.com/a.png', correct: true },
+  { id: 'o2', imageUrl: '', correct: false },
 ]
 
 describe('ImageChoiceOptionsEditor', () => {
@@ -22,11 +22,9 @@ describe('ImageChoiceOptionsEditor', () => {
     revokeObjectURL.mockClear()
   })
 
-  it('renders a caption input and correct state per option', () => {
+  it('renders the correct state per option', () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
 
-    const captions = wrapper.findAll('input[type="text"]')
-    expect(captions.map((c) => (c.element as HTMLInputElement).value)).toEqual(['Open position', ''])
     expect(wrapper.findAll('[data-test="option-correct"][aria-pressed="true"]')).toHaveLength(1)
   })
 
@@ -35,6 +33,29 @@ describe('ImageChoiceOptionsEditor', () => {
 
     const img = wrapper.find('img')
     expect(img.attributes('draggable')).toBe('false')
+  })
+
+  it("shows the picked image uncropped (object-contain), not cropped to fill the box (object-cover)", () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    const img = wrapper.get('img')
+    expect(img.classes()).not.toContain('object-cover')
+    expect(img.classes()).toContain('object-contain')
+  })
+
+  it('leaves the choose-image button transparent so the picked image shows through, with no text label covering it', () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    const chooseButton = wrapper.findAll('[data-test="choose-image"]')[0]!
+    expect(chooseButton.classes()).not.toContain('bg-surface-sunken')
+    expect(chooseButton.text()).not.toContain('Change image')
+  })
+
+  it("shows a 'Choose image' placeholder when no image has been picked yet", () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    const chooseButton = wrapper.findAll('[data-test="choose-image"]')[1]!
+    expect(chooseButton.text()).toContain('Choose image')
   })
 
   it('opens the image picker for an option, previews it locally, and defers upload', async () => {
@@ -52,9 +73,7 @@ describe('ImageChoiceOptionsEditor', () => {
   })
 
   it('revokes the previous blob preview when an option image is replaced', async () => {
-    const blobOptions: ImageOption[] = [
-      { id: 'o1', imageUrl: 'blob:old-preview.png', caption: '', correct: false },
-    ]
+    const blobOptions: ImageOption[] = [{ id: 'o1', imageUrl: 'blob:old-preview.png', correct: false }]
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options: blobOptions } })
 
     await wrapper.get('[data-test="choose-image"]').trigger('click')
@@ -72,11 +91,8 @@ describe('ImageChoiceOptionsEditor', () => {
     expect(revokeObjectURL).not.toHaveBeenCalled()
   })
 
-  it('emits caption edits, toggle, remove, and add', async () => {
+  it('emits toggle, remove, and add', async () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
-
-    await wrapper.findAll('input[type="text"]')[1]!.setValue('Barre chord')
-    expect(wrapper.emitted('editCaption')).toEqual([['o2', 'Barre chord']])
 
     await wrapper.findAll('[data-test="option-correct"]')[1]!.trigger('click')
     expect(wrapper.emitted('toggle')).toEqual([['o2']])

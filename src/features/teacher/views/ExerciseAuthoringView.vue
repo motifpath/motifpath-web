@@ -344,7 +344,6 @@ async function save() {
           :compact="isCompact"
           @set-preview="form.setImageOptionURL"
           @set-file="onOptionFile"
-          @edit-caption="form.editImageOptionCaption"
           @toggle="form.toggleImageOption"
           @remove="onRemoveImageOption"
           @add="form.addImageOption"
