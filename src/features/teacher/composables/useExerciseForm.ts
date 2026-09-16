@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 
 type CreateExerciseRequest = components['schemas']['CreateExerciseRequest']
+type UpdateExerciseRequest = components['schemas']['UpdateExerciseRequest']
+type Exercise = components['schemas']['Exercise']
 type Option = components['schemas']['Option']
 type RegionShape = components['schemas']['OptionRegion']['shape']
 export type ExerciseType = CreateExerciseRequest['exercise_type']
@@ -65,6 +67,11 @@ export function useExerciseForm() {
   const regions = ref<Region[]>([])
   const newRegionShape = ref<RegionShape>('circle')
   const stimulusImageSize = ref({ width: 0, height: 0 })
+  // image_recognition regions are stored as fractions of the stimulus
+  // image's rendered size, but that size is only known once the <img> has
+  // actually loaded in the browser — so a loaded exercise's regions wait
+  // here until setStimulusImageSize reports a real measurement.
+  const pendingRegionOptions = ref<Option[] | null>(null)
 
   const hasCorrectOption = computed(() => {
     switch (exerciseType.value) {
@@ -145,6 +152,18 @@ export function useExerciseForm() {
   }
   function setStimulusImageSize(width: number, height: number) {
     stimulusImageSize.value = { width, height }
+    if (pendingRegionOptions.value && width > 0 && height > 0) {
+      regions.value = pendingRegionOptions.value.map((o) => ({
+        id: o.option_id,
+        x: (o.region?.x ?? 0) * 100,
+        y: (o.region?.y ?? 0) * 100,
+        width: (o.region?.width ?? 0) * width,
+        height: (o.region?.height ?? 0) * height,
+        shape: o.region?.shape ?? 'circle',
+        correct: o.is_correct,
+      }))
+      pendingRegionOptions.value = null
+    }
   }
 
   function addTag(raw: string) {
@@ -189,17 +208,62 @@ export function useExerciseForm() {
     }
   }
 
+  function sharedRequestFields() {
+    const fields: Omit<UpdateExerciseRequest, 'title' | 'prompt' | 'options'> = {}
+    if (skillTags.value.length > 0) fields.skill_tags = [...skillTags.value]
+    if (exerciseType.value === 'image_recognition' && imageUrl.value) fields.image_url = imageUrl.value
+    if (exerciseType.value === 'audio_recognition' && audioUrl.value) fields.audio_url = audioUrl.value
+    return fields
+  }
+
   function toCreateExerciseRequest(): CreateExerciseRequest {
-    const request: CreateExerciseRequest = {
+    return {
       title: title.value,
       prompt: prompt.value,
       exercise_type: exerciseType.value,
       options: optionsForRequest(),
+      ...sharedRequestFields(),
     }
-    if (skillTags.value.length > 0) request.skill_tags = [...skillTags.value]
-    if (exerciseType.value === 'image_recognition' && imageUrl.value) request.image_url = imageUrl.value
-    if (exerciseType.value === 'audio_recognition' && audioUrl.value) request.audio_url = audioUrl.value
-    return request
+  }
+
+  function toUpdateExerciseRequest(): UpdateExerciseRequest {
+    return {
+      title: title.value,
+      prompt: prompt.value,
+      options: optionsForRequest(),
+      ...sharedRequestFields(),
+    }
+  }
+
+  function loadFromExercise(exercise: Exercise) {
+    title.value = exercise.title
+    prompt.value = exercise.prompt
+    exerciseType.value = exercise.exercise_type
+    skillTags.value = [...(exercise.skill_tags ?? [])]
+    imageUrl.value = exercise.image_url ?? ''
+    audioUrl.value = exercise.audio_url ?? ''
+    textOptions.value = []
+    imageOptions.value = []
+    regions.value = []
+    pendingRegionOptions.value = null
+
+    switch (exercise.exercise_type) {
+      case 'text_response':
+      case 'audio_recognition':
+        textOptions.value = exercise.options.map((o) => ({ id: o.option_id, label: o.label ?? '', correct: o.is_correct }))
+        break
+      case 'image_choice':
+        imageOptions.value = exercise.options.map((o) => ({
+          id: o.option_id,
+          imageUrl: o.image_url ?? '',
+          caption: '',
+          correct: o.is_correct,
+        }))
+        break
+      case 'image_recognition':
+        pendingRegionOptions.value = exercise.options
+        break
+    }
   }
 
   return {
@@ -232,5 +296,7 @@ export function useExerciseForm() {
     addTag,
     removeTag,
     toCreateExerciseRequest,
+    toUpdateExerciseRequest,
+    loadFromExercise,
   }
 }
