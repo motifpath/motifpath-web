@@ -4,6 +4,7 @@ import { RouterView } from 'vue-router'
 
 import { updateAuthBridge, updateRegistrationBridge, updateRoleBridge } from '@/features/auth/authBridge'
 import { useAuth } from '@/features/auth/composables/useAuth'
+import ToastStack from '@/shared/components/ToastStack.vue'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const { isLoaded, isSignedIn, getToken } = useAuth()
@@ -40,4 +41,5 @@ watch(
 
 <template>
   <RouterView />
+  <ToastStack />
 </template>

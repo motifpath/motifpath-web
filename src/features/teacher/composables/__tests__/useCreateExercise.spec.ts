@@ -28,7 +28,21 @@ describe('useCreateExercise', () => {
 
     await expect(
       createExercise({ title: 't', prompt: 'p', exercise_type: 'text_response', options: [] }),
-    ).rejects.toThrow('boom')
+    ).rejects.toThrow('Boom')
+  })
+
+  it('throws with per-field detail when the server returns a validation error', async () => {
+    POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'request failed validation', errors: [{ field: '/prompt', reason: 'must not be empty' }] },
+      response: { status: 422 },
+    })
+
+    const { createExercise } = useCreateExercise()
+
+    await expect(
+      createExercise({ title: 't', prompt: '', exercise_type: 'text_response', options: [] }),
+    ).rejects.toThrow('Request failed validation:\n• /prompt: must not be empty')
   })
 
   it('throws a fallback message when the server gives no error message', async () => {

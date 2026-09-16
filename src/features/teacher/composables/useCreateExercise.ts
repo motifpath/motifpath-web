@@ -1,4 +1,5 @@
 import { useApi } from '@/shared/composables/useApi'
+import { describeApiError } from '@/shared/utils/apiError'
 import type { components } from '@/api/generated/core-domain'
 
 type CreateExerciseRequest = components['schemas']['CreateExerciseRequest']
@@ -10,7 +11,7 @@ export function useCreateExercise() {
   async function createExercise(request: CreateExerciseRequest): Promise<Exercise> {
     const { data, error } = await coreApi.POST('/exercises', { body: request })
     if (!data) {
-      throw new Error(error?.message ?? 'Failed to create the exercise')
+      throw new Error(describeApiError(error, 'Failed to create the exercise'))
     }
     return data
   }

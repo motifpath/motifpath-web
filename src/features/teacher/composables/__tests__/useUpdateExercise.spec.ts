@@ -29,7 +29,21 @@ describe('useUpdateExercise', () => {
 
     const { updateExercise } = useUpdateExercise()
 
-    await expect(updateExercise('e-1', { title: 't', prompt: 'p', options: [] })).rejects.toThrow('boom')
+    await expect(updateExercise('e-1', { title: 't', prompt: 'p', options: [] })).rejects.toThrow('Boom')
+  })
+
+  it('throws with per-field detail when the server returns a validation error', async () => {
+    PUT.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'request failed validation', errors: [{ field: '/prompt', reason: 'must not be empty' }] },
+      response: { status: 422 },
+    })
+
+    const { updateExercise } = useUpdateExercise()
+
+    await expect(updateExercise('e-1', { title: 't', prompt: '', options: [] })).rejects.toThrow(
+      'Request failed validation:\n• /prompt: must not be empty',
+    )
   })
 
   it('throws a fallback message when the server gives no error message', async () => {
