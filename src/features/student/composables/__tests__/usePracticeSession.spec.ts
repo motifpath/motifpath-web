@@ -1,4 +1,6 @@
+import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, ref } from 'vue'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -61,6 +63,19 @@ function mockHappyPath(): void {
     }
     throw new Error(`unexpected path ${path}`)
   })
+}
+
+interface Deferred<T> {
+  promise: Promise<T>
+  resolve: (value: T) => void
+}
+
+function defer<T>(): Deferred<T> {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
 }
 
 async function flush(): Promise<void> {
@@ -184,6 +199,97 @@ describe('usePracticeSession', () => {
 
     expect(track).toHaveBeenCalledWith(
       expect.objectContaining({ event_type: 'exercise.ended', exercise_id: 'ex-1', outcome: 'abandoned' }),
+    )
+  })
+
+  it('does not re-fire exercise.ended when Next is pressed again after revisiting an already-ended exercise', async () => {
+    mockHappyPath()
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    session.select('o1')
+    session.next() // ends ex-1 (completed)
+    session.back() // revisits ex-1
+    track.mockClear()
+    session.next() // should NOT re-end ex-1
+
+    expect(track).not.toHaveBeenCalledWith(expect.objectContaining({ event_type: 'exercise.ended', exercise_id: 'ex-1' }))
+  })
+
+  it('does not advance the UI-gating canAdvance flag until the current exercise is answered', async () => {
+    mockHappyPath()
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    expect(session.canAdvance.value).toBe(false)
+    session.select('o1')
+    expect(session.canAdvance.value).toBe(true)
+  })
+
+  it('reloads when nodeId changes, since the same route record can be reused across nodes', async () => {
+    GET.mockImplementation((path: string, opts: { params: { path: { content_node_id?: string; challenge_id?: string } } }) => {
+      if (path === '/content-nodes/{content_node_id}/challenges') {
+        return Promise.resolve({
+          data: [{ ...challenge, challenge_id: `ch-${opts.params.path.content_node_id}` }],
+          error: undefined,
+          response: { status: 200 },
+        })
+      }
+      return Promise.resolve({ data: exercises, error: undefined, response: { status: 200 } })
+    })
+
+    const nodeId = ref('node-1')
+    const session = usePracticeSession(nodeId)
+    await flush()
+    expect(session.challenge.value?.challenge_id).toBe('ch-node-1')
+
+    nodeId.value = 'node-2'
+    await flush()
+
+    expect(session.challenge.value?.challenge_id).toBe('ch-node-2')
+  })
+
+  it('ignores a stale load() that resolves after a newer one has already started', async () => {
+    const first = defer<{ data: unknown; error: undefined; response: { status: number } }>()
+    const second = defer<{ data: unknown; error: undefined; response: { status: number } }>()
+    GET.mockImplementationOnce(() => first.promise).mockImplementationOnce(() => second.promise)
+
+    const session = usePracticeSession('node-1')
+    void session.retry() // second, overlapping call
+
+    second.resolve({ data: [], error: undefined, response: { status: 200 } }) // resolves first: lands on 'empty'
+    await flush()
+    expect(session.status.value).toBe('empty')
+
+    first.resolve({ data: undefined, error: undefined, response: { status: 500 } }) // stale — must not apply
+    await flush()
+
+    expect(session.status.value).toBe('empty')
+  })
+
+  it('tracks exercise.ended for the current exercise on unmount if it was never ended', async () => {
+    mockHappyPath()
+    let sessionRef: ReturnType<typeof usePracticeSession> | undefined
+    const TestComponent = defineComponent({
+      setup() {
+        sessionRef = usePracticeSession('node-1')
+        return () => h('div')
+      },
+    })
+
+    const wrapper = mount(TestComponent)
+    await flush()
+    sessionRef?.select('o1')
+
+    wrapper.unmount()
+
+    expect(track).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event_type: 'exercise.ended',
+        exercise_id: 'ex-1',
+        outcome: 'completed',
+        final_score: 100,
+      }),
     )
   })
 })
