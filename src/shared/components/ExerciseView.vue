@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 
@@ -24,27 +24,20 @@ const props = withDefaults(
      */
     options: Option[]
     direction?: 'column' | 'row'
-    /**
-     * Uncontrolled when omitted (the authoring preview never binds it, and
-     * still shows the click highlight from its own local state). A caller
-     * that does bind it — Practice, to restore an answer on Back — owns the
-     * value from then on and must handle `update:selectedOptionId` itself.
-     */
-    selectedOptionId?: string | null
   }>(),
-  { direction: 'column', selectedOptionId: undefined },
+  { direction: 'column' },
 )
 
-const emit = defineEmits<{ 'update:selectedOptionId': [optionId: string] }>()
-
-const internalSelected = ref<string | null>(null)
-const selected = computed(() =>
-  props.selectedOptionId !== undefined ? props.selectedOptionId : internalSelected.value,
-)
+/**
+ * Uncontrolled when the caller doesn't bind it (the authoring preview never
+ * does, and still shows the click highlight from defineModel's own local
+ * fallback ref). A caller that does bind it — Practice, to restore an answer
+ * on Back — owns the value from then on.
+ */
+const selected = defineModel<string | null>('selectedOptionId', { default: null })
 
 function select(optionId: string): void {
-  internalSelected.value = optionId
-  emit('update:selectedOptionId', optionId)
+  selected.value = optionId
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
