@@ -13,6 +13,7 @@ import { useCreateExercise } from '@/features/teacher/composables/useCreateExerc
 import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
+import { useSkillTagSuggestions } from '@/features/teacher/composables/useSkillTagSuggestions'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -48,6 +49,7 @@ const form = useExerciseForm()
 const { createExercise } = useCreateExercise()
 const { updateExercise } = useUpdateExercise()
 const { upload } = useMediaUpload()
+const { availableTags: skillTagSuggestions, ensureLoaded: loadSkillTagSuggestions } = useSkillTagSuggestions()
 
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])
@@ -356,7 +358,13 @@ async function save() {
           <span class="-mt-1 text-[0.8125rem] text-ink-subtle">
             Makes this exercise findable outside its original path — e.g. as a remediation suggestion.
           </span>
-          <SkillTagsInput :tags="form.skillTags.value" @add="form.addTag" @remove="form.removeTag" />
+          <SkillTagsInput
+            :tags="form.skillTags.value"
+            :suggestions="skillTagSuggestions"
+            @add="form.addTag"
+            @remove="form.removeTag"
+            @focus="loadSkillTagSuggestions"
+          />
         </div>
 
       </main>

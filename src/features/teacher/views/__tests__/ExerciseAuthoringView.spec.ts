@@ -274,6 +274,23 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.text()).toContain('technique')
   })
 
+  it('loads and offers skill tags already used on other exercises once the tag input is focused', async () => {
+    GET.mockResolvedValueOnce({
+      data: [{ exercise_id: 'e-1', skill_tags: ['alternate-picking'] }],
+      error: undefined,
+      response: { status: 200 },
+    })
+    const wrapper = mountView()
+
+    const input = wrapper.get('input[placeholder="Type a skill and press Enter"]')
+    await input.trigger('focus')
+    await flushPromises()
+    await input.setValue('alt')
+
+    expect(GET).toHaveBeenCalledWith('/exercises', {})
+    expect(wrapper.get('[data-test="tag-suggestion"]').text()).toBe('alternate-picking')
+  })
+
   it('disables the AppBar Save button until at least one option is marked correct', async () => {
     const wrapper = mountView()
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('title')
