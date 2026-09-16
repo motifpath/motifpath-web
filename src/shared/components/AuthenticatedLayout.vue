@@ -9,9 +9,7 @@ const { isCompact } = useIsCompact()
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <div class="sticky top-0 z-20">
-      <AppBar context="student" :compact="isCompact" :primary-nav-to="{ name: 'path' }" />
-    </div>
+    <AppBar context="student" :compact="isCompact" :primary-nav-to="{ name: 'path' }" />
 
     <main class="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
       <RouterView />

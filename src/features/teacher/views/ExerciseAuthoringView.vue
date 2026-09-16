@@ -155,18 +155,16 @@ async function save() {
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <div class="sticky top-0 z-20">
-      <AppBar
-        context="teacher"
-        :compact="isCompact"
-        :primary-nav-to="{ name: 'teacher-exercise-new' }"
-        breadcrumb-label="New exercise"
-        :show-save="canAuthor"
-        :save-disabled="!form.hasCorrectOption.value || saving"
-        :just-saved="justSaved"
-        :on-save="save"
-      />
-    </div>
+    <AppBar
+      context="teacher"
+      :compact="isCompact"
+      :primary-nav-to="{ name: 'teacher-exercise-new' }"
+      breadcrumb-label="New exercise"
+      :show-save="canAuthor"
+      :save-disabled="!form.hasCorrectOption.value || saving"
+      :just-saved="justSaved"
+      :on-save="save"
+    />
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
