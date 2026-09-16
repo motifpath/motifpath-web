@@ -18,8 +18,8 @@ const interactionText = computed(() => {
   switch (props.exerciseType) {
     case 'image_recognition':
       return props.allowMultiple
-        ? 'Tap every marked area on the image that answers the prompt.'
-        : 'Tap the marked area on the image that answers the prompt.'
+        ? 'Tap every area on the image that answers the prompt.'
+        : 'Tap the area on the image that answers the prompt.'
     case 'image_choice':
       return props.allowMultiple
         ? 'Tap every image that applies.'

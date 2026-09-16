@@ -49,13 +49,14 @@ describe('PracticeHelpModal', () => {
     expect(wrapper.text().toLowerCase()).toContain('every option that applies')
   })
 
-  it('describes image_recognition as tapping marked areas on the image', () => {
+  it('describes image_recognition as tapping areas on the image, without implying they are visibly marked', () => {
     const wrapper = mount(PracticeHelpModal, {
       props: { open: true, exerciseType: 'image_recognition', allowMultiple: false },
     })
 
     expect(wrapper.text().toLowerCase()).toContain('image')
     expect(wrapper.text().toLowerCase()).toContain('area')
+    expect(wrapper.text().toLowerCase()).not.toContain('marked')
   })
 
   it('describes image_choice as tapping an image', () => {
