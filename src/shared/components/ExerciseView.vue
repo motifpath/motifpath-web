@@ -55,6 +55,14 @@ function select(optionId: string): void {
   selected.value = props.allowMultiple ? [...selected.value, optionId] : [optionId]
 }
 
+// Shape says radio-vs-checkbox; fill only applies to a selected checkbox —
+// a selected radio stays outline-only, matching the pre-multi-select look.
+function indicatorClasses(optionId: string): string[] {
+  const shape = props.allowMultiple ? 'rounded-sm' : 'rounded-full'
+  if (!isSelected(optionId)) return [shape, 'border-border']
+  return props.allowMultiple ? [shape, 'border-accent', 'bg-accent'] : [shape, 'border-accent']
+}
+
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
 const isTextResponse = computed(() => props.exerciseType === 'text_response')
 const isAudioRecognition = computed(() => props.exerciseType === 'audio_recognition')
@@ -141,14 +149,7 @@ const isLandscape = computed(() => props.direction === 'row')
             <div
               data-test="exercise-option-indicator"
               class="h-4 w-4 shrink-0 border-2"
-              :class="[
-                allowMultiple ? 'rounded-sm' : 'rounded-full',
-                isSelected(option.option_id)
-                  ? allowMultiple
-                    ? 'border-accent bg-accent'
-                    : 'border-accent'
-                  : 'border-border',
-              ]"
+              :class="indicatorClasses(option.option_id)"
             />
             <span class="text-[13px] text-ink">{{ option.label }}</span>
           </div>
@@ -165,7 +166,9 @@ const isLandscape = computed(() => props.direction === 'row')
           :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
           @click="select(option.option_id)"
         >
-          <img :src="option.image_url" alt="" draggable="false" class="block h-auto w-full border-b border-border" />
+          <div class="flex h-32 w-full items-center justify-center overflow-hidden border-b border-border bg-surface-sunken">
+            <img :src="option.image_url" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
+          </div>
           <div class="px-2 py-1.5" :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'">
             <span class="text-xs text-ink">{{ option.label }}</span>
           </div>

@@ -53,14 +53,14 @@ describe('ExerciseView', () => {
     expect(rows[0]?.text()).toContain('Open G chord')
   })
 
-  it('shows the option image at its natural aspect ratio instead of cropping it to a fixed box', () => {
+  it("shows the option image uncropped (object-contain), bounded so mixed aspect ratios don't produce a ragged grid", () => {
     const wrapper = mount(ExerciseView, {
       props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
     })
 
     const img = wrapper.get('[data-test="exercise-option"] img')
     expect(img.classes()).not.toContain('object-cover')
-    expect(img.classes()).toContain('h-auto')
+    expect(img.classes()).toContain('object-contain')
   })
 
   it('marks the image_choice option image non-draggable, so an accidental drag gesture cannot swallow the click', () => {
