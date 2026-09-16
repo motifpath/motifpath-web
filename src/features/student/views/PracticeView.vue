@@ -9,7 +9,10 @@ import { usePracticeSession } from '@/features/student/composables/usePracticeSe
 
 const props = defineProps<{ nodeId: string }>()
 
-const session = usePracticeSession(props.nodeId)
+// A getter, not props.nodeId directly — usePracticeSession watches it so a
+// route change that reuses this component (same route record, new :nodeId)
+// still reloads instead of showing the previous node's session.
+const session = usePracticeSession(() => props.nodeId)
 
 const helpOpen = ref(false)
 
@@ -18,6 +21,12 @@ const progressPercent = computed(() => {
   if (total === 0) return 0
   return ((session.currentIndex.value + 1) / total) * 100
 })
+
+// ExerciseView's model is string | null (it can be cleared), but this page
+// never clears a selection — a click always selects an actual option.
+function handleSelect(optionId: string | null): void {
+  if (optionId !== null) session.select(optionId)
+}
 </script>
 
 <template>
@@ -42,13 +51,13 @@ const progressPercent = computed(() => {
         <RouterLink :to="{ name: 'node', params: { nodeId: props.nodeId } }" class="shrink-0">
           ‹ Back to lesson
         </RouterLink>
-        <div class="h-[3px] flex-1 overflow-hidden rounded bg-surface-sunken" role="progressbar" :aria-valuenow="session.currentIndex.value + 1" aria-valuemin="1" :aria-valuemax="session.exercises.value.length">
+        <div class="h-1 flex-1 overflow-hidden rounded bg-surface-sunken" role="progressbar" :aria-valuenow="session.currentIndex.value + 1" aria-valuemin="1" :aria-valuemax="session.exercises.value.length">
           <div class="h-full bg-ink" :style="{ width: `${progressPercent}%` }" />
         </div>
         <button
           type="button"
           data-test="help-toggle"
-          class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-ink text-[11px] font-bold"
+          class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-ink text-xs font-bold"
           :aria-expanded="helpOpen"
           @click="helpOpen = !helpOpen"
         >
@@ -65,7 +74,7 @@ const progressPercent = computed(() => {
         :prompt="session.currentExercise.value.prompt"
         :options="session.currentExercise.value.options"
         :selected-option-id="session.currentAnswer.value?.optionId ?? null"
-        @update:selected-option-id="session.select($event)"
+        @update:selected-option-id="handleSelect"
       />
 
       <div class="flex items-center justify-between">
@@ -79,7 +88,7 @@ const progressPercent = computed(() => {
           ‹ Back
         </button>
         <span v-else />
-        <PrimaryButton data-test="next" @click="session.next()">
+        <PrimaryButton data-test="next" :disabled="!session.canAdvance.value" @click="session.next()">
           {{ session.isLastExercise.value ? 'See result' : 'Next ›' }}
         </PrimaryButton>
       </div>

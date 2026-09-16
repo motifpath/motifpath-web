@@ -22,14 +22,16 @@ const textExercise: Exercise = {
 
 const exercises = ref<Exercise[]>([])
 const currentIndex = ref(0)
+const currentAnswer = ref<{ optionId: string; isCorrect: boolean } | null>(null)
 
 const state = {
   status: ref<'loading' | 'error' | 'empty' | 'in-progress' | 'result'>('loading'),
   exercises,
   currentIndex,
   currentExercise: computed<Exercise | null>(() => exercises.value[currentIndex.value] ?? null),
-  currentAnswer: ref<{ optionId: string; isCorrect: boolean } | null>(null),
+  currentAnswer,
   isLastExercise: computed(() => currentIndex.value === exercises.value.length - 1),
+  canAdvance: computed(() => currentAnswer.value !== null),
   score: ref({ correct: 0, total: 0 }),
   select: vi.fn(),
   next: vi.fn(),
@@ -101,7 +103,12 @@ describe('PracticeView', () => {
   })
 
   it('calls next/back on the session when Next/Back are clicked', async () => {
-    set({ status: ref('in-progress'), exercises: ref([textExercise, textExercise]), currentIndex: ref(1) })
+    set({
+      status: ref('in-progress'),
+      exercises: ref([textExercise, textExercise]),
+      currentIndex: ref(1),
+      currentAnswer: ref({ optionId: 'o1', isCorrect: true }),
+    })
     const wrapper = mountView()
 
     await wrapper.get('[data-test="next"]').trigger('click')
@@ -109,6 +116,19 @@ describe('PracticeView', () => {
 
     await wrapper.get('[data-test="back"]').trigger('click')
     expect(state.back).toHaveBeenCalled()
+  })
+
+  it('disables Next until the current exercise has an answer', async () => {
+    set({ status: ref('in-progress'), exercises: ref([textExercise]) })
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="next"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[data-test="exercise-option"]').trigger('click')
+    state.currentAnswer.value = { optionId: 'o1', isCorrect: true }
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-test="next"]').attributes('disabled')).toBeUndefined()
   })
 
   it('shows the result screen with the score once the session finishes', () => {
