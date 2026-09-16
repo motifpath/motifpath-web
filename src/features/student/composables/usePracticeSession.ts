@@ -10,8 +10,18 @@ type Exercise = components['schemas']['Exercise']
 export type PracticeSessionStatus = 'loading' | 'error' | 'empty' | 'in-progress' | 'result'
 
 interface Answer {
-  optionId: string
+  optionIds: string[]
   isCorrect: boolean
+}
+
+// Correct iff the selected set exactly matches the set of options marked
+// is_correct — an exercise can have more than one correct option, and
+// matching only a subset (or a superset) does not count.
+function isExactMatch(exercise: Exercise, optionIds: string[]): boolean {
+  const correctIds = exercise.options.filter((option) => option.is_correct).map((option) => option.option_id)
+  if (correctIds.length !== optionIds.length) return false
+  const selected = new Set(optionIds)
+  return correctIds.every((id) => selected.has(id))
 }
 
 /**
@@ -133,12 +143,27 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
     trackExerciseStart()
   }
 
-  function select(optionId: string): void {
+  // optionIds is the full selected set, not a single toggle — ExerciseView
+  // owns the toggle-on-click logic and emits its resulting set each time.
+  function select(optionIds: string[]): void {
     const exercise = currentExercise.value
-    const option = exercise?.options.find((candidate) => candidate.option_id === optionId)
-    if (!exercise || !option) return
+    if (!exercise) return
 
-    answers.value = { ...answers.value, [exercise.exercise_id]: { optionId, isCorrect: option.is_correct } }
+    if (optionIds.length === 0) {
+      // Deselecting back down to nothing is "unanswered again," not "answered
+      // with zero options" — no entry, not an entry with an empty array, so
+      // canAdvance/endCurrentExercise's completed-vs-abandoned check both
+      // treat it the same as never having answered.
+      const rest = { ...answers.value }
+      delete rest[exercise.exercise_id]
+      answers.value = rest
+    } else {
+      answers.value = {
+        ...answers.value,
+        [exercise.exercise_id]: { optionIds, isCorrect: isExactMatch(exercise, optionIds) },
+      }
+    }
+
     const attemptNumber = (attemptCounts.value[exercise.exercise_id] ?? 0) + 1
     attemptCounts.value = { ...attemptCounts.value, [exercise.exercise_id]: attemptNumber }
 
@@ -147,7 +172,7 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
       exercise_id: exercise.exercise_id,
       trigger_context: triggerContext(),
       attempt_number: attemptNumber,
-      answer_payload: { option_id: optionId },
+      answer_payload: { option_ids: optionIds },
     })
   }
 
@@ -163,6 +188,13 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
   }
 
   function back(): void {
+    // currentIndex never moves past the last exercise (next() only flips
+    // status to 'result' on the last one) — so leaving the result screen
+    // just needs to un-flip status, already landing back on that exercise.
+    if (status.value === 'result') {
+      status.value = 'in-progress'
+      return
+    }
     if (currentIndex.value === 0) return
     currentIndex.value -= 1
   }

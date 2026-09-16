@@ -53,6 +53,22 @@ const exercises = [
   },
 ]
 
+// Two correct answers required — exercises exercising multi-select scoring.
+const multiCorrectExercise = {
+  exercise_id: 'ex-multi',
+  title: 't-multi',
+  prompt: 'p-multi',
+  exercise_type: 'image_recognition' as const,
+  options: [
+    { option_id: 'm1', is_correct: true, region: { x: 0, y: 0, width: 0.1, height: 0.1, shape: 'circle' as const } },
+    { option_id: 'm2', is_correct: true, region: { x: 0.5, y: 0.5, width: 0.1, height: 0.1, shape: 'circle' as const } },
+    { option_id: 'm3', is_correct: false, region: { x: 0.8, y: 0.8, width: 0.1, height: 0.1, shape: 'circle' as const } },
+  ],
+  challenge_ids: ['ch-1'],
+  content_node_ids: [],
+  created_at: '2026-09-01T00:00:00Z',
+}
+
 function mockHappyPath(): void {
   GET.mockImplementation((path: string) => {
     if (path === '/content-nodes/{content_node_id}/challenges') {
@@ -119,14 +135,47 @@ describe('usePracticeSession', () => {
     expect(session.status.value).toBe('error')
   })
 
-  it('records the selected option and whether it was correct', async () => {
+  it('records the selected options and whether they exactly match the correct set', async () => {
     mockHappyPath()
     const session = usePracticeSession('node-1')
     await flush()
 
-    session.select('o2')
+    session.select(['o2'])
 
-    expect(session.currentAnswer.value).toEqual({ optionId: 'o2', isCorrect: false })
+    expect(session.currentAnswer.value).toEqual({ optionIds: ['o2'], isCorrect: false })
+  })
+
+  it('scores a multi-correct exercise correct only when the exact correct set is selected', async () => {
+    GET.mockImplementation((path: string) => {
+      if (path === '/content-nodes/{content_node_id}/challenges') {
+        return Promise.resolve({ data: [challenge], error: undefined, response: { status: 200 } })
+      }
+      return Promise.resolve({ data: [multiCorrectExercise], error: undefined, response: { status: 200 } })
+    })
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    session.select(['m1']) // partial — missing m2
+    expect(session.currentAnswer.value?.isCorrect).toBe(false)
+
+    session.select(['m1', 'm2']) // exact match
+    expect(session.currentAnswer.value?.isCorrect).toBe(true)
+
+    session.select(['m1', 'm2', 'm3']) // over-selected — no longer exact
+    expect(session.currentAnswer.value?.isCorrect).toBe(false)
+  })
+
+  it('treats deselecting back down to nothing as unanswered again', async () => {
+    mockHappyPath()
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    session.select(['o1'])
+    expect(session.currentAnswer.value).not.toBeNull()
+
+    session.select([])
+    expect(session.currentAnswer.value).toBeNull()
+    expect(session.canAdvance.value).toBe(false)
   })
 
   it('advances to the next exercise and preserves a prior answer when navigating back', async () => {
@@ -134,14 +183,14 @@ describe('usePracticeSession', () => {
     const session = usePracticeSession('node-1')
     await flush()
 
-    session.select('o1')
+    session.select(['o1'])
     session.next()
     expect(session.currentExercise.value?.exercise_id).toBe('ex-2')
     expect(session.currentAnswer.value).toBeNull()
 
     session.back()
     expect(session.currentExercise.value?.exercise_id).toBe('ex-1')
-    expect(session.currentAnswer.value).toEqual({ optionId: 'o1', isCorrect: true })
+    expect(session.currentAnswer.value).toEqual({ optionIds: ['o1'], isCorrect: true })
   })
 
   it('moves to result after Next on the last exercise and reports the score', async () => {
@@ -149,13 +198,31 @@ describe('usePracticeSession', () => {
     const session = usePracticeSession('node-1')
     await flush()
 
-    session.select('o1')
+    session.select(['o1'])
     session.next()
-    session.select('o4')
+    session.select(['o4'])
     session.next()
 
     expect(session.status.value).toBe('result')
     expect(session.score.value).toEqual({ correct: 2, total: 2 })
+  })
+
+  it('returns to the last exercise (not a further-back one) when Back is pressed from the result screen', async () => {
+    mockHappyPath()
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    session.select(['o1'])
+    session.next()
+    session.select(['o4'])
+    session.next()
+    expect(session.status.value).toBe('result')
+
+    session.back()
+
+    expect(session.status.value).toBe('in-progress')
+    expect(session.currentExercise.value?.exercise_id).toBe('ex-2')
+    expect(session.currentAnswer.value).toEqual({ optionIds: ['o4'], isCorrect: true })
   })
 
   it('tracks exercise.started once on entering an exercise, exercise.answer_sent on selection, and exercise.ended on Next', async () => {
@@ -167,12 +234,13 @@ describe('usePracticeSession', () => {
       expect.objectContaining({ event_type: 'exercise.started', exercise_id: 'ex-1' }),
     )
 
-    session.select('o1')
+    session.select(['o1'])
     expect(track).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: 'exercise.answer_sent',
         exercise_id: 'ex-1',
         attempt_number: 1,
+        answer_payload: { option_ids: ['o1'] },
       }),
     )
 
@@ -207,7 +275,7 @@ describe('usePracticeSession', () => {
     const session = usePracticeSession('node-1')
     await flush()
 
-    session.select('o1')
+    session.select(['o1'])
     session.next() // ends ex-1 (completed)
     session.back() // revisits ex-1
     track.mockClear()
@@ -222,7 +290,7 @@ describe('usePracticeSession', () => {
     await flush()
 
     expect(session.canAdvance.value).toBe(false)
-    session.select('o1')
+    session.select(['o1'])
     expect(session.canAdvance.value).toBe(true)
   })
 
@@ -279,7 +347,7 @@ describe('usePracticeSession', () => {
 
     const wrapper = mount(TestComponent)
     await flush()
-    sessionRef?.select('o1')
+    sessionRef?.select(['o1'])
 
     wrapper.unmount()
 

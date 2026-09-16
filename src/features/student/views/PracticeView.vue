@@ -21,12 +21,6 @@ const progressPercent = computed(() => {
   if (total === 0) return 0
   return ((session.currentIndex.value + 1) / total) * 100
 })
-
-// ExerciseView's model is string | null (it can be cleared), but this page
-// never clears a selection — a click always selects an actual option.
-function handleSelect(optionId: string | null): void {
-  if (optionId !== null) session.select(optionId)
-}
 </script>
 
 <template>
@@ -52,7 +46,7 @@ function handleSelect(optionId: string | null): void {
           ‹ Back to lesson
         </RouterLink>
         <div class="h-1 flex-1 overflow-hidden rounded bg-surface-sunken" role="progressbar" :aria-valuenow="session.currentIndex.value + 1" aria-valuemin="1" :aria-valuemax="session.exercises.value.length">
-          <div class="h-full bg-ink" :style="{ width: `${progressPercent}%` }" />
+          <div class="h-full bg-accent" :style="{ width: `${progressPercent}%` }" />
         </div>
         <button
           type="button"
@@ -73,8 +67,10 @@ function handleSelect(optionId: string | null): void {
         :exercise-type="session.currentExercise.value.exercise_type"
         :prompt="session.currentExercise.value.prompt"
         :options="session.currentExercise.value.options"
-        :selected-option-id="session.currentAnswer.value?.optionId ?? null"
-        @update:selected-option-id="handleSelect"
+        :image-url="session.currentExercise.value.image_url"
+        :audio-url="session.currentExercise.value.audio_url"
+        :selected-option-ids="session.currentAnswer.value?.optionIds ?? []"
+        @update:selected-option-ids="session.select"
       />
 
       <div class="flex items-center justify-between">
@@ -99,6 +95,9 @@ function handleSelect(optionId: string | null): void {
       <PrimaryButton as="RouterLink" data-test="finish" :to="{ name: 'node', params: { nodeId: props.nodeId } }">
         Finish
       </PrimaryButton>
+      <button type="button" data-test="result-back" class="text-xs text-ink-subtle underline" @click="session.back()">
+        ‹ Back
+      </button>
     </div>
   </section>
 </template>

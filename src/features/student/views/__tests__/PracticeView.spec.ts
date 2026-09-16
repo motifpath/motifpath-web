@@ -22,7 +22,7 @@ const textExercise: Exercise = {
 
 const exercises = ref<Exercise[]>([])
 const currentIndex = ref(0)
-const currentAnswer = ref<{ optionId: string; isCorrect: boolean } | null>(null)
+const currentAnswer = ref<{ optionIds: string[]; isCorrect: boolean } | null>(null)
 
 const state = {
   status: ref<'loading' | 'error' | 'empty' | 'in-progress' | 'result'>('loading'),
@@ -91,7 +91,21 @@ describe('PracticeView', () => {
     const rows = wrapper.findAll('[data-test="exercise-option"]')
     await rows[1]?.trigger('click')
 
-    expect(state.select).toHaveBeenCalledWith('o2')
+    expect(state.select).toHaveBeenCalledWith(['o2'])
+  })
+
+  it("forwards the current exercise's stimulus image/audio URLs to ExerciseView", () => {
+    const audioExercise: Exercise = {
+      ...textExercise,
+      exercise_id: 'ex-audio',
+      exercise_type: 'audio_recognition',
+      audio_url: 'https://x/clip.mp3',
+    }
+    set({ status: ref('in-progress'), exercises: ref([audioExercise]) })
+
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="exercise-audio-play"]').attributes('src')).toBe('https://x/clip.mp3')
   })
 
   it('reads "Next ›" on a non-final exercise and "See result" on the last one', () => {
@@ -107,7 +121,7 @@ describe('PracticeView', () => {
       status: ref('in-progress'),
       exercises: ref([textExercise, textExercise]),
       currentIndex: ref(1),
-      currentAnswer: ref({ optionId: 'o1', isCorrect: true }),
+      currentAnswer: ref({ optionIds: ['o1'], isCorrect: true }),
     })
     const wrapper = mountView()
 
@@ -125,18 +139,21 @@ describe('PracticeView', () => {
     expect(wrapper.get('[data-test="next"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-test="exercise-option"]').trigger('click')
-    state.currentAnswer.value = { optionId: 'o1', isCorrect: true }
+    state.currentAnswer.value = { optionIds: ['o1'], isCorrect: true }
     await wrapper.vm.$nextTick()
 
     expect(wrapper.get('[data-test="next"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('shows the result screen with the score once the session finishes', () => {
+  it('shows the result screen with the score and a way back to the last exercise', async () => {
     set({ status: ref('result'), score: ref({ correct: 3, total: 4 }) })
 
     const wrapper = mountView()
 
     expect(wrapper.get('[data-test="result"]').text()).toContain('3 of 4 correct')
     expect(wrapper.find('[data-test="finish"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="result-back"]').trigger('click')
+    expect(state.back).toHaveBeenCalled()
   })
 })
