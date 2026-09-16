@@ -1,21 +1,44 @@
 <script setup lang="ts">
 import { X } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
-defineProps<{ tags: string[] }>()
-const emit = defineEmits<{ add: [tag: string]; remove: [tag: string] }>()
+const props = withDefaults(defineProps<{ tags: string[]; suggestions?: string[] }>(), { suggestions: () => [] })
+const emit = defineEmits<{ add: [tag: string]; remove: [tag: string]; focus: [] }>()
 
 const draft = ref('')
 
-function submit() {
-  if (!draft.value.trim()) return
-  emit('add', draft.value)
+const trimmedDraft = computed(() => draft.value.trim())
+
+// Matching against skill tags already used on other exercises, so authoring
+// doesn't silently fork near-duplicate tags ("chord-recognition" vs. "chord
+// recognition") that a teacher would have picked from the list if it had
+// been visible.
+const matchingSuggestions = computed(() => {
+  if (!trimmedDraft.value) return []
+  const query = trimmedDraft.value.toLowerCase()
+  return props.suggestions.filter((tag) => !props.tags.includes(tag) && tag.toLowerCase().includes(query))
+})
+
+const hasExactMatch = computed(() =>
+  matchingSuggestions.value.some((tag) => tag.toLowerCase() === trimmedDraft.value.toLowerCase()),
+)
+
+function addTag(tag: string) {
+  emit('add', tag)
   draft.value = ''
+}
+
+function submit() {
+  if (!trimmedDraft.value) return
+  const exactMatch = matchingSuggestions.value.find(
+    (tag) => tag.toLowerCase() === trimmedDraft.value.toLowerCase(),
+  )
+  addTag(exactMatch ?? trimmedDraft.value)
 }
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-raised p-2">
+  <div class="relative flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-raised p-2">
     <span
       v-for="tag in tags"
       :key="tag"
@@ -38,6 +61,33 @@ function submit() {
       placeholder="Type a skill and press Enter"
       class="min-w-[140px] flex-1 border-none bg-transparent px-1 py-1.5 text-sm outline-none"
       @keydown.enter.prevent="submit"
+      @focus="emit('focus')"
     />
+
+    <ul
+      v-if="trimmedDraft"
+      class="absolute left-0 right-0 top-full z-10 mt-1 flex flex-col overflow-hidden rounded-md border border-border bg-surface-raised shadow-level2"
+    >
+      <li v-for="tag in matchingSuggestions" :key="tag">
+        <button
+          type="button"
+          data-test="tag-suggestion"
+          class="w-full px-3 py-2 text-left text-sm hover:bg-surface-sunken"
+          @click="addTag(tag)"
+        >
+          {{ tag }}
+        </button>
+      </li>
+      <li v-if="!hasExactMatch">
+        <button
+          type="button"
+          data-test="tag-create-option"
+          class="w-full px-3 py-2 text-left text-sm text-ink-muted hover:bg-surface-sunken"
+          @click="addTag(trimmedDraft)"
+        >
+          Create "{{ trimmedDraft }}"
+        </button>
+      </li>
+    </ul>
   </div>
 </template>
