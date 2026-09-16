@@ -144,7 +144,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List standalone exercises for authoring
+         * @description Returns exercises from the reusable pool, for browsing and picking one
+         *     to edit in an authoring tool — not the randomized, skill-targeted
+         *     selection GET /practice-sessions performs for a student's practice
+         *     attempt. Results are unordered beyond a stable id order and are not
+         *     paginated. Only teachers and admins may list exercises; the pool is
+         *     an authoring surface, not a student-facing catalog.
+         */
+        get: operations["listExercises"];
         put?: never;
         /**
          * Create a standalone exercise
@@ -387,7 +396,18 @@ export interface paths {
          *     retrieve an exercise.
          */
         get: operations["getExercise"];
-        put?: never;
+        /**
+         * Replace an exercise's authored content
+         * @description Replaces the given exercise's title, prompt, skill tags, stimulus
+         *     media, options, and estimated duration with the request body.
+         *     exercise_type cannot be changed — an exercise's type determines its
+         *     option shape (region vs. text vs. image), so changing it would leave
+         *     existing options in an inconsistent shape; author a new exercise of
+         *     the desired type instead. The exercise's links to challenges and
+         *     content nodes are untouched by this call. Only teachers and admins
+         *     may update an exercise.
+         */
+        put: operations["updateExercise"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1052,6 +1072,52 @@ export interface components {
             estimated_duration_seconds?: number;
         };
         /**
+         * @description Payload for replacing an existing exercise's authored content.
+         *     exercise_type is not present here — it cannot be changed after
+         *     creation. options fully replaces the exercise's current options, the
+         *     same way CreateExerciseRequest.options establishes them initially; a
+         *     caller that only wants to change one option must resend the full set.
+         */
+        UpdateExerciseRequest: {
+            /**
+             * @description A short, authoring-only name for this exercise, used to identify
+             *     it in authoring tools. Not shown to students.
+             */
+            title: string;
+            /** @description The instruction displayed to the student for this exercise. */
+            prompt: string;
+            /**
+             * @description Freeform tags naming the skill(s) or technique(s) this exercise
+             *     targets, replacing its current set. Each tag must be a non-empty
+             *     string.
+             */
+            skill_tags?: string[];
+            /**
+             * Format: uri
+             * @description The stimulus image for this exercise. Required when the
+             *     exercise's exercise_type is image_recognition; absent otherwise.
+             */
+            image_url?: string;
+            /**
+             * Format: uri
+             * @description The stimulus audio for this exercise. Required when the
+             *     exercise's exercise_type is audio_recognition; absent otherwise.
+             */
+            audio_url?: string;
+            /**
+             * @description The exercise's selectable answer choices, replacing its current
+             *     set. At least one option must have is_correct set to true — an
+             *     exercise with no correct option cannot be graded.
+             */
+            options: components["schemas"]["Option"][];
+            /**
+             * @description Authoring estimate of the time a student needs to attempt this
+             *     exercise once. Optional — used to fit practice sessions and
+             *     challenges to a student's available time.
+             */
+            estimated_duration_seconds?: number;
+        };
+        /**
          * @description A reusable, standalone practice item classified by skill tags and
          *     independent of any single challenge. The exercise_id is the value
          *     the SPA supplies in exercise-family tracking events. An exercise is
@@ -1336,6 +1402,7 @@ export type SchemaExpandedContent = components['schemas']['ExpandedContent'];
 export type SchemaCreateChallengeRequest = components['schemas']['CreateChallengeRequest'];
 export type SchemaChallenge = components['schemas']['Challenge'];
 export type SchemaCreateExerciseRequest = components['schemas']['CreateExerciseRequest'];
+export type SchemaUpdateExerciseRequest = components['schemas']['UpdateExerciseRequest'];
 export type SchemaExercise = components['schemas']['Exercise'];
 export type SchemaPracticeSession = components['schemas']['PracticeSession'];
 export type SchemaOption = components['schemas']['Option'];
@@ -1650,6 +1717,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listExercises: {
+        parameters: {
+            query?: {
+                /**
+                 * @description When given, only exercises carrying this exact skill tag are
+                 *     returned.
+                 */
+                skill_tag?: string;
+                /** @description When given, only exercises of this type are returned. */
+                exercise_type?: "text_response" | "audio_recognition" | "image_recognition" | "image_choice";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matching exercises, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to list exercises.
+             *     Only teachers and admins may list exercises.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
@@ -2268,6 +2384,75 @@ export interface operations {
                 };
             };
             /** @description No exercise exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateExercise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the exercise to update. */
+                exercise_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExerciseRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated exercise. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exercise"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation, or no option has
+             *     is_correct set to true.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to update exercises.
+             *     Only teachers and admins may update exercises.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No exercise exists with the given exercise_id. */
             404: {
                 headers: {
                     [name: string]: unknown;

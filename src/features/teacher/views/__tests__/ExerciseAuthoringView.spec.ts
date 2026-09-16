@@ -2,11 +2,22 @@ import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
+import type * as VueRouter from 'vue-router'
 
 const POST = vi.fn()
+const GET = vi.fn()
+const PUT = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { POST }, eventApi: {} }),
+  useApi: () => ({ coreApi: { POST, GET, PUT }, eventApi: {} }),
 }))
+
+// Defaults to create mode (no :id param) -- the edit-mode describe block
+// below sets route.params.id before mounting.
+const route = reactive<{ params: { id?: string } }>({ params: {} })
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return { ...actual, useRoute: () => route }
+})
 
 const upload = vi.fn()
 vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
@@ -71,8 +82,11 @@ async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
 describe('ExerciseAuthoringView', () => {
   beforeEach(() => {
     POST.mockReset()
+    GET.mockReset()
+    PUT.mockReset()
     upload.mockReset()
     currentUser.profile.role = 'teacher'
+    route.params = {}
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     mockMatchMedia(false)
@@ -580,5 +594,133 @@ describe('ExerciseAuthoringView', () => {
     await flushPromises()
 
     expect(POST).toHaveBeenCalled()
+  })
+
+  describe('edit mode', () => {
+    beforeEach(() => {
+      route.params = { id: 'e-1' }
+    })
+
+    it('loads the exercise by id and pre-fills the form', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          exercise_id: 'e-1',
+          title: 'Name the chord',
+          prompt: 'Name this chord shape',
+          exercise_type: 'text_response',
+          skill_tags: ['theory'],
+          options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+          challenge_ids: ['c-1'],
+          content_node_ids: [],
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(GET).toHaveBeenCalledWith('/exercises/{exercise_id}', { params: { path: { exercise_id: 'e-1' } } })
+      expect(wrapper.get<HTMLInputElement>('input[placeholder="Untitled exercise"]').element.value).toBe(
+        'Name the chord',
+      )
+      expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Name this chord shape')
+      expect(wrapper.get<HTMLInputElement>('input[placeholder="Option text"]').element.value).toBe('G major')
+      expect(wrapper.text()).toContain('theory')
+      expect(wrapper.get('[data-test="usage-challenges"]').text()).toContain('c-1')
+    })
+
+    it('disables the exercise type tabs -- type cannot change after creation', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          exercise_id: 'e-1',
+          title: 't',
+          prompt: 'p',
+          exercise_type: 'text_response',
+          options: [],
+          challenge_ids: [],
+          content_node_ids: [],
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="type-tab-image_recognition"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('submits via PUT with the update request shape, and reports Exercise updated', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          exercise_id: 'e-1',
+          title: 't',
+          prompt: 'p',
+          exercise_type: 'text_response',
+          options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+          challenge_ids: [],
+          content_node_ids: [],
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      PUT.mockResolvedValueOnce({
+        data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Updated title')
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(PUT).toHaveBeenCalledWith('/exercises/{exercise_id}', {
+        params: { path: { exercise_id: 'e-1' } },
+        body: expect.objectContaining({
+          title: 'Updated title',
+          prompt: 'p',
+          options: [expect.objectContaining({ is_correct: true, label: 'G major' })],
+        }),
+      })
+      expect(PUT.mock.calls[0]![1].body).not.toHaveProperty('exercise_type')
+      expect(POST).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-test="save-success"]').text()).toContain('Exercise updated')
+    })
+
+    it('shows an error state with retry when loading the exercise fails', async () => {
+      GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+      GET.mockResolvedValueOnce({
+        data: {
+          exercise_id: 'e-1',
+          title: 't',
+          prompt: 'p',
+          exercise_type: 'text_response',
+          options: [],
+          challenge_ids: [],
+          content_node_ids: [],
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="load-error"]').exists()).toBe(true)
+
+      await wrapper.get('[data-test="retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="load-error"]').exists()).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('input[placeholder="Untitled exercise"]').element.value).toBe('t')
+    })
   })
 })

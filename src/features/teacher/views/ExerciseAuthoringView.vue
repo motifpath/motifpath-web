@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
-import { computed, onUnmounted, reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
@@ -9,9 +10,13 @@ import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.v
 import SkillTagsInput from '@/features/teacher/components/SkillTagsInput.vue'
 import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.vue'
 import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
+import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
+import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
+import StateError from '@/shared/components/StateError.vue'
+import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -24,9 +29,40 @@ const canAuthor = computed(
 
 const { isCompact } = useIsCompact()
 
+const route = useRoute()
+const rawExerciseId = route.params.id
+const exerciseId = Array.isArray(rawExerciseId) ? rawExerciseId[0] : rawExerciseId
+const isEditMode = !!exerciseId
+
+const {
+  exercise: loadedExercise,
+  isLoading: loadingExercise,
+  error: loadError,
+  retry: retryLoad,
+} = exerciseId
+  ? useExercise(exerciseId)
+  : { exercise: ref(null), isLoading: ref(false), error: ref(false), retry: async () => {} }
+
 const form = useExerciseForm()
 const { createExercise } = useCreateExercise()
+const { updateExercise } = useUpdateExercise()
 const { upload } = useMediaUpload()
+
+const savedExerciseId = ref('')
+const linkedChallengeIds = ref<string[]>([])
+const linkedContentNodeIds = ref<string[]>([])
+
+watch(
+  loadedExercise,
+  (exercise) => {
+    if (!exercise) return
+    form.loadFromExercise(exercise)
+    savedExerciseId.value = exercise.exercise_id
+    linkedChallengeIds.value = exercise.challenge_ids
+    linkedContentNodeIds.value = exercise.content_node_ids ?? []
+  },
+  { immediate: true },
+)
 
 function revokeIfBlob(url: string | undefined | null): void {
   if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
@@ -120,9 +156,6 @@ const previewOpen = ref(false)
 const previewOptions = computed(() => (previewOpen.value ? form.toCreateExerciseRequest().options : []))
 const saving = ref(false)
 const saveError = ref('')
-const savedExerciseId = ref('')
-const linkedChallengeIds = ref<string[]>([])
-const linkedContentNodeIds = ref<string[]>([])
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
 onUnmounted(() => clearTimeout(justSavedTimeout))
@@ -135,11 +168,13 @@ async function save() {
 
   saving.value = true
   saveError.value = ''
-  savedExerciseId.value = ''
+  if (!isEditMode) savedExerciseId.value = ''
 
   try {
     await uploadPendingMedia()
-    const exercise = await createExercise(form.toCreateExerciseRequest())
+    const exercise = exerciseId
+      ? await updateExercise(exerciseId, form.toUpdateExerciseRequest())
+      : await createExercise(form.toCreateExerciseRequest())
     savedExerciseId.value = exercise.exercise_id
     linkedChallengeIds.value = exercise.challenge_ids
     linkedContentNodeIds.value = exercise.content_node_ids ?? []
@@ -160,8 +195,8 @@ async function save() {
     <AppBar
       context="teacher"
       :compact="isCompact"
-      :primary-nav-to="{ name: 'teacher-exercise-new' }"
-      breadcrumb-label="New exercise"
+      :primary-nav-to="{ name: 'teacher-exercises' }"
+      :breadcrumb-label="isEditMode ? form.title.value || 'Edit exercise' : 'New exercise'"
       :show-save="canAuthor"
       :save-disabled="!form.hasCorrectOption.value || saving"
       :just-saved="justSaved"
@@ -172,6 +207,14 @@ async function save() {
       <p class="max-w-md text-center text-ink-muted">
         This page is for teachers and admins only — your account doesn't have permission to author exercises.
       </p>
+    </div>
+
+    <div v-else-if="loadingExercise" class="flex flex-1 items-center justify-center p-10">
+      <StateLoading noun="exercise" />
+    </div>
+
+    <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
+      <StateError message="Failed to load the exercise" @retry="retryLoad" />
     </div>
 
     <div
@@ -216,7 +259,8 @@ async function save() {
               :key="type.value"
               type="button"
               :data-test="`type-tab-${type.value}`"
-              class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold"
+              :disabled="isEditMode"
+              class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               :class="form.exerciseType.value === type.value ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
               @click="form.exerciseType.value = type.value"
             >
@@ -225,7 +269,11 @@ async function save() {
             </button>
           </div>
           <span class="text-sm text-ink-subtle">
-            All types are checked the same way — mark one or more options correct below.
+            {{
+              isEditMode
+                ? "Type can't be changed after creation."
+                : 'All types are checked the same way — mark one or more options correct below.'
+            }}
           </span>
         </div>
 
@@ -311,8 +359,8 @@ async function save() {
         </div>
 
         <div class="flex items-center gap-3">
-          <span v-if="savedExerciseId" data-test="save-success" class="text-sm font-semibold text-success">
-            Exercise created.
+          <span v-if="justSaved" data-test="save-success" class="text-sm font-semibold text-success">
+            {{ isEditMode ? 'Exercise updated.' : 'Exercise created.' }}
           </span>
           <span v-if="saveError" data-test="save-error" class="text-sm font-semibold text-danger">{{ saveError }}</span>
         </div>

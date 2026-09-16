@@ -260,4 +260,101 @@ describe('useExerciseForm', () => {
       expect(request.options).toEqual([])
     })
   })
+
+  describe('loadFromExercise', () => {
+    it('hydrates title, prompt, type, skill tags, and text_response options', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 'Name the chord',
+        prompt: 'Name this chord shape',
+        exercise_type: 'text_response',
+        skill_tags: ['theory'],
+        options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+        challenge_ids: [],
+        content_node_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.title.value).toBe('Name the chord')
+      expect(form.prompt.value).toBe('Name this chord shape')
+      expect(form.exerciseType.value).toBe('text_response')
+      expect(form.skillTags.value).toEqual(['theory'])
+      expect(form.textOptions.value).toEqual([{ id: 'o-1', label: 'G major', correct: true }])
+    })
+
+    it('hydrates image_choice options', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 't',
+        prompt: 'p',
+        exercise_type: 'image_choice',
+        options: [{ option_id: 'o-1', is_correct: false, image_url: 'https://cdn.example.com/e-minor.png' }],
+        challenge_ids: [],
+        content_node_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.imageOptions.value).toEqual([
+        { id: 'o-1', imageUrl: 'https://cdn.example.com/e-minor.png', caption: '', correct: false },
+      ])
+    })
+
+    it('defers image_recognition regions until the stimulus image is measured, then converts fractions to pixels', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 't',
+        prompt: 'p',
+        exercise_type: 'image_recognition',
+        image_url: 'https://cdn.example.com/fretboard.png',
+        options: [
+          {
+            option_id: 'o-1',
+            is_correct: true,
+            region: { x: 0.25, y: 0.5, width: 0.1, height: 0.2, shape: 'rectangle' },
+          },
+        ],
+        challenge_ids: [],
+        content_node_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.imageUrl.value).toBe('https://cdn.example.com/fretboard.png')
+      expect(form.regions.value).toEqual([])
+
+      form.setStimulusImageSize(800, 240)
+
+      expect(form.regions.value).toEqual([
+        { id: 'o-1', x: 25, y: 50, width: 80, height: 48, shape: 'rectangle', correct: true },
+      ])
+    })
+  })
+
+  describe('toUpdateExerciseRequest', () => {
+    it('maps form state to an UpdateExerciseRequest, without exercise_type', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Name the chord'
+      form.prompt.value = 'Name this chord shape'
+      form.exerciseType.value = 'text_response'
+      form.addTextOption()
+      form.editTextOption(form.textOptions.value[0]!.id, 'G major')
+      form.toggleTextOption(form.textOptions.value[0]!.id)
+      form.addTag('theory')
+
+      const request = form.toUpdateExerciseRequest()
+
+      expect(request).toEqual({
+        title: 'Name the chord',
+        prompt: 'Name this chord shape',
+        skill_tags: ['theory'],
+        options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
+      })
+      expect(request).not.toHaveProperty('exercise_type')
+    })
+  })
 })
