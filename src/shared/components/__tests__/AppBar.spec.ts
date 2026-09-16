@@ -77,6 +77,13 @@ describe('AppBar', () => {
     expect(wrapper.text()).toContain('MotifPath')
   })
 
+  it('sticks to the top of the viewport, so it stays reachable on a long scrolling page', () => {
+    const wrapper = mountBar({ context: 'student' })
+
+    expect(wrapper.classes()).toContain('sticky')
+    expect(wrapper.classes()).toContain('top-0')
+  })
+
   it("shows a 'My path' link for student context", () => {
     const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'path' } })
 

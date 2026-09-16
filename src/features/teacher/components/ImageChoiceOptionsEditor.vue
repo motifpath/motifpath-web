@@ -52,7 +52,13 @@ function onPicked(file: File) {
             {{ option.imageUrl ? 'Change image' : 'Choose image' }}
           </span>
         </button>
-        <img v-if="option.imageUrl" :src="option.imageUrl" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover" />
+        <img
+          v-if="option.imageUrl"
+          :src="option.imageUrl"
+          alt=""
+          draggable="false"
+          class="absolute inset-0 -z-10 h-full w-full object-cover"
+        />
         <button
           type="button"
           data-test="option-remove"

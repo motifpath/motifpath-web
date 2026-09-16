@@ -50,7 +50,7 @@ function closeAccountMenu(): void {
 
 <template>
   <div
-    class="relative flex h-16 items-center gap-4 bg-surface-raised px-5 shadow-level1"
+    class="sticky top-0 z-20 flex h-16 items-center gap-4 bg-surface-raised px-5 shadow-level1"
   >
     <button
       v-if="compact"
