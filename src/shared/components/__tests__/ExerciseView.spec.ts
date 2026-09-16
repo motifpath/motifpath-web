@@ -63,6 +63,14 @@ describe('ExerciseView', () => {
     expect(img.classes()).toContain('h-auto')
   })
 
+  it('marks the image_choice option image non-draggable, so an accidental drag gesture cannot swallow the click', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
+    })
+
+    expect(wrapper.get('[data-test="exercise-option"] img').attributes('draggable')).toBe('false')
+  })
+
   it('renders image_recognition options as click regions over the real stimulus image', () => {
     const wrapper = mount(ExerciseView, {
       props: {

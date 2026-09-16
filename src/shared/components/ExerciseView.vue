@@ -165,7 +165,7 @@ const isLandscape = computed(() => props.direction === 'row')
           :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
           @click="select(option.option_id)"
         >
-          <img :src="option.image_url" alt="" class="block h-auto w-full border-b border-border" />
+          <img :src="option.image_url" alt="" draggable="false" class="block h-auto w-full border-b border-border" />
           <div class="px-2 py-1.5" :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'">
             <span class="text-xs text-ink">{{ option.label }}</span>
           </div>

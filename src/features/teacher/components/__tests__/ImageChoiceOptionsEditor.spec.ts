@@ -30,6 +30,13 @@ describe('ImageChoiceOptionsEditor', () => {
     expect(wrapper.findAll('[data-test="option-correct"][aria-pressed="true"]')).toHaveLength(1)
   })
 
+  it('marks the option image non-draggable, so an accidental drag gesture cannot swallow a click on the controls above it', () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    const img = wrapper.find('img')
+    expect(img.attributes('draggable')).toBe('false')
+  })
+
   it('opens the image picker for an option, previews it locally, and defers upload', async () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
     const file = new File(['data'], 'new.png', { type: 'image/png' })
