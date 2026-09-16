@@ -89,4 +89,32 @@ describe('useEventTracking', () => {
       }),
     ).resolves.toBeUndefined()
   })
+
+  it('warns when the server rejects the event, since openapi-fetch resolves HTTP errors rather than throwing', async () => {
+    POST.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' } })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { track } = useEventTracking()
+
+    await track({
+      event_type: 'exercise.started',
+      exercise_id: 'ex-1',
+      trigger_context: { source: 'challenge_sequence' },
+    })
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('rejected'), 'exercise.started', { message: 'boom' })
+    warn.mockRestore()
+  })
+
+  it('does not throw when the network request itself rejects', async () => {
+    POST.mockRejectedValueOnce(new Error('network down'))
+    const { track } = useEventTracking()
+
+    await expect(
+      track({
+        event_type: 'exercise.started',
+        exercise_id: 'ex-1',
+        trigger_context: { source: 'challenge_sequence' },
+      }),
+    ).resolves.toBeUndefined()
+  })
 })

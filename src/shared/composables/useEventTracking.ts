@@ -29,8 +29,12 @@ function currentSessionId(): string {
 /**
  * Posts student tracking events to the Event Ingestion Service. A no-op
  * until the student's profile has resolved, since every event requires a
- * student_id to attribute it to. Delivery failures are swallowed — this is
- * fire-and-forget telemetry that must never block the practice flow.
+ * student_id to attribute it to. Delivery failures never throw — this is
+ * fire-and-forget telemetry that must never block the practice flow — but a
+ * rejected envelope (4xx) is still logged: openapi-fetch resolves an HTTP
+ * error as `{ error }` rather than throwing, so silence here would otherwise
+ * hide a systemic schema mismatch between TrackableEvent and the backend
+ * contract forever.
  */
 export function useEventTracking() {
   const { eventApi } = useApi()
@@ -40,18 +44,21 @@ export function useEventTracking() {
     const studentId = currentUser.profile?.user_id
     if (!studentId) return
 
-    const envelope = {
+    const envelope: SchemaTrackingEvent = {
       ...event,
       event_id: crypto.randomUUID(),
       student_id: studentId,
       session_id: currentSessionId(),
       occurred_at: new Date().toISOString(),
-    } as SchemaTrackingEvent
+    }
 
     try {
-      await eventApi.POST('/events', { body: envelope })
+      const { error } = await eventApi.POST('/events', { body: envelope })
+      if (error) {
+        console.warn('Tracking event rejected by the Event Ingestion Service:', event.event_type, error)
+      }
     } catch {
-      // Delivery failure is not surfaced — see doc comment above.
+      // Network/transport failure — not surfaced, see doc comment above.
     }
   }
 
