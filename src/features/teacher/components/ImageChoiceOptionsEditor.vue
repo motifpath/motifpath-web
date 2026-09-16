@@ -46,7 +46,7 @@ function onPicked(file: File) {
           :src="option.imageUrl"
           alt=""
           draggable="false"
-          class="absolute inset-0 h-full w-full object-cover"
+          class="absolute inset-0 h-full w-full object-contain"
         />
         <button
           type="button"

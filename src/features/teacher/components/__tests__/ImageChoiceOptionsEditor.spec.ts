@@ -35,6 +35,14 @@ describe('ImageChoiceOptionsEditor', () => {
     expect(img.attributes('draggable')).toBe('false')
   })
 
+  it("shows the picked image uncropped (object-contain), not cropped to fill the box (object-cover)", () => {
+    const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
+
+    const img = wrapper.get('img')
+    expect(img.classes()).not.toContain('object-cover')
+    expect(img.classes()).toContain('object-contain')
+  })
+
   it('leaves the choose-image button transparent so the picked image shows through, with no text label covering it', () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
 
