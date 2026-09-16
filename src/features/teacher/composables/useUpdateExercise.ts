@@ -1,4 +1,5 @@
 import { useApi } from '@/shared/composables/useApi'
+import { describeApiError } from '@/shared/utils/apiError'
 import type { components } from '@/api/generated/core-domain'
 
 type UpdateExerciseRequest = components['schemas']['UpdateExerciseRequest']
@@ -13,7 +14,7 @@ export function useUpdateExercise() {
       body: request,
     })
     if (!data) {
-      throw new Error(error?.message ?? 'Failed to update the exercise')
+      throw new Error(describeApiError(error, 'Failed to update the exercise'))
     }
     return data
   }

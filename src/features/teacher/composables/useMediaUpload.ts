@@ -1,4 +1,5 @@
 import { useApi } from '@/shared/composables/useApi'
+import { describeApiError } from '@/shared/utils/apiError'
 import type { components } from '@/api/generated/core-domain'
 
 type MediaContentType = components['schemas']['CreateMediaUploadUrlRequest']['content_type']
@@ -29,7 +30,7 @@ export function useMediaUpload() {
       body: { purpose: 'library_asset', content_type: contentType, file_name: file.name },
     })
     if (!data) {
-      throw new Error(error?.message ?? 'Failed to request an upload URL')
+      throw new Error(describeApiError(error, 'Failed to request an upload URL'))
     }
 
     const putResponse = await fetch(data.upload_url, {
