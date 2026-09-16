@@ -109,9 +109,11 @@ describe('usePracticeSession', () => {
 
     expect(GET).toHaveBeenNthCalledWith(1, '/content-nodes/{content_node_id}/challenges', {
       params: { path: { content_node_id: 'node-1' } },
+      signal: expect.any(AbortSignal),
     })
     expect(GET).toHaveBeenNthCalledWith(2, '/challenges/{challenge_id}/exercises', {
       params: { path: { challenge_id: 'ch-1' } },
+      signal: expect.any(AbortSignal),
     })
     expect(session.status.value).toBe('in-progress')
     expect(session.currentExercise.value?.exercise_id).toBe('ex-1')
@@ -165,7 +167,7 @@ describe('usePracticeSession', () => {
     expect(session.currentAnswer.value?.isCorrect).toBe(false)
   })
 
-  it('treats deselecting back down to nothing as unanswered again', async () => {
+  it('treats deselecting back down to nothing as unanswered again, and does not send answer_sent for it', async () => {
     mockHappyPath()
     const session = usePracticeSession('node-1')
     await flush()
@@ -173,9 +175,11 @@ describe('usePracticeSession', () => {
     session.select(['o1'])
     expect(session.currentAnswer.value).not.toBeNull()
 
+    track.mockClear()
     session.select([])
     expect(session.currentAnswer.value).toBeNull()
     expect(session.canAdvance.value).toBe(false)
+    expect(track).not.toHaveBeenCalled()
   })
 
   it('advances to the next exercise and preserves a prior answer when navigating back', async () => {
@@ -379,6 +383,26 @@ describe('usePracticeSession', () => {
     await flush()
 
     expect(session.status.value).toBe('empty')
+  })
+
+  it('aborts the previous in-flight request when a newer load() supersedes it', async () => {
+    const first = defer<{ data: unknown; error: undefined; response: { status: number } }>()
+    const second = defer<{ data: unknown; error: undefined; response: { status: number } }>()
+    let firstSignal: AbortSignal | undefined
+    GET.mockImplementationOnce((_path: string, opts: { signal?: AbortSignal }) => {
+      firstSignal = opts.signal
+      return first.promise
+    }).mockImplementationOnce(() => second.promise)
+
+    const session = usePracticeSession('node-1')
+    expect(firstSignal?.aborted).toBe(false)
+
+    void session.retry() // supersedes the first call
+
+    expect(firstSignal?.aborted).toBe(true)
+
+    second.resolve({ data: [], error: undefined, response: { status: 200 } })
+    await flush()
   })
 
   it('tracks exercise.ended for the current exercise on unmount if it was never ended', async () => {

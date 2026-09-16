@@ -64,13 +64,18 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
     const { correct, total } = score.value
     return total === 0 ? 0 : Math.round((correct / total) * 100)
   })
-  // green at/above the challenge's own pass_threshold, red below half of it,
-  // orange in between — a rough "clearly passing / borderline / clearly
-  // failing" split rather than a precise grading scale.
+  // Tunable presentation heuristic, not a derived business rule: below this
+  // fraction of the challenge's pass_threshold reads as a clear fail rather
+  // than a borderline one.
+  const WARNING_FLOOR_RATIO = 0.5
+
+  // green at/above the challenge's own pass_threshold, red below
+  // WARNING_FLOOR_RATIO of it, orange in between — a rough "clearly passing /
+  // borderline / clearly failing" split rather than a precise grading scale.
   const scoreTier = computed<'success' | 'warning' | 'danger'>(() => {
     const threshold = challenge.value?.pass_threshold ?? 0
     if (scorePercent.value >= threshold) return 'success'
-    if (scorePercent.value >= threshold / 2) return 'warning'
+    if (scorePercent.value >= threshold * WARNING_FLOOR_RATIO) return 'warning'
     return 'danger'
   })
 
@@ -111,49 +116,65 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
 
   // Bumped on every load() call; a call only applies its result if it's
   // still the most recent one by the time it resolves, so an overlapping
-  // retry can't have its outcome clobbered by a slower, stale request.
+  // retry can't have its outcome clobbered by a slower, stale request. The
+  // previous call's own in-flight fetch is also aborted, not just ignored,
+  // so a retry-spam doesn't leave stale requests running to completion.
   let loadEpoch = 0
+  let loadAbortController: AbortController | null = null
 
   async function load(): Promise<void> {
     const myEpoch = ++loadEpoch
+    loadAbortController?.abort()
+    const abortController = new AbortController()
+    loadAbortController = abortController
     status.value = 'loading'
 
-    const challengesResult = await coreApi.GET('/content-nodes/{content_node_id}/challenges', {
-      params: { path: { content_node_id: toValue(nodeId) } },
-    })
-    if (myEpoch !== loadEpoch) return
-    if (challengesResult.error || !challengesResult.data) {
-      status.value = 'error'
-      return
-    }
-    const [firstChallenge] = challengesResult.data
-    if (!firstChallenge) {
-      status.value = 'empty'
-      return
-    }
+    try {
+      const challengesResult = await coreApi.GET('/content-nodes/{content_node_id}/challenges', {
+        params: { path: { content_node_id: toValue(nodeId) } },
+        signal: abortController.signal,
+      })
+      if (myEpoch !== loadEpoch) return
+      if (challengesResult.error || !challengesResult.data) {
+        status.value = 'error'
+        return
+      }
+      const [firstChallenge] = challengesResult.data
+      if (!firstChallenge) {
+        status.value = 'empty'
+        return
+      }
 
-    const exercisesResult = await coreApi.GET('/challenges/{challenge_id}/exercises', {
-      params: { path: { challenge_id: firstChallenge.challenge_id } },
-    })
-    if (myEpoch !== loadEpoch) return
-    if (exercisesResult.error || !exercisesResult.data) {
-      status.value = 'error'
-      return
-    }
-    if (exercisesResult.data.length === 0) {
-      status.value = 'empty'
-      return
-    }
+      const exercisesResult = await coreApi.GET('/challenges/{challenge_id}/exercises', {
+        params: { path: { challenge_id: firstChallenge.challenge_id } },
+        signal: abortController.signal,
+      })
+      if (myEpoch !== loadEpoch) return
+      if (exercisesResult.error || !exercisesResult.data) {
+        status.value = 'error'
+        return
+      }
+      if (exercisesResult.data.length === 0) {
+        status.value = 'empty'
+        return
+      }
 
-    challenge.value = firstChallenge
-    exercises.value = exercisesResult.data
-    currentIndex.value = 0
-    answers.value = {}
-    attemptCounts.value = {}
-    startedExerciseIds.clear()
-    endedExerciseIds.clear()
-    status.value = 'in-progress'
-    trackExerciseStart()
+      challenge.value = firstChallenge
+      exercises.value = exercisesResult.data
+      currentIndex.value = 0
+      answers.value = {}
+      attemptCounts.value = {}
+      startedExerciseIds.clear()
+      endedExerciseIds.clear()
+      status.value = 'in-progress'
+      trackExerciseStart()
+    } catch {
+      // A superseded call's own request was aborted above — nothing to do,
+      // the newer call already owns status. Any other network failure here
+      // is surfaced the same way as a resolved {error} would be.
+      if (myEpoch !== loadEpoch) return
+      status.value = 'error'
+    }
   }
 
   // optionIds is the full selected set, not a single toggle — ExerciseView
@@ -166,15 +187,17 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
       // Deselecting back down to nothing is "unanswered again," not "answered
       // with zero options" — no entry, not an entry with an empty array, so
       // canAdvance/endCurrentExercise's completed-vs-abandoned check both
-      // treat it the same as never having answered.
+      // treat it the same as never having answered. Nothing was actually
+      // submitted, so no answer_sent event either — see below.
       const rest = { ...answers.value }
       delete rest[exercise.exercise_id]
       answers.value = rest
-    } else {
-      answers.value = {
-        ...answers.value,
-        [exercise.exercise_id]: { optionIds, isCorrect: isExactMatch(exercise, optionIds) },
-      }
+      return
+    }
+
+    answers.value = {
+      ...answers.value,
+      [exercise.exercise_id]: { optionIds, isCorrect: isExactMatch(exercise, optionIds) },
     }
 
     const attemptNumber = (attemptCounts.value[exercise.exercise_id] ?? 0) + 1
