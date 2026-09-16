@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
+import PracticeHelpModal from '@/features/student/components/PracticeHelpModal.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -69,9 +70,12 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         </button>
       </div>
 
-      <div v-if="helpOpen" data-test="help-panel" class="rounded-md bg-surface-sunken px-3 py-2.5 text-xs text-ink-muted">
-        Tap an option to answer. Use <b>‹ Back</b> to revisit and change a previous exercise's answer.
-      </div>
+      <PracticeHelpModal
+        :open="helpOpen"
+        :exercise-type="session.currentExercise.value.exercise_type"
+        :allow-multiple="allowMultiple"
+        @close="helpOpen = false"
+      />
 
       <ExerciseView
         :exercise-type="session.currentExercise.value.exercise_type"

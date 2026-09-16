@@ -176,6 +176,19 @@ describe('PracticeView', () => {
     expect(state.back).toHaveBeenCalled()
   })
 
+  it('opens and closes the help modal via the "?" toggle and the modal itself', async () => {
+    set({ status: ref('in-progress'), exercises: ref([textExercise]) })
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="help-toggle"]').trigger('click')
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="close-modal"]').trigger('click')
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
+  })
+
   it('shows the score percent tinted by tier', () => {
     set({ status: ref('result'), scorePercent: ref(35), scoreTier: ref('danger') })
 
