@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
+import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 import type { components } from '@/api/generated/core-domain'
 
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
@@ -21,7 +22,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const orientation = ref<'portrait' | 'landscape'>('portrait')
 const direction = computed(() => (orientation.value === 'landscape' ? 'row' : 'column'))
-const allowMultiple = computed(() => props.options.filter((option) => option.is_correct).length > 1)
+const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
 </script>
 
 <template>

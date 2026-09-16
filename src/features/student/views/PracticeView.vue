@@ -7,6 +7,7 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { usePracticeSession } from '@/features/student/composables/usePracticeSession'
+import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
 const props = defineProps<{ nodeId: string }>()
 
@@ -23,9 +24,7 @@ const progressPercent = computed(() => {
   return ((session.currentIndex.value + 1) / total) * 100
 })
 
-const allowMultiple = computed(
-  () => (session.currentExercise.value?.options.filter((option) => option.is_correct).length ?? 0) > 1,
-)
+const allowMultiple = computed(() => hasMultipleCorrectOptions(session.currentExercise.value?.options ?? []))
 
 const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
   success: 'bg-success-muted text-success',
