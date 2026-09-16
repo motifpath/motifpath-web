@@ -71,6 +71,29 @@ describe('ExercisePreviewModal', () => {
     expect(wrapper.get('[data-test="exercise-view-root"]').classes()).toContain('flex-row')
   })
 
+  it('sizes the preview frame like a real mobile screen and scrolls overflow internally, instead of clipping content', () => {
+    const wrapper = mount(ExercisePreviewModal, {
+      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+    })
+
+    const frame = wrapper.get('[data-test="preview-frame"]')
+    expect(frame.classes()).toContain('h-[667px]')
+    expect(frame.classes()).toContain('w-[375px]')
+    expect(frame.classes()).toContain('overflow-y-auto')
+  })
+
+  it('swaps the frame to landscape dimensions on toggle', async () => {
+    const wrapper = mount(ExercisePreviewModal, {
+      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+    })
+
+    await wrapper.get('[data-test="preview-landscape"]').trigger('click')
+
+    const frame = wrapper.get('[data-test="preview-frame"]')
+    expect(frame.classes()).toContain('h-[375px]')
+    expect(frame.classes()).toContain('w-[667px]')
+  })
+
   it('emits close when the close button is clicked', async () => {
     const wrapper = mount(ExercisePreviewModal, {
       props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
