@@ -11,7 +11,6 @@ const emit = defineEmits<{
   setPreview: [id: string, previewUrl: string]
   /** The raw file, uploaded only when the exercise is saved. */
   setFile: [id: string, file: File]
-  editCaption: [id: string, caption: string]
   toggle: [id: string]
   remove: [id: string]
   add: []
@@ -69,13 +68,6 @@ function onPicked(file: File) {
           <X :size="12" aria-hidden="true" />
         </button>
       </div>
-      <input
-        type="text"
-        placeholder="Caption (authoring only)"
-        class="rounded-sm border border-border bg-surface px-2 py-1.5 text-[0.8125rem]"
-        :value="option.caption"
-        @change="emit('editCaption', option.id, ($event.target as HTMLInputElement).value)"
-      />
       <button
         type="button"
         data-test="option-correct"
