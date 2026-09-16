@@ -1,7 +1,12 @@
 import { reactive } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const POST = vi.fn()
+type PostEvents = (
+  path: '/events',
+  init: { body: Record<string, unknown> },
+) => Promise<{ data?: { event_id: string; received_at: string }; error?: { message: string } }>
+
+const POST = vi.fn<PostEvents>()
 vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: {}, eventApi: { POST } }),
 }))
@@ -30,7 +35,7 @@ describe('useEventTracking', () => {
     })
 
     expect(POST).toHaveBeenCalledTimes(1)
-    const [path, init] = POST.mock.calls[0] as [string, { body: Record<string, unknown> }]
+    const [path, init] = POST.mock.calls[0]!
     expect(path).toBe('/events')
     expect(init.body).toMatchObject({
       event_type: 'exercise.started',
@@ -59,9 +64,9 @@ describe('useEventTracking', () => {
       final_score: 100,
     })
 
-    const firstBody = POST.mock.calls[0]?.[1].body as { session_id: string }
-    const secondBody = POST.mock.calls[1]?.[1].body as { session_id: string }
-    expect(firstBody.session_id).toBe(secondBody.session_id)
+    const firstBody = POST.mock.calls[0]?.[1].body
+    const secondBody = POST.mock.calls[1]?.[1].body
+    expect(firstBody?.session_id).toBe(secondBody?.session_id)
   })
 
   it('does nothing when there is no registered student to attribute the event to', async () => {
