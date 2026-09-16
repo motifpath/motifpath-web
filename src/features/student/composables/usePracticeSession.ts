@@ -60,6 +60,19 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
     correct: Object.values(answers.value).filter((answer) => answer.isCorrect).length,
     total: exercises.value.length,
   }))
+  const scorePercent = computed(() => {
+    const { correct, total } = score.value
+    return total === 0 ? 0 : Math.round((correct / total) * 100)
+  })
+  // green at/above the challenge's own pass_threshold, red below half of it,
+  // orange in between — a rough "clearly passing / borderline / clearly
+  // failing" split rather than a precise grading scale.
+  const scoreTier = computed<'success' | 'warning' | 'danger'>(() => {
+    const threshold = challenge.value?.pass_threshold ?? 0
+    if (scorePercent.value >= threshold) return 'success'
+    if (scorePercent.value >= threshold / 2) return 'warning'
+    return 'danger'
+  })
 
   function triggerContext() {
     return {
@@ -215,6 +228,8 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
     isLastExercise,
     canAdvance,
     score,
+    scorePercent,
+    scoreTier,
     select,
     next,
     back,

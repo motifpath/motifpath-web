@@ -21,6 +21,16 @@ const progressPercent = computed(() => {
   if (total === 0) return 0
   return ((session.currentIndex.value + 1) / total) * 100
 })
+
+const allowMultiple = computed(
+  () => (session.currentExercise.value?.options.filter((option) => option.is_correct).length ?? 0) > 1,
+)
+
+const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
+  success: 'bg-success-muted text-success',
+  warning: 'bg-warning-muted text-warning',
+  danger: 'bg-danger-muted text-danger',
+}
 </script>
 
 <template>
@@ -69,11 +79,12 @@ const progressPercent = computed(() => {
         :options="session.currentExercise.value.options"
         :image-url="session.currentExercise.value.image_url"
         :audio-url="session.currentExercise.value.audio_url"
+        :allow-multiple="allowMultiple"
         :selected-option-ids="session.currentAnswer.value?.optionIds ?? []"
         @update:selected-option-ids="session.select"
       />
 
-      <div class="flex items-center justify-between">
+      <div class="sticky bottom-0 -mx-4 flex items-center justify-between border-t border-border bg-surface px-4 py-3">
         <button
           v-if="session.currentIndex.value > 0"
           type="button"
@@ -92,6 +103,13 @@ const progressPercent = computed(() => {
 
     <div v-else-if="session.status.value === 'result'" data-test="result" class="flex flex-col items-center gap-3 rounded-md border border-border bg-surface-sunken px-4 py-5 text-center">
       <p class="text-base font-semibold text-ink">{{ session.score.value.correct }} of {{ session.score.value.total }} correct</p>
+      <p
+        data-test="result-percent"
+        class="rounded-full px-3 py-1 text-sm font-semibold"
+        :class="scoreTierClasses[session.scoreTier.value]"
+      >
+        {{ session.scorePercent.value }}%
+      </p>
       <PrimaryButton as="RouterLink" data-test="finish" :to="{ name: 'node', params: { nodeId: props.nodeId } }">
         Finish
       </PrimaryButton>

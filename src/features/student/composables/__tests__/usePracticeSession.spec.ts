@@ -207,6 +207,52 @@ describe('usePracticeSession', () => {
     expect(session.score.value).toEqual({ correct: 2, total: 2 })
   })
 
+  it('reports scorePercent and a success/warning/danger tier against the challenge pass_threshold', async () => {
+    // pass_threshold 70: 2/2 = 100% -> success; below is exercised separately.
+    mockHappyPath()
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    session.select(['o1'])
+    session.next()
+    session.select(['o4'])
+    session.next()
+
+    expect(session.scorePercent.value).toBe(100)
+    expect(session.scoreTier.value).toBe('success')
+  })
+
+  it('reports a warning tier below the threshold but above half of it, and danger further below', async () => {
+    GET.mockImplementation((path: string) => {
+      if (path === '/content-nodes/{content_node_id}/challenges') {
+        return Promise.resolve({ data: [challenge], error: undefined, response: { status: 200 } }) // pass_threshold 70
+      }
+      return Promise.resolve({ data: exercises, error: undefined, response: { status: 200 } })
+    })
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    session.select(['o2']) // wrong
+    session.next()
+    session.select(['o4']) // right — 1/2 = 50%, below 70 but above 35
+    session.next()
+    expect(session.scorePercent.value).toBe(50)
+    expect(session.scoreTier.value).toBe('warning')
+  })
+
+  it('reports a danger tier well below the threshold', async () => {
+    mockHappyPath()
+    const session = usePracticeSession('node-1')
+    await flush()
+
+    session.select(['o2']) // wrong
+    session.next()
+    session.select(['o3']) // wrong — 0/2 = 0%
+    session.next()
+    expect(session.scorePercent.value).toBe(0)
+    expect(session.scoreTier.value).toBe('danger')
+  })
+
   it('returns to the last exercise (not a further-back one) when Back is pressed from the result screen', async () => {
     mockHappyPath()
     const session = usePracticeSession('node-1')

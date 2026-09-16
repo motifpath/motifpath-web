@@ -33,6 +33,8 @@ const state = {
   isLastExercise: computed(() => currentIndex.value === exercises.value.length - 1),
   canAdvance: computed(() => currentAnswer.value !== null),
   score: ref({ correct: 0, total: 0 }),
+  scorePercent: ref(0),
+  scoreTier: ref<'success' | 'warning' | 'danger'>('success'),
   select: vi.fn(),
   next: vi.fn(),
   back: vi.fn(),
@@ -58,6 +60,8 @@ function set(next: Partial<typeof state>) {
   state.currentIndex.value = next.currentIndex?.value ?? 0
   state.currentAnswer.value = next.currentAnswer?.value ?? null
   state.score.value = next.score?.value ?? { correct: 0, total: 0 }
+  state.scorePercent.value = next.scorePercent?.value ?? 0
+  state.scoreTier.value = next.scoreTier?.value ?? 'success'
 }
 
 describe('PracticeView', () => {
@@ -108,6 +112,21 @@ describe('PracticeView', () => {
     expect(wrapper.get('[data-test="exercise-audio-play"]').attributes('src')).toBe('https://x/clip.mp3')
   })
 
+  it('tells ExerciseView to allow multiple selections only when the exercise has more than one correct option', () => {
+    const multiCorrectExercise: Exercise = {
+      ...textExercise,
+      options: [
+        { option_id: 'o1', is_correct: true, label: 'A' },
+        { option_id: 'o2', is_correct: true, label: 'B' },
+      ],
+    }
+    set({ status: ref('in-progress'), exercises: ref([multiCorrectExercise]) })
+
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="exercise-option-indicator"]').classes()).not.toContain('rounded-full')
+  })
+
   it('reads "Next ›" on a non-final exercise and "See result" on the last one', () => {
     set({ status: ref('in-progress'), exercises: ref([textExercise, textExercise]), currentIndex: ref(0) })
     expect(mountView().get('[data-test="next"]').text()).toBe('Next ›')
@@ -155,5 +174,15 @@ describe('PracticeView', () => {
 
     await wrapper.get('[data-test="result-back"]').trigger('click')
     expect(state.back).toHaveBeenCalled()
+  })
+
+  it('shows the score percent tinted by tier', () => {
+    set({ status: ref('result'), scorePercent: ref(35), scoreTier: ref('danger') })
+
+    const wrapper = mountView()
+
+    const percent = wrapper.get('[data-test="result-percent"]')
+    expect(percent.text()).toBe('35%')
+    expect(percent.classes()).toContain('text-danger')
   })
 })
