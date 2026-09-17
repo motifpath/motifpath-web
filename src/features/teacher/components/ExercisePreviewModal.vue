@@ -9,10 +9,11 @@ import type { components } from '@/api/generated/core-domain'
 
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 type Option = components['schemas']['Option']
+type PromptDocument = components['schemas']['PromptDocument']
 
 const props = defineProps<{
   open: boolean
-  prompt: string
+  prompt: PromptDocument
   exerciseType: ExerciseType
   options: Option[]
   imageUrl?: string

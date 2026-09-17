@@ -2,6 +2,7 @@ import { mount, RouterLinkStub } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { computed, ref } from 'vue'
 
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
 type Exercise = components['schemas']['Exercise']
@@ -9,7 +10,7 @@ type Exercise = components['schemas']['Exercise']
 const textExercise: Exercise = {
   exercise_id: 'ex-1',
   title: 't1',
-  prompt: 'Name this technique',
+  prompt: plainTextPrompt('Name this technique'),
   exercise_type: 'text_response',
   options: [
     { option_id: 'o1', is_correct: true, label: 'Alternate picking' },

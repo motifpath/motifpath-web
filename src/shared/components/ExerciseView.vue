@@ -3,15 +3,17 @@ import { Volume2 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import Icon from '@/shared/components/Icon.vue'
+import PromptRenderer from '@/shared/components/PromptRenderer.vue'
 import type { components } from '@/api/generated/core-domain'
 
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
+type PromptDocument = components['schemas']['PromptDocument']
 
 const props = withDefaults(
   defineProps<{
     exerciseType: ExerciseType
-    prompt: string
+    prompt: PromptDocument
     /**
      * Never pass `is_correct` through to the template — this component
      * renders every option in its neutral, ungraded state on purpose, the
@@ -111,7 +113,7 @@ function selectAndPlay(option: Option): void {
       class="text-[15px] font-semibold leading-[1.375rem] text-ink"
       :class="isLandscape ? 'flex-[0_0_40%]' : 'flex-[0_0_auto]'"
     >
-      {{ prompt }}
+      <PromptRenderer :document="prompt" />
     </div>
 
     <div class="min-w-0" :class="isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'">

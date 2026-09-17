@@ -1017,6 +1017,72 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * @description A structured rich-text document for an exercise's prompt, authored
+         *     with the exercise-prompt rich-text editor and persisted exactly as
+         *     the editor produces it. Always has type "doc" at the root, with the
+         *     document's block-level content nested beneath it.
+         */
+        PromptDocument: {
+            /**
+             * @description Discriminates this object as a prompt document's root node.
+             * @enum {string}
+             */
+            type: "doc";
+            /** @description The document's top-level block nodes, in reading order. */
+            content: components["schemas"]["PromptNode"][];
+        };
+        /**
+         * @description A single node in a prompt document's tree. Container node types
+         *     (heading, paragraph, list and table nodes) nest further nodes under
+         *     content; the text node is a leaf that carries the literal string
+         *     under text and any inline marks under marks. attrs holds
+         *     type-specific attributes (e.g. heading's level, paragraph/heading's
+         *     text alignment, image's src and alt, table cell's colspan and
+         *     rowspan) and is validated by the authoring editor, not by this
+         *     schema.
+         */
+        PromptNode: {
+            /**
+             * @description The kind of node this is.
+             * @enum {string}
+             */
+            type: "heading" | "paragraph" | "text" | "bulletList" | "orderedList" | "listItem" | "table" | "tableRow" | "tableHeader" | "tableCell" | "image";
+            /**
+             * @description Type-specific attributes for this node. Absent when the node
+             *     type has none set.
+             */
+            attrs?: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description Child nodes, present on container node types. Absent on leaf
+             *     node types (text, image).
+             */
+            content?: components["schemas"]["PromptNode"][];
+            /** @description The literal text content. Present only when type is text. */
+            text?: string;
+            /**
+             * @description Inline formatting marks applied to this node. Present only on
+             *     text nodes that carry at least one mark.
+             */
+            marks?: components["schemas"]["PromptMark"][];
+        };
+        /** @description An inline formatting mark applied to a prompt document's text node. */
+        PromptMark: {
+            /**
+             * @description The kind of mark this is.
+             * @enum {string}
+             */
+            type: "bold" | "italic" | "strike" | "highlight" | "link";
+            /**
+             * @description Mark-specific attributes (e.g. link's href). Absent when the
+             *     mark type has none set.
+             */
+            attrs?: {
+                [key: string]: unknown;
+            };
+        };
         /** @description Payload for creating a standalone, reusable exercise. */
         CreateExerciseRequest: {
             /**
@@ -1025,11 +1091,7 @@ export interface components {
              *     tools. Not shown to students.
              */
             title: string;
-            /**
-             * @description The instruction displayed to the student for this exercise
-             *     (e.g. "Identify the root position of a C major triad").
-             */
-            prompt: string;
+            prompt: components["schemas"]["PromptDocument"];
             /**
              * @description The type of practice interaction, which determines how its
              *     options are authored and rendered. text_response and
@@ -1085,8 +1147,7 @@ export interface components {
              *     it in authoring tools. Not shown to students.
              */
             title: string;
-            /** @description The instruction displayed to the student for this exercise. */
-            prompt: string;
+            prompt: components["schemas"]["PromptDocument"];
             /**
              * @description Freeform tags naming the skill(s) or technique(s) this exercise
              *     targets, replacing its current set. Each tag must be a non-empty
@@ -1133,8 +1194,7 @@ export interface components {
             exercise_id: string;
             /** @description Short, authoring-only name for this exercise. Not shown to students. */
             title: string;
-            /** @description The instruction displayed to the student for this exercise. */
-            prompt: string;
+            prompt: components["schemas"]["PromptDocument"];
             /**
              * @description The type of practice interaction.
              * @enum {string}
@@ -1409,6 +1469,9 @@ export type SchemaCreateExpandedContentRequest = components['schemas']['CreateEx
 export type SchemaExpandedContent = components['schemas']['ExpandedContent'];
 export type SchemaCreateChallengeRequest = components['schemas']['CreateChallengeRequest'];
 export type SchemaChallenge = components['schemas']['Challenge'];
+export type SchemaPromptDocument = components['schemas']['PromptDocument'];
+export type SchemaPromptNode = components['schemas']['PromptNode'];
+export type SchemaPromptMark = components['schemas']['PromptMark'];
 export type SchemaCreateExerciseRequest = components['schemas']['CreateExerciseRequest'];
 export type SchemaUpdateExerciseRequest = components['schemas']['UpdateExerciseRequest'];
 export type SchemaExercise = components['schemas']['Exercise'];

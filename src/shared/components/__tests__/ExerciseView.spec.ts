@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
 type Option = components['schemas']['Option']
@@ -32,7 +33,7 @@ const regionOptions: Option[] = [
 describe('ExerciseView', () => {
   it('renders the prompt', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'Name this technique', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('Name this technique'), options: textOptions },
     })
 
     expect(wrapper.text()).toContain('Name this technique')
@@ -40,7 +41,7 @@ describe('ExerciseView', () => {
 
   it('renders text_response options as selectable rows', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -50,7 +51,7 @@ describe('ExerciseView', () => {
 
   it('renders image_choice options as an image grid', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
+      props: { exerciseType: 'image_choice', prompt: plainTextPrompt('p'), options: imageOptions },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -60,7 +61,7 @@ describe('ExerciseView', () => {
 
   it("shows the option image uncropped (object-contain), bounded so mixed aspect ratios don't produce a ragged grid", () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
+      props: { exerciseType: 'image_choice', prompt: plainTextPrompt('p'), options: imageOptions },
     })
 
     const img = wrapper.get('[data-test="exercise-option"] img')
@@ -70,7 +71,7 @@ describe('ExerciseView', () => {
 
   it('marks the image_choice option image non-draggable, so an accidental drag gesture cannot swallow the click', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_choice', prompt: 'p', options: imageOptions },
+      props: { exerciseType: 'image_choice', prompt: plainTextPrompt('p'), options: imageOptions },
     })
 
     expect(wrapper.get('[data-test="exercise-option"] img').attributes('draggable')).toBe('false')
@@ -90,7 +91,7 @@ describe('ExerciseView', () => {
 
     it('renders equally sized labeled buttons, with no visible native player', () => {
       const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
       })
 
       const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -105,7 +106,7 @@ describe('ExerciseView', () => {
 
     it('selects an audio_selection option on click', async () => {
       const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
       })
 
       await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
@@ -116,7 +117,7 @@ describe('ExerciseView', () => {
     it("plays the clicked option's clip through the shared player", async () => {
       const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
       const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
       })
 
       await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
@@ -129,7 +130,7 @@ describe('ExerciseView', () => {
     it('stops the previously playing clip before playing a newly clicked option, so playback never overlaps', async () => {
       const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
       const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
       })
 
       await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
@@ -144,7 +145,7 @@ describe('ExerciseView', () => {
       const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
       const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
       const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
       })
       const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
 
@@ -163,7 +164,7 @@ describe('ExerciseView', () => {
     it('selects and plays again on a third click, after the second click stopped and unselected it', async () => {
       const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
       const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
       })
       const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
 
@@ -178,7 +179,7 @@ describe('ExerciseView', () => {
     it('plays again from the start after a clicked clip finished naturally', async () => {
       const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
       const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
       })
       const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
 
@@ -194,7 +195,7 @@ describe('ExerciseView', () => {
     const wrapper = mount(ExerciseView, {
       props: {
         exerciseType: 'image_recognition',
-        prompt: 'p',
+        prompt: plainTextPrompt('p'),
         options: regionOptions,
         imageUrl: 'https://x/fretboard.png',
       },
@@ -207,7 +208,7 @@ describe('ExerciseView', () => {
 
   it('shows a placeholder instead of a region canvas when image_recognition has no stimulus image yet', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions },
+      props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: regionOptions },
     })
 
     expect(wrapper.find('[data-test="exercise-stimulus-image"]').exists()).toBe(false)
@@ -216,7 +217,7 @@ describe('ExerciseView', () => {
 
   it('shows no visible marker over an unselected region, so the image underneath is never obscured', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions, imageUrl: 'https://x/fretboard.png' },
+      props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: regionOptions, imageUrl: 'https://x/fretboard.png' },
     })
 
     expect(wrapper.find('[data-test="exercise-region-marker"]').exists()).toBe(false)
@@ -224,7 +225,7 @@ describe('ExerciseView', () => {
 
   it('shows a small marker at the region, not a filled overlay across the whole region, once selected', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'image_recognition', prompt: 'p', options: regionOptions, imageUrl: 'https://x/fretboard.png' },
+      props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: regionOptions, imageUrl: 'https://x/fretboard.png' },
     })
 
     await wrapper.get('[data-test="exercise-region"]').trigger('click')
@@ -237,7 +238,7 @@ describe('ExerciseView', () => {
 
   it('renders audio_recognition with a real, playable audio element sourced from audioUrl', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'audio_recognition', prompt: 'p', options: textOptions, audioUrl: 'https://x/clip.mp3' },
+      props: { exerciseType: 'audio_recognition', prompt: plainTextPrompt('p'), options: textOptions, audioUrl: 'https://x/clip.mp3' },
     })
 
     const audio = wrapper.get('[data-test="exercise-audio-play"]')
@@ -249,7 +250,7 @@ describe('ExerciseView', () => {
 
   it('marks an option selected on click without ever exposing is_correct', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -263,7 +264,7 @@ describe('ExerciseView', () => {
 
   it('defaults to single-select: clicking a different option replaces the prior selection', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -276,7 +277,7 @@ describe('ExerciseView', () => {
 
   it('allows selecting more than one option at once when allowMultiple is true', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, allowMultiple: true },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -289,7 +290,7 @@ describe('ExerciseView', () => {
 
   it('deselects an option when it is clicked again, regardless of allowMultiple', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -301,10 +302,10 @@ describe('ExerciseView', () => {
 
   it('renders a checkbox-shaped indicator when allowMultiple is true and a radio-shaped one otherwise', () => {
     const single = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
     })
     const multi = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, allowMultiple: true },
     })
 
     expect(single.get('[data-test="exercise-option-indicator"]').classes()).toContain('rounded-full')
@@ -313,7 +314,7 @@ describe('ExerciseView', () => {
 
   it('lays out the prompt beside the content in landscape direction', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, direction: 'row' },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, direction: 'row' },
     })
 
     expect(wrapper.classes()).toContain('flex-row')
@@ -321,7 +322,7 @@ describe('ExerciseView', () => {
 
   it('lays out the prompt above the content in portrait (default) direction', () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
     })
 
     expect(wrapper.classes()).toContain('flex-col')
@@ -329,7 +330,7 @@ describe('ExerciseView', () => {
 
   it('emits update:selectedOptionIds with the full selected set on each click', async () => {
     const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: 'p', options: textOptions, allowMultiple: true },
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, allowMultiple: true },
     })
 
     const rows = wrapper.findAll('[data-test="exercise-option"]')
@@ -343,7 +344,7 @@ describe('ExerciseView', () => {
     const wrapper = mount(ExerciseView, {
       props: {
         exerciseType: 'text_response',
-        prompt: 'p',
+        prompt: plainTextPrompt('p'),
         options: textOptions,
         allowMultiple: true,
         selectedOptionIds: ['o1', 'o2'],

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
 type Option = components['schemas']['Option']
@@ -14,7 +15,7 @@ const options: Option[] = [
 describe('ExercisePreviewModal', () => {
   it('renders nothing when closed', () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: false, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: false, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
@@ -22,7 +23,7 @@ describe('ExercisePreviewModal', () => {
 
   it('mounts the real ExerciseView with the given prompt and options when open', () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'Name this technique', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('Name this technique'), exerciseType: 'text_response', options },
     })
 
     expect(wrapper.text()).toContain('Name this technique')
@@ -33,7 +34,7 @@ describe('ExercisePreviewModal', () => {
     const wrapper = mount(ExercisePreviewModal, {
       props: {
         open: true,
-        prompt: 'p',
+        prompt: plainTextPrompt('p'),
         exerciseType: 'image_recognition',
         options: [{ option_id: 'r1', is_correct: true, region: { x: 0, y: 0, width: 0.1, height: 0.1, shape: 'circle' } }],
         imageUrl: 'https://x/fretboard.png',
@@ -45,7 +46,7 @@ describe('ExercisePreviewModal', () => {
 
   it('never leaks which option is correct in its own markup', () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     expect(wrapper.html()).not.toContain('is_correct')
@@ -54,7 +55,7 @@ describe('ExercisePreviewModal', () => {
 
   it('defaults to portrait (column) layout', () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     expect(wrapper.get('[data-test="preview-portrait"]').classes()).toContain('bg-accent')
@@ -62,7 +63,7 @@ describe('ExercisePreviewModal', () => {
 
   it('switches ExerciseView to row (landscape) layout on toggle', async () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     await wrapper.get('[data-test="preview-landscape"]').trigger('click')
@@ -73,7 +74,7 @@ describe('ExercisePreviewModal', () => {
 
   it('sizes the preview frame like a real mobile screen and scrolls overflow internally, instead of clipping content', () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     const frame = wrapper.get('[data-test="preview-frame"]')
@@ -84,7 +85,7 @@ describe('ExercisePreviewModal', () => {
 
   it('swaps the frame to landscape dimensions on toggle', async () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     await wrapper.get('[data-test="preview-landscape"]').trigger('click')
@@ -96,7 +97,7 @@ describe('ExercisePreviewModal', () => {
 
   it('emits close when the close button is clicked', async () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     await wrapper.get('[data-test="close-modal"]').trigger('click')
@@ -106,7 +107,7 @@ describe('ExercisePreviewModal', () => {
 
   it('emits close when the overlay is clicked', async () => {
     const wrapper = mount(ExercisePreviewModal, {
-      props: { open: true, prompt: 'p', exerciseType: 'text_response', options },
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
     await wrapper.get('[data-test="modal-overlay"]').trigger('click')
