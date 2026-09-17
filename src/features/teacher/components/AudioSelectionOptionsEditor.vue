@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Check, Music, X } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { Music } from 'lucide-vue-next'
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
+import OptionsEditorGrid from '@/features/teacher/components/OptionsEditorGrid.vue'
+import { useOptionMediaPicker } from '@/features/teacher/composables/useOptionMediaPicker'
 import type { AudioOption } from '@/features/teacher/composables/useExerciseForm'
 
 const props = withDefaults(defineProps<{ options: AudioOption[]; compact?: boolean }>(), { compact: false })
@@ -17,31 +18,26 @@ const emit = defineEmits<{
   add: []
 }>()
 
-const pickerTargetId = ref<string | null>(null)
-
-function openPicker(id: string) {
-  pickerTargetId.value = id
-}
-function onPicked(file: File) {
-  if (pickerTargetId.value) {
-    const previous = props.options.find((o) => o.id === pickerTargetId.value)?.audioUrl
-    if (previous?.startsWith('blob:')) URL.revokeObjectURL(previous)
-    emit('setPreview', pickerTargetId.value, URL.createObjectURL(file))
-    emit('setFile', pickerTargetId.value, file)
-  }
-  pickerTargetId.value = null
-}
+const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
+  () => props.options,
+  (o) => o.audioUrl,
+  (id, url) => emit('setPreview', id, url),
+  (id, file) => emit('setFile', id, file),
+)
 </script>
 
 <template>
-  <div class="grid gap-3" :class="compact ? 'grid-cols-2' : 'grid-cols-3'">
-    <div
-      v-for="option in options"
-      :key="option.id"
-      class="flex flex-col gap-2 rounded-md border p-2.5"
-      :class="option.correct ? 'border-success' : 'border-border'"
-    >
-      <div class="relative flex h-[84px] flex-col items-center justify-center gap-1.5 rounded-sm border border-border bg-surface-sunken">
+  <OptionsEditorGrid
+    :options="options"
+    :compact="compact"
+    :add-icon="Music"
+    add-label="Add audio option"
+    @toggle="emit('toggle', $event)"
+    @remove="emit('remove', $event)"
+    @add="emit('add')"
+  >
+    <template #media="{ option }">
+      <div class="flex h-[84px] flex-col items-center justify-center gap-1.5 rounded-sm border border-border bg-surface-sunken">
         <audio v-if="option.audioUrl" :src="option.audioUrl" controls class="w-[90%]" />
         <button
           v-else
@@ -64,16 +60,10 @@ function onPicked(file: File) {
         >
           Change
         </button>
-        <button
-          type="button"
-          data-test="option-remove"
-          aria-label="Remove option"
-          class="absolute right-1 top-1 flex h-[22px] w-[22px] items-center justify-center rounded bg-surface-raised text-ink-subtle"
-          @click="emit('remove', option.id)"
-        >
-          <X :size="12" aria-hidden="true" />
-        </button>
       </div>
+    </template>
+
+    <template #extra="{ option }">
       <input
         type="text"
         data-test="option-label"
@@ -82,28 +72,10 @@ function onPicked(file: File) {
         class="rounded-sm border border-border bg-surface-raised px-2 py-1 text-xs"
         @input="emit('editLabel', option.id, ($event.target as HTMLInputElement).value)"
       />
-      <button
-        type="button"
-        data-test="option-correct"
-        :aria-pressed="option.correct"
-        class="flex items-center justify-center gap-1.5 rounded-sm border px-2.5 py-[5px] text-xs font-semibold"
-        :class="option.correct ? 'border-success bg-success-muted text-success' : 'border-border bg-surface-raised text-ink-muted'"
-        @click="emit('toggle', option.id)"
-      >
-        <Check v-if="option.correct" :size="12" aria-hidden="true" />
-        Correct answer
-      </button>
-    </div>
-    <button
-      type="button"
-      data-test="add-option"
-      class="flex min-h-[150px] flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border text-accent"
-      @click="emit('add')"
-    >
-      <Music :size="18" aria-hidden="true" />
-      <span class="text-[0.8125rem] font-semibold">Add audio option</span>
-    </button>
+    </template>
 
-    <ImagePickerModal :open="pickerTargetId !== null" kind="audio" @select="onPicked" @close="pickerTargetId = null" />
-  </div>
+    <template #modal>
+      <ImagePickerModal :open="pickerTargetId !== null" kind="audio" @select="onPicked" @close="pickerTargetId = null" />
+    </template>
+  </OptionsEditorGrid>
 </template>

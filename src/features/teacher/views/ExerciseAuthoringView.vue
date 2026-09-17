@@ -130,6 +130,24 @@ function onRemoveAudioOption(id: string) {
   form.removeAudioOption(id)
 }
 
+// One entry per exercise type whose options carry their own media file,
+// driving uploadPendingMedia below without a growing if/else — adding a new
+// such type only means adding an entry here.
+const optionMediaConfig: Partial<
+  Record<ExerciseType, { kind: 'image' | 'audio'; getUrl: (id: string) => string | undefined; setUrl: (id: string, url: string) => void }>
+> = {
+  image_choice: {
+    kind: 'image',
+    getUrl: (id) => form.imageOptions.value.find((o) => o.id === id)?.imageUrl,
+    setUrl: form.setImageOptionURL,
+  },
+  audio_selection: {
+    kind: 'audio',
+    getUrl: (id) => form.audioOptions.value.find((o) => o.id === id)?.audioUrl,
+    setUrl: form.setAudioOptionURL,
+  },
+}
+
 async function uploadPendingMedia() {
   const pendingStimulus = stimulusFile.value
   const stimulusUpload = pendingStimulus
@@ -148,24 +166,16 @@ async function uploadPendingMedia() {
   // type) -- a pending file left over from a type the teacher has since
   // switched away from would otherwise still get uploaded for nothing it
   // ends up in.
-  let optionUploads: Promise<void>[] = []
-  if (form.exerciseType.value === 'image_choice') {
-    optionUploads = Object.entries(optionFiles).map(async ([id, file]) => {
-      const previousBlobUrl = form.imageOptions.value.find((o) => o.id === id)?.imageUrl
-      const url = await upload(file, 'image')
-      revokeIfBlob(previousBlobUrl)
-      form.setImageOptionURL(id, url)
-      delete optionFiles[id]
-    })
-  } else if (form.exerciseType.value === 'audio_selection') {
-    optionUploads = Object.entries(optionFiles).map(async ([id, file]) => {
-      const previousBlobUrl = form.audioOptions.value.find((o) => o.id === id)?.audioUrl
-      const url = await upload(file, 'audio')
-      revokeIfBlob(previousBlobUrl)
-      form.setAudioOptionURL(id, url)
-      delete optionFiles[id]
-    })
-  }
+  const config = optionMediaConfig[form.exerciseType.value]
+  const optionUploads = config
+    ? Object.entries(optionFiles).map(async ([id, file]) => {
+        const previousBlobUrl = config.getUrl(id)
+        const url = await upload(file, config.kind)
+        revokeIfBlob(previousBlobUrl)
+        config.setUrl(id, url)
+        delete optionFiles[id]
+      })
+    : []
 
   await Promise.all([stimulusUpload, ...optionUploads])
 }

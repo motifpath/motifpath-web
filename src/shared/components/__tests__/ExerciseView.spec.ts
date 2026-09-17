@@ -155,6 +155,22 @@ describe('ExerciseView', () => {
 
       expect(playSpy).toHaveBeenCalledTimes(1)
       expect(pauseSpy).toHaveBeenCalled()
+      // Stopping the clip is not the same as unanswering — the click was to
+      // silence it, not to withdraw the pick.
+      expect(firstOption.attributes('data-selected')).toBe('true')
+    })
+
+    it('stays selected across stop-then-replay (a third click after the clip ended naturally does not unanswer it)', async () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      })
+      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
+
+      await firstOption.trigger('click')
+      await wrapper.get('audio').trigger('ended')
+      await firstOption.trigger('click')
+
+      expect(firstOption.attributes('data-selected')).toBe('true')
     })
 
     it('plays again from the start after a clicked clip finished naturally', async () => {

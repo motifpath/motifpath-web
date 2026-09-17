@@ -142,7 +142,7 @@ describe('ExerciseAuthoringView', () => {
   it('renders an icon on every exercise-type tab', () => {
     const wrapper = mountView()
 
-    for (const type of ['image_recognition', 'text_response', 'audio_recognition', 'image_choice']) {
+    for (const type of ['image_recognition', 'text_response', 'audio_recognition', 'image_choice', 'audio_selection']) {
       const tab = wrapper.get(`[data-test="type-tab-${type}"]`)
       expect(tab.find('svg').exists()).toBe(true)
     }
@@ -250,6 +250,9 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
     expect(wrapper.findComponent({ name: 'TextOptionsEditor' }).exists()).toBe(true)
     expect(wrapper.get('[data-test="choose-stimulus"]').text()).toContain('audio')
+
+    await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+    expect(wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' }).exists()).toBe(true)
   })
 
   it('previews a picked stimulus image locally without uploading it yet', async () => {
@@ -544,6 +547,54 @@ describe('ExerciseAuthoringView', () => {
 
     // Switch away to a type that actually gets saved -- the abandoned
     // image_choice option's file must not be uploaded.
+    await wrapper.get('[data-test="type-tab-text_response"]').trigger('click')
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('uploads a pending audio_selection option file on save', async () => {
+    upload.mockResolvedValueOnce('https://cdn.example.com/library/a.mp3')
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.get('textarea').setValue('p')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' })
+    const id = (editor.props('options') as { id: string }[])[0]!.id
+    const file = new File(['data'], 'a.mp3', { type: 'audio/mpeg' })
+    await editor.vm.$emit('setFile', id, file)
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).toHaveBeenCalledWith(file, 'audio')
+  })
+
+  it('does not upload a pending audio_selection option file when saving under a different exercise type', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' })
+    const id = (editor.props('options') as { id: string }[])[0]!.id
+    await editor.vm.$emit('setFile', id, new File(['data'], 'a.mp3'))
+
+    // Switch away to a type that actually gets saved -- the abandoned
+    // audio_selection option's file must not be uploaded.
     await wrapper.get('[data-test="type-tab-text_response"]').trigger('click')
     await fillMinimalTextResponse(wrapper)
 
