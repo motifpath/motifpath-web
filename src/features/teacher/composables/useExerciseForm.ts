@@ -24,6 +24,8 @@ export interface ImageOption {
 export interface AudioOption {
   id: string
   audioUrl: string
+  /** Shown as the student-facing button label — audio_selection has no visible player. */
+  label: string
   correct: boolean
 }
 
@@ -126,11 +128,15 @@ export function useExerciseForm() {
   }
 
   function addAudioOption() {
-    audioOptions.value.push({ id: makeId(), audioUrl: '', correct: false })
+    audioOptions.value.push({ id: makeId(), audioUrl: '', label: '', correct: false })
   }
   function setAudioOptionURL(id: string, url: string) {
     const option = audioOptions.value.find((o) => o.id === id)
     if (option) option.audioUrl = url
+  }
+  function editAudioOptionLabel(id: string, label: string) {
+    const option = audioOptions.value.find((o) => o.id === id)
+    if (option) option.label = label
   }
   function toggleAudioOption(id: string) {
     const option = audioOptions.value.find((o) => o.id === id)
@@ -210,6 +216,7 @@ export function useExerciseForm() {
           option_id: o.id,
           is_correct: o.correct,
           audio_url: o.audioUrl,
+          label: o.label,
         }))
       case 'image_recognition': {
         const { width: imageWidth, height: imageHeight } = stimulusImageSize.value
@@ -289,6 +296,7 @@ export function useExerciseForm() {
         audioOptions.value = exercise.options.map((o) => ({
           id: o.option_id,
           audioUrl: o.audio_url ?? '',
+          label: o.label ?? '',
           correct: o.is_correct,
         }))
         break
@@ -321,6 +329,7 @@ export function useExerciseForm() {
     removeImageOption,
     addAudioOption,
     setAudioOptionURL,
+    editAudioOptionLabel,
     toggleAudioOption,
     removeAudioOption,
     addRegion,

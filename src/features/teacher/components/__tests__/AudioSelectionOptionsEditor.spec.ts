@@ -13,8 +13,8 @@ vi.stubGlobal('URL', {
 })
 
 const options: AudioOption[] = [
-  { id: 'o1', audioUrl: 'https://cdn.example.com/a.mp3', correct: true },
-  { id: 'o2', audioUrl: '', correct: false },
+  { id: 'o1', audioUrl: 'https://cdn.example.com/a.mp3', label: 'Lick A', correct: true },
+  { id: 'o2', audioUrl: '', label: '', correct: false },
 ]
 
 describe('AudioSelectionOptionsEditor', () => {
@@ -57,8 +57,19 @@ describe('AudioSelectionOptionsEditor', () => {
     expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
   })
 
+  it('shows a label text input per option, seeded with its current label, and emits editLabel on input', async () => {
+    const wrapper = mount(AudioSelectionOptionsEditor, { props: { options } })
+
+    const inputs = wrapper.findAll('[data-test="option-label"]')
+    expect((inputs[0]!.element as HTMLInputElement).value).toBe('Lick A')
+
+    await inputs[1]!.setValue('Lick B')
+
+    expect(wrapper.emitted('editLabel')).toEqual([['o2', 'Lick B']])
+  })
+
   it('revokes the previous blob preview when an option clip is replaced', async () => {
-    const blobOptions: AudioOption[] = [{ id: 'o1', audioUrl: 'blob:old-preview.mp3', correct: false }]
+    const blobOptions: AudioOption[] = [{ id: 'o1', audioUrl: 'blob:old-preview.mp3', label: '', correct: false }]
     const wrapper = mount(AudioSelectionOptionsEditor, { props: { options: blobOptions } })
 
     await wrapper.get('[data-test="choose-audio"]').trigger('click')

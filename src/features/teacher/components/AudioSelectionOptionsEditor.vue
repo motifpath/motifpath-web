@@ -11,6 +11,7 @@ const emit = defineEmits<{
   setPreview: [id: string, previewUrl: string]
   /** The raw file, uploaded only when the exercise is saved. */
   setFile: [id: string, file: File]
+  editLabel: [id: string, label: string]
   toggle: [id: string]
   remove: [id: string]
   add: []
@@ -73,6 +74,14 @@ function onPicked(file: File) {
           <X :size="12" aria-hidden="true" />
         </button>
       </div>
+      <input
+        type="text"
+        data-test="option-label"
+        placeholder="Button label shown to the student"
+        :value="option.label"
+        class="rounded-sm border border-border bg-surface-raised px-2 py-1 text-xs"
+        @input="emit('editLabel', option.id, ($event.target as HTMLInputElement).value)"
+      />
       <button
         type="button"
         data-test="option-correct"

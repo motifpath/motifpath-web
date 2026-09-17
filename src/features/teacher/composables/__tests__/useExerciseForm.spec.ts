@@ -73,17 +73,19 @@ describe('useExerciseForm', () => {
   })
 
   describe('audio_selection options', () => {
-    it('adds, sets audio, toggles, and removes an audio option', () => {
+    it('adds, sets audio, sets label, toggles, and removes an audio option', () => {
       const form = useExerciseForm()
       form.exerciseType.value = 'audio_selection'
 
       form.addAudioOption()
       const id = form.audioOptions.value[0]!.id
       form.setAudioOptionURL(id, 'https://cdn.example.com/a.mp3')
+      form.editAudioOptionLabel(id, 'Lick A')
       form.toggleAudioOption(id)
 
       expect(form.audioOptions.value[0]).toMatchObject({
         audioUrl: 'https://cdn.example.com/a.mp3',
+        label: 'Lick A',
         correct: true,
       })
       expect(form.hasCorrectOption.value).toBe(true)
@@ -254,13 +256,14 @@ describe('useExerciseForm', () => {
       ])
     })
 
-    it('maps an audio_selection exercise with per-option audio_url', () => {
+    it('maps an audio_selection exercise with per-option audio_url and label', () => {
       const form = useExerciseForm()
       form.title.value = 'Pick the lick'
       form.prompt.value = 'Which is a minor pentatonic lick?'
       form.exerciseType.value = 'audio_selection'
       form.addAudioOption()
       form.setAudioOptionURL(form.audioOptions.value[0]!.id, 'https://cdn.example.com/lick.mp3')
+      form.editAudioOptionLabel(form.audioOptions.value[0]!.id, 'Lick A')
       form.toggleAudioOption(form.audioOptions.value[0]!.id)
 
       const request = form.toCreateExerciseRequest()
@@ -270,6 +273,7 @@ describe('useExerciseForm', () => {
           option_id: form.audioOptions.value[0]!.id,
           is_correct: true,
           audio_url: 'https://cdn.example.com/lick.mp3',
+          label: 'Lick A',
         },
       ])
     })
@@ -342,7 +346,7 @@ describe('useExerciseForm', () => {
       ])
     })
 
-    it('hydrates audio_selection options', () => {
+    it('hydrates audio_selection options, including label', () => {
       const form = useExerciseForm()
 
       form.loadFromExercise({
@@ -350,14 +354,16 @@ describe('useExerciseForm', () => {
         title: 't',
         prompt: 'p',
         exercise_type: 'audio_selection',
-        options: [{ option_id: 'o-1', is_correct: false, audio_url: 'https://cdn.example.com/lick.mp3' }],
+        options: [
+          { option_id: 'o-1', is_correct: false, audio_url: 'https://cdn.example.com/lick.mp3', label: 'Lick A' },
+        ],
         challenge_ids: [],
         content_node_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.audioOptions.value).toEqual([
-        { id: 'o-1', audioUrl: 'https://cdn.example.com/lick.mp3', correct: false },
+        { id: 'o-1', audioUrl: 'https://cdn.example.com/lick.mp3', label: 'Lick A', correct: false },
       ])
     })
 

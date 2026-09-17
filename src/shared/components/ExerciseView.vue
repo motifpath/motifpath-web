@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { Volume2 } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
 
 import Icon from '@/shared/components/Icon.vue'
 import type { components } from '@/api/generated/core-domain'
@@ -69,6 +70,21 @@ const isAudioRecognition = computed(() => props.exerciseType === 'audio_recognit
 const isImageChoice = computed(() => props.exerciseType === 'image_choice')
 const isAudioSelection = computed(() => props.exerciseType === 'audio_selection')
 const isLandscape = computed(() => props.direction === 'row')
+
+// A single shared, hidden player — not one <audio> per option — so clicking
+// an option can never overlap two clips: switching always pauses whatever
+// was playing before loading and starting the newly clicked one.
+const audioPlayerEl = ref<HTMLAudioElement | null>(null)
+
+function selectAndPlay(option: Option): void {
+  select(option.option_id)
+  const el = audioPlayerEl.value
+  if (!el || !option.audio_url) return
+  el.pause()
+  el.src = option.audio_url
+  el.currentTime = 0
+  void el.play()
+}
 </script>
 
 <template>
@@ -177,17 +193,20 @@ const isLandscape = computed(() => props.direction === 'row')
       </div>
 
       <div v-else-if="isAudioSelection" class="grid grid-cols-2 gap-2">
-        <div
+        <button
           v-for="option in options"
           :key="option.option_id"
+          type="button"
           data-test="exercise-option"
           :data-selected="isSelected(option.option_id)"
-          class="flex cursor-pointer flex-col gap-2 rounded-md border-2 p-2"
+          class="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 px-3 py-3 text-center text-[13px] font-semibold text-ink"
           :class="isSelected(option.option_id) ? 'border-accent bg-accent-muted' : 'border-border bg-transparent'"
-          @click="select(option.option_id)"
+          @click="selectAndPlay(option)"
         >
-          <audio :src="option.audio_url" controls class="w-full" @click.stop />
-        </div>
+          <Volume2 :size="16" aria-hidden="true" />
+          {{ option.label }}
+        </button>
+        <audio ref="audioPlayerEl" class="hidden" />
       </div>
     </div>
   </div>

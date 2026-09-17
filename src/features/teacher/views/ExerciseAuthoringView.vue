@@ -380,6 +380,7 @@ async function save() {
           :compact="isCompact"
           @set-preview="form.setAudioOptionURL"
           @set-file="onOptionFile"
+          @edit-label="form.editAudioOptionLabel"
           @toggle="form.toggleAudioOption"
           @remove="onRemoveAudioOption"
           @add="form.addAudioOption"

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
@@ -17,8 +17,8 @@ const imageOptions: Option[] = [
 ]
 
 const audioOptions: Option[] = [
-  { option_id: 'a1', audio_url: 'https://x/lick1.mp3', is_correct: true },
-  { option_id: 'a2', audio_url: 'https://x/lick2.mp3', is_correct: false },
+  { option_id: 'a1', audio_url: 'https://x/lick1.mp3', label: 'Lick A', is_correct: true },
+  { option_id: 'a2', audio_url: 'https://x/lick2.mp3', label: 'Lick B', is_correct: false },
 ]
 
 const regionOptions: Option[] = [
@@ -76,26 +76,69 @@ describe('ExerciseView', () => {
     expect(wrapper.get('[data-test="exercise-option"] img').attributes('draggable')).toBe('false')
   })
 
-  it('renders audio_selection options as a grid of playable clips', () => {
-    const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+  describe('audio_selection', () => {
+    // jsdom has no real media pipeline — every click pauses/plays the shared
+    // element, so both are stubbed for every test here, not just the ones
+    // that assert on them.
+    beforeEach(() => {
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    })
+    afterEach(() => {
+      vi.restoreAllMocks()
     })
 
-    const rows = wrapper.findAll('[data-test="exercise-option"]')
-    expect(rows).toHaveLength(2)
-    const players = wrapper.findAll('[data-test="exercise-option"] audio')
-    expect(players).toHaveLength(2)
-    expect(players[0]?.attributes('src')).toBe('https://x/lick1.mp3')
-  })
+    it('renders equally sized labeled buttons, with no visible native player', () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      })
 
-  it('selects an audio_selection option on click', async () => {
-    const wrapper = mount(ExerciseView, {
-      props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      const rows = wrapper.findAll('[data-test="exercise-option"]')
+      expect(rows).toHaveLength(2)
+      expect(rows[0]?.text()).toContain('Lick A')
+      expect(rows[1]?.text()).toContain('Lick B')
+      // A single shared, hidden player drives playback — not one <audio> per
+      // option — so there is nothing resembling a native scrubber per button.
+      expect(wrapper.findAll('audio')).toHaveLength(1)
+      expect(wrapper.get('audio').attributes('controls')).toBeUndefined()
     })
 
-    await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+    it('selects an audio_selection option on click', async () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      })
 
-    expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-selected')).toBe('true')
+      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+
+      expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-selected')).toBe('true')
+    })
+
+    it("plays the clicked option's clip through the shared player", async () => {
+      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      })
+
+      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+
+      const audioEl = wrapper.get('audio').element as HTMLAudioElement
+      expect(audioEl.src).toBe('https://x/lick1.mp3')
+      expect(playSpy).toHaveBeenCalledTimes(1)
+    })
+
+    it('stops the previously playing clip before playing a newly clicked option, so playback never overlaps', async () => {
+      const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      })
+
+      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+      await wrapper.findAll('[data-test="exercise-option"]')[1]!.trigger('click')
+
+      expect(pauseSpy).toHaveBeenCalled()
+      const audioEl = wrapper.get('audio').element as HTMLAudioElement
+      expect(audioEl.src).toBe('https://x/lick2.mp3')
+    })
   })
 
   it('renders image_recognition options as click regions over the real stimulus image', () => {
