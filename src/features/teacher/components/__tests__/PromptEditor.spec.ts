@@ -91,6 +91,45 @@ describe('PromptEditor', () => {
     expect(doc.content.some((node) => node.type === 'table')).toBe(true)
   })
 
+  it('shows table row/column controls only while the cursor is inside a table, and can add/remove a column and a row', async () => {
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    await nextTick()
+    expect(wrapper.find('[data-test="prompt-table-toolbar"]').exists()).toBe(false)
+
+    await wrapper.find('[data-test="prompt-toolbar-table"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('[data-test="prompt-table-toolbar"]').exists()).toBe(true)
+
+    function tableDimensions() {
+      const table = lastEmittedDocument(wrapper).content.find((node) => node.type === 'table')
+      const rows = table?.content ?? []
+      return { rows: rows.length, columns: rows[0]?.content?.length ?? 0 }
+    }
+
+    const initial = tableDimensions()
+
+    await wrapper.find('[data-test="prompt-table-add-column"]').trigger('click')
+    await nextTick()
+    expect(tableDimensions().columns).toBe(initial.columns + 1)
+
+    await wrapper.find('[data-test="prompt-table-add-row"]').trigger('click')
+    await nextTick()
+    expect(tableDimensions().rows).toBe(initial.rows + 1)
+
+    await wrapper.find('[data-test="prompt-table-delete-row"]').trigger('click')
+    await nextTick()
+    expect(tableDimensions().rows).toBe(initial.rows)
+
+    await wrapper.find('[data-test="prompt-table-delete-column"]').trigger('click')
+    await nextTick()
+    expect(tableDimensions().columns).toBe(initial.columns)
+
+    await wrapper.find('[data-test="prompt-table-delete"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('[data-test="prompt-table-toolbar"]').exists()).toBe(false)
+    expect(lastEmittedDocument(wrapper).content.some((node) => node.type === 'table')).toBe(false)
+  })
+
   it('uploads the picked file and inserts an image node on the image button', async () => {
     upload.mockResolvedValueOnce('https://cdn.example.com/library/circle-of-fifths.png')
     const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('') } })

@@ -58,6 +58,8 @@ function toWireDocument(json: unknown): PromptDocument {
   return JSON.parse(JSON.stringify(json))
 }
 
+const activeStateTick = ref(0)
+
 const editor = useEditor({
   content: toWireDocument(props.modelValue),
   extensions: [
@@ -86,7 +88,23 @@ const editor = useEditor({
   onUpdate: ({ editor: current }) => {
     emit('update:modelValue', toWireDocument(current.getJSON()))
   },
+  // @tiptap/vue-3's editor ref is a plain shallowRef set once on mount —
+  // it never re-fires Vue's reactivity on its own, so isActive() calls in
+  // the template (button highlighting, the table-controls v-if) would
+  // otherwise never re-evaluate as the selection moves or marks toggle.
+  // Bumping this counter on every transaction, and reading it inside the
+  // isActive() helper below, gives the template a dependency to re-render
+  // the whole toolbar on.
+  onTransaction: () => {
+    activeStateTick.value++
+  },
 })
+
+function isActive(nameOrAttrs: string | Record<string, unknown>, attrs?: Record<string, unknown>): boolean {
+  void activeStateTick.value
+  if (!editor.value) return false
+  return typeof nameOrAttrs === 'string' ? editor.value.isActive(nameOrAttrs, attrs) : editor.value.isActive(nameOrAttrs)
+}
 
 // The prompt field can be reloaded out from under the editor when a teacher
 // navigates directly between two exercises' edit routes without this
@@ -112,6 +130,21 @@ function setAlign(align: 'left' | 'center' | 'right' | 'justify') {
 }
 function insertTable() {
   editor.value?.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run()
+}
+function addColumn() {
+  editor.value?.chain().focus().addColumnAfter().run()
+}
+function deleteColumn() {
+  editor.value?.chain().focus().deleteColumn().run()
+}
+function addRow() {
+  editor.value?.chain().focus().addRowAfter().run()
+}
+function deleteRow() {
+  editor.value?.chain().focus().deleteRow().run()
+}
+function deleteTable() {
+  editor.value?.chain().focus().deleteTable().run()
 }
 function setLink() {
   const url = window.prompt('Link URL')
@@ -142,12 +175,14 @@ async function onImagePicked(event: Event) {
 
 <template>
   <div class="flex flex-col gap-2">
-    <div class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5">
+    <div
+      class="sticky top-16 z-10 flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5"
+    >
       <button
         type="button"
         data-test="prompt-toolbar-h1"
         class="rounded p-1.5"
-        :class="editor?.isActive('heading', { level: 1 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('heading', { level: 1 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setHeading(1)"
       >
         <Heading1 :size="16" aria-hidden="true" />
@@ -156,7 +191,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-h2"
         class="rounded p-1.5"
-        :class="editor?.isActive('heading', { level: 2 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('heading', { level: 2 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setHeading(2)"
       >
         <Heading2 :size="16" aria-hidden="true" />
@@ -165,7 +200,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-h3"
         class="rounded p-1.5"
-        :class="editor?.isActive('heading', { level: 3 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('heading', { level: 3 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setHeading(3)"
       >
         <Heading3 :size="16" aria-hidden="true" />
@@ -174,7 +209,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-paragraph"
         class="rounded p-1.5"
-        :class="editor?.isActive('paragraph') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('paragraph') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setParagraph()"
       >
         <Pilcrow :size="16" aria-hidden="true" />
@@ -186,7 +221,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-bold"
         class="rounded p-1.5"
-        :class="editor?.isActive('bold') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('bold') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="editor?.chain().focus().toggleBold().run()"
       >
         <BoldIcon :size="16" aria-hidden="true" />
@@ -195,7 +230,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-italic"
         class="rounded p-1.5"
-        :class="editor?.isActive('italic') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('italic') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="editor?.chain().focus().toggleItalic().run()"
       >
         <ItalicIcon :size="16" aria-hidden="true" />
@@ -204,7 +239,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-strike"
         class="rounded p-1.5"
-        :class="editor?.isActive('strike') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('strike') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="editor?.chain().focus().toggleStrike().run()"
       >
         <Strikethrough :size="16" aria-hidden="true" />
@@ -213,7 +248,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-highlight"
         class="rounded p-1.5"
-        :class="editor?.isActive('highlight') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('highlight') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="editor?.chain().focus().toggleHighlight().run()"
       >
         <Highlighter :size="16" aria-hidden="true" />
@@ -243,7 +278,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-align-left"
         class="rounded p-1.5"
-        :class="editor?.isActive({ textAlign: 'left' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive({ textAlign: 'left' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setAlign('left')"
       >
         <AlignLeft :size="16" aria-hidden="true" />
@@ -252,7 +287,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-align-center"
         class="rounded p-1.5"
-        :class="editor?.isActive({ textAlign: 'center' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive({ textAlign: 'center' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setAlign('center')"
       >
         <AlignCenter :size="16" aria-hidden="true" />
@@ -261,7 +296,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-align-right"
         class="rounded p-1.5"
-        :class="editor?.isActive({ textAlign: 'right' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive({ textAlign: 'right' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setAlign('right')"
       >
         <AlignRight :size="16" aria-hidden="true" />
@@ -270,7 +305,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-align-justify"
         class="rounded p-1.5"
-        :class="editor?.isActive({ textAlign: 'justify' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive({ textAlign: 'justify' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setAlign('justify')"
       >
         <AlignJustify :size="16" aria-hidden="true" />
@@ -282,7 +317,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-bullet-list"
         class="rounded p-1.5"
-        :class="editor?.isActive('bulletList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('bulletList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="editor?.chain().focus().toggleBulletList().run()"
       >
         <List :size="16" aria-hidden="true" />
@@ -291,7 +326,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-ordered-list"
         class="rounded p-1.5"
-        :class="editor?.isActive('orderedList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('orderedList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="editor?.chain().focus().toggleOrderedList().run()"
       >
         <ListOrdered :size="16" aria-hidden="true" />
@@ -303,7 +338,7 @@ async function onImagePicked(event: Event) {
         type="button"
         data-test="prompt-toolbar-link"
         class="rounded p-1.5"
-        :class="editor?.isActive('link') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        :class="isActive('link') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="setLink()"
       >
         <LinkIcon :size="16" aria-hidden="true" />
@@ -322,6 +357,22 @@ async function onImagePicked(event: Event) {
         data-test="prompt-toolbar-image-input"
         @change="onImagePicked"
       />
+    </div>
+
+    <div
+      v-if="isActive('table')"
+      data-test="prompt-table-toolbar"
+      class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5 text-xs font-semibold text-ink-muted"
+    >
+      <button type="button" data-test="prompt-table-add-column" class="rounded px-2 py-1" @click="addColumn()">+ Column</button>
+      <button type="button" data-test="prompt-table-delete-column" class="rounded px-2 py-1" @click="deleteColumn()">− Column</button>
+      <div class="mx-1 h-4 w-px bg-border" />
+      <button type="button" data-test="prompt-table-add-row" class="rounded px-2 py-1" @click="addRow()">+ Row</button>
+      <button type="button" data-test="prompt-table-delete-row" class="rounded px-2 py-1" @click="deleteRow()">− Row</button>
+      <div class="mx-1 h-4 w-px bg-border" />
+      <button type="button" data-test="prompt-table-delete" class="rounded px-2 py-1 text-danger" @click="deleteTable()">
+        Delete table
+      </button>
     </div>
 
     <EditorContent
