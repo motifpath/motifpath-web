@@ -55,6 +55,26 @@ const headingClasses: Record<number, string> = {
   3: 'text-base font-bold',
 }
 
+// Mirrors the protocol allowlist the editor's own Tiptap Link extension
+// validates against on write (@tiptap/extension-link's isAllowedUri).
+// attrs is free-form and unvalidated server-side, so a link mark's href
+// could in principle be a "javascript:" URL from a hand-crafted API
+// payload that never went through the editor — this is the render-side
+// backstop against that, not just a UX nicety.
+const SAFE_HREF_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+
+function isSafeHref(href: string): boolean {
+  try {
+    // A relative href (no scheme) resolves against the base and inherits
+    // its protocol, which is safe; an absolute href with its own scheme
+    // ignores the base entirely, so this correctly checks the real
+    // resolved protocol either way.
+    return SAFE_HREF_PROTOCOLS.includes(new URL(href, 'https://motifpath.invalid').protocol)
+  } catch {
+    return false
+  }
+}
+
 function textStyle(marks: PromptMark[]): { color?: string; backgroundColor?: string } {
   const mark = marks.find((m) => m.type === 'textStyle')
   if (!mark) return {}
@@ -72,12 +92,13 @@ function renderText(node: PromptNode): VNode {
   const classes = marks.map((m) => markClass(m.type)).filter((c): c is string => !!c)
   const text = node.text ?? ''
   const style = textStyle(marks)
+  const href = link ? attrString(link.attrs, 'href') : undefined
 
-  if (link) {
+  if (href && isSafeHref(href)) {
     return h(
       'a',
       {
-        href: attrString(link.attrs, 'href'),
+        href,
         class: [...classes, 'text-accent underline'],
         style,
         target: '_blank',
@@ -103,9 +124,8 @@ function renderNode(node: PromptNode): VNode {
 
   switch (node.type) {
     case 'heading': {
-      const level = attrNumber(node.attrs, 'level') ?? 1
-      const tag = `h${Math.min(Math.max(Math.round(level), 1), 3)}`
-      return h(tag, { class: [headingClasses[level] ?? headingClasses[1], alignClass(node)] }, children)
+      const level = Math.min(Math.max(Math.round(attrNumber(node.attrs, 'level') ?? 1), 1), 3)
+      return h(`h${level}`, { class: [headingClasses[level], alignClass(node)] }, children)
     }
     case 'paragraph':
       return h('p', { class: ['text-[15px] leading-[1.5]', alignClass(node)] }, children)
@@ -150,7 +170,11 @@ function renderNode(node: PromptNode): VNode {
         class: 'my-1 max-w-full rounded-md border border-border',
       })
     default:
-      return h('span', {})
+      // An unrecognized node type (schema drift between backend and
+      // frontend deploys, or a node type the editor ships before this
+      // renderer catches up) still renders its children rather than
+      // silently dropping that text from the student's view.
+      return h('span', {}, children)
   }
 }
 

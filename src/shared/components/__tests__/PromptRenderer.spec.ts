@@ -40,6 +40,36 @@ describe('PromptRenderer', () => {
     expect(heading.text()).toBe('Circle of fifths')
   })
 
+  it('clamps an out-of-range heading level so its tag and size stay consistent', () => {
+    const wrapper = mount(PromptRenderer, {
+      props: {
+        document: doc([
+          {
+            type: 'heading',
+            attrs: { level: 4 },
+            content: [{ type: 'text', text: 'Circle of fifths' }],
+          },
+        ]),
+      },
+    })
+
+    const heading = wrapper.get('h3')
+    expect(heading.classes()).toContain('text-base')
+    expect(heading.classes()).not.toContain('text-xl')
+  })
+
+  it('renders an unrecognized node type as its children rather than dropping them', () => {
+    // A node type outside the current PromptNode union, e.g. from schema
+    // drift between backend and frontend deploys — parsed from JSON like
+    // real wire data would be, rather than asserted past the type system.
+    const document: PromptDocument = JSON.parse(
+      '{"type":"doc","content":[{"type":"futureNodeType","content":[{"type":"text","text":"still visible"}]}]}',
+    )
+    const wrapper = mount(PromptRenderer, { props: { document } })
+
+    expect(wrapper.text()).toContain('still visible')
+  })
+
   it('applies bold, italic, strike, and highlight marks', () => {
     const wrapper = mount(PromptRenderer, {
       props: {
@@ -107,6 +137,28 @@ describe('PromptRenderer', () => {
     const link = wrapper.get('a')
     expect(link.text()).toBe('circle of fifths')
     expect(link.attributes('href')).toBe('https://example.com/circle-of-fifths')
+  })
+
+  it('renders a link mark with an unsafe href as plain text, not an anchor', () => {
+    const wrapper = mount(PromptRenderer, {
+      props: {
+        document: doc([
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: 'click me',
+                marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }],
+              },
+            ],
+          },
+        ]),
+      },
+    })
+
+    expect(wrapper.find('a').exists()).toBe(false)
+    expect(wrapper.text()).toContain('click me')
   })
 
   it('renders bullet and ordered lists with their items', () => {

@@ -88,6 +88,7 @@ import {
 import { ref, watch } from 'vue'
 
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
+import { useToast } from '@/shared/composables/useToast'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
@@ -96,6 +97,7 @@ const props = defineProps<{ modelValue: PromptDocument }>()
 const emit = defineEmits<{ 'update:modelValue': [document: PromptDocument] }>()
 
 const { upload } = useMediaUpload()
+const toast = useToast()
 const imageInput = ref<HTMLInputElement | null>(null)
 
 // Tiptap's JSONContent and our wire PromptDocument describe the same shape
@@ -264,8 +266,12 @@ async function onImagePicked(event: Event) {
   target.value = ''
   if (!file) return
 
-  const src = await upload(file, 'image')
-  editor.value?.chain().focus().setImage({ src }).run()
+  try {
+    const src = await upload(file, 'image')
+    editor.value?.chain().focus().setImage({ src }).run()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to upload the image')
+  }
 }
 </script>
 

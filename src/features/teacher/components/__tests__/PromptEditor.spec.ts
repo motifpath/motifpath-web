@@ -8,6 +8,7 @@ vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
 }))
 
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
+import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
@@ -229,5 +230,24 @@ describe('PromptEditor', () => {
     expect(upload).toHaveBeenCalledWith(file, 'image')
     const doc = lastEmittedDocument(wrapper)
     expect(doc.content.some((node) => node.type === 'image')).toBe(true)
+  })
+
+  it('shows a toast and does not insert an image when the upload fails', async () => {
+    useToast().clear()
+    upload.mockRejectedValueOnce(new Error('Upload failed with status 500'))
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('') } })
+    await nextTick()
+
+    const file = new File(['x'], 'circle.png', { type: 'image/png' })
+    const input = wrapper.find('[data-test="prompt-toolbar-image-input"]')
+    Object.defineProperty(input.element, 'files', { value: [file] })
+    await input.trigger('change')
+    await nextTick()
+    await nextTick()
+
+    expect(useToast().toasts.value).toContainEqual(
+      expect.objectContaining({ kind: 'error', message: 'Upload failed with status 500' }),
+    )
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy()
   })
 })
