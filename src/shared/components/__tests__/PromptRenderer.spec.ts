@@ -63,6 +63,29 @@ describe('PromptRenderer', () => {
     expect(wrapper.find('.bg-accent-muted').text()).toBe('highlight')
   })
 
+  it('applies a textStyle mark\'s font color and background color as inline style', () => {
+    const wrapper = mount(PromptRenderer, {
+      props: {
+        document: doc([
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: 'Circle of fifths',
+                marks: [{ type: 'textStyle', attrs: { color: '#6d28e0', backgroundColor: '#f3ecff' } }],
+              },
+            ],
+          },
+        ]),
+      },
+    })
+
+    const span = wrapper.get('span')
+    expect(span.attributes('style')).toContain('color: rgb(109, 40, 224)')
+    expect(span.attributes('style')).toContain('background-color: rgb(243, 236, 255)')
+  })
+
   it('renders a link mark as an anchor with its href', () => {
     const wrapper = mount(PromptRenderer, {
       props: {

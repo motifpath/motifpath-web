@@ -1071,12 +1071,16 @@ export interface components {
         /** @description An inline formatting mark applied to a prompt document's text node. */
         PromptMark: {
             /**
-             * @description The kind of mark this is.
+             * @description The kind of mark this is. textStyle carries a chosen font color,
+             *     background color, or both — never both fixed and absent at
+             *     once; highlight remains the separate, single-color emphasis
+             *     mark it already was.
              * @enum {string}
              */
-            type: "bold" | "italic" | "strike" | "highlight" | "link";
+            type: "bold" | "italic" | "strike" | "highlight" | "link" | "textStyle";
             /**
-             * @description Mark-specific attributes (e.g. link's href). Absent when the
+             * @description Mark-specific attributes (e.g. link's href; textStyle's color
+             *     and/or backgroundColor as CSS color strings). Absent when the
              *     mark type has none set.
              */
             attrs?: {

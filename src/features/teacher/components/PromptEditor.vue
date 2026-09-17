@@ -14,8 +14,10 @@ import Strike from '@tiptap/extension-strike'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import TextAlign from '@tiptap/extension-text-align'
 import TiptapText from '@tiptap/extension-text'
+import { BackgroundColor, Color, TextStyle } from '@tiptap/extension-text-style'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import {
+  Baseline,
   Bold as BoldIcon,
   Heading1,
   Heading2,
@@ -30,6 +32,7 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  PaintBucket,
   Pilcrow,
   Strikethrough,
   Table2,
@@ -66,6 +69,9 @@ const editor = useEditor({
     Italic,
     Strike,
     Highlight,
+    TextStyle,
+    Color,
+    BackgroundColor,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     BulletList,
     OrderedList,
@@ -111,6 +117,14 @@ function setLink() {
   const url = window.prompt('Link URL')
   if (!url) return
   editor.value?.chain().focus().setLink({ href: url }).run()
+}
+function setFontColor(event: Event) {
+  const color = (event.target as HTMLInputElement).value
+  editor.value?.chain().focus().setColor(color).run()
+}
+function setBackgroundColor(event: Event) {
+  const color = (event.target as HTMLInputElement).value
+  editor.value?.chain().focus().setBackgroundColor(color).run()
 }
 function pickImage() {
   imageInput.value?.click()
@@ -204,6 +218,24 @@ async function onImagePicked(event: Event) {
       >
         <Highlighter :size="16" aria-hidden="true" />
       </button>
+      <label class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted" title="Font color">
+        <Baseline :size="16" aria-hidden="true" />
+        <input
+          type="color"
+          data-test="prompt-toolbar-font-color"
+          class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          @input="setFontColor"
+        />
+      </label>
+      <label class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted" title="Background color">
+        <PaintBucket :size="16" aria-hidden="true" />
+        <input
+          type="color"
+          data-test="prompt-toolbar-background-color"
+          class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          @input="setBackgroundColor"
+        />
+      </label>
 
       <div class="mx-1 h-4 w-px bg-border" />
 
@@ -294,8 +326,77 @@ async function onImagePicked(event: Event) {
 
     <EditorContent
       data-test="prompt-editor-content"
-      class="prose-sm max-w-none rounded-md border border-border bg-surface-raised p-3 text-base [&_.tiptap]:min-h-[4.5rem] [&_.tiptap]:outline-none"
+      class="prompt-editor-content rounded-md border border-border bg-surface-raised p-3 text-base"
       :editor="editor"
     />
   </div>
 </template>
+
+<style scoped>
+/* ProseMirror renders these elements itself (via the schema's node/mark
+   toDOM), so they can't take Tailwind utility classes through the
+   template — this is the one case component-scoped CSS is the only way
+   to reach them. Kept visually in step with PromptRenderer's Tailwind
+   classes so the editor and the student-facing render don't diverge. */
+.prompt-editor-content :deep(.tiptap) {
+  min-height: 4.5rem;
+  outline: none;
+}
+.prompt-editor-content :deep(.tiptap h1) {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+.prompt-editor-content :deep(.tiptap h2) {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin: 0;
+}
+.prompt-editor-content :deep(.tiptap h3) {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+.prompt-editor-content :deep(.tiptap p) {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin: 0;
+}
+.prompt-editor-content :deep(.tiptap ul) {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.prompt-editor-content :deep(.tiptap ol) {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.prompt-editor-content :deep(.tiptap a) {
+  color: rgb(var(--color-accent));
+  text-decoration: underline;
+}
+.prompt-editor-content :deep(.tiptap mark) {
+  background-color: rgb(var(--color-accent-muted));
+  border-radius: 0.25rem;
+  padding: 0 0.125rem;
+}
+.prompt-editor-content :deep(.tiptap table) {
+  border-collapse: collapse;
+  width: 100%;
+}
+.prompt-editor-content :deep(.tiptap th),
+.prompt-editor-content :deep(.tiptap td) {
+  border: 1px solid rgb(var(--color-border));
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+}
+.prompt-editor-content :deep(.tiptap th) {
+  background-color: rgb(var(--color-surface-sunken));
+  font-weight: 600;
+}
+.prompt-editor-content :deep(.tiptap img) {
+  max-width: 100%;
+  margin: 0.25rem 0;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(var(--color-border));
+}
+</style>

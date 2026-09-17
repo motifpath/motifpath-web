@@ -55,11 +55,23 @@ const headingClasses: Record<number, string> = {
   3: 'text-base font-bold',
 }
 
+function textStyle(marks: PromptMark[]): { color?: string; backgroundColor?: string } {
+  const mark = marks.find((m) => m.type === 'textStyle')
+  if (!mark) return {}
+  const color = attrString(mark.attrs, 'color')
+  const backgroundColor = attrString(mark.attrs, 'backgroundColor')
+  return {
+    ...(color ? { color } : {}),
+    ...(backgroundColor ? { backgroundColor } : {}),
+  }
+}
+
 function renderText(node: PromptNode): VNode {
   const marks = node.marks ?? []
   const link = marks.find((m) => m.type === 'link')
   const classes = marks.map((m) => markClass(m.type)).filter((c): c is string => !!c)
   const text = node.text ?? ''
+  const style = textStyle(marks)
 
   if (link) {
     return h(
@@ -67,13 +79,14 @@ function renderText(node: PromptNode): VNode {
       {
         href: attrString(link.attrs, 'href'),
         class: [...classes, 'text-accent underline'],
+        style,
         target: '_blank',
         rel: 'noopener noreferrer',
       },
       text,
     )
   }
-  return h('span', { class: classes }, text)
+  return h('span', { class: classes, style }, text)
 }
 
 function renderNode(node: PromptNode): VNode {

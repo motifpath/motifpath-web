@@ -50,6 +50,8 @@ describe('PromptEditor', () => {
       'link',
       'table',
       'image',
+      'font-color',
+      'background-color',
     ]
     for (const name of expected) {
       expect(wrapper.find(`[data-test="prompt-toolbar-${name}"]`).exists(), name).toBe(true)
