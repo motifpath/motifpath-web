@@ -19,6 +19,7 @@ import { EditorContent, useEditor } from '@tiptap/vue-3'
 import {
   Baseline,
   Bold as BoldIcon,
+  Columns3,
   Heading1,
   Heading2,
   Heading3,
@@ -28,14 +29,18 @@ import {
   Link as LinkIcon,
   List,
   ListOrdered,
+  Minus,
   AlignCenter,
   AlignJustify,
   AlignLeft,
   AlignRight,
   PaintBucket,
   Pilcrow,
+  Plus,
+  Rows3,
   Strikethrough,
   Table2,
+  Trash2,
 } from 'lucide-vue-next'
 import { ref, watch } from 'vue'
 
@@ -100,10 +105,15 @@ const editor = useEditor({
   },
 })
 
-function isActive(nameOrAttrs: string | Record<string, unknown>, attrs?: Record<string, unknown>): boolean {
+function isActive(
+  nameOrAttrs: string | Record<string, unknown>,
+  attrs?: Record<string, unknown>,
+): boolean {
   void activeStateTick.value
   if (!editor.value) return false
-  return typeof nameOrAttrs === 'string' ? editor.value.isActive(nameOrAttrs, attrs) : editor.value.isActive(nameOrAttrs)
+  return typeof nameOrAttrs === 'string'
+    ? editor.value.isActive(nameOrAttrs, attrs)
+    : editor.value.isActive(nameOrAttrs)
 }
 
 // The prompt field can be reloaded out from under the editor when a teacher
@@ -175,204 +185,266 @@ async function onImagePicked(event: Event) {
 
 <template>
   <div class="flex flex-col gap-2">
-    <div
-      class="sticky top-16 z-10 flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5"
-    >
-      <button
-        type="button"
-        data-test="prompt-toolbar-h1"
-        class="rounded p-1.5"
-        :class="isActive('heading', { level: 1 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setHeading(1)"
+    <div class="sticky top-16 z-10 flex flex-col gap-1.5 bg-surface pb-1.5">
+      <div
+        class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5"
       >
-        <Heading1 :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-h2"
-        class="rounded p-1.5"
-        :class="isActive('heading', { level: 2 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setHeading(2)"
-      >
-        <Heading2 :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-h3"
-        class="rounded p-1.5"
-        :class="isActive('heading', { level: 3 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setHeading(3)"
-      >
-        <Heading3 :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-paragraph"
-        class="rounded p-1.5"
-        :class="isActive('paragraph') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setParagraph()"
-      >
-        <Pilcrow :size="16" aria-hidden="true" />
-      </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-h1"
+          class="rounded p-1.5"
+          :class="isActive('heading', { level: 1 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setHeading(1)"
+        >
+          <Heading1 :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-h2"
+          class="rounded p-1.5"
+          :class="isActive('heading', { level: 2 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setHeading(2)"
+        >
+          <Heading2 :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-h3"
+          class="rounded p-1.5"
+          :class="isActive('heading', { level: 3 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setHeading(3)"
+        >
+          <Heading3 :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-paragraph"
+          class="rounded p-1.5"
+          :class="isActive('paragraph') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setParagraph()"
+        >
+          <Pilcrow :size="16" aria-hidden="true" />
+        </button>
 
-      <div class="mx-1 h-4 w-px bg-border" />
+        <div class="mx-1 h-4 w-px bg-border" />
 
-      <button
-        type="button"
-        data-test="prompt-toolbar-bold"
-        class="rounded p-1.5"
-        :class="isActive('bold') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="editor?.chain().focus().toggleBold().run()"
-      >
-        <BoldIcon :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-italic"
-        class="rounded p-1.5"
-        :class="isActive('italic') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="editor?.chain().focus().toggleItalic().run()"
-      >
-        <ItalicIcon :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-strike"
-        class="rounded p-1.5"
-        :class="isActive('strike') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="editor?.chain().focus().toggleStrike().run()"
-      >
-        <Strikethrough :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-highlight"
-        class="rounded p-1.5"
-        :class="isActive('highlight') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="editor?.chain().focus().toggleHighlight().run()"
-      >
-        <Highlighter :size="16" aria-hidden="true" />
-      </button>
-      <label class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted" title="Font color">
-        <Baseline :size="16" aria-hidden="true" />
+        <button
+          type="button"
+          data-test="prompt-toolbar-bold"
+          class="rounded p-1.5"
+          :class="isActive('bold') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="editor?.chain().focus().toggleBold().run()"
+        >
+          <BoldIcon :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-italic"
+          class="rounded p-1.5"
+          :class="isActive('italic') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="editor?.chain().focus().toggleItalic().run()"
+        >
+          <ItalicIcon :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-strike"
+          class="rounded p-1.5"
+          :class="isActive('strike') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="editor?.chain().focus().toggleStrike().run()"
+        >
+          <Strikethrough :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-highlight"
+          class="rounded p-1.5"
+          :class="isActive('highlight') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="editor?.chain().focus().toggleHighlight().run()"
+        >
+          <Highlighter :size="16" aria-hidden="true" />
+        </button>
+        <label
+          class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted"
+          title="Font color"
+        >
+          <Baseline :size="16" aria-hidden="true" />
+          <input
+            type="color"
+            data-test="prompt-toolbar-font-color"
+            class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            @input="setFontColor"
+          />
+        </label>
+        <label
+          class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted"
+          title="Background color"
+        >
+          <PaintBucket :size="16" aria-hidden="true" />
+          <input
+            type="color"
+            data-test="prompt-toolbar-background-color"
+            class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            @input="setBackgroundColor"
+          />
+        </label>
+
+        <div class="mx-1 h-4 w-px bg-border" />
+
+        <button
+          type="button"
+          data-test="prompt-toolbar-align-left"
+          class="rounded p-1.5"
+          :class="isActive({ textAlign: 'left' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setAlign('left')"
+        >
+          <AlignLeft :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-align-center"
+          class="rounded p-1.5"
+          :class="isActive({ textAlign: 'center' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setAlign('center')"
+        >
+          <AlignCenter :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-align-right"
+          class="rounded p-1.5"
+          :class="isActive({ textAlign: 'right' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setAlign('right')"
+        >
+          <AlignRight :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-align-justify"
+          class="rounded p-1.5"
+          :class="
+            isActive({ textAlign: 'justify' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'
+          "
+          @click="setAlign('justify')"
+        >
+          <AlignJustify :size="16" aria-hidden="true" />
+        </button>
+
+        <div class="mx-1 h-4 w-px bg-border" />
+
+        <button
+          type="button"
+          data-test="prompt-toolbar-bullet-list"
+          class="rounded p-1.5"
+          :class="isActive('bulletList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="editor?.chain().focus().toggleBulletList().run()"
+        >
+          <List :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-ordered-list"
+          class="rounded p-1.5"
+          :class="isActive('orderedList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="editor?.chain().focus().toggleOrderedList().run()"
+        >
+          <ListOrdered :size="16" aria-hidden="true" />
+        </button>
+
+        <div class="mx-1 h-4 w-px bg-border" />
+
+        <button
+          type="button"
+          data-test="prompt-toolbar-link"
+          class="rounded p-1.5"
+          :class="isActive('link') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="setLink()"
+        >
+          <LinkIcon :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-table"
+          class="rounded p-1.5 text-ink-muted"
+          @click="insertTable()"
+        >
+          <Table2 :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-image"
+          class="rounded p-1.5 text-ink-muted"
+          @click="pickImage()"
+        >
+          <ImageIcon :size="16" aria-hidden="true" />
+        </button>
         <input
-          type="color"
-          data-test="prompt-toolbar-font-color"
-          class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          @input="setFontColor"
+          ref="imageInput"
+          type="file"
+          accept="image/*"
+          class="hidden"
+          data-test="prompt-toolbar-image-input"
+          @change="onImagePicked"
         />
-      </label>
-      <label class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted" title="Background color">
-        <PaintBucket :size="16" aria-hidden="true" />
-        <input
-          type="color"
-          data-test="prompt-toolbar-background-color"
-          class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-          @input="setBackgroundColor"
-        />
-      </label>
+      </div>
 
-      <div class="mx-1 h-4 w-px bg-border" />
-
-      <button
-        type="button"
-        data-test="prompt-toolbar-align-left"
-        class="rounded p-1.5"
-        :class="isActive({ textAlign: 'left' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setAlign('left')"
+      <div
+        v-if="isActive('table')"
+        data-test="prompt-table-toolbar"
+        class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5 text-ink-muted"
       >
-        <AlignLeft :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-align-center"
-        class="rounded p-1.5"
-        :class="isActive({ textAlign: 'center' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setAlign('center')"
-      >
-        <AlignCenter :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-align-right"
-        class="rounded p-1.5"
-        :class="isActive({ textAlign: 'right' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setAlign('right')"
-      >
-        <AlignRight :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-align-justify"
-        class="rounded p-1.5"
-        :class="isActive({ textAlign: 'justify' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setAlign('justify')"
-      >
-        <AlignJustify :size="16" aria-hidden="true" />
-      </button>
-
-      <div class="mx-1 h-4 w-px bg-border" />
-
-      <button
-        type="button"
-        data-test="prompt-toolbar-bullet-list"
-        class="rounded p-1.5"
-        :class="isActive('bulletList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="editor?.chain().focus().toggleBulletList().run()"
-      >
-        <List :size="16" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        data-test="prompt-toolbar-ordered-list"
-        class="rounded p-1.5"
-        :class="isActive('orderedList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="editor?.chain().focus().toggleOrderedList().run()"
-      >
-        <ListOrdered :size="16" aria-hidden="true" />
-      </button>
-
-      <div class="mx-1 h-4 w-px bg-border" />
-
-      <button
-        type="button"
-        data-test="prompt-toolbar-link"
-        class="rounded p-1.5"
-        :class="isActive('link') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-        @click="setLink()"
-      >
-        <LinkIcon :size="16" aria-hidden="true" />
-      </button>
-      <button type="button" data-test="prompt-toolbar-table" class="rounded p-1.5 text-ink-muted" @click="insertTable()">
-        <Table2 :size="16" aria-hidden="true" />
-      </button>
-      <button type="button" data-test="prompt-toolbar-image" class="rounded p-1.5 text-ink-muted" @click="pickImage()">
-        <ImageIcon :size="16" aria-hidden="true" />
-      </button>
-      <input
-        ref="imageInput"
-        type="file"
-        accept="image/*"
-        class="hidden"
-        data-test="prompt-toolbar-image-input"
-        @change="onImagePicked"
-      />
-    </div>
-
-    <div
-      v-if="isActive('table')"
-      data-test="prompt-table-toolbar"
-      class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5 text-xs font-semibold text-ink-muted"
-    >
-      <button type="button" data-test="prompt-table-add-column" class="rounded px-2 py-1" @click="addColumn()">+ Column</button>
-      <button type="button" data-test="prompt-table-delete-column" class="rounded px-2 py-1" @click="deleteColumn()">− Column</button>
-      <div class="mx-1 h-4 w-px bg-border" />
-      <button type="button" data-test="prompt-table-add-row" class="rounded px-2 py-1" @click="addRow()">+ Row</button>
-      <button type="button" data-test="prompt-table-delete-row" class="rounded px-2 py-1" @click="deleteRow()">− Row</button>
-      <div class="mx-1 h-4 w-px bg-border" />
-      <button type="button" data-test="prompt-table-delete" class="rounded px-2 py-1 text-danger" @click="deleteTable()">
-        Delete table
-      </button>
+        <button
+          type="button"
+          data-test="prompt-table-add-column"
+          class="relative rounded p-1.5"
+          title="Add column"
+          @click="addColumn()"
+        >
+          <Columns3 :size="16" aria-hidden="true" />
+          <Plus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-table-delete-column"
+          class="relative rounded p-1.5"
+          title="Delete column"
+          @click="deleteColumn()"
+        >
+          <Columns3 :size="16" aria-hidden="true" />
+          <Minus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
+        </button>
+        <div class="mx-1 h-4 w-px bg-border" />
+        <button
+          type="button"
+          data-test="prompt-table-add-row"
+          class="relative rounded p-1.5"
+          title="Add row"
+          @click="addRow()"
+        >
+          <Rows3 :size="16" aria-hidden="true" />
+          <Plus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-table-delete-row"
+          class="relative rounded p-1.5"
+          title="Delete row"
+          @click="deleteRow()"
+        >
+          <Rows3 :size="16" aria-hidden="true" />
+          <Minus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
+        </button>
+        <div class="mx-1 h-4 w-px bg-border" />
+        <button
+          type="button"
+          data-test="prompt-table-delete"
+          class="rounded p-1.5 text-danger"
+          title="Delete table"
+          @click="deleteTable()"
+        >
+          <Trash2 :size="16" aria-hidden="true" />
+        </button>
+      </div>
     </div>
 
     <EditorContent
