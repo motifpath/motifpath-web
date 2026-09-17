@@ -21,6 +21,14 @@ export interface ImageOption {
   correct: boolean
 }
 
+export interface AudioOption {
+  id: string
+  audioUrl: string
+  /** Shown as the student-facing button label — audio_selection has no visible player. */
+  label: string
+  correct: boolean
+}
+
 export interface Region {
   id: string
   /** Percent (0-100) of the stimulus image's width/height. */
@@ -47,11 +55,11 @@ function makeId(): string {
 }
 
 /**
- * Holds all authoring state for one exercise (any of the 4 types) and maps
+ * Holds all authoring state for one exercise (any of the 5 types) and maps
  * it to the CreateExerciseRequest shape the API expects. Only one of
- * textOptions/imageOptions/regions is meaningful at a time, matching
- * exerciseType — the others stay populated so a teacher can switch types
- * back and forth without losing what they've already entered.
+ * textOptions/imageOptions/audioOptions/regions is meaningful at a time,
+ * matching exerciseType — the others stay populated so a teacher can switch
+ * types back and forth without losing what they've already entered.
  */
 export function useExerciseForm() {
   const title = ref('')
@@ -63,6 +71,7 @@ export function useExerciseForm() {
 
   const textOptions = ref<TextOption[]>([])
   const imageOptions = ref<ImageOption[]>([])
+  const audioOptions = ref<AudioOption[]>([])
   const regions = ref<Region[]>([])
   const newRegionShape = ref<RegionShape>('circle')
   const stimulusImageSize = ref({ width: 0, height: 0 })
@@ -79,6 +88,8 @@ export function useExerciseForm() {
         return textOptions.value.some((o) => o.correct)
       case 'image_choice':
         return imageOptions.value.some((o) => o.correct)
+      case 'audio_selection':
+        return audioOptions.value.some((o) => o.correct)
       case 'image_recognition':
         return regions.value.some((r) => r.correct)
       default:
@@ -114,6 +125,25 @@ export function useExerciseForm() {
   }
   function removeImageOption(id: string) {
     imageOptions.value = imageOptions.value.filter((o) => o.id !== id)
+  }
+
+  function addAudioOption() {
+    audioOptions.value.push({ id: makeId(), audioUrl: '', label: '', correct: false })
+  }
+  function setAudioOptionURL(id: string, url: string) {
+    const option = audioOptions.value.find((o) => o.id === id)
+    if (option) option.audioUrl = url
+  }
+  function editAudioOptionLabel(id: string, label: string) {
+    const option = audioOptions.value.find((o) => o.id === id)
+    if (option) option.label = label
+  }
+  function toggleAudioOption(id: string) {
+    const option = audioOptions.value.find((o) => o.id === id)
+    if (option) option.correct = !option.correct
+  }
+  function removeAudioOption(id: string) {
+    audioOptions.value = audioOptions.value.filter((o) => o.id !== id)
   }
 
   function addRegion(x: number, y: number, shape: RegionShape) {
@@ -181,6 +211,13 @@ export function useExerciseForm() {
           is_correct: o.correct,
           image_url: o.imageUrl,
         }))
+      case 'audio_selection':
+        return audioOptions.value.map((o) => ({
+          option_id: o.id,
+          is_correct: o.correct,
+          audio_url: o.audioUrl,
+          label: o.label,
+        }))
       case 'image_recognition': {
         const { width: imageWidth, height: imageHeight } = stimulusImageSize.value
         return regions.value.map((r) => ({
@@ -239,6 +276,7 @@ export function useExerciseForm() {
     audioUrl.value = exercise.audio_url ?? ''
     textOptions.value = []
     imageOptions.value = []
+    audioOptions.value = []
     regions.value = []
     pendingRegionOptions.value = null
 
@@ -251,6 +289,14 @@ export function useExerciseForm() {
         imageOptions.value = exercise.options.map((o) => ({
           id: o.option_id,
           imageUrl: o.image_url ?? '',
+          correct: o.is_correct,
+        }))
+        break
+      case 'audio_selection':
+        audioOptions.value = exercise.options.map((o) => ({
+          id: o.option_id,
+          audioUrl: o.audio_url ?? '',
+          label: o.label ?? '',
           correct: o.is_correct,
         }))
         break
@@ -269,6 +315,7 @@ export function useExerciseForm() {
     audioUrl,
     textOptions,
     imageOptions,
+    audioOptions,
     regions,
     newRegionShape,
     hasCorrectOption,
@@ -280,6 +327,11 @@ export function useExerciseForm() {
     setImageOptionURL,
     toggleImageOption,
     removeImageOption,
+    addAudioOption,
+    setAudioOptionURL,
+    editAudioOptionLabel,
+    toggleAudioOption,
+    removeAudioOption,
     addRegion,
     moveRegion,
     resizeRegion,

@@ -3,6 +3,7 @@ import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert 
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
@@ -76,6 +77,7 @@ const exerciseTypes: { value: ExerciseType; label: string; icon: typeof Image }[
   { value: 'text_response', label: 'Text response', icon: AlignLeft },
   { value: 'audio_recognition', label: 'Audio recognition', icon: AudioLines },
   { value: 'image_choice', label: 'Image choice', icon: Images },
+  { value: 'audio_selection', label: 'Audio selection', icon: AudioLines },
 ]
 
 // Nothing is uploaded until save — picking a file only sets a local blob:
@@ -122,6 +124,30 @@ function onRemoveImageOption(id: string) {
   form.removeImageOption(id)
 }
 
+function onRemoveAudioOption(id: string) {
+  delete optionFiles[id]
+  revokeIfBlob(form.audioOptions.value.find((o) => o.id === id)?.audioUrl)
+  form.removeAudioOption(id)
+}
+
+// One entry per exercise type whose options carry their own media file,
+// driving uploadPendingMedia below without a growing if/else — adding a new
+// such type only means adding an entry here.
+const optionMediaConfig: Partial<
+  Record<ExerciseType, { kind: 'image' | 'audio'; getUrl: (id: string) => string | undefined; setUrl: (id: string, url: string) => void }>
+> = {
+  image_choice: {
+    kind: 'image',
+    getUrl: (id) => form.imageOptions.value.find((o) => o.id === id)?.imageUrl,
+    setUrl: form.setImageOptionURL,
+  },
+  audio_selection: {
+    kind: 'audio',
+    getUrl: (id) => form.audioOptions.value.find((o) => o.id === id)?.audioUrl,
+    setUrl: form.setAudioOptionURL,
+  },
+}
+
 async function uploadPendingMedia() {
   const pendingStimulus = stimulusFile.value
   const stimulusUpload = pendingStimulus
@@ -135,20 +161,21 @@ async function uploadPendingMedia() {
       })()
     : Promise.resolve()
 
-  // Only image_choice's options actually make it into the saved request
-  // (optionsForRequest() only serializes imageOptions for that type) -- a
-  // pending file left over from a type the teacher has since switched away
-  // from would otherwise still get uploaded for nothing it ends up in.
-  const optionUploads =
-    form.exerciseType.value === 'image_choice'
-      ? Object.entries(optionFiles).map(async ([id, file]) => {
-          const previousBlobUrl = form.imageOptions.value.find((o) => o.id === id)?.imageUrl
-          const url = await upload(file, 'image')
-          revokeIfBlob(previousBlobUrl)
-          form.setImageOptionURL(id, url)
-          delete optionFiles[id]
-        })
-      : []
+  // Only the currently-selected type's options actually make it into the
+  // saved request (optionsForRequest() only serializes one option list per
+  // type) -- a pending file left over from a type the teacher has since
+  // switched away from would otherwise still get uploaded for nothing it
+  // ends up in.
+  const config = optionMediaConfig[form.exerciseType.value]
+  const optionUploads = config
+    ? Object.entries(optionFiles).map(async ([id, file]) => {
+        const previousBlobUrl = config.getUrl(id)
+        const url = await upload(file, config.kind)
+        revokeIfBlob(previousBlobUrl)
+        config.setUrl(id, url)
+        delete optionFiles[id]
+      })
+    : []
 
   await Promise.all([stimulusUpload, ...optionUploads])
 }
@@ -355,6 +382,18 @@ async function save() {
           @toggle="form.toggleImageOption"
           @remove="onRemoveImageOption"
           @add="form.addImageOption"
+        />
+
+        <AudioSelectionOptionsEditor
+          v-else-if="form.exerciseType.value === 'audio_selection'"
+          :options="form.audioOptions.value"
+          :compact="isCompact"
+          @set-preview="form.setAudioOptionURL"
+          @set-file="onOptionFile"
+          @edit-label="form.editAudioOptionLabel"
+          @toggle="form.toggleAudioOption"
+          @remove="onRemoveAudioOption"
+          @add="form.addAudioOption"
         />
 
         <div class="flex flex-col gap-2 border-t border-border pt-2">

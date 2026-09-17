@@ -96,6 +96,7 @@ describe('ExerciseListView', () => {
       data: [
         { exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response', skill_tags: ['theory'] },
         { exercise_id: 'e-2', title: 'Pick the diagram', exercise_type: 'image_choice', skill_tags: [] },
+        { exercise_id: 'e-3', title: 'Pick the lick', exercise_type: 'audio_selection', skill_tags: [] },
       ],
       error: undefined,
       response: { status: 200 },
@@ -105,6 +106,8 @@ describe('ExerciseListView', () => {
 
     expect(wrapper.text()).toContain('Name the chord')
     expect(wrapper.text()).toContain('Pick the diagram')
+    expect(wrapper.text()).toContain('Pick the lick')
+    expect(wrapper.text()).toContain('Audio selection')
 
     const links = wrapper
       .findAllComponents(RouterLinkStub)

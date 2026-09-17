@@ -23,6 +23,7 @@ const exerciseTypeLabels: Record<string, string> = {
   audio_recognition: 'Audio recognition',
   image_recognition: 'Image recognition',
   image_choice: 'Image choice',
+  audio_selection: 'Audio selection',
 }
 </script>
 
