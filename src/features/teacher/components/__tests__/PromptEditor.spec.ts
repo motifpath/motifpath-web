@@ -33,6 +33,8 @@ describe('PromptEditor', () => {
     await nextTick()
 
     const expected = [
+      'undo',
+      'redo',
       'h1',
       'h2',
       'h3',
@@ -67,6 +69,28 @@ describe('PromptEditor', () => {
 
     const doc = lastEmittedDocument(wrapper)
     expect(doc.content[0]).toMatchObject({ type: 'heading', attrs: { level: 2 } })
+  })
+
+  it('undo reverts the last change and redo re-applies it', async () => {
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    await nextTick()
+
+    expect(wrapper.find('[data-test="prompt-toolbar-undo"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('[data-test="prompt-toolbar-h2"]').trigger('click')
+    await nextTick()
+    expect(lastEmittedDocument(wrapper).content[0]?.type).toBe('heading')
+    expect(wrapper.find('[data-test="prompt-toolbar-undo"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-test="prompt-toolbar-redo"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('[data-test="prompt-toolbar-undo"]').trigger('click')
+    await nextTick()
+    expect(lastEmittedDocument(wrapper).content[0]?.type).toBe('paragraph')
+    expect(wrapper.find('[data-test="prompt-toolbar-redo"]').attributes('disabled')).toBeUndefined()
+
+    await wrapper.find('[data-test="prompt-toolbar-redo"]').trigger('click')
+    await nextTick()
+    expect(lastEmittedDocument(wrapper).content[0]?.type).toBe('heading')
   })
 
   it('toggling bulleted list wraps the current block and emits the updated document', async () => {

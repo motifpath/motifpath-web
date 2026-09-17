@@ -4,6 +4,7 @@ import BulletList from '@tiptap/extension-bullet-list'
 import Document from '@tiptap/extension-document'
 import Heading from '@tiptap/extension-heading'
 import Highlight from '@tiptap/extension-highlight'
+import History from '@tiptap/extension-history'
 import TiptapImage from '@tiptap/extension-image'
 import Italic from '@tiptap/extension-italic'
 import Link from '@tiptap/extension-link'
@@ -54,6 +55,8 @@ import {
   Baseline,
   Bold as BoldIcon,
   Columns3,
+  Redo2,
+  Undo2,
   Frame,
   Heading1,
   Heading2,
@@ -108,6 +111,7 @@ const activeStateTick = ref(0)
 const editor = useEditor({
   content: toWireDocument(props.modelValue),
   extensions: [
+    History,
     Document,
     Paragraph,
     TiptapText,
@@ -154,6 +158,21 @@ function isActive(
   return typeof nameOrAttrs === 'string'
     ? editor.value.isActive(nameOrAttrs, attrs)
     : editor.value.isActive(nameOrAttrs)
+}
+
+function canUndo(): boolean {
+  void activeStateTick.value
+  return editor.value?.can().undo() ?? false
+}
+function canRedo(): boolean {
+  void activeStateTick.value
+  return editor.value?.can().redo() ?? false
+}
+function undo() {
+  editor.value?.chain().focus().undo().run()
+}
+function redo() {
+  editor.value?.chain().focus().redo().run()
 }
 
 // The prompt field can be reloaded out from under the editor when a teacher
@@ -256,6 +275,29 @@ async function onImagePicked(event: Event) {
       <div
         class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5"
       >
+        <button
+          type="button"
+          data-test="prompt-toolbar-undo"
+          class="rounded p-1.5 text-ink-muted disabled:opacity-40"
+          title="Undo"
+          :disabled="!canUndo()"
+          @click="undo()"
+        >
+          <Undo2 :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-redo"
+          class="rounded p-1.5 text-ink-muted disabled:opacity-40"
+          title="Redo"
+          :disabled="!canRedo()"
+          @click="redo()"
+        >
+          <Redo2 :size="16" aria-hidden="true" />
+        </button>
+
+        <div class="mx-1 h-4 w-px bg-border" />
+
         <button
           type="button"
           data-test="prompt-toolbar-h1"
