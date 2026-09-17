@@ -1035,10 +1035,11 @@ export interface components {
              *     options are authored and rendered. text_response and
              *     audio_recognition options carry a text label; image_recognition
              *     options carry a region on image_url; image_choice options each
-             *     carry their own image_url.
+             *     carry their own image_url; audio_selection options each carry
+             *     their own audio_url.
              * @enum {string}
              */
-            exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice";
+            exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
             /**
              * @description Freeform tags naming the skill(s) or technique(s) this exercise
              *     targets (e.g. "alternate_picking"), used to classify and discover
@@ -1138,7 +1139,7 @@ export interface components {
              * @description The type of practice interaction.
              * @enum {string}
              */
-            exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice";
+            exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
             /** @description Freeform tags naming the skill(s) this exercise targets. */
             skill_tags?: string[];
             /**
@@ -1207,8 +1208,9 @@ export interface components {
          *     correct answer is expressed by marking one or more options as
          *     is_correct. The fields expected beyond option_id and is_correct
          *     depend on the parent exercise's exercise_type: image_recognition
-         *     options carry region, image_choice options carry image_url, and
-         *     text_response / audio_recognition options carry label.
+         *     options carry region, image_choice options carry image_url,
+         *     audio_selection options carry audio_url, and text_response /
+         *     audio_recognition options carry label.
          */
         Option: {
             /**
@@ -1229,6 +1231,12 @@ export interface components {
              *     options; absent otherwise.
              */
             image_url?: string;
+            /**
+             * Format: uri
+             * @description The audio clip shown for this option. Required for
+             *     audio_selection options; absent otherwise.
+             */
+            audio_url?: string;
             region?: components["schemas"]["OptionRegion"];
         };
         /**
@@ -1730,7 +1738,7 @@ export interface operations {
                  */
                 skill_tag?: string;
                 /** @description When given, only exercises of this type are returned. */
-                exercise_type?: "text_response" | "audio_recognition" | "image_recognition" | "image_choice";
+                exercise_type?: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
             };
             header?: never;
             path?: never;

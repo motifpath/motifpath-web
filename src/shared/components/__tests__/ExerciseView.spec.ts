@@ -16,6 +16,11 @@ const imageOptions: Option[] = [
   { option_id: 'i2', label: 'Open C chord', image_url: 'https://x/c.png', is_correct: false },
 ]
 
+const audioOptions: Option[] = [
+  { option_id: 'a1', audio_url: 'https://x/lick1.mp3', is_correct: true },
+  { option_id: 'a2', audio_url: 'https://x/lick2.mp3', is_correct: false },
+]
+
 const regionOptions: Option[] = [
   {
     option_id: 'r1',
@@ -69,6 +74,28 @@ describe('ExerciseView', () => {
     })
 
     expect(wrapper.get('[data-test="exercise-option"] img').attributes('draggable')).toBe('false')
+  })
+
+  it('renders audio_selection options as a grid of playable clips', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+    })
+
+    const rows = wrapper.findAll('[data-test="exercise-option"]')
+    expect(rows).toHaveLength(2)
+    const players = wrapper.findAll('[data-test="exercise-option"] audio')
+    expect(players).toHaveLength(2)
+    expect(players[0]?.attributes('src')).toBe('https://x/lick1.mp3')
+  })
+
+  it('selects an audio_selection option on click', async () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+    })
+
+    await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+
+    expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-selected')).toBe('true')
   })
 
   it('renders image_recognition options as click regions over the real stimulus image', () => {

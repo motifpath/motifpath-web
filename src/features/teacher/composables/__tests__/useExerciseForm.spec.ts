@@ -72,6 +72,27 @@ describe('useExerciseForm', () => {
     })
   })
 
+  describe('audio_selection options', () => {
+    it('adds, sets audio, toggles, and removes an audio option', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_selection'
+
+      form.addAudioOption()
+      const id = form.audioOptions.value[0]!.id
+      form.setAudioOptionURL(id, 'https://cdn.example.com/a.mp3')
+      form.toggleAudioOption(id)
+
+      expect(form.audioOptions.value[0]).toMatchObject({
+        audioUrl: 'https://cdn.example.com/a.mp3',
+        correct: true,
+      })
+      expect(form.hasCorrectOption.value).toBe(true)
+
+      form.removeAudioOption(id)
+      expect(form.audioOptions.value).toHaveLength(0)
+    })
+  })
+
   describe('image_recognition regions', () => {
     it('adds a region at a position, moves, resizes, toggles, and removes it', () => {
       const form = useExerciseForm()
@@ -233,6 +254,26 @@ describe('useExerciseForm', () => {
       ])
     })
 
+    it('maps an audio_selection exercise with per-option audio_url', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Pick the lick'
+      form.prompt.value = 'Which is a minor pentatonic lick?'
+      form.exerciseType.value = 'audio_selection'
+      form.addAudioOption()
+      form.setAudioOptionURL(form.audioOptions.value[0]!.id, 'https://cdn.example.com/lick.mp3')
+      form.toggleAudioOption(form.audioOptions.value[0]!.id)
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request.options).toEqual([
+        {
+          option_id: form.audioOptions.value[0]!.id,
+          is_correct: true,
+          audio_url: 'https://cdn.example.com/lick.mp3',
+        },
+      ])
+    })
+
     it('omits skill_tags when there are none', () => {
       const form = useExerciseForm()
       form.title.value = 'title'
@@ -298,6 +339,25 @@ describe('useExerciseForm', () => {
 
       expect(form.imageOptions.value).toEqual([
         { id: 'o-1', imageUrl: 'https://cdn.example.com/e-minor.png', correct: false },
+      ])
+    })
+
+    it('hydrates audio_selection options', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 't',
+        prompt: 'p',
+        exercise_type: 'audio_selection',
+        options: [{ option_id: 'o-1', is_correct: false, audio_url: 'https://cdn.example.com/lick.mp3' }],
+        challenge_ids: [],
+        content_node_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.audioOptions.value).toEqual([
+        { id: 'o-1', audioUrl: 'https://cdn.example.com/lick.mp3', correct: false },
       ])
     })
 

@@ -67,6 +67,7 @@ const isImageRecognition = computed(() => props.exerciseType === 'image_recognit
 const isTextResponse = computed(() => props.exerciseType === 'text_response')
 const isAudioRecognition = computed(() => props.exerciseType === 'audio_recognition')
 const isImageChoice = computed(() => props.exerciseType === 'image_choice')
+const isAudioSelection = computed(() => props.exerciseType === 'audio_selection')
 const isLandscape = computed(() => props.direction === 'row')
 </script>
 
@@ -172,6 +173,20 @@ const isLandscape = computed(() => props.direction === 'row')
           <div class="px-2 py-1.5" :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'">
             <span class="text-xs text-ink">{{ option.label }}</span>
           </div>
+        </div>
+      </div>
+
+      <div v-else-if="isAudioSelection" class="grid grid-cols-2 gap-2">
+        <div
+          v-for="option in options"
+          :key="option.option_id"
+          data-test="exercise-option"
+          :data-selected="isSelected(option.option_id)"
+          class="flex cursor-pointer flex-col gap-2 rounded-md border-2 p-2"
+          :class="isSelected(option.option_id) ? 'border-accent bg-accent-muted' : 'border-border bg-transparent'"
+          @click="select(option.option_id)"
+        >
+          <audio :src="option.audio_url" controls class="w-full" @click.stop />
         </div>
       </div>
     </div>
