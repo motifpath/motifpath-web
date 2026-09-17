@@ -84,21 +84,17 @@ function selectAndPlay(option: Option): void {
   const el = audioPlayerEl.value
   if (!el) return
 
+  select(option.option_id)
+
   // Clicking the option that's already playing stops it — it must not
-  // restart from the top, the way a fresh pick or a switch does. This is a
-  // playback control, not an "unanswer" gesture, so the selection is left
-  // exactly as it was — select() is never called on this path.
+  // restart from the top, the way a fresh pick or a switch does. select()
+  // above already unanswered it, same as every other exercise type's
+  // click-to-deselect behavior.
   if (playingOptionId.value === option.option_id) {
     el.pause()
     playingOptionId.value = null
     return
   }
-
-  // select()'s own toggle would deselect an already-selected, currently
-  // stopped option (e.g. after it played to the end) — audio_selection only
-  // ever adds a selection by clicking here; withdrawing one isn't this
-  // click's job, only switching to (or stopping) a clip is.
-  if (!isSelected(option.option_id)) select(option.option_id)
 
   if (!option.audio_url) return
   el.pause()

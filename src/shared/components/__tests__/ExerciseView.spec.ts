@@ -140,7 +140,7 @@ describe('ExerciseView', () => {
       expect(audioEl.src).toBe('https://x/lick2.mp3')
     })
 
-    it('stops (does not restart) a clip when the same, currently playing option is clicked again', async () => {
+    it('stops (does not restart) and unselects an option when it is clicked again while playing', async () => {
       const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
       const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
       const wrapper = mount(ExerciseView, {
@@ -155,22 +155,24 @@ describe('ExerciseView', () => {
 
       expect(playSpy).toHaveBeenCalledTimes(1)
       expect(pauseSpy).toHaveBeenCalled()
-      // Stopping the clip is not the same as unanswering — the click was to
-      // silence it, not to withdraw the pick.
-      expect(firstOption.attributes('data-selected')).toBe('true')
+      // The second click is both a stop and an unanswer, same as every other
+      // exercise type's click-to-deselect behavior.
+      expect(firstOption.attributes('data-selected')).toBe('false')
     })
 
-    it('stays selected across stop-then-replay (a third click after the clip ended naturally does not unanswer it)', async () => {
+    it('selects and plays again on a third click, after the second click stopped and unselected it', async () => {
+      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
       const wrapper = mount(ExerciseView, {
         props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
       })
       const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
 
       await firstOption.trigger('click')
-      await wrapper.get('audio').trigger('ended')
+      await firstOption.trigger('click')
       await firstOption.trigger('click')
 
       expect(firstOption.attributes('data-selected')).toBe('true')
+      expect(playSpy).toHaveBeenCalledTimes(2)
     })
 
     it('plays again from the start after a clicked clip finished naturally', async () => {
