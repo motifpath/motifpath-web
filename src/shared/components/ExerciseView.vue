@@ -75,15 +75,30 @@ const isLandscape = computed(() => props.direction === 'row')
 // an option can never overlap two clips: switching always pauses whatever
 // was playing before loading and starting the newly clicked one.
 const audioPlayerEl = ref<HTMLAudioElement | null>(null)
+// Which option's clip the shared player currently holds — distinct from
+// isSelected, since selection and playback are click-triggered together but
+// track different things (an answer vs. what's audible right now).
+const playingOptionId = ref<string | null>(null)
 
 function selectAndPlay(option: Option): void {
   select(option.option_id)
   const el = audioPlayerEl.value
-  if (!el || !option.audio_url) return
+  if (!el) return
+
+  // Clicking the option that's already playing stops it — it must not
+  // restart from the top, the way a fresh pick or a switch does.
+  if (playingOptionId.value === option.option_id) {
+    el.pause()
+    playingOptionId.value = null
+    return
+  }
+
+  if (!option.audio_url) return
   el.pause()
   el.src = option.audio_url
   el.currentTime = 0
   void el.play()
+  playingOptionId.value = option.option_id
 }
 </script>
 
@@ -206,7 +221,7 @@ function selectAndPlay(option: Option): void {
           <Volume2 :size="16" aria-hidden="true" />
           {{ option.label }}
         </button>
-        <audio ref="audioPlayerEl" class="hidden" />
+        <audio ref="audioPlayerEl" class="hidden" @ended="playingOptionId = null" />
       </div>
     </div>
   </div>

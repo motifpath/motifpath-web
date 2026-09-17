@@ -139,6 +139,37 @@ describe('ExerciseView', () => {
       const audioEl = wrapper.get('audio').element as HTMLAudioElement
       expect(audioEl.src).toBe('https://x/lick2.mp3')
     })
+
+    it('stops (does not restart) a clip when the same, currently playing option is clicked again', async () => {
+      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
+      const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      })
+      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
+
+      await firstOption.trigger('click')
+      expect(playSpy).toHaveBeenCalledTimes(1)
+
+      await firstOption.trigger('click')
+
+      expect(playSpy).toHaveBeenCalledTimes(1)
+      expect(pauseSpy).toHaveBeenCalled()
+    })
+
+    it('plays again from the start after a clicked clip finished naturally', async () => {
+      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: 'p', options: audioOptions },
+      })
+      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
+
+      await firstOption.trigger('click')
+      await wrapper.get('audio').trigger('ended')
+      await firstOption.trigger('click')
+
+      expect(playSpy).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('renders image_recognition options as click regions over the real stimulus image', () => {
