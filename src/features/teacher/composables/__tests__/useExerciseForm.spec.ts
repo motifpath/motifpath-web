@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { useExerciseForm } from '@/features/teacher/composables/useExerciseForm'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 
 describe('useExerciseForm', () => {
   it('starts with no correct option for any type', () => {
@@ -174,7 +175,7 @@ describe('useExerciseForm', () => {
     it('maps a text_response exercise', () => {
       const form = useExerciseForm()
       form.title.value = 'Name the chord'
-      form.prompt.value = 'Name this chord shape'
+      form.prompt.value = plainTextPrompt('Name this chord shape')
       form.exerciseType.value = 'text_response'
       form.addTextOption()
       form.editTextOption(form.textOptions.value[0]!.id, 'G major')
@@ -185,7 +186,7 @@ describe('useExerciseForm', () => {
 
       expect(request).toEqual({
         title: 'Name the chord',
-        prompt: 'Name this chord shape',
+        prompt: plainTextPrompt('Name this chord shape'),
         exercise_type: 'text_response',
         skill_tags: ['theory'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
@@ -195,7 +196,7 @@ describe('useExerciseForm', () => {
     it('maps an image_recognition exercise with image_url and regions, sizing width/height against the measured stimulus image', () => {
       const form = useExerciseForm()
       form.title.value = 'Root position'
-      form.prompt.value = 'Identify the root position'
+      form.prompt.value = plainTextPrompt('Identify the root position')
       form.exerciseType.value = 'image_recognition'
       form.imageUrl.value = 'https://cdn.example.com/fretboard.png'
       form.setStimulusImageSize(800, 240)
@@ -223,7 +224,7 @@ describe('useExerciseForm', () => {
     it('falls back to a 0 fraction for region width/height when the stimulus image has not been measured yet', () => {
       const form = useExerciseForm()
       form.title.value = 'Root position'
-      form.prompt.value = 'Identify the root position'
+      form.prompt.value = plainTextPrompt('Identify the root position')
       form.exerciseType.value = 'image_recognition'
       form.imageUrl.value = 'https://cdn.example.com/fretboard.png'
       form.addRegion(20, 30, 'rectangle')
@@ -239,7 +240,7 @@ describe('useExerciseForm', () => {
     it('maps an image_choice exercise with per-option image_url', () => {
       const form = useExerciseForm()
       form.title.value = 'Pick the diagram'
-      form.prompt.value = 'Which is E minor?'
+      form.prompt.value = plainTextPrompt('Which is E minor?')
       form.exerciseType.value = 'image_choice'
       form.addImageOption()
       form.setImageOptionURL(form.imageOptions.value[0]!.id, 'https://cdn.example.com/e-minor.png')
@@ -259,7 +260,7 @@ describe('useExerciseForm', () => {
     it('maps an audio_selection exercise with per-option audio_url and label', () => {
       const form = useExerciseForm()
       form.title.value = 'Pick the lick'
-      form.prompt.value = 'Which is a minor pentatonic lick?'
+      form.prompt.value = plainTextPrompt('Which is a minor pentatonic lick?')
       form.exerciseType.value = 'audio_selection'
       form.addAudioOption()
       form.setAudioOptionURL(form.audioOptions.value[0]!.id, 'https://cdn.example.com/lick.mp3')
@@ -281,7 +282,7 @@ describe('useExerciseForm', () => {
     it('omits skill_tags when there are none', () => {
       const form = useExerciseForm()
       form.title.value = 'title'
-      form.prompt.value = 'prompt'
+      form.prompt.value = plainTextPrompt('prompt')
       form.exerciseType.value = 'text_response'
 
       const request = form.toCreateExerciseRequest()
@@ -292,7 +293,7 @@ describe('useExerciseForm', () => {
     it('falls back to an empty options array for an unrecognized exercise type, instead of undefined', () => {
       const form = useExerciseForm()
       form.title.value = 'title'
-      form.prompt.value = 'prompt'
+      form.prompt.value = plainTextPrompt('prompt')
       // Simulates a stale generated client seeing a type value the backend
       // added but this build doesn't know about yet — never a real value
       // the type picker itself can produce.
@@ -311,7 +312,7 @@ describe('useExerciseForm', () => {
       form.loadFromExercise({
         exercise_id: 'e-1',
         title: 'Name the chord',
-        prompt: 'Name this chord shape',
+        prompt: plainTextPrompt('Name this chord shape'),
         exercise_type: 'text_response',
         skill_tags: ['theory'],
         options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
@@ -321,7 +322,7 @@ describe('useExerciseForm', () => {
       })
 
       expect(form.title.value).toBe('Name the chord')
-      expect(form.prompt.value).toBe('Name this chord shape')
+      expect(form.prompt.value).toEqual(plainTextPrompt('Name this chord shape'))
       expect(form.exerciseType.value).toBe('text_response')
       expect(form.skillTags.value).toEqual(['theory'])
       expect(form.textOptions.value).toEqual([{ id: 'o-1', label: 'G major', correct: true }])
@@ -333,7 +334,7 @@ describe('useExerciseForm', () => {
       form.loadFromExercise({
         exercise_id: 'e-1',
         title: 't',
-        prompt: 'p',
+        prompt: plainTextPrompt('p'),
         exercise_type: 'image_choice',
         options: [{ option_id: 'o-1', is_correct: false, image_url: 'https://cdn.example.com/e-minor.png' }],
         challenge_ids: [],
@@ -352,7 +353,7 @@ describe('useExerciseForm', () => {
       form.loadFromExercise({
         exercise_id: 'e-1',
         title: 't',
-        prompt: 'p',
+        prompt: plainTextPrompt('p'),
         exercise_type: 'audio_selection',
         options: [
           { option_id: 'o-1', is_correct: false, audio_url: 'https://cdn.example.com/lick.mp3', label: 'Lick A' },
@@ -373,7 +374,7 @@ describe('useExerciseForm', () => {
       form.loadFromExercise({
         exercise_id: 'e-1',
         title: 't',
-        prompt: 'p',
+        prompt: plainTextPrompt('p'),
         exercise_type: 'image_recognition',
         image_url: 'https://cdn.example.com/fretboard.png',
         options: [
@@ -403,7 +404,7 @@ describe('useExerciseForm', () => {
     it('maps form state to an UpdateExerciseRequest, without exercise_type', () => {
       const form = useExerciseForm()
       form.title.value = 'Name the chord'
-      form.prompt.value = 'Name this chord shape'
+      form.prompt.value = plainTextPrompt('Name this chord shape')
       form.exerciseType.value = 'text_response'
       form.addTextOption()
       form.editTextOption(form.textOptions.value[0]!.id, 'G major')
@@ -414,7 +415,7 @@ describe('useExerciseForm', () => {
 
       expect(request).toEqual({
         title: 'Name the chord',
-        prompt: 'Name this chord shape',
+        prompt: plainTextPrompt('Name this chord shape'),
         skill_tags: ['theory'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
       })

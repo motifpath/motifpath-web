@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+
 const POST = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { POST }, eventApi: {} }),
@@ -13,7 +15,7 @@ describe('useCreateExercise', () => {
     POST.mockResolvedValueOnce({ data: exercise, error: undefined, response: { status: 201 } })
 
     const { createExercise } = useCreateExercise()
-    const request = { title: 't', prompt: 'p', exercise_type: 'text_response' as const, options: [] }
+    const request = { title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response' as const, options: [] }
 
     const result = await createExercise(request)
 
@@ -27,7 +29,7 @@ describe('useCreateExercise', () => {
     const { createExercise } = useCreateExercise()
 
     await expect(
-      createExercise({ title: 't', prompt: 'p', exercise_type: 'text_response', options: [] }),
+      createExercise({ title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response', options: [] }),
     ).rejects.toThrow('Boom')
   })
 
@@ -41,7 +43,7 @@ describe('useCreateExercise', () => {
     const { createExercise } = useCreateExercise()
 
     await expect(
-      createExercise({ title: 't', prompt: '', exercise_type: 'text_response', options: [] }),
+      createExercise({ title: 't', prompt: plainTextPrompt(''), exercise_type: 'text_response', options: [] }),
     ).rejects.toThrow('Request failed validation:\n• /prompt: must not be empty')
   })
 
@@ -51,7 +53,7 @@ describe('useCreateExercise', () => {
     const { createExercise } = useCreateExercise()
 
     await expect(
-      createExercise({ title: 't', prompt: 'p', exercise_type: 'text_response', options: [] }),
+      createExercise({ title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response', options: [] }),
     ).rejects.toThrow('Failed to create the exercise')
   })
 })

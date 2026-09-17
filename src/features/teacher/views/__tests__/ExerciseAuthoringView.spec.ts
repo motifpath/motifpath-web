@@ -69,12 +69,14 @@ function mountView() {
 }
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
+import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
 import { useToast } from '@/shared/composables/useToast'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 
 async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
   await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Name the chord')
-  await wrapper.get('textarea').setValue('Name this chord shape')
+  await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Name this chord shape'))
   await wrapper.get('[data-test="add-option"]').trigger('click')
   await wrapper.get('input[placeholder="Option text"]').setValue('G major')
   await wrapper.get('[data-test="option-correct"]').trigger('click')
@@ -319,11 +321,16 @@ describe('ExerciseAuthoringView', () => {
     expect(POST).toHaveBeenCalledWith('/exercises', {
       body: expect.objectContaining({
         title: 'Name the chord',
-        prompt: 'Name this chord shape',
         exercise_type: 'text_response',
         options: [expect.objectContaining({ is_correct: true, label: 'G major' })],
       }),
     })
+    // Passed through the real PromptEditor's Tiptap round trip (via its
+    // watcher syncing form.prompt.value back into the editor), so the
+    // request's prompt carries ProseMirror's normalized node attrs rather
+    // than the minimal shape plainTextPrompt builds — assert its text
+    // content instead of an exact document shape.
+    expect(JSON.stringify(POST.mock.calls[0]![1].body.prompt)).toContain('Name this chord shape')
     expect(useToast().toasts.value).toContainEqual(
       expect.objectContaining({ kind: 'success', message: 'Exercise created.' }),
     )
@@ -368,7 +375,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Root position')
-    await wrapper.get('textarea').setValue('Identify the root position')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Identify the root position'))
 
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     const file = new File(['data'], 'fret.png', { type: 'image/png' })
@@ -393,7 +400,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Root position')
-    await wrapper.get('textarea').setValue('Identify the root position')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Identify the root position'))
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['data'], 'fret.png', { type: 'image/png' }))
     await wrapper.get('img').trigger('load')
@@ -461,7 +468,7 @@ describe('ExerciseAuthoringView', () => {
     // 'image', not whatever type happens to be selected at save time.
     await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
-    await wrapper.get('textarea').setValue('p')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
     await wrapper.get('[data-test="add-option"]').trigger('click')
     await wrapper.get('input[placeholder="Option text"]').setValue('a')
     await wrapper.get('[data-test="option-correct"]').trigger('click')
@@ -481,7 +488,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
-    await wrapper.get('textarea').setValue('p')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
 
     await wrapper.get('[data-test="add-option"]').trigger('click')
     const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
@@ -566,7 +573,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
-    await wrapper.get('textarea').setValue('p')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
     await wrapper.get('[data-test="add-option"]').trigger('click')
     const editor = wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' })
     const id = (editor.props('options') as { id: string }[])[0]!.id
@@ -614,7 +621,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
-    await wrapper.get('textarea').setValue('p')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'fret.png'))
     await wrapper.get('img').trigger('load')
@@ -675,7 +682,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
-    await wrapper.get('textarea').setValue('p')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
     await wrapper.get('[data-test="add-option"]').trigger('click')
     await wrapper.get('[data-test="add-option"]').trigger('click')
     const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
@@ -709,7 +716,7 @@ describe('ExerciseAuthoringView', () => {
         data: {
           exercise_id: 'e-1',
           title: 'Name the chord',
-          prompt: 'Name this chord shape',
+          prompt: plainTextPrompt('Name this chord shape'),
           exercise_type: 'text_response',
           skill_tags: ['theory'],
           options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
@@ -728,7 +735,7 @@ describe('ExerciseAuthoringView', () => {
       expect(wrapper.get<HTMLInputElement>('input[placeholder="Untitled exercise"]').element.value).toBe(
         'Name the chord',
       )
-      expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Name this chord shape')
+      expect(wrapper.findComponent(PromptEditor).props('modelValue')).toEqual(plainTextPrompt('Name this chord shape'))
       expect(wrapper.get<HTMLInputElement>('input[placeholder="Option text"]').element.value).toBe('G major')
       expect(wrapper.text()).toContain('theory')
       expect(wrapper.get('[data-test="usage-challenges"]').text()).toContain('c-1')
@@ -739,7 +746,7 @@ describe('ExerciseAuthoringView', () => {
         data: {
           exercise_id: 'e-1',
           title: 't',
-          prompt: 'p',
+          prompt: plainTextPrompt('p'),
           exercise_type: 'text_response',
           options: [],
           challenge_ids: [],
@@ -761,7 +768,7 @@ describe('ExerciseAuthoringView', () => {
         data: {
           exercise_id: 'e-1',
           title: 't',
-          prompt: 'p',
+          prompt: plainTextPrompt('p'),
           exercise_type: 'text_response',
           options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
           challenge_ids: [],
@@ -788,7 +795,7 @@ describe('ExerciseAuthoringView', () => {
         params: { path: { exercise_id: 'e-1' } },
         body: expect.objectContaining({
           title: 'Updated title',
-          prompt: 'p',
+          prompt: plainTextPrompt('p'),
           options: [expect.objectContaining({ is_correct: true, label: 'G major' })],
         }),
       })
@@ -805,7 +812,7 @@ describe('ExerciseAuthoringView', () => {
         data: {
           exercise_id: 'e-1',
           title: 't',
-          prompt: 'p',
+          prompt: plainTextPrompt('p'),
           exercise_type: 'text_response',
           options: [],
           challenge_ids: [],

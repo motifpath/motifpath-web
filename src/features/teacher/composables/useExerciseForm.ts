@@ -7,7 +7,10 @@ type UpdateExerciseRequest = components['schemas']['UpdateExerciseRequest']
 type Exercise = components['schemas']['Exercise']
 type Option = components['schemas']['Option']
 type RegionShape = components['schemas']['OptionRegion']['shape']
+type PromptDocument = components['schemas']['PromptDocument']
 export type ExerciseType = CreateExerciseRequest['exercise_type']
+
+const EMPTY_PROMPT: PromptDocument = { type: 'doc', content: [] }
 
 export interface TextOption {
   id: string
@@ -63,7 +66,7 @@ function makeId(): string {
  */
 export function useExerciseForm() {
   const title = ref('')
-  const prompt = ref('')
+  const prompt = ref<PromptDocument>(EMPTY_PROMPT)
   const exerciseType = ref<ExerciseType>('text_response')
   const skillTags = ref<string[]>([])
   const imageUrl = ref('')

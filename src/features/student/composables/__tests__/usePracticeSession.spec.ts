@@ -13,6 +13,7 @@ vi.mock('@/shared/composables/useEventTracking', () => ({
 }))
 
 import { usePracticeSession } from '@/features/student/composables/usePracticeSession'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 
 const challenge = {
   challenge_id: 'ch-1',
@@ -28,7 +29,7 @@ const exercises = [
   {
     exercise_id: 'ex-1',
     title: 't1',
-    prompt: 'p1',
+    prompt: plainTextPrompt('p1'),
     exercise_type: 'text_response' as const,
     options: [
       { option_id: 'o1', is_correct: true, label: 'Right' },
@@ -41,7 +42,7 @@ const exercises = [
   {
     exercise_id: 'ex-2',
     title: 't2',
-    prompt: 'p2',
+    prompt: plainTextPrompt('p2'),
     exercise_type: 'text_response' as const,
     options: [
       { option_id: 'o3', is_correct: false, label: 'Wrong' },
@@ -57,7 +58,7 @@ const exercises = [
 const multiCorrectExercise = {
   exercise_id: 'ex-multi',
   title: 't-multi',
-  prompt: 'p-multi',
+  prompt: plainTextPrompt('p-multi'),
   exercise_type: 'image_recognition' as const,
   options: [
     { option_id: 'm1', is_correct: true, region: { x: 0, y: 0, width: 0.1, height: 0.1, shape: 'circle' as const } },

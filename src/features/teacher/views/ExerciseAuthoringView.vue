@@ -8,6 +8,7 @@ import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewM
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
+import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import SkillTagsInput from '@/features/teacher/components/SkillTagsInput.vue'
 import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.vue'
 import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
@@ -274,16 +275,8 @@ async function save() {
         </div>
 
         <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <label class="text-sm font-semibold" for="exercise-prompt">Prompt shown to the student</label>
-            <span class="text-xs italic text-ink-subtle">Rich text toolbar — coming soon</span>
-          </div>
-          <textarea
-            id="exercise-prompt"
-            v-model="form.prompt.value"
-            rows="2"
-            class="rounded-md border border-border bg-surface-raised p-3 text-base"
-          ></textarea>
+          <label class="text-sm font-semibold">Prompt shown to the student</label>
+          <PromptEditor v-model="form.prompt.value" />
         </div>
 
         <div class="flex flex-col gap-2.5">

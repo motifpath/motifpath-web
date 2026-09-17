@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+
 const PUT = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { PUT }, eventApi: {} }),
@@ -13,7 +15,7 @@ describe('useUpdateExercise', () => {
     PUT.mockResolvedValueOnce({ data: exercise, error: undefined, response: { status: 200 } })
 
     const { updateExercise } = useUpdateExercise()
-    const request = { title: 't', prompt: 'p', options: [] }
+    const request = { title: 't', prompt: plainTextPrompt('p'), options: [] }
 
     const result = await updateExercise('e-1', request)
 
@@ -29,7 +31,7 @@ describe('useUpdateExercise', () => {
 
     const { updateExercise } = useUpdateExercise()
 
-    await expect(updateExercise('e-1', { title: 't', prompt: 'p', options: [] })).rejects.toThrow('Boom')
+    await expect(updateExercise('e-1', { title: 't', prompt: plainTextPrompt('p'), options: [] })).rejects.toThrow('Boom')
   })
 
   it('throws with per-field detail when the server returns a validation error', async () => {
@@ -41,7 +43,7 @@ describe('useUpdateExercise', () => {
 
     const { updateExercise } = useUpdateExercise()
 
-    await expect(updateExercise('e-1', { title: 't', prompt: '', options: [] })).rejects.toThrow(
+    await expect(updateExercise('e-1', { title: 't', prompt: plainTextPrompt(''), options: [] })).rejects.toThrow(
       'Request failed validation:\n• /prompt: must not be empty',
     )
   })
@@ -51,7 +53,7 @@ describe('useUpdateExercise', () => {
 
     const { updateExercise } = useUpdateExercise()
 
-    await expect(updateExercise('e-1', { title: 't', prompt: 'p', options: [] })).rejects.toThrow(
+    await expect(updateExercise('e-1', { title: 't', prompt: plainTextPrompt('p'), options: [] })).rejects.toThrow(
       'Failed to update the exercise',
     )
   })
