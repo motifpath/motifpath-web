@@ -89,6 +89,15 @@ function renderText(node: PromptNode): VNode {
   return h('span', { class: classes, style }, text)
 }
 
+function cellStyle(node: PromptNode): { backgroundColor?: string; borderColor?: string } {
+  const backgroundColor = attrString(node.attrs, 'backgroundColor')
+  const borderColor = attrString(node.attrs, 'borderColor')
+  return {
+    ...(backgroundColor ? { backgroundColor } : {}),
+    ...(borderColor ? { borderColor } : {}),
+  }
+}
+
 function renderNode(node: PromptNode): VNode {
   const children = (node.content ?? []).map(renderNode)
 
@@ -119,6 +128,7 @@ function renderNode(node: PromptNode): VNode {
           class: 'border border-border bg-surface-sunken px-2 py-1 font-semibold',
           colspan: attrNumber(node.attrs, 'colspan'),
           rowspan: attrNumber(node.attrs, 'rowspan'),
+          style: cellStyle(node),
         },
         children,
       )
@@ -129,6 +139,7 @@ function renderNode(node: PromptNode): VNode {
           class: 'border border-border px-2 py-1',
           colspan: attrNumber(node.attrs, 'colspan'),
           rowspan: attrNumber(node.attrs, 'rowspan'),
+          style: cellStyle(node),
         },
         children,
       )

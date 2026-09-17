@@ -130,6 +130,66 @@ describe('PromptEditor', () => {
     expect(lastEmittedDocument(wrapper).content.some((node) => node.type === 'table')).toBe(false)
   })
 
+  it('toggles a cell between header and regular, and paints its background and border', async () => {
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    await nextTick()
+    await wrapper.find('[data-test="prompt-toolbar-table"]').trigger('click')
+    await nextTick()
+
+    function firstCell() {
+      const table = lastEmittedDocument(wrapper).content.find((node) => node.type === 'table')
+      return table?.content?.[0]?.content?.[0]
+    }
+
+    // insertTable's withHeaderRow default means the cursor starts inside a
+    // header cell — toggling header row switches it to a plain cell.
+    expect(firstCell()?.type).toBe('tableHeader')
+    await wrapper.find('[data-test="prompt-table-toggle-header-row"]').trigger('click')
+    await nextTick()
+    expect(firstCell()?.type).toBe('tableCell')
+
+    await wrapper.find('[data-test="prompt-table-toggle-header-cell"]').trigger('click')
+    await nextTick()
+    expect(firstCell()?.type).toBe('tableHeader')
+
+    // toggleHeaderColumn's effect depends on whether every cell in the
+    // column is already a header (prosemirror-tables toggles the whole
+    // column uniformly), so it isn't asserted precisely here — just that
+    // the button exists and doesn't throw.
+    await wrapper.find('[data-test="prompt-table-toggle-header-column"]').trigger('click')
+    await nextTick()
+
+    expect(firstCell()?.attrs?.borderColor).toBeFalsy()
+    await wrapper.find('[data-test="prompt-table-toggle-border"]').trigger('click')
+    await nextTick()
+    expect(firstCell()?.attrs?.borderColor).toBe('transparent')
+    await wrapper.find('[data-test="prompt-table-toggle-border"]').trigger('click')
+    await nextTick()
+    expect(firstCell()?.attrs?.borderColor).toBeFalsy()
+
+    const backgroundInput = wrapper.find('[data-test="prompt-table-cell-background"]')
+    Object.defineProperty(backgroundInput.element, 'value', { value: '#f3ecff', writable: true })
+    await backgroundInput.trigger('input')
+    await nextTick()
+    expect(firstCell()?.attrs?.backgroundColor).toBe('#f3ecff')
+  })
+
+  it('has merge and split cell buttons available inside a table', async () => {
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    await nextTick()
+    await wrapper.find('[data-test="prompt-toolbar-table"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.find('[data-test="prompt-table-merge-cells"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="prompt-table-split-cell"]').exists()).toBe(true)
+
+    // A no-op in this environment (mergeCells/splitCell require a real
+    // multi-cell CellSelection, not reliably constructable from a click in
+    // jsdom), but must not throw.
+    await wrapper.find('[data-test="prompt-table-merge-cells"]').trigger('click')
+    await wrapper.find('[data-test="prompt-table-split-cell"]').trigger('click')
+  })
+
   it('uploads the picked file and inserts an image node on the image button', async () => {
     upload.mockResolvedValueOnce('https://cdn.example.com/library/circle-of-fifths.png')
     const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('') } })

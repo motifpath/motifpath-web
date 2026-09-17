@@ -12,6 +12,40 @@ import OrderedList from '@tiptap/extension-ordered-list'
 import Paragraph from '@tiptap/extension-paragraph'
 import Strike from '@tiptap/extension-strike'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
+
+// TableCell/TableHeader ship no styling attrs of their own — extended here
+// with backgroundColor and borderColor (rendered as inline style, merged
+// into the cell's own HTML attrs by Tiptap's attribute pipeline) so the
+// paint-cell-background and toggle-border toolbar controls have somewhere
+// to persist their value.
+const cellStyleAttributes = {
+  backgroundColor: {
+    default: null,
+    parseHTML: (element: HTMLElement) => element.style.backgroundColor || null,
+    renderHTML: (attributes: { backgroundColor?: string | null }) => {
+      if (!attributes.backgroundColor) return {}
+      return { style: `background-color: ${attributes.backgroundColor}` }
+    },
+  },
+  borderColor: {
+    default: null,
+    parseHTML: (element: HTMLElement) => element.style.borderColor || null,
+    renderHTML: (attributes: { borderColor?: string | null }) => {
+      if (!attributes.borderColor) return {}
+      return { style: `border-color: ${attributes.borderColor}` }
+    },
+  },
+}
+const StyledTableCell = TableCell.extend({
+  addAttributes() {
+    return { ...this.parent?.(), ...cellStyleAttributes }
+  },
+})
+const StyledTableHeader = TableHeader.extend({
+  addAttributes() {
+    return { ...this.parent?.(), ...cellStyleAttributes }
+  },
+})
 import TextAlign from '@tiptap/extension-text-align'
 import TiptapText from '@tiptap/extension-text'
 import { BackgroundColor, Color, TextStyle } from '@tiptap/extension-text-style'
@@ -20,6 +54,7 @@ import {
   Baseline,
   Bold as BoldIcon,
   Columns3,
+  Frame,
   Heading1,
   Heading2,
   Heading3,
@@ -29,15 +64,20 @@ import {
   Link as LinkIcon,
   List,
   ListOrdered,
+  Merge,
   Minus,
   AlignCenter,
   AlignJustify,
   AlignLeft,
   AlignRight,
   PaintBucket,
+  PanelLeft,
+  PanelTop,
   Pilcrow,
   Plus,
   Rows3,
+  Split,
+  SquareDashed,
   Strikethrough,
   Table2,
   Trash2,
@@ -86,8 +126,8 @@ const editor = useEditor({
     Link.configure({ openOnClick: false }),
     Table,
     TableRow,
-    TableHeader,
-    TableCell,
+    StyledTableHeader,
+    StyledTableCell,
     TiptapImage,
   ],
   onUpdate: ({ editor: current }) => {
@@ -155,6 +195,33 @@ function deleteRow() {
 }
 function deleteTable() {
   editor.value?.chain().focus().deleteTable().run()
+}
+function toggleHeaderRow() {
+  editor.value?.chain().focus().toggleHeaderRow().run()
+}
+function toggleHeaderColumn() {
+  editor.value?.chain().focus().toggleHeaderColumn().run()
+}
+function toggleHeaderCell() {
+  editor.value?.chain().focus().toggleHeaderCell().run()
+}
+function mergeCells() {
+  editor.value?.chain().focus().mergeCells().run()
+}
+function splitCell() {
+  editor.value?.chain().focus().splitCell().run()
+}
+function currentCellAttrs(): Record<string, unknown> {
+  if (!editor.value) return {}
+  return editor.value.isActive('tableHeader') ? editor.value.getAttributes('tableHeader') : editor.value.getAttributes('tableCell')
+}
+function toggleCellBorder() {
+  const hasNoBorder = currentCellAttrs().borderColor === 'transparent'
+  editor.value?.chain().focus().setCellAttribute('borderColor', hasNoBorder ? null : 'transparent').run()
+}
+function setCellBackground(event: Event) {
+  const color = (event.target as HTMLInputElement).value
+  editor.value?.chain().focus().setCellAttribute('backgroundColor', color).run()
 }
 function setLink() {
   const url = window.prompt('Link URL')
@@ -434,6 +501,60 @@ async function onImagePicked(event: Event) {
           <Rows3 :size="16" aria-hidden="true" />
           <Minus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
         </button>
+        <div class="mx-1 h-4 w-px bg-border" />
+        <button
+          type="button"
+          data-test="prompt-table-toggle-header-row"
+          class="rounded p-1.5"
+          title="Toggle header row"
+          @click="toggleHeaderRow()"
+        >
+          <PanelTop :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-table-toggle-header-column"
+          class="rounded p-1.5"
+          title="Toggle header column"
+          @click="toggleHeaderColumn()"
+        >
+          <PanelLeft :size="16" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="prompt-table-toggle-header-cell"
+          class="rounded p-1.5"
+          title="Toggle header cell"
+          @click="toggleHeaderCell()"
+        >
+          <Frame :size="16" aria-hidden="true" />
+        </button>
+        <div class="mx-1 h-4 w-px bg-border" />
+        <button type="button" data-test="prompt-table-merge-cells" class="rounded p-1.5" title="Merge cells" @click="mergeCells()">
+          <Merge :size="16" aria-hidden="true" />
+        </button>
+        <button type="button" data-test="prompt-table-split-cell" class="rounded p-1.5" title="Split cell" @click="splitCell()">
+          <Split :size="16" aria-hidden="true" />
+        </button>
+        <div class="mx-1 h-4 w-px bg-border" />
+        <button
+          type="button"
+          data-test="prompt-table-toggle-border"
+          class="rounded p-1.5"
+          title="Add/remove cell border"
+          @click="toggleCellBorder()"
+        >
+          <SquareDashed :size="16" aria-hidden="true" />
+        </button>
+        <label class="relative flex cursor-pointer items-center rounded p-1.5" title="Cell background color">
+          <PaintBucket :size="16" aria-hidden="true" />
+          <input
+            type="color"
+            data-test="prompt-table-cell-background"
+            class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            @input="setCellBackground"
+          />
+        </label>
         <div class="mx-1 h-4 w-px bg-border" />
         <button
           type="button"

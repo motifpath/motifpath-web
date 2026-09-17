@@ -1038,9 +1038,9 @@ export interface components {
          *     content; the text node is a leaf that carries the literal string
          *     under text and any inline marks under marks. attrs holds
          *     type-specific attributes (e.g. heading's level, paragraph/heading's
-         *     text alignment, image's src and alt, table cell's colspan and
-         *     rowspan) and is validated by the authoring editor, not by this
-         *     schema.
+         *     text alignment, image's src and alt, table cell's colspan, rowspan,
+         *     backgroundColor, and borderColor) and is validated by the authoring
+         *     editor, not by this schema.
          */
         PromptNode: {
             /**

@@ -163,6 +163,34 @@ describe('PromptRenderer', () => {
     expect(wrapper.get('table td').text()).toBe('C major')
   })
 
+  it("applies a table cell's background color and border color as inline style", () => {
+    const wrapper = mount(PromptRenderer, {
+      props: {
+        document: doc([
+          {
+            type: 'table',
+            content: [
+              {
+                type: 'tableRow',
+                content: [
+                  {
+                    type: 'tableCell',
+                    attrs: { backgroundColor: '#f3ecff', borderColor: 'transparent' },
+                    content: [{ type: 'text', text: 'C major' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      },
+    })
+
+    const style = wrapper.get('table td').attributes('style')
+    expect(style).toContain('background-color: rgb(243, 236, 255)')
+    expect(style).toContain('border-color: transparent')
+  })
+
   it('renders an image with its src and alt', () => {
     const wrapper = mount(PromptRenderer, {
       props: {
