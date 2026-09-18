@@ -32,3 +32,6 @@ pnpm-debug.log*
 !.vscode/extensions.json
 *.swp
 *~
+
+# Local implementation plans (ADR-022) — never committed
+plans/
