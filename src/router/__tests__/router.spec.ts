@@ -207,6 +207,26 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it('lets a registered teacher reach the teacher content-authoring route', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('teacher')
+
+    await router.push('/teacher/content/new')
+
+    expect(router.currentRoute.value.name).toBe('teacher-content-new')
+  })
+
+  it('sends a registered student away from the teacher content-authoring route to home', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/teacher/content/new')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
   it('lets a registered teacher reach the teacher paths route', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')

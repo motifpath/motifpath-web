@@ -92,6 +92,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/teacher/views/ContentListView.vue'),
   },
   {
+    path: '/teacher/content/new',
+    name: 'teacher-content-new',
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
+  },
+  {
+    path: '/teacher/content/:id/edit',
+    name: 'teacher-content-edit',
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
+  },
+  {
     path: '/teacher/paths',
     name: 'teacher-paths',
     meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
