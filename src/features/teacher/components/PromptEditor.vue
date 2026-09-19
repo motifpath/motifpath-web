@@ -86,6 +86,7 @@ import {
   Trash2,
 } from 'lucide-vue-next'
 import { ref, watch } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import { useToast } from '@/shared/composables/useToast'
@@ -98,6 +99,7 @@ const emit = defineEmits<{ 'update:modelValue': [document: PromptDocument] }>()
 
 const { upload } = useMediaUpload()
 const toast = useToast()
+const { t } = useTypedT()
 const imageInput = ref<HTMLInputElement | null>(null)
 
 // Tiptap's JSONContent and our wire PromptDocument describe the same shape
@@ -245,7 +247,7 @@ function setCellBackground(event: Event) {
   editor.value?.chain().focus().setCellAttribute('backgroundColor', color).run()
 }
 function setLink() {
-  const url = window.prompt('Link URL')
+  const url = window.prompt(t('promptEditor.linkUrlPrompt'))
   if (!url) return
   editor.value?.chain().focus().setLink({ href: url }).run()
 }
@@ -270,7 +272,7 @@ async function onImagePicked(event: Event) {
     const src = await upload(file, 'image')
     editor.value?.chain().focus().setImage({ src }).run()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to upload the image')
+    toast.error(e instanceof Error ? e.message : t('promptEditor.imageUploadFailed'))
   }
 }
 </script>
@@ -285,7 +287,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-toolbar-undo"
           class="rounded p-1.5 text-ink-muted disabled:opacity-40"
-          title="Undo"
+          :title="t('promptEditor.undo')"
           :disabled="!canUndo()"
           @click="undo()"
         >
@@ -295,7 +297,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-toolbar-redo"
           class="rounded p-1.5 text-ink-muted disabled:opacity-40"
-          title="Redo"
+          :title="t('promptEditor.redo')"
           :disabled="!canRedo()"
           @click="redo()"
         >
@@ -381,7 +383,7 @@ async function onImagePicked(event: Event) {
         </button>
         <label
           class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted"
-          title="Font color"
+          :title="t('promptEditor.fontColor')"
         >
           <Baseline :size="16" aria-hidden="true" />
           <input
@@ -393,7 +395,7 @@ async function onImagePicked(event: Event) {
         </label>
         <label
           class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted"
-          title="Background color"
+          :title="t('promptEditor.backgroundColor')"
         >
           <PaintBucket :size="16" aria-hidden="true" />
           <input
@@ -512,7 +514,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-add-column"
           class="relative rounded p-1.5"
-          title="Add column"
+          :title="t('promptEditor.addColumn')"
           @click="addColumn()"
         >
           <Columns3 :size="16" aria-hidden="true" />
@@ -522,7 +524,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-delete-column"
           class="relative rounded p-1.5"
-          title="Delete column"
+          :title="t('promptEditor.deleteColumn')"
           @click="deleteColumn()"
         >
           <Columns3 :size="16" aria-hidden="true" />
@@ -533,7 +535,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-add-row"
           class="relative rounded p-1.5"
-          title="Add row"
+          :title="t('promptEditor.addRow')"
           @click="addRow()"
         >
           <Rows3 :size="16" aria-hidden="true" />
@@ -543,7 +545,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-delete-row"
           class="relative rounded p-1.5"
-          title="Delete row"
+          :title="t('promptEditor.deleteRow')"
           @click="deleteRow()"
         >
           <Rows3 :size="16" aria-hidden="true" />
@@ -554,7 +556,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-toggle-header-row"
           class="rounded p-1.5"
-          title="Toggle header row"
+          :title="t('promptEditor.toggleHeaderRow')"
           @click="toggleHeaderRow()"
         >
           <PanelTop :size="16" aria-hidden="true" />
@@ -563,7 +565,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-toggle-header-column"
           class="rounded p-1.5"
-          title="Toggle header column"
+          :title="t('promptEditor.toggleHeaderColumn')"
           @click="toggleHeaderColumn()"
         >
           <PanelLeft :size="16" aria-hidden="true" />
@@ -572,16 +574,16 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-toggle-header-cell"
           class="rounded p-1.5"
-          title="Toggle header cell"
+          :title="t('promptEditor.toggleHeaderCell')"
           @click="toggleHeaderCell()"
         >
           <Frame :size="16" aria-hidden="true" />
         </button>
         <div class="mx-1 h-4 w-px bg-border" />
-        <button type="button" data-test="prompt-table-merge-cells" class="rounded p-1.5" title="Merge cells" @click="mergeCells()">
+        <button type="button" data-test="prompt-table-merge-cells" class="rounded p-1.5" :title="t('promptEditor.mergeCells')" @click="mergeCells()">
           <Merge :size="16" aria-hidden="true" />
         </button>
-        <button type="button" data-test="prompt-table-split-cell" class="rounded p-1.5" title="Split cell" @click="splitCell()">
+        <button type="button" data-test="prompt-table-split-cell" class="rounded p-1.5" :title="t('promptEditor.splitCell')" @click="splitCell()">
           <Split :size="16" aria-hidden="true" />
         </button>
         <div class="mx-1 h-4 w-px bg-border" />
@@ -589,12 +591,12 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-toggle-border"
           class="rounded p-1.5"
-          title="Add/remove cell border"
+          :title="t('promptEditor.toggleCellBorder')"
           @click="toggleCellBorder()"
         >
           <SquareDashed :size="16" aria-hidden="true" />
         </button>
-        <label class="relative flex cursor-pointer items-center rounded p-1.5" title="Cell background color">
+        <label class="relative flex cursor-pointer items-center rounded p-1.5" :title="t('promptEditor.cellBackgroundColor')">
           <PaintBucket :size="16" aria-hidden="true" />
           <input
             type="color"
@@ -608,7 +610,7 @@ async function onImagePicked(event: Event) {
           type="button"
           data-test="prompt-table-delete"
           class="rounded p-1.5 text-danger"
-          title="Delete table"
+          :title="t('promptEditor.deleteTable')"
           @click="deleteTable()"
         >
           <Trash2 :size="16" aria-hidden="true" />

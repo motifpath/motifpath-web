@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Circle, ImageOff, Minus, Plus, Square, X } from 'lucide-vue-next'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { clamp, type Region } from '@/features/teacher/composables/useExerciseForm'
 
@@ -19,6 +20,8 @@ const emit = defineEmits<{
   'update:newRegionShape': [shape: 'circle' | 'rectangle']
   'update:stimulus-size': [width: number, height: number]
 }>()
+
+const { t } = useTypedT()
 
 const stimulusImage = ref<HTMLImageElement | null>(null)
 // True only once the current imageUrl has actually finished loading — until
@@ -93,7 +96,7 @@ function startDrag(region: Region, event: MouseEvent) {
 <template>
   <div class="flex flex-col gap-3.5">
     <div class="flex items-center gap-2">
-      <span class="text-sm text-ink-subtle">New region:</span>
+      <span class="text-sm text-ink-subtle">{{ t('imageRegionEditor.newRegion') }}</span>
       <div class="flex gap-1 rounded-md bg-surface-sunken p-1">
         <button
           type="button"
@@ -128,7 +131,7 @@ function startDrag(region: Region, event: MouseEvent) {
         class="flex h-60 w-full flex-col items-center justify-center gap-2 text-ink-subtle"
       >
         <ImageOff :size="26" aria-hidden="true" />
-        <span class="text-[0.8125rem]">Choose a stimulus image to place regions</span>
+        <span class="text-[0.8125rem]">{{ t('imageRegionEditor.noImagePlaceholder') }}</span>
       </div>
       <img
         v-else
@@ -173,7 +176,7 @@ function startDrag(region: Region, event: MouseEvent) {
             :class="region.correct ? 'bg-success-muted text-success' : 'bg-accent-muted text-accent'"
             >{{ index + 1 }}</span
           >
-          <span class="flex-1 text-sm text-ink-muted">Region {{ index + 1 }}</span>
+          <span class="flex-1 text-sm text-ink-muted">{{ t('imageRegionEditor.region', { number: index + 1 }) }}</span>
           <button
             type="button"
             data-test="region-toggle"
@@ -182,12 +185,12 @@ function startDrag(region: Region, event: MouseEvent) {
             :class="region.correct ? 'border-success bg-success-muted text-success' : 'border-border bg-surface-raised text-ink-muted'"
             @click="emit('toggle-region', region.id)"
           >
-            Correct answer
+            {{ t('common.correctAnswer') }}
           </button>
           <button
             type="button"
             data-test="region-remove"
-            aria-label="Remove region"
+            :aria-label="t('imageRegionEditor.removeRegionAriaLabel')"
             class="flex h-[26px] w-[26px] items-center justify-center rounded-sm text-ink-subtle"
             @click="emit('remove-region', region.id)"
           >
@@ -196,7 +199,7 @@ function startDrag(region: Region, event: MouseEvent) {
         </div>
 
         <div v-if="region.shape === 'circle'" class="flex items-center gap-2 pl-10">
-          <span class="w-11 text-xs text-ink-subtle">Size</span>
+          <span class="w-11 text-xs text-ink-subtle">{{ t('imageRegionEditor.size') }}</span>
           <button
             type="button"
             data-test="shrink"
@@ -212,7 +215,7 @@ function startDrag(region: Region, event: MouseEvent) {
         </div>
         <div v-else class="flex items-center gap-4 pl-10">
           <div class="flex items-center gap-2">
-            <span class="w-11 text-xs text-ink-subtle">Width</span>
+            <span class="w-11 text-xs text-ink-subtle">{{ t('imageRegionEditor.width') }}</span>
             <button
               type="button"
               data-test="shrink-width"
@@ -227,7 +230,7 @@ function startDrag(region: Region, event: MouseEvent) {
             ><Plus :size="14" aria-hidden="true" /></button>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-ink-subtle">Height</span>
+            <span class="text-xs text-ink-subtle">{{ t('imageRegionEditor.height') }}</span>
             <button
               type="button"
               data-test="shrink-height"
