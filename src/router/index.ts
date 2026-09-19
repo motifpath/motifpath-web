@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { authChecker } from '@/features/auth/authBridge'
+import { ensureAuthLocaleLoaded } from '@/features/auth/locales'
 import { ensureStudentLocaleLoaded } from '@/features/student/locales'
 import { createAuthGuard, type Role } from '@/router/guards'
 
@@ -17,6 +18,11 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/shared/components/PublicLayout.vue'),
+    // Three of this path's four children are auth views (sign-in, the
+    // registering bridge, and the registration-error screen) — loading the
+    // auth locale here once covers all of them instead of repeating the
+    // same beforeEnter on each leaf route.
+    beforeEnter: () => ensureAuthLocaleLoaded(),
     children: [
       {
         path: '',

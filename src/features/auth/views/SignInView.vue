@@ -2,11 +2,13 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SignIn } from '@clerk/vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { readRedirectQuery } from '@/features/auth/utils/redirectQuery'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useTypedT()
 
 // The guard preserves the visitor's original destination as ?redirect= on
 // this route. Every entry still goes through the registering route first
@@ -23,7 +25,7 @@ const welcomeUrl = computed(() => {
   <main class="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
     <div class="flex flex-col items-center gap-1">
       <span class="text-lg font-semibold text-accent-text">MotifPath</span>
-      <p class="text-sm text-ink-muted">Sign in to start practising.</p>
+      <p class="text-sm text-ink-muted">{{ t('signInView.subtitle') }}</p>
     </div>
 
     <SignIn :force-redirect-url="welcomeUrl" :sign-up-force-redirect-url="welcomeUrl" />
