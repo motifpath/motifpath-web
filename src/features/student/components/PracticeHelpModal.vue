@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
@@ -14,20 +15,22 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 
+const { t } = useTypedT()
+
 const interactionText = computed(() => {
   switch (props.exerciseType) {
     case 'image_recognition':
       return props.allowMultiple
-        ? 'Tap every area on the image that answers the prompt.'
-        : 'Tap the area on the image that answers the prompt.'
+        ? t('practiceHelpModal.interaction.imageRecognitionMultiple')
+        : t('practiceHelpModal.interaction.imageRecognitionSingle')
     case 'image_choice':
       return props.allowMultiple
-        ? 'Tap every image that applies.'
-        : 'Tap the image that answers the prompt.'
+        ? t('practiceHelpModal.interaction.imageChoiceMultiple')
+        : t('practiceHelpModal.interaction.imageChoiceSingle')
     default:
       return props.allowMultiple
-        ? 'Tap every option that applies.'
-        : 'Tap the option that answers the prompt.'
+        ? t('practiceHelpModal.interaction.defaultMultiple')
+        : t('practiceHelpModal.interaction.defaultSingle')
   }
 })
 </script>
@@ -39,12 +42,13 @@ const interactionText = computed(() => {
     @close="emit('close')"
   >
     <div class="flex items-start justify-between gap-3">
-      <span class="text-sm font-bold text-ink">How to answer</span>
+      <span class="text-sm font-bold text-ink">{{ t('practiceHelpModal.title') }}</span>
       <ModalCloseButton @close="emit('close')" />
     </div>
     <p class="text-sm text-ink-muted">{{ interactionText }}</p>
     <p class="text-sm text-ink-muted">
-      Tap a selected answer again to clear it. Use <b>‹ Back</b> to revisit and change a previous exercise's answer.
+      {{ t('practiceHelpModal.clearHintBefore') }} <b>{{ t('common.back') }}</b>
+      {{ t('practiceHelpModal.clearHintAfter') }}
     </p>
   </ModalOverlay>
 </template>

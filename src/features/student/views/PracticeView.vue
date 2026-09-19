@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import PracticeHelpModal from '@/features/student/components/PracticeHelpModal.vue'
@@ -15,6 +16,8 @@ const props = defineProps<{ nodeId: string }>()
 // route change that reuses this component (same route record, new :nodeId)
 // still reloads instead of showing the previous node's session.
 const session = usePracticeSession(() => props.nodeId)
+
+const { t } = useTypedT()
 
 const helpOpen = ref(false)
 
@@ -35,25 +38,25 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
 
 <template>
   <section data-test="practice">
-    <StateLoading v-if="session.status.value === 'loading'" data-test="loading" noun="the practice exercises" />
+    <StateLoading v-if="session.status.value === 'loading'" data-test="loading" :noun="t('practiceView.loadingNoun')" />
 
     <StateError
       v-else-if="session.status.value === 'error'"
-      message="We couldn't load this practice exercise."
+      :message="t('practiceView.errorMessage')"
       @retry="session.retry()"
     />
 
     <div v-else-if="session.status.value === 'empty'" data-test="practice-empty" class="flex flex-col items-start gap-3">
-      <p class="text-ink-muted">There's no practice for this lesson yet.</p>
+      <p class="text-ink-muted">{{ t('practiceView.empty') }}</p>
       <RouterLink :to="{ name: 'node', params: { nodeId: props.nodeId } }" class="text-sm font-medium text-accent-text underline">
-        ‹ Back to lesson
+        {{ t('practiceView.backToLesson') }}
       </RouterLink>
     </div>
 
     <div v-else-if="session.status.value === 'in-progress' && session.currentExercise.value" class="flex flex-col gap-4">
       <div class="flex items-center gap-3 border-b border-border pb-2.5 text-xs text-ink-muted">
         <RouterLink :to="{ name: 'node', params: { nodeId: props.nodeId } }" class="shrink-0">
-          ‹ Back to lesson
+          {{ t('practiceView.backToLesson') }}
         </RouterLink>
         <div class="h-1 flex-1 overflow-hidden rounded bg-surface-sunken" role="progressbar" :aria-valuenow="session.currentIndex.value + 1" aria-valuemin="1" :aria-valuemax="session.exercises.value.length">
           <div class="h-full bg-accent" :style="{ width: `${progressPercent}%` }" />
@@ -95,17 +98,19 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
           class="text-xs text-ink-subtle underline"
           @click="session.back()"
         >
-          ‹ Back
+          {{ t('common.back') }}
         </button>
         <span v-else />
         <PrimaryButton data-test="next" :disabled="!session.canAdvance.value" @click="session.next()">
-          {{ session.isLastExercise.value ? 'See result' : 'Next ›' }}
+          {{ session.isLastExercise.value ? t('practiceView.seeResult') : t('practiceView.next') }}
         </PrimaryButton>
       </div>
     </div>
 
     <div v-else-if="session.status.value === 'result'" data-test="result" class="flex flex-col items-center gap-3 rounded-md border border-border bg-surface-sunken px-4 py-5 text-center">
-      <p class="text-base font-semibold text-ink">{{ session.score.value.correct }} of {{ session.score.value.total }} correct</p>
+      <p class="text-base font-semibold text-ink">
+        {{ t('practiceView.resultSummary', { correct: session.score.value.correct, total: session.score.value.total }) }}
+      </p>
       <p
         data-test="result-percent"
         class="rounded-full px-3 py-1 text-sm font-semibold"
@@ -114,10 +119,10 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         {{ session.scorePercent.value }}%
       </p>
       <PrimaryButton as="RouterLink" data-test="finish" :to="{ name: 'node', params: { nodeId: props.nodeId } }">
-        Finish
+        {{ t('practiceView.finish') }}
       </PrimaryButton>
       <button type="button" data-test="result-back" class="text-xs text-ink-subtle underline" @click="session.back()">
-        ‹ Back
+        {{ t('common.back') }}
       </button>
     </div>
   </section>

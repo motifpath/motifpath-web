@@ -24,5 +24,38 @@
     "start": "Start",
     "continueSubtitle": "In progress · pick up where you left off",
     "startSubtitle": "Not started yet"
+  },
+  "common": {
+    "back": "‹ Back"
+  },
+  "nodeView": {
+    "heading": "Lesson",
+    "unavailable": "This lesson isn't available yet.",
+    "checkBackSoon": "We're still building it — check back soon.",
+    "practiceLink": "Practice this lesson ›",
+    "backToPath": "‹ Back to your path"
+  },
+  "practiceView": {
+    "loadingNoun": "the practice exercises",
+    "errorMessage": "We couldn't load this practice exercise.",
+    "empty": "There's no practice for this lesson yet.",
+    "backToLesson": "‹ Back to lesson",
+    "seeResult": "See result",
+    "next": "Next ›",
+    "resultSummary": "{correct} of {total} correct",
+    "finish": "Finish"
+  },
+  "practiceHelpModal": {
+    "title": "How to answer",
+    "interaction": {
+      "imageRecognitionMultiple": "Tap every area on the image that answers the prompt.",
+      "imageRecognitionSingle": "Tap the area on the image that answers the prompt.",
+      "imageChoiceMultiple": "Tap every image that applies.",
+      "imageChoiceSingle": "Tap the image that answers the prompt.",
+      "defaultMultiple": "Tap every option that applies.",
+      "defaultSingle": "Tap the option that answers the prompt."
+    },
+    "clearHintBefore": "Tap a selected answer again to clear it. Use",
+    "clearHintAfter": "to revisit and change a previous exercise's answer."
   }
 }
