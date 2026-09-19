@@ -24,5 +24,13 @@
     "locked": {
       "message": "Complete a etapa anterior para desbloquear esta lição."
     }
+  },
+  "errors": {
+    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente."
+  },
+  "localeSwitcher": {
+    "label": "Idioma",
+    "en": "English",
+    "ptBr": "Português"
   }
 }

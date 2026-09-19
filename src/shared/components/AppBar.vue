@@ -5,6 +5,7 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import { useAuth } from '@/features/auth/composables/useAuth'
 import Icon from '@/shared/components/Icon.vue'
+import LocaleSwitcher from '@/shared/components/LocaleSwitcher.vue'
 import SignOutLink from '@/shared/components/SignOutLink.vue'
 import { useThemeStore } from '@/stores/theme'
 
@@ -158,6 +159,8 @@ function closeAccountMenu(): void {
         class="absolute right-5 top-16 z-40 rounded-lg border border-border bg-surface-raised p-1.5 shadow-level2"
         @click="closeAccountMenu"
       >
+        <LocaleSwitcher />
+        <div class="my-1 h-px bg-border" />
         <SignOutLink class="block w-full px-2.5 py-1.5 text-left" />
       </div>
     </template>

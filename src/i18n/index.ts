@@ -47,3 +47,29 @@ export const i18n = createI18n<MessageSchema, SupportedLocale, false>({
     'pt-BR': sharedPtBr,
   },
 })
+
+// core-domain's Language.code uses underscore-separated tags (e.g. "pt_BR"),
+// while the UI locale follows the hyphenated BCP-47 form vue-i18n and
+// `SUPPORTED_LOCALES` already use (e.g. "pt-BR"). This is the one place that
+// translates between the two, so no other module needs to know both forms exist.
+const API_LANGUAGE_CODES: Record<SupportedLocale, string> = {
+  en: 'en',
+  'pt-BR': 'pt_BR',
+}
+
+/** Converts a supported UI locale to the Language.code the core-domain API expects. */
+export function toApiLanguageCode(locale: SupportedLocale): string {
+  return API_LANGUAGE_CODES[locale]
+}
+
+/**
+ * Converts a core-domain Language.code back to a supported UI locale,
+ * defaulting to the fallback locale for any code this UI doesn't have a
+ * translation for yet.
+ */
+export function fromApiLanguageCode(code: string): SupportedLocale {
+  const match = (Object.entries(API_LANGUAGE_CODES) as [SupportedLocale, string][]).find(
+    ([, apiCode]) => apiCode === code,
+  )
+  return match?.[0] ?? 'en'
+}

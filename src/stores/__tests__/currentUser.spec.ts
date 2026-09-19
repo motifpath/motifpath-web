@@ -3,20 +3,38 @@ import { createPinia, setActivePinia } from 'pinia'
 
 const GET = vi.fn()
 const POST = vi.fn()
+const PATCH = vi.fn()
 
 vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { GET, POST }, eventApi: {} }),
+  useApi: () => ({ coreApi: { GET, POST, PATCH }, eventApi: {} }),
 }))
 
+import { i18n } from '@/i18n'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
-const profile = { user_id: 'u-1', role: 'student', registered_at: '2026-09-05T00:00:00Z' }
+const profile = {
+  user_id: 'u-1',
+  role: 'student',
+  registered_at: '2026-09-05T00:00:00Z',
+  locale: { code: 'en', name: 'English' },
+}
+
+const LOCALE_STORAGE_KEY = 'motifpath:locale'
+
+function mockNavigatorLanguage(tag: string): void {
+  vi.spyOn(window.navigator, 'language', 'get').mockReturnValue(tag)
+  vi.spyOn(window.navigator, 'languages', 'get').mockReturnValue([tag])
+}
 
 describe('useCurrentUserStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     GET.mockReset()
     POST.mockReset()
+    PATCH.mockReset()
+    window.localStorage.clear()
+    mockNavigatorLanguage('en-US')
+    i18n.global.locale.value = 'en'
   })
 
   it('starts idle with no requests made', () => {
@@ -252,5 +270,131 @@ describe('useCurrentUserStore', () => {
 
     expect(GET).toHaveBeenCalledTimes(1)
     expect(store.state).toBe('registered')
+  })
+
+  describe('anonymous locale resolution', () => {
+    it('resolves the UI locale from the browser language when nothing is persisted', () => {
+      mockNavigatorLanguage('pt-BR')
+
+      useCurrentUserStore()
+
+      expect(i18n.global.locale.value).toBe('pt-BR')
+    })
+
+    it('prefers a previously persisted locale over the browser language', () => {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, 'pt-BR')
+      mockNavigatorLanguage('en-US')
+
+      useCurrentUserStore()
+
+      expect(i18n.global.locale.value).toBe('pt-BR')
+    })
+
+    it('falls back to English for an unsupported browser language', () => {
+      mockNavigatorLanguage('fr-FR')
+
+      useCurrentUserStore()
+
+      expect(i18n.global.locale.value).toBe('en')
+    })
+  })
+
+  describe('locale from the registered profile', () => {
+    it('overrides the anonymous locale with the profile locale once registered', async () => {
+      mockNavigatorLanguage('en-US')
+      GET.mockResolvedValueOnce({
+        data: { ...profile, locale: { code: 'pt_BR', name: 'Portuguese (Brazil)' } },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      expect(i18n.global.locale.value).toBe('pt-BR')
+      expect(store.locale).toBe('pt-BR')
+    })
+  })
+
+  describe('setLocale', () => {
+    it('updates the UI locale and persists it, without calling the API, while anonymous', async () => {
+      const store = useCurrentUserStore()
+
+      await store.setLocale('pt-BR')
+
+      expect(i18n.global.locale.value).toBe('pt-BR')
+      expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('pt-BR')
+      expect(PATCH).not.toHaveBeenCalled()
+    })
+
+    it('optimistically updates the UI locale and persists the confirmed profile on success', async () => {
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      PATCH.mockResolvedValueOnce({
+        data: { ...profile, locale: { code: 'pt_BR', name: 'Portuguese (Brazil)' } },
+        error: undefined,
+        response: { status: 200 },
+      })
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      await store.setLocale('pt-BR')
+
+      expect(PATCH).toHaveBeenCalledWith('/users/me', { body: { locale: 'pt_BR' } })
+      expect(i18n.global.locale.value).toBe('pt-BR')
+      expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('pt-BR')
+      expect(store.profile?.locale.code).toBe('pt_BR')
+    })
+
+    it('reverts the UI locale and surfaces an error toast when the API call fails', async () => {
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      PATCH.mockResolvedValueOnce({
+        data: undefined,
+        error: { message: 'boom' },
+        response: { status: 500 },
+      })
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      await store.setLocale('pt-BR')
+
+      expect(i18n.global.locale.value).toBe('en')
+      expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en')
+    })
+
+    it('reverts the UI locale when the API call rejects outright', async () => {
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      PATCH.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      await store.setLocale('pt-BR')
+
+      expect(i18n.global.locale.value).toBe('en')
+      expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en')
+    })
+
+    it('ignores a stale setLocale response that resolves after reset() (sign-out race)', async () => {
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      let resolvePatch!: (value: unknown) => void
+      PATCH.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolvePatch = resolve
+        }),
+      )
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      const pending = store.setLocale('pt-BR')
+      store.reset()
+      resolvePatch({
+        data: { ...profile, locale: { code: 'pt_BR', name: 'Portuguese (Brazil)' } },
+        error: undefined,
+        response: { status: 200 },
+      })
+      await pending
+
+      expect(store.state).toBe('idle')
+      expect(store.profile).toBeNull()
+    })
   })
 })

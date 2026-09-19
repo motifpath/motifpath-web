@@ -24,5 +24,13 @@
     "locked": {
       "message": "Complete the previous step to unlock this lesson."
     }
+  },
+  "errors": {
+    "localeUpdateFailed": "Could not update your language preference. Please try again."
+  },
+  "localeSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "ptBr": "Português"
   }
 }
