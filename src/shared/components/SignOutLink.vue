@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { useAuth } from '@/features/auth/composables/useAuth'
@@ -12,7 +13,7 @@ const props = defineProps<SignOutLinkProps>()
 const { t } = useTypedT()
 const { signOut } = useAuth()
 
-const resolvedLabel = props.label ?? t('buttons.signOut')
+const resolvedLabel = computed(() => props.label ?? t('buttons.signOut'))
 </script>
 
 <template>

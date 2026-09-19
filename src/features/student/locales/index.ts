@@ -10,12 +10,19 @@ let loaded: Promise<void> | null = null
  */
 export function ensureStudentLocaleLoaded(): Promise<void> {
   if (!loaded) {
-    loaded = Promise.all([import('./en.json'), import('./pt-BR.json')]).then(
-      ([en, ptBr]) => {
+    loaded = Promise.all([import('./en.json'), import('./pt-BR.json')])
+      .then(([en, ptBr]) => {
         i18n.global.mergeLocaleMessage('en', en.default)
         i18n.global.mergeLocaleMessage('pt-BR', ptBr.default)
-      },
-    )
+      })
+      .catch((error: unknown) => {
+        // Don't cache a failed attempt — a transient chunk-load failure
+        // (flaky network) would otherwise permanently break locale loading
+        // for every future navigation this session, with no retry path
+        // short of a full page reload.
+        loaded = null
+        throw error
+      })
   }
 
   return loaded

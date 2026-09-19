@@ -75,6 +75,12 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
 
   let inFlight: Promise<void> | null = null
 
+  // Bumped by every setLocale() call — independent of `epoch`, which only
+  // tracks registration attempts. Two overlapping setLocale() calls share
+  // the same registration epoch, so without this a slower call's response
+  // could resolve after a faster, later call's and silently overwrite it.
+  let localeEpoch = 0
+
   // Bumped by every runRegistration() call and by reset(). An attempt checks
   // its own epoch against the current one before each write — if reset() (or
   // a newer attempt) ran while it was awaiting, its epoch is stale and it
@@ -180,6 +186,8 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     i18n.global.locale.value = newLocale
     persistLocale(newLocale)
 
+    const myLocaleEpoch = ++localeEpoch
+
     if (state.value !== 'registered') {
       return
     }
@@ -189,10 +197,11 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
       const updated = await coreApi.PATCH('/users/me', {
         body: { locale: toApiLanguageCode(newLocale) },
       })
-      // A reset() (sign-out) or a newer attempt moved epoch on while this
-      // request was in flight — its result belongs to a session that no
-      // longer exists, so it must not touch locale/profile state.
-      if (myEpoch !== epoch) return
+      // A reset() (sign-out) or a newer registration attempt moved `epoch`
+      // on, or a later setLocale() call moved `localeEpoch` on, while this
+      // request was in flight — either way its result is stale and must not
+      // touch locale/profile state.
+      if (myEpoch !== epoch || myLocaleEpoch !== localeEpoch) return
 
       if (updated.data) {
         profile.value = updated.data
@@ -204,7 +213,7 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
       persistLocale(previousLocale)
       toast.error(i18n.global.t('errors.localeUpdateFailed'))
     } catch {
-      if (myEpoch !== epoch) return
+      if (myEpoch !== epoch || myLocaleEpoch !== localeEpoch) return
       i18n.global.locale.value = previousLocale
       persistLocale(previousLocale)
       toast.error(i18n.global.t('errors.localeUpdateFailed'))

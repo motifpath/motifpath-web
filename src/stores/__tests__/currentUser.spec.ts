@@ -396,5 +396,39 @@ describe('useCurrentUserStore', () => {
       expect(store.state).toBe('idle')
       expect(store.profile).toBeNull()
     })
+
+    it("keeps the latest selection when an earlier setLocale call's response resolves after it", async () => {
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      let resolveFirstPatch!: (value: unknown) => void
+      PATCH.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirstPatch = resolve
+        }),
+      )
+      PATCH.mockResolvedValueOnce({
+        data: { ...profile, locale: { code: 'en', name: 'English' } },
+        error: undefined,
+        response: { status: 200 },
+      })
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      const first = store.setLocale('pt-BR')
+      const second = store.setLocale('en')
+      await second
+
+      // The first call's slower PATCH resolves after the second's — it must
+      // not overwrite the second, later selection.
+      resolveFirstPatch({
+        data: { ...profile, locale: { code: 'pt_BR', name: 'Portuguese (Brazil)' } },
+        error: undefined,
+        response: { status: 200 },
+      })
+      await first
+
+      expect(i18n.global.locale.value).toBe('en')
+      expect(store.profile?.locale.code).toBe('en')
+      expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en')
+    })
   })
 })
