@@ -27,6 +27,18 @@ describe('LocaleSwitcher', () => {
     expect(wrapper.find('[data-test="locale-option-pt-BR"]').exists()).toBe(true)
   })
 
+  it('shows each option as a flag, with the language name as its accessible name', () => {
+    const wrapper = mountSwitcher()
+
+    const en = wrapper.get('[data-test="locale-option-en"]')
+    expect(en.text()).toBe('🇺🇸')
+    expect(en.attributes('aria-label')).toBe('English')
+
+    const ptBr = wrapper.get('[data-test="locale-option-pt-BR"]')
+    expect(ptBr.text()).toBe('🇧🇷')
+    expect(ptBr.attributes('aria-label')).toBe('Português')
+  })
+
   it('marks the current locale as the selected option', () => {
     currentUser.locale = 'en'
     const wrapper = mountSwitcher()

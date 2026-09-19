@@ -7,11 +7,12 @@ import type { SupportedLocale } from '@/i18n'
 interface LocaleOption {
   code: SupportedLocale
   labelKey: MessageKey
+  flag: string
 }
 
 const options: LocaleOption[] = [
-  { code: 'en', labelKey: 'localeSwitcher.en' },
-  { code: 'pt-BR', labelKey: 'localeSwitcher.ptBr' },
+  { code: 'en', labelKey: 'localeSwitcher.en', flag: '🇺🇸' },
+  { code: 'pt-BR', labelKey: 'localeSwitcher.ptBr', flag: '🇧🇷' },
 ]
 
 const { t } = useTypedT()
@@ -33,16 +34,17 @@ function select(code: SupportedLocale): void {
         :key="option.code"
         type="button"
         :data-test="`locale-option-${option.code}`"
+        :aria-label="t(option.labelKey)"
         :aria-pressed="currentUser.locale === option.code"
-        class="rounded-md px-2 py-1 text-sm"
+        class="rounded-md px-1.5 py-1 text-base leading-none"
         :class="
           currentUser.locale === option.code
-            ? 'bg-accent-muted font-semibold text-accent-text'
-            : 'text-ink-muted hover:text-accent-text'
+            ? 'bg-accent-muted ring-1 ring-inset ring-accent-text'
+            : 'opacity-60 hover:opacity-100'
         "
         @click="select(option.code)"
       >
-        {{ t(option.labelKey) }}
+        <span aria-hidden="true">{{ option.flag }}</span>
       </button>
     </div>
   </div>
