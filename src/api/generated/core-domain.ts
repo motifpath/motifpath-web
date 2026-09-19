@@ -40,7 +40,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List content nodes for authoring
+         * @description Returns content nodes from the library, for browsing and picking one
+         *     to edit, use as a remediation target, or add to a learning path —
+         *     not a student-facing catalog. Results are unordered beyond a stable
+         *     id order and are not paginated. Only teachers and admins may list
+         *     content nodes.
+         */
+        get: operations["listContentNodes"];
         put?: never;
         /**
          * Create a content node
@@ -74,7 +82,18 @@ export interface paths {
          *     (student, teacher, or admin) may retrieve a content node.
          */
         get: operations["getContentNode"];
-        put?: never;
+        /**
+         * Update a content node's title and classification
+         * @description Replaces the given content node's title and classification with the
+         *     request body. content_type cannot be changed — it determines which
+         *     expanded-content trigger fields (seconds vs. paragraph) are valid for
+         *     items already attached to this node, so changing it would leave those
+         *     items in an inconsistent shape; publish a new content node of the
+         *     desired type instead. review_state is not affected by this call — an
+         *     edit does not reset or require re-confirming an admin's prior review.
+         *     Only the creating teacher or an admin may update a content node.
+         */
+        put: operations["updateContentNode"];
         post?: never;
         delete?: never;
         options?: never;
@@ -103,11 +122,13 @@ export interface paths {
          * Create a challenge for a content node
          * @description Creates a new challenge attached to the specified content node. A challenge
          *     is the assessment unit for a class — it groups exercises and carries the
-         *     subject tag, pass threshold, and optional remediation target used by the
-         *     rules-based recommendation engine.
+         *     subject tag and pass threshold used by the rules-based recommendation
+         *     engine, plus an optional, purely informational time threshold.
          *
          *     Subject tag is mandatory. Without it, right/wrong outcomes on exercises are
-         *     analytically meaningless and gap detection cannot function.
+         *     analytically meaningless and gap detection cannot function. Remediation
+         *     targets are configured per exercise, not on the challenge — see
+         *     Exercise.remediation_targets.
          */
         post: operations["createChallenge"];
         delete?: never;
@@ -129,7 +150,17 @@ export interface paths {
          *     retrieve a challenge.
          */
         get: operations["getChallenge"];
-        put?: never;
+        /**
+         * Update a challenge's assessment configuration
+         * @description Replaces the given challenge's subject tag, pass threshold, time
+         *     threshold, and shuffle flags with the request body. The challenge's
+         *     linked exercises are untouched by this call — use POST/DELETE
+         *     /challenges/{challenge_id}/exercises/{exercise_id} to change those.
+         *     Remediation targets are configured per exercise, not on the
+         *     challenge — see updateExercise. Only the creating teacher or an
+         *     admin may update a challenge.
+         */
+        put: operations["updateChallenge"];
         post?: never;
         delete?: never;
         options?: never;
@@ -337,10 +368,10 @@ export interface paths {
         put?: never;
         /**
          * Add an expanded content item to a content node
-         * @description Attaches an expositive media item (image or GIF) to a content node. The
-         *     item is shown to the student at a specific point during consumption —
-         *     at a video timestamp for video nodes, or at a paragraph position for
-         *     article nodes.
+         * @description Attaches an expositive item (image, GIF, or rich content) to a
+         *     content node. The item is shown to the student at a specific point
+         *     during consumption — at a video timestamp for video nodes, or at a
+         *     paragraph position for article nodes.
          *
          *     **Trigger and hide rules by content node type:**
          *
@@ -351,8 +382,16 @@ export interface paths {
          *       must be provided (minimum 1 ms). `trigger_at_seconds` and `hide_at_seconds`
          *       must be absent.
          *
+         *     These timing rules apply the same way regardless of content_type.
+         *
+         *     **Content rules by content_type:** `image` and `gif` require `media_url`
+         *     and must not carry `rich_content`. `rich_text` requires `rich_content`
+         *     and must not carry `media_url` — video or audio embeds go inside the
+         *     rich content itself, there is no separate `video`/`audio` content_type.
+         *
          *     These constraints are enforced at write time. A request that mixes fields
-         *     from both groups is rejected with 400.
+         *     from either group (trigger/hide, or media_url/rich_content) is rejected
+         *     with 400.
          */
         post: operations["createExpandedContent"];
         delete?: never;
@@ -374,9 +413,23 @@ export interface paths {
          *     user may retrieve an expanded content item.
          */
         get: operations["getExpandedContent"];
-        put?: never;
+        /**
+         * Update an expanded content item
+         * @description Replaces the given expanded content item's media, trigger/hide
+         *     position, and caption with the request body. The same trigger/hide
+         *     field-group rules as POST .../expanded-content apply, validated
+         *     against the parent content node's type. Only the creating teacher or
+         *     an admin may update an expanded content item.
+         */
+        put: operations["updateExpandedContent"];
         post?: never;
-        delete?: never;
+        /**
+         * Delete an expanded content item
+         * @description Permanently removes the given expanded content item from its content
+         *     node. Only the creating teacher or an admin may delete an expanded
+         *     content item.
+         */
+        delete: operations["deleteExpandedContent"];
         options?: never;
         head?: never;
         patch?: never;
@@ -451,7 +504,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List learning paths for authoring
+         * @description Returns learning paths from the library, for browsing and picking one
+         *     to edit or assign to a student. Results are unordered beyond a stable
+         *     id order and are not paginated. Teachers and admins may list learning
+         *     paths; students may not browse paths directly — their view is
+         *     through GET /students/me/path.
+         */
+        get: operations["listLearningPaths"];
         put?: never;
         /**
          * Create a learning path
@@ -481,7 +542,18 @@ export interface paths {
          *     view is through GET /students/me/path.
          */
         get: operations["getLearningPath"];
-        put?: never;
+        /**
+         * Replace a learning path's title and items
+         * @description Replaces the given learning path's title and ordered items wholesale,
+         *     the same way POST /learning-paths establishes them initially — a
+         *     caller that wants to add, remove, reorder, or relabel a single item
+         *     resends the full items array with the desired result. Positions are
+         *     reassigned 1-based from the new array's order, same as on create.
+         *     Existing student progress against this path (a copied StudentPath
+         *     per student, not a shared reference) is unaffected by this call.
+         *     Only the creating teacher or an admin may replace a learning path.
+         */
+        put: operations["replaceLearningPath"];
         post?: never;
         delete?: never;
         options?: never;
@@ -564,7 +636,14 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Set the authenticated user's locale preference
+         * @description Updates the locale preference on the MotifPath user record associated
+         *     with the authenticated Clerk identity. This is the authenticated
+         *     counterpart to the Accept-Language-header/localStorage preference
+         *     used for anonymous visitors.
+         */
+        patch: operations["updateMyLocale"];
         trace?: never;
     };
     "/healthz": {
@@ -648,6 +727,15 @@ export interface components {
              */
             content_type: "video" | "article";
             classification: components["schemas"]["ClassificationInput"];
+            /**
+             * @description One or more Language.code values this content node is available
+             *     in. A single-element array containing "any" marks the content as
+             *     language-agnostic; "any" cannot be combined with other language
+             *     codes in the same array. Must not be empty — a node must be
+             *     explicitly tagged as either specific language(s) or
+             *     language-agnostic, never left unclassified.
+             */
+            language_codes: string[];
         };
         /**
          * @description The three mandatory classification dimensions for a content node. These
@@ -708,10 +796,35 @@ export interface components {
             content_type: "video" | "article";
             classification: components["schemas"]["Classification"];
             /**
+             * @description The language(s) this content node is available in, or a single
+             *     "any" entry for language-agnostic content. A student whose locale
+             *     matches none of these (and "any" is absent) sees this node
+             *     locked.
+             */
+            languages: components["schemas"]["Language"][];
+            /**
              * Format: date-time
              * @description Timestamp at which the content node was created.
              */
             created_at: string;
+        };
+        /**
+         * @description Payload for updating an existing content node's title and
+         *     classification. content_type is not present here — it cannot be
+         *     changed after creation.
+         */
+        UpdateContentNodeRequest: {
+            /** @description Human-readable title of the content node, displayed to students. */
+            title: string;
+            classification: components["schemas"]["ClassificationInput"];
+            /**
+             * @description One or more Language.code values this content node is available
+             *     in, replacing its current set. A single-element array containing
+             *     "any" marks the content as language-agnostic; "any" cannot be
+             *     combined with other language codes in the same array. Must not
+             *     be empty.
+             */
+            language_codes: string[];
         };
         /** @description Payload for creating a learning path. */
         CreateLearningPathRequest: {
@@ -768,6 +881,26 @@ export interface components {
              * @description Timestamp at which this learning path was created.
              */
             created_at: string;
+        };
+        /**
+         * @description Payload for replacing an existing learning path's title and items
+         *     wholesale — the same shape as CreateLearningPathRequest, since a
+         *     change to any single item (add, remove, reorder, relabel) is
+         *     expressed by resending the complete desired items array.
+         */
+        ReplaceLearningPathRequest: {
+            /** @description Human-readable name for this learning path, displayed to teachers and admins. */
+            title: string;
+            /** @description Ordered list of content nodes that make up this path. At least one item is required. */
+            items: {
+                /**
+                 * Format: uuid
+                 * @description The ID of the content node at this position. Must exist in the system.
+                 */
+                content_node_id: string;
+                /** @description Optional label grouping this item with its immediate neighbors under a named section in the resulting path view. */
+                section_label?: string;
+            }[];
         };
         /** @description Payload for assigning a learning path to a student. */
         AssignLearningPathRequest: {
@@ -861,22 +994,36 @@ export interface components {
             items: components["schemas"]["StudentPathItem"][];
         };
         /**
-         * @description Payload for attaching an expositive media item to a content node.
-         *     The trigger and hide fields used depend on the parent content node type:
+         * @description Payload for attaching an expositive item to a content node. The
+         *     trigger and hide fields used depend on the parent content node type:
          *     video nodes use trigger_at_seconds + hide_at_seconds; article nodes use
          *     trigger_at_paragraph + duration_ms. Mixing fields across groups is invalid.
+         *     These timing fields apply identically regardless of content_type —
+         *     timing is a property of when the item appears, independent of what
+         *     it contains.
          */
         CreateExpandedContentRequest: {
             /**
-             * @description The media format of the expanded content item.
+             * @description The format of the expanded content item. image and gif require
+             *     media_url; rich_text requires rich_content instead — the two
+             *     are mutually exclusive.
              * @enum {string}
              */
-            content_type: "image" | "gif";
+            content_type: "image" | "gif" | "rich_text";
             /**
              * Format: uri
-             * @description External URL of the image or GIF to display.
+             * @description External URL of the image or GIF to display. Required when
+             *     content_type is image or gif; must be absent when content_type
+             *     is rich_text.
              */
-            media_url: string;
+            media_url?: string;
+            /**
+             * @description Rich content authored with the Tiptap-based content editor,
+             *     which may embed video or audio alongside text and images —
+             *     no separate video/audio content_type is needed. Required when
+             *     content_type is rich_text; must be absent otherwise.
+             */
+            rich_content?: components["schemas"]["PromptDocument"];
             /**
              * @description Video nodes only. The video timestamp (in seconds) at which to show
              *     this item. Must be absent for article nodes.
@@ -898,14 +1045,15 @@ export interface components {
              *     after it is triggered. Must be absent for video nodes.
              */
             duration_ms?: number;
-            /** @description Optional caption displayed alongside the media item. */
+            /** @description Optional caption displayed alongside the item. */
             caption?: string;
         };
         /**
-         * @description An expositive media item (image or GIF) attached to a content node and
-         *     shown to the student at a specific point during content consumption.
-         *     For video nodes the item is synced to the video timeline; for article
-         *     nodes it is triggered by paragraph position.
+         * @description An expositive item (image, GIF, or rich content) attached to a
+         *     content node and shown to the student at a specific point during
+         *     content consumption. For video nodes the item is synced to the
+         *     video timeline; for article nodes it is triggered by paragraph
+         *     position.
          */
         ExpandedContent: {
             /**
@@ -919,15 +1067,22 @@ export interface components {
              */
             content_node_id: string;
             /**
-             * @description The media format of this item.
+             * @description The format of this item. image and gif carry media_url;
+             *     rich_text carries rich_content instead.
              * @enum {string}
              */
-            content_type: "image" | "gif";
+            content_type: "image" | "gif" | "rich_text";
             /**
              * Format: uri
-             * @description External URL of the image or GIF.
+             * @description External URL of the image or GIF. Present only when content_type is image or gif.
              */
-            media_url: string;
+            media_url?: string;
+            /**
+             * @description Rich content authored with the Tiptap-based content editor,
+             *     which may embed video or audio. Present only when content_type
+             *     is rich_text.
+             */
+            rich_content?: components["schemas"]["PromptDocument"];
             /** @description Video nodes only. Video timestamp (seconds) at which this item is shown. */
             trigger_at_seconds?: number;
             /** @description Video nodes only. Video timestamp (seconds) at which this item is hidden. */
@@ -936,13 +1091,56 @@ export interface components {
             trigger_at_paragraph?: number;
             /** @description Article nodes only. Display duration in milliseconds. */
             duration_ms?: number;
-            /** @description Optional caption displayed alongside the media item. */
+            /** @description Optional caption displayed alongside the item. */
             caption?: string;
             /**
              * Format: date-time
              * @description Timestamp at which this expanded content item was created.
              */
             created_at: string;
+        };
+        /**
+         * @description Payload for replacing an existing expanded content item's content,
+         *     trigger/hide position, and caption. Same trigger/hide field-group
+         *     rules as CreateExpandedContentRequest apply, keyed off the parent
+         *     content node's type (seconds-based for video, paragraph-based for
+         *     article) — the parent content node's own type cannot change, so
+         *     which trigger group is valid is unchanged by this update. The
+         *     item's own content_type (image/gif/rich_text) may change.
+         */
+        UpdateExpandedContentRequest: {
+            /**
+             * @description The format of the expanded content item. image and gif require
+             *     media_url; rich_text requires rich_content instead.
+             * @enum {string}
+             */
+            content_type: "image" | "gif" | "rich_text";
+            /**
+             * Format: uri
+             * @description External URL of the image or GIF to display. Required when
+             *     content_type is image or gif; must be absent when content_type
+             *     is rich_text.
+             */
+            media_url?: string;
+            /**
+             * @description Rich content authored with the Tiptap-based content editor.
+             *     Required when content_type is rich_text; must be absent
+             *     otherwise.
+             */
+            rich_content?: components["schemas"]["PromptDocument"];
+            /** @description Video nodes only. Must be absent for article nodes. */
+            trigger_at_seconds?: number;
+            /**
+             * @description Video nodes only. Must be greater than trigger_at_seconds. Must
+             *     be absent for article nodes.
+             */
+            hide_at_seconds?: number;
+            /** @description Article nodes only. Must be absent for video nodes. */
+            trigger_at_paragraph?: number;
+            /** @description Article nodes only. Must be absent for video nodes. */
+            duration_ms?: number;
+            /** @description Optional caption displayed alongside the item. */
+            caption?: string;
         };
         /** @description Payload for creating a challenge within a content node. */
         CreateChallengeRequest: {
@@ -955,17 +1153,22 @@ export interface components {
             subject_tag: string;
             /**
              * @description The minimum score (as a percentage of exercises answered correctly)
-             *     required to pass this challenge. Scores below this value trigger
-             *     the remediation recommendation if a target is configured.
+             *     required to pass this challenge.
              */
             pass_threshold: number;
             /**
-             * Format: uuid
-             * @description The content node to recommend when a student's score falls below
-             *     pass_threshold. If omitted, no automatic recommendation is made on
-             *     failure.
+             * @description An informational time expectation for this challenge, in
+             *     milliseconds. Purely advisory — never enforced, never affects
+             *     scoring or submission. When omitted, the value returned by
+             *     GET/list endpoints is computed as the sum of the challenge's
+             *     currently linked exercises' estimated_duration_seconds
+             *     (converted to milliseconds; an exercise with no estimate
+             *     contributes 0), recomputed on every read rather than stored, so
+             *     it always reflects the challenge's current exercise links. Set
+             *     this explicitly to override that computed value with the
+             *     teacher's own estimate.
              */
-            remediation_target_content_node_id?: string;
+            time_threshold_ms?: number;
             /**
              * @description When true, the order in which this challenge's exercises are
              *     returned varies per request. When false, exercises are always
@@ -1003,10 +1206,17 @@ export interface components {
             /** @description Minimum score percentage required to pass. */
             pass_threshold: number;
             /**
-             * Format: uuid
-             * @description Content node recommended when the student fails this challenge. Absent if not configured.
+             * @description An informational time expectation for this challenge, in
+             *     milliseconds — never enforced, never affects scoring or
+             *     submission. Equal to the teacher's explicit override if one was
+             *     set, otherwise computed as the sum of the challenge's currently
+             *     linked exercises' estimated_duration_seconds converted to
+             *     milliseconds (an exercise with no estimate contributes 0),
+             *     recomputed on every read. Absent only when the challenge has no
+             *     override and no linked exercise has an estimated_duration_seconds
+             *     set, so there is nothing to sum.
              */
-            remediation_target_content_node_id?: string;
+            time_threshold_ms?: number;
             /** @description Whether this challenge's exercise order varies per request. */
             shuffle_exercises: boolean;
             /** @description Whether each exercise's option order varies per request, independent of shuffle_exercises. */
@@ -1018,9 +1228,49 @@ export interface components {
             created_at: string;
         };
         /**
-         * @description A structured rich-text document for an exercise's prompt, authored
-         *     with the exercise-prompt rich-text editor and persisted exactly as
-         *     the editor produces it. Always has type "doc" at the root, with the
+         * @description Payload for updating an existing challenge's assessment
+         *     configuration. Linked exercises are not part of this payload — they
+         *     are changed via POST/DELETE
+         *     /challenges/{challenge_id}/exercises/{exercise_id}, not by resending
+         *     them here.
+         */
+        UpdateChallengeRequest: {
+            /** @description The subject this challenge assesses. */
+            subject_tag: string;
+            /**
+             * @description The minimum score (as a percentage of exercises answered
+             *     correctly) required to pass this challenge.
+             */
+            pass_threshold: number;
+            /**
+             * @description An informational time expectation for this challenge, in
+             *     milliseconds — never enforced, never affects scoring or
+             *     submission. Omit to clear a previously set override and fall
+             *     back to the computed sum of linked exercises'
+             *     estimated_duration_seconds.
+             */
+            time_threshold_ms?: number;
+            /**
+             * @description Whether this challenge's exercise order varies per request.
+             * @default false
+             */
+            shuffle_exercises: boolean;
+            /**
+             * @description Whether each exercise's option order varies per request.
+             * @default false
+             */
+            shuffle_options: boolean;
+        };
+        /**
+         * @description A structured rich-text document, authored with MotifPath's
+         *     Tiptap-based content-authoring editor and persisted exactly as the
+         *     editor produces it (ProseMirror JSON). Used for an exercise's
+         *     prompt, rich_text expanded content, and an exercise's
+         *     remediation_targets rich content — the same document shape across
+         *     all three, though which PromptNode types a given surface's own
+         *     toolbar can actually produce varies (an exercise prompt's toolbar
+         *     does not offer audio/video embeds; expanded content and remediation
+         *     content may). Always has type "doc" at the root, with the
          *     document's block-level content nested beneath it.
          */
         PromptDocument: {
@@ -1038,16 +1288,19 @@ export interface components {
          *     content; the text node is a leaf that carries the literal string
          *     under text and any inline marks under marks. attrs holds
          *     type-specific attributes (e.g. heading's level, paragraph/heading's
-         *     text alignment, image's src and alt, table cell's colspan, rowspan,
-         *     backgroundColor, and borderColor) and is validated by the authoring
-         *     editor, not by this schema.
+         *     text alignment, image's src and alt, audio/video's src, table
+         *     cell's colspan, rowspan, backgroundColor, and borderColor) and is
+         *     validated by the authoring editor, not by this schema.
          */
         PromptNode: {
             /**
-             * @description The kind of node this is.
+             * @description The kind of node this is. audio and video are available to
+             *     rich_text expanded content and remediation content; the
+             *     exercise-prompt authoring toolbar does not offer them, so they
+             *     do not appear in a PromptDocument used as an exercise's prompt.
              * @enum {string}
              */
-            type: "heading" | "paragraph" | "text" | "bulletList" | "orderedList" | "listItem" | "table" | "tableRow" | "tableHeader" | "tableCell" | "image";
+            type: "heading" | "paragraph" | "text" | "bulletList" | "orderedList" | "listItem" | "table" | "tableRow" | "tableHeader" | "tableCell" | "image" | "audio" | "video";
             /**
              * @description Type-specific attributes for this node. Absent when the node
              *     type has none set.
@@ -1137,6 +1390,45 @@ export interface components {
              *     challenges to a student's available time.
              */
             estimated_duration_seconds?: number;
+            /**
+             * @description Content to recommend a student who answers this specific
+             *     exercise incorrectly, in priority order. Empty or omitted means
+             *     no remediation is configured for this exercise.
+             */
+            remediation_targets?: components["schemas"]["RemediationTarget"][];
+            /**
+             * @description One or more Language.code values this exercise is available in.
+             *     A single-element array containing "any" marks the exercise as
+             *     language-agnostic; "any" cannot be combined with other language
+             *     codes in the same array. Must not be empty. Tagged independently
+             *     of any content node's own language tagging, since an exercise
+             *     can be reused across multiple content nodes.
+             */
+            language_codes: string[];
+        };
+        /**
+         * @description One piece of content recommended to a student who answers a
+         *     specific exercise incorrectly. Exactly one of content_node_id or
+         *     rich_content must be present — a target is either a reference to an
+         *     existing content node already published on the platform, or
+         *     inline-authored content (for example, a specific external video or
+         *     article, with a caption explaining why it's suggested) using the
+         *     same rich-content model as an exercise prompt.
+         */
+        RemediationTarget: {
+            /**
+             * Format: uuid
+             * @description An existing content node to recommend. Must be absent if
+             *     rich_content is present.
+             */
+            content_node_id?: string;
+            rich_content?: components["schemas"]["PromptDocument"];
+            /**
+             * @description Optional short label shown alongside this target (e.g. "Watch
+             *     this if the chord shapes felt unfamiliar"). Applies to either
+             *     target shape.
+             */
+            caption?: string;
         };
         /**
          * @description Payload for replacing an existing exercise's authored content.
@@ -1182,6 +1474,20 @@ export interface components {
              *     challenges to a student's available time.
              */
             estimated_duration_seconds?: number;
+            /**
+             * @description Content to recommend a student who answers this specific
+             *     exercise incorrectly, in priority order, replacing the current
+             *     set. Empty or omitted clears any previously configured targets.
+             */
+            remediation_targets?: components["schemas"]["RemediationTarget"][];
+            /**
+             * @description One or more Language.code values this exercise is available in,
+             *     replacing its current set. A single-element array containing
+             *     "any" marks the exercise as language-agnostic; "any" cannot be
+             *     combined with other language codes in the same array. Must not
+             *     be empty.
+             */
+            language_codes: string[];
         };
         /**
          * @description A reusable, standalone practice item classified by skill tags and
@@ -1238,6 +1544,20 @@ export interface components {
              *     expected length. Absent when the author has not estimated it.
              */
             estimated_duration_seconds?: number;
+            /**
+             * @description Content recommended to a student who answers this exercise
+             *     incorrectly, in priority order. May be empty — an exercise can
+             *     exist without any remediation configured.
+             */
+            remediation_targets: components["schemas"]["RemediationTarget"][];
+            /**
+             * @description The language(s) this exercise is available in, or a single "any"
+             *     entry for language-agnostic content. Independent of any content
+             *     node's languages — an exercise can be reused across multiple
+             *     content nodes and so has no single parent to inherit a language
+             *     from.
+             */
+            languages: components["schemas"]["Language"][];
             /**
              * Format: date-time
              * @description Timestamp at which the exercise was created.
@@ -1399,6 +1719,33 @@ export interface components {
             role: "student" | "teacher";
         };
         /**
+         * @description A language MotifPath content or a user's locale preference can be
+         *     tagged with. Includes the literal code "any", which marks content as
+         *     language-agnostic (e.g. an image with no spoken or written words)
+         *     rather than belonging to a specific language.
+         */
+        Language: {
+            /**
+             * @description Stable identifier for this language (e.g. "en", "pt_BR"), or the
+             *     literal value "any" for language-agnostic content. Used as the
+             *     value of UpdateMyLocaleRequest.locale and of
+             *     ContentNode.languages / Exercise.languages entries.
+             */
+            code: string;
+            /** @description Human-readable name of this language (e.g. "English", "Portuguese (Brazil)"). */
+            name: string;
+        };
+        /** @description Payload for setting the authenticated user's locale preference. */
+        UpdateMyLocaleRequest: {
+            /**
+             * @description The Language.code to set as this user's locale preference. Must
+             *     be an existing language code; "any" is not a valid locale for a
+             *     user, since it names language-agnostic content, not a language
+             *     a person reads or speaks.
+             */
+            locale: string;
+        };
+        /**
          * @description The stable MotifPath identity for a registered user. The user_id is the
          *     value that other services (e.g. Event Ingestion Service) use to identify
          *     this user in payloads and JWT claim validation.
@@ -1417,6 +1764,7 @@ export interface components {
              * @enum {string}
              */
             role: "student" | "teacher" | "admin";
+            locale: components["schemas"]["Language"];
             /**
              * Format: date-time
              * @description Timestamp at which the user record was created.
@@ -1462,21 +1810,26 @@ export type SchemaCreateContentNodeRequest = components['schemas']['CreateConten
 export type SchemaClassificationInput = components['schemas']['ClassificationInput'];
 export type SchemaClassification = components['schemas']['Classification'];
 export type SchemaContentNode = components['schemas']['ContentNode'];
+export type SchemaUpdateContentNodeRequest = components['schemas']['UpdateContentNodeRequest'];
 export type SchemaCreateLearningPathRequest = components['schemas']['CreateLearningPathRequest'];
 export type SchemaLearningPathItem = components['schemas']['LearningPathItem'];
 export type SchemaLearningPath = components['schemas']['LearningPath'];
+export type SchemaReplaceLearningPathRequest = components['schemas']['ReplaceLearningPathRequest'];
 export type SchemaAssignLearningPathRequest = components['schemas']['AssignLearningPathRequest'];
 export type SchemaPathAssignment = components['schemas']['PathAssignment'];
 export type SchemaStudentPathItem = components['schemas']['StudentPathItem'];
 export type SchemaStudentPathView = components['schemas']['StudentPathView'];
 export type SchemaCreateExpandedContentRequest = components['schemas']['CreateExpandedContentRequest'];
 export type SchemaExpandedContent = components['schemas']['ExpandedContent'];
+export type SchemaUpdateExpandedContentRequest = components['schemas']['UpdateExpandedContentRequest'];
 export type SchemaCreateChallengeRequest = components['schemas']['CreateChallengeRequest'];
 export type SchemaChallenge = components['schemas']['Challenge'];
+export type SchemaUpdateChallengeRequest = components['schemas']['UpdateChallengeRequest'];
 export type SchemaPromptDocument = components['schemas']['PromptDocument'];
 export type SchemaPromptNode = components['schemas']['PromptNode'];
 export type SchemaPromptMark = components['schemas']['PromptMark'];
 export type SchemaCreateExerciseRequest = components['schemas']['CreateExerciseRequest'];
+export type SchemaRemediationTarget = components['schemas']['RemediationTarget'];
 export type SchemaUpdateExerciseRequest = components['schemas']['UpdateExerciseRequest'];
 export type SchemaExercise = components['schemas']['Exercise'];
 export type SchemaPracticeSession = components['schemas']['PracticeSession'];
@@ -1486,6 +1839,8 @@ export type SchemaCreateMediaUploadUrlRequest = components['schemas']['CreateMed
 export type SchemaMediaUploadUrl = components['schemas']['MediaUploadUrl'];
 export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
+export type SchemaLanguage = components['schemas']['Language'];
+export type SchemaUpdateMyLocaleRequest = components['schemas']['UpdateMyLocaleRequest'];
 export type SchemaUserProfile = components['schemas']['UserProfile'];
 export type SchemaValidationError = components['schemas']['ValidationError'];
 export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError'];
@@ -1549,6 +1904,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    listContentNodes: {
+        parameters: {
+            query?: {
+                /** @description When given, only content nodes of this type are returned. */
+                content_type?: "video" | "article";
+                /** @description When given, only content nodes classified with this exact skill are returned. */
+                skill?: string;
+                /** @description When given, only content nodes at this difficulty level are returned. */
+                difficulty_level?: "beginner" | "intermediate" | "advanced";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matching content nodes, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentNode"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to list content
+             *     nodes. Only teachers and admins may list content nodes.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
@@ -1635,6 +2038,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No content node exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateContentNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the content node to update. */
+                content_node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateContentNodeRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated content node. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentNode"];
+                };
+            };
+            /** @description The request body failed schema validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to update this
+             *     content node. Only the creating teacher or an admin may update it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
             /** @description No content node exists with the given ID. */
@@ -1783,6 +2252,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No challenge exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the challenge to update. */
+                challenge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated challenge. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Challenge"];
+                };
+            };
+            /** @description The request body failed schema validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to update this
+             *     challenge. Only the creating teacher or an admin may update it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
             /** @description No challenge exists with the given ID. */
@@ -2344,8 +2879,10 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body failed schema validation, or the trigger/hide field
-             *     combination is inconsistent with the parent content node type.
+             * @description The request body failed schema validation, the trigger/hide field
+             *     combination is inconsistent with the parent content node type, or
+             *     the media_url/rich_content combination is inconsistent with
+             *     content_type.
              */
             400: {
                 headers: {
@@ -2415,6 +2952,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No expanded content item exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateExpandedContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the expanded content item to update. */
+                expanded_content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateExpandedContentRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated expanded content item. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpandedContent"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation, the trigger/hide
+             *     field combination is inconsistent with the parent content node
+             *     type, or the media_url/rich_content combination is inconsistent
+             *     with content_type.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to update this
+             *     expanded content item. Only the creating teacher or an admin may
+             *     update it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No expanded content item exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    deleteExpandedContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the expanded content item to delete. */
+                expanded_content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The expanded content item was deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to delete this
+             *     expanded content item. Only the creating teacher or an admin may
+             *     delete it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
             /** @description No expanded content item exists with the given ID. */
@@ -2605,6 +3266,44 @@ export interface operations {
             };
         };
     };
+    listLearningPaths: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The existing learning paths, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Students may not list learning paths directly. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
     createLearningPath: {
         parameters: {
             query?: never;
@@ -2690,6 +3389,76 @@ export interface operations {
                 };
             };
             /** @description Students may not retrieve learning paths directly. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No learning path exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    replaceLearningPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the learning path to replace. */
+                learning_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceLearningPathRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated learning path. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — missing title, empty
+             *     items array, or a content_node_id that does not exist.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to replace this
+             *     learning path. Only the creating teacher or an admin may replace
+             *     it.
+             */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2829,6 +3598,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description No user record exists for this Clerk identity. The caller must
+             *     complete registration via POST /users first.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateMyLocale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyLocaleRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated user profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation, or locale is not a
+             *     known language code.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
             /** @description Missing or invalid Bearer token. */

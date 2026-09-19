@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useTypedT } from '@/shared/composables/useTypedT'
+
 import PathContent from '@/features/student/components/PathContent.vue'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
@@ -6,25 +8,26 @@ import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 
 const { data, error, isLoading, retry } = useStudentPath()
+const { t } = useTypedT()
 </script>
 
 <template>
   <section>
-    <h1 class="mb-4 text-2xl font-semibold text-accent-text">My path</h1>
+    <h1 class="mb-4 text-2xl font-semibold text-accent-text">{{ t('pathView.heading') }}</h1>
 
-    <StateLoading v-if="isLoading" data-test="loading" noun="your path" />
+    <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathView.loadingNoun')" />
 
     <StateEmpty
       v-else-if="error === 'no-path'"
       data-test="no-path"
-      heading="You're all set"
-      message="We're building your personalized path. We'll let you know when it's ready."
+      :heading="t('pathView.emptyHeading')"
+      :message="t('pathView.emptyMessage')"
     />
 
     <StateError
       v-else-if="error"
       data-test="error"
-      message="We couldn't load your path."
+      :message="t('pathView.errorMessage')"
       @retry="retry()"
     />
 
