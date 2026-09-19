@@ -34,5 +34,22 @@
     "label": "Language",
     "en": "English",
     "ptBr": "Português"
+  },
+  "exerciseView": {
+    "noStimulusImage": "No stimulus image",
+    "noStimulusAudio": "No stimulus audio"
+  },
+  "modalCloseButton": {
+    "ariaLabel": "Close"
+  },
+  "notFoundView": {
+    "message": "This page doesn't exist.",
+    "backToHome": "Back to home"
+  },
+  "progressMeter": {
+    "summary": "{completed} of {total} steps complete"
+  },
+  "toastStack": {
+    "dismissAriaLabel": "Dismiss"
   }
 }
