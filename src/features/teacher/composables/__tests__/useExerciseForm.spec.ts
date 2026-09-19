@@ -190,6 +190,7 @@ describe('useExerciseForm', () => {
         exercise_type: 'text_response',
         skill_tags: ['theory'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
+        language_codes: ['any'],
       })
     })
 
@@ -318,6 +319,8 @@ describe('useExerciseForm', () => {
         options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         challenge_ids: [],
         content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -339,6 +342,8 @@ describe('useExerciseForm', () => {
         options: [{ option_id: 'o-1', is_correct: false, image_url: 'https://cdn.example.com/e-minor.png' }],
         challenge_ids: [],
         content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -360,6 +365,8 @@ describe('useExerciseForm', () => {
         ],
         challenge_ids: [],
         content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -386,6 +393,8 @@ describe('useExerciseForm', () => {
         ],
         challenge_ids: [],
         content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -418,6 +427,7 @@ describe('useExerciseForm', () => {
         prompt: plainTextPrompt('Name this chord shape'),
         skill_tags: ['theory'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
+        language_codes: ['any'],
       })
       expect(request).not.toHaveProperty('exercise_type')
     })

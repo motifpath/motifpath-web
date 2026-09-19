@@ -70,4 +70,10 @@ describe('AppShell', () => {
 
     expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
   })
+
+  it('always renders the locale switcher, so a signed-out visitor can change language', () => {
+    const wrapper = mountShell()
+
+    expect(wrapper.find('[data-test="locale-switcher"]').exists()).toBe(true)
+  })
 })
