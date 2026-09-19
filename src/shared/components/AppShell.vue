@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
+import LocaleSwitcher from '@/shared/components/LocaleSwitcher.vue'
 import ThemeToggle from '@/shared/components/ThemeToggle.vue'
 
 withDefaults(defineProps<{ nav?: { to: RouteLocationRaw; label: string }[] }>(), {
@@ -24,7 +25,8 @@ withDefaults(defineProps<{ nav?: { to: RouteLocationRaw; label: string }[] }>(),
           >
         </nav>
 
-        <ThemeToggle class="ml-auto" />
+        <LocaleSwitcher class="ml-auto" />
+        <ThemeToggle />
         <slot name="header-actions" />
       </div>
     </header>

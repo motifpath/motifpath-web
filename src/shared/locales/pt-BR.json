@@ -15,6 +15,7 @@
     "saved": "Salvo",
     "tryAgain": "Tentar novamente",
     "signOut": "Sair",
+    "signOutTryDifferentAccount": "Sair e tentar outra conta",
     "signIn": "Entrar",
     "backToPath": "Voltar para a trilha"
   },
@@ -26,7 +27,8 @@
     }
   },
   "errors": {
-    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente."
+    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente.",
+    "registrationFailed": "Não conseguimos concluir a configuração da sua conta. Isso costuma ser temporário."
   },
   "localeSwitcher": {
     "label": "Idioma",

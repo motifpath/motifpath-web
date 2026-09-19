@@ -15,6 +15,7 @@
     "saved": "Saved",
     "tryAgain": "Try again",
     "signOut": "Sign out",
+    "signOutTryDifferentAccount": "Sign out and try a different account",
     "signIn": "Sign in",
     "backToPath": "Back to path"
   },
@@ -26,7 +27,8 @@
     }
   },
   "errors": {
-    "localeUpdateFailed": "Could not update your language preference. Please try again."
+    "localeUpdateFailed": "Could not update your language preference. Please try again.",
+    "registrationFailed": "We couldn't finish setting up your account. This is usually temporary."
   },
   "localeSwitcher": {
     "label": "Language",
