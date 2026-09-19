@@ -262,4 +262,21 @@ describe('AppBar', () => {
 
     expect(wrapper.find('[data-test="app-bar-account-menu"]').exists()).toBe(false)
   })
+
+  it('includes the locale switcher in the account menu', async () => {
+    const wrapper = mountBar({ context: 'student' })
+    await wrapper.get('[data-test="app-bar-avatar"]').trigger('click')
+
+    const menu = wrapper.get('[data-test="app-bar-account-menu"]')
+    expect(menu.find('[data-test="locale-switcher"]').exists()).toBe(true)
+  })
+
+  it('closes the account menu when a locale option is selected', async () => {
+    const wrapper = mountBar({ context: 'student' })
+    await wrapper.get('[data-test="app-bar-avatar"]').trigger('click')
+
+    await wrapper.get('[data-test="locale-option-pt-BR"]').trigger('click')
+
+    expect(wrapper.find('[data-test="app-bar-account-menu"]').exists()).toBe(false)
+  })
 })

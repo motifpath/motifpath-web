@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import FocusCard from '@/shared/components/FocusCard.vue'
 import Icon from '@/shared/components/Icon.vue'
@@ -7,6 +8,8 @@ import StepRow from '@/shared/components/StepRow.vue'
 import type { PathStepView } from '@/features/student/utils/pathProgress'
 
 const props = defineProps<PathStepView>()
+
+const { t } = useTypedT()
 
 const isLocked = computed(() => props.status === 'locked')
 
@@ -20,10 +23,10 @@ const iconRole = computed(() => {
 const statusLabel = computed(
   () =>
     ({
-      completed: 'Completed',
-      in_progress: 'In progress',
-      not_started: 'Not started',
-      locked: 'Locked',
+      completed: t('pathStep.status.completed'),
+      in_progress: t('pathStep.status.in_progress'),
+      not_started: t('pathStep.status.not_started'),
+      locked: t('pathStep.status.locked'),
     })[props.status],
 )
 
@@ -38,12 +41,12 @@ const pillClass = computed(
 )
 
 /** A completed step can be revisited; nothing else gets an affordance here — the current step is a FocusCard instead. */
-const affordance = computed(() => (props.status === 'completed' ? 'Review' : null))
+const affordance = computed(() => (props.status === 'completed' ? t('pathStep.review') : null))
 
-/** PB-35 Direction D: the current step is "Continue" if already started, "Start" otherwise. */
-const focusEyebrow = computed(() => (props.status === 'in_progress' ? 'Continue' : 'Start'))
+/** The current step's eyebrow reads "Continue" if already started, "Start" otherwise. */
+const focusEyebrow = computed(() => (props.status === 'in_progress' ? t('pathStep.continue') : t('pathStep.start')))
 const focusSubtitle = computed(() =>
-  props.status === 'in_progress' ? 'In progress · pick up where you left off' : 'Not started yet',
+  props.status === 'in_progress' ? t('pathStep.continueSubtitle') : t('pathStep.startSubtitle'),
 )
 </script>
 
@@ -55,7 +58,7 @@ const focusSubtitle = computed(() =>
     :eyebrow="focusEyebrow"
     :title="title"
     :subtitle="focusSubtitle"
-    cta-label="Open lesson"
+    :cta-label="t('pathStep.openLesson')"
     :to="{ name: 'node', params: { nodeId: contentNodeId } }"
   />
   <StepRow

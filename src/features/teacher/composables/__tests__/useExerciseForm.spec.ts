@@ -319,9 +319,9 @@ describe('useExerciseForm', () => {
         options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         challenge_ids: [],
         content_node_ids: [],
-        created_at: '2026-01-01T00:00:00Z',
-        languages: [],
         remediation_targets: [],
+        languages: [],
+        created_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.title.value).toBe('Name the chord')
@@ -342,9 +342,9 @@ describe('useExerciseForm', () => {
         options: [{ option_id: 'o-1', is_correct: false, image_url: 'https://cdn.example.com/e-minor.png' }],
         challenge_ids: [],
         content_node_ids: [],
-        created_at: '2026-01-01T00:00:00Z',
-        languages: [],
         remediation_targets: [],
+        languages: [],
+        created_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.imageOptions.value).toEqual([
@@ -365,9 +365,9 @@ describe('useExerciseForm', () => {
         ],
         challenge_ids: [],
         content_node_ids: [],
-        created_at: '2026-01-01T00:00:00Z',
-        languages: [],
         remediation_targets: [],
+        languages: [],
+        created_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.audioOptions.value).toEqual([
@@ -393,9 +393,9 @@ describe('useExerciseForm', () => {
         ],
         challenge_ids: [],
         content_node_ids: [],
-        created_at: '2026-01-01T00:00:00Z',
-        languages: [],
         remediation_targets: [],
+        languages: [],
+        created_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.imageUrl.value).toBe('https://cdn.example.com/fretboard.png')

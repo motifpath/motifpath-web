@@ -244,8 +244,8 @@ export function useExerciseForm() {
   }
 
   function sharedRequestFields() {
-    // Exercise-level language tagging has no authoring UI yet — every exercise is
-    // authored as language-agnostic until that UI exists.
+    // No authoring UI exists yet for tagging an exercise's language(s) — default
+    // to language-agnostic until that surface is built.
     const fields: Omit<UpdateExerciseRequest, 'title' | 'prompt' | 'options'> = {
       language_codes: ['any'],
     }

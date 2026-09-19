@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import { useAuth } from '@/features/auth/composables/useAuth'
 import Icon from '@/shared/components/Icon.vue'
+import LocaleSwitcher from '@/shared/components/LocaleSwitcher.vue'
 import SignOutLink from '@/shared/components/SignOutLink.vue'
 import { useThemeStore } from '@/stores/theme'
 
@@ -12,7 +14,11 @@ const props = withDefaults(
     context: 'student' | 'teacher'
     /** Mobile layout: hamburger + nav-only drawer instead of the inline nav pill. */
     compact?: boolean
-    /** Destination of the single nav pill: "My path" (student) or "Exercises" (teacher). */
+    /**
+     * Student: destination of the single nav pill ("My path"). Teacher: which
+     * of the three permanent tabs (Content/Paths/Exercises) is active, and
+     * the breadcrumb root when breadcrumbLabel is set.
+     */
     primaryNavTo: RouteLocationRaw
     /** When set in teacher context, renders as a breadcrumb: Exercises › label. */
     breadcrumbLabel?: string
@@ -26,6 +32,7 @@ const props = withDefaults(
 
 const { displayInitial } = useAuth()
 const themeStore = useThemeStore()
+const { t } = useTypedT()
 
 const isStudent = computed(() => props.context === 'student')
 const hasCrumb = computed(() => !isStudent.value && !!props.breadcrumbLabel)
@@ -36,17 +43,17 @@ const hasCrumb = computed(() => !isStudent.value && !!props.breadcrumbLabel)
 // `primary-nav-to="{ name: 'teacher-exercises' }"` keeps working unchanged
 // and also drives which tab renders active / which section a breadcrumb
 // drills down from.
-const teacherNavItems = [
-  { name: 'teacher-content', label: 'Content' },
-  { name: 'teacher-paths', label: 'Paths' },
-  { name: 'teacher-exercises', label: 'Exercises' },
+const teacherNavItems: { name: string; labelKey: 'nav.content' | 'nav.paths' | 'nav.exercises' }[] = [
+  { name: 'teacher-content', labelKey: 'nav.content' },
+  { name: 'teacher-paths', labelKey: 'nav.paths' },
+  { name: 'teacher-exercises', labelKey: 'nav.exercises' },
 ]
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string }).name)
-const fallbackTeacherSection = { name: 'teacher-exercises', label: 'Exercises' }
+const fallbackTeacherSection = { name: 'teacher-exercises', labelKey: 'nav.exercises' as const }
 const activeTeacherSection = computed(
   () => teacherNavItems.find((item) => item.name === primaryNavToName.value) ?? fallbackTeacherSection,
 )
-const primaryNavLabel = computed(() => (isStudent.value ? 'My path' : activeTeacherSection.value.label))
+const primaryNavLabel = computed(() => (isStudent.value ? t('nav.student') : t(activeTeacherSection.value.labelKey)))
 
 const drawerOpen = ref(false)
 function toggleDrawer(): void {
@@ -73,7 +80,7 @@ function closeAccountMenu(): void {
       v-if="compact"
       type="button"
       data-test="app-bar-menu"
-      aria-label="Menu"
+      :aria-label="t('appBar.menuAriaLabel')"
       class="-ml-2 flex h-10 w-10 items-center justify-center rounded-[10px] text-ink"
       @click="toggleDrawer"
     >
@@ -82,7 +89,7 @@ function closeAccountMenu(): void {
 
     <div class="flex items-center gap-2.5">
       <div class="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-accent-muted">
-        <svg width="16" height="16" viewBox="200 100 860 860" role="img" aria-label="MotifPath">
+        <svg width="16" height="16" viewBox="200 100 860 860" role="img" :aria-label="t('appBar.brand')">
           <defs>
             <linearGradient id="app-bar-mark" x1="309" y1="190" x2="938" y2="890" gradientUnits="userSpaceOnUse">
               <stop offset="0" stop-color="#a14cff" />
@@ -101,7 +108,7 @@ function closeAccountMenu(): void {
           />
         </svg>
       </div>
-      <span class="text-[15px] font-bold text-ink">MotifPath</span>
+      <span class="text-[15px] font-bold text-ink">{{ t('appBar.brand') }}</span>
     </div>
 
     <template v-if="!compact">
@@ -123,12 +130,12 @@ function closeAccountMenu(): void {
           :class="
             item.name === activeTeacherSection.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'
           "
-          >{{ item.label }}</RouterLink
+          >{{ t(item.labelKey) }}</RouterLink
         >
       </div>
 
       <div v-else class="flex items-center gap-1.5 text-[13px]">
-        <RouterLink :to="primaryNavTo" class="text-ink-muted">{{ activeTeacherSection.label }}</RouterLink>
+        <RouterLink :to="primaryNavTo" class="text-ink-muted">{{ t(activeTeacherSection.labelKey) }}</RouterLink>
         <Icon name="chevron-right" :size="14" class="text-ink-subtle" />
         <span class="rounded-full bg-accent-muted px-3.5 py-1.5 text-sm font-semibold text-accent-text">{{
           breadcrumbLabel
@@ -141,7 +148,7 @@ function closeAccountMenu(): void {
     <span
       v-if="justSaved"
       class="rounded-full bg-accent-muted px-3 py-[5px] text-xs font-semibold text-accent-text"
-      >Saved</span
+      >{{ t('buttons.saved') }}</span
     >
 
     <button
@@ -152,14 +159,14 @@ function closeAccountMenu(): void {
       class="rounded-full bg-accent px-[18px] py-2 text-[13px] font-bold text-accent-fg disabled:opacity-50"
       @click="onSave?.()"
     >
-      Save
+      {{ t('buttons.save') }}
     </button>
 
     <button
       type="button"
       data-test="app-bar-theme-toggle"
       :aria-pressed="themeStore.theme === 'dark'"
-      aria-label="Toggle theme"
+      :aria-label="t('appBar.themeToggleAriaLabel')"
       class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
       @click="themeStore.toggle()"
     >
@@ -169,7 +176,7 @@ function closeAccountMenu(): void {
     <button
       type="button"
       data-test="app-bar-avatar"
-      aria-label="Account menu"
+      :aria-label="t('appBar.accountMenuAriaLabel')"
       class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-fg"
       @click="toggleAccountMenu"
     >
@@ -187,6 +194,8 @@ function closeAccountMenu(): void {
         class="absolute right-5 top-16 z-40 rounded-lg border border-border bg-surface-raised p-1.5 shadow-level2"
         @click="closeAccountMenu"
       >
+        <LocaleSwitcher />
+        <div class="my-1 h-px bg-border" />
         <SignOutLink class="block w-full px-2.5 py-1.5 text-left" />
       </div>
     </template>
@@ -215,10 +224,12 @@ function closeAccountMenu(): void {
             class="mx-3 rounded-[10px] px-3.5 py-3 text-sm font-semibold"
             :class="item.name === activeTeacherSection.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
             @click="closeDrawer"
-            >{{ item.label }}</RouterLink
+            >{{ t(item.labelKey) }}</RouterLink
           >
         </template>
-        <div v-if="hasCrumb" class="px-[26px] pt-2 text-xs text-ink-subtle">— editing {{ breadcrumbLabel }}</div>
+        <div v-if="hasCrumb" class="px-[26px] pt-2 text-xs text-ink-subtle">
+          {{ t('appBar.editingCrumb', { label: breadcrumbLabel ?? '' }) }}
+        </div>
       </div>
     </template>
   </div>

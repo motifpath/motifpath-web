@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { authChecker } from '@/features/auth/authBridge'
+import { ensureStudentLocaleLoaded } from '@/features/student/locales'
 import { createAuthGuard, type Role } from '@/router/guards'
 
 declare module 'vue-router' {
@@ -20,6 +21,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'home',
+        beforeEnter: () => ensureStudentLocaleLoaded(),
         component: () => import('@/features/student/views/HomeView.vue'),
       },
       {
@@ -45,6 +47,7 @@ const routes: RouteRecordRaw[] = [
     path: '/path',
     component: () => import('@/shared/components/AuthenticatedLayout.vue'),
     meta: { requiresAuth: true },
+    beforeEnter: () => ensureStudentLocaleLoaded(),
     children: [
       {
         path: '',

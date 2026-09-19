@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 
 const signOut = vi.fn(async () => {})
 
@@ -8,8 +9,23 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
 }))
 
 import SignOutLink from '@/shared/components/SignOutLink.vue'
+import { i18n } from '@/i18n'
 
 describe('SignOutLink', () => {
+  afterEach(() => {
+    i18n.global.locale.value = 'en'
+  })
+
+  it('updates its default label reactively when the locale changes', async () => {
+    const wrapper = mount(SignOutLink)
+    expect(wrapper.text()).toBe('Sign out')
+
+    i18n.global.locale.value = 'pt-BR'
+    await nextTick()
+
+    expect(wrapper.text()).toBe('Sair')
+  })
+
   it('shows a default "Sign out" label', () => {
     const wrapper = mount(SignOutLink)
 

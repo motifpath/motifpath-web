@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "student": "My path",
+    "content": "Content",
+    "paths": "Paths",
+    "exercises": "Exercises"
+  },
+  "appBar": {
+    "menuAriaLabel": "Menu",
+    "accountMenuAriaLabel": "Account menu",
+    "themeToggleAriaLabel": "Toggle theme",
+    "brand": "MotifPath",
+    "editingCrumb": "— editing {label}"
+  },
+  "buttons": {
+    "save": "Save",
+    "saved": "Saved",
+    "tryAgain": "Try again",
+    "signOut": "Sign out",
+    "signOutTryDifferentAccount": "Sign out and try a different account",
+    "signIn": "Sign in",
+    "backToPath": "Back to path"
+  },
+  "states": {
+    "loading": "Loading…",
+    "loadingWithNoun": "Loading {noun}…",
+    "locked": {
+      "message": "Complete the previous step to unlock this lesson."
+    }
+  },
+  "errors": {
+    "localeUpdateFailed": "Could not update your language preference. Please try again.",
+    "registrationFailed": "We couldn't finish setting up your account. This is usually temporary."
+  },
+  "localeSwitcher": {
+    "label": "Language",
+    "en": "English",
+    "ptBr": "Português"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "student": "Minha trilha",
+    "content": "Conteúdo",
+    "paths": "Trilhas",
+    "exercises": "Exercícios"
+  },
+  "appBar": {
+    "menuAriaLabel": "Menu",
+    "accountMenuAriaLabel": "Menu da conta",
+    "themeToggleAriaLabel": "Alternar tema",
+    "brand": "MotifPath",
+    "editingCrumb": "— editando {label}"
+  },
+  "buttons": {
+    "save": "Salvar",
+    "saved": "Salvo",
+    "tryAgain": "Tentar novamente",
+    "signOut": "Sair",
+    "signOutTryDifferentAccount": "Sair e tentar outra conta",
+    "signIn": "Entrar",
+    "backToPath": "Voltar para a trilha"
+  },
+  "states": {
+    "loading": "Carregando…",
+    "loadingWithNoun": "Carregando {noun}…",
+    "locked": {
+      "message": "Complete a etapa anterior para desbloquear esta lição."
+    }
+  },
+  "errors": {
+    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente.",
+    "registrationFailed": "Não conseguimos concluir a configuração da sua conta. Isso costuma ser temporário."
+  },
+  "localeSwitcher": {
+    "label": "Idioma",
+    "en": "English",
+    "ptBr": "Português"
+  }
+}
