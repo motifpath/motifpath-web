@@ -46,8 +46,14 @@ function persistLocale(locale: SupportedLocale): void {
   window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
 }
 
-/** A prior explicit choice (this device) wins; otherwise falls back to the browser's language, then English. */
-function resolveAnonymousLocale(): SupportedLocale {
+/**
+ * A prior explicit choice (this device) wins; otherwise falls back to the
+ * browser's language, then English. Exported so anything that needs to know
+ * the visitor's locale before this store exists — Clerk's plugin options are
+ * set once at `app.use()` time in `main.ts`, well before Pinia can be
+ * queried — can resolve it the same way instead of duplicating the logic.
+ */
+export function resolveAnonymousLocale(): SupportedLocale {
   return persistedLocale() ?? browserLocale() ?? 'en'
 }
 
