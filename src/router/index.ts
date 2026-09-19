@@ -3,6 +3,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { authChecker } from '@/features/auth/authBridge'
 import { ensureAuthLocaleLoaded } from '@/features/auth/locales'
 import { ensureStudentLocaleLoaded } from '@/features/student/locales'
+import { ensureTeacherLocaleLoaded } from '@/features/teacher/locales'
 import { createAuthGuard, type Role } from '@/router/guards'
 
 declare module 'vue-router' {
@@ -80,18 +81,21 @@ const routes: RouteRecordRaw[] = [
     path: '/teacher/exercises',
     name: 'teacher-exercises',
     meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
     component: () => import('@/features/teacher/views/ExerciseListView.vue'),
   },
   {
     path: '/teacher/exercises/new',
     name: 'teacher-exercise-new',
     meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
     component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
   },
   {
     path: '/teacher/exercises/:id/edit',
     name: 'teacher-exercise-edit',
     meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
     component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
   },
   {

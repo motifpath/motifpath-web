@@ -2,6 +2,7 @@
 import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
@@ -32,6 +33,7 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
+const { t } = useTypedT()
 
 const route = useRoute()
 const rawExerciseId = route.params.id
@@ -73,13 +75,13 @@ function revokeIfBlob(url: string | undefined | null): void {
   if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
 }
 
-const exerciseTypes: { value: ExerciseType; label: string; icon: typeof Image }[] = [
-  { value: 'image_recognition', label: 'Image recognition', icon: Image },
-  { value: 'text_response', label: 'Text response', icon: AlignLeft },
-  { value: 'audio_recognition', label: 'Audio recognition', icon: AudioLines },
-  { value: 'image_choice', label: 'Image choice', icon: Images },
-  { value: 'audio_selection', label: 'Audio selection', icon: AudioLines },
-]
+const exerciseTypes = computed<{ value: ExerciseType; label: string; icon: typeof Image }[]>(() => [
+  { value: 'image_recognition', label: t('common.exerciseTypes.image_recognition'), icon: Image },
+  { value: 'text_response', label: t('common.exerciseTypes.text_response'), icon: AlignLeft },
+  { value: 'audio_recognition', label: t('common.exerciseTypes.audio_recognition'), icon: AudioLines },
+  { value: 'image_choice', label: t('common.exerciseTypes.image_choice'), icon: Images },
+  { value: 'audio_selection', label: t('common.exerciseTypes.audio_selection'), icon: AudioLines },
+])
 
 // Nothing is uploaded until save — picking a file only sets a local blob:
 // preview, so an abandoned edit never leaves an orphaned object in storage.
@@ -94,8 +96,21 @@ const hasStimulus = computed(() =>
   stimulusKind.value === 'audio' ? !!form.audioUrl.value : !!form.imageUrl.value,
 )
 const stimulusImageLabel = computed(() =>
-  form.imageUrl.value ? (stimulusFile.value?.file.name ?? 'Image selected') : 'No image selected',
+  form.imageUrl.value
+    ? (stimulusFile.value?.file.name ?? t('exerciseAuthoringView.imageSelected'))
+    : t('exerciseAuthoringView.noImageSelected'),
 )
+
+const stimulusButtonLabel = computed(() => {
+  if (stimulusKind.value === 'audio') {
+    return hasStimulus.value
+      ? t('exerciseAuthoringView.changeStimulusAudio')
+      : t('exerciseAuthoringView.chooseStimulusAudio')
+  }
+  return hasStimulus.value
+    ? t('exerciseAuthoringView.changeStimulusImage')
+    : t('exerciseAuthoringView.chooseStimulusImage')
+})
 
 function onStimulusPicked(file: File) {
   const kind = stimulusKind.value
@@ -217,9 +232,9 @@ async function save() {
     justSaved.value = true
     clearTimeout(justSavedTimeout)
     justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
-    toast.success(isUpdate ? 'Exercise updated.' : 'Exercise created.')
+    toast.success(isUpdate ? t('exerciseAuthoringView.exerciseUpdated') : t('exerciseAuthoringView.exerciseCreated'))
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to save the exercise')
+    toast.error(e instanceof Error ? e.message : t('exerciseAuthoringView.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -232,7 +247,7 @@ async function save() {
       context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-exercises' }"
-      :breadcrumb-label="isEditMode ? form.title.value || 'Edit exercise' : 'New exercise'"
+      :breadcrumb-label="isEditMode ? form.title.value || t('exerciseAuthoringView.editExerciseBreadcrumb') : t('exerciseAuthoringView.newExerciseBreadcrumb')"
       :show-save="canAuthor"
       :save-disabled="!form.hasCorrectOption.value || saving"
       :just-saved="justSaved"
@@ -241,16 +256,16 @@ async function save() {
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
-        This page is for teachers and admins only — your account doesn't have permission to author exercises.
+        {{ t('common.permissionDenied') }}
       </p>
     </div>
 
     <div v-else-if="loadingExercise" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading noun="exercise" />
+      <StateLoading :noun="t('exerciseAuthoringView.loadingNoun')" />
     </div>
 
     <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
-      <StateError message="Failed to load the exercise" @retry="retryLoad" />
+      <StateError :message="t('exerciseAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <div
@@ -267,20 +282,20 @@ async function save() {
           <input
             v-model="form.title.value"
             type="text"
-            placeholder="Untitled exercise"
+            :placeholder="t('exerciseAuthoringView.titlePlaceholder')"
             class="border-none bg-transparent font-bold text-ink outline-none"
             :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
           />
-          <span class="text-sm text-ink-subtle">Internal title — for the content library, not shown to students</span>
+          <span class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.titleHint') }}</span>
         </div>
 
         <div class="flex flex-col gap-2">
-          <label class="text-sm font-semibold">Prompt shown to the student</label>
+          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.promptLabel') }}</label>
           <PromptEditor v-model="form.prompt.value" />
         </div>
 
         <div class="flex flex-col gap-2.5">
-          <label class="text-sm font-semibold">Exercise type</label>
+          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.exerciseTypeLabel') }}</label>
           <div class="flex w-fit gap-2 rounded-lg bg-surface-sunken p-1" :class="{ 'flex-wrap': isCompact }">
             <button
               v-for="type in exerciseTypes"
@@ -299,8 +314,8 @@ async function save() {
           <span class="text-sm text-ink-subtle">
             {{
               isEditMode
-                ? "Type can't be changed after creation."
-                : 'All types are checked the same way — mark one or more options correct below.'
+                ? t('exerciseAuthoringView.typeLockedHint')
+                : t('exerciseAuthoringView.typeUnlockedHint')
             }}
           </span>
         </div>
@@ -312,7 +327,7 @@ async function save() {
         >
           <TriangleAlert :size="18" class="flex-shrink-0 text-danger" aria-hidden="true" />
           <span class="text-sm font-semibold text-danger">
-            Mark at least one option correct — an exercise that can't be checked can't be practiced.
+            {{ t('exerciseAuthoringView.noCorrectOptionWarning') }}
           </span>
         </div>
 
@@ -325,21 +340,21 @@ async function save() {
           >
             <span class="text-left">
               <span class="block text-[0.8125rem] font-semibold text-ink">{{ stimulusImageLabel }}</span>
-              <span class="block text-xs text-ink-subtle">Choose image</span>
+              <span class="block text-xs text-ink-subtle">{{ t('exerciseAuthoringView.chooseImage') }}</span>
             </span>
             <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
           </button>
         </div>
 
         <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
-          <label class="text-sm font-semibold">Audio stimulus — what the student listens to</label>
+          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.audioStimulusLabel') }}</label>
           <button
             type="button"
             data-test="choose-stimulus"
             class="w-fit rounded-md border border-border bg-surface-raised px-3 py-2 text-sm font-semibold"
             @click="stimulusPickerOpen = true"
           >
-            {{ hasStimulus ? 'Change' : 'Choose' }} stimulus {{ stimulusKind }}
+            {{ stimulusButtonLabel }}
           </button>
           <audio v-if="form.audioUrl.value" :src="form.audioUrl.value" controls class="w-full" />
         </div>
@@ -390,9 +405,9 @@ async function save() {
         />
 
         <div class="flex flex-col gap-2 border-t border-border pt-2">
-          <label class="text-sm font-semibold">Skill tags</label>
+          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.skillTagsLabel') }}</label>
           <span class="-mt-1 text-[0.8125rem] text-ink-subtle">
-            Makes this exercise findable outside its original path — e.g. as a remediation suggestion.
+            {{ t('exerciseAuthoringView.skillTagsHint') }}
           </span>
           <SkillTagsInput
             :tags="form.skillTags.value"
@@ -414,12 +429,12 @@ async function save() {
         "
       >
         <div data-test="reuse-indicator" class="flex flex-col gap-4">
-          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">Where this exercise is used</span>
-          <p v-if="!savedExerciseId" class="text-sm text-ink-subtle">Save the exercise to see where it's used.</p>
+          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">{{ t('exerciseAuthoringView.usageHeading') }}</span>
+          <p v-if="!savedExerciseId" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageUnsaved') }}</p>
           <template v-else>
             <div data-test="usage-challenges" class="flex flex-col gap-2">
-              <span class="text-xs font-semibold text-ink-muted">Challenges</span>
-              <p v-if="linkedChallengeIds.length === 0" class="text-sm text-ink-subtle">Not linked to any challenge yet.</p>
+              <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usageChallengesHeading') }}</span>
+              <p v-if="linkedChallengeIds.length === 0" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageNoChallenges') }}</p>
               <ul v-else class="flex flex-col gap-2">
                 <li
                   v-for="id in linkedChallengeIds"
@@ -433,8 +448,8 @@ async function save() {
             </div>
 
             <div data-test="usage-path-exercises" class="flex flex-col gap-2">
-              <span class="text-xs font-semibold text-ink-muted">Path exercises</span>
-              <p v-if="linkedContentNodeIds.length === 0" class="text-sm text-ink-subtle">Not linked to any path node yet.</p>
+              <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usagePathExercisesHeading') }}</span>
+              <p v-if="linkedContentNodeIds.length === 0" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageNoPathExercises') }}</p>
               <ul v-else class="flex flex-col gap-2">
                 <li
                   v-for="id in linkedContentNodeIds"
@@ -448,11 +463,11 @@ async function save() {
             </div>
 
             <div data-test="usage-practice-sessions" class="flex flex-col gap-2">
-              <span class="text-xs font-semibold text-ink-muted">Practice sessions</span>
+              <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usagePracticeSessionsHeading') }}</span>
               <p v-if="form.skillTags.value.length === 0" class="text-sm text-ink-subtle">
-                Not eligible — add a skill tag to make this exercise selectable for a skill-targeted practice session.
+                {{ t('exerciseAuthoringView.usageNotEligible') }}
               </p>
-              <p v-else class="text-sm text-ink-subtle">Eligible for practice sessions matching: {{ form.skillTags.value.join(', ') }}</p>
+              <p v-else class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageEligible', { tags: form.skillTags.value.join(', ') }) }}</p>
             </div>
           </template>
         </div>
@@ -460,7 +475,7 @@ async function save() {
         <div class="h-px bg-border"></div>
 
         <div class="flex flex-col gap-2.5">
-          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">Student preview</span>
+          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">{{ t('common.studentPreview') }}</span>
           <button
             type="button"
             data-test="open-preview"
@@ -468,7 +483,7 @@ async function save() {
             @click="previewOpen = true"
           >
             <Eye :size="15" aria-hidden="true" />
-            Preview as student
+            {{ t('exerciseAuthoringView.previewAsStudent') }}
           </button>
         </div>
       </aside>
