@@ -1,0 +1,22 @@
+import { i18n } from '@/i18n'
+
+let loaded: Promise<void> | null = null
+
+/**
+ * Lazily merges this feature's locale messages into the global i18n
+ * instance, once, the first time any student route is entered. Subsequent
+ * entries reuse the same in-flight or settled promise instead of importing
+ * again.
+ */
+export function ensureStudentLocaleLoaded(): Promise<void> {
+  if (!loaded) {
+    loaded = Promise.all([import('./en.json'), import('./pt-BR.json')]).then(
+      ([en, ptBr]) => {
+        i18n.global.mergeLocaleMessage('en', en.default)
+        i18n.global.mergeLocaleMessage('pt-BR', ptBr.default)
+      },
+    )
+  }
+
+  return loaded
+}

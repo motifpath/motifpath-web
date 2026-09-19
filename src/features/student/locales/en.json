@@ -1,0 +1,28 @@
+{
+  "home": {
+    "signedInMessage": "You're signed in.",
+    "goToPath": "Go to my path",
+    "signedOutMessage": "Sign in to start practising."
+  },
+  "pathView": {
+    "heading": "My path",
+    "loadingNoun": "your path",
+    "emptyHeading": "You're all set",
+    "emptyMessage": "We're building your personalized path. We'll let you know when it's ready.",
+    "errorMessage": "We couldn't load your path."
+  },
+  "pathStep": {
+    "status": {
+      "completed": "Completed",
+      "in_progress": "In progress",
+      "not_started": "Not started",
+      "locked": "Locked"
+    },
+    "review": "Review",
+    "openLesson": "Open lesson",
+    "continue": "Continue",
+    "start": "Start",
+    "continueSubtitle": "In progress · pick up where you left off",
+    "startSubtitle": "Not started yet"
+  }
+}

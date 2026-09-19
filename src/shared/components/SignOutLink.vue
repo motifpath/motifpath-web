@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import { useTypedT } from '@/shared/composables/useTypedT'
+
 import { useAuth } from '@/features/auth/composables/useAuth'
 
 interface SignOutLinkProps {
   label?: string
 }
 
-withDefaults(defineProps<SignOutLinkProps>(), {
-  label: 'Sign out',
-})
+const props = defineProps<SignOutLinkProps>()
 
+const { t } = useTypedT()
 const { signOut } = useAuth()
+
+const resolvedLabel = props.label ?? t('buttons.signOut')
 </script>
 
 <template>
@@ -19,6 +22,6 @@ const { signOut } = useAuth()
     class="text-sm text-ink-muted hover:text-accent-text"
     @click="signOut()"
   >
-    {{ label }}
+    {{ resolvedLabel }}
   </button>
 </template>

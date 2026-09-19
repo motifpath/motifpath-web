@@ -1,0 +1,28 @@
+{
+  "home": {
+    "signedInMessage": "Você está conectado.",
+    "goToPath": "Ir para minha trilha",
+    "signedOutMessage": "Entre para começar a praticar."
+  },
+  "pathView": {
+    "heading": "Minha trilha",
+    "loadingNoun": "sua trilha",
+    "emptyHeading": "Tudo pronto",
+    "emptyMessage": "Estamos preparando sua trilha personalizada. Avisaremos quando estiver pronta.",
+    "errorMessage": "Não foi possível carregar sua trilha."
+  },
+  "pathStep": {
+    "status": {
+      "completed": "Concluído",
+      "in_progress": "Em andamento",
+      "not_started": "Não iniciado",
+      "locked": "Bloqueado"
+    },
+    "review": "Revisar",
+    "openLesson": "Abrir lição",
+    "continue": "Continuar",
+    "start": "Começar",
+    "continueSubtitle": "Em andamento · continue de onde parou",
+    "startSubtitle": "Ainda não iniciado"
+  }
+}

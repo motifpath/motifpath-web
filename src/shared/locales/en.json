@@ -1,0 +1,28 @@
+{
+  "nav": {
+    "student": "My path",
+    "teacher": "Exercises"
+  },
+  "appBar": {
+    "menuAriaLabel": "Menu",
+    "accountMenuAriaLabel": "Account menu",
+    "themeToggleAriaLabel": "Toggle theme",
+    "brand": "MotifPath",
+    "editingCrumb": "— editing {label}"
+  },
+  "buttons": {
+    "save": "Save",
+    "saved": "Saved",
+    "tryAgain": "Try again",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "backToPath": "Back to path"
+  },
+  "states": {
+    "loading": "Loading…",
+    "loadingWithNoun": "Loading {noun}…",
+    "locked": {
+      "message": "Complete the previous step to unlock this lesson."
+    }
+  }
+}
