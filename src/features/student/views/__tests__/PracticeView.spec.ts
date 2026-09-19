@@ -19,6 +19,8 @@ const textExercise: Exercise = {
   challenge_ids: ['ch-1'],
   content_node_ids: [],
   created_at: '2026-09-01T00:00:00Z',
+  languages: [],
+  remediation_targets: [],
 }
 
 const exercises = ref<Exercise[]>([])

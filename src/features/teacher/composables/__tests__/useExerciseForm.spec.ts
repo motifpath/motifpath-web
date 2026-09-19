@@ -190,6 +190,7 @@ describe('useExerciseForm', () => {
         exercise_type: 'text_response',
         skill_tags: ['theory'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
+        language_codes: ['any'],
       })
     })
 
@@ -319,6 +320,8 @@ describe('useExerciseForm', () => {
         challenge_ids: [],
         content_node_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        languages: [],
+        remediation_targets: [],
       })
 
       expect(form.title.value).toBe('Name the chord')
@@ -340,6 +343,8 @@ describe('useExerciseForm', () => {
         challenge_ids: [],
         content_node_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        languages: [],
+        remediation_targets: [],
       })
 
       expect(form.imageOptions.value).toEqual([
@@ -361,6 +366,8 @@ describe('useExerciseForm', () => {
         challenge_ids: [],
         content_node_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        languages: [],
+        remediation_targets: [],
       })
 
       expect(form.audioOptions.value).toEqual([
@@ -387,6 +394,8 @@ describe('useExerciseForm', () => {
         challenge_ids: [],
         content_node_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        languages: [],
+        remediation_targets: [],
       })
 
       expect(form.imageUrl.value).toBe('https://cdn.example.com/fretboard.png')
@@ -418,6 +427,7 @@ describe('useExerciseForm', () => {
         prompt: plainTextPrompt('Name this chord shape'),
         skill_tags: ['theory'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
+        language_codes: ['any'],
       })
       expect(request).not.toHaveProperty('exercise_type')
     })

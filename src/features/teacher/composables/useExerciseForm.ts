@@ -244,7 +244,11 @@ export function useExerciseForm() {
   }
 
   function sharedRequestFields() {
-    const fields: Omit<UpdateExerciseRequest, 'title' | 'prompt' | 'options'> = {}
+    // Exercise-level language tagging has no authoring UI yet — every exercise is
+    // authored as language-agnostic until that UI exists.
+    const fields: Omit<UpdateExerciseRequest, 'title' | 'prompt' | 'options'> = {
+      language_codes: ['any'],
+    }
     if (skillTags.value.length > 0) fields.skill_tags = [...skillTags.value]
     if (exerciseType.value === 'image_recognition' && imageUrl.value) fields.image_url = imageUrl.value
     if (exerciseType.value === 'audio_recognition' && audioUrl.value) fields.audio_url = audioUrl.value
