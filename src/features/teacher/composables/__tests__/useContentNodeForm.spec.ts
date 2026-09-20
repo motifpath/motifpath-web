@@ -8,8 +8,8 @@ describe('useContentNodeForm', () => {
 
     expect(form.title.value).toBe('')
     expect(form.contentType.value).toBe('video')
-    expect(form.skill.value).toBe('')
-    expect(form.concept.value).toBe('')
+    expect(form.skillIds.value).toEqual([])
+    expect(form.conceptIds.value).toEqual([])
     expect(form.difficultyLevel.value).toBe('beginner')
     expect(form.reviewState.value).toBeNull()
   })
@@ -19,16 +19,16 @@ describe('useContentNodeForm', () => {
       const form = useContentNodeForm()
       form.title.value = 'Alternate picking basics'
       form.contentType.value = 'video'
-      form.skill.value = 'alternate-picking'
-      form.concept.value = 'picking-technique'
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
       form.difficultyLevel.value = 'intermediate'
 
       expect(form.toCreateContentNodeRequest()).toEqual({
         title: 'Alternate picking basics',
         content_type: 'video',
         classification: {
-          skill: 'alternate-picking',
-          concept: 'picking-technique',
+          skill_ids: ['s-1'],
+          concept_ids: ['c-1'],
           difficulty_level: 'intermediate',
         },
         language_codes: ['any'],
@@ -40,8 +40,8 @@ describe('useContentNodeForm', () => {
     it('maps form state to an UpdateContentNodeRequest, without content_type', () => {
       const form = useContentNodeForm()
       form.title.value = 'Alternate picking basics'
-      form.skill.value = 'alternate-picking'
-      form.concept.value = 'picking-technique'
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
       form.difficultyLevel.value = 'intermediate'
 
       const request = form.toUpdateContentNodeRequest()
@@ -49,8 +49,8 @@ describe('useContentNodeForm', () => {
       expect(request).toEqual({
         title: 'Alternate picking basics',
         classification: {
-          skill: 'alternate-picking',
-          concept: 'picking-technique',
+          skill_ids: ['s-1'],
+          concept_ids: ['c-1'],
           difficulty_level: 'intermediate',
         },
         language_codes: ['any'],
@@ -69,8 +69,8 @@ describe('useContentNodeForm', () => {
         title: 'Alternate picking basics',
         content_type: 'article',
         classification: {
-          skill: 'alternate-picking',
-          concept: 'picking-technique',
+          skills: [{ skill_id: 's-1', name: 'alternate-picking', parent_id: null }],
+          concepts: [{ concept_id: 'c-1', name: 'picking-technique', parent_id: null }],
           difficulty_level: 'advanced',
           review_state: 'confirmed',
         },
@@ -80,8 +80,8 @@ describe('useContentNodeForm', () => {
 
       expect(form.title.value).toBe('Alternate picking basics')
       expect(form.contentType.value).toBe('article')
-      expect(form.skill.value).toBe('alternate-picking')
-      expect(form.concept.value).toBe('picking-technique')
+      expect(form.skillIds.value).toEqual(['s-1'])
+      expect(form.conceptIds.value).toEqual(['c-1'])
       expect(form.difficultyLevel.value).toBe('advanced')
       expect(form.reviewState.value).toBe('confirmed')
     })

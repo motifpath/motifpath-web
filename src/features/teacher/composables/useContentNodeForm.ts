@@ -18,15 +18,15 @@ type ReviewState = components['schemas']['Classification']['review_state']
 export function useContentNodeForm() {
   const title = ref('')
   const contentType = ref<ContentType>('video')
-  const skill = ref('')
-  const concept = ref('')
+  const skillIds = ref<string[]>([])
+  const conceptIds = ref<string[]>([])
   const difficultyLevel = ref<DifficultyLevel>('beginner')
   const reviewState = ref<ReviewState | null>(null)
 
   function classification() {
     return {
-      skill: skill.value,
-      concept: concept.value,
+      skill_ids: [...skillIds.value],
+      concept_ids: [...conceptIds.value],
       difficulty_level: difficultyLevel.value,
     }
   }
@@ -51,8 +51,8 @@ export function useContentNodeForm() {
   function loadFromContentNode(contentNode: ContentNode) {
     title.value = contentNode.title
     contentType.value = contentNode.content_type
-    skill.value = contentNode.classification.skill
-    concept.value = contentNode.classification.concept
+    skillIds.value = contentNode.classification.skills.map((s) => s.skill_id)
+    conceptIds.value = contentNode.classification.concepts.map((c) => c.concept_id)
     difficultyLevel.value = contentNode.classification.difficulty_level
     reviewState.value = contentNode.classification.review_state
   }
@@ -60,8 +60,8 @@ export function useContentNodeForm() {
   return {
     title,
     contentType,
-    skill,
-    concept,
+    skillIds,
+    conceptIds,
     difficultyLevel,
     reviewState,
     toCreateContentNodeRequest,

@@ -68,7 +68,8 @@ export function useExerciseForm() {
   const title = ref('')
   const prompt = ref<PromptDocument>(EMPTY_PROMPT)
   const exerciseType = ref<ExerciseType>('text_response')
-  const skillTags = ref<string[]>([])
+  const skillIds = ref<string[]>([])
+  const conceptIds = ref<string[]>([])
   const imageUrl = ref('')
   const audioUrl = ref('')
 
@@ -194,15 +195,6 @@ export function useExerciseForm() {
     }
   }
 
-  function addTag(raw: string) {
-    const tag = raw.trim()
-    if (!tag || skillTags.value.includes(tag)) return
-    skillTags.value.push(tag)
-  }
-  function removeTag(tag: string) {
-    skillTags.value = skillTags.value.filter((t) => t !== tag)
-  }
-
   function optionsForRequest(): Option[] {
     switch (exerciseType.value) {
       case 'text_response':
@@ -247,9 +239,10 @@ export function useExerciseForm() {
     // No authoring UI exists yet for tagging an exercise's language(s) — default
     // to language-agnostic until that surface is built.
     const fields: Omit<UpdateExerciseRequest, 'title' | 'prompt' | 'options'> = {
+      skill_ids: [...skillIds.value],
+      concept_ids: [...conceptIds.value],
       language_codes: ['any'],
     }
-    if (skillTags.value.length > 0) fields.skill_tags = [...skillTags.value]
     if (exerciseType.value === 'image_recognition' && imageUrl.value) fields.image_url = imageUrl.value
     if (exerciseType.value === 'audio_recognition' && audioUrl.value) fields.audio_url = audioUrl.value
     return fields
@@ -278,7 +271,8 @@ export function useExerciseForm() {
     title.value = exercise.title
     prompt.value = exercise.prompt
     exerciseType.value = exercise.exercise_type
-    skillTags.value = [...(exercise.skill_tags ?? [])]
+    skillIds.value = exercise.skills.map((s) => s.skill_id)
+    conceptIds.value = exercise.concepts.map((c) => c.concept_id)
     imageUrl.value = exercise.image_url ?? ''
     audioUrl.value = exercise.audio_url ?? ''
     textOptions.value = []
@@ -317,7 +311,8 @@ export function useExerciseForm() {
     title,
     prompt,
     exerciseType,
-    skillTags,
+    skillIds,
+    conceptIds,
     imageUrl,
     audioUrl,
     textOptions,
@@ -345,8 +340,6 @@ export function useExerciseForm() {
     toggleRegion,
     removeRegion,
     setStimulusImageSize,
-    addTag,
-    removeTag,
     toCreateExerciseRequest,
     toUpdateExerciseRequest,
     loadFromExercise,

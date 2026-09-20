@@ -150,24 +150,17 @@ describe('useExerciseForm', () => {
     })
   })
 
-  describe('skill tags', () => {
-    it('adds a trimmed, non-empty tag and ignores duplicates', () => {
+  describe('skill/concept ids', () => {
+    it('defaults to empty and can be set directly', () => {
       const form = useExerciseForm()
+      expect(form.skillIds.value).toEqual([])
+      expect(form.conceptIds.value).toEqual([])
 
-      form.addTag('  alternate_picking  ')
-      form.addTag('alternate_picking')
-      form.addTag('')
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
 
-      expect(form.skillTags.value).toEqual(['alternate_picking'])
-    })
-
-    it('removes a tag', () => {
-      const form = useExerciseForm()
-      form.addTag('technique')
-
-      form.removeTag('technique')
-
-      expect(form.skillTags.value).toEqual([])
+      expect(form.skillIds.value).toEqual(['s-1'])
+      expect(form.conceptIds.value).toEqual(['c-1'])
     })
   })
 
@@ -180,7 +173,8 @@ describe('useExerciseForm', () => {
       form.addTextOption()
       form.editTextOption(form.textOptions.value[0]!.id, 'G major')
       form.toggleTextOption(form.textOptions.value[0]!.id)
-      form.addTag('theory')
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
 
       const request = form.toCreateExerciseRequest()
 
@@ -188,7 +182,8 @@ describe('useExerciseForm', () => {
         title: 'Name the chord',
         prompt: plainTextPrompt('Name this chord shape'),
         exercise_type: 'text_response',
-        skill_tags: ['theory'],
+        skill_ids: ['s-1'],
+        concept_ids: ['c-1'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
         language_codes: ['any'],
       })
@@ -280,7 +275,7 @@ describe('useExerciseForm', () => {
       ])
     })
 
-    it('omits skill_tags when there are none', () => {
+    it('defaults skill_ids/concept_ids to empty arrays when none are set', () => {
       const form = useExerciseForm()
       form.title.value = 'title'
       form.prompt.value = plainTextPrompt('prompt')
@@ -288,7 +283,8 @@ describe('useExerciseForm', () => {
 
       const request = form.toCreateExerciseRequest()
 
-      expect(request.skill_tags).toBeUndefined()
+      expect(request.skill_ids).toEqual([])
+      expect(request.concept_ids).toEqual([])
     })
 
     it('falls back to an empty options array for an unrecognized exercise type, instead of undefined', () => {
@@ -315,7 +311,8 @@ describe('useExerciseForm', () => {
         title: 'Name the chord',
         prompt: plainTextPrompt('Name this chord shape'),
         exercise_type: 'text_response',
-        skill_tags: ['theory'],
+        skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+        concepts: [],
         options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         challenge_ids: [],
         content_node_ids: [],
@@ -327,7 +324,8 @@ describe('useExerciseForm', () => {
       expect(form.title.value).toBe('Name the chord')
       expect(form.prompt.value).toEqual(plainTextPrompt('Name this chord shape'))
       expect(form.exerciseType.value).toBe('text_response')
-      expect(form.skillTags.value).toEqual(['theory'])
+      expect(form.skillIds.value).toEqual(['s-1'])
+      expect(form.conceptIds.value).toEqual([])
       expect(form.textOptions.value).toEqual([{ id: 'o-1', label: 'G major', correct: true }])
     })
 
@@ -340,6 +338,8 @@ describe('useExerciseForm', () => {
         prompt: plainTextPrompt('p'),
         exercise_type: 'image_choice',
         options: [{ option_id: 'o-1', is_correct: false, image_url: 'https://cdn.example.com/e-minor.png' }],
+        skills: [],
+        concepts: [],
         challenge_ids: [],
         content_node_ids: [],
         remediation_targets: [],
@@ -363,6 +363,8 @@ describe('useExerciseForm', () => {
         options: [
           { option_id: 'o-1', is_correct: false, audio_url: 'https://cdn.example.com/lick.mp3', label: 'Lick A' },
         ],
+        skills: [],
+        concepts: [],
         challenge_ids: [],
         content_node_ids: [],
         remediation_targets: [],
@@ -391,6 +393,8 @@ describe('useExerciseForm', () => {
             region: { x: 0.25, y: 0.5, width: 0.1, height: 0.2, shape: 'rectangle' },
           },
         ],
+        skills: [],
+        concepts: [],
         challenge_ids: [],
         content_node_ids: [],
         remediation_targets: [],
@@ -418,14 +422,16 @@ describe('useExerciseForm', () => {
       form.addTextOption()
       form.editTextOption(form.textOptions.value[0]!.id, 'G major')
       form.toggleTextOption(form.textOptions.value[0]!.id)
-      form.addTag('theory')
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
 
       const request = form.toUpdateExerciseRequest()
 
       expect(request).toEqual({
         title: 'Name the chord',
         prompt: plainTextPrompt('Name this chord shape'),
-        skill_tags: ['theory'],
+        skill_ids: ['s-1'],
+        concept_ids: ['c-1'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
         language_codes: ['any'],
       })
