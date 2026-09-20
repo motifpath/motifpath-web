@@ -247,6 +247,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
     await fillMinimalTextResponse(wrapper)
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
     await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
@@ -307,6 +308,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
 
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
     await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
 
     expect(wrapper.text()).toContain('technique')

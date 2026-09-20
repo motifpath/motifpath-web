@@ -9,11 +9,25 @@ const nodes = [
   { id: 'root-2', name: 'rhythm', parent_id: null },
 ]
 
+async function open(wrapper: ReturnType<typeof mount>) {
+  await wrapper.get('[data-test="tree-open-picker"]').trigger('click')
+}
+
 describe('SkillConceptTreePicker', () => {
-  it('renders every node with its breadcrumb path', () => {
+  it('labels the create-name field for the kind of node being added', async () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: [] },
     })
+    await open(wrapper)
+
+    expect(wrapper.get('[data-test="tree-create-name"]').attributes('placeholder')).toBe('New skill name')
+  })
+
+  it('renders every node with its breadcrumb path once the picker is opened', async () => {
+    const wrapper = mount(SkillConceptTreePicker, {
+      props: { label: 'Skill', nodes, selectedIds: [] },
+    })
+    await open(wrapper)
 
     const rows = wrapper.findAll('[data-test="tree-node-row"]')
     expect(rows).toHaveLength(3)
@@ -26,6 +40,7 @@ describe('SkillConceptTreePicker', () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: [] },
     })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-search"]').setValue('major')
 
@@ -34,10 +49,11 @@ describe('SkillConceptTreePicker', () => {
     expect(wrapper.text()).toContain('major-triads')
   })
 
-  it('restricts the rendered nodes to allowedIds when given', () => {
+  it('restricts the rendered nodes to allowedIds when given', async () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: [], allowedIds: ['root-2'] },
     })
+    await open(wrapper)
 
     const rows = wrapper.findAll('[data-test="tree-node-row"]')
     expect(rows).toHaveLength(1)
@@ -48,6 +64,7 @@ describe('SkillConceptTreePicker', () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: ['root-1'] },
     })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-node-checkbox"][value="root-2"]').setValue(true)
     expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['root-1', 'root-2']])
@@ -57,13 +74,15 @@ describe('SkillConceptTreePicker', () => {
     expect(wrapper.emitted('update:selectedIds')?.[1]).toEqual([[]])
   })
 
-  it('in single mode, selecting a node replaces the selection', async () => {
+  it('in single mode, selecting a node replaces the selection and closes the picker', async () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: ['root-1'], multiple: false },
     })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-node-radio"][value="child-1"]').setValue(true)
     expect(wrapper.emitted('update:selectedIds')).toEqual([[['child-1']]])
+    expect(wrapper.find('[data-test="tree-search"]').exists()).toBe(false)
   })
 
   it('shows selected chips with a remove control in multiple mode', async () => {
@@ -78,22 +97,44 @@ describe('SkillConceptTreePicker', () => {
     expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['child-1']])
   })
 
-  it('emits create with the entered name and chosen parent', async () => {
+  it('emits create with the entered name and a parent chosen via the searchable parent field', async () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: [] },
     })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-create-name"]').setValue('sweep-picking')
-    await wrapper.get('[data-test="tree-create-parent"]').setValue('root-2')
+    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+    await wrapper.get('[data-test="tree-create-parent-search"]').setValue('rhythm')
+    await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="root-2"]').trigger('click')
     await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
 
     expect(wrapper.emitted('create')).toEqual([[{ name: 'sweep-picking', parentId: 'root-2' }]])
+  })
+
+  it('lets the chosen parent be cleared back to root', async () => {
+    const wrapper = mount(SkillConceptTreePicker, {
+      props: { label: 'Skill', nodes, selectedIds: [] },
+    })
+    await open(wrapper)
+
+    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+    await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="root-2"]').trigger('click')
+    expect(wrapper.find('[data-test="tree-create-parent-clear"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="tree-create-parent-clear"]').trigger('click')
+    expect(wrapper.find('[data-test="tree-create-parent-clear"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="tree-create-name"]').setValue('new-root')
+    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+    expect(wrapper.emitted('create')).toEqual([[{ name: 'new-root', parentId: null }]])
   })
 
   it('emits create with a null parent when no parent is chosen (root node)', async () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: [] },
     })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-create-name"]').setValue('new-root')
     await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
@@ -103,6 +144,7 @@ describe('SkillConceptTreePicker', () => {
 
   it('does not emit create when the name is blank', async () => {
     const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
 
@@ -111,6 +153,7 @@ describe('SkillConceptTreePicker', () => {
 
   it('does not emit create for a name that already exists under the chosen parent (case/space-insensitive)', async () => {
     const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-create-name"]').setValue('  CHORD-THEORY  ')
     await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
@@ -121,9 +164,11 @@ describe('SkillConceptTreePicker', () => {
 
   it('allows a name that duplicates a sibling under a different parent', async () => {
     const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-create-name"]').setValue('major-triads')
-    await wrapper.get('[data-test="tree-create-parent"]').setValue('root-2')
+    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+    await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="root-2"]').trigger('click')
     await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
 
     expect(wrapper.emitted('create')).toEqual([[{ name: 'major-triads', parentId: 'root-2' }]])
@@ -131,6 +176,7 @@ describe('SkillConceptTreePicker', () => {
 
   it('clears the duplicate warning once the name is edited', async () => {
     const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
 
     await wrapper.get('[data-test="tree-create-name"]').setValue('rhythm')
     await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
@@ -140,10 +186,23 @@ describe('SkillConceptTreePicker', () => {
     expect(wrapper.find('[data-test="tree-create-duplicate"]').exists()).toBe(false)
   })
 
-  it('shows a loading indicator while nodes are loading', () => {
+  it('filters the parent options by the parent search query', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
+
+    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+    await wrapper.get('[data-test="tree-create-parent-search"]').setValue('rhythm')
+
+    const options = wrapper.findAll('[data-test="tree-create-parent-option"]')
+    expect(options).toHaveLength(1)
+    expect(options[0].text()).toBe('rhythm')
+  })
+
+  it('shows a loading indicator while nodes are loading', async () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes: [], selectedIds: [], isLoading: true },
     })
+    await open(wrapper)
 
     expect(wrapper.find('[data-test="tree-loading"]').exists()).toBe(true)
   })

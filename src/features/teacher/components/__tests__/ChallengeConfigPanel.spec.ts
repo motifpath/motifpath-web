@@ -39,6 +39,7 @@ describe('ChallengeConfigPanel', () => {
       },
     })
 
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
     await wrapper.get('[data-test="tree-node-radio"][value="s-1"]').setValue(true)
 
     expect(wrapper.emitted('update:subjectSkillId')).toEqual([['s-1']])
@@ -58,6 +59,7 @@ describe('ChallengeConfigPanel', () => {
       },
     })
 
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
     await wrapper.get('[data-test="tree-node-radio"][value="c-1"]').setValue(true)
 
     expect(wrapper.emitted('update:subjectConceptId')).toEqual([['c-1']])

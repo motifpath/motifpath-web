@@ -40,9 +40,12 @@ describe('ClassificationFields', () => {
       props: { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner', reviewState: null },
     })
 
+    const openButtons = wrapper.findAll('[data-test="tree-open-picker"]')
+    await openButtons[0].trigger('click')
     await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
     expect(wrapper.emitted('update:skillIds')).toEqual([[['s-1']]])
 
+    await openButtons[1].trigger('click')
     const conceptCheckboxes = wrapper.findAll('[data-test="tree-node-checkbox"][value="c-1"]')
     await conceptCheckboxes[0].setValue(true)
     expect(wrapper.emitted('update:conceptIds')).toEqual([[['c-1']]])
@@ -55,6 +58,10 @@ describe('ClassificationFields', () => {
     const wrapper = mount(ClassificationFields, {
       props: { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner', reviewState: null },
     })
+
+    const openButtons = wrapper.findAll('[data-test="tree-open-picker"]')
+    await openButtons[0].trigger('click')
+    await openButtons[1].trigger('click')
 
     const nameInputs = wrapper.findAll('[data-test="tree-create-name"]')
     await nameInputs[0].setValue('sweep-picking')

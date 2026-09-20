@@ -142,6 +142,7 @@ describe('ContentAuthoringView', () => {
       await flushPromises()
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('Alternate picking basics')
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()
@@ -262,6 +263,7 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
+        await wrapper.get('[data-test="challenge-section"] [data-test="tree-open-picker"]').trigger('click')
         await wrapper.get('[data-test="tree-node-radio"][value="s-1"]').setValue(true)
         await wrapper.get('[data-test="save-challenge"]').trigger('click')
         await flushPromises()
@@ -306,6 +308,7 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
+        await wrapper.get('[data-test="challenge-section"] [data-test="tree-open-picker"]').trigger('click')
         expect((wrapper.get('[data-test="tree-node-radio"][value="s-1"]').element as HTMLInputElement).checked).toBe(true)
         expect((wrapper.get('[data-test="pass-threshold"]').element as HTMLInputElement).value).toBe('80')
         expect(wrapper.text()).toContain('Name the chord')
@@ -333,6 +336,7 @@ describe('ContentAuthoringView', () => {
         })
         const wrapper = mountView()
         await flushPromises()
+        await wrapper.get('[data-test="challenge-section"] [data-test="tree-open-picker"]').trigger('click')
         expect((wrapper.get('[data-test="tree-node-radio"][value="s-1"]').element as HTMLInputElement).checked).toBe(
           true,
         )
