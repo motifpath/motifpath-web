@@ -12,6 +12,8 @@ const textExercise: Exercise = {
   title: 't1',
   prompt: plainTextPrompt('Name this technique'),
   exercise_type: 'text_response',
+  skills: [],
+  concepts: [],
   options: [
     { option_id: 'o1', is_correct: true, label: 'Alternate picking' },
     { option_id: 'o2', is_correct: false, label: 'Legato' },

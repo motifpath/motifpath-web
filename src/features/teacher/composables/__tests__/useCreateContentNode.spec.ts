@@ -7,7 +7,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import { useCreateContentNode } from '@/features/teacher/composables/useCreateContentNode'
 
-const classification = { skill: 'triad-shapes', concept: 'chord-theory', difficulty_level: 'beginner' as const }
+const classification = { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' as const }
 
 describe('useCreateContentNode', () => {
   it('posts the request and returns the created content node', async () => {

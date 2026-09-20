@@ -7,7 +7,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 
-const classification = { skill: 'triad-shapes', concept: 'chord-theory', difficulty_level: 'beginner' as const }
+const classification = { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' as const }
 
 describe('useUpdateContentNode', () => {
   it('puts the request and returns the updated content node', async () => {

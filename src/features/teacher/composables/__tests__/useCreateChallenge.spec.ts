@@ -13,7 +13,7 @@ describe('useCreateChallenge', () => {
     POST.mockResolvedValueOnce({ data: challenge, error: undefined, response: { status: 201 } })
 
     const { createChallenge } = useCreateChallenge()
-    const request = { subject_tag: 'triad-shapes', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }
+    const request = { subject_skill_id: 's-1', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }
 
     const result = await createChallenge('cn-1', request)
 
@@ -30,7 +30,7 @@ describe('useCreateChallenge', () => {
     const { createChallenge } = useCreateChallenge()
 
     await expect(
-      createChallenge('cn-1', { subject_tag: 't', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
+      createChallenge('cn-1', { subject_skill_id: 's-1', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
     ).rejects.toThrow('Boom')
   })
 
@@ -40,7 +40,7 @@ describe('useCreateChallenge', () => {
     const { createChallenge } = useCreateChallenge()
 
     await expect(
-      createChallenge('cn-1', { subject_tag: 't', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
+      createChallenge('cn-1', { subject_skill_id: 's-1', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
     ).rejects.toThrow('Failed to create the challenge')
   })
 })

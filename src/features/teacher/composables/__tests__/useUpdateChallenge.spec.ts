@@ -13,7 +13,7 @@ describe('useUpdateChallenge', () => {
     PUT.mockResolvedValueOnce({ data: challenge, error: undefined, response: { status: 200 } })
 
     const { updateChallenge } = useUpdateChallenge()
-    const request = { subject_tag: 't', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }
+    const request = { subject_skill_id: 's-1', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }
 
     const result = await updateChallenge('ch-1', request)
 
@@ -30,7 +30,7 @@ describe('useUpdateChallenge', () => {
     const { updateChallenge } = useUpdateChallenge()
 
     await expect(
-      updateChallenge('ch-1', { subject_tag: 't', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
+      updateChallenge('ch-1', { subject_skill_id: 's-1', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
     ).rejects.toThrow('Boom')
   })
 
@@ -40,7 +40,7 @@ describe('useUpdateChallenge', () => {
     const { updateChallenge } = useUpdateChallenge()
 
     await expect(
-      updateChallenge('ch-1', { subject_tag: 't', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
+      updateChallenge('ch-1', { subject_skill_id: 's-1', pass_threshold: 80, shuffle_exercises: false, shuffle_options: false }),
     ).rejects.toThrow('Failed to update the challenge')
   })
 })
