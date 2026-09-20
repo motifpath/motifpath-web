@@ -3,6 +3,8 @@ import { createI18n } from 'vue-i18n'
 import sharedEn from '@/shared/locales/en.json'
 import sharedPtBr from '@/shared/locales/pt-BR.json'
 import type StudentMessageSchema from '@/features/student/locales/en.json'
+import type AuthMessageSchema from '@/features/auth/locales/en.json'
+import type TeacherMessageSchema from '@/features/teacher/locales/en.json'
 
 /**
  * The canonical shape every locale's messages must match, derived from each
@@ -14,7 +16,10 @@ import type StudentMessageSchema from '@/features/student/locales/en.json'
  * When a new feature grows its own `locales/en.json`, add it to this
  * intersection so `t()` calls stay typed against the full merged schema.
  */
-export type MessageSchema = typeof sharedEn & typeof StudentMessageSchema
+export type MessageSchema = typeof sharedEn &
+  typeof StudentMessageSchema &
+  typeof AuthMessageSchema &
+  typeof TeacherMessageSchema
 
 declare module 'vue-i18n' {
   // Module augmentation requires an interface here — this mirrors vue-i18n's

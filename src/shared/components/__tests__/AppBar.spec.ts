@@ -1,32 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount, RouterLinkStub } from '@vue/test-utils'
-import { computed, ref } from 'vue'
 
-const clerk = {
-  isLoaded: ref(true),
-  isSignedIn: ref(true),
-  getToken: vi.fn(async () => 'jwt-abc'),
-  signOut: vi.fn(async () => {}),
-}
-const clerkUser = ref<{ firstName: string | null; primaryEmailAddress: null } | null>({
-  firstName: 'Gilson',
-  primaryEmailAddress: null,
-})
-
-vi.mock('@clerk/vue', () => ({
-  useAuth: () => ({
-    isLoaded: computed(() => clerk.isLoaded.value),
-    isSignedIn: computed(() => clerk.isSignedIn.value),
-    getToken: computed(() => clerk.getToken),
-    signOut: computed(() => clerk.signOut),
-  }),
-  useUser: () => ({ user: computed(() => clerkUser.value) }),
-}))
-
-beforeEach(() => {
-  clerk.signOut.mockClear()
-})
+import AccountMenu from '@/shared/components/AccountMenu.vue'
 
 const { default: AppBar } = await import('@/shared/components/AppBar.vue')
 
@@ -57,7 +33,7 @@ function mountBar(props: Props) {
     props: { primaryNavTo: { name: 'path' }, ...props },
     global: {
       plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
+      stubs: { RouterLink: RouterLinkStub, AccountMenu: true },
     },
   })
 }
@@ -68,7 +44,6 @@ describe('AppBar', () => {
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     mockMatchMedia()
-    clerkUser.value = { firstName: 'Gilson', primaryEmailAddress: null }
   })
 
   it('renders the wordmark', () => {
@@ -226,57 +201,11 @@ describe('AppBar', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
-  it("renders the signed-in user's display initial in the avatar", () => {
-    clerkUser.value = { firstName: 'Ana', primaryEmailAddress: null }
-
+  it('renders the account menu', () => {
     const wrapper = mountBar({ context: 'student' })
 
-    expect(wrapper.get('[data-test="app-bar-avatar"]').text()).toBe('A')
-  })
-
-  it('opens a menu with a single Sign out item when the avatar is clicked', async () => {
-    const wrapper = mountBar({ context: 'student' })
-
-    expect(wrapper.find('[data-test="app-bar-account-menu"]').exists()).toBe(false)
-
-    await wrapper.get('[data-test="app-bar-avatar"]').trigger('click')
-
-    const menu = wrapper.get('[data-test="app-bar-account-menu"]')
-    expect(menu.findAll('[data-test="sign-out"]')).toHaveLength(1)
-  })
-
-  it('signs the user out when the menu\'s Sign out item is used', async () => {
-    const wrapper = mountBar({ context: 'student' })
-    await wrapper.get('[data-test="app-bar-avatar"]').trigger('click')
-
-    await wrapper.get('[data-test="sign-out"]').trigger('click')
-
-    expect(clerk.signOut).toHaveBeenCalledOnce()
-  })
-
-  it('closes the account menu when its overlay is clicked', async () => {
-    const wrapper = mountBar({ context: 'student' })
-    await wrapper.get('[data-test="app-bar-avatar"]').trigger('click')
-
-    await wrapper.get('[data-test="app-bar-account-menu-overlay"]').trigger('click')
-
-    expect(wrapper.find('[data-test="app-bar-account-menu"]').exists()).toBe(false)
-  })
-
-  it('includes the locale switcher in the account menu', async () => {
-    const wrapper = mountBar({ context: 'student' })
-    await wrapper.get('[data-test="app-bar-avatar"]').trigger('click')
-
-    const menu = wrapper.get('[data-test="app-bar-account-menu"]')
-    expect(menu.find('[data-test="locale-switcher"]').exists()).toBe(true)
-  })
-
-  it('closes the account menu when a locale option is selected', async () => {
-    const wrapper = mountBar({ context: 'student' })
-    await wrapper.get('[data-test="app-bar-avatar"]').trigger('click')
-
-    await wrapper.get('[data-test="locale-option-pt-BR"]').trigger('click')
-
-    expect(wrapper.find('[data-test="app-bar-account-menu"]').exists()).toBe(false)
+    // AccountMenu owns the avatar/menu/sign-out behavior itself and is
+    // tested in isolation — see AccountMenu.spec.ts.
+    expect(wrapper.findComponent(AccountMenu).exists()).toBe(true)
   })
 })

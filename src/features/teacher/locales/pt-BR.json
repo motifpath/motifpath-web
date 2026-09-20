@@ -1,0 +1,125 @@
+{
+  "common": {
+    "correctAnswer": "Resposta correta",
+    "removeOption": "Remover opção",
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar exercícios.",
+    "newExercise": "Novo exercício",
+    "studentPreview": "Pré-visualização do aluno",
+    "exerciseTypes": {
+      "image_recognition": "Reconhecimento de imagem",
+      "text_response": "Resposta em texto",
+      "audio_recognition": "Reconhecimento de áudio",
+      "image_choice": "Escolha de imagem",
+      "audio_selection": "Seleção de áudio"
+    }
+  },
+  "audioSelectionOptionsEditor": {
+    "addLabel": "Adicionar opção de áudio",
+    "chooseAudioAriaLabel": "Escolher áudio",
+    "chooseAudio": "Escolher áudio",
+    "changeAudioAriaLabel": "Alterar áudio",
+    "change": "Alterar",
+    "labelPlaceholder": "Rótulo do botão mostrado ao aluno"
+  },
+  "exercisePreviewModal": {
+    "title": "Pré-visualização do aluno",
+    "portrait": "Retrato",
+    "landscape": "Paisagem",
+    "description": "Responsivo — o modo retrato empilha, o paisagem coloca o enunciado ao lado da resposta. Este é exatamente o mesmo componente que a tela de prática do aluno usa — não é uma cópia redesenhada — então o que você vê aqui é o que eles veem, sem correção (ele nunca recebe qual opção está marcada como correta)."
+  },
+  "imageChoiceOptionsEditor": {
+    "addLabel": "Adicionar opção de imagem",
+    "chooseImageAriaLabel": "Escolher imagem",
+    "changeImageAriaLabel": "Alterar imagem",
+    "chooseImage": "Escolher imagem"
+  },
+  "imagePickerModal": {
+    "chooseAudioFile": "Escolher um arquivo de áudio",
+    "chooseImage": "Escolher uma imagem",
+    "dropHint": "Clique para escolher um arquivo, ou arraste um aqui",
+    "uploadHint": "Enviado somente quando você salvar o exercício"
+  },
+  "imageRegionEditor": {
+    "newRegion": "Nova região:",
+    "noImagePlaceholder": "Escolha uma imagem de estímulo para posicionar regiões",
+    "removeRegionAriaLabel": "Remover região",
+    "region": "Região {number}",
+    "size": "Tamanho",
+    "width": "Largura",
+    "height": "Altura"
+  },
+  "promptEditor": {
+    "undo": "Desfazer",
+    "redo": "Refazer",
+    "fontColor": "Cor da fonte",
+    "backgroundColor": "Cor de fundo",
+    "addColumn": "Adicionar coluna",
+    "deleteColumn": "Excluir coluna",
+    "addRow": "Adicionar linha",
+    "deleteRow": "Excluir linha",
+    "toggleHeaderRow": "Alternar linha de cabeçalho",
+    "toggleHeaderColumn": "Alternar coluna de cabeçalho",
+    "toggleHeaderCell": "Alternar célula de cabeçalho",
+    "mergeCells": "Mesclar células",
+    "splitCell": "Dividir célula",
+    "cellBackgroundColor": "Cor de fundo da célula",
+    "toggleCellBorder": "Adicionar/remover borda da célula",
+    "deleteTable": "Excluir tabela",
+    "linkUrlPrompt": "URL do link",
+    "imageUploadFailed": "Falha ao enviar a imagem"
+  },
+  "skillTagsInput": {
+    "placeholder": "Digite uma habilidade e pressione Enter",
+    "removeTagAriaLabel": "Remover marcador {tag}",
+    "createOption": "Criar \"{tag}\""
+  },
+  "textOptionsEditor": {
+    "markedCorrectAriaLabel": "Marcada como correta",
+    "markCorrectAriaLabel": "Marcar como correta",
+    "optionPlaceholder": "Texto da opção",
+    "addOption": "Adicionar opção"
+  },
+  "exerciseAuthoringView": {
+    "editExerciseBreadcrumb": "Editar exercício",
+    "newExerciseBreadcrumb": "Novo exercício",
+    "loadingNoun": "exercício",
+    "loadErrorMessage": "Falha ao carregar o exercício",
+    "titlePlaceholder": "Exercício sem título",
+    "titleHint": "Título interno — para a biblioteca de conteúdo, não mostrado aos alunos",
+    "promptLabel": "Enunciado mostrado ao aluno",
+    "exerciseTypeLabel": "Tipo de exercício",
+    "typeLockedHint": "O tipo não pode ser alterado após a criação.",
+    "typeUnlockedHint": "Todos os tipos são corrigidos da mesma forma — marque uma ou mais opções como corretas abaixo.",
+    "noCorrectOptionWarning": "Marque pelo menos uma opção como correta — um exercício que não pode ser corrigido não pode ser praticado.",
+    "imageSelected": "Imagem selecionada",
+    "noImageSelected": "Nenhuma imagem selecionada",
+    "chooseImage": "Escolher imagem",
+    "audioStimulusLabel": "Estímulo de áudio — o que o aluno escuta",
+    "chooseStimulusImage": "Escolher imagem de estímulo",
+    "changeStimulusImage": "Alterar imagem de estímulo",
+    "chooseStimulusAudio": "Escolher áudio de estímulo",
+    "changeStimulusAudio": "Alterar áudio de estímulo",
+    "skillTagsLabel": "Marcadores de habilidade",
+    "skillTagsHint": "Torna este exercício localizável fora de sua trilha original — por exemplo, como sugestão de reforço.",
+    "usageHeading": "Onde este exercício é usado",
+    "usageUnsaved": "Salve o exercício para ver onde ele é usado.",
+    "usageChallengesHeading": "Desafios",
+    "usageNoChallenges": "Ainda não vinculado a nenhum desafio.",
+    "usagePathExercisesHeading": "Exercícios da trilha",
+    "usageNoPathExercises": "Ainda não vinculado a nenhum nó de trilha.",
+    "usagePracticeSessionsHeading": "Sessões de prática",
+    "usageNotEligible": "Não elegível — adicione um marcador de habilidade para tornar este exercício selecionável em uma sessão de prática direcionada por habilidade.",
+    "usageEligible": "Elegível para sessões de prática que correspondem a: {tags}",
+    "previewAsStudent": "Pré-visualizar como aluno",
+    "exerciseUpdated": "Exercício atualizado.",
+    "exerciseCreated": "Exercício criado.",
+    "saveFailed": "Falha ao salvar o exercício"
+  },
+  "exerciseListView": {
+    "heading": "Exercícios",
+    "loadingNoun": "exercícios",
+    "loadErrorMessage": "Não foi possível carregar os exercícios.",
+    "emptyHeading": "Ainda não há exercícios",
+    "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável."
+  }
+}

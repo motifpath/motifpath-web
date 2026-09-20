@@ -24,5 +24,35 @@
     "start": "Começar",
     "continueSubtitle": "Em andamento · continue de onde parou",
     "startSubtitle": "Ainda não iniciado"
+  },
+  "nodeView": {
+    "heading": "Lição",
+    "unavailable": "Esta lição ainda não está disponível.",
+    "checkBackSoon": "Ainda estamos preparando. Volte em breve.",
+    "practiceLink": "Praticar esta lição ›",
+    "backToPath": "‹ Voltar para sua trilha"
+  },
+  "practiceView": {
+    "loadingNoun": "os exercícios de prática",
+    "errorMessage": "Não foi possível carregar este exercício de prática.",
+    "empty": "Ainda não há prática para esta lição.",
+    "backToLesson": "‹ Voltar para a lição",
+    "seeResult": "Ver resultado",
+    "next": "Próximo ›",
+    "resultSummary": "{correct} de {total} corretas",
+    "finish": "Concluir"
+  },
+  "practiceHelpModal": {
+    "title": "Como responder",
+    "interaction": {
+      "imageRecognitionMultiple": "Toque em todas as áreas da imagem que respondem ao enunciado.",
+      "imageRecognitionSingle": "Toque na área da imagem que responde ao enunciado.",
+      "imageChoiceMultiple": "Toque em todas as imagens que se aplicam.",
+      "imageChoiceSingle": "Toque na imagem que responde ao enunciado.",
+      "defaultMultiple": "Toque em todas as opções que se aplicam.",
+      "defaultSingle": "Toque na opção que responde ao enunciado."
+    },
+    "clearHintBefore": "Toque novamente em uma resposta selecionada para limpá-la. Use",
+    "clearHintAfter": "para revisar e alterar a resposta de um exercício anterior."
   }
 }

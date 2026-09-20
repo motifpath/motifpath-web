@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Volume2 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import Icon from '@/shared/components/Icon.vue'
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
@@ -45,6 +46,8 @@ const props = withDefaults(
  * on Back — owns the value from then on.
  */
 const selected = defineModel<string[]>('selectedOptionIds', { default: () => [] })
+
+const { t } = useTypedT()
 
 function isSelected(optionId: string): boolean {
   return selected.value.includes(optionId)
@@ -131,7 +134,7 @@ function selectAndPlay(option: Option): void {
           data-test="no-stimulus-image"
           class="flex h-40 items-center justify-center text-xs text-ink-subtle"
         >
-          No stimulus image
+          {{ t('exerciseView.noStimulusImage') }}
         </div>
         <div
           v-for="option in options"
@@ -170,7 +173,7 @@ function selectAndPlay(option: Option): void {
           data-test="no-stimulus-audio"
           class="mb-2 rounded-md bg-surface-sunken px-[11px] py-[9px] text-xs text-ink-subtle"
         >
-          No stimulus audio
+          {{ t('exerciseView.noStimulusAudio') }}
         </div>
 
         <div class="flex flex-col gap-2">

@@ -19,7 +19,8 @@
     "signOut": "Sair",
     "signOutTryDifferentAccount": "Sair e tentar outra conta",
     "signIn": "Entrar",
-    "backToPath": "Voltar para a trilha"
+    "backToPath": "Voltar para a trilha",
+    "back": "‹ Voltar"
   },
   "states": {
     "loading": "Carregando…",
@@ -36,5 +37,22 @@
     "label": "Idioma",
     "en": "English",
     "ptBr": "Português"
+  },
+  "exerciseView": {
+    "noStimulusImage": "Sem imagem de estímulo",
+    "noStimulusAudio": "Sem áudio de estímulo"
+  },
+  "modalCloseButton": {
+    "ariaLabel": "Fechar"
+  },
+  "notFoundView": {
+    "message": "Esta página não existe.",
+    "backToHome": "Voltar para o início"
+  },
+  "progressMeter": {
+    "summary": "{completed} de {total} etapas concluídas"
+  },
+  "toastStack": {
+    "dismissAriaLabel": "Dispensar"
   }
 }

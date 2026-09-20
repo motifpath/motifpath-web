@@ -21,6 +21,7 @@
     "generate:api": "node scripts/generate-api.mjs"
   },
   "dependencies": {
+    "@clerk/localizations": "^4.17.1",
     "@clerk/vue": "^2.4.34",
     "@intlify/unplugin-vue-i18n": "^11.2.5",
     "@tiptap/extension-bold": "^3.31.3",

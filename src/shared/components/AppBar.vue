@@ -3,10 +3,8 @@ import { computed, ref } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
-import { useAuth } from '@/features/auth/composables/useAuth'
+import AccountMenu from '@/shared/components/AccountMenu.vue'
 import Icon from '@/shared/components/Icon.vue'
-import LocaleSwitcher from '@/shared/components/LocaleSwitcher.vue'
-import SignOutLink from '@/shared/components/SignOutLink.vue'
 import { useThemeStore } from '@/stores/theme'
 
 const props = withDefaults(
@@ -30,7 +28,6 @@ const props = withDefaults(
   { compact: false, showSave: false, saveDisabled: false, justSaved: false },
 )
 
-const { displayInitial } = useAuth()
 const themeStore = useThemeStore()
 const { t } = useTypedT()
 
@@ -61,14 +58,6 @@ function toggleDrawer(): void {
 }
 function closeDrawer(): void {
   drawerOpen.value = false
-}
-
-const accountMenuOpen = ref(false)
-function toggleAccountMenu(): void {
-  accountMenuOpen.value = !accountMenuOpen.value
-}
-function closeAccountMenu(): void {
-  accountMenuOpen.value = false
 }
 </script>
 
@@ -173,32 +162,7 @@ function closeAccountMenu(): void {
       <Icon :name="themeStore.theme === 'dark' ? 'sun' : 'moon'" :size="15" />
     </button>
 
-    <button
-      type="button"
-      data-test="app-bar-avatar"
-      :aria-label="t('appBar.accountMenuAriaLabel')"
-      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[13px] font-bold text-accent-fg"
-      @click="toggleAccountMenu"
-    >
-      {{ displayInitial }}
-    </button>
-
-    <template v-if="accountMenuOpen">
-      <div
-        data-test="app-bar-account-menu-overlay"
-        class="fixed inset-0 z-30"
-        @click="closeAccountMenu"
-      />
-      <div
-        data-test="app-bar-account-menu"
-        class="absolute right-5 top-16 z-40 rounded-lg border border-border bg-surface-raised p-1.5 shadow-level2"
-        @click="closeAccountMenu"
-      >
-        <LocaleSwitcher />
-        <div class="my-1 h-px bg-border" />
-        <SignOutLink class="block w-full px-2.5 py-1.5 text-left" />
-      </div>
-    </template>
+    <AccountMenu />
 
     <template v-if="compact && drawerOpen">
       <div

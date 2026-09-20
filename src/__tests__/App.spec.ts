@@ -2,6 +2,7 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 
+import { i18n } from '@/i18n'
 import type { CurrentUserState } from '@/stores/currentUser'
 
 const auth = {
@@ -12,6 +13,22 @@ const auth = {
 
 vi.mock('@/features/auth/composables/useAuth', () => ({
   useAuth: () => auth,
+}))
+
+const updateClerkOptions = vi.fn()
+
+vi.mock('@clerk/vue', () => ({
+  updateClerkOptions: (...args: unknown[]) => updateClerkOptions(...args),
+}))
+
+const ptBrLocalization = { locale: 'pt-BR' }
+const enUsLocalization = { locale: 'en-US' }
+const loadClerkLocalization = vi.fn(async (locale: string) =>
+  locale === 'pt-BR' ? ptBrLocalization : enUsLocalization,
+)
+
+vi.mock('@/shared/utils/clerkLocalization', () => ({
+  loadClerkLocalization: (...args: [string]) => loadClerkLocalization(...args),
 }))
 
 // `reactive()` mirrors Pinia's own auto-unwrapping of a setup store's refs, so
@@ -46,10 +63,14 @@ function mountApp() {
 describe('App', () => {
   beforeEach(() => {
     auth.isSignedIn.value = false
+    auth.isLoaded.value = true
     currentUser.state = 'idle'
     currentUser.ensure.mockClear()
     currentUser.reset.mockClear()
     updateRegistrationBridge.mockClear()
+    updateClerkOptions.mockClear()
+    loadClerkLocalization.mockClear()
+    i18n.global.locale.value = 'en'
   })
 
   afterEach(() => {
@@ -103,5 +124,62 @@ describe('App', () => {
     currentUser.state = 'registered'
     await wrapper.vm.$nextTick()
     expect(updateRegistrationBridge).toHaveBeenLastCalledWith('registered')
+  })
+
+  describe('Clerk localization sync', () => {
+    it('does not update Clerk on mount for the locale already active', async () => {
+      const wrapper = mountApp()
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(updateClerkOptions).not.toHaveBeenCalled()
+    })
+
+    it("updates Clerk's localization when the app locale changes, once Clerk is loaded", async () => {
+      const wrapper = mountApp()
+
+      i18n.global.locale.value = 'pt-BR'
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(loadClerkLocalization).toHaveBeenCalledWith('pt-BR')
+      expect(updateClerkOptions).toHaveBeenCalledWith({ localization: ptBrLocalization })
+    })
+
+    it('does not update Clerk while it has not finished loading', async () => {
+      auth.isLoaded.value = false
+      const wrapper = mountApp()
+
+      i18n.global.locale.value = 'pt-BR'
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(updateClerkOptions).not.toHaveBeenCalled()
+    })
+
+    it('catches up a locale change made before Clerk finished loading, once it does', async () => {
+      auth.isLoaded.value = false
+      const wrapper = mountApp()
+      i18n.global.locale.value = 'pt-BR'
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+      expect(updateClerkOptions).not.toHaveBeenCalled()
+
+      auth.isLoaded.value = true
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(updateClerkOptions).toHaveBeenCalledWith({ localization: ptBrLocalization })
+    })
+
+    it('does not re-sync when isLoaded flips true for a locale already synced at mount', async () => {
+      auth.isLoaded.value = false
+      const wrapper = mountApp()
+      auth.isLoaded.value = true
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(updateClerkOptions).not.toHaveBeenCalled()
+    })
   })
 })

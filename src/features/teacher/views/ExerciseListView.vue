@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next'
 import { computed } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { useListExercises } from '@/features/teacher/composables/useListExercises'
 import AppBar from '@/shared/components/AppBar.vue'
@@ -17,14 +18,15 @@ const canAuthor = computed(
 
 const { isCompact } = useIsCompact()
 const { exercises, isLoading, error, retry } = useListExercises()
+const { t } = useTypedT()
 
-const exerciseTypeLabels: Record<string, string> = {
-  text_response: 'Text response',
-  audio_recognition: 'Audio recognition',
-  image_recognition: 'Image recognition',
-  image_choice: 'Image choice',
-  audio_selection: 'Audio selection',
-}
+const exerciseTypeLabels = computed<Record<string, string>>(() => ({
+  text_response: t('common.exerciseTypes.text_response'),
+  audio_recognition: t('common.exerciseTypes.audio_recognition'),
+  image_recognition: t('common.exerciseTypes.image_recognition'),
+  image_choice: t('common.exerciseTypes.image_choice'),
+  audio_selection: t('common.exerciseTypes.audio_selection'),
+}))
 </script>
 
 <template>
@@ -33,36 +35,36 @@ const exerciseTypeLabels: Record<string, string> = {
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
-        This page is for teachers and admins only — your account doesn't have permission to author exercises.
+        {{ t('common.permissionDenied') }}
       </p>
     </div>
 
     <div v-else class="flex flex-1 flex-col gap-6 px-[48px] pb-[80px] pt-10">
       <div class="flex items-center justify-between">
-        <h1 class="text-xl font-bold text-ink">Exercises</h1>
+        <h1 class="text-xl font-bold text-ink">{{ t('exerciseListView.heading') }}</h1>
         <RouterLink
           :to="{ name: 'teacher-exercise-new' }"
           data-test="new-exercise"
           class="flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg"
         >
           <Plus :size="14" aria-hidden="true" />
-          New exercise
+          {{ t('common.newExercise') }}
         </RouterLink>
       </div>
 
-      <StateLoading v-if="isLoading" data-test="loading" noun="exercises" />
+      <StateLoading v-if="isLoading" data-test="loading" :noun="t('exerciseListView.loadingNoun')" />
 
-      <StateError v-else-if="error" data-test="error" message="We couldn't load the exercises." @retry="retry" />
+      <StateError v-else-if="error" data-test="error" :message="t('exerciseListView.loadErrorMessage')" @retry="retry" />
 
       <StateEmpty
         v-else-if="exercises.length === 0"
         data-test="empty"
-        heading="No exercises yet"
-        message="Create your first exercise to start building the reusable pool."
+        :heading="t('exerciseListView.emptyHeading')"
+        :message="t('exerciseListView.emptyMessage')"
       >
         <template #action>
           <RouterLink :to="{ name: 'teacher-exercise-new' }" class="text-sm font-semibold text-accent-text underline">
-            New exercise
+            {{ t('common.newExercise') }}
           </RouterLink>
         </template>
       </StateEmpty>

@@ -1,0 +1,125 @@
+{
+  "common": {
+    "correctAnswer": "Correct answer",
+    "removeOption": "Remove option",
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author exercises.",
+    "newExercise": "New exercise",
+    "studentPreview": "Student preview",
+    "exerciseTypes": {
+      "image_recognition": "Image recognition",
+      "text_response": "Text response",
+      "audio_recognition": "Audio recognition",
+      "image_choice": "Image choice",
+      "audio_selection": "Audio selection"
+    }
+  },
+  "audioSelectionOptionsEditor": {
+    "addLabel": "Add audio option",
+    "chooseAudioAriaLabel": "Choose audio",
+    "chooseAudio": "Choose audio",
+    "changeAudioAriaLabel": "Change audio",
+    "change": "Change",
+    "labelPlaceholder": "Button label shown to the student"
+  },
+  "exercisePreviewModal": {
+    "title": "Student preview",
+    "portrait": "Portrait",
+    "landscape": "Landscape",
+    "description": "Responsive — portrait stacks, landscape puts the prompt beside the answer. This is the exact same component the student's Practice screen mounts — not a redrawn copy — so what you see here is what they see, ungraded (it never receives which option is marked correct)."
+  },
+  "imageChoiceOptionsEditor": {
+    "addLabel": "Add image option",
+    "chooseImageAriaLabel": "Choose image",
+    "changeImageAriaLabel": "Change image",
+    "chooseImage": "Choose image"
+  },
+  "imagePickerModal": {
+    "chooseAudioFile": "Choose an audio file",
+    "chooseImage": "Choose an image",
+    "dropHint": "Click to choose a file, or drag one here",
+    "uploadHint": "Uploaded only when you save the exercise"
+  },
+  "imageRegionEditor": {
+    "newRegion": "New region:",
+    "noImagePlaceholder": "Choose a stimulus image to place regions",
+    "removeRegionAriaLabel": "Remove region",
+    "region": "Region {number}",
+    "size": "Size",
+    "width": "Width",
+    "height": "Height"
+  },
+  "promptEditor": {
+    "undo": "Undo",
+    "redo": "Redo",
+    "fontColor": "Font color",
+    "backgroundColor": "Background color",
+    "addColumn": "Add column",
+    "deleteColumn": "Delete column",
+    "addRow": "Add row",
+    "deleteRow": "Delete row",
+    "toggleHeaderRow": "Toggle header row",
+    "toggleHeaderColumn": "Toggle header column",
+    "toggleHeaderCell": "Toggle header cell",
+    "mergeCells": "Merge cells",
+    "splitCell": "Split cell",
+    "cellBackgroundColor": "Cell background color",
+    "toggleCellBorder": "Add/remove cell border",
+    "deleteTable": "Delete table",
+    "linkUrlPrompt": "Link URL",
+    "imageUploadFailed": "Failed to upload the image"
+  },
+  "skillTagsInput": {
+    "placeholder": "Type a skill and press Enter",
+    "removeTagAriaLabel": "Remove tag {tag}",
+    "createOption": "Create \"{tag}\""
+  },
+  "textOptionsEditor": {
+    "markedCorrectAriaLabel": "Marked correct",
+    "markCorrectAriaLabel": "Mark correct",
+    "optionPlaceholder": "Option text",
+    "addOption": "Add option"
+  },
+  "exerciseAuthoringView": {
+    "editExerciseBreadcrumb": "Edit exercise",
+    "newExerciseBreadcrumb": "New exercise",
+    "loadingNoun": "exercise",
+    "loadErrorMessage": "Failed to load the exercise",
+    "titlePlaceholder": "Untitled exercise",
+    "titleHint": "Internal title — for the content library, not shown to students",
+    "promptLabel": "Prompt shown to the student",
+    "exerciseTypeLabel": "Exercise type",
+    "typeLockedHint": "Type can't be changed after creation.",
+    "typeUnlockedHint": "All types are checked the same way — mark one or more options correct below.",
+    "noCorrectOptionWarning": "Mark at least one option correct — an exercise that can't be checked can't be practiced.",
+    "imageSelected": "Image selected",
+    "noImageSelected": "No image selected",
+    "chooseImage": "Choose image",
+    "audioStimulusLabel": "Audio stimulus — what the student listens to",
+    "chooseStimulusImage": "Choose stimulus image",
+    "changeStimulusImage": "Change stimulus image",
+    "chooseStimulusAudio": "Choose stimulus audio",
+    "changeStimulusAudio": "Change stimulus audio",
+    "skillTagsLabel": "Skill tags",
+    "skillTagsHint": "Makes this exercise findable outside its original path — e.g. as a remediation suggestion.",
+    "usageHeading": "Where this exercise is used",
+    "usageUnsaved": "Save the exercise to see where it's used.",
+    "usageChallengesHeading": "Challenges",
+    "usageNoChallenges": "Not linked to any challenge yet.",
+    "usagePathExercisesHeading": "Path exercises",
+    "usageNoPathExercises": "Not linked to any path node yet.",
+    "usagePracticeSessionsHeading": "Practice sessions",
+    "usageNotEligible": "Not eligible — add a skill tag to make this exercise selectable for a skill-targeted practice session.",
+    "usageEligible": "Eligible for practice sessions matching: {tags}",
+    "previewAsStudent": "Preview as student",
+    "exerciseUpdated": "Exercise updated.",
+    "exerciseCreated": "Exercise created.",
+    "saveFailed": "Failed to save the exercise"
+  },
+  "exerciseListView": {
+    "heading": "Exercises",
+    "loadingNoun": "exercises",
+    "loadErrorMessage": "We couldn't load the exercises.",
+    "emptyHeading": "No exercises yet",
+    "emptyMessage": "Create your first exercise to start building the reusable pool."
+  }
+}

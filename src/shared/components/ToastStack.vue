@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { CheckCircle2, TriangleAlert, X } from 'lucide-vue-next'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { useToast } from '@/shared/composables/useToast'
 
 const { toasts, dismiss } = useToast()
+const { t } = useTypedT()
 </script>
 
 <template>
@@ -35,7 +37,7 @@ const { toasts, dismiss } = useToast()
       <button
         type="button"
         data-test="toast-dismiss"
-        aria-label="Dismiss"
+        :aria-label="t('toastStack.dismissAriaLabel')"
         class="flex-shrink-0 opacity-70 hover:opacity-100"
         @click="dismiss(toast.id)"
       >
