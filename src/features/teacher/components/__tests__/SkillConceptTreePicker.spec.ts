@@ -85,16 +85,64 @@ describe('SkillConceptTreePicker', () => {
     expect(wrapper.find('[data-test="tree-search"]').exists()).toBe(false)
   })
 
-  it('shows selected chips with a remove control in multiple mode', async () => {
+  it('shows selected chips with a remove control in multiple mode', () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes, selectedIds: ['root-1', 'child-1'] },
     })
 
     const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
     expect(chips).toHaveLength(2)
+  })
 
-    await wrapper.get('[data-test="tree-selected-chip-remove"]').trigger('click')
-    expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['child-1']])
+  it('removing a leaf chip removes only that node, leaving its ancestor selected', async () => {
+    const wrapper = mount(SkillConceptTreePicker, {
+      props: { label: 'Skill', nodes, selectedIds: ['root-1', 'child-1'] },
+    })
+
+    const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
+    await chips[1].get('[data-test="tree-selected-chip-remove"]').trigger('click')
+    expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['root-1']])
+  })
+
+  it('removing an ancestor chip cascades to remove its descendants too', async () => {
+    const wrapper = mount(SkillConceptTreePicker, {
+      props: { label: 'Skill', nodes, selectedIds: ['root-1', 'child-1'] },
+    })
+
+    const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
+    await chips[0].get('[data-test="tree-selected-chip-remove"]').trigger('click')
+    expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([[]])
+  })
+
+  it('selecting a child node in the tree also selects its ancestor chain', async () => {
+    const wrapper = mount(SkillConceptTreePicker, {
+      props: { label: 'Skill', nodes, selectedIds: [] },
+    })
+    await open(wrapper)
+
+    await wrapper.get('[data-test="tree-node-checkbox"][value="child-1"]').setValue(true)
+    expect(wrapper.emitted('update:selectedIds')?.[0]?.[0]).toEqual(expect.arrayContaining(['child-1', 'root-1']))
+  })
+
+  it('unchecking a node in the tree also removes its selected descendants', async () => {
+    const wrapper = mount(SkillConceptTreePicker, {
+      props: { label: 'Skill', nodes, selectedIds: ['root-1', 'child-1'] },
+    })
+    await open(wrapper)
+
+    await wrapper.get('[data-test="tree-node-checkbox"][value="root-1"]').setValue(false)
+    expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([[]])
+  })
+
+  it('closes the parent-picker dropdown when clicking elsewhere in the modal', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
+
+    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+    expect(wrapper.find('[data-test="tree-create-parent-options"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="tree-create-name"]').trigger('click')
+    expect(wrapper.find('[data-test="tree-create-parent-options"]').exists()).toBe(false)
   })
 
   it('emits create with the entered name and a parent chosen via the searchable parent field', async () => {

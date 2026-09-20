@@ -116,5 +116,21 @@
     "loadErrorMessage": "We couldn't load the exercises.",
     "emptyHeading": "No exercises yet",
     "emptyMessage": "Create your first exercise to start building the reusable pool."
+  },
+  "skillConceptTreePicker": {
+    "removeSelectedAriaLabel": "Remove {name}",
+    "addButton": "Add {label}",
+    "changeButton": "Change {label}",
+    "modalTitle": "Select {label}",
+    "search": "Search by name",
+    "loading": "Loading…",
+    "empty": "No matching nodes yet — create one below.",
+    "createHeading": "Create new",
+    "createNamePlaceholder": "New {label} name",
+    "noParentRoot": "No parent (root)",
+    "parentSearchPlaceholder": "No parent (root) — search to set a parent",
+    "clearParentAriaLabel": "Clear parent",
+    "createSubmit": "Add",
+    "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate."
   }
 }
