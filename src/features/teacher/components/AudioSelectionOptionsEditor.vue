@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Music } from 'lucide-vue-next'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import OptionsEditorGrid from '@/features/teacher/components/OptionsEditorGrid.vue'
@@ -24,6 +25,8 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
   (id, url) => emit('setPreview', id, url),
   (id, file) => emit('setFile', id, file),
 )
+
+const { t } = useTypedT()
 </script>
 
 <template>
@@ -31,7 +34,7 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
     :options="options"
     :compact="compact"
     :add-icon="Music"
-    add-label="Add audio option"
+    :add-label="t('audioSelectionOptionsEditor.addLabel')"
     @toggle="emit('toggle', $event)"
     @remove="emit('remove', $event)"
     @add="emit('add')"
@@ -43,22 +46,22 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
           v-else
           type="button"
           data-test="choose-audio"
-          aria-label="Choose audio"
+          :aria-label="t('audioSelectionOptionsEditor.chooseAudioAriaLabel')"
           class="flex flex-col items-center gap-1 text-ink-muted"
           @click="openPicker(option.id)"
         >
           <Music :size="16" aria-hidden="true" />
-          <span class="text-[0.6875rem]">Choose audio</span>
+          <span class="text-[0.6875rem]">{{ t('audioSelectionOptionsEditor.chooseAudio') }}</span>
         </button>
         <button
           v-if="option.audioUrl"
           type="button"
           data-test="choose-audio"
-          aria-label="Change audio"
+          :aria-label="t('audioSelectionOptionsEditor.changeAudioAriaLabel')"
           class="text-[0.6875rem] font-semibold text-accent"
           @click="openPicker(option.id)"
         >
-          Change
+          {{ t('audioSelectionOptionsEditor.change') }}
         </button>
       </div>
     </template>
@@ -67,7 +70,7 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
       <input
         type="text"
         data-test="option-label"
-        placeholder="Button label shown to the student"
+        :placeholder="t('audioSelectionOptionsEditor.labelPlaceholder')"
         :value="option.label"
         class="rounded-sm border border-border bg-surface-raised px-2 py-1 text-xs"
         @input="emit('editLabel', option.id, ($event.target as HTMLInputElement).value)"

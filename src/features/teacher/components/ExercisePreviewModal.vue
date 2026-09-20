@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
@@ -24,6 +25,8 @@ const emit = defineEmits<{ close: [] }>()
 const orientation = ref<'portrait' | 'landscape'>('portrait')
 const direction = computed(() => (orientation.value === 'landscape' ? 'row' : 'column'))
 const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
+
+const { t } = useTypedT()
 </script>
 
 <template>
@@ -33,7 +36,7 @@ const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
     @close="emit('close')"
   >
     <div class="flex items-center justify-between border-b border-border px-5 py-[18px]">
-      <span class="text-base font-bold text-ink">Student preview</span>
+      <span class="text-base font-bold text-ink">{{ t('exercisePreviewModal.title') }}</span>
       <div class="flex items-center gap-2.5">
         <div class="flex gap-1 rounded-md bg-surface-sunken p-[3px]">
           <button
@@ -43,7 +46,7 @@ const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
             :class="orientation === 'portrait' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
             @click="orientation = 'portrait'"
           >
-            Portrait
+            {{ t('exercisePreviewModal.portrait') }}
           </button>
           <button
             type="button"
@@ -52,7 +55,7 @@ const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
             :class="orientation === 'landscape' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
             @click="orientation = 'landscape'"
           >
-            Landscape
+            {{ t('exercisePreviewModal.landscape') }}
           </button>
         </div>
         <ModalCloseButton @close="emit('close')" />
@@ -61,10 +64,7 @@ const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
 
     <div class="overflow-y-auto p-5">
       <span class="text-xs text-ink-subtle">
-        Responsive — portrait stacks, landscape puts the prompt beside the answer. This is the
-        exact same component the student's Practice screen mounts — not a redrawn copy — so
-        what you see here is what they see, ungraded (it never receives which option is marked
-        correct).
+        {{ t('exercisePreviewModal.description') }}
       </span>
       <div
         data-test="preview-frame"

@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
+import { useAuth } from '@/features/auth/composables/useAuth'
+import AccountMenu from '@/shared/components/AccountMenu.vue'
 import LocaleSwitcher from '@/shared/components/LocaleSwitcher.vue'
 import ThemeToggle from '@/shared/components/ThemeToggle.vue'
 
 withDefaults(defineProps<{ nav?: { to: RouteLocationRaw; label: string }[] }>(), {
   nav: () => [],
 })
+
+const { isSignedIn } = useAuth()
 </script>
 
 <template>
@@ -25,8 +29,16 @@ withDefaults(defineProps<{ nav?: { to: RouteLocationRaw; label: string }[] }>(),
           >
         </nav>
 
-        <LocaleSwitcher class="ml-auto" />
-        <ThemeToggle />
+        <!-- Signed out: the language switcher is the only account-scoped
+             control, so it's shown inline. Signed in: it moves into the
+             account menu behind the avatar, matching AppBar's pattern
+             elsewhere in the app, instead of sitting in the header on its
+             own with no other account controls next to it. -->
+        <LocaleSwitcher v-if="!isSignedIn" class="ml-auto" />
+        <ThemeToggle :class="{ 'ml-auto': isSignedIn }" />
+
+        <AccountMenu v-if="isSignedIn" />
+
         <slot name="header-actions" />
       </div>
     </header>

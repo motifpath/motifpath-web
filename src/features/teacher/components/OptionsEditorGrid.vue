@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="T extends { id: string; correct: boolean }">
 import { Check, X } from 'lucide-vue-next'
 import type { Component } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 /**
  * Shared chrome for an options editor whose options carry their own media
@@ -15,6 +16,8 @@ withDefaults(defineProps<{ options: T[]; compact?: boolean; addIcon: Component; 
   compact: false,
 })
 const emit = defineEmits<{ toggle: [id: string]; remove: [id: string]; add: [] }>()
+
+const { t } = useTypedT()
 </script>
 
 <template>
@@ -30,7 +33,7 @@ const emit = defineEmits<{ toggle: [id: string]; remove: [id: string]; add: [] }
         <button
           type="button"
           data-test="option-remove"
-          aria-label="Remove option"
+          :aria-label="t('common.removeOption')"
           class="absolute right-1 top-1 flex h-[22px] w-[22px] items-center justify-center rounded bg-surface-raised text-ink-subtle"
           @click="emit('remove', option.id)"
         >
@@ -47,7 +50,7 @@ const emit = defineEmits<{ toggle: [id: string]; remove: [id: string]; add: [] }
         @click="emit('toggle', option.id)"
       >
         <Check v-if="option.correct" :size="12" aria-hidden="true" />
-        Correct answer
+        {{ t('common.correctAnswer') }}
       </button>
     </div>
     <button

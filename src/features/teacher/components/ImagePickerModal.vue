@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { useTypedT } from '@/shared/composables/useTypedT'
+
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 
 withDefaults(defineProps<{ open: boolean; kind?: 'image' | 'audio' }>(), { kind: 'image' })
 const emit = defineEmits<{ select: [file: File]; close: [] }>()
+
+const { t } = useTypedT()
 
 function onFileChange(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
@@ -19,15 +23,17 @@ function onFileChange(event: Event) {
     @close="emit('close')"
   >
     <div class="flex items-center justify-between">
-      <span class="text-base font-bold">{{ kind === 'audio' ? 'Choose an audio file' : 'Choose an image' }}</span>
+      <span class="text-base font-bold">{{
+        kind === 'audio' ? t('imagePickerModal.chooseAudioFile') : t('imagePickerModal.chooseImage')
+      }}</span>
       <ModalCloseButton @close="emit('close')" />
     </div>
 
     <label
       class="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface-sunken text-sm text-ink-muted"
     >
-      <span>Click to choose a file, or drag one here</span>
-      <span class="text-xs text-ink-subtle">Uploaded only when you save the exercise</span>
+      <span>{{ t('imagePickerModal.dropHint') }}</span>
+      <span class="text-xs text-ink-subtle">{{ t('imagePickerModal.uploadHint') }}</span>
       <input
         type="file"
         :accept="kind === 'audio' ? 'audio/*' : 'image/*'"

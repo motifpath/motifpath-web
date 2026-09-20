@@ -1,6 +1,6 @@
 import { createLocaleLoader } from '@/shared/utils/createLocaleLoader'
 
-export const ensureStudentLocaleLoaded = createLocaleLoader(
+export const ensureTeacherLocaleLoaded = createLocaleLoader(
   () => import('./en.json'),
   () => import('./pt-BR.json'),
 )

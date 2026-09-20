@@ -1,8 +1,17 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 
-import AppShell from '@/shared/components/AppShell.vue'
+const isSignedIn = ref(false)
+
+vi.mock('@/features/auth/composables/useAuth', () => ({
+  useAuth: () => ({ isSignedIn }),
+}))
+
+import AccountMenu from '@/shared/components/AccountMenu.vue'
+
+const { default: AppShell } = await import('@/shared/components/AppShell.vue')
 
 interface ShellProps {
   nav?: { to: { name: string }; label: string }[]
@@ -14,13 +23,14 @@ function mountShell(props: ShellProps = {}, slots = {}) {
     slots,
     global: {
       plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
+      stubs: { RouterLink: RouterLinkStub, AccountMenu: true },
     },
   })
 }
 
 describe('AppShell', () => {
   beforeEach(() => {
+    isSignedIn.value = false
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -60,9 +70,9 @@ describe('AppShell', () => {
   })
 
   it('renders header-actions slot content', () => {
-    const wrapper = mountShell({}, { 'header-actions': '<button data-test="sign-out" /> ' })
+    const wrapper = mountShell({}, { 'header-actions': '<button data-test="extra-action" /> ' })
 
-    expect(wrapper.find('[data-test="sign-out"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="extra-action"]').exists()).toBe(true)
   })
 
   it('always renders the theme toggle', () => {
@@ -71,9 +81,30 @@ describe('AppShell', () => {
     expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
   })
 
-  it('always renders the locale switcher, so a signed-out visitor can change language', () => {
+  it('renders the locale switcher inline when signed out, so a visitor can change language before signing in', () => {
     const wrapper = mountShell()
 
     expect(wrapper.find('[data-test="locale-switcher"]').exists()).toBe(true)
+  })
+
+  it('does not render the account menu when signed out', () => {
+    const wrapper = mountShell()
+
+    expect(wrapper.findComponent(AccountMenu).exists()).toBe(false)
+  })
+
+  describe('when signed in', () => {
+    beforeEach(() => {
+      isSignedIn.value = true
+    })
+
+    it('renders the account menu instead of the inline locale switcher', () => {
+      const wrapper = mountShell()
+
+      // AccountMenu owns the avatar/menu/sign-out/locale-switcher behavior
+      // itself and is tested in isolation — see AccountMenu.spec.ts.
+      expect(wrapper.findComponent(AccountMenu).exists()).toBe(true)
+      expect(wrapper.find('[data-test="locale-switcher"]').exists()).toBe(false)
+    })
   })
 })

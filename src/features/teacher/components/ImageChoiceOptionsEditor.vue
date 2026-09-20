@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ImagePlus } from 'lucide-vue-next'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import OptionsEditorGrid from '@/features/teacher/components/OptionsEditorGrid.vue'
@@ -23,6 +24,8 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
   (id, url) => emit('setPreview', id, url),
   (id, file) => emit('setFile', id, file),
 )
+
+const { t } = useTypedT()
 </script>
 
 <template>
@@ -30,7 +33,7 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
     :options="options"
     :compact="compact"
     :add-icon="ImagePlus"
-    add-label="Add image option"
+    :add-label="t('imageChoiceOptionsEditor.addLabel')"
     @toggle="emit('toggle', $event)"
     @remove="emit('remove', $event)"
     @add="emit('add')"
@@ -47,13 +50,13 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
         <button
           type="button"
           data-test="choose-image"
-          :aria-label="option.imageUrl ? 'Change image' : 'Choose image'"
+          :aria-label="option.imageUrl ? t('imageChoiceOptionsEditor.changeImageAriaLabel') : t('imageChoiceOptionsEditor.chooseImageAriaLabel')"
           class="absolute inset-0 flex items-center justify-center"
           @click="openPicker(option.id)"
         >
           <span v-if="!option.imageUrl" class="flex flex-col items-center gap-1 text-ink-muted">
             <ImagePlus :size="16" aria-hidden="true" />
-            <span class="text-[0.6875rem]">Choose image</span>
+            <span class="text-[0.6875rem]">{{ t('imageChoiceOptionsEditor.chooseImage') }}</span>
           </span>
           <span
             v-else

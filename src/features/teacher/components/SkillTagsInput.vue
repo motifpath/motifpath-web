@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 const props = withDefaults(defineProps<{ tags: string[]; suggestions?: string[] }>(), { suggestions: () => [] })
 const emit = defineEmits<{ add: [tag: string]; remove: [tag: string]; focus: [] }>()
+
+const { t } = useTypedT()
 
 const draft = ref('')
 
@@ -49,7 +52,7 @@ function submit() {
         type="button"
         data-test="tag-remove"
         class="flex h-[18px] w-[18px] items-center justify-center rounded-full text-accent-text"
-        :aria-label="`Remove tag ${tag}`"
+        :aria-label="t('skillTagsInput.removeTagAriaLabel', { tag })"
         @click="emit('remove', tag)"
       >
         <X :size="11" :stroke-width="2.4" aria-hidden="true" />
@@ -58,7 +61,7 @@ function submit() {
     <input
       v-model="draft"
       type="text"
-      placeholder="Type a skill and press Enter"
+      :placeholder="t('skillTagsInput.placeholder')"
       class="min-w-[140px] flex-1 border-none bg-transparent px-1 py-1.5 text-sm outline-none"
       @keydown.enter.prevent="submit"
       @focus="emit('focus')"
@@ -85,7 +88,7 @@ function submit() {
           class="w-full px-3 py-2 text-left text-sm text-ink-muted hover:bg-surface-sunken"
           @click="addTag(trimmedDraft)"
         >
-          Create "{{ trimmedDraft }}"
+          {{ t('skillTagsInput.createOption', { tag: trimmedDraft }) }}
         </button>
       </li>
     </ul>
