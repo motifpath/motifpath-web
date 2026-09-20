@@ -3,21 +3,30 @@ import { Plus, X } from 'lucide-vue-next'
 import { computed, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import ArticlePopupListEditor from '@/features/teacher/components/ArticlePopupListEditor.vue'
 import ChallengeConfigPanel from '@/features/teacher/components/ChallengeConfigPanel.vue'
 import ClassificationFields from '@/features/teacher/components/ClassificationFields.vue'
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
 import ExercisePickerModal from '@/features/teacher/components/ExercisePickerModal.vue'
+import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEditor.vue'
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
 import { useCreateChallenge } from '@/features/teacher/composables/useCreateChallenge'
+import { useCreateConcept } from '@/features/teacher/composables/useCreateConcept'
 import { useCreateContentNode } from '@/features/teacher/composables/useCreateContentNode'
+import { useCreateExpandedContent } from '@/features/teacher/composables/useCreateExpandedContent'
+import { useCreateSkill } from '@/features/teacher/composables/useCreateSkill'
+import { useDeleteExpandedContent, useUpdateExpandedContent } from '@/features/teacher/composables/useUpdateExpandedContent'
 import {
   useLinkExerciseToChallenge,
   useUnlinkExerciseFromChallenge,
 } from '@/features/teacher/composables/useLinkExerciseToChallenge'
 import { useListChallengeExercises } from '@/features/teacher/composables/useListChallengeExercises'
+import { useListConcepts } from '@/features/teacher/composables/useListConcepts'
 import { useListContentNodeChallenges } from '@/features/teacher/composables/useListContentNodeChallenges'
 import { useListExercises } from '@/features/teacher/composables/useListExercises'
+import { useListExpandedContent } from '@/features/teacher/composables/useListExpandedContent'
+import { useListSkills } from '@/features/teacher/composables/useListSkills'
 import { useUpdateChallenge } from '@/features/teacher/composables/useUpdateChallenge'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import AppBar from '@/shared/components/AppBar.vue'
@@ -51,6 +60,31 @@ const {
 const form = useContentNodeForm()
 const { createContentNode } = useCreateContentNode()
 const { updateContentNode } = useUpdateContentNode()
+
+const { skills, isLoading: skillsLoading, retry: reloadSkills } = useListSkills()
+const { concepts, isLoading: conceptsLoading, retry: reloadConcepts } = useListConcepts()
+const { createSkill } = useCreateSkill()
+const { createConcept } = useCreateConcept()
+
+async function onCreateSkill({ name, parentId }: { name: string; parentId: string | null }) {
+  try {
+    const skill = await createSkill({ name, ...(parentId ? { parent_id: parentId } : {}) })
+    await reloadSkills()
+    form.skillIds.value = [...form.skillIds.value, skill.skill_id]
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to create the skill')
+  }
+}
+
+async function onCreateConcept({ name, parentId }: { name: string; parentId: string | null }) {
+  try {
+    const concept = await createConcept({ name, ...(parentId ? { parent_id: parentId } : {}) })
+    await reloadConcepts()
+    form.conceptIds.value = [...form.conceptIds.value, concept.concept_id]
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to create the concept')
+  }
+}
 
 const savedContentNodeId = ref('')
 
@@ -114,14 +148,127 @@ const { linkExerciseToChallenge } = useLinkExerciseToChallenge()
 const { unlinkExerciseFromChallenge } = useUnlinkExerciseFromChallenge()
 const { exercises: exercisePool } = useListExercises()
 
-const challengeForm = reactive({
-  subjectTag: '',
+const challengeForm = reactive<{
+  subjectSkillId: string | undefined
+  subjectConceptId: string | undefined
+  passThreshold: number
+  shuffleExercises: boolean
+  shuffleOptions: boolean
+}>({
+  subjectSkillId: undefined,
+  subjectConceptId: undefined,
   passThreshold: 70,
   shuffleExercises: false,
   shuffleOptions: false,
 })
 const savingChallenge = ref(false)
 const pickerOpen = ref(false)
+
+// Timed pop-ups only make sense once the node exists server-side, same as
+// the challenge section below.
+type ExpandedContentState = ReturnType<typeof useListExpandedContent>
+const expandedContentState = shallowRef<ExpandedContentState | null>(null)
+const { createExpandedContent } = useCreateExpandedContent()
+const { updateExpandedContent } = useUpdateExpandedContent()
+const { deleteExpandedContent } = useDeleteExpandedContent()
+
+watch(
+  savedContentNodeId,
+  (id) => {
+    if (!id) return
+    expandedContentState.value = useListExpandedContent(id)
+  },
+  { immediate: true },
+)
+
+async function onAddTimelineItem(
+  fields: { content_type: 'image' | 'gif'; media_url: string; trigger_at_seconds: number; hide_at_seconds: number; caption?: string },
+) {
+  try {
+    await createExpandedContent(savedContentNodeId.value, fields)
+    await expandedContentState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to add the pop-up')
+  }
+}
+
+async function onAddPopupItem(
+  fields: { content_type: 'image' | 'gif'; media_url: string; trigger_at_paragraph: number; duration_ms: number; caption?: string },
+) {
+  try {
+    await createExpandedContent(savedContentNodeId.value, fields)
+    await expandedContentState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to add the pop-up')
+  }
+}
+
+function findExpandedContent(id: string) {
+  return expandedContentState.value?.items.value.find((i) => i.expanded_content_id === id)
+}
+
+async function adjustTrigger(id: string, deltaSeconds: number) {
+  const item = findExpandedContent(id)
+  if (!item || item.trigger_at_seconds === undefined || item.hide_at_seconds === undefined) return
+  try {
+    await updateExpandedContent(id, {
+      content_type: item.content_type,
+      media_url: item.media_url,
+      rich_content: item.rich_content,
+      caption: item.caption,
+      trigger_at_seconds: item.trigger_at_seconds + deltaSeconds,
+      hide_at_seconds: item.hide_at_seconds,
+    })
+    await expandedContentState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to update the pop-up')
+  }
+}
+
+async function adjustHide(id: string, deltaSeconds: number) {
+  const item = findExpandedContent(id)
+  if (!item || item.trigger_at_seconds === undefined || item.hide_at_seconds === undefined) return
+  try {
+    await updateExpandedContent(id, {
+      content_type: item.content_type,
+      media_url: item.media_url,
+      rich_content: item.rich_content,
+      caption: item.caption,
+      trigger_at_seconds: item.trigger_at_seconds,
+      hide_at_seconds: item.hide_at_seconds + deltaSeconds,
+    })
+    await expandedContentState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to update the pop-up')
+  }
+}
+
+async function adjustParagraph(id: string, delta: number) {
+  const item = findExpandedContent(id)
+  if (!item || item.trigger_at_paragraph === undefined || item.duration_ms === undefined) return
+  try {
+    await updateExpandedContent(id, {
+      content_type: item.content_type,
+      media_url: item.media_url,
+      rich_content: item.rich_content,
+      caption: item.caption,
+      trigger_at_paragraph: item.trigger_at_paragraph + delta,
+      duration_ms: item.duration_ms,
+    })
+    await expandedContentState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to update the pop-up')
+  }
+}
+
+async function onRemoveExpandedContent(id: string) {
+  try {
+    await deleteExpandedContent(id)
+    await expandedContentState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to remove the pop-up')
+  }
+}
 
 watch(
   savedContentNodeId,
@@ -137,7 +284,8 @@ watch(challenge, (c) => {
     challengeExercisesState.value = null
     return
   }
-  challengeForm.subjectTag = c.subject_tag
+  challengeForm.subjectSkillId = c.subject_skill_id
+  challengeForm.subjectConceptId = c.subject_concept_id
   challengeForm.passThreshold = c.pass_threshold
   challengeForm.shuffleExercises = c.shuffle_exercises
   challengeForm.shuffleOptions = c.shuffle_options
@@ -149,14 +297,16 @@ async function saveChallenge() {
   try {
     if (challenge.value) {
       await updateChallenge(challenge.value.challenge_id, {
-        subject_tag: challengeForm.subjectTag,
+        subject_skill_id: challengeForm.subjectSkillId,
+        subject_concept_id: challengeForm.subjectConceptId,
         pass_threshold: challengeForm.passThreshold,
         shuffle_exercises: challengeForm.shuffleExercises,
         shuffle_options: challengeForm.shuffleOptions,
       })
     } else {
       await createChallenge(savedContentNodeId.value, {
-        subject_tag: challengeForm.subjectTag,
+        subject_skill_id: challengeForm.subjectSkillId,
+        subject_concept_id: challengeForm.subjectConceptId,
         pass_threshold: challengeForm.passThreshold,
         shuffle_exercises: challengeForm.shuffleExercises,
         shuffle_options: challengeForm.shuffleOptions,
@@ -252,10 +402,37 @@ async function onUnlinkExercise(exerciseId: string) {
       <div class="flex flex-col gap-2 border-t border-border pt-4">
         <label class="text-sm font-semibold">Classification</label>
         <ClassificationFields
-          v-model:skill="form.skill.value"
-          v-model:concept="form.concept.value"
+          v-model:skill-ids="form.skillIds.value"
+          v-model:concept-ids="form.conceptIds.value"
           v-model:difficulty-level="form.difficultyLevel.value"
+          :skill-nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
+          :concept-nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+          :skills-loading="skillsLoading"
+          :concepts-loading="conceptsLoading"
           :review-state="form.reviewState.value"
+          @create-skill="onCreateSkill"
+          @create-concept="onCreateConcept"
+        />
+      </div>
+
+      <div v-if="savedContentNodeId && form.contentType.value === 'video'" class="flex flex-col gap-2 border-t border-border pt-4">
+        <label class="text-sm font-semibold">Timed pop-ups</label>
+        <VideoTimelineEditor
+          :items="expandedContentState?.items.value ?? []"
+          @add="onAddTimelineItem"
+          @adjust-trigger="adjustTrigger"
+          @adjust-hide="adjustHide"
+          @remove="onRemoveExpandedContent"
+        />
+      </div>
+
+      <div v-else-if="savedContentNodeId && form.contentType.value === 'article'" class="flex flex-col gap-2 border-t border-border pt-4">
+        <label class="text-sm font-semibold">Paragraph pop-ups</label>
+        <ArticlePopupListEditor
+          :items="expandedContentState?.items.value ?? []"
+          @add="onAddPopupItem"
+          @adjust-paragraph="adjustParagraph"
+          @remove="onRemoveExpandedContent"
         />
       </div>
 
@@ -263,15 +440,20 @@ async function onUnlinkExercise(exerciseId: string) {
         <label class="text-sm font-semibold">Challenge</label>
 
         <ChallengeConfigPanel
-          v-model:subject-tag="challengeForm.subjectTag"
+          v-model:subject-skill-id="challengeForm.subjectSkillId"
+          v-model:subject-concept-id="challengeForm.subjectConceptId"
           v-model:pass-threshold="challengeForm.passThreshold"
           v-model:shuffle-exercises="challengeForm.shuffleExercises"
           v-model:shuffle-options="challengeForm.shuffleOptions"
+          :skill-nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
+          :concept-nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+          :allowed-skill-ids="form.skillIds.value"
+          :allowed-concept-ids="form.conceptIds.value"
         />
         <button
           type="button"
           data-test="save-challenge"
-          :disabled="!challengeForm.subjectTag || savingChallenge"
+          :disabled="(!challengeForm.subjectSkillId && !challengeForm.subjectConceptId) || savingChallenge"
           class="w-fit rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           @click="saveChallenge"
         >
@@ -279,7 +461,7 @@ async function onUnlinkExercise(exerciseId: string) {
         </button>
 
         <p v-if="!challenge" data-test="no-challenge" class="text-sm text-ink-subtle">
-          No challenge yet — fill in a subject tag above and save to create one.
+          No challenge yet — pick a subject above and save to create one.
         </p>
 
         <template v-else>
