@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { Plus, X } from 'lucide-vue-next'
+import { computed, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import ChallengeConfigPanel from '@/features/teacher/components/ChallengeConfigPanel.vue'
 import ClassificationFields from '@/features/teacher/components/ClassificationFields.vue'
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
+import ExercisePickerModal from '@/features/teacher/components/ExercisePickerModal.vue'
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
+import { useCreateChallenge } from '@/features/teacher/composables/useCreateChallenge'
 import { useCreateContentNode } from '@/features/teacher/composables/useCreateContentNode'
+import {
+  useLinkExerciseToChallenge,
+  useUnlinkExerciseFromChallenge,
+} from '@/features/teacher/composables/useLinkExerciseToChallenge'
+import { useListChallengeExercises } from '@/features/teacher/composables/useListChallengeExercises'
+import { useListContentNodeChallenges } from '@/features/teacher/composables/useListContentNodeChallenges'
+import { useListExercises } from '@/features/teacher/composables/useListExercises'
+import { useUpdateChallenge } from '@/features/teacher/composables/useUpdateChallenge'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -80,6 +92,105 @@ async function save() {
     saving.value = false
   }
 }
+
+// The challenge/exercise-linking section only makes sense once a content
+// node id exists to attach a challenge to — hidden in create mode until
+// the first save succeeds, exactly like the exercise-authoring page's own
+// "usage" sidebar waiting on savedExerciseId.
+type ChallengesState = ReturnType<typeof useListContentNodeChallenges>
+type ChallengeExercisesState = ReturnType<typeof useListChallengeExercises>
+
+// shallowRef, not ref -- these hold objects whose own properties are
+// themselves refs (a composable's return value); ref() would deep-convert
+// the object into a reactive proxy, auto-unwrapping those nested refs and
+// breaking every `.challenges.value` access below.
+const challengesState = shallowRef<ChallengesState | null>(null)
+const challengeExercisesState = shallowRef<ChallengeExercisesState | null>(null)
+const challenge = computed(() => challengesState.value?.challenges.value[0] ?? null)
+
+const { createChallenge } = useCreateChallenge()
+const { updateChallenge } = useUpdateChallenge()
+const { linkExerciseToChallenge } = useLinkExerciseToChallenge()
+const { unlinkExerciseFromChallenge } = useUnlinkExerciseFromChallenge()
+const { exercises: exercisePool } = useListExercises()
+
+const challengeForm = reactive({
+  subjectTag: '',
+  passThreshold: 70,
+  shuffleExercises: false,
+  shuffleOptions: false,
+})
+const savingChallenge = ref(false)
+const pickerOpen = ref(false)
+
+watch(
+  savedContentNodeId,
+  (id) => {
+    if (!id) return
+    challengesState.value = useListContentNodeChallenges(id)
+  },
+  { immediate: true },
+)
+
+watch(challenge, (c) => {
+  if (!c) {
+    challengeExercisesState.value = null
+    return
+  }
+  challengeForm.subjectTag = c.subject_tag
+  challengeForm.passThreshold = c.pass_threshold
+  challengeForm.shuffleExercises = c.shuffle_exercises
+  challengeForm.shuffleOptions = c.shuffle_options
+  challengeExercisesState.value = useListChallengeExercises(c.challenge_id)
+})
+
+async function saveChallenge() {
+  savingChallenge.value = true
+  try {
+    if (challenge.value) {
+      await updateChallenge(challenge.value.challenge_id, {
+        subject_tag: challengeForm.subjectTag,
+        pass_threshold: challengeForm.passThreshold,
+        shuffle_exercises: challengeForm.shuffleExercises,
+        shuffle_options: challengeForm.shuffleOptions,
+      })
+    } else {
+      await createChallenge(savedContentNodeId.value, {
+        subject_tag: challengeForm.subjectTag,
+        pass_threshold: challengeForm.passThreshold,
+        shuffle_exercises: challengeForm.shuffleExercises,
+        shuffle_options: challengeForm.shuffleOptions,
+      })
+    }
+    await challengesState.value?.retry()
+    toast.success('Challenge saved.')
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to save the challenge')
+  } finally {
+    savingChallenge.value = false
+  }
+}
+
+async function onExercisePicked(exerciseId: string) {
+  if (!challenge.value) return
+  pickerOpen.value = false
+  try {
+    await linkExerciseToChallenge(challenge.value.challenge_id, exerciseId)
+    await challengeExercisesState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to attach the exercise')
+  }
+}
+
+async function onUnlinkExercise(exerciseId: string) {
+  if (!challenge.value) return
+  try {
+    await unlinkExerciseFromChallenge(challenge.value.challenge_id, exerciseId)
+    await challengeExercisesState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to remove the exercise')
+  }
+}
 </script>
 
 <template>
@@ -147,6 +258,75 @@ async function save() {
           :review-state="form.reviewState.value"
         />
       </div>
+
+      <div v-if="savedContentNodeId" data-test="challenge-section" class="flex flex-col gap-3 border-t border-border pt-4">
+        <label class="text-sm font-semibold">Challenge</label>
+
+        <ChallengeConfigPanel
+          v-model:subject-tag="challengeForm.subjectTag"
+          v-model:pass-threshold="challengeForm.passThreshold"
+          v-model:shuffle-exercises="challengeForm.shuffleExercises"
+          v-model:shuffle-options="challengeForm.shuffleOptions"
+        />
+        <button
+          type="button"
+          data-test="save-challenge"
+          :disabled="!challengeForm.subjectTag || savingChallenge"
+          class="w-fit rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+          @click="saveChallenge"
+        >
+          Save challenge
+        </button>
+
+        <p v-if="!challenge" data-test="no-challenge" class="text-sm text-ink-subtle">
+          No challenge yet — fill in a subject tag above and save to create one.
+        </p>
+
+        <template v-else>
+          <div class="flex items-center justify-between pt-2">
+            <span class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Linked exercises</span>
+            <button
+              type="button"
+              data-test="attach-exercise"
+              class="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[0.8125rem] font-semibold text-accent-fg"
+              @click="pickerOpen = true"
+            >
+              <Plus :size="14" aria-hidden="true" />
+              Attach exercise
+            </button>
+          </div>
+
+          <p v-if="(challengeExercisesState?.exercises.value.length ?? 0) === 0" class="text-sm text-ink-subtle">
+            No exercises attached yet.
+          </p>
+          <ul v-else class="flex flex-col gap-2">
+            <li
+              v-for="exercise in challengeExercisesState?.exercises.value"
+              :key="exercise.exercise_id"
+              class="flex items-center justify-between rounded-md border border-border bg-surface-sunken px-3 py-2"
+            >
+              <span class="text-sm font-semibold text-ink">{{ exercise.title }}</span>
+              <button
+                type="button"
+                data-test="unlink-exercise"
+                aria-label="Remove exercise"
+                class="text-ink-subtle"
+                @click="onUnlinkExercise(exercise.exercise_id)"
+              >
+                <X :size="14" aria-hidden="true" />
+              </button>
+            </li>
+          </ul>
+        </template>
+      </div>
     </main>
+
+    <ExercisePickerModal
+      :open="pickerOpen"
+      :exercises="exercisePool"
+      :linked-exercise-ids="challengeExercisesState?.exercises.value.map((e) => e.exercise_id) ?? []"
+      @select="onExercisePicked"
+      @close="pickerOpen = false"
+    />
   </div>
 </template>
