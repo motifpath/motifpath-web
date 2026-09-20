@@ -64,7 +64,8 @@ function submitAdd() {
         <button
           type="button"
           data-test="trigger-decrement"
-          class="flex h-6 w-6 items-center justify-center rounded-full border border-border"
+          :disabled="(item.trigger_at_seconds ?? 0) <= 0"
+          class="flex h-6 w-6 items-center justify-center rounded-full border border-border disabled:cursor-not-allowed disabled:opacity-40"
           @click="emit('adjustTrigger', item.expanded_content_id, -1)"
         >
           <Minus :size="12" aria-hidden="true" />
@@ -85,7 +86,8 @@ function submitAdd() {
         <button
           type="button"
           data-test="hide-decrement"
-          class="flex h-6 w-6 items-center justify-center rounded-full border border-border"
+          :disabled="(item.hide_at_seconds ?? 0) <= 0"
+          class="flex h-6 w-6 items-center justify-center rounded-full border border-border disabled:cursor-not-allowed disabled:opacity-40"
           @click="emit('adjustHide', item.expanded_content_id, -1)"
         >
           <Minus :size="12" aria-hidden="true" />

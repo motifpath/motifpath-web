@@ -117,45 +117,57 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/teacher/content',
-    name: 'teacher-content',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    // Pass-through parent so all three content routes share one beforeEnter
+    // instead of each repeating it, the same hoisting used for /teacher/exercises
+    // above -- a route added under this prefix gets locale loading for free.
+    component: RouterView,
     beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/ContentListView.vue'),
-  },
-  {
-    path: '/teacher/content/new',
-    name: 'teacher-content-new',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
-    beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
-  },
-  {
-    path: '/teacher/content/:id/edit',
-    name: 'teacher-content-edit',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
-    beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
+    children: [
+      {
+        path: '',
+        name: 'teacher-content',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ContentListView.vue'),
+      },
+      {
+        path: 'new',
+        name: 'teacher-content-new',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
+      },
+      {
+        path: ':id/edit',
+        name: 'teacher-content-edit',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
+      },
+    ],
   },
   {
     path: '/teacher/paths',
-    name: 'teacher-paths',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    // Same pass-through hoisting as /teacher/content above.
+    component: RouterView,
     beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/PathListView.vue'),
-  },
-  {
-    path: '/teacher/paths/new',
-    name: 'teacher-path-new',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
-    beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/PathBuilderView.vue'),
-  },
-  {
-    path: '/teacher/paths/:id/edit',
-    name: 'teacher-path-edit',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
-    beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+    children: [
+      {
+        path: '',
+        name: 'teacher-paths',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/PathListView.vue'),
+      },
+      {
+        path: 'new',
+        name: 'teacher-path-new',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+      },
+      {
+        path: ':id/edit',
+        name: 'teacher-path-edit',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',

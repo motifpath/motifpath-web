@@ -18,7 +18,7 @@ export function useApiMutation<TArgs extends unknown[], TResponse>(
 
   return async function mutate(...args: TArgs): Promise<TResponse> {
     const { data, error } = await perform(coreApi, ...args)
-    if (data === undefined) {
+    if (!data) {
       throw new Error(describeApiError(error, errorMessage))
     }
     return data

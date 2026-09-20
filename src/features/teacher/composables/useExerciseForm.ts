@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 
@@ -57,6 +57,20 @@ function makeId(): string {
   return crypto.randomUUID()
 }
 
+// toggle/remove are identical find-and-mutate / filter-out logic across
+// textOptions/imageOptions/audioOptions -- only add and the per-kind url/label
+// setters differ enough to stay as their own functions below.
+function makeOptionListHelpers<T extends { id: string; correct: boolean }>(list: Ref<T[]>) {
+  function toggle(id: string) {
+    const option = list.value.find((o) => o.id === id)
+    if (option) option.correct = !option.correct
+  }
+  function remove(id: string) {
+    list.value = list.value.filter((o) => o.id !== id)
+  }
+  return { toggle, remove }
+}
+
 /**
  * Holds all authoring state for one exercise (any of the 5 types) and maps
  * it to the CreateExerciseRequest shape the API expects. Only one of
@@ -101,6 +115,7 @@ export function useExerciseForm() {
     }
   })
 
+  const textOptionHelpers = makeOptionListHelpers(textOptions)
   function addTextOption() {
     textOptions.value.push({ id: makeId(), label: '', correct: false })
   }
@@ -108,14 +123,10 @@ export function useExerciseForm() {
     const option = textOptions.value.find((o) => o.id === id)
     if (option) option.label = label
   }
-  function toggleTextOption(id: string) {
-    const option = textOptions.value.find((o) => o.id === id)
-    if (option) option.correct = !option.correct
-  }
-  function removeTextOption(id: string) {
-    textOptions.value = textOptions.value.filter((o) => o.id !== id)
-  }
+  const toggleTextOption = textOptionHelpers.toggle
+  const removeTextOption = textOptionHelpers.remove
 
+  const imageOptionHelpers = makeOptionListHelpers(imageOptions)
   function addImageOption() {
     imageOptions.value.push({ id: makeId(), imageUrl: '', correct: false })
   }
@@ -123,14 +134,10 @@ export function useExerciseForm() {
     const option = imageOptions.value.find((o) => o.id === id)
     if (option) option.imageUrl = url
   }
-  function toggleImageOption(id: string) {
-    const option = imageOptions.value.find((o) => o.id === id)
-    if (option) option.correct = !option.correct
-  }
-  function removeImageOption(id: string) {
-    imageOptions.value = imageOptions.value.filter((o) => o.id !== id)
-  }
+  const toggleImageOption = imageOptionHelpers.toggle
+  const removeImageOption = imageOptionHelpers.remove
 
+  const audioOptionHelpers = makeOptionListHelpers(audioOptions)
   function addAudioOption() {
     audioOptions.value.push({ id: makeId(), audioUrl: '', label: '', correct: false })
   }
@@ -142,13 +149,8 @@ export function useExerciseForm() {
     const option = audioOptions.value.find((o) => o.id === id)
     if (option) option.label = label
   }
-  function toggleAudioOption(id: string) {
-    const option = audioOptions.value.find((o) => o.id === id)
-    if (option) option.correct = !option.correct
-  }
-  function removeAudioOption(id: string) {
-    audioOptions.value = audioOptions.value.filter((o) => o.id !== id)
-  }
+  const toggleAudioOption = audioOptionHelpers.toggle
+  const removeAudioOption = audioOptionHelpers.remove
 
   function addRegion(x: number, y: number, shape: RegionShape) {
     const size = shape === 'circle' ? { width: 30, height: 30 } : { width: 70, height: 38 }

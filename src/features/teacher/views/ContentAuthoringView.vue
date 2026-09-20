@@ -12,21 +12,18 @@ import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEdit
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
 import { useCreateChallenge } from '@/features/teacher/composables/useCreateChallenge'
-import { useCreateConcept } from '@/features/teacher/composables/useCreateConcept'
 import { useCreateContentNode } from '@/features/teacher/composables/useCreateContentNode'
 import { useCreateExpandedContent } from '@/features/teacher/composables/useCreateExpandedContent'
-import { useCreateSkill } from '@/features/teacher/composables/useCreateSkill'
 import { useDeleteExpandedContent, useUpdateExpandedContent } from '@/features/teacher/composables/useUpdateExpandedContent'
 import {
   useLinkExerciseToChallenge,
   useUnlinkExerciseFromChallenge,
 } from '@/features/teacher/composables/useLinkExerciseToChallenge'
 import { useListChallengeExercises } from '@/features/teacher/composables/useListChallengeExercises'
-import { useListConcepts } from '@/features/teacher/composables/useListConcepts'
 import { useListContentNodeChallenges } from '@/features/teacher/composables/useListContentNodeChallenges'
 import { useListExercises } from '@/features/teacher/composables/useListExercises'
 import { useListExpandedContent } from '@/features/teacher/composables/useListExpandedContent'
-import { useListSkills } from '@/features/teacher/composables/useListSkills'
+import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateChallenge } from '@/features/teacher/composables/useUpdateChallenge'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import AppBar from '@/shared/components/AppBar.vue'
@@ -35,8 +32,11 @@ import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { ancestorIds } from '@/shared/utils/skillConceptTree'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import type { components } from '@/api/generated/core-domain'
+
+type CreateExpandedContentRequest = components['schemas']['CreateExpandedContentRequest']
+type UpdateExpandedContentRequest = components['schemas']['UpdateExpandedContentRequest']
 
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
@@ -64,38 +64,11 @@ const form = useContentNodeForm()
 const { createContentNode } = useCreateContentNode()
 const { updateContentNode } = useUpdateContentNode()
 
-const { skills, isLoading: skillsLoading, retry: reloadSkills } = useListSkills()
-const { concepts, isLoading: conceptsLoading, retry: reloadConcepts } = useListConcepts()
-const { createSkill } = useCreateSkill()
-const { createConcept } = useCreateConcept()
-
-async function onCreateSkill({ name, parentId }: { name: string; parentId: string | null }) {
-  try {
-    const skill = await createSkill({ name, ...(parentId ? { parent_id: parentId } : {}) })
-    await reloadSkills()
-    const skillNodes = skills.value.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))
-    const newNode = { id: skill.skill_id, name: skill.name, parent_id: parentId }
-    form.skillIds.value = Array.from(
-      new Set([...form.skillIds.value, skill.skill_id, ...ancestorIds(skillNodes, newNode)]),
-    )
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.createSkillFailed'))
-  }
-}
-
-async function onCreateConcept({ name, parentId }: { name: string; parentId: string | null }) {
-  try {
-    const concept = await createConcept({ name, ...(parentId ? { parent_id: parentId } : {}) })
-    await reloadConcepts()
-    const conceptNodes = concepts.value.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))
-    const newNode = { id: concept.concept_id, name: concept.name, parent_id: parentId }
-    form.conceptIds.value = Array.from(
-      new Set([...form.conceptIds.value, concept.concept_id, ...ancestorIds(conceptNodes, newNode)]),
-    )
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.createConceptFailed'))
-  }
-}
+const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
+  useSkillConceptCreation(form.skillIds, form.conceptIds, {
+    createSkillFailed: t('contentAuthoringView.createSkillFailed'),
+    createConceptFailed: t('contentAuthoringView.createConceptFailed'),
+  })
 
 const savedContentNodeId = ref('')
 
@@ -116,7 +89,16 @@ onUnmounted(() => clearTimeout(justSavedTimeout))
 
 const toast = useToast()
 
+// Classification is a mandatory dimension for gap detection and the
+// recommendation engine -- both skill_ids and concept_ids must be non-empty
+// on the backend, so a save attempt without them is rejected outright.
+const hasClassification = computed(
+  () => form.skillIds.value.length > 0 && form.conceptIds.value.length > 0,
+)
+
 async function save() {
+  if (!hasClassification.value) return
+
   saving.value = true
   const isUpdate = !!savedContentNodeId.value
 
@@ -192,20 +174,7 @@ watch(
   { immediate: true },
 )
 
-async function onAddTimelineItem(
-  fields: { content_type: 'image' | 'gif'; media_url: string; trigger_at_seconds: number; hide_at_seconds: number; caption?: string },
-) {
-  try {
-    await createExpandedContent(savedContentNodeId.value, fields)
-    await expandedContentState.value?.retry()
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.addPopupFailed'))
-  }
-}
-
-async function onAddPopupItem(
-  fields: { content_type: 'image' | 'gif'; media_url: string; trigger_at_paragraph: number; duration_ms: number; caption?: string },
-) {
+async function onAddExpandedContent(fields: CreateExpandedContentRequest) {
   try {
     await createExpandedContent(savedContentNodeId.value, fields)
     await expandedContentState.value?.retry()
@@ -218,54 +187,37 @@ function findExpandedContent(id: string) {
   return expandedContentState.value?.items.value.find((i) => i.expanded_content_id === id)
 }
 
-async function adjustTrigger(id: string, deltaSeconds: number) {
-  const item = findExpandedContent(id)
-  if (!item || item.trigger_at_seconds === undefined || item.hide_at_seconds === undefined) return
-  try {
-    await updateExpandedContent(id, {
-      content_type: item.content_type,
-      media_url: item.media_url,
-      rich_content: item.rich_content,
-      caption: item.caption,
-      trigger_at_seconds: item.trigger_at_seconds + deltaSeconds,
-      hide_at_seconds: item.hide_at_seconds,
-    })
-    await expandedContentState.value?.retry()
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.updatePopupFailed'))
-  }
-}
+type ExpandedContentTimeField = 'trigger_at_seconds' | 'hide_at_seconds' | 'trigger_at_paragraph'
 
-async function adjustHide(id: string, deltaSeconds: number) {
+// Video items nudge trigger/hide-at-seconds (both must stay present together);
+// article items nudge trigger-at-paragraph (paired with duration-ms) -- one
+// helper for both trigger groups instead of three near-identical functions.
+async function adjustField(id: string, field: ExpandedContentTimeField, delta: number) {
   const item = findExpandedContent(id)
-  if (!item || item.trigger_at_seconds === undefined || item.hide_at_seconds === undefined) return
-  try {
-    await updateExpandedContent(id, {
-      content_type: item.content_type,
-      media_url: item.media_url,
-      rich_content: item.rich_content,
-      caption: item.caption,
-      trigger_at_seconds: item.trigger_at_seconds,
-      hide_at_seconds: item.hide_at_seconds + deltaSeconds,
-    })
-    await expandedContentState.value?.retry()
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.updatePopupFailed'))
-  }
-}
+  if (!item) return
 
-async function adjustParagraph(id: string, delta: number) {
-  const item = findExpandedContent(id)
-  if (!item || item.trigger_at_paragraph === undefined || item.duration_ms === undefined) return
+  const passthrough = {
+    content_type: item.content_type,
+    media_url: item.media_url,
+    rich_content: item.rich_content,
+    caption: item.caption,
+  }
+
+  let payload: UpdateExpandedContentRequest
+  if (field === 'trigger_at_paragraph') {
+    if (item.trigger_at_paragraph === undefined || item.duration_ms === undefined) return
+    payload = { ...passthrough, trigger_at_paragraph: item.trigger_at_paragraph + delta, duration_ms: item.duration_ms }
+  } else {
+    if (item.trigger_at_seconds === undefined || item.hide_at_seconds === undefined) return
+    payload = {
+      ...passthrough,
+      trigger_at_seconds: item.trigger_at_seconds + (field === 'trigger_at_seconds' ? delta : 0),
+      hide_at_seconds: item.hide_at_seconds + (field === 'hide_at_seconds' ? delta : 0),
+    }
+  }
+
   try {
-    await updateExpandedContent(id, {
-      content_type: item.content_type,
-      media_url: item.media_url,
-      rich_content: item.rich_content,
-      caption: item.caption,
-      trigger_at_paragraph: item.trigger_at_paragraph + delta,
-      duration_ms: item.duration_ms,
-    })
+    await updateExpandedContent(id, payload)
     await expandedContentState.value?.retry()
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('contentAuthoringView.updatePopupFailed'))
@@ -375,7 +327,7 @@ async function onUnlinkExercise(exerciseId: string) {
       :primary-nav-to="{ name: 'teacher-content' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"
       :show-save="canAuthor"
-      :save-disabled="saving"
+      :save-disabled="saving || !hasClassification"
       :just-saved="justSaved"
       :on-save="save"
     />
@@ -443,9 +395,9 @@ async function onUnlinkExercise(exerciseId: string) {
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.timedPopupsLabel') }}</label>
         <VideoTimelineEditor
           :items="expandedContentState?.items.value ?? []"
-          @add="onAddTimelineItem"
-          @adjust-trigger="adjustTrigger"
-          @adjust-hide="adjustHide"
+          @add="onAddExpandedContent"
+          @adjust-trigger="(id, delta) => adjustField(id, 'trigger_at_seconds', delta)"
+          @adjust-hide="(id, delta) => adjustField(id, 'hide_at_seconds', delta)"
           @remove="onRemoveExpandedContent"
         />
       </div>
@@ -454,8 +406,8 @@ async function onUnlinkExercise(exerciseId: string) {
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.paragraphPopupsLabel') }}</label>
         <ArticlePopupListEditor
           :items="expandedContentState?.items.value ?? []"
-          @add="onAddPopupItem"
-          @adjust-paragraph="adjustParagraph"
+          @add="onAddExpandedContent"
+          @adjust-paragraph="(id, delta) => adjustField(id, 'trigger_at_paragraph', delta)"
           @remove="onRemoveExpandedContent"
         />
       </div>

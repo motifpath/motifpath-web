@@ -26,6 +26,15 @@ const emit = defineEmits<{
 
 const difficultyLevels: DifficultyLevel[] = ['beginner', 'early_intermediate', 'intermediate', 'advanced', 'expert']
 
+function isDifficultyLevel(value: string): value is DifficultyLevel {
+  return (difficultyLevels as string[]).includes(value)
+}
+
+function onDifficultyLevelChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  if (isDifficultyLevel(value)) emit('update:difficultyLevel', value)
+}
+
 const { t } = useTypedT()
 </script>
 
@@ -55,7 +64,7 @@ const { t } = useTypedT()
         data-test="difficulty-level"
         :value="difficultyLevel"
         class="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm"
-        @change="emit('update:difficultyLevel', ($event.target as HTMLSelectElement).value as DifficultyLevel)"
+        @change="onDifficultyLevelChange"
       >
         <option v-for="level in difficultyLevels" :key="level" :value="level">{{ level }}</option>
       </select>

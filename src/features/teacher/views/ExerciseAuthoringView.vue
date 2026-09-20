@@ -12,21 +12,17 @@ import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.v
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.vue'
-import { useCreateConcept } from '@/features/teacher/composables/useCreateConcept'
 import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
-import { useCreateSkill } from '@/features/teacher/composables/useCreateSkill'
 import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
-import { useListConcepts } from '@/features/teacher/composables/useListConcepts'
-import { useListSkills } from '@/features/teacher/composables/useListSkills'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
+import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
-import { ancestorIds } from '@/shared/utils/skillConceptTree'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const currentUser = useCurrentUserStore()
@@ -57,38 +53,11 @@ const form = useExerciseForm()
 const { createExercise } = useCreateExercise()
 const { updateExercise } = useUpdateExercise()
 const { upload } = useMediaUpload()
-const { skills, isLoading: skillsLoading, retry: reloadSkills } = useListSkills()
-const { concepts, isLoading: conceptsLoading, retry: reloadConcepts } = useListConcepts()
-const { createSkill } = useCreateSkill()
-const { createConcept } = useCreateConcept()
-
-async function onCreateSkill({ name, parentId }: { name: string; parentId: string | null }) {
-  try {
-    const skill = await createSkill({ name, ...(parentId ? { parent_id: parentId } : {}) })
-    await reloadSkills()
-    const skillNodes = skills.value.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))
-    const newNode = { id: skill.skill_id, name: skill.name, parent_id: parentId }
-    form.skillIds.value = Array.from(
-      new Set([...form.skillIds.value, skill.skill_id, ...ancestorIds(skillNodes, newNode)]),
-    )
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('exerciseAuthoringView.createSkillFailed'))
-  }
-}
-
-async function onCreateConcept({ name, parentId }: { name: string; parentId: string | null }) {
-  try {
-    const concept = await createConcept({ name, ...(parentId ? { parent_id: parentId } : {}) })
-    await reloadConcepts()
-    const conceptNodes = concepts.value.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))
-    const newNode = { id: concept.concept_id, name: concept.name, parent_id: parentId }
-    form.conceptIds.value = Array.from(
-      new Set([...form.conceptIds.value, concept.concept_id, ...ancestorIds(conceptNodes, newNode)]),
-    )
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('exerciseAuthoringView.createConceptFailed'))
-  }
-}
+const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
+  useSkillConceptCreation(form.skillIds, form.conceptIds, {
+    createSkillFailed: t('exerciseAuthoringView.createSkillFailed'),
+    createConceptFailed: t('exerciseAuthoringView.createConceptFailed'),
+  })
 
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])
@@ -242,11 +211,18 @@ onUnmounted(() => clearTimeout(justSavedTimeout))
 
 const toast = useToast()
 
+// Classification is a mandatory dimension for gap detection and the
+// recommendation engine -- both skill_ids and concept_ids must be non-empty
+// on the backend, so a save attempt without them is rejected outright.
+const hasClassification = computed(
+  () => form.skillIds.value.length > 0 && form.conceptIds.value.length > 0,
+)
+
 async function save() {
   // Re-checked here, not just via the AppBar button's disabled state — the
   // button is the only other line of defense, and this one doesn't depend
   // on a click ever happening through it.
-  if (!form.hasCorrectOption.value) return
+  if (!form.hasCorrectOption.value || !hasClassification.value) return
 
   saving.value = true
   // The exercise this form is currently backing, not the route it was
@@ -284,7 +260,7 @@ async function save() {
       :primary-nav-to="{ name: 'teacher-exercises' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('exerciseAuthoringView.editExerciseBreadcrumb') : t('exerciseAuthoringView.newExerciseBreadcrumb')"
       :show-save="canAuthor"
-      :save-disabled="!form.hasCorrectOption.value || saving"
+      :save-disabled="!form.hasCorrectOption.value || !hasClassification || saving"
       :just-saved="justSaved"
       :on-save="save"
     />
@@ -447,7 +423,7 @@ async function save() {
             </span>
           </div>
           <SkillConceptTreePicker
-            label="Skill"
+            :label="t('classificationFields.skillLabel')"
             :nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
             :selected-ids="form.skillIds.value"
             :is-loading="skillsLoading"
@@ -455,7 +431,7 @@ async function save() {
             @create="onCreateSkill"
           />
           <SkillConceptTreePicker
-            label="Concept"
+            :label="t('classificationFields.conceptLabel')"
             :nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"

@@ -70,6 +70,7 @@ function mountView() {
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
+import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -80,6 +81,16 @@ async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
   await wrapper.get('[data-test="add-option"]').trigger('click')
   await wrapper.get('input[placeholder="Option text"]').setValue('G major')
   await wrapper.get('[data-test="option-correct"]').trigger('click')
+  await selectClassification(wrapper)
+}
+
+// Classification (at least one skill and one concept) is required by the
+// API -- set it directly via the pickers' own update event rather than
+// depending on whatever fixture list each individual test's GET mock returns.
+async function selectClassification(wrapper: ReturnType<typeof mountView>) {
+  const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+  await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
+  await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
 }
 
 describe('ExerciseAuthoringView', () => {
@@ -207,7 +218,7 @@ describe('ExerciseAuthoringView', () => {
     const indicator = wrapper.get('[data-test="reuse-indicator"]')
     expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('Not linked to any challenge yet')
     expect(indicator.get('[data-test="usage-path-exercises"]').text()).toContain('Not linked to any path node yet')
-    expect(indicator.get('[data-test="usage-practice-sessions"]').text()).toContain('Not eligible')
+    expect(indicator.get('[data-test="usage-practice-sessions"]').text()).toContain('Eligible')
   })
 
   it('lists linked challenges and path exercises after saving', async () => {
@@ -434,6 +445,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -456,6 +468,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -522,6 +535,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('[data-test="add-option"]').trigger('click')
     await wrapper.get('input[placeholder="Option text"]').setValue('a')
     await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -630,6 +644,7 @@ describe('ExerciseAuthoringView', () => {
     const file = new File(['data'], 'a.mp3', { type: 'audio/mpeg' })
     await editor.vm.$emit('setFile', id, file)
     await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -740,6 +755,7 @@ describe('ExerciseAuthoringView', () => {
     await editor.vm.$emit('setFile', ids[0], new File(['a'], 'a.png'))
     await editor.vm.$emit('setFile', ids[1], new File(['b'], 'b.png'))
     await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
 
     const savePromise = wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await Promise.resolve()
@@ -854,6 +870,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
       const wrapper = mountView()
       await flushPromises()
       await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Updated title')
+      await selectClassification(wrapper)
 
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()

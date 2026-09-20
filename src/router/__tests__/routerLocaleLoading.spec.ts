@@ -73,10 +73,10 @@ describe('router locale loading', () => {
       updateRoleBridge('teacher')
     })
 
-    // These 6 routes were added in the same PB-40 branch that later wired
-    // useTypedT into their views, but never got the beforeEnter guard the
-    // /teacher/exercises routes already had — so a fresh, direct navigation
-    // rendered raw i18n message keys instead of translated text.
+    // These teacher content/paths routes render their views with useTypedT,
+    // so they need the same teacher-locale beforeEnter guard as the
+    // /teacher/exercises routes -- without it, a fresh direct navigation
+    // renders raw i18n message keys instead of translated text.
     it.each([
       ['/teacher/content', 'teacher-content'],
       ['/teacher/content/new', 'teacher-content-new'],

@@ -119,7 +119,10 @@ describe('ContentAuthoringView', () => {
 
   describe('create mode', () => {
     it('posts a CreateContentNodeRequest on save', async () => {
-      routeGET({ '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } } })
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
       POST.mockResolvedValueOnce({
         data: {
           content_node_id: 'cn-1',
@@ -128,7 +131,7 @@ describe('ContentAuthoringView', () => {
           content_type: 'video',
           classification: {
             skills: [skillFixture],
-            concepts: [],
+            concepts: [conceptFixture],
             difficulty_level: 'beginner',
             review_state: 'pending',
           },
@@ -144,6 +147,8 @@ describe('ContentAuthoringView', () => {
       await wrapper.get('input[placeholder="Untitled content"]').setValue('Alternate picking basics')
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()
 
@@ -151,14 +156,17 @@ describe('ContentAuthoringView', () => {
         body: {
           title: 'Alternate picking basics',
           content_type: 'video',
-          classification: { skill_ids: ['s-1'], concept_ids: [], difficulty_level: 'beginner' },
+          classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
         },
       })
     })
 
     it('selects a newly created skill together with its parent chain', async () => {
-      routeGET({ '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } } })
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
       POST.mockResolvedValueOnce({
         data: { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' },
         error: undefined,
@@ -172,7 +180,7 @@ describe('ContentAuthoringView', () => {
           content_type: 'video',
           classification: {
             skills: [skillFixture, { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' }],
-            concepts: [],
+            concepts: [conceptFixture],
             difficulty_level: 'beginner',
             review_state: 'pending',
           },
@@ -195,6 +203,8 @@ describe('ContentAuthoringView', () => {
 
       expect(POST).toHaveBeenNthCalledWith(1, '/skills', { body: { name: 'sweep-picking', parent_id: 's-1' } })
 
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()
 
@@ -202,19 +212,26 @@ describe('ContentAuthoringView', () => {
         body: {
           title: 'Sweep basics',
           content_type: 'video',
-          classification: { skill_ids: ['s-2', 's-1'], concept_ids: [], difficulty_level: 'beginner' },
+          classification: { skill_ids: ['s-2', 's-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
         },
       })
     })
 
     it('shows the challenge section, with no challenge yet, once the node is saved', async () => {
-      routeGET({})
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
       POST.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 201 } })
       const wrapper = mountView()
       await flushPromises()
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()
 
