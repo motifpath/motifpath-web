@@ -140,6 +140,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/teacher/views/PathListView.vue'),
   },
   {
+    path: '/teacher/paths/new',
+    name: 'teacher-path-new',
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+  },
+  {
+    path: '/teacher/paths/:id/edit',
+    name: 'teacher-path-edit',
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/shared/components/NotFoundView.vue'),
