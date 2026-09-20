@@ -109,6 +109,37 @@ describe('SkillConceptTreePicker', () => {
     expect(wrapper.emitted('create')).toBeUndefined()
   })
 
+  it('does not emit create for a name that already exists under the chosen parent (case/space-insensitive)', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+
+    await wrapper.get('[data-test="tree-create-name"]').setValue('  CHORD-THEORY  ')
+    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+
+    expect(wrapper.emitted('create')).toBeUndefined()
+    expect(wrapper.find('[data-test="tree-create-duplicate"]').exists()).toBe(true)
+  })
+
+  it('allows a name that duplicates a sibling under a different parent', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+
+    await wrapper.get('[data-test="tree-create-name"]').setValue('major-triads')
+    await wrapper.get('[data-test="tree-create-parent"]').setValue('root-2')
+    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+
+    expect(wrapper.emitted('create')).toEqual([[{ name: 'major-triads', parentId: 'root-2' }]])
+  })
+
+  it('clears the duplicate warning once the name is edited', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+
+    await wrapper.get('[data-test="tree-create-name"]').setValue('rhythm')
+    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+    expect(wrapper.find('[data-test="tree-create-duplicate"]').exists()).toBe(true)
+
+    await wrapper.get('[data-test="tree-create-name"]').setValue('a-new-root')
+    expect(wrapper.find('[data-test="tree-create-duplicate"]').exists()).toBe(false)
+  })
+
   it('shows a loading indicator while nodes are loading', () => {
     const wrapper = mount(SkillConceptTreePicker, {
       props: { label: 'Skill', nodes: [], selectedIds: [], isLoading: true },

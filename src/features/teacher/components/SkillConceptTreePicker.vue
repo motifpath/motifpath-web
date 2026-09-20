@@ -29,6 +29,7 @@ const emit = defineEmits<{
 const search = ref('')
 const createName = ref('')
 const createParentId = ref('')
+const duplicateName = ref(false)
 
 const nodesById = computed(() => new Map(props.nodes.map((n) => [n.id, n])))
 
@@ -76,12 +77,24 @@ function removeSelected(id: string) {
   )
 }
 
+function hasSibling(name: string, parentId: string | null): boolean {
+  const normalized = name.trim().toLowerCase()
+  return props.nodes.some(
+    (n) => (n.parent_id ?? null) === parentId && n.name.trim().toLowerCase() === normalized,
+  )
+}
+
 function submitCreate() {
   const name = createName.value.trim()
   if (!name) return
+  if (hasSibling(name, createParentId.value || null)) {
+    duplicateName.value = true
+    return
+  }
   emit('create', { name, parentId: createParentId.value || null })
   createName.value = ''
   createParentId.value = ''
+  duplicateName.value = false
 }
 </script>
 
@@ -152,30 +165,38 @@ function submitCreate() {
       </li>
     </ul>
 
-    <div class="flex flex-wrap items-center gap-2 border-t border-border pt-2.5">
-      <input
-        v-model="createName"
-        data-test="tree-create-name"
-        type="text"
-        placeholder="New node name"
-        class="min-w-[140px] flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-sm"
-      />
-      <select
-        v-model="createParentId"
-        data-test="tree-create-parent"
-        class="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm"
-      >
-        <option value="">No parent (root)</option>
-        <option v-for="node in nodes" :key="node.id" :value="node.id">{{ breadcrumb(node) }}</option>
-      </select>
-      <button
-        type="button"
-        data-test="tree-create-submit"
-        class="rounded-md border border-border bg-surface-raised px-3 py-2 text-[0.8125rem] font-semibold"
-        @click="submitCreate"
-      >
-        Add
-      </button>
+    <div class="flex flex-col gap-1.5 border-t border-border pt-2.5">
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          v-model="createName"
+          data-test="tree-create-name"
+          type="text"
+          placeholder="New node name"
+          class="min-w-[140px] flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-sm"
+          @input="duplicateName = false"
+        />
+        <select
+          v-model="createParentId"
+          data-test="tree-create-parent"
+          class="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm"
+          @change="duplicateName = false"
+        >
+          <option value="">No parent (root)</option>
+          <option v-for="node in nodes" :key="node.id" :value="node.id">{{ breadcrumb(node) }}</option>
+        </select>
+        <button
+          type="button"
+          data-test="tree-create-submit"
+          class="rounded-md border border-border bg-surface-raised px-3 py-2 text-[0.8125rem] font-semibold"
+          @click="submitCreate"
+        >
+          Add
+        </button>
+      </div>
+      <p v-if="duplicateName" data-test="tree-create-duplicate" class="text-[0.8125rem] text-danger">
+        A node named "{{ createName.trim() }}" already exists under that parent — pick it from the list above
+        instead of creating a near-duplicate.
+      </p>
     </div>
   </div>
 </template>
