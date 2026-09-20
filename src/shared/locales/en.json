@@ -17,7 +17,8 @@
     "signOut": "Sign out",
     "signOutTryDifferentAccount": "Sign out and try a different account",
     "signIn": "Sign in",
-    "backToPath": "Back to path"
+    "backToPath": "Back to path",
+    "back": "‹ Back"
   },
   "states": {
     "loading": "Loading…",

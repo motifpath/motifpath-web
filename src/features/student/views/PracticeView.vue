@@ -98,7 +98,7 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
           class="text-xs text-ink-subtle underline"
           @click="session.back()"
         >
-          {{ t('common.back') }}
+          {{ t('buttons.back') }}
         </button>
         <span v-else />
         <PrimaryButton data-test="next" :disabled="!session.canAdvance.value" @click="session.next()">
@@ -122,7 +122,7 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         {{ t('practiceView.finish') }}
       </PrimaryButton>
       <button type="button" data-test="result-back" class="text-xs text-ink-subtle underline" @click="session.back()">
-        {{ t('common.back') }}
+        {{ t('buttons.back') }}
       </button>
     </div>
   </section>

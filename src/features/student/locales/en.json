@@ -25,9 +25,6 @@
     "continueSubtitle": "In progress · pick up where you left off",
     "startSubtitle": "Not started yet"
   },
-  "common": {
-    "back": "‹ Back"
-  },
   "nodeView": {
     "heading": "Lesson",
     "unavailable": "This lesson isn't available yet.",

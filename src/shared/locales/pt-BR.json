@@ -17,7 +17,8 @@
     "signOut": "Sair",
     "signOutTryDifferentAccount": "Sair e tentar outra conta",
     "signIn": "Entrar",
-    "backToPath": "Voltar para a trilha"
+    "backToPath": "Voltar para a trilha",
+    "back": "‹ Voltar"
   },
   "states": {
     "loading": "Carregando…",

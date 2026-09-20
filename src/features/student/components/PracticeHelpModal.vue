@@ -47,7 +47,7 @@ const interactionText = computed(() => {
     </div>
     <p class="text-sm text-ink-muted">{{ interactionText }}</p>
     <p class="text-sm text-ink-muted">
-      {{ t('practiceHelpModal.clearHintBefore') }} <b>{{ t('common.back') }}</b>
+      {{ t('practiceHelpModal.clearHintBefore') }} <b>{{ t('buttons.back') }}</b>
       {{ t('practiceHelpModal.clearHintAfter') }}
     </p>
   </ModalOverlay>
