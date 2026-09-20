@@ -8,6 +8,7 @@ import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const currentUser = useCurrentUserStore()
@@ -16,6 +17,7 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
+const { t } = useTypedT()
 const { learningPaths, isLoading, error, retry } = useListLearningPaths()
 </script>
 
@@ -25,36 +27,36 @@ const { learningPaths, isLoading, error, retry } = useListLearningPaths()
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
-        This page is for teachers and admins only — your account doesn't have permission to author learning paths.
+        {{ t('pathListView.permissionDenied') }}
       </p>
     </div>
 
     <div v-else class="flex flex-1 flex-col gap-6 px-[48px] pb-[80px] pt-10">
       <div class="flex items-center justify-between">
-        <h1 class="text-xl font-bold text-ink">Paths</h1>
+        <h1 class="text-xl font-bold text-ink">{{ t('pathListView.heading') }}</h1>
         <RouterLink
           :to="{ name: 'teacher-path-new' }"
           data-test="new-learning-path"
           class="flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg"
         >
           <Plus :size="14" aria-hidden="true" />
-          New path
+          {{ t('pathListView.newPathLabel') }}
         </RouterLink>
       </div>
 
-      <StateLoading v-if="isLoading" data-test="loading" noun="paths" />
+      <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathListView.loadingNoun')" />
 
-      <StateError v-else-if="error" data-test="error" message="We couldn't load the learning paths." @retry="retry" />
+      <StateError v-else-if="error" data-test="error" :message="t('pathListView.errorMessage')" @retry="retry" />
 
       <StateEmpty
         v-else-if="learningPaths.length === 0"
         data-test="empty"
-        heading="No paths yet"
-        message="Assemble content nodes into an ordered path for students to follow."
+        :heading="t('pathListView.emptyHeading')"
+        :message="t('pathListView.emptyMessage')"
       >
         <template #action>
           <RouterLink :to="{ name: 'teacher-path-new' }" class="text-sm font-semibold text-accent-text underline">
-            New path
+            {{ t('pathListView.newPathLabel') }}
           </RouterLink>
         </template>
       </StateEmpty>
@@ -67,7 +69,11 @@ const { learningPaths, isLoading, error, retry } = useListLearningPaths()
             class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
           >
             <span class="font-semibold text-ink">{{ learningPath.title }}</span>
-            <span class="text-sm text-ink-subtle">{{ learningPath.items.length }} node{{ learningPath.items.length === 1 ? '' : 's' }}</span>
+            <span class="text-sm text-ink-subtle">{{
+              learningPath.items.length === 1
+                ? t('pathListView.nodeCountSingular', { count: learningPath.items.length })
+                : t('pathListView.nodeCountPlural', { count: learningPath.items.length })
+            }}</span>
           </RouterLink>
         </li>
       </ul>

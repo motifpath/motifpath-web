@@ -11,6 +11,10 @@
       "audio_recognition": "Audio recognition",
       "image_choice": "Image choice",
       "audio_selection": "Audio selection"
+    },
+    "contentTypes": {
+      "video": "Video",
+      "article": "Article"
     }
   },
   "audioSelectionOptionsEditor": {
@@ -132,5 +136,128 @@
     "clearParentAriaLabel": "Clear parent",
     "createSubmit": "Add",
     "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate."
+  },
+  "challengeConfigPanel": {
+    "subjectLabel": "Subject",
+    "subjectHint": "Exactly one of skill or concept — must be one of this node's own linked skills/concepts.",
+    "subjectSkillLabel": "Subject skill",
+    "subjectConceptLabel": "Subject concept",
+    "passThresholdLabel": "Pass threshold (%)",
+    "shuffleExercisesLabel": "Shuffle exercise order per attempt",
+    "shuffleOptionsLabel": "Shuffle option order per attempt"
+  },
+  "sectionedPathList": {
+    "emptyMessage": "No content nodes in this path yet — add one to get started.",
+    "noSection": "No section",
+    "sectionPlaceholder": "Section",
+    "moveUpAriaLabel": "Move up",
+    "moveDownAriaLabel": "Move down",
+    "removeAriaLabel": "Remove from path"
+  },
+  "classificationFields": {
+    "skillLabel": "Skill",
+    "conceptLabel": "Concept",
+    "difficultyLevelLabel": "Difficulty level",
+    "reviewLabel": "Review: {state}"
+  },
+  "articlePopupListEditor": {
+    "emptyMessage": "No paragraph pop-ups yet.",
+    "afterParagraph": "After paragraph",
+    "forDuration": "for {ms}ms",
+    "removeAriaLabel": "Remove pop-up",
+    "paragraphNumberLabel": "Paragraph #",
+    "durationMsLabel": "Duration (ms)",
+    "mediaUrlLabel": "Image/GIF URL",
+    "captionLabel": "Caption (optional)",
+    "addPopup": "Add pop-up"
+  },
+  "videoTimelineEditor": {
+    "emptyMessage": "No timed pop-ups yet.",
+    "showsAt": "Shows at",
+    "hidesAt": "hides at",
+    "removeAriaLabel": "Remove pop-up",
+    "triggerSecondsLabel": "Trigger (seconds)",
+    "hideSecondsLabel": "Hide (seconds)",
+    "mediaUrlLabel": "Image/GIF URL",
+    "captionLabel": "Caption (optional)",
+    "addPopup": "Add pop-up"
+  },
+  "contentNodePickerModal": {
+    "title": "Add a content node",
+    "searchPlaceholder": "Search by title",
+    "emptyMessage": "No content nodes match — every content node in the library is already in this path, or none matched your search."
+  },
+  "exercisePickerModal": {
+    "title": "Attach an exercise",
+    "searchPlaceholder": "Search by title",
+    "emptyMessage": "No exercises match — every exercise in the pool is already attached, or none matched your search."
+  },
+  "contentAuthoringView": {
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
+    "editBreadcrumb": "Edit content",
+    "newBreadcrumb": "New content",
+    "loadingNoun": "content node",
+    "loadErrorMessage": "Failed to load the content node",
+    "titlePlaceholder": "Untitled content",
+    "titleHint": "Internal title — for the content library, not shown to students",
+    "contentTypeLabel": "Content type",
+    "typeLockedHint": "Type can't be changed after creation.",
+    "typeUnlockedHint": "Video or article — this determines which timed pop-ups this node can carry.",
+    "classificationLabel": "Classification",
+    "timedPopupsLabel": "Timed pop-ups",
+    "paragraphPopupsLabel": "Paragraph pop-ups",
+    "challengeLabel": "Challenge",
+    "saveChallenge": "Save challenge",
+    "noChallengeMessage": "No challenge yet — pick a subject above and save to create one.",
+    "linkedExercisesLabel": "Linked exercises",
+    "attachExercise": "Attach exercise",
+    "noExercisesAttached": "No exercises attached yet.",
+    "removeExerciseAriaLabel": "Remove exercise",
+    "contentNodeUpdated": "Content node updated.",
+    "contentNodeCreated": "Content node created.",
+    "saveContentNodeFailed": "Failed to save the content node",
+    "createSkillFailed": "Failed to create the skill",
+    "createConceptFailed": "Failed to create the concept",
+    "addPopupFailed": "Failed to add the pop-up",
+    "updatePopupFailed": "Failed to update the pop-up",
+    "removePopupFailed": "Failed to remove the pop-up",
+    "challengeSaved": "Challenge saved.",
+    "saveChallengeFailed": "Failed to save the challenge",
+    "attachExerciseFailed": "Failed to attach the exercise",
+    "removeExerciseFailed": "Failed to remove the exercise"
+  },
+  "contentListView": {
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
+    "heading": "Content",
+    "newContentLabel": "New content",
+    "loadingNoun": "content",
+    "errorMessage": "We couldn't load the content nodes.",
+    "emptyHeading": "No content yet",
+    "emptyMessage": "Create your first video or article to start building the content library."
+  },
+  "pathBuilderView": {
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
+    "editBreadcrumb": "Edit path",
+    "newBreadcrumb": "New path",
+    "loadingNoun": "learning path",
+    "loadErrorMessage": "Failed to load the learning path",
+    "titlePlaceholder": "Untitled path",
+    "titleHint": "Name shown to teachers and admins, not to students.",
+    "contentLabel": "Content",
+    "addContentNodeLabel": "Add content node",
+    "pathUpdated": "Learning path updated.",
+    "pathCreated": "Learning path created.",
+    "saveFailed": "Failed to save the learning path"
+  },
+  "pathListView": {
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
+    "heading": "Paths",
+    "newPathLabel": "New path",
+    "loadingNoun": "paths",
+    "errorMessage": "We couldn't load the learning paths.",
+    "emptyHeading": "No paths yet",
+    "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
+    "nodeCountSingular": "{count} node",
+    "nodeCountPlural": "{count} nodes"
   }
 }

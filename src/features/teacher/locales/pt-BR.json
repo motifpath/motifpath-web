@@ -11,6 +11,10 @@
       "audio_recognition": "Reconhecimento de áudio",
       "image_choice": "Escolha de imagem",
       "audio_selection": "Seleção de áudio"
+    },
+    "contentTypes": {
+      "video": "Vídeo",
+      "article": "Artigo"
     }
   },
   "audioSelectionOptionsEditor": {
@@ -132,5 +136,128 @@
     "clearParentAriaLabel": "Limpar item pai",
     "createSubmit": "Adicionar",
     "duplicateName": "Já existe um item chamado \"{name}\" sob esse item pai — selecione-o na lista acima em vez de criar um quase duplicado."
+  },
+  "challengeConfigPanel": {
+    "subjectLabel": "Assunto",
+    "subjectHint": "Exatamente uma habilidade ou um conceito — deve ser uma das habilidades/conceitos já vinculados a este nó.",
+    "subjectSkillLabel": "Habilidade do assunto",
+    "subjectConceptLabel": "Conceito do assunto",
+    "passThresholdLabel": "Nota mínima para aprovação (%)",
+    "shuffleExercisesLabel": "Embaralhar a ordem dos exercícios a cada tentativa",
+    "shuffleOptionsLabel": "Embaralhar a ordem das opções a cada tentativa"
+  },
+  "sectionedPathList": {
+    "emptyMessage": "Ainda não há nós de conteúdo nesta trilha — adicione um para começar.",
+    "noSection": "Sem seção",
+    "sectionPlaceholder": "Seção",
+    "moveUpAriaLabel": "Mover para cima",
+    "moveDownAriaLabel": "Mover para baixo",
+    "removeAriaLabel": "Remover da trilha"
+  },
+  "classificationFields": {
+    "skillLabel": "Habilidade",
+    "conceptLabel": "Conceito",
+    "difficultyLevelLabel": "Nível de dificuldade",
+    "reviewLabel": "Revisão: {state}"
+  },
+  "articlePopupListEditor": {
+    "emptyMessage": "Ainda não há pop-ups de parágrafo.",
+    "afterParagraph": "Depois do parágrafo",
+    "forDuration": "por {ms}ms",
+    "removeAriaLabel": "Remover pop-up",
+    "paragraphNumberLabel": "Nº do parágrafo",
+    "durationMsLabel": "Duração (ms)",
+    "mediaUrlLabel": "URL da imagem/GIF",
+    "captionLabel": "Legenda (opcional)",
+    "addPopup": "Adicionar pop-up"
+  },
+  "videoTimelineEditor": {
+    "emptyMessage": "Ainda não há pop-ups cronometrados.",
+    "showsAt": "Aparece em",
+    "hidesAt": "desaparece em",
+    "removeAriaLabel": "Remover pop-up",
+    "triggerSecondsLabel": "Exibir após (segundos)",
+    "hideSecondsLabel": "Ocultar após (segundos)",
+    "mediaUrlLabel": "URL da imagem/GIF",
+    "captionLabel": "Legenda (opcional)",
+    "addPopup": "Adicionar pop-up"
+  },
+  "contentNodePickerModal": {
+    "title": "Adicionar um nó de conteúdo",
+    "searchPlaceholder": "Buscar por título",
+    "emptyMessage": "Nenhum nó de conteúdo corresponde — todo nó de conteúdo da biblioteca já está nesta trilha, ou nenhum correspondeu à sua busca."
+  },
+  "exercisePickerModal": {
+    "title": "Anexar um exercício",
+    "searchPlaceholder": "Buscar por título",
+    "emptyMessage": "Nenhum exercício corresponde — todo exercício do repositório já está anexado, ou nenhum correspondeu à sua busca."
+  },
+  "contentAuthoringView": {
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
+    "editBreadcrumb": "Editar conteúdo",
+    "newBreadcrumb": "Novo conteúdo",
+    "loadingNoun": "nó de conteúdo",
+    "loadErrorMessage": "Falha ao carregar o nó de conteúdo",
+    "titlePlaceholder": "Conteúdo sem título",
+    "titleHint": "Título interno — para a biblioteca de conteúdo, não mostrado aos alunos",
+    "contentTypeLabel": "Tipo de conteúdo",
+    "typeLockedHint": "O tipo não pode ser alterado após a criação.",
+    "typeUnlockedHint": "Vídeo ou artigo — isso determina quais pop-ups cronometrados este nó pode ter.",
+    "classificationLabel": "Classificação",
+    "timedPopupsLabel": "Pop-ups cronometrados",
+    "paragraphPopupsLabel": "Pop-ups de parágrafo",
+    "challengeLabel": "Desafio",
+    "saveChallenge": "Salvar desafio",
+    "noChallengeMessage": "Ainda não há desafio — escolha um assunto acima e salve para criar um.",
+    "linkedExercisesLabel": "Exercícios vinculados",
+    "attachExercise": "Anexar exercício",
+    "noExercisesAttached": "Ainda não há exercícios anexados.",
+    "removeExerciseAriaLabel": "Remover exercício",
+    "contentNodeUpdated": "Nó de conteúdo atualizado.",
+    "contentNodeCreated": "Nó de conteúdo criado.",
+    "saveContentNodeFailed": "Falha ao salvar o nó de conteúdo",
+    "createSkillFailed": "Falha ao criar a habilidade",
+    "createConceptFailed": "Falha ao criar o conceito",
+    "addPopupFailed": "Falha ao adicionar o pop-up",
+    "updatePopupFailed": "Falha ao atualizar o pop-up",
+    "removePopupFailed": "Falha ao remover o pop-up",
+    "challengeSaved": "Desafio salvo.",
+    "saveChallengeFailed": "Falha ao salvar o desafio",
+    "attachExerciseFailed": "Falha ao anexar o exercício",
+    "removeExerciseFailed": "Falha ao remover o exercício"
+  },
+  "contentListView": {
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
+    "heading": "Conteúdo",
+    "newContentLabel": "Novo conteúdo",
+    "loadingNoun": "conteúdo",
+    "errorMessage": "Não foi possível carregar os nós de conteúdo.",
+    "emptyHeading": "Ainda não há conteúdo",
+    "emptyMessage": "Crie seu primeiro vídeo ou artigo para começar a construir a biblioteca de conteúdo."
+  },
+  "pathBuilderView": {
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
+    "editBreadcrumb": "Editar trilha",
+    "newBreadcrumb": "Nova trilha",
+    "loadingNoun": "trilha de aprendizagem",
+    "loadErrorMessage": "Falha ao carregar a trilha de aprendizagem",
+    "titlePlaceholder": "Trilha sem título",
+    "titleHint": "Nome mostrado a professores e administradores, não aos alunos.",
+    "contentLabel": "Conteúdo",
+    "addContentNodeLabel": "Adicionar nó de conteúdo",
+    "pathUpdated": "Trilha de aprendizagem atualizada.",
+    "pathCreated": "Trilha de aprendizagem criada.",
+    "saveFailed": "Falha ao salvar a trilha de aprendizagem"
+  },
+  "pathListView": {
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
+    "heading": "Trilhas",
+    "newPathLabel": "Nova trilha",
+    "loadingNoun": "trilhas",
+    "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
+    "emptyHeading": "Ainda não há trilhas",
+    "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
+    "nodeCountSingular": "{count} nó",
+    "nodeCountPlural": "{count} nós"
   }
 }

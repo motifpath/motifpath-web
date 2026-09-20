@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SkillConceptTreePicker, { type TreeNode } from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import type { components } from '@/api/generated/core-domain'
 
 type DifficultyLevel = components['schemas']['ClassificationInput']['difficulty_level']
@@ -24,12 +25,14 @@ const emit = defineEmits<{
 }>()
 
 const difficultyLevels: DifficultyLevel[] = ['beginner', 'early_intermediate', 'intermediate', 'advanced', 'expert']
+
+const { t } = useTypedT()
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <SkillConceptTreePicker
-      label="Skill"
+      :label="t('classificationFields.skillLabel')"
       :nodes="skillNodes"
       :selected-ids="skillIds"
       :is-loading="skillsLoading"
@@ -38,7 +41,7 @@ const difficultyLevels: DifficultyLevel[] = ['beginner', 'early_intermediate', '
     />
 
     <SkillConceptTreePicker
-      label="Concept"
+      :label="t('classificationFields.conceptLabel')"
       :nodes="conceptNodes"
       :selected-ids="conceptIds"
       :is-loading="conceptsLoading"
@@ -47,7 +50,7 @@ const difficultyLevels: DifficultyLevel[] = ['beginner', 'early_intermediate', '
     />
 
     <div class="flex flex-col gap-1.5">
-      <label class="text-sm font-semibold">Difficulty level</label>
+      <label class="text-sm font-semibold">{{ t('classificationFields.difficultyLevelLabel') }}</label>
       <select
         data-test="difficulty-level"
         :value="difficultyLevel"
@@ -63,7 +66,7 @@ const difficultyLevels: DifficultyLevel[] = ['beginner', 'early_intermediate', '
       data-test="review-state"
       class="w-fit rounded-full bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink-muted"
     >
-      Review: {{ reviewState }}
+      {{ t('classificationFields.reviewLabel', { state: reviewState }) }}
     </span>
   </div>
 </template>

@@ -10,6 +10,7 @@ export interface PathBuilderItem {
 <script setup lang="ts">
 import { ArrowDown, ArrowUp, X } from 'lucide-vue-next'
 import { computed } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 const props = defineProps<{ items: PathBuilderItem[] }>()
 const emit = defineEmits<{
@@ -18,10 +19,7 @@ const emit = defineEmits<{
   remove: [index: number]
 }>()
 
-const contentTypeLabels: Record<PathBuilderItem['content_type'], string> = {
-  video: 'Video',
-  article: 'Article',
-}
+const { t } = useTypedT()
 
 interface PathSection {
   label: string | undefined
@@ -58,7 +56,7 @@ function moveDown(index: number) {
 <template>
   <div class="flex flex-col gap-4">
     <p v-if="items.length === 0" data-test="path-empty" class="text-sm text-ink-subtle">
-      No content nodes in this path yet — add one to get started.
+      {{ t('sectionedPathList.emptyMessage') }}
     </p>
 
     <div
@@ -68,7 +66,7 @@ function moveDown(index: number) {
       class="flex flex-col gap-2"
     >
       <span class="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-        {{ section.label || 'No section' }}
+        {{ section.label || t('sectionedPathList.noSection') }}
       </span>
 
       <div
@@ -79,13 +77,13 @@ function moveDown(index: number) {
       >
         <div class="flex flex-1 flex-col gap-1">
           <span class="text-sm font-semibold text-ink">{{ item.title }}</span>
-          <span class="text-xs text-ink-subtle">{{ contentTypeLabels[item.content_type] }}</span>
+          <span class="text-xs text-ink-subtle">{{ t(`common.contentTypes.${item.content_type}`) }}</span>
         </div>
 
         <input
           type="text"
           data-test="section-label-input"
-          placeholder="Section"
+          :placeholder="t('sectionedPathList.sectionPlaceholder')"
           class="w-32 rounded-md border border-border bg-surface-raised px-2 py-1.5 text-xs"
           :value="item.section_label ?? ''"
           @change="emit('relabel', index, ($event.target as HTMLInputElement).value)"
@@ -94,7 +92,7 @@ function moveDown(index: number) {
         <button
           type="button"
           data-test="move-up"
-          aria-label="Move up"
+          :aria-label="t('sectionedPathList.moveUpAriaLabel')"
           :disabled="index === 0"
           class="flex h-[26px] w-[26px] items-center justify-center rounded-sm border border-border bg-surface-raised text-ink-subtle disabled:cursor-not-allowed disabled:opacity-40"
           @click="moveUp(index)"
@@ -105,7 +103,7 @@ function moveDown(index: number) {
         <button
           type="button"
           data-test="move-down"
-          aria-label="Move down"
+          :aria-label="t('sectionedPathList.moveDownAriaLabel')"
           :disabled="index === items.length - 1"
           class="flex h-[26px] w-[26px] items-center justify-center rounded-sm border border-border bg-surface-raised text-ink-subtle disabled:cursor-not-allowed disabled:opacity-40"
           @click="moveDown(index)"
@@ -116,7 +114,7 @@ function moveDown(index: number) {
         <button
           type="button"
           data-test="remove-item"
-          aria-label="Remove from path"
+          :aria-label="t('sectionedPathList.removeAriaLabel')"
           class="flex h-[26px] w-[26px] items-center justify-center rounded-sm text-ink-subtle"
           @click="emit('remove', index)"
         >

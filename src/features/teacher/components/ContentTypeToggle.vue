@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { FileText, Video } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import type { components } from '@/api/generated/core-domain'
 
@@ -8,10 +10,12 @@ type ContentType = components['schemas']['CreateContentNodeRequest']['content_ty
 defineProps<{ modelValue: ContentType; disabled: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: ContentType] }>()
 
-const contentTypes: { value: ContentType; label: string; icon: typeof Video }[] = [
-  { value: 'video', label: 'Video', icon: Video },
-  { value: 'article', label: 'Article', icon: FileText },
-]
+const { t } = useTypedT()
+
+const contentTypes = computed<{ value: ContentType; label: string; icon: typeof Video }[]>(() => [
+  { value: 'video', label: t('common.contentTypes.video'), icon: Video },
+  { value: 'article', label: t('common.contentTypes.article'), icon: FileText },
+])
 </script>
 
 <template>

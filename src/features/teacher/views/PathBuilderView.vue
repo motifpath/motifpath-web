@@ -14,6 +14,7 @@ import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 import type { components } from '@/api/generated/core-domain'
 
@@ -25,6 +26,7 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
+const { t } = useTypedT()
 
 const route = useRoute()
 const rawLearningPathId = route.params.id
@@ -128,9 +130,9 @@ async function save() {
     justSaved.value = true
     clearTimeout(justSavedTimeout)
     justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
-    toast.success(isUpdate ? 'Learning path updated.' : 'Learning path created.')
+    toast.success(isUpdate ? t('pathBuilderView.pathUpdated') : t('pathBuilderView.pathCreated'))
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to save the learning path')
+    toast.error(e instanceof Error ? e.message : t('pathBuilderView.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -143,7 +145,7 @@ async function save() {
       context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-paths' }"
-      :breadcrumb-label="isEditMode ? title || 'Edit path' : 'New path'"
+      :breadcrumb-label="isEditMode ? title || t('pathBuilderView.editBreadcrumb') : t('pathBuilderView.newBreadcrumb')"
       :show-save="canAuthor"
       :save-disabled="saving || items.length === 0"
       :just-saved="justSaved"
@@ -152,16 +154,16 @@ async function save() {
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
-        This page is for teachers and admins only — your account doesn't have permission to author learning paths.
+        {{ t('pathBuilderView.permissionDenied') }}
       </p>
     </div>
 
     <div v-else-if="loadingLearningPath" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading noun="learning path" />
+      <StateLoading :noun="t('pathBuilderView.loadingNoun')" />
     </div>
 
     <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
-      <StateError message="Failed to load the learning path" @retry="retryLoad" />
+      <StateError :message="t('pathBuilderView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <main
@@ -174,16 +176,16 @@ async function save() {
         <input
           v-model="title"
           type="text"
-          placeholder="Untitled path"
+          :placeholder="t('pathBuilderView.titlePlaceholder')"
           class="border-none bg-transparent font-bold text-ink outline-none"
           :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
         />
-        <span class="text-sm text-ink-subtle">Name shown to teachers and admins, not to students.</span>
+        <span class="text-sm text-ink-subtle">{{ t('pathBuilderView.titleHint') }}</span>
       </div>
 
       <div class="flex flex-col gap-3 border-t border-border pt-4">
         <div class="flex items-center justify-between">
-          <label class="text-sm font-semibold">Content</label>
+          <label class="text-sm font-semibold">{{ t('pathBuilderView.contentLabel') }}</label>
           <button
             type="button"
             data-test="add-content-node"
@@ -191,7 +193,7 @@ async function save() {
             @click="pickerOpen = true"
           >
             <Plus :size="14" aria-hidden="true" />
-            Add content node
+            {{ t('pathBuilderView.addContentNodeLabel') }}
           </button>
         </div>
 

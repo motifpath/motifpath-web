@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Minus, Plus, X } from 'lucide-vue-next'
 import { ref } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 import type { components } from '@/api/generated/core-domain'
 
@@ -21,6 +22,8 @@ const emit = defineEmits<{
     },
   ]
 }>()
+
+const { t } = useTypedT()
 
 const newTriggerSeconds = ref('')
 const newHideSeconds = ref('')
@@ -48,7 +51,7 @@ function submitAdd() {
 
 <template>
   <div class="flex flex-col gap-3">
-    <p v-if="items.length === 0" class="text-sm text-ink-subtle">No timed pop-ups yet.</p>
+    <p v-if="items.length === 0" class="text-sm text-ink-subtle">{{ t('videoTimelineEditor.emptyMessage') }}</p>
 
     <div
       v-for="item in items"
@@ -57,7 +60,7 @@ function submitAdd() {
       class="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2.5"
     >
       <div class="flex items-center gap-1.5 text-sm">
-        <span class="text-ink-subtle">Shows at</span>
+        <span class="text-ink-subtle">{{ t('videoTimelineEditor.showsAt') }}</span>
         <button
           type="button"
           data-test="trigger-decrement"
@@ -78,7 +81,7 @@ function submitAdd() {
       </div>
 
       <div class="flex items-center gap-1.5 text-sm">
-        <span class="text-ink-subtle">hides at</span>
+        <span class="text-ink-subtle">{{ t('videoTimelineEditor.hidesAt') }}</span>
         <button
           type="button"
           data-test="hide-decrement"
@@ -103,7 +106,7 @@ function submitAdd() {
       <button
         type="button"
         data-test="timeline-item-remove"
-        aria-label="Remove pop-up"
+        :aria-label="t('videoTimelineEditor.removeAriaLabel')"
         class="ml-auto text-ink-subtle"
         @click="emit('remove', item.expanded_content_id)"
       >
@@ -113,7 +116,7 @@ function submitAdd() {
 
     <div class="flex flex-wrap items-end gap-2 border-t border-border pt-3">
       <div class="flex flex-col gap-1">
-        <label class="text-xs text-ink-subtle">Trigger (seconds)</label>
+        <label class="text-xs text-ink-subtle">{{ t('videoTimelineEditor.triggerSecondsLabel') }}</label>
         <input
           v-model="newTriggerSeconds"
           data-test="new-trigger-seconds"
@@ -123,7 +126,7 @@ function submitAdd() {
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs text-ink-subtle">Hide (seconds)</label>
+        <label class="text-xs text-ink-subtle">{{ t('videoTimelineEditor.hideSecondsLabel') }}</label>
         <input
           v-model="newHideSeconds"
           data-test="new-hide-seconds"
@@ -133,7 +136,7 @@ function submitAdd() {
         />
       </div>
       <div class="flex flex-1 flex-col gap-1">
-        <label class="text-xs text-ink-subtle">Image/GIF URL</label>
+        <label class="text-xs text-ink-subtle">{{ t('videoTimelineEditor.mediaUrlLabel') }}</label>
         <input
           v-model="newMediaUrl"
           data-test="new-media-url"
@@ -142,7 +145,7 @@ function submitAdd() {
         />
       </div>
       <div class="flex flex-1 flex-col gap-1">
-        <label class="text-xs text-ink-subtle">Caption (optional)</label>
+        <label class="text-xs text-ink-subtle">{{ t('videoTimelineEditor.captionLabel') }}</label>
         <input
           v-model="newCaption"
           data-test="new-caption"
@@ -156,7 +159,7 @@ function submitAdd() {
         class="rounded-md border border-dashed border-border px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-text"
         @click="submitAdd"
       >
-        Add pop-up
+        {{ t('videoTimelineEditor.addPopup') }}
       </button>
     </div>
   </div>

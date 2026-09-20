@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import type { components } from '@/api/generated/core-domain'
 
 type ContentNode = components['schemas']['ContentNode']
@@ -10,12 +11,9 @@ type ContentNode = components['schemas']['ContentNode']
 const props = defineProps<{ open: boolean; contentNodes: ContentNode[]; addedContentNodeIds: string[] }>()
 const emit = defineEmits<{ select: [contentNodeId: string]; close: [] }>()
 
-const search = ref('')
+const { t } = useTypedT()
 
-const contentTypeLabels: Record<string, string> = {
-  video: 'Video',
-  article: 'Article',
-}
+const search = ref('')
 
 const availableContentNodes = computed(() => {
   const query = search.value.trim().toLowerCase()
@@ -34,7 +32,7 @@ const availableContentNodes = computed(() => {
     @close="emit('close')"
   >
     <div class="flex items-center justify-between">
-      <span class="text-base font-bold">Add a content node</span>
+      <span class="text-base font-bold">{{ t('contentNodePickerModal.title') }}</span>
       <ModalCloseButton @close="emit('close')" />
     </div>
 
@@ -42,7 +40,7 @@ const availableContentNodes = computed(() => {
       v-model="search"
       data-test="content-node-picker-search"
       type="text"
-      placeholder="Search by title"
+      :placeholder="t('contentNodePickerModal.searchPlaceholder')"
       class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
     />
 
@@ -51,7 +49,7 @@ const availableContentNodes = computed(() => {
       data-test="content-node-picker-empty"
       class="text-sm text-ink-subtle"
     >
-      No content nodes match — every content node in the library is already in this path, or none matched your search.
+      {{ t('contentNodePickerModal.emptyMessage') }}
     </p>
 
     <ul v-else class="flex flex-col gap-2 overflow-y-auto">
@@ -63,7 +61,7 @@ const availableContentNodes = computed(() => {
           @click="emit('select', contentNode.content_node_id)"
         >
           <span class="text-sm font-semibold text-ink">{{ contentNode.title }}</span>
-          <span class="text-xs text-ink-subtle">{{ contentTypeLabels[contentNode.content_type] ?? contentNode.content_type }}</span>
+          <span class="text-xs text-ink-subtle">{{ t(`common.contentTypes.${contentNode.content_type}`) }}</span>
         </button>
       </li>
     </ul>

@@ -8,6 +8,7 @@ import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const currentUser = useCurrentUserStore()
@@ -16,12 +17,8 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
+const { t } = useTypedT()
 const { contentNodes, isLoading, error, retry } = useListContentNodes()
-
-const contentTypeLabels: Record<string, string> = {
-  video: 'Video',
-  article: 'Article',
-}
 </script>
 
 <template>
@@ -30,36 +27,36 @@ const contentTypeLabels: Record<string, string> = {
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
-        This page is for teachers and admins only — your account doesn't have permission to author content.
+        {{ t('contentListView.permissionDenied') }}
       </p>
     </div>
 
     <div v-else class="flex flex-1 flex-col gap-6 px-[48px] pb-[80px] pt-10">
       <div class="flex items-center justify-between">
-        <h1 class="text-xl font-bold text-ink">Content</h1>
+        <h1 class="text-xl font-bold text-ink">{{ t('contentListView.heading') }}</h1>
         <RouterLink
           :to="{ name: 'teacher-content-new' }"
           data-test="new-content-node"
           class="flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg"
         >
           <Plus :size="14" aria-hidden="true" />
-          New content
+          {{ t('contentListView.newContentLabel') }}
         </RouterLink>
       </div>
 
-      <StateLoading v-if="isLoading" data-test="loading" noun="content" />
+      <StateLoading v-if="isLoading" data-test="loading" :noun="t('contentListView.loadingNoun')" />
 
-      <StateError v-else-if="error" data-test="error" message="We couldn't load the content nodes." @retry="retry" />
+      <StateError v-else-if="error" data-test="error" :message="t('contentListView.errorMessage')" @retry="retry" />
 
       <StateEmpty
         v-else-if="contentNodes.length === 0"
         data-test="empty"
-        heading="No content yet"
-        message="Create your first video or article to start building the content library."
+        :heading="t('contentListView.emptyHeading')"
+        :message="t('contentListView.emptyMessage')"
       >
         <template #action>
           <RouterLink :to="{ name: 'teacher-content-new' }" class="text-sm font-semibold text-accent-text underline">
-            New content
+            {{ t('contentListView.newContentLabel') }}
           </RouterLink>
         </template>
       </StateEmpty>
@@ -72,7 +69,7 @@ const contentTypeLabels: Record<string, string> = {
             class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
           >
             <span class="font-semibold text-ink">{{ contentNode.title }}</span>
-            <span class="text-sm text-ink-subtle">{{ contentTypeLabels[contentNode.content_type] ?? contentNode.content_type }}</span>
+            <span class="text-sm text-ink-subtle">{{ t(`common.contentTypes.${contentNode.content_type}`) }}</span>
           </RouterLink>
         </li>
       </ul>

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import type { components } from '@/api/generated/core-domain'
 
 type Exercise = components['schemas']['Exercise']
@@ -10,15 +11,9 @@ type Exercise = components['schemas']['Exercise']
 const props = defineProps<{ open: boolean; exercises: Exercise[]; linkedExerciseIds: string[] }>()
 const emit = defineEmits<{ select: [exerciseId: string]; close: [] }>()
 
-const search = ref('')
+const { t } = useTypedT()
 
-const exerciseTypeLabels: Record<string, string> = {
-  text_response: 'Text response',
-  audio_recognition: 'Audio recognition',
-  image_recognition: 'Image recognition',
-  image_choice: 'Image choice',
-  audio_selection: 'Audio selection',
-}
+const search = ref('')
 
 const availableExercises = computed(() => {
   const query = search.value.trim().toLowerCase()
@@ -37,7 +32,7 @@ const availableExercises = computed(() => {
     @close="emit('close')"
   >
     <div class="flex items-center justify-between">
-      <span class="text-base font-bold">Attach an exercise</span>
+      <span class="text-base font-bold">{{ t('exercisePickerModal.title') }}</span>
       <ModalCloseButton @close="emit('close')" />
     </div>
 
@@ -45,12 +40,12 @@ const availableExercises = computed(() => {
       v-model="search"
       data-test="exercise-picker-search"
       type="text"
-      placeholder="Search by title"
+      :placeholder="t('exercisePickerModal.searchPlaceholder')"
       class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
     />
 
     <p v-if="availableExercises.length === 0" data-test="exercise-picker-empty" class="text-sm text-ink-subtle">
-      No exercises match — every exercise in the pool is already attached, or none matched your search.
+      {{ t('exercisePickerModal.emptyMessage') }}
     </p>
 
     <ul v-else class="flex flex-col gap-2 overflow-y-auto">
@@ -62,7 +57,7 @@ const availableExercises = computed(() => {
           @click="emit('select', exercise.exercise_id)"
         >
           <span class="text-sm font-semibold text-ink">{{ exercise.title }}</span>
-          <span class="text-xs text-ink-subtle">{{ exerciseTypeLabels[exercise.exercise_type] ?? exercise.exercise_type }}</span>
+          <span class="text-xs text-ink-subtle">{{ t(`common.exerciseTypes.${exercise.exercise_type}`) }}</span>
         </button>
       </li>
     </ul>

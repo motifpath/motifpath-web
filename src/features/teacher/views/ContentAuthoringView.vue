@@ -34,6 +34,7 @@ import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const currentUser = useCurrentUserStore()
@@ -42,6 +43,7 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
+const { t } = useTypedT()
 
 const route = useRoute()
 const rawContentNodeId = route.params.id
@@ -72,7 +74,7 @@ async function onCreateSkill({ name, parentId }: { name: string; parentId: strin
     await reloadSkills()
     form.skillIds.value = [...form.skillIds.value, skill.skill_id]
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to create the skill')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.createSkillFailed'))
   }
 }
 
@@ -82,7 +84,7 @@ async function onCreateConcept({ name, parentId }: { name: string; parentId: str
     await reloadConcepts()
     form.conceptIds.value = [...form.conceptIds.value, concept.concept_id]
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to create the concept')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.createConceptFailed'))
   }
 }
 
@@ -119,9 +121,9 @@ async function save() {
     justSaved.value = true
     clearTimeout(justSavedTimeout)
     justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
-    toast.success(isUpdate ? 'Content node updated.' : 'Content node created.')
+    toast.success(isUpdate ? t('contentAuthoringView.contentNodeUpdated') : t('contentAuthoringView.contentNodeCreated'))
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to save the content node')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.saveContentNodeFailed'))
   } finally {
     saving.value = false
   }
@@ -188,7 +190,7 @@ async function onAddTimelineItem(
     await createExpandedContent(savedContentNodeId.value, fields)
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to add the pop-up')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.addPopupFailed'))
   }
 }
 
@@ -199,7 +201,7 @@ async function onAddPopupItem(
     await createExpandedContent(savedContentNodeId.value, fields)
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to add the pop-up')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.addPopupFailed'))
   }
 }
 
@@ -221,7 +223,7 @@ async function adjustTrigger(id: string, deltaSeconds: number) {
     })
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to update the pop-up')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.updatePopupFailed'))
   }
 }
 
@@ -239,7 +241,7 @@ async function adjustHide(id: string, deltaSeconds: number) {
     })
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to update the pop-up')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.updatePopupFailed'))
   }
 }
 
@@ -257,7 +259,7 @@ async function adjustParagraph(id: string, delta: number) {
     })
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to update the pop-up')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.updatePopupFailed'))
   }
 }
 
@@ -266,7 +268,7 @@ async function onRemoveExpandedContent(id: string) {
     await deleteExpandedContent(id)
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to remove the pop-up')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.removePopupFailed'))
   }
 }
 
@@ -326,9 +328,9 @@ async function saveChallenge() {
       })
     }
     await challengesState.value?.retry()
-    toast.success('Challenge saved.')
+    toast.success(t('contentAuthoringView.challengeSaved'))
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to save the challenge')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.saveChallengeFailed'))
   } finally {
     savingChallenge.value = false
   }
@@ -341,7 +343,7 @@ async function onExercisePicked(exerciseId: string) {
     await linkExerciseToChallenge(challenge.value.challenge_id, exerciseId)
     await challengeExercisesState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to attach the exercise')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.attachExerciseFailed'))
   }
 }
 
@@ -351,7 +353,7 @@ async function onUnlinkExercise(exerciseId: string) {
     await unlinkExerciseFromChallenge(challenge.value.challenge_id, exerciseId)
     await challengeExercisesState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : 'Failed to remove the exercise')
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.removeExerciseFailed'))
   }
 }
 </script>
@@ -362,7 +364,7 @@ async function onUnlinkExercise(exerciseId: string) {
       context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-content' }"
-      :breadcrumb-label="isEditMode ? form.title.value || 'Edit content' : 'New content'"
+      :breadcrumb-label="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"
       :show-save="canAuthor"
       :save-disabled="saving"
       :just-saved="justSaved"
@@ -371,16 +373,16 @@ async function onUnlinkExercise(exerciseId: string) {
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
-        This page is for teachers and admins only — your account doesn't have permission to author content.
+        {{ t('contentAuthoringView.permissionDenied') }}
       </p>
     </div>
 
     <div v-else-if="loadingContentNode" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading noun="content node" />
+      <StateLoading :noun="t('contentAuthoringView.loadingNoun')" />
     </div>
 
     <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
-      <StateError message="Failed to load the content node" @retry="retryLoad" />
+      <StateError :message="t('contentAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <main
@@ -393,27 +395,27 @@ async function onUnlinkExercise(exerciseId: string) {
         <input
           v-model="form.title.value"
           type="text"
-          placeholder="Untitled content"
+          :placeholder="t('contentAuthoringView.titlePlaceholder')"
           class="border-none bg-transparent font-bold text-ink outline-none"
           :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
         />
-        <span class="text-sm text-ink-subtle">Internal title — for the content library, not shown to students</span>
+        <span class="text-sm text-ink-subtle">{{ t('contentAuthoringView.titleHint') }}</span>
       </div>
 
       <div class="flex flex-col gap-2.5">
-        <label class="text-sm font-semibold">Content type</label>
+        <label class="text-sm font-semibold">{{ t('contentAuthoringView.contentTypeLabel') }}</label>
         <ContentTypeToggle v-model="form.contentType.value" :disabled="isEditMode" />
         <span class="text-sm text-ink-subtle">
           {{
             isEditMode
-              ? "Type can't be changed after creation."
-              : 'Video or article — this determines which timed pop-ups this node can carry.'
+              ? t('contentAuthoringView.typeLockedHint')
+              : t('contentAuthoringView.typeUnlockedHint')
           }}
         </span>
       </div>
 
       <div class="flex flex-col gap-2 border-t border-border pt-4">
-        <label class="text-sm font-semibold">Classification</label>
+        <label class="text-sm font-semibold">{{ t('contentAuthoringView.classificationLabel') }}</label>
         <ClassificationFields
           v-model:skill-ids="form.skillIds.value"
           v-model:concept-ids="form.conceptIds.value"
@@ -429,7 +431,7 @@ async function onUnlinkExercise(exerciseId: string) {
       </div>
 
       <div v-if="savedContentNodeId && form.contentType.value === 'video'" class="flex flex-col gap-2 border-t border-border pt-4">
-        <label class="text-sm font-semibold">Timed pop-ups</label>
+        <label class="text-sm font-semibold">{{ t('contentAuthoringView.timedPopupsLabel') }}</label>
         <VideoTimelineEditor
           :items="expandedContentState?.items.value ?? []"
           @add="onAddTimelineItem"
@@ -440,7 +442,7 @@ async function onUnlinkExercise(exerciseId: string) {
       </div>
 
       <div v-else-if="savedContentNodeId && form.contentType.value === 'article'" class="flex flex-col gap-2 border-t border-border pt-4">
-        <label class="text-sm font-semibold">Paragraph pop-ups</label>
+        <label class="text-sm font-semibold">{{ t('contentAuthoringView.paragraphPopupsLabel') }}</label>
         <ArticlePopupListEditor
           :items="expandedContentState?.items.value ?? []"
           @add="onAddPopupItem"
@@ -450,7 +452,7 @@ async function onUnlinkExercise(exerciseId: string) {
       </div>
 
       <div v-if="savedContentNodeId" data-test="challenge-section" class="flex flex-col gap-3 border-t border-border pt-4">
-        <label class="text-sm font-semibold">Challenge</label>
+        <label class="text-sm font-semibold">{{ t('contentAuthoringView.challengeLabel') }}</label>
 
         <ChallengeConfigPanel
           v-model:subject-skill-id="challengeForm.subjectSkillId"
@@ -470,16 +472,16 @@ async function onUnlinkExercise(exerciseId: string) {
           class="w-fit rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           @click="saveChallenge"
         >
-          Save challenge
+          {{ t('contentAuthoringView.saveChallenge') }}
         </button>
 
         <p v-if="!challenge" data-test="no-challenge" class="text-sm text-ink-subtle">
-          No challenge yet — pick a subject above and save to create one.
+          {{ t('contentAuthoringView.noChallengeMessage') }}
         </p>
 
         <template v-else>
           <div class="flex items-center justify-between pt-2">
-            <span class="text-xs font-semibold uppercase tracking-wide text-ink-muted">Linked exercises</span>
+            <span class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ t('contentAuthoringView.linkedExercisesLabel') }}</span>
             <button
               type="button"
               data-test="attach-exercise"
@@ -487,12 +489,12 @@ async function onUnlinkExercise(exerciseId: string) {
               @click="pickerOpen = true"
             >
               <Plus :size="14" aria-hidden="true" />
-              Attach exercise
+              {{ t('contentAuthoringView.attachExercise') }}
             </button>
           </div>
 
           <p v-if="(challengeExercisesState?.exercises.value.length ?? 0) === 0" class="text-sm text-ink-subtle">
-            No exercises attached yet.
+            {{ t('contentAuthoringView.noExercisesAttached') }}
           </p>
           <ul v-else class="flex flex-col gap-2">
             <li
@@ -504,7 +506,7 @@ async function onUnlinkExercise(exerciseId: string) {
               <button
                 type="button"
                 data-test="unlink-exercise"
-                aria-label="Remove exercise"
+                :aria-label="t('contentAuthoringView.removeExerciseAriaLabel')"
                 class="text-ink-subtle"
                 @click="onUnlinkExercise(exercise.exercise_id)"
               >
