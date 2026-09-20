@@ -156,5 +156,30 @@ describe('App', () => {
 
       expect(updateClerkOptions).not.toHaveBeenCalled()
     })
+
+    it('catches up a locale change made before Clerk finished loading, once it does', async () => {
+      auth.isLoaded.value = false
+      const wrapper = mountApp()
+      i18n.global.locale.value = 'pt-BR'
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+      expect(updateClerkOptions).not.toHaveBeenCalled()
+
+      auth.isLoaded.value = true
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(updateClerkOptions).toHaveBeenCalledWith({ localization: ptBrLocalization })
+    })
+
+    it('does not re-sync when isLoaded flips true for a locale already synced at mount', async () => {
+      auth.isLoaded.value = false
+      const wrapper = mountApp()
+      auth.isLoaded.value = true
+      await wrapper.vm.$nextTick()
+      await Promise.resolve()
+
+      expect(updateClerkOptions).not.toHaveBeenCalled()
+    })
   })
 })
