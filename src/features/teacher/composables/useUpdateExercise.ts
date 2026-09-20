@@ -1,23 +1,18 @@
-import { useApi } from '@/shared/composables/useApi'
-import { describeApiError } from '@/shared/utils/apiError'
+import { useApiMutation } from '@/shared/composables/useApiMutation'
 import type { components } from '@/api/generated/core-domain'
 
 type UpdateExerciseRequest = components['schemas']['UpdateExerciseRequest']
 type Exercise = components['schemas']['Exercise']
 
 export function useUpdateExercise() {
-  const { coreApi } = useApi()
-
-  async function updateExercise(exerciseId: string, request: UpdateExerciseRequest): Promise<Exercise> {
-    const { data, error } = await coreApi.PUT('/exercises/{exercise_id}', {
-      params: { path: { exercise_id: exerciseId } },
-      body: request,
-    })
-    if (!data) {
-      throw new Error(describeApiError(error, 'Failed to update the exercise'))
-    }
-    return data
-  }
+  const updateExercise = useApiMutation<[string, UpdateExerciseRequest], Exercise>(
+    (coreApi, exerciseId, request) =>
+      coreApi.PUT('/exercises/{exercise_id}', {
+        params: { path: { exercise_id: exerciseId } },
+        body: request,
+      }),
+    'Failed to update the exercise',
+  )
 
   return { updateExercise }
 }

@@ -1,20 +1,14 @@
-import { useApi } from '@/shared/composables/useApi'
-import { describeApiError } from '@/shared/utils/apiError'
+import { useApiMutation } from '@/shared/composables/useApiMutation'
 import type { components } from '@/api/generated/core-domain'
 
 type CreateExerciseRequest = components['schemas']['CreateExerciseRequest']
 type Exercise = components['schemas']['Exercise']
 
 export function useCreateExercise() {
-  const { coreApi } = useApi()
-
-  async function createExercise(request: CreateExerciseRequest): Promise<Exercise> {
-    const { data, error } = await coreApi.POST('/exercises', { body: request })
-    if (!data) {
-      throw new Error(describeApiError(error, 'Failed to create the exercise'))
-    }
-    return data
-  }
+  const createExercise = useApiMutation<[CreateExerciseRequest], Exercise>(
+    (coreApi, request) => coreApi.POST('/exercises', { body: request }),
+    'Failed to create the exercise',
+  )
 
   return { createExercise }
 }
