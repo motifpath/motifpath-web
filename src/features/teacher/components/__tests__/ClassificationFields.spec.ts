@@ -29,7 +29,9 @@ describe('ClassificationFields', () => {
       props: { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner', reviewState: null },
     })
 
-    const options = wrapper.findAll('[data-test="difficulty-level"] option').map((o) => o.element.value)
+    const options = wrapper
+      .findAll('[data-test="difficulty-level"] option')
+      .map((o) => (o.element as HTMLOptionElement).value)
     expect(options).toEqual(['beginner', 'early_intermediate', 'intermediate', 'advanced', 'expert'])
   })
 
