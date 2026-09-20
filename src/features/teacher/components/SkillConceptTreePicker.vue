@@ -372,7 +372,8 @@ function submitCreate() {
           <button
             type="button"
             data-test="tree-create-submit"
-            class="w-fit rounded-md border border-border bg-surface-sunken px-3 py-2 text-[0.8125rem] font-semibold"
+            :disabled="!createName.trim()"
+            class="w-fit rounded-md border border-border bg-surface-sunken px-3 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             @click="submitCreate"
           >
             {{ t('skillConceptTreePicker.createSubmit') }}
@@ -381,6 +382,15 @@ function submitCreate() {
             {{ t('skillConceptTreePicker.duplicateName', { name: createName.trim() }) }}
           </p>
         </div>
+
+        <button
+          type="button"
+          data-test="tree-close"
+          class="w-fit self-end rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold"
+          @click="closePicker"
+        >
+          {{ t('skillConceptTreePicker.closeButton') }}
+        </button>
       </div>
     </ModalOverlay>
   </div>

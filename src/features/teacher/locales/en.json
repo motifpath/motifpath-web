@@ -137,7 +137,8 @@
     "parentSearchPlaceholder": "No parent (root) — search to set a parent",
     "clearParentAriaLabel": "Clear parent",
     "createSubmit": "Add",
-    "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate."
+    "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate.",
+    "closeButton": "Close"
   },
   "challengeConfigPanel": {
     "subjectLabel": "Subject",

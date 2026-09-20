@@ -137,7 +137,8 @@
     "parentSearchPlaceholder": "Sem item pai (raiz) — busque para definir um item pai",
     "clearParentAriaLabel": "Limpar item pai",
     "createSubmit": "Adicionar",
-    "duplicateName": "Já existe um item chamado \"{name}\" sob esse item pai — selecione-o na lista acima em vez de criar um quase duplicado."
+    "duplicateName": "Já existe um item chamado \"{name}\" sob esse item pai — selecione-o na lista acima em vez de criar um quase duplicado.",
+    "closeButton": "Fechar"
   },
   "challengeConfigPanel": {
     "subjectLabel": "Assunto",
