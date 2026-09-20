@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, RouterView, type RouteRecordRaw } from 'vue-router'
 
 import { authChecker } from '@/features/auth/authBridge'
 import { ensureAuthLocaleLoaded } from '@/features/auth/locales'
@@ -22,13 +22,18 @@ const routes: RouteRecordRaw[] = [
     // Three of this path's four children are auth views (sign-in, the
     // registering bridge, and the registration-error screen) — loading the
     // auth locale here once covers all of them instead of repeating the
-    // same beforeEnter on each leaf route.
-    beforeEnter: () => ensureAuthLocaleLoaded(),
+    // same beforeEnter on each leaf route. `home` additionally needs the
+    // student locale; both loads are kicked off together here rather than
+    // one in this beforeEnter and the other in `home`'s own, so they run as
+    // parallel network fetches instead of one waiting on the other to settle.
+    beforeEnter: (to) =>
+      to.name === 'home'
+        ? Promise.all([ensureAuthLocaleLoaded(), ensureStudentLocaleLoaded()]).then(() => undefined)
+        : ensureAuthLocaleLoaded(),
     children: [
       {
         path: '',
         name: 'home',
-        beforeEnter: () => ensureStudentLocaleLoaded(),
         component: () => import('@/features/student/views/HomeView.vue'),
       },
       {
@@ -79,24 +84,31 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/teacher/exercises',
-    name: 'teacher-exercises',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    // A pass-through parent (no layout of its own — just RouterView) so all
+    // three exercise routes below share one beforeEnter instead of each
+    // repeating it, the same hoisting this file already does for auth above.
+    component: RouterView,
     beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/ExerciseListView.vue'),
-  },
-  {
-    path: '/teacher/exercises/new',
-    name: 'teacher-exercise-new',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
-    beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
-  },
-  {
-    path: '/teacher/exercises/:id/edit',
-    name: 'teacher-exercise-edit',
-    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
-    beforeEnter: () => ensureTeacherLocaleLoaded(),
-    component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
+    children: [
+      {
+        path: '',
+        name: 'teacher-exercises',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ExerciseListView.vue'),
+      },
+      {
+        path: 'new',
+        name: 'teacher-exercise-new',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
+      },
+      {
+        path: ':id/edit',
+        name: 'teacher-exercise-edit',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ExerciseAuthoringView.vue'),
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',

@@ -20,13 +20,13 @@ const { isCompact } = useIsCompact()
 const { exercises, isLoading, error, retry } = useListExercises()
 const { t } = useTypedT()
 
-const exerciseTypeLabels: Record<string, string> = {
+const exerciseTypeLabels = computed<Record<string, string>>(() => ({
   text_response: t('common.exerciseTypes.text_response'),
   audio_recognition: t('common.exerciseTypes.audio_recognition'),
   image_recognition: t('common.exerciseTypes.image_recognition'),
   image_choice: t('common.exerciseTypes.image_choice'),
   audio_selection: t('common.exerciseTypes.audio_selection'),
-}
+}))
 </script>
 
 <template>
