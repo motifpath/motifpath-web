@@ -1,28 +1,15 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
-const clerk = {
-  isLoaded: ref(true),
-  isSignedIn: ref(false),
-  getToken: vi.fn(async () => 'jwt-abc'),
-  signOut: vi.fn(async () => {}),
-}
-const clerkUser = ref<{ firstName: string | null; primaryEmailAddress: null } | null>({
-  firstName: 'Gilson',
-  primaryEmailAddress: null,
-})
+const isSignedIn = ref(false)
 
-vi.mock('@clerk/vue', () => ({
-  useAuth: () => ({
-    isLoaded: computed(() => clerk.isLoaded.value),
-    isSignedIn: computed(() => clerk.isSignedIn.value),
-    getToken: computed(() => clerk.getToken),
-    signOut: computed(() => clerk.signOut),
-  }),
-  useUser: () => ({ user: computed(() => clerkUser.value) }),
+vi.mock('@/features/auth/composables/useAuth', () => ({
+  useAuth: () => ({ isSignedIn }),
 }))
+
+import AccountMenu from '@/shared/components/AccountMenu.vue'
 
 const { default: AppShell } = await import('@/shared/components/AppShell.vue')
 
@@ -36,15 +23,14 @@ function mountShell(props: ShellProps = {}, slots = {}) {
     slots,
     global: {
       plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
+      stubs: { RouterLink: RouterLinkStub, AccountMenu: true },
     },
   })
 }
 
 describe('AppShell', () => {
   beforeEach(() => {
-    clerk.isSignedIn.value = false
-    clerk.signOut.mockClear()
+    isSignedIn.value = false
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -101,61 +87,24 @@ describe('AppShell', () => {
     expect(wrapper.find('[data-test="locale-switcher"]').exists()).toBe(true)
   })
 
-  it('does not render the account avatar when signed out', () => {
+  it('does not render the account menu when signed out', () => {
     const wrapper = mountShell()
 
-    expect(wrapper.find('[data-test="app-shell-account-avatar"]').exists()).toBe(false)
+    expect(wrapper.findComponent(AccountMenu).exists()).toBe(false)
   })
 
   describe('when signed in', () => {
     beforeEach(() => {
-      clerk.isSignedIn.value = true
+      isSignedIn.value = true
     })
 
-    it('renders the account avatar instead of the inline locale switcher', () => {
+    it('renders the account menu instead of the inline locale switcher', () => {
       const wrapper = mountShell()
 
-      expect(wrapper.find('[data-test="app-shell-account-avatar"]').exists()).toBe(true)
+      // AccountMenu owns the avatar/menu/sign-out/locale-switcher behavior
+      // itself and is tested in isolation — see AccountMenu.spec.ts.
+      expect(wrapper.findComponent(AccountMenu).exists()).toBe(true)
       expect(wrapper.find('[data-test="locale-switcher"]').exists()).toBe(false)
-    })
-
-    it('opens an account menu with the locale switcher and sign out when the avatar is clicked', async () => {
-      const wrapper = mountShell()
-
-      expect(wrapper.find('[data-test="app-shell-account-menu"]').exists()).toBe(false)
-
-      await wrapper.get('[data-test="app-shell-account-avatar"]').trigger('click')
-
-      const menu = wrapper.get('[data-test="app-shell-account-menu"]')
-      expect(menu.find('[data-test="locale-switcher"]').exists()).toBe(true)
-      expect(menu.find('[data-test="sign-out"]').exists()).toBe(true)
-    })
-
-    it('signs the user out when the menu\'s Sign out item is used', async () => {
-      const wrapper = mountShell()
-      await wrapper.get('[data-test="app-shell-account-avatar"]').trigger('click')
-
-      await wrapper.get('[data-test="sign-out"]').trigger('click')
-
-      expect(clerk.signOut).toHaveBeenCalledOnce()
-    })
-
-    it('closes the account menu when its overlay is clicked', async () => {
-      const wrapper = mountShell()
-      await wrapper.get('[data-test="app-shell-account-avatar"]').trigger('click')
-
-      await wrapper.get('[data-test="app-shell-account-menu-overlay"]').trigger('click')
-
-      expect(wrapper.find('[data-test="app-shell-account-menu"]').exists()).toBe(false)
-    })
-
-    it('closes the account menu when a locale option is selected', async () => {
-      const wrapper = mountShell()
-      await wrapper.get('[data-test="app-shell-account-avatar"]').trigger('click')
-
-      await wrapper.get('[data-test="locale-option-pt-BR"]').trigger('click')
-
-      expect(wrapper.find('[data-test="app-shell-account-menu"]').exists()).toBe(false)
     })
   })
 })
