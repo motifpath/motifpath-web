@@ -292,6 +292,19 @@ watch(challenge, (c) => {
   challengeExercisesState.value = useListChallengeExercises(c.challenge_id)
 })
 
+// A challenge's subject must belong to its content node's own classification.
+// If the teacher removes that skill/concept from Classification after picking
+// it as the subject, drop the now-orphaned selection instead of letting a
+// stale id reach the backend's membership check as a confusing save failure.
+watch([form.skillIds, form.conceptIds], ([skillIds, conceptIds]) => {
+  if (challengeForm.subjectSkillId && !skillIds.includes(challengeForm.subjectSkillId)) {
+    challengeForm.subjectSkillId = undefined
+  }
+  if (challengeForm.subjectConceptId && !conceptIds.includes(challengeForm.subjectConceptId)) {
+    challengeForm.subjectConceptId = undefined
+  }
+})
+
 async function saveChallenge() {
   savingChallenge.value = true
   try {

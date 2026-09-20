@@ -311,6 +311,38 @@ describe('ContentAuthoringView', () => {
         expect(wrapper.text()).toContain('Name the chord')
       })
 
+      it('clears an existing challenge subject once its skill is removed from classification', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
+          '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+          '/content-nodes/{content_node_id}/challenges': {
+            data: [
+              {
+                challenge_id: 'ch-1',
+                content_node_id: 'cn-1',
+                subject_skill_id: 's-1',
+                pass_threshold: 80,
+                shuffle_exercises: false,
+                shuffle_options: false,
+                created_at: '2026-01-01T00:00:00Z',
+              },
+            ],
+            error: undefined,
+            response: { status: 200 },
+          },
+        })
+        const wrapper = mountView()
+        await flushPromises()
+        expect((wrapper.get('[data-test="tree-node-radio"][value="s-1"]').element as HTMLInputElement).checked).toBe(
+          true,
+        )
+
+        await wrapper.get('[data-test="tree-selected-chip-remove"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeDefined()
+      })
+
       it('links a picked exercise to the challenge', async () => {
         routeGET({
           '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
