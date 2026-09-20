@@ -112,7 +112,9 @@
     "previewAsStudent": "Preview as student",
     "exerciseUpdated": "Exercise updated.",
     "exerciseCreated": "Exercise created.",
-    "saveFailed": "Failed to save the exercise"
+    "saveFailed": "Failed to save the exercise",
+    "createSkillFailed": "Failed to create the skill",
+    "createConceptFailed": "Failed to create the concept"
   },
   "exerciseListView": {
     "heading": "Exercises",

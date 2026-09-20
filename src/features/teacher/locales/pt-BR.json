@@ -112,7 +112,9 @@
     "previewAsStudent": "Pré-visualizar como aluno",
     "exerciseUpdated": "Exercício atualizado.",
     "exerciseCreated": "Exercício criado.",
-    "saveFailed": "Falha ao salvar o exercício"
+    "saveFailed": "Falha ao salvar o exercício",
+    "createSkillFailed": "Falha ao criar a habilidade",
+    "createConceptFailed": "Falha ao criar o conceito"
   },
   "exerciseListView": {
     "heading": "Exercícios",

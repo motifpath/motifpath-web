@@ -26,11 +26,12 @@ vi.mock('@/features/teacher/locales', () => ({
 }))
 
 import { router } from '@/router'
-import { updateAuthBridge } from '@/features/auth/authBridge'
+import { updateAuthBridge, updateRegistrationBridge, updateRoleBridge } from '@/features/auth/authBridge'
 
 describe('router locale loading', () => {
   beforeEach(async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+    updateRoleBridge(null)
     await router.replace('/sign-in')
     await router.isReady()
     ensureAuthLocaleLoaded.mockClear()
@@ -63,5 +64,31 @@ describe('router locale loading', () => {
     await router.push('/sign-in')
 
     expect(ensureStudentLocaleLoaded).not.toHaveBeenCalled()
+  })
+
+  describe('teacher content/paths routes', () => {
+    beforeEach(() => {
+      updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+      updateRegistrationBridge('registered')
+      updateRoleBridge('teacher')
+    })
+
+    // These 6 routes were added in the same PB-40 branch that later wired
+    // useTypedT into their views, but never got the beforeEnter guard the
+    // /teacher/exercises routes already had — so a fresh, direct navigation
+    // rendered raw i18n message keys instead of translated text.
+    it.each([
+      ['/teacher/content', 'teacher-content'],
+      ['/teacher/content/new', 'teacher-content-new'],
+      ['/teacher/content/cn-1/edit', 'teacher-content-edit'],
+      ['/teacher/paths', 'teacher-paths'],
+      ['/teacher/paths/new', 'teacher-path-new'],
+      ['/teacher/paths/lp-1/edit', 'teacher-path-edit'],
+    ])('loads the teacher locale on a direct navigation to %s', async (path, routeName) => {
+      await router.push(path)
+
+      expect(router.currentRoute.value.name).toBe(routeName)
+      expect(ensureTeacherLocaleLoaded).toHaveBeenCalled()
+    })
   })
 })

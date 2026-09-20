@@ -314,6 +314,38 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.text()).toContain('technique')
   })
 
+  it('selects a newly created skill together with its parent chain', async () => {
+    const rootSkill = { skill_id: 's-1', name: 'technique', parent_id: null }
+    const childSkill = { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' }
+    let skillsRequestCount = 0
+    GET.mockImplementation((path: string) => {
+      if (path === '/skills') {
+        skillsRequestCount += 1
+        // The first load happens before the skill exists; reloadSkills()
+        // after the create call reflects the real backend's post-create state.
+        const data = skillsRequestCount === 1 ? [rootSkill] : [rootSkill, childSkill]
+        return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+      }
+      return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+    })
+    POST.mockResolvedValueOnce({ data: childSkill, error: undefined, response: { status: 201 } })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.get('[data-test="tree-create-name"]').setValue('sweep-picking')
+    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+    await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="s-1"]').trigger('click')
+    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+    await flushPromises()
+
+    const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
+    expect(chips).toHaveLength(2)
+    expect(chips.map((c) => c.text())).toEqual(
+      expect.arrayContaining([expect.stringContaining('technique'), expect.stringContaining('sweep-picking')]),
+    )
+  })
+
   it('disables the AppBar Save button until at least one option is marked correct', async () => {
     const wrapper = mountView()
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('title')
