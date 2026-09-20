@@ -47,9 +47,19 @@ const teacherNavItems: { name: string; labelKey: 'nav.content' | 'nav.paths' | '
 ]
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string }).name)
 const fallbackTeacherSection = { name: 'teacher-exercises', labelKey: 'nav.exercises' as const }
-const activeTeacherSection = computed(
-  () => teacherNavItems.find((item) => item.name === primaryNavToName.value) ?? fallbackTeacherSection,
-)
+const activeTeacherSection = computed(() => {
+  const match = teacherNavItems.find((item) => item.name === primaryNavToName.value)
+  if (!match && !isStudent.value && import.meta.env.DEV) {
+    // Falling back silently would highlight the wrong tab and mislabel the
+    // breadcrumb root with no visible sign anything's wrong — surface it
+    // loudly in development instead of shipping a plausible-looking bug.
+    console.warn(
+      `AppBar: primaryNavTo route name "${String(primaryNavToName.value)}" is not one of the known teacher ` +
+        `sections (${teacherNavItems.map((item) => item.name).join(', ')}); falling back to "${fallbackTeacherSection.name}".`,
+    )
+  }
+  return match ?? fallbackTeacherSection
+})
 const primaryNavLabel = computed(() => (isStudent.value ? t('nav.student') : t(activeTeacherSection.value.labelKey)))
 
 const drawerOpen = ref(false)

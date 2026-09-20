@@ -114,6 +114,19 @@ describe('AppBar', () => {
     expect(contentTab?.classes()).not.toContain('bg-accent-muted')
   })
 
+  it('falls back to the Exercises tab and warns when primaryNavTo names an unknown teacher section', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-reports' } })
+
+    const links = wrapper.findAllComponents(RouterLinkStub)
+    const exercisesTab = links.find((l) => l.text() === 'Exercises')
+    expect(exercisesTab?.classes()).toContain('bg-accent-muted')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('teacher-reports'))
+
+    warn.mockRestore()
+  })
+
   it('shows all three teacher tabs in the compact drawer', async () => {
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-content' }, compact: true })
 
