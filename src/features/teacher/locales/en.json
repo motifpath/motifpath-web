@@ -68,11 +68,6 @@
     "linkUrlPrompt": "Link URL",
     "imageUploadFailed": "Failed to upload the image"
   },
-  "skillTagsInput": {
-    "placeholder": "Type a skill and press Enter",
-    "removeTagAriaLabel": "Remove tag {tag}",
-    "createOption": "Create \"{tag}\""
-  },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marked correct",
     "markCorrectAriaLabel": "Mark correct",
@@ -99,8 +94,8 @@
     "changeStimulusImage": "Change stimulus image",
     "chooseStimulusAudio": "Choose stimulus audio",
     "changeStimulusAudio": "Change stimulus audio",
-    "skillTagsLabel": "Skill tags",
-    "skillTagsHint": "Makes this exercise findable outside its original path — e.g. as a remediation suggestion.",
+    "classificationLabel": "Classification",
+    "classificationHint": "Makes this exercise findable outside its original path — e.g. as a remediation suggestion.",
     "usageHeading": "Where this exercise is used",
     "usageUnsaved": "Save the exercise to see where it's used.",
     "usageChallengesHeading": "Challenges",
@@ -108,8 +103,8 @@
     "usagePathExercisesHeading": "Path exercises",
     "usageNoPathExercises": "Not linked to any path node yet.",
     "usagePracticeSessionsHeading": "Practice sessions",
-    "usageNotEligible": "Not eligible — add a skill tag to make this exercise selectable for a skill-targeted practice session.",
-    "usageEligible": "Eligible for practice sessions matching: {tags}",
+    "usageNotEligible": "Not eligible — link a skill to make this exercise selectable for a skill-targeted practice session.",
+    "usageEligible": "Eligible for skill-targeted practice sessions.",
     "previewAsStudent": "Preview as student",
     "exerciseUpdated": "Exercise updated.",
     "exerciseCreated": "Exercise created.",

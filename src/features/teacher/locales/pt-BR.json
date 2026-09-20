@@ -68,11 +68,6 @@
     "linkUrlPrompt": "URL do link",
     "imageUploadFailed": "Falha ao enviar a imagem"
   },
-  "skillTagsInput": {
-    "placeholder": "Digite uma habilidade e pressione Enter",
-    "removeTagAriaLabel": "Remover marcador {tag}",
-    "createOption": "Criar \"{tag}\""
-  },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marcada como correta",
     "markCorrectAriaLabel": "Marcar como correta",
@@ -99,8 +94,8 @@
     "changeStimulusImage": "Alterar imagem de estímulo",
     "chooseStimulusAudio": "Escolher áudio de estímulo",
     "changeStimulusAudio": "Alterar áudio de estímulo",
-    "skillTagsLabel": "Marcadores de habilidade",
-    "skillTagsHint": "Torna este exercício localizável fora de sua trilha original — por exemplo, como sugestão de reforço.",
+    "classificationLabel": "Classificação",
+    "classificationHint": "Torna este exercício localizável fora de sua trilha original — por exemplo, como sugestão de reforço.",
     "usageHeading": "Onde este exercício é usado",
     "usageUnsaved": "Salve o exercício para ver onde ele é usado.",
     "usageChallengesHeading": "Desafios",
@@ -108,8 +103,8 @@
     "usagePathExercisesHeading": "Exercícios da trilha",
     "usageNoPathExercises": "Ainda não vinculado a nenhum nó de trilha.",
     "usagePracticeSessionsHeading": "Sessões de prática",
-    "usageNotEligible": "Não elegível — adicione um marcador de habilidade para tornar este exercício selecionável em uma sessão de prática direcionada por habilidade.",
-    "usageEligible": "Elegível para sessões de prática que correspondem a: {tags}",
+    "usageNotEligible": "Não elegível — vincule uma habilidade para tornar este exercício selecionável em uma sessão de prática direcionada por habilidade.",
+    "usageEligible": "Elegível para sessões de prática direcionadas por habilidade.",
     "previewAsStudent": "Pré-visualizar como aluno",
     "exerciseUpdated": "Exercício atualizado.",
     "exerciseCreated": "Exercício criado.",

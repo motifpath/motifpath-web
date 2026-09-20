@@ -10,13 +10,16 @@ import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceO
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
-import SkillTagsInput from '@/features/teacher/components/SkillTagsInput.vue'
+import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.vue'
+import { useCreateConcept } from '@/features/teacher/composables/useCreateConcept'
 import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
+import { useCreateSkill } from '@/features/teacher/composables/useCreateSkill'
 import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
+import { useListConcepts } from '@/features/teacher/composables/useListConcepts'
+import { useListSkills } from '@/features/teacher/composables/useListSkills'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
-import { useSkillTagSuggestions } from '@/features/teacher/composables/useSkillTagSuggestions'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -53,7 +56,30 @@ const form = useExerciseForm()
 const { createExercise } = useCreateExercise()
 const { updateExercise } = useUpdateExercise()
 const { upload } = useMediaUpload()
-const { availableTags: skillTagSuggestions, ensureLoaded: loadSkillTagSuggestions } = useSkillTagSuggestions()
+const { skills, isLoading: skillsLoading, retry: reloadSkills } = useListSkills()
+const { concepts, isLoading: conceptsLoading, retry: reloadConcepts } = useListConcepts()
+const { createSkill } = useCreateSkill()
+const { createConcept } = useCreateConcept()
+
+async function onCreateSkill({ name, parentId }: { name: string; parentId: string | null }) {
+  try {
+    const skill = await createSkill({ name, ...(parentId ? { parent_id: parentId } : {}) })
+    await reloadSkills()
+    form.skillIds.value = [...form.skillIds.value, skill.skill_id]
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to create the skill')
+  }
+}
+
+async function onCreateConcept({ name, parentId }: { name: string; parentId: string | null }) {
+  try {
+    const concept = await createConcept({ name, ...(parentId ? { parent_id: parentId } : {}) })
+    await reloadConcepts()
+    form.conceptIds.value = [...form.conceptIds.value, concept.concept_id]
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : 'Failed to create the concept')
+  }
+}
 
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])
@@ -404,17 +430,28 @@ async function save() {
           @add="form.addAudioOption"
         />
 
-        <div class="flex flex-col gap-2 border-t border-border pt-2">
-          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.skillTagsLabel') }}</label>
-          <span class="-mt-1 text-[0.8125rem] text-ink-subtle">
-            {{ t('exerciseAuthoringView.skillTagsHint') }}
-          </span>
-          <SkillTagsInput
-            :tags="form.skillTags.value"
-            :suggestions="skillTagSuggestions"
-            @add="form.addTag"
-            @remove="form.removeTag"
-            @focus="loadSkillTagSuggestions"
+        <div class="flex flex-col gap-4 border-t border-border pt-2">
+          <div>
+            <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.classificationLabel') }}</label>
+            <span class="-mt-1 block text-[0.8125rem] text-ink-subtle">
+              {{ t('exerciseAuthoringView.classificationHint') }}
+            </span>
+          </div>
+          <SkillConceptTreePicker
+            label="Skill"
+            :nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
+            :selected-ids="form.skillIds.value"
+            :is-loading="skillsLoading"
+            @update:selected-ids="form.skillIds.value = $event"
+            @create="onCreateSkill"
+          />
+          <SkillConceptTreePicker
+            label="Concept"
+            :nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+            :selected-ids="form.conceptIds.value"
+            :is-loading="conceptsLoading"
+            @update:selected-ids="form.conceptIds.value = $event"
+            @create="onCreateConcept"
           />
         </div>
 
@@ -464,10 +501,10 @@ async function save() {
 
             <div data-test="usage-practice-sessions" class="flex flex-col gap-2">
               <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usagePracticeSessionsHeading') }}</span>
-              <p v-if="form.skillTags.value.length === 0" class="text-sm text-ink-subtle">
+              <p v-if="form.skillIds.value.length === 0" class="text-sm text-ink-subtle">
                 {{ t('exerciseAuthoringView.usageNotEligible') }}
               </p>
-              <p v-else class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageEligible', { tags: form.skillTags.value.join(', ') }) }}</p>
+              <p v-else class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageEligible') }}</p>
             </div>
           </template>
         </div>
