@@ -6,9 +6,27 @@ import type { components } from '@/api/generated/core-domain'
 
 type ContentNode = components['schemas']['ContentNode']
 
+function makeContentNode(overrides: Partial<ContentNode>): ContentNode {
+  return {
+    content_node_id: 'cn-1',
+    teacher_id: 't-1',
+    title: 'Untitled',
+    content_type: 'video',
+    classification: {
+      skills: [],
+      concepts: [],
+      difficulty_level: 'beginner',
+      review_state: 'pending',
+    },
+    languages: [],
+    created_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
 const contentNodes: ContentNode[] = [
-  { content_node_id: 'cn-1', title: 'Open position triads', content_type: 'video' } as ContentNode,
-  { content_node_id: 'cn-2', title: 'Reading the fretboard', content_type: 'article' } as ContentNode,
+  makeContentNode({ content_node_id: 'cn-1', title: 'Open position triads', content_type: 'video' }),
+  makeContentNode({ content_node_id: 'cn-2', title: 'Reading the fretboard', content_type: 'article' }),
 ]
 
 describe('ContentNodePickerModal', () => {

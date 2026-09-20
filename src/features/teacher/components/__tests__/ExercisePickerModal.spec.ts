@@ -6,9 +6,27 @@ import type { components } from '@/api/generated/core-domain'
 
 type Exercise = components['schemas']['Exercise']
 
+function makeExercise(overrides: Partial<Exercise>): Exercise {
+  return {
+    exercise_id: 'e-1',
+    title: 'Untitled',
+    prompt: { type: 'doc', content: [] },
+    exercise_type: 'text_response',
+    skills: [],
+    concepts: [],
+    options: [],
+    challenge_ids: [],
+    content_node_ids: [],
+    remediation_targets: [],
+    languages: [],
+    created_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
 const exercises: Exercise[] = [
-  { exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response' } as Exercise,
-  { exercise_id: 'e-2', title: 'Pick the diagram', exercise_type: 'image_choice' } as Exercise,
+  makeExercise({ exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response' }),
+  makeExercise({ exercise_id: 'e-2', title: 'Pick the diagram', exercise_type: 'image_choice' }),
 ]
 
 describe('ExercisePickerModal', () => {

@@ -22,7 +22,7 @@ const contentTypes: { value: ContentType; label: string; icon: typeof Video }[] 
       type="button"
       :data-test="`content-type-${type.value}`"
       :disabled="disabled"
-      class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+      class="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
       :class="modelValue === type.value ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
       @click="emit('update:modelValue', type.value)"
     >
