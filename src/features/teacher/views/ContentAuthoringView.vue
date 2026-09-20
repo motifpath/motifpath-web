@@ -35,6 +35,7 @@ import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { ancestorIds } from '@/shared/utils/skillConceptTree'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const currentUser = useCurrentUserStore()
@@ -72,7 +73,11 @@ async function onCreateSkill({ name, parentId }: { name: string; parentId: strin
   try {
     const skill = await createSkill({ name, ...(parentId ? { parent_id: parentId } : {}) })
     await reloadSkills()
-    form.skillIds.value = [...form.skillIds.value, skill.skill_id]
+    const skillNodes = skills.value.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))
+    const newNode = { id: skill.skill_id, name: skill.name, parent_id: parentId }
+    form.skillIds.value = Array.from(
+      new Set([...form.skillIds.value, skill.skill_id, ...ancestorIds(skillNodes, newNode)]),
+    )
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('contentAuthoringView.createSkillFailed'))
   }
@@ -82,7 +87,11 @@ async function onCreateConcept({ name, parentId }: { name: string; parentId: str
   try {
     const concept = await createConcept({ name, ...(parentId ? { parent_id: parentId } : {}) })
     await reloadConcepts()
-    form.conceptIds.value = [...form.conceptIds.value, concept.concept_id]
+    const conceptNodes = concepts.value.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))
+    const newNode = { id: concept.concept_id, name: concept.name, parent_id: parentId }
+    form.conceptIds.value = Array.from(
+      new Set([...form.conceptIds.value, concept.concept_id, ...ancestorIds(conceptNodes, newNode)]),
+    )
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('contentAuthoringView.createConceptFailed'))
   }

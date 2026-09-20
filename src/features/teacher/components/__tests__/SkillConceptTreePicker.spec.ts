@@ -254,4 +254,53 @@ describe('SkillConceptTreePicker', () => {
 
     expect(wrapper.find('[data-test="tree-loading"]').exists()).toBe(true)
   })
+
+  it('navigates the parent-search results with the arrow keys and picks the highlighted one with Enter', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
+
+    const parentSearch = wrapper.get('[data-test="tree-create-parent-search"]')
+    await parentSearch.trigger('focus')
+    // parentOptions is [No parent (root), chord-theory, chord-theory > major-triads, rhythm]
+    await parentSearch.trigger('keydown', { key: 'ArrowDown' })
+    await parentSearch.trigger('keydown', { key: 'ArrowDown' })
+    let options = wrapper.findAll('[data-test="tree-create-parent-option"]')
+    expect(options[1].attributes('aria-selected')).toBe('true')
+
+    await parentSearch.trigger('keydown', { key: 'ArrowUp' })
+    options = wrapper.findAll('[data-test="tree-create-parent-option"]')
+    expect(options[0].attributes('aria-selected')).toBe('true')
+
+    await parentSearch.trigger('keydown', { key: 'Enter' })
+    expect(wrapper.find('[data-test="tree-create-parent-options"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="tree-create-name"]').setValue('new-root')
+    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+    expect(wrapper.emitted('create')).toEqual([[{ name: 'new-root', parentId: null }]])
+  })
+
+  it('closes the parent-search dropdown with Escape without picking anything', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
+
+    const parentSearch = wrapper.get('[data-test="tree-create-parent-search"]')
+    await parentSearch.trigger('focus')
+    await parentSearch.trigger('keydown', { key: 'ArrowDown' })
+    await parentSearch.trigger('keydown', { key: 'Escape' })
+
+    expect(wrapper.find('[data-test="tree-create-parent-options"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tree-create-parent-clear"]').exists()).toBe(false)
+  })
+
+  it('keeps the results panel a fixed height regardless of how many nodes match the search', async () => {
+    const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes, selectedIds: [] } })
+    await open(wrapper)
+
+    const resultsBefore = wrapper.get('[data-test="tree-node-row"]').element.closest('.h-48')
+    expect(resultsBefore).not.toBeNull()
+
+    await wrapper.get('[data-test="tree-search"]').setValue('no-such-skill')
+    const emptyMessage = wrapper.get('[data-test="tree-empty"]')
+    expect(emptyMessage.element.closest('.h-48')).not.toBeNull()
+  })
 })

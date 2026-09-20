@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { Plus, X } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { ancestorIds, descendantIds, type TreeNode } from '@/shared/utils/skillConceptTree'
 
-export interface TreeNode {
-  id: string
-  name: string
-  parent_id: string | null
-}
+export type { TreeNode }
 
 interface ParentOption {
   id: string | null
@@ -45,20 +42,11 @@ const createName = ref('')
 const createParentId = ref('')
 const parentQuery = ref('')
 const parentDropdownOpen = ref(false)
+const highlightedParentIndex = ref(-1)
 const parentFieldRef = ref<HTMLElement | null>(null)
 const duplicateName = ref(false)
 
 const nodesById = computed(() => new Map(props.nodes.map((n) => [n.id, n])))
-const childrenByParentId = computed(() => {
-  const map = new Map<string, TreeNode[]>()
-  for (const node of props.nodes) {
-    if (!node.parent_id) continue
-    const siblings = map.get(node.parent_id) ?? []
-    siblings.push(node)
-    map.set(node.parent_id, siblings)
-  }
-  return map
-})
 
 function breadcrumb(node: TreeNode): string {
   const path = [node.name]
@@ -72,37 +60,29 @@ function breadcrumb(node: TreeNode): string {
   return path.join(' > ')
 }
 
-/** A node's ancestor ids, root-first excluded — nearest parent first. */
-function ancestorIds(node: TreeNode): string[] {
-  const ids: string[] = []
-  let current = node
-  while (current.parent_id) {
-    const parent = nodesById.value.get(current.parent_id)
-    if (!parent) break
-    ids.push(parent.id)
-    current = parent
-  }
-  return ids
-}
-
-function descendantIds(id: string): string[] {
-  const children = childrenByParentId.value.get(id) ?? []
-  return children.flatMap((child) => [child.id, ...descendantIds(child.id)])
-}
-
 function openPicker() {
   isOpen.value = true
 }
 
 function closePicker() {
   isOpen.value = false
+  closeParentDropdown()
+}
+
+function closeParentDropdown() {
   parentDropdownOpen.value = false
+  highlightedParentIndex.value = -1
+}
+
+function openParentDropdown() {
+  parentDropdownOpen.value = true
+  highlightedParentIndex.value = -1
 }
 
 function onModalBodyClick(event: MouseEvent) {
   if (!parentDropdownOpen.value) return
   if (parentFieldRef.value?.contains(event.target as Node)) return
-  parentDropdownOpen.value = false
+  closeParentDropdown()
 }
 
 const visibleNodes = computed(() => {
@@ -129,13 +109,13 @@ function toggle(id: string, checked: boolean) {
   }
   if (checked) {
     const node = nodesById.value.get(id)
-    const withAncestors = node ? [id, ...ancestorIds(node)] : [id]
+    const withAncestors = node ? [id, ...ancestorIds(props.nodes, node)] : [id]
     emit('update:selectedIds', Array.from(new Set([...props.selectedIds, ...withAncestors])))
     return
   }
   // Unchecking a node also drops its descendants — a child can never stay
   // selected once its own ancestor chain is broken.
-  const toRemove = new Set([id, ...descendantIds(id)])
+  const toRemove = new Set([id, ...descendantIds(props.nodes, id)])
   emit(
     'update:selectedIds',
     props.selectedIds.filter((i) => !toRemove.has(i)),
@@ -143,7 +123,7 @@ function toggle(id: string, checked: boolean) {
 }
 
 function removeSelected(id: string) {
-  const toRemove = new Set([id, ...descendantIds(id)])
+  const toRemove = new Set([id, ...descendantIds(props.nodes, id)])
   emit(
     'update:selectedIds',
     props.selectedIds.filter((i) => !toRemove.has(i)),
@@ -167,10 +147,16 @@ const parentOptions = computed<ParentOption[]>(() => {
   return !query || rootOption.label.toLowerCase().includes(query) ? [rootOption, ...nodeOptions] : nodeOptions
 })
 
+watch(parentOptions, (options) => {
+  if (highlightedParentIndex.value >= options.length) {
+    highlightedParentIndex.value = options.length - 1
+  }
+})
+
 function chooseParent(option: ParentOption) {
   createParentId.value = option.id ?? ''
   parentQuery.value = option.id ? option.label : ''
-  parentDropdownOpen.value = false
+  closeParentDropdown()
   duplicateName.value = false
 }
 
@@ -178,6 +164,36 @@ function clearParent() {
   createParentId.value = ''
   parentQuery.value = ''
   duplicateName.value = false
+}
+
+function onParentSearchKeydown(event: KeyboardEvent) {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    if (!parentDropdownOpen.value) {
+      openParentDropdown()
+      return
+    }
+    highlightedParentIndex.value = Math.min(highlightedParentIndex.value + 1, parentOptions.value.length - 1)
+    return
+  }
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    if (!parentDropdownOpen.value) return
+    highlightedParentIndex.value = Math.max(highlightedParentIndex.value - 1, 0)
+    return
+  }
+  if (event.key === 'Enter') {
+    if (!parentDropdownOpen.value || highlightedParentIndex.value < 0) return
+    event.preventDefault()
+    const option = parentOptions.value[highlightedParentIndex.value]
+    if (option) chooseParent(option)
+    return
+  }
+  if (event.key === 'Escape') {
+    if (!parentDropdownOpen.value) return
+    event.preventDefault()
+    closeParentDropdown()
+  }
 }
 
 function submitCreate() {
@@ -253,41 +269,43 @@ function submitCreate() {
           class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
         />
 
-        <p v-if="isLoading" data-test="tree-loading" class="text-sm text-ink-subtle">
-          {{ t('skillConceptTreePicker.loading') }}
-        </p>
-        <p v-else-if="visibleNodes.length === 0" data-test="tree-empty" class="text-sm text-ink-subtle">
-          {{ t('skillConceptTreePicker.empty') }}
-        </p>
-        <ul v-else class="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border bg-surface-sunken p-1.5">
-          <li
-            v-for="node in visibleNodes"
-            :key="node.id"
-            data-test="tree-node-row"
-            class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised"
-          >
-            <label class="flex flex-1 cursor-pointer items-center gap-2">
-              <input
-                v-if="multiple"
-                data-test="tree-node-checkbox"
-                type="checkbox"
-                :value="node.id"
-                :checked="isSelected(node.id)"
-                @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
-              />
-              <input
-                v-else
-                data-test="tree-node-radio"
-                type="radio"
-                :name="`${label}-tree-radio`"
-                :value="node.id"
-                :checked="isSelected(node.id)"
-                @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
-              />
-              {{ breadcrumb(node) }}
-            </label>
-          </li>
-        </ul>
+        <div class="flex h-48 flex-col overflow-hidden rounded-md border border-border bg-surface-sunken">
+          <p v-if="isLoading" data-test="tree-loading" class="p-1.5 text-sm text-ink-subtle">
+            {{ t('skillConceptTreePicker.loading') }}
+          </p>
+          <p v-else-if="visibleNodes.length === 0" data-test="tree-empty" class="p-1.5 text-sm text-ink-subtle">
+            {{ t('skillConceptTreePicker.empty') }}
+          </p>
+          <ul v-else class="flex flex-1 flex-col gap-1 overflow-y-auto p-1.5">
+            <li
+              v-for="node in visibleNodes"
+              :key="node.id"
+              data-test="tree-node-row"
+              class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised"
+            >
+              <label class="flex flex-1 cursor-pointer items-center gap-2">
+                <input
+                  v-if="multiple"
+                  data-test="tree-node-checkbox"
+                  type="checkbox"
+                  :value="node.id"
+                  :checked="isSelected(node.id)"
+                  @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
+                />
+                <input
+                  v-else
+                  data-test="tree-node-radio"
+                  type="radio"
+                  :name="`${label}-tree-radio`"
+                  :value="node.id"
+                  :checked="isSelected(node.id)"
+                  @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
+                />
+                {{ breadcrumb(node) }}
+              </label>
+            </li>
+          </ul>
+        </div>
 
         <div class="flex flex-col gap-1.5 border-t border-border pt-2.5">
           <span class="text-xs font-semibold text-ink-subtle">{{ t('skillConceptTreePicker.createHeading') }}</span>
@@ -306,10 +324,14 @@ function submitCreate() {
                 v-model="parentQuery"
                 data-test="tree-create-parent-search"
                 type="text"
+                role="combobox"
+                :aria-expanded="parentDropdownOpen"
+                aria-controls="tree-create-parent-listbox"
                 :placeholder="t('skillConceptTreePicker.parentSearchPlaceholder')"
                 class="flex-1 rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
-                @focus="parentDropdownOpen = true"
-                @input="parentDropdownOpen = true"
+                @focus="openParentDropdown"
+                @input="openParentDropdown"
+                @keydown="onParentSearchKeydown"
               />
               <button
                 v-if="createParentId"
@@ -325,15 +347,20 @@ function submitCreate() {
 
             <ul
               v-if="parentDropdownOpen && parentOptions.length > 0"
+              id="tree-create-parent-listbox"
               data-test="tree-create-parent-options"
+              role="listbox"
               class="absolute z-10 mt-1 flex max-h-40 w-full flex-col gap-0.5 overflow-y-auto rounded-md border border-border bg-surface-raised p-1 shadow-level2"
             >
-              <li v-for="option in parentOptions" :key="option.id ?? 'root'">
+              <li v-for="(option, index) in parentOptions" :key="option.id ?? 'root'" role="presentation">
                 <button
                   type="button"
                   data-test="tree-create-parent-option"
                   :data-node-id="option.id ?? 'root'"
+                  role="option"
+                  :aria-selected="index === highlightedParentIndex"
                   class="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-sunken"
+                  :class="{ 'bg-surface-sunken': index === highlightedParentIndex }"
                   @click="chooseParent(option)"
                 >
                   {{ option.label }}

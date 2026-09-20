@@ -157,6 +157,57 @@ describe('ContentAuthoringView', () => {
       })
     })
 
+    it('selects a newly created skill together with its parent chain', async () => {
+      routeGET({ '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } } })
+      POST.mockResolvedValueOnce({
+        data: { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' },
+        error: undefined,
+        response: { status: 201 },
+      })
+      POST.mockResolvedValueOnce({
+        data: {
+          content_node_id: 'cn-1',
+          teacher_id: 't-1',
+          title: 'Sweep basics',
+          content_type: 'video',
+          classification: {
+            skills: [skillFixture, { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' }],
+            concepts: [],
+            difficulty_level: 'beginner',
+            review_state: 'pending',
+          },
+          languages: [],
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 201 },
+      })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('input[placeholder="Untitled content"]').setValue('Sweep basics')
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.get('[data-test="tree-create-name"]').setValue('sweep-picking')
+      await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+      await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="s-1"]').trigger('click')
+      await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+      await flushPromises()
+
+      expect(POST).toHaveBeenNthCalledWith(1, '/skills', { body: { name: 'sweep-picking', parent_id: 's-1' } })
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(POST).toHaveBeenNthCalledWith(2, '/content-nodes', {
+        body: {
+          title: 'Sweep basics',
+          content_type: 'video',
+          classification: { skill_ids: ['s-2', 's-1'], concept_ids: [], difficulty_level: 'beginner' },
+          language_codes: ['any'],
+        },
+      })
+    })
+
     it('shows the challenge section, with no challenge yet, once the node is saved', async () => {
       routeGET({})
       POST.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 201 } })
