@@ -22,18 +22,23 @@ const routes: RouteRecordRaw[] = [
     // Three of this path's four children are auth views (sign-in, the
     // registering bridge, and the registration-error screen) — loading the
     // auth locale here once covers all of them instead of repeating the
-    // same beforeEnter on each leaf route. `home` additionally needs the
-    // student locale; both loads are kicked off together here rather than
-    // one in this beforeEnter and the other in `home`'s own, so they run as
-    // parallel network fetches instead of one waiting on the other to settle.
-    beforeEnter: (to) =>
-      to.name === 'home'
-        ? Promise.all([ensureAuthLocaleLoaded(), ensureStudentLocaleLoaded()]).then(() => undefined)
-        : ensureAuthLocaleLoaded(),
+    // same beforeEnter on each leaf route. A shared parent's beforeEnter only
+    // fires when the parent record is newly entering `to.matched`, not on a
+    // sibling-to-sibling navigation (e.g. sign-in -> home) where it's already
+    // matched — so `home`'s own extra locale need is kept on its own leaf
+    // beforeEnter below instead of living here, guaranteeing it fires every
+    // time `home` itself is entered, however the visitor arrives.
+    beforeEnter: () => ensureAuthLocaleLoaded(),
     children: [
       {
         path: '',
         name: 'home',
+        // Also re-requests the auth locale (already-resolved once loaded,
+        // so effectively free) so the two loads run in parallel on a cold
+        // entry into this whole `/` subtree, instead of waiting on the
+        // parent's beforeEnter above to settle first.
+        beforeEnter: () =>
+          Promise.all([ensureAuthLocaleLoaded(), ensureStudentLocaleLoaded()]).then(() => undefined),
         component: () => import('@/features/student/views/HomeView.vue'),
       },
       {
