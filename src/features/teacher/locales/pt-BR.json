@@ -168,22 +168,16 @@
     "afterParagraph": "Depois do parágrafo",
     "forDuration": "por {ms}ms",
     "removeAriaLabel": "Remover pop-up",
-    "paragraphNumberLabel": "Nº do parágrafo",
-    "durationMsLabel": "Duração (ms)",
-    "mediaUrlLabel": "URL da imagem/GIF",
-    "captionLabel": "Legenda (opcional)",
-    "addPopup": "Adicionar pop-up"
+    "addPopup": "Adicionar pop-up",
+    "editAriaLabel": "Editar pop-up"
   },
   "videoTimelineEditor": {
     "emptyMessage": "Ainda não há pop-ups cronometrados.",
     "showsAt": "Aparece em",
     "hidesAt": "desaparece em",
     "removeAriaLabel": "Remover pop-up",
-    "triggerSecondsLabel": "Exibir após (segundos)",
-    "hideSecondsLabel": "Ocultar após (segundos)",
-    "mediaUrlLabel": "URL da imagem/GIF",
-    "captionLabel": "Legenda (opcional)",
-    "addPopup": "Adicionar pop-up"
+    "addPopup": "Adicionar pop-up",
+    "editAriaLabel": "Editar pop-up"
   },
   "contentNodePickerModal": {
     "title": "Adicionar um nó de conteúdo",
@@ -215,12 +209,7 @@
     "timedPopupsLabel": "Pop-ups cronometrados",
     "paragraphPopupsLabel": "Pop-ups de parágrafo",
     "challengeLabel": "Desafio",
-    "saveChallenge": "Salvar desafio",
-    "noChallengeMessage": "Ainda não há desafio — escolha um assunto acima e salve para criar um.",
-    "linkedExercisesLabel": "Exercícios vinculados",
-    "attachExercise": "Anexar exercício",
-    "noExercisesAttached": "Ainda não há exercícios anexados.",
-    "removeExerciseAriaLabel": "Remover exercício",
+    "noChallengeMessage": "Ainda não há desafio — monte um para avaliar este conteúdo, com pelo menos um exercício.",
     "contentNodeUpdated": "Nó de conteúdo atualizado.",
     "contentNodeCreated": "Nó de conteúdo criado.",
     "saveContentNodeFailed": "Falha ao salvar o nó de conteúdo",
@@ -231,8 +220,17 @@
     "removePopupFailed": "Falha ao remover o pop-up",
     "challengeSaved": "Desafio salvo.",
     "saveChallengeFailed": "Falha ao salvar o desafio",
-    "attachExerciseFailed": "Falha ao anexar o exercício",
-    "removeExerciseFailed": "Falha ao remover o exercício"
+    "buildChallenge": "Montar desafio",
+    "editChallenge": "Editar desafio",
+    "challengeSubject": "Assunto: {name}",
+    "challengePassThreshold": "Aprovação com {threshold}%",
+    "challengeEmptyWarning": "Este desafio não tem exercícios, então os alunos não podem realizá-lo — edite-o e adicione pelo menos um.",
+    "challengeExerciseCountSingular": "{count} exercício",
+    "challengeExerciseCountPlural": "{count} exercícios",
+    "challengeExercisesError": "Não foi possível carregar os exercícios deste desafio.",
+    "challengeExercisesLoading": "Carregando exercícios…",
+    "challengesError": "Não foi possível carregar os desafios deste nó.",
+    "challengesLoading": "Carregando desafios…"
   },
   "contentListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
@@ -267,5 +265,39 @@
     "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
     "nodeCountSingular": "{count} nó",
     "nodeCountPlural": "{count} nós"
+  },
+  "challengeModal": {
+    "buildTitle": "Montar desafio",
+    "editTitle": "Editar desafio",
+    "exercisesLabel": "Exercícios",
+    "attachExercise": "Adicionar exercícios",
+    "needsExercises": "Um desafio precisa de pelo menos um exercício — adicione alguns para poder salvá-lo.",
+    "removeExerciseAriaLabel": "Remover exercício",
+    "cancel": "Cancelar",
+    "save": "Salvar desafio",
+    "thresholdInvalid": "Informe um número inteiro de 1 a 100."
+  },
+  "expandedContentModal": {
+    "addTitle": "Adicionar pop-up",
+    "editTitle": "Editar pop-up",
+    "kindLabel": "Conteúdo",
+    "kinds": {
+      "image": "Imagem",
+      "gif": "GIF",
+      "rich_text": "Texto formatado"
+    },
+    "triggerSecondsLabel": "Exibir em (segundos)",
+    "hideSecondsLabel": "Ocultar em (segundos)",
+    "paragraphLabel": "Após o parágrafo nº",
+    "durationMsLabel": "Duração (ms)",
+    "hideNotAfterTrigger": "O momento de ocultar deve ser posterior ao de exibir.",
+    "richContentLabel": "Conteúdo do pop-up",
+    "mediaUrlLabel": "URL da imagem/GIF",
+    "mediaUrlInvalid": "Informe um link completo começando com http:// ou https://",
+    "captionLabel": "Legenda (opcional)",
+    "cancel": "Cancelar",
+    "save": "Salvar pop-up",
+    "timingInvalidSeconds": "Use segundos inteiros, a partir de 0.",
+    "timingInvalidParagraph": "Use números inteiros: o parágrafo começa em 1 e a duração é de pelo menos 1 ms."
   }
 }

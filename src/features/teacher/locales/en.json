@@ -168,22 +168,16 @@
     "afterParagraph": "After paragraph",
     "forDuration": "for {ms}ms",
     "removeAriaLabel": "Remove pop-up",
-    "paragraphNumberLabel": "Paragraph #",
-    "durationMsLabel": "Duration (ms)",
-    "mediaUrlLabel": "Image/GIF URL",
-    "captionLabel": "Caption (optional)",
-    "addPopup": "Add pop-up"
+    "addPopup": "Add pop-up",
+    "editAriaLabel": "Edit pop-up"
   },
   "videoTimelineEditor": {
     "emptyMessage": "No timed pop-ups yet.",
     "showsAt": "Shows at",
     "hidesAt": "hides at",
     "removeAriaLabel": "Remove pop-up",
-    "triggerSecondsLabel": "Trigger (seconds)",
-    "hideSecondsLabel": "Hide (seconds)",
-    "mediaUrlLabel": "Image/GIF URL",
-    "captionLabel": "Caption (optional)",
-    "addPopup": "Add pop-up"
+    "addPopup": "Add pop-up",
+    "editAriaLabel": "Edit pop-up"
   },
   "contentNodePickerModal": {
     "title": "Add a content node",
@@ -215,12 +209,7 @@
     "timedPopupsLabel": "Timed pop-ups",
     "paragraphPopupsLabel": "Paragraph pop-ups",
     "challengeLabel": "Challenge",
-    "saveChallenge": "Save challenge",
-    "noChallengeMessage": "No challenge yet — pick a subject above and save to create one.",
-    "linkedExercisesLabel": "Linked exercises",
-    "attachExercise": "Attach exercise",
-    "noExercisesAttached": "No exercises attached yet.",
-    "removeExerciseAriaLabel": "Remove exercise",
+    "noChallengeMessage": "No challenge yet — build one to assess this content, with at least one exercise.",
     "contentNodeUpdated": "Content node updated.",
     "contentNodeCreated": "Content node created.",
     "saveContentNodeFailed": "Failed to save the content node",
@@ -231,8 +220,17 @@
     "removePopupFailed": "Failed to remove the pop-up",
     "challengeSaved": "Challenge saved.",
     "saveChallengeFailed": "Failed to save the challenge",
-    "attachExerciseFailed": "Failed to attach the exercise",
-    "removeExerciseFailed": "Failed to remove the exercise"
+    "buildChallenge": "Build challenge",
+    "editChallenge": "Edit challenge",
+    "challengeSubject": "Subject: {name}",
+    "challengePassThreshold": "Pass at {threshold}%",
+    "challengeEmptyWarning": "This challenge has no exercises, so students can't take it — edit it and add at least one.",
+    "challengeExerciseCountSingular": "{count} exercise",
+    "challengeExerciseCountPlural": "{count} exercises",
+    "challengeExercisesError": "Couldn't load this challenge's exercises.",
+    "challengeExercisesLoading": "Loading exercises…",
+    "challengesError": "Couldn't load this node's challenges.",
+    "challengesLoading": "Loading challenges…"
   },
   "contentListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
@@ -267,5 +265,39 @@
     "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
     "nodeCountSingular": "{count} node",
     "nodeCountPlural": "{count} nodes"
+  },
+  "challengeModal": {
+    "buildTitle": "Build challenge",
+    "editTitle": "Edit challenge",
+    "exercisesLabel": "Exercises",
+    "attachExercise": "Add exercises",
+    "needsExercises": "A challenge needs at least one exercise — add some to be able to save it.",
+    "removeExerciseAriaLabel": "Remove exercise",
+    "cancel": "Cancel",
+    "save": "Save challenge",
+    "thresholdInvalid": "Enter a whole number from 1 to 100."
+  },
+  "expandedContentModal": {
+    "addTitle": "Add pop-up",
+    "editTitle": "Edit pop-up",
+    "kindLabel": "Content",
+    "kinds": {
+      "image": "Image",
+      "gif": "GIF",
+      "rich_text": "Rich text"
+    },
+    "triggerSecondsLabel": "Show at (seconds)",
+    "hideSecondsLabel": "Hide at (seconds)",
+    "paragraphLabel": "After paragraph #",
+    "durationMsLabel": "Duration (ms)",
+    "hideNotAfterTrigger": "The hide time must be later than the show time.",
+    "richContentLabel": "Pop-up content",
+    "mediaUrlLabel": "Image/GIF URL",
+    "mediaUrlInvalid": "Enter a full link starting with http:// or https://",
+    "captionLabel": "Caption (optional)",
+    "cancel": "Cancel",
+    "save": "Save pop-up",
+    "timingInvalidSeconds": "Use whole seconds, starting at 0.",
+    "timingInvalidParagraph": "Use whole numbers: the paragraph starts at 1 and the duration is at least 1 ms."
   }
 }

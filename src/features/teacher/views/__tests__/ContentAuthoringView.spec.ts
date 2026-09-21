@@ -448,185 +448,330 @@ describe('ContentAuthoringView', () => {
     })
 
     describe('challenge section', () => {
+      const challengeFixture = {
+        challenge_id: 'ch-1',
+        content_node_id: 'cn-1',
+        subject_skill_id: 's-1',
+        pass_threshold: 80,
+        shuffle_exercises: false,
+        shuffle_options: false,
+        created_at: '2026-01-01T00:00:00Z',
+      }
+      const okResponse = (data: unknown) => ({ data, error: undefined, response: { status: 200 } })
+      const noContent = { error: undefined, response: { status: 204 } }
+      const exerciseFixture = (id: string, title: string) => ({ exercise_id: id, title, exercise_type: 'text_response' })
+
+      function routeChallenge(linkedExercises: ReturnType<typeof exerciseFixture>[], pool = linkedExercises) {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/skills': okResponse([skillFixture]),
+          '/content-nodes/{content_node_id}/challenges': okResponse([challengeFixture]),
+          '/challenges/{challenge_id}/exercises': okResponse(linkedExercises),
+          '/exercises': okResponse(pool),
+        })
+      }
+
       it('shows no challenge yet when the node has none', async () => {
-        routeGET({ '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } } })
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
         const wrapper = mountView()
         await flushPromises()
 
         expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(true)
+        expect(wrapper.find('[data-test="open-challenge-modal"]').exists()).toBe(true)
+        expect(wrapper.find('[data-test="challenge-modal"]').exists()).toBe(false)
       })
 
-      it('creates a challenge from the config panel', async () => {
+      it('builds a challenge and links its exercises from the modal', async () => {
         routeGET({
-          '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
-          '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/skills': okResponse([skillFixture]),
+          '/exercises': okResponse([exerciseFixture('e-1', 'Name the chord')]),
         })
-        POST.mockResolvedValueOnce({
-          data: {
-            challenge_id: 'ch-1',
-            content_node_id: 'cn-1',
-            subject_skill_id: 's-1',
-            pass_threshold: 70,
-            shuffle_exercises: false,
-            shuffle_options: false,
-            created_at: '2026-01-01T00:00:00Z',
-          },
-          error: undefined,
-          response: { status: 201 },
-        })
+        POST.mockResolvedValueOnce({ data: challengeFixture, error: undefined, response: { status: 201 } }).mockResolvedValueOnce(
+          noContent,
+        )
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="challenge-section"] [data-test="tree-open-picker"]').trigger('click')
+        await wrapper.get('[data-test="open-challenge-modal"]').trigger('click')
+        await wrapper.get('[data-test="challenge-modal"] [data-test="tree-open-picker"]').trigger('click')
         await wrapper.get('[data-test="tree-node-radio"][value="s-1"]').setValue(true)
+        await wrapper.get('[data-test="attach-exercise"]').trigger('click')
+        await wrapper.get('[data-test="exercise-picker-row"]').trigger('click')
         await wrapper.get('[data-test="save-challenge"]').trigger('click')
         await flushPromises()
 
-        expect(POST).toHaveBeenCalledWith('/content-nodes/{content_node_id}/challenges', {
-          params: { path: { content_node_id: 'cn-1' } },
-          body: {
-            subject_skill_id: 's-1',
-            subject_concept_id: undefined,
-            pass_threshold: 70,
-            shuffle_exercises: false,
-            shuffle_options: false,
-          },
-        })
-      })
-
-      it('pre-fills the panel and lists linked exercises when a challenge already exists', async () => {
-        routeGET({
-          '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
-          '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-          '/content-nodes/{content_node_id}/challenges': {
-            data: [
-              {
-                challenge_id: 'ch-1',
-                content_node_id: 'cn-1',
+        expect(POST.mock.calls).toEqual([
+          [
+            '/content-nodes/{content_node_id}/challenges',
+            {
+              params: { path: { content_node_id: 'cn-1' } },
+              body: {
                 subject_skill_id: 's-1',
-                pass_threshold: 80,
-                shuffle_exercises: true,
-                shuffle_options: false,
-                created_at: '2026-01-01T00:00:00Z',
-              },
-            ],
-            error: undefined,
-            response: { status: 200 },
-          },
-          '/challenges/{challenge_id}/exercises': {
-            data: [{ exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response' }],
-            error: undefined,
-            response: { status: 200 },
-          },
-        })
-        const wrapper = mountView()
-        await flushPromises()
-
-        await wrapper.get('[data-test="challenge-section"] [data-test="tree-open-picker"]').trigger('click')
-        expect((wrapper.get('[data-test="tree-node-radio"][value="s-1"]').element as HTMLInputElement).checked).toBe(true)
-        expect((wrapper.get('[data-test="pass-threshold"]').element as HTMLInputElement).value).toBe('80')
-        expect(wrapper.text()).toContain('Name the chord')
-      })
-
-      it('clears an existing challenge subject once its skill is removed from classification', async () => {
-        routeGET({
-          '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
-          '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-          '/content-nodes/{content_node_id}/challenges': {
-            data: [
-              {
-                challenge_id: 'ch-1',
-                content_node_id: 'cn-1',
-                subject_skill_id: 's-1',
-                pass_threshold: 80,
+                subject_concept_id: undefined,
+                pass_threshold: 70,
                 shuffle_exercises: false,
                 shuffle_options: false,
-                created_at: '2026-01-01T00:00:00Z',
               },
-            ],
-            error: undefined,
-            response: { status: 200 },
-          },
-        })
+            },
+          ],
+          [
+            '/challenges/{challenge_id}/exercises/{exercise_id}',
+            { params: { path: { challenge_id: 'ch-1', exercise_id: 'e-1' } } },
+          ],
+        ])
+        expect(wrapper.find('[data-test="challenge-modal"]').exists()).toBe(false)
+      })
+
+      it('summarizes an existing challenge and pre-fills the modal from it', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord')])
         const wrapper = mountView()
         await flushPromises()
-        await wrapper.get('[data-test="challenge-section"] [data-test="tree-open-picker"]').trigger('click')
-        expect((wrapper.get('[data-test="tree-node-radio"][value="s-1"]').element as HTMLInputElement).checked).toBe(
-          true,
-        )
+
+        const summary = wrapper.get('[data-test="challenge-summary"]')
+        expect(summary.text()).toContain('Name the chord')
+        expect(summary.text()).toContain('80')
+
+        await wrapper.get('[data-test="open-challenge-modal"]').trigger('click')
+        await wrapper.get('[data-test="challenge-modal"] [data-test="tree-open-picker"]').trigger('click')
+        expect((wrapper.get('[data-test="tree-node-radio"][value="s-1"]').element as HTMLInputElement).checked).toBe(true)
+        expect((wrapper.get('[data-test="pass-threshold"]').element as HTMLInputElement).value).toBe('80')
+      })
+
+      it('warns when an existing challenge has no exercises', async () => {
+        routeChallenge([])
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="challenge-empty-warning"]').exists()).toBe(true)
+      })
+
+      it('drops an existing challenge subject once its skill is removed from classification', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord')])
+        const wrapper = mountView()
+        await flushPromises()
 
         await wrapper.get('[data-test="tree-selected-chip-remove"]').trigger('click')
         await flushPromises()
+        await wrapper.get('[data-test="open-challenge-modal"]').trigger('click')
 
         expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeDefined()
       })
 
-      it('links a picked exercise to the challenge', async () => {
-        routeGET({
-          '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
-          '/content-nodes/{content_node_id}/challenges': {
-            data: [
-              {
-                challenge_id: 'ch-1',
-                content_node_id: 'cn-1',
-                subject_skill_id: 's-1',
-                pass_threshold: 80,
-                shuffle_exercises: false,
-                shuffle_options: false,
-                created_at: '2026-01-01T00:00:00Z',
-              },
-            ],
-            error: undefined,
-            response: { status: 200 },
-          },
-          '/exercises': {
-            data: [{ exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response' }],
-            error: undefined,
-            response: { status: 200 },
-          },
-        })
-        POST.mockResolvedValueOnce({ error: undefined, response: { status: 204 } })
+      it('updates the challenge and links only the newly added exercise', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord')], [
+          exerciseFixture('e-1', 'Name the chord'),
+          exerciseFixture('e-2', 'Pick the diagram'),
+        ])
+        PUT.mockResolvedValueOnce(okResponse(challengeFixture))
+        POST.mockResolvedValueOnce(noContent)
         const wrapper = mountView()
         await flushPromises()
 
+        await wrapper.get('[data-test="open-challenge-modal"]').trigger('click')
         await wrapper.get('[data-test="attach-exercise"]').trigger('click')
         await wrapper.get('[data-test="exercise-picker-row"]').trigger('click')
+        await wrapper.get('[data-test="save-challenge"]').trigger('click')
         await flushPromises()
 
-        expect(POST).toHaveBeenCalledWith('/challenges/{challenge_id}/exercises/{exercise_id}', {
-          params: { path: { challenge_id: 'ch-1', exercise_id: 'e-1' } },
+        expect(PUT).toHaveBeenCalledWith('/challenges/{challenge_id}', expect.objectContaining({ params: { path: { challenge_id: 'ch-1' } } }))
+        expect(POST.mock.calls).toEqual([
+          [
+            '/challenges/{challenge_id}/exercises/{exercise_id}',
+            { params: { path: { challenge_id: 'ch-1', exercise_id: 'e-2' } } },
+          ],
+        ])
+      })
+
+      it('keeps Edit challenge disabled, and shows no empty warning, until the linked exercises have loaded', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord')])
+        let resolveExercises: (value: unknown) => void = () => {}
+        const pending = new Promise((resolve) => {
+          resolveExercises = resolve
+        })
+        const defaultGET = GET.getMockImplementation()
+        GET.mockImplementation((path: string) =>
+          path === '/challenges/{challenge_id}/exercises' ? pending : defaultGET?.(path),
+        )
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('[data-test="challenge-empty-warning"]').exists()).toBe(false)
+
+        resolveExercises(okResponse([exerciseFixture('e-1', 'Name the chord')]))
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeUndefined()
+      })
+
+      it('offers a retry instead of an editable empty list when the linked exercises fail to load', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord')])
+        const defaultGET = GET.getMockImplementation()
+        GET.mockImplementation((path: string) =>
+          path === '/challenges/{challenge_id}/exercises'
+            ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+            : defaultGET?.(path),
+        )
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="challenge-exercises-error"]').exists()).toBe(true)
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('[data-test="challenge-empty-warning"]').exists()).toBe(false)
+
+        GET.mockImplementation((path: string) =>
+          path === '/challenges/{challenge_id}/exercises'
+            ? Promise.resolve(okResponse([exerciseFixture('e-1', 'Name the chord')]))
+            : defaultGET?.(path),
+        )
+        await wrapper.get('[data-test="challenge-exercises-retry"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="challenge-exercises-error"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeUndefined()
+      })
+
+      describe('node challenge list', () => {
+        const CHALLENGES = '/content-nodes/{content_node_id}/challenges'
+
+        it('keeps Build challenge disabled, and says nothing about "no challenge", until the list has loaded', async () => {
+          routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+          const defaultGET = GET.getMockImplementation()
+          let resolveChallenges: (value: unknown) => void = () => {}
+          const pending = new Promise((resolve) => {
+            resolveChallenges = resolve
+          })
+          GET.mockImplementation((path: string) => (path === CHALLENGES ? pending : defaultGET?.(path)))
+          const wrapper = mountView()
+          await flushPromises()
+
+          expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+          expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(false)
+
+          resolveChallenges(okResponse([]))
+          await flushPromises()
+
+          expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeUndefined()
+          expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(true)
+        })
+
+        it('offers a retry, not a Build button, when the list fails to load (it could hide an existing challenge)', async () => {
+          routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+          const defaultGET = GET.getMockImplementation()
+          GET.mockImplementation((path: string) =>
+            path === CHALLENGES
+              ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+              : defaultGET?.(path),
+          )
+          const wrapper = mountView()
+          await flushPromises()
+
+          expect(wrapper.find('[data-test="challenge-list-error"]').exists()).toBe(true)
+          expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+          expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(false)
+
+          GET.mockImplementation((path: string) =>
+            path === CHALLENGES ? Promise.resolve(okResponse([challengeFixture])) : defaultGET?.(path),
+          )
+          await wrapper.get('[data-test="challenge-list-retry"]').trigger('click')
+          await flushPromises()
+
+          expect(wrapper.find('[data-test="challenge-list-error"]').exists()).toBe(false)
+          expect(wrapper.find('[data-test="challenge-summary"]').exists()).toBe(true)
         })
       })
 
-      it('unlinks an exercise from the challenge', async () => {
-        routeGET({
-          '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
-          '/content-nodes/{content_node_id}/challenges': {
-            data: [
-              {
-                challenge_id: 'ch-1',
-                content_node_id: 'cn-1',
-                subject_skill_id: 's-1',
-                pass_threshold: 80,
-                shuffle_exercises: false,
-                shuffle_options: false,
-                created_at: '2026-01-01T00:00:00Z',
-              },
-            ],
-            error: undefined,
-            response: { status: 200 },
-          },
-          '/challenges/{challenge_id}/exercises': {
-            data: [{ exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response' }],
-            error: undefined,
-            response: { status: 200 },
-          },
+      describe('saving again after a partial failure', () => {
+        const CHALLENGES = '/content-nodes/{content_node_id}/challenges'
+        const EXERCISES = '/challenges/{challenge_id}/exercises'
+        const createCalls = () => POST.mock.calls.filter(([path]) => path === CHALLENGES)
+
+        // Builds a challenge with two exercises where the second link fails: the
+        // challenge and the first link exist, the modal stays open, and the
+        // refresh that follows is held open until the test releases it.
+        async function saveWithFailingSecondLink() {
+          routeGET({
+            '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+            '/skills': okResponse([skillFixture]),
+            '/exercises': okResponse([exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')]),
+          })
+          const defaultGET = GET.getMockImplementation()
+          let resolveRefresh: (value: unknown) => void = () => {}
+          let refreshGate: Promise<unknown> | null = null
+          let linkedNow = okResponse([])
+          GET.mockImplementation((path: string) => {
+            if (path === CHALLENGES && refreshGate) return refreshGate
+            if (path === EXERCISES) return Promise.resolve(linkedNow)
+            return defaultGET?.(path)
+          })
+          POST.mockResolvedValueOnce({ data: challengeFixture, error: undefined, response: { status: 201 } })
+            .mockResolvedValueOnce(noContent)
+            .mockResolvedValueOnce({ error: { message: 'boom' }, response: { status: 500 } })
+          const wrapper = mountView()
+          await flushPromises()
+
+          await wrapper.get('[data-test="open-challenge-modal"]').trigger('click')
+          await wrapper.get('[data-test="challenge-modal"] [data-test="tree-open-picker"]').trigger('click')
+          await wrapper.get('[data-test="tree-node-radio"][value="s-1"]').setValue(true)
+          await wrapper.get('[data-test="attach-exercise"]').trigger('click')
+          await wrapper.get('[data-test="exercise-picker-row"]').trigger('click')
+          await wrapper.get('[data-test="exercise-picker-row"]').trigger('click')
+
+          refreshGate = new Promise((resolve) => {
+            resolveRefresh = resolve
+          })
+          await wrapper.get('[data-test="save-challenge"]').trigger('click')
+          await flushPromises()
+
+          return {
+            wrapper,
+            finishRefresh: async () => {
+              linkedNow = okResponse([exerciseFixture('e-1', 'Name the chord')])
+              resolveRefresh(okResponse([challengeFixture]))
+              await flushPromises()
+            },
+          }
+        }
+
+        it('keeps Save disabled while the failed save is being refreshed, so it cannot create a second challenge', async () => {
+          const { wrapper } = await saveWithFailingSecondLink()
+
+          expect(wrapper.find('[data-test="challenge-modal"]').exists()).toBe(true)
+          expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeDefined()
+          await wrapper.get('[data-test="save-challenge"]').trigger('click')
+
+          expect(createCalls()).toHaveLength(1)
         })
-        DELETE.mockResolvedValueOnce({ error: undefined, response: { status: 204 } })
+
+        it('updates the challenge and links only the missing exercise once the refresh is done', async () => {
+          const { wrapper, finishRefresh } = await saveWithFailingSecondLink()
+          PUT.mockResolvedValueOnce(okResponse(challengeFixture))
+          POST.mockResolvedValueOnce(noContent)
+
+          await finishRefresh()
+          expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeUndefined()
+          await wrapper.get('[data-test="save-challenge"]').trigger('click')
+          await flushPromises()
+
+          expect(createCalls()).toHaveLength(1)
+          expect(PUT).toHaveBeenCalledWith('/challenges/{challenge_id}', expect.objectContaining({ params: { path: { challenge_id: 'ch-1' } } }))
+          expect(POST).toHaveBeenLastCalledWith('/challenges/{challenge_id}/exercises/{exercise_id}', {
+            params: { path: { challenge_id: 'ch-1', exercise_id: 'e-2' } },
+          })
+        })
+      })
+
+      it('unlinks an exercise removed in the modal', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')])
+        PUT.mockResolvedValueOnce(okResponse(challengeFixture))
+        DELETE.mockResolvedValueOnce(noContent)
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="unlink-exercise"]').trigger('click')
+        await wrapper.get('[data-test="open-challenge-modal"]').trigger('click')
+        await wrapper.findAll('[data-test="challenge-modal"] [data-test="unlink-exercise"]')[0]!.trigger('click')
+        await wrapper.get('[data-test="save-challenge"]').trigger('click')
         await flushPromises()
 
         expect(DELETE).toHaveBeenCalledWith('/challenges/{challenge_id}/exercises/{exercise_id}', {
@@ -636,28 +781,32 @@ describe('ContentAuthoringView', () => {
     })
 
     describe('timed pop-ups', () => {
-      it('adds a pop-up to a video content node', async () => {
-        routeGET({ '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } } })
-        POST.mockResolvedValueOnce({
-          data: {
-            expanded_content_id: 'ec-1',
-            content_node_id: 'cn-1',
-            content_type: 'image',
-            media_url: 'https://cdn.example.com/a.png',
-            trigger_at_seconds: 10,
-            hide_at_seconds: 15,
-            created_at: '2026-01-01T00:00:00Z',
-          },
-          error: undefined,
-          response: { status: 201 },
-        })
+      const okResponse = (data: unknown) => ({ data, error: undefined, response: { status: 200 } })
+      const popupFixture = {
+        expanded_content_id: 'ec-1',
+        content_node_id: 'cn-1',
+        content_type: 'image',
+        media_url: 'https://cdn.example.com/a.png',
+        trigger_at_seconds: 10,
+        hide_at_seconds: 15,
+        created_at: '2026-01-01T00:00:00Z',
+      }
+
+      async function fillTiming(wrapper: ReturnType<typeof mountView>, trigger: string, hide: string) {
+        await wrapper.get('[data-test="popup-trigger-seconds"]').setValue(trigger)
+        await wrapper.get('[data-test="popup-hide-seconds"]').setValue(hide)
+      }
+
+      it('adds an image pop-up to a video content node through the modal', async () => {
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+        POST.mockResolvedValueOnce({ data: popupFixture, error: undefined, response: { status: 201 } })
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="new-trigger-seconds"]').setValue('10')
-        await wrapper.get('[data-test="new-hide-seconds"]').setValue('15')
-        await wrapper.get('[data-test="new-media-url"]').setValue('https://cdn.example.com/a.png')
         await wrapper.get('[data-test="add-timeline-item"]').trigger('click')
+        await fillTiming(wrapper, '10', '15')
+        await wrapper.get('[data-test="popup-media-url"]').setValue('https://cdn.example.com/a.png')
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
         await flushPromises()
 
         expect(POST).toHaveBeenCalledWith('/content-nodes/{content_node_id}/expanded-content', {
@@ -669,21 +818,88 @@ describe('ContentAuthoringView', () => {
             hide_at_seconds: 15,
           },
         })
+        expect(wrapper.find('[data-test="popup-modal"]').exists()).toBe(false)
       })
 
-      it('shows the paragraph pop-up editor for an article content node', async () => {
+      it('adds a rich-text pop-up to a video content node', async () => {
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+        POST.mockResolvedValueOnce({ data: popupFixture, error: undefined, response: { status: 201 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="add-timeline-item"]').trigger('click')
+        await wrapper.get('[data-test="popup-kind"]').setValue('rich_text')
+        await fillTiming(wrapper, '5', '9')
+        const popupEditor = wrapper.get('[data-test="popup-modal"]').findComponent(PromptEditor)
+        await popupEditor.vm.$emit('update:modelValue', ARTICLE_BODY)
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
+        await flushPromises()
+
+        expect(POST).toHaveBeenCalledWith('/content-nodes/{content_node_id}/expanded-content', {
+          params: { path: { content_node_id: 'cn-1' } },
+          body: { content_type: 'rich_text', rich_content: ARTICLE_BODY, trigger_at_seconds: 5, hide_at_seconds: 9 },
+        })
+      })
+
+      it('edits an existing pop-up in the modal and saves it with PUT', async () => {
         routeGET({
-          '/content-nodes/{content_node_id}': {
-            data: { ...contentNodeFixture, content_type: 'article' },
-            error: undefined,
-            response: { status: 200 },
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/expanded-content': okResponse({ items: [popupFixture], total: 1 }),
+        })
+        PUT.mockResolvedValueOnce(okResponse(popupFixture))
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="timeline-item-edit"]').trigger('click')
+        expect((wrapper.get('[data-test="popup-media-url"]').element as HTMLInputElement).value).toBe(
+          'https://cdn.example.com/a.png',
+        )
+        await wrapper.get('[data-test="popup-hide-seconds"]').setValue('20')
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
+        await flushPromises()
+
+        expect(PUT).toHaveBeenCalledWith('/expanded-content/{expanded_content_id}', {
+          params: { path: { expanded_content_id: 'ec-1' } },
+          body: {
+            content_type: 'image',
+            media_url: 'https://cdn.example.com/a.png',
+            trigger_at_seconds: 10,
+            hide_at_seconds: 20,
           },
+        })
+        expect(POST).not.toHaveBeenCalled()
+      })
+
+      it('keeps the modal open with the draft intact when saving fails', async () => {
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+        POST.mockResolvedValueOnce({ data: undefined, error: { message: 'nope' }, response: { status: 400 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="add-timeline-item"]').trigger('click')
+        await fillTiming(wrapper, '10', '15')
+        await wrapper.get('[data-test="popup-media-url"]').setValue('https://cdn.example.com/a.png')
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="popup-modal"]').exists()).toBe(true)
+        expect((wrapper.get('[data-test="popup-media-url"]').element as HTMLInputElement).value).toBe(
+          'https://cdn.example.com/a.png',
+        )
+      })
+
+      it('shows the paragraph pop-up editor and paragraph timing for an article content node', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse({ ...contentNodeFixture, content_type: 'article' }),
         })
         const wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.find('[data-test="new-paragraph"]').exists()).toBe(true)
-        expect(wrapper.find('[data-test="new-trigger-seconds"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="add-timeline-item"]').exists()).toBe(false)
+        await wrapper.get('[data-test="add-popup-item"]').trigger('click')
+
+        expect(wrapper.find('[data-test="popup-paragraph"]').exists()).toBe(true)
+        expect(wrapper.find('[data-test="popup-trigger-seconds"]').exists()).toBe(false)
       })
     })
   })

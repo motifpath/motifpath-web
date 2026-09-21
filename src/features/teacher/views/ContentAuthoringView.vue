@@ -1,31 +1,25 @@
 <script setup lang="ts">
-import { Plus, X } from 'lucide-vue-next'
-import { computed, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import ArticlePopupListEditor from '@/features/teacher/components/ArticlePopupListEditor.vue'
-import ChallengeConfigPanel from '@/features/teacher/components/ChallengeConfigPanel.vue'
+import ChallengeModal, { type ChallengeModalInitial } from '@/features/teacher/components/ChallengeModal.vue'
 import ClassificationFields from '@/features/teacher/components/ClassificationFields.vue'
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
-import ExercisePickerModal from '@/features/teacher/components/ExercisePickerModal.vue'
+import ExpandedContentModal from '@/features/teacher/components/ExpandedContentModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEditor.vue'
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
-import { useCreateChallenge } from '@/features/teacher/composables/useCreateChallenge'
 import { useCreateContentNode } from '@/features/teacher/composables/useCreateContentNode'
 import { useCreateExpandedContent } from '@/features/teacher/composables/useCreateExpandedContent'
 import { useDeleteExpandedContent, useUpdateExpandedContent } from '@/features/teacher/composables/useUpdateExpandedContent'
-import {
-  useLinkExerciseToChallenge,
-  useUnlinkExerciseFromChallenge,
-} from '@/features/teacher/composables/useLinkExerciseToChallenge'
 import { useListChallengeExercises } from '@/features/teacher/composables/useListChallengeExercises'
 import { useListContentNodeChallenges } from '@/features/teacher/composables/useListContentNodeChallenges'
 import { useListExercises } from '@/features/teacher/composables/useListExercises'
 import { useListExpandedContent } from '@/features/teacher/composables/useListExpandedContent'
+import { useSaveChallenge } from '@/features/teacher/composables/useSaveChallenge'
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
-import { useUpdateChallenge } from '@/features/teacher/composables/useUpdateChallenge'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -136,27 +130,60 @@ const challengesState = shallowRef<ChallengesState | null>(null)
 const challengeExercisesState = shallowRef<ChallengeExercisesState | null>(null)
 const challenge = computed(() => challengesState.value?.challenges.value[0] ?? null)
 
-const { createChallenge } = useCreateChallenge()
-const { updateChallenge } = useUpdateChallenge()
-const { linkExerciseToChallenge } = useLinkExerciseToChallenge()
-const { unlinkExerciseFromChallenge } = useUnlinkExerciseFromChallenge()
+const { saveChallenge } = useSaveChallenge()
 const { exercises: exercisePool } = useListExercises()
 
-const challengeForm = reactive<{
-  subjectSkillId: string | undefined
-  subjectConceptId: string | undefined
-  passThreshold: number
-  shuffleExercises: boolean
-  shuffleOptions: boolean
-}>({
-  subjectSkillId: undefined,
-  subjectConceptId: undefined,
-  passThreshold: 70,
-  shuffleExercises: false,
-  shuffleOptions: false,
-})
+const challengeModalOpen = ref(false)
 const savingChallenge = ref(false)
-const pickerOpen = ref(false)
+const challengeExercises = computed(() => challengeExercisesState.value?.exercises.value ?? [])
+const challengeExercisesFailed = computed(() => challengeExercisesState.value?.error.value ?? false)
+const challengesFailed = computed(() => challengesState.value?.error.value ?? false)
+// Until the node's challenges have loaded (or after a failed load) `challenge`
+// is null even when one exists, and saving would create a second challenge.
+const challengesReady = computed(() => {
+  const state = challengesState.value
+  return !!state && !state.isLoading.value && !state.error.value
+})
+// The modal seeds its draft from the linked exercises once, when it opens, and
+// saving unlinks whatever the draft leaves out. Opening it before they have
+// loaded (or after a failed load, which leaves the list empty) would therefore
+// save an empty draft over the challenge's real exercises.
+const challengeExercisesReady = computed(() => {
+  const state = challengeExercisesState.value
+  return !!state && !state.isLoading.value && !state.error.value
+})
+// A save is also blocked while a challenge exists but its exercise list is
+// reloading: diffing against an empty list would re-link exercises that are
+// already attached, which the API rejects as a conflict.
+const challengeSaveBlocked = computed(
+  () => savingChallenge.value || (!!challenge.value && !challengeExercisesReady.value),
+)
+
+// A challenge's subject must belong to its content node's own classification.
+// If the teacher removed that skill/concept from Classification after picking
+// it as the subject, the modal opens without it instead of sending a stale id
+// that the backend would reject as a confusing save failure.
+const challengeInitial = computed<ChallengeModalInitial | null>(() => {
+  const c = challenge.value
+  if (!c) return null
+  return {
+    subjectSkillId: c.subject_skill_id && form.skillIds.value.includes(c.subject_skill_id) ? c.subject_skill_id : undefined,
+    subjectConceptId:
+      c.subject_concept_id && form.conceptIds.value.includes(c.subject_concept_id) ? c.subject_concept_id : undefined,
+    passThreshold: c.pass_threshold,
+    shuffleExercises: c.shuffle_exercises,
+    shuffleOptions: c.shuffle_options,
+    exercises: challengeExercises.value,
+  }
+})
+
+const challengeSubjectName = computed(() => {
+  const c = challenge.value
+  if (!c) return ''
+  const skill = skills.value.find((s) => s.skill_id === c.subject_skill_id)
+  const concept = concepts.value.find((cn) => cn.concept_id === c.subject_concept_id)
+  return skill?.name ?? concept?.name ?? ''
+})
 
 // Timed pop-ups only make sense once the node exists server-side, same as
 // the challenge section below.
@@ -175,18 +202,50 @@ watch(
   { immediate: true },
 )
 
-async function onAddExpandedContent(fields: CreateExpandedContentRequest) {
+const popupModalOpen = ref(false)
+const editingPopupId = ref<string | null>(null)
+const savingPopup = ref(false)
+
+function openAddPopup() {
+  editingPopupId.value = null
+  popupModalOpen.value = true
+}
+
+function openEditPopup(id: string) {
+  editingPopupId.value = id
+  popupModalOpen.value = true
+}
+
+// The modal stays open on failure so a long rich-text draft isn't lost.
+async function onSavePopup(fields: CreateExpandedContentRequest) {
+  const editingId = editingPopupId.value
+  savingPopup.value = true
   try {
-    await createExpandedContent(savedContentNodeId.value, fields)
+    if (editingId) {
+      await updateExpandedContent(editingId, fields)
+    } else {
+      await createExpandedContent(savedContentNodeId.value, fields)
+    }
+    popupModalOpen.value = false
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.addPopupFailed'))
+    toast.error(
+      e instanceof Error
+        ? e.message
+        : editingId
+          ? t('contentAuthoringView.updatePopupFailed')
+          : t('contentAuthoringView.addPopupFailed'),
+    )
+  } finally {
+    savingPopup.value = false
   }
 }
 
 function findExpandedContent(id: string) {
   return expandedContentState.value?.items.value.find((i) => i.expanded_content_id === id)
 }
+
+const editingPopup = computed(() => (editingPopupId.value ? (findExpandedContent(editingPopupId.value) ?? null) : null))
 
 type ExpandedContentTimeField = 'trigger_at_seconds' | 'hide_at_seconds' | 'trigger_at_paragraph'
 
@@ -244,78 +303,39 @@ watch(
 )
 
 watch(challenge, (c) => {
-  if (!c) {
-    challengeExercisesState.value = null
-    return
-  }
-  challengeForm.subjectSkillId = c.subject_skill_id
-  challengeForm.subjectConceptId = c.subject_concept_id
-  challengeForm.passThreshold = c.pass_threshold
-  challengeForm.shuffleExercises = c.shuffle_exercises
-  challengeForm.shuffleOptions = c.shuffle_options
-  challengeExercisesState.value = useListChallengeExercises(c.challenge_id)
+  challengeExercisesState.value = c ? useListChallengeExercises(c.challenge_id) : null
 })
 
-// A challenge's subject must belong to its content node's own classification.
-// If the teacher removes that skill/concept from Classification after picking
-// it as the subject, drop the now-orphaned selection instead of letting a
-// stale id reach the backend's membership check as a confusing save failure.
-watch([form.skillIds, form.conceptIds], ([skillIds, conceptIds]) => {
-  if (challengeForm.subjectSkillId && !skillIds.includes(challengeForm.subjectSkillId)) {
-    challengeForm.subjectSkillId = undefined
-  }
-  if (challengeForm.subjectConceptId && !conceptIds.includes(challengeForm.subjectConceptId)) {
-    challengeForm.subjectConceptId = undefined
-  }
-})
-
-async function saveChallenge() {
+async function onSaveChallenge({
+  fields,
+  exerciseIds,
+}: {
+  fields: Parameters<typeof saveChallenge>[0]['fields']
+  exerciseIds: string[]
+}) {
   savingChallenge.value = true
   try {
-    if (challenge.value) {
-      await updateChallenge(challenge.value.challenge_id, {
-        subject_skill_id: challengeForm.subjectSkillId,
-        subject_concept_id: challengeForm.subjectConceptId,
-        pass_threshold: challengeForm.passThreshold,
-        shuffle_exercises: challengeForm.shuffleExercises,
-        shuffle_options: challengeForm.shuffleOptions,
-      })
-    } else {
-      await createChallenge(savedContentNodeId.value, {
-        subject_skill_id: challengeForm.subjectSkillId,
-        subject_concept_id: challengeForm.subjectConceptId,
-        pass_threshold: challengeForm.passThreshold,
-        shuffle_exercises: challengeForm.shuffleExercises,
-        shuffle_options: challengeForm.shuffleOptions,
-      })
-    }
-    await challengesState.value?.retry()
+    await saveChallenge({
+      contentNodeId: savedContentNodeId.value,
+      challengeId: challenge.value?.challenge_id,
+      fields,
+      exerciseIds,
+      linkedExerciseIds: challengeExercises.value.map((e) => e.exercise_id),
+    })
+    challengeModalOpen.value = false
     toast.success(t('contentAuthoringView.challengeSaved'))
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('contentAuthoringView.saveChallengeFailed'))
   } finally {
-    savingChallenge.value = false
-  }
-}
-
-async function onExercisePicked(exerciseId: string) {
-  if (!challenge.value) return
-  pickerOpen.value = false
-  try {
-    await linkExerciseToChallenge(challenge.value.challenge_id, exerciseId)
-    await challengeExercisesState.value?.retry()
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.attachExerciseFailed'))
-  }
-}
-
-async function onUnlinkExercise(exerciseId: string) {
-  if (!challenge.value) return
-  try {
-    await unlinkExerciseFromChallenge(challenge.value.challenge_id, exerciseId)
-    await challengeExercisesState.value?.retry()
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.removeExerciseFailed'))
+    // Refresh even after a failure (the challenge itself may have been saved
+    // before an exercise link failed), and only then allow another save: until
+    // the refresh lands, the view can't tell an update from a create.
+    try {
+      await challengesState.value?.retry()
+      await challengeExercisesState.value?.retry()
+    } finally {
+      savingChallenge.value = false
+    }
   }
 }
 </script>
@@ -419,7 +439,8 @@ async function onUnlinkExercise(exerciseId: string) {
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.timedPopupsLabel') }}</label>
         <VideoTimelineEditor
           :items="expandedContentState?.items.value ?? []"
-          @add="onAddExpandedContent"
+          @add="openAddPopup"
+          @edit="openEditPopup"
           @adjust-trigger="(id, delta) => adjustField(id, 'trigger_at_seconds', delta)"
           @adjust-hide="(id, delta) => adjustField(id, 'hide_at_seconds', delta)"
           @remove="onRemoveExpandedContent"
@@ -430,85 +451,107 @@ async function onUnlinkExercise(exerciseId: string) {
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.paragraphPopupsLabel') }}</label>
         <ArticlePopupListEditor
           :items="expandedContentState?.items.value ?? []"
-          @add="onAddExpandedContent"
+          @add="openAddPopup"
+          @edit="openEditPopup"
           @adjust-paragraph="(id, delta) => adjustField(id, 'trigger_at_paragraph', delta)"
           @remove="onRemoveExpandedContent"
         />
       </div>
 
       <div v-if="savedContentNodeId" data-test="challenge-section" class="flex flex-col gap-3 border-t border-border pt-4">
-        <label class="text-sm font-semibold">{{ t('contentAuthoringView.challengeLabel') }}</label>
+        <div class="flex items-center justify-between">
+          <label class="text-sm font-semibold">{{ t('contentAuthoringView.challengeLabel') }}</label>
+          <button
+            type="button"
+            data-test="open-challenge-modal"
+            :disabled="!challengesReady || (!!challenge && !challengeExercisesReady)"
+            class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+            @click="challengeModalOpen = true"
+          >
+            {{ challenge ? t('contentAuthoringView.editChallenge') : t('contentAuthoringView.buildChallenge') }}
+          </button>
+        </div>
 
-        <ChallengeConfigPanel
-          v-model:subject-skill-id="challengeForm.subjectSkillId"
-          v-model:subject-concept-id="challengeForm.subjectConceptId"
-          v-model:pass-threshold="challengeForm.passThreshold"
-          v-model:shuffle-exercises="challengeForm.shuffleExercises"
-          v-model:shuffle-options="challengeForm.shuffleOptions"
-          :skill-nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
-          :concept-nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
-          :allowed-skill-ids="form.skillIds.value"
-          :allowed-concept-ids="form.conceptIds.value"
-        />
-        <button
-          type="button"
-          data-test="save-challenge"
-          :disabled="(!challengeForm.subjectSkillId && !challengeForm.subjectConceptId) || savingChallenge"
-          class="w-fit rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-          @click="saveChallenge"
-        >
-          {{ t('contentAuthoringView.saveChallenge') }}
-        </button>
-
-        <p v-if="!challenge" data-test="no-challenge" class="text-sm text-ink-subtle">
+        <p v-if="challengesFailed" data-test="challenge-list-error" class="flex items-center gap-2 text-sm text-danger">
+          {{ t('contentAuthoringView.challengesError') }}
+          <button
+            type="button"
+            data-test="challenge-list-retry"
+            class="rounded-md border border-border bg-surface-raised px-2.5 py-1 text-[0.8125rem] font-semibold text-ink"
+            @click="challengesState?.retry()"
+          >
+            {{ t('buttons.tryAgain') }}
+          </button>
+        </p>
+        <p v-else-if="!challengesReady" class="text-sm text-ink-subtle">
+          {{ t('contentAuthoringView.challengesLoading') }}
+        </p>
+        <p v-else-if="!challenge" data-test="no-challenge" class="text-sm text-ink-subtle">
           {{ t('contentAuthoringView.noChallengeMessage') }}
         </p>
 
-        <template v-else>
-          <div class="flex items-center justify-between pt-2">
-            <span class="text-xs font-semibold uppercase tracking-wide text-ink-muted">{{ t('contentAuthoringView.linkedExercisesLabel') }}</span>
+        <div
+          v-else
+          data-test="challenge-summary"
+          class="flex flex-col gap-2 rounded-md border border-border bg-surface-sunken px-3 py-2.5"
+        >
+          <span class="text-sm text-ink">
+            {{ t('contentAuthoringView.challengeSubject', { name: challengeSubjectName }) }}
+            ·
+            {{ t('contentAuthoringView.challengePassThreshold', { threshold: challenge.pass_threshold }) }}
+            ·
+            {{
+              challengeExercises.length === 1
+                ? t('contentAuthoringView.challengeExerciseCountSingular', { count: 1 })
+                : t('contentAuthoringView.challengeExerciseCountPlural', { count: challengeExercises.length })
+            }}
+          </span>
+          <p v-if="challengeExercisesFailed" data-test="challenge-exercises-error" class="flex items-center gap-2 text-sm text-danger">
+            {{ t('contentAuthoringView.challengeExercisesError') }}
             <button
               type="button"
-              data-test="attach-exercise"
-              class="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[0.8125rem] font-semibold text-accent-fg"
-              @click="pickerOpen = true"
+              data-test="challenge-exercises-retry"
+              class="rounded-md border border-border bg-surface-raised px-2.5 py-1 text-[0.8125rem] font-semibold text-ink"
+              @click="challengeExercisesState?.retry()"
             >
-              <Plus :size="14" aria-hidden="true" />
-              {{ t('contentAuthoringView.attachExercise') }}
+              {{ t('buttons.tryAgain') }}
             </button>
-          </div>
-
-          <p v-if="(challengeExercisesState?.exercises.value.length ?? 0) === 0" class="text-sm text-ink-subtle">
-            {{ t('contentAuthoringView.noExercisesAttached') }}
           </p>
-          <ul v-else class="flex flex-col gap-2">
-            <li
-              v-for="exercise in challengeExercisesState?.exercises.value"
-              :key="exercise.exercise_id"
-              class="flex items-center justify-between rounded-md border border-border bg-surface-sunken px-3 py-2"
-            >
-              <span class="text-sm font-semibold text-ink">{{ exercise.title }}</span>
-              <button
-                type="button"
-                data-test="unlink-exercise"
-                :aria-label="t('contentAuthoringView.removeExerciseAriaLabel')"
-                class="text-ink-subtle"
-                @click="onUnlinkExercise(exercise.exercise_id)"
-              >
-                <X :size="14" aria-hidden="true" />
-              </button>
+          <p v-else-if="!challengeExercisesReady" class="text-sm text-ink-subtle">
+            {{ t('contentAuthoringView.challengeExercisesLoading') }}
+          </p>
+          <p v-else-if="challengeExercises.length === 0" data-test="challenge-empty-warning" class="text-sm text-danger">
+            {{ t('contentAuthoringView.challengeEmptyWarning') }}
+          </p>
+          <ul v-else class="flex flex-col gap-1">
+            <li v-for="exercise in challengeExercises" :key="exercise.exercise_id" class="text-sm font-semibold text-ink">
+              {{ exercise.title }}
             </li>
           </ul>
-        </template>
+        </div>
       </div>
     </main>
 
-    <ExercisePickerModal
-      :open="pickerOpen"
-      :exercises="exercisePool"
-      :linked-exercise-ids="challengeExercisesState?.exercises.value.map((e) => e.exercise_id) ?? []"
-      @select="onExercisePicked"
-      @close="pickerOpen = false"
+    <ExpandedContentModal
+      :open="popupModalOpen"
+      :timing="form.contentType.value === 'video' ? 'seconds' : 'paragraph'"
+      :item="editingPopup"
+      :saving="savingPopup"
+      @save="onSavePopup"
+      @close="popupModalOpen = false"
+    />
+
+    <ChallengeModal
+      :open="challengeModalOpen"
+      :skill-nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
+      :concept-nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+      :allowed-skill-ids="form.skillIds.value"
+      :allowed-concept-ids="form.conceptIds.value"
+      :exercise-pool="exercisePool"
+      :initial="challengeInitial"
+      :saving="challengeSaveBlocked"
+      @save="onSaveChallenge"
+      @close="challengeModalOpen = false"
     />
   </div>
 </template>
