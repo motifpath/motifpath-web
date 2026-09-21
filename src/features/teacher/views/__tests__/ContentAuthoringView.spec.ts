@@ -632,6 +632,136 @@ describe('ContentAuthoringView', () => {
         expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeUndefined()
       })
 
+      describe('node challenge list', () => {
+        const CHALLENGES = '/content-nodes/{content_node_id}/challenges'
+
+        it('keeps Build challenge disabled, and says nothing about "no challenge", until the list has loaded', async () => {
+          routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+          const defaultGET = GET.getMockImplementation()
+          let resolveChallenges: (value: unknown) => void = () => {}
+          const pending = new Promise((resolve) => {
+            resolveChallenges = resolve
+          })
+          GET.mockImplementation((path: string) => (path === CHALLENGES ? pending : defaultGET?.(path)))
+          const wrapper = mountView()
+          await flushPromises()
+
+          expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+          expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(false)
+
+          resolveChallenges(okResponse([]))
+          await flushPromises()
+
+          expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeUndefined()
+          expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(true)
+        })
+
+        it('offers a retry, not a Build button, when the list fails to load (it could hide an existing challenge)', async () => {
+          routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+          const defaultGET = GET.getMockImplementation()
+          GET.mockImplementation((path: string) =>
+            path === CHALLENGES
+              ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+              : defaultGET?.(path),
+          )
+          const wrapper = mountView()
+          await flushPromises()
+
+          expect(wrapper.find('[data-test="challenge-list-error"]').exists()).toBe(true)
+          expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+          expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(false)
+
+          GET.mockImplementation((path: string) =>
+            path === CHALLENGES ? Promise.resolve(okResponse([challengeFixture])) : defaultGET?.(path),
+          )
+          await wrapper.get('[data-test="challenge-list-retry"]').trigger('click')
+          await flushPromises()
+
+          expect(wrapper.find('[data-test="challenge-list-error"]').exists()).toBe(false)
+          expect(wrapper.find('[data-test="challenge-summary"]').exists()).toBe(true)
+        })
+      })
+
+      describe('saving again after a partial failure', () => {
+        const CHALLENGES = '/content-nodes/{content_node_id}/challenges'
+        const EXERCISES = '/challenges/{challenge_id}/exercises'
+        const createCalls = () => POST.mock.calls.filter(([path]) => path === CHALLENGES)
+
+        // Builds a challenge with two exercises where the second link fails: the
+        // challenge and the first link exist, the modal stays open, and the
+        // refresh that follows is held open until the test releases it.
+        async function saveWithFailingSecondLink() {
+          routeGET({
+            '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+            '/skills': okResponse([skillFixture]),
+            '/exercises': okResponse([exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')]),
+          })
+          const defaultGET = GET.getMockImplementation()
+          let resolveRefresh: (value: unknown) => void = () => {}
+          let refreshGate: Promise<unknown> | null = null
+          let linkedNow = okResponse([])
+          GET.mockImplementation((path: string) => {
+            if (path === CHALLENGES && refreshGate) return refreshGate
+            if (path === EXERCISES) return Promise.resolve(linkedNow)
+            return defaultGET?.(path)
+          })
+          POST.mockResolvedValueOnce({ data: challengeFixture, error: undefined, response: { status: 201 } })
+            .mockResolvedValueOnce(noContent)
+            .mockResolvedValueOnce({ error: { message: 'boom' }, response: { status: 500 } })
+          const wrapper = mountView()
+          await flushPromises()
+
+          await wrapper.get('[data-test="open-challenge-modal"]').trigger('click')
+          await wrapper.get('[data-test="challenge-modal"] [data-test="tree-open-picker"]').trigger('click')
+          await wrapper.get('[data-test="tree-node-radio"][value="s-1"]').setValue(true)
+          await wrapper.get('[data-test="attach-exercise"]').trigger('click')
+          await wrapper.get('[data-test="exercise-picker-row"]').trigger('click')
+          await wrapper.get('[data-test="exercise-picker-row"]').trigger('click')
+
+          refreshGate = new Promise((resolve) => {
+            resolveRefresh = resolve
+          })
+          await wrapper.get('[data-test="save-challenge"]').trigger('click')
+          await flushPromises()
+
+          return {
+            wrapper,
+            finishRefresh: async () => {
+              linkedNow = okResponse([exerciseFixture('e-1', 'Name the chord')])
+              resolveRefresh(okResponse([challengeFixture]))
+              await flushPromises()
+            },
+          }
+        }
+
+        it('keeps Save disabled while the failed save is being refreshed, so it cannot create a second challenge', async () => {
+          const { wrapper } = await saveWithFailingSecondLink()
+
+          expect(wrapper.find('[data-test="challenge-modal"]').exists()).toBe(true)
+          expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeDefined()
+          await wrapper.get('[data-test="save-challenge"]').trigger('click')
+
+          expect(createCalls()).toHaveLength(1)
+        })
+
+        it('updates the challenge and links only the missing exercise once the refresh is done', async () => {
+          const { wrapper, finishRefresh } = await saveWithFailingSecondLink()
+          PUT.mockResolvedValueOnce(okResponse(challengeFixture))
+          POST.mockResolvedValueOnce(noContent)
+
+          await finishRefresh()
+          expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeUndefined()
+          await wrapper.get('[data-test="save-challenge"]').trigger('click')
+          await flushPromises()
+
+          expect(createCalls()).toHaveLength(1)
+          expect(PUT).toHaveBeenCalledWith('/challenges/{challenge_id}', expect.objectContaining({ params: { path: { challenge_id: 'ch-1' } } }))
+          expect(POST).toHaveBeenLastCalledWith('/challenges/{challenge_id}/exercises/{exercise_id}', {
+            params: { path: { challenge_id: 'ch-1', exercise_id: 'e-2' } },
+          })
+        })
+      })
+
       it('unlinks an exercise removed in the modal', async () => {
         routeChallenge([exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')])
         PUT.mockResolvedValueOnce(okResponse(challengeFixture))

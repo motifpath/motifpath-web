@@ -228,7 +228,9 @@
     "challengeExerciseCountSingular": "{count} exercise",
     "challengeExerciseCountPlural": "{count} exercises",
     "challengeExercisesError": "Couldn't load this challenge's exercises.",
-    "challengeExercisesLoading": "Loading exercises…"
+    "challengeExercisesLoading": "Loading exercises…",
+    "challengesError": "Couldn't load this node's challenges.",
+    "challengesLoading": "Loading challenges…"
   },
   "contentListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",

@@ -228,7 +228,9 @@
     "challengeExerciseCountSingular": "{count} exercício",
     "challengeExerciseCountPlural": "{count} exercícios",
     "challengeExercisesError": "Não foi possível carregar os exercícios deste desafio.",
-    "challengeExercisesLoading": "Carregando exercícios…"
+    "challengeExercisesLoading": "Carregando exercícios…",
+    "challengesError": "Não foi possível carregar os desafios deste nó.",
+    "challengesLoading": "Carregando desafios…"
   },
   "contentListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",

@@ -137,6 +137,13 @@ const challengeModalOpen = ref(false)
 const savingChallenge = ref(false)
 const challengeExercises = computed(() => challengeExercisesState.value?.exercises.value ?? [])
 const challengeExercisesFailed = computed(() => challengeExercisesState.value?.error.value ?? false)
+const challengesFailed = computed(() => challengesState.value?.error.value ?? false)
+// Until the node's challenges have loaded (or after a failed load) `challenge`
+// is null even when one exists, and saving would create a second challenge.
+const challengesReady = computed(() => {
+  const state = challengesState.value
+  return !!state && !state.isLoading.value && !state.error.value
+})
 // The modal seeds its draft from the linked exercises once, when it opens, and
 // saving unlinks whatever the draft leaves out. Opening it before they have
 // loaded (or after a failed load, which leaves the list empty) would therefore
@@ -145,6 +152,12 @@ const challengeExercisesReady = computed(() => {
   const state = challengeExercisesState.value
   return !!state && !state.isLoading.value && !state.error.value
 })
+// A save is also blocked while a challenge exists but its exercise list is
+// reloading: diffing against an empty list would re-link exercises that are
+// already attached, which the API rejects as a conflict.
+const challengeSaveBlocked = computed(
+  () => savingChallenge.value || (!!challenge.value && !challengeExercisesReady.value),
+)
 
 // A challenge's subject must belong to its content node's own classification.
 // If the teacher removed that skill/concept from Classification after picking
@@ -314,11 +327,15 @@ async function onSaveChallenge({
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('contentAuthoringView.saveChallengeFailed'))
   } finally {
-    savingChallenge.value = false
-    // Refresh even after a failure: the challenge itself may have been saved
-    // before an exercise link failed, and the summary must show what exists.
-    await challengesState.value?.retry()
-    await challengeExercisesState.value?.retry()
+    // Refresh even after a failure (the challenge itself may have been saved
+    // before an exercise link failed), and only then allow another save: until
+    // the refresh lands, the view can't tell an update from a create.
+    try {
+      await challengesState.value?.retry()
+      await challengeExercisesState.value?.retry()
+    } finally {
+      savingChallenge.value = false
+    }
   }
 }
 </script>
@@ -447,7 +464,7 @@ async function onSaveChallenge({
           <button
             type="button"
             data-test="open-challenge-modal"
-            :disabled="!!challenge && !challengeExercisesReady"
+            :disabled="!challengesReady || (!!challenge && !challengeExercisesReady)"
             class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             @click="challengeModalOpen = true"
           >
@@ -455,7 +472,21 @@ async function onSaveChallenge({
           </button>
         </div>
 
-        <p v-if="!challenge" data-test="no-challenge" class="text-sm text-ink-subtle">
+        <p v-if="challengesFailed" data-test="challenge-list-error" class="flex items-center gap-2 text-sm text-danger">
+          {{ t('contentAuthoringView.challengesError') }}
+          <button
+            type="button"
+            data-test="challenge-list-retry"
+            class="rounded-md border border-border bg-surface-raised px-2.5 py-1 text-[0.8125rem] font-semibold text-ink"
+            @click="challengesState?.retry()"
+          >
+            {{ t('buttons.tryAgain') }}
+          </button>
+        </p>
+        <p v-else-if="!challengesReady" class="text-sm text-ink-subtle">
+          {{ t('contentAuthoringView.challengesLoading') }}
+        </p>
+        <p v-else-if="!challenge" data-test="no-challenge" class="text-sm text-ink-subtle">
           {{ t('contentAuthoringView.noChallengeMessage') }}
         </p>
 
@@ -518,7 +549,7 @@ async function onSaveChallenge({
       :allowed-concept-ids="form.conceptIds.value"
       :exercise-pool="exercisePool"
       :initial="challengeInitial"
-      :saving="savingChallenge"
+      :saving="challengeSaveBlocked"
       @save="onSaveChallenge"
       @close="challengeModalOpen = false"
     />
