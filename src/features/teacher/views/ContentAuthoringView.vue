@@ -6,6 +6,7 @@ import ArticlePopupListEditor from '@/features/teacher/components/ArticlePopupLi
 import ChallengeModal, { type ChallengeModalInitial } from '@/features/teacher/components/ChallengeModal.vue'
 import ClassificationFields from '@/features/teacher/components/ClassificationFields.vue'
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
+import ExpandedContentModal from '@/features/teacher/components/ExpandedContentModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEditor.vue'
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
@@ -179,18 +180,50 @@ watch(
   { immediate: true },
 )
 
-async function onAddExpandedContent(fields: CreateExpandedContentRequest) {
+const popupModalOpen = ref(false)
+const editingPopupId = ref<string | null>(null)
+const savingPopup = ref(false)
+
+function openAddPopup() {
+  editingPopupId.value = null
+  popupModalOpen.value = true
+}
+
+function openEditPopup(id: string) {
+  editingPopupId.value = id
+  popupModalOpen.value = true
+}
+
+// The modal stays open on failure so a long rich-text draft isn't lost.
+async function onSavePopup(fields: CreateExpandedContentRequest) {
+  const editingId = editingPopupId.value
+  savingPopup.value = true
   try {
-    await createExpandedContent(savedContentNodeId.value, fields)
+    if (editingId) {
+      await updateExpandedContent(editingId, fields)
+    } else {
+      await createExpandedContent(savedContentNodeId.value, fields)
+    }
+    popupModalOpen.value = false
     await expandedContentState.value?.retry()
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.addPopupFailed'))
+    toast.error(
+      e instanceof Error
+        ? e.message
+        : editingId
+          ? t('contentAuthoringView.updatePopupFailed')
+          : t('contentAuthoringView.addPopupFailed'),
+    )
+  } finally {
+    savingPopup.value = false
   }
 }
 
 function findExpandedContent(id: string) {
   return expandedContentState.value?.items.value.find((i) => i.expanded_content_id === id)
 }
+
+const editingPopup = computed(() => (editingPopupId.value ? (findExpandedContent(editingPopupId.value) ?? null) : null))
 
 type ExpandedContentTimeField = 'trigger_at_seconds' | 'hide_at_seconds' | 'trigger_at_paragraph'
 
@@ -380,7 +413,8 @@ async function onSaveChallenge({
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.timedPopupsLabel') }}</label>
         <VideoTimelineEditor
           :items="expandedContentState?.items.value ?? []"
-          @add="onAddExpandedContent"
+          @add="openAddPopup"
+          @edit="openEditPopup"
           @adjust-trigger="(id, delta) => adjustField(id, 'trigger_at_seconds', delta)"
           @adjust-hide="(id, delta) => adjustField(id, 'hide_at_seconds', delta)"
           @remove="onRemoveExpandedContent"
@@ -391,7 +425,8 @@ async function onSaveChallenge({
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.paragraphPopupsLabel') }}</label>
         <ArticlePopupListEditor
           :items="expandedContentState?.items.value ?? []"
-          @add="onAddExpandedContent"
+          @add="openAddPopup"
+          @edit="openEditPopup"
           @adjust-paragraph="(id, delta) => adjustField(id, 'trigger_at_paragraph', delta)"
           @remove="onRemoveExpandedContent"
         />
@@ -441,6 +476,15 @@ async function onSaveChallenge({
         </div>
       </div>
     </main>
+
+    <ExpandedContentModal
+      :open="popupModalOpen"
+      :timing="form.contentType.value === 'video' ? 'seconds' : 'paragraph'"
+      :item="editingPopup"
+      :saving="savingPopup"
+      @save="onSavePopup"
+      @close="popupModalOpen = false"
+    />
 
     <ChallengeModal
       :open="challengeModalOpen"

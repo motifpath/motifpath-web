@@ -168,22 +168,16 @@
     "afterParagraph": "After paragraph",
     "forDuration": "for {ms}ms",
     "removeAriaLabel": "Remove pop-up",
-    "paragraphNumberLabel": "Paragraph #",
-    "durationMsLabel": "Duration (ms)",
-    "mediaUrlLabel": "Image/GIF URL",
-    "captionLabel": "Caption (optional)",
-    "addPopup": "Add pop-up"
+    "addPopup": "Add pop-up",
+    "editAriaLabel": "Edit pop-up"
   },
   "videoTimelineEditor": {
     "emptyMessage": "No timed pop-ups yet.",
     "showsAt": "Shows at",
     "hidesAt": "hides at",
     "removeAriaLabel": "Remove pop-up",
-    "triggerSecondsLabel": "Trigger (seconds)",
-    "hideSecondsLabel": "Hide (seconds)",
-    "mediaUrlLabel": "Image/GIF URL",
-    "captionLabel": "Caption (optional)",
-    "addPopup": "Add pop-up"
+    "addPopup": "Add pop-up",
+    "editAriaLabel": "Edit pop-up"
   },
   "contentNodePickerModal": {
     "title": "Add a content node",
@@ -277,5 +271,26 @@
     "removeExerciseAriaLabel": "Remove exercise",
     "cancel": "Cancel",
     "save": "Save challenge"
+  },
+  "expandedContentModal": {
+    "addTitle": "Add pop-up",
+    "editTitle": "Edit pop-up",
+    "kindLabel": "Content",
+    "kinds": {
+      "image": "Image",
+      "gif": "GIF",
+      "rich_text": "Rich text"
+    },
+    "triggerSecondsLabel": "Show at (seconds)",
+    "hideSecondsLabel": "Hide at (seconds)",
+    "paragraphLabel": "After paragraph #",
+    "durationMsLabel": "Duration (ms)",
+    "hideNotAfterTrigger": "The hide time must be later than the show time.",
+    "richContentLabel": "Pop-up content",
+    "mediaUrlLabel": "Image/GIF URL",
+    "mediaUrlInvalid": "Enter a full link starting with http:// or https://",
+    "captionLabel": "Caption (optional)",
+    "cancel": "Cancel",
+    "save": "Save pop-up"
   }
 }

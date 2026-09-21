@@ -44,33 +44,39 @@ describe('ArticlePopupListEditor', () => {
     expect(wrapper.emitted('remove')).toEqual([['ec-1']])
   })
 
-  it('emits add with the new pop-up fields', async () => {
+  it('emits add when the add button is clicked', async () => {
     const wrapper = mount(ArticlePopupListEditor, { props: { items: [] } })
 
-    await wrapper.get('[data-test="new-paragraph"]').setValue('4')
-    await wrapper.get('[data-test="new-duration-ms"]').setValue('3000')
-    await wrapper.get('[data-test="new-media-url"]').setValue('https://cdn.example.com/b.png')
-    await wrapper.get('[data-test="new-caption"]').setValue('New caption')
     await wrapper.get('[data-test="add-popup-item"]').trigger('click')
 
-    expect(wrapper.emitted('add')).toEqual([
-      [
-        {
-          content_type: 'image',
-          media_url: 'https://cdn.example.com/b.png',
-          trigger_at_paragraph: 4,
-          duration_ms: 3000,
-          caption: 'New caption',
-        },
-      ],
-    ])
+    expect(wrapper.emitted('add')).toHaveLength(1)
   })
 
-  it('does not emit add when paragraph, duration, or media_url is missing', async () => {
-    const wrapper = mount(ArticlePopupListEditor, { props: { items: [] } })
+  it('emits edit with the item id when its edit button is clicked', async () => {
+    const wrapper = mount(ArticlePopupListEditor, { props: { items } })
 
-    await wrapper.get('[data-test="add-popup-item"]').trigger('click')
+    await wrapper.get('[data-test="popup-item-edit"]').trigger('click')
 
-    expect(wrapper.emitted('add')).toBeUndefined()
+    expect(wrapper.emitted('edit')).toEqual([['ec-1']])
+  })
+
+  it('labels a rich-text pop-up as such instead of showing a url or caption', () => {
+    const wrapper = mount(ArticlePopupListEditor, {
+      props: {
+        items: [
+          {
+            expanded_content_id: 'ec-2',
+            content_node_id: 'cn-1',
+            content_type: 'rich_text' as const,
+            rich_content: { type: 'doc' as const, content: [] },
+            trigger_at_paragraph: 2,
+            duration_ms: 3000,
+            created_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+      },
+    })
+
+    expect(wrapper.get('[data-test="popup-item"] [data-test="popup-item-kind"]').text()).toBe('Rich text')
   })
 })

@@ -168,22 +168,16 @@
     "afterParagraph": "Depois do parágrafo",
     "forDuration": "por {ms}ms",
     "removeAriaLabel": "Remover pop-up",
-    "paragraphNumberLabel": "Nº do parágrafo",
-    "durationMsLabel": "Duração (ms)",
-    "mediaUrlLabel": "URL da imagem/GIF",
-    "captionLabel": "Legenda (opcional)",
-    "addPopup": "Adicionar pop-up"
+    "addPopup": "Adicionar pop-up",
+    "editAriaLabel": "Editar pop-up"
   },
   "videoTimelineEditor": {
     "emptyMessage": "Ainda não há pop-ups cronometrados.",
     "showsAt": "Aparece em",
     "hidesAt": "desaparece em",
     "removeAriaLabel": "Remover pop-up",
-    "triggerSecondsLabel": "Exibir após (segundos)",
-    "hideSecondsLabel": "Ocultar após (segundos)",
-    "mediaUrlLabel": "URL da imagem/GIF",
-    "captionLabel": "Legenda (opcional)",
-    "addPopup": "Adicionar pop-up"
+    "addPopup": "Adicionar pop-up",
+    "editAriaLabel": "Editar pop-up"
   },
   "contentNodePickerModal": {
     "title": "Adicionar um nó de conteúdo",
@@ -277,5 +271,26 @@
     "removeExerciseAriaLabel": "Remover exercício",
     "cancel": "Cancelar",
     "save": "Salvar desafio"
+  },
+  "expandedContentModal": {
+    "addTitle": "Adicionar pop-up",
+    "editTitle": "Editar pop-up",
+    "kindLabel": "Conteúdo",
+    "kinds": {
+      "image": "Imagem",
+      "gif": "GIF",
+      "rich_text": "Texto formatado"
+    },
+    "triggerSecondsLabel": "Exibir em (segundos)",
+    "hideSecondsLabel": "Ocultar em (segundos)",
+    "paragraphLabel": "Após o parágrafo nº",
+    "durationMsLabel": "Duração (ms)",
+    "hideNotAfterTrigger": "O momento de ocultar deve ser posterior ao de exibir.",
+    "richContentLabel": "Conteúdo do pop-up",
+    "mediaUrlLabel": "URL da imagem/GIF",
+    "mediaUrlInvalid": "Informe um link completo começando com http:// ou https://",
+    "captionLabel": "Legenda (opcional)",
+    "cancel": "Cancelar",
+    "save": "Salvar pop-up"
   }
 }

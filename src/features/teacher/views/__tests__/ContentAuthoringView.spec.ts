@@ -602,28 +602,32 @@ describe('ContentAuthoringView', () => {
     })
 
     describe('timed pop-ups', () => {
-      it('adds a pop-up to a video content node', async () => {
-        routeGET({ '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } } })
-        POST.mockResolvedValueOnce({
-          data: {
-            expanded_content_id: 'ec-1',
-            content_node_id: 'cn-1',
-            content_type: 'image',
-            media_url: 'https://cdn.example.com/a.png',
-            trigger_at_seconds: 10,
-            hide_at_seconds: 15,
-            created_at: '2026-01-01T00:00:00Z',
-          },
-          error: undefined,
-          response: { status: 201 },
-        })
+      const okResponse = (data: unknown) => ({ data, error: undefined, response: { status: 200 } })
+      const popupFixture = {
+        expanded_content_id: 'ec-1',
+        content_node_id: 'cn-1',
+        content_type: 'image',
+        media_url: 'https://cdn.example.com/a.png',
+        trigger_at_seconds: 10,
+        hide_at_seconds: 15,
+        created_at: '2026-01-01T00:00:00Z',
+      }
+
+      async function fillTiming(wrapper: ReturnType<typeof mountView>, trigger: string, hide: string) {
+        await wrapper.get('[data-test="popup-trigger-seconds"]').setValue(trigger)
+        await wrapper.get('[data-test="popup-hide-seconds"]').setValue(hide)
+      }
+
+      it('adds an image pop-up to a video content node through the modal', async () => {
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+        POST.mockResolvedValueOnce({ data: popupFixture, error: undefined, response: { status: 201 } })
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="new-trigger-seconds"]').setValue('10')
-        await wrapper.get('[data-test="new-hide-seconds"]').setValue('15')
-        await wrapper.get('[data-test="new-media-url"]').setValue('https://cdn.example.com/a.png')
         await wrapper.get('[data-test="add-timeline-item"]').trigger('click')
+        await fillTiming(wrapper, '10', '15')
+        await wrapper.get('[data-test="popup-media-url"]').setValue('https://cdn.example.com/a.png')
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
         await flushPromises()
 
         expect(POST).toHaveBeenCalledWith('/content-nodes/{content_node_id}/expanded-content', {
@@ -635,21 +639,88 @@ describe('ContentAuthoringView', () => {
             hide_at_seconds: 15,
           },
         })
+        expect(wrapper.find('[data-test="popup-modal"]').exists()).toBe(false)
       })
 
-      it('shows the paragraph pop-up editor for an article content node', async () => {
+      it('adds a rich-text pop-up to a video content node', async () => {
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+        POST.mockResolvedValueOnce({ data: popupFixture, error: undefined, response: { status: 201 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="add-timeline-item"]').trigger('click')
+        await wrapper.get('[data-test="popup-kind"]').setValue('rich_text')
+        await fillTiming(wrapper, '5', '9')
+        const popupEditor = wrapper.get('[data-test="popup-modal"]').findComponent(PromptEditor)
+        await popupEditor.vm.$emit('update:modelValue', ARTICLE_BODY)
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
+        await flushPromises()
+
+        expect(POST).toHaveBeenCalledWith('/content-nodes/{content_node_id}/expanded-content', {
+          params: { path: { content_node_id: 'cn-1' } },
+          body: { content_type: 'rich_text', rich_content: ARTICLE_BODY, trigger_at_seconds: 5, hide_at_seconds: 9 },
+        })
+      })
+
+      it('edits an existing pop-up in the modal and saves it with PUT', async () => {
         routeGET({
-          '/content-nodes/{content_node_id}': {
-            data: { ...contentNodeFixture, content_type: 'article' },
-            error: undefined,
-            response: { status: 200 },
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/expanded-content': okResponse({ items: [popupFixture], total: 1 }),
+        })
+        PUT.mockResolvedValueOnce(okResponse(popupFixture))
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="timeline-item-edit"]').trigger('click')
+        expect((wrapper.get('[data-test="popup-media-url"]').element as HTMLInputElement).value).toBe(
+          'https://cdn.example.com/a.png',
+        )
+        await wrapper.get('[data-test="popup-hide-seconds"]').setValue('20')
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
+        await flushPromises()
+
+        expect(PUT).toHaveBeenCalledWith('/expanded-content/{expanded_content_id}', {
+          params: { path: { expanded_content_id: 'ec-1' } },
+          body: {
+            content_type: 'image',
+            media_url: 'https://cdn.example.com/a.png',
+            trigger_at_seconds: 10,
+            hide_at_seconds: 20,
           },
+        })
+        expect(POST).not.toHaveBeenCalled()
+      })
+
+      it('keeps the modal open with the draft intact when saving fails', async () => {
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+        POST.mockResolvedValueOnce({ data: undefined, error: { message: 'nope' }, response: { status: 400 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="add-timeline-item"]').trigger('click')
+        await fillTiming(wrapper, '10', '15')
+        await wrapper.get('[data-test="popup-media-url"]').setValue('https://cdn.example.com/a.png')
+        await wrapper.get('[data-test="popup-save"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="popup-modal"]').exists()).toBe(true)
+        expect((wrapper.get('[data-test="popup-media-url"]').element as HTMLInputElement).value).toBe(
+          'https://cdn.example.com/a.png',
+        )
+      })
+
+      it('shows the paragraph pop-up editor and paragraph timing for an article content node', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse({ ...contentNodeFixture, content_type: 'article' }),
         })
         const wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.find('[data-test="new-paragraph"]').exists()).toBe(true)
-        expect(wrapper.find('[data-test="new-trigger-seconds"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="add-timeline-item"]').exists()).toBe(false)
+        await wrapper.get('[data-test="add-popup-item"]').trigger('click')
+
+        expect(wrapper.find('[data-test="popup-paragraph"]').exists()).toBe(true)
+        expect(wrapper.find('[data-test="popup-trigger-seconds"]').exists()).toBe(false)
       })
     })
   })
