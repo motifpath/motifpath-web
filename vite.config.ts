@@ -7,7 +7,12 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    vue(),
+    vue({
+      // The video player ships as web components (`<media-player>`, `<media-provider>`,
+      // the control elements); Vue must treat them as native elements, not try to
+      // resolve them as components.
+      template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('media-') } },
+    }),
     VueI18nPlugin({
       include: [fileURLToPath(new URL('./src/**/locales/*.json', import.meta.url))],
     }),

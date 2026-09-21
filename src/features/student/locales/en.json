@@ -32,6 +32,12 @@
     "practiceLink": "Practice this lesson ›",
     "backToPath": "‹ Back to your path"
   },
+  "lessonPlayer": {
+    "play": "Play",
+    "seek": "Seek",
+    "mute": "Mute",
+    "fullscreen": "Fullscreen"
+  },
   "practiceView": {
     "loadingNoun": "the practice exercises",
     "errorMessage": "We couldn't load this practice exercise.",

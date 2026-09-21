@@ -32,6 +32,12 @@
     "practiceLink": "Praticar esta lição ›",
     "backToPath": "‹ Voltar para sua trilha"
   },
+  "lessonPlayer": {
+    "play": "Reproduzir",
+    "seek": "Buscar no vídeo",
+    "mute": "Silenciar",
+    "fullscreen": "Tela cheia"
+  },
   "practiceView": {
     "loadingNoun": "os exercícios de prática",
     "errorMessage": "Não foi possível carregar este exercício de prática.",
