@@ -383,10 +383,15 @@ async function onUnlinkExercise(exerciseId: string) {
           v-model="form.mediaUrl.value"
           data-test="media-url-input"
           type="url"
+          :aria-invalid="form.mediaUrlInvalid.value"
           :placeholder="t('contentAuthoringView.mediaUrlPlaceholder')"
-          class="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink"
+          class="w-full rounded-md border bg-surface-raised px-3 py-2 text-sm text-ink"
+          :class="form.mediaUrlInvalid.value ? 'border-danger' : 'border-border'"
         />
-        <span class="text-sm text-ink-subtle">{{ t('contentAuthoringView.mediaUrlHint') }}</span>
+        <span v-if="form.mediaUrlInvalid.value" data-test="media-url-error" class="text-sm text-danger">
+          {{ t('contentAuthoringView.mediaUrlInvalid') }}
+        </span>
+        <span v-else class="text-sm text-ink-subtle">{{ t('contentAuthoringView.mediaUrlHint') }}</span>
       </div>
 
       <div v-else class="flex flex-col gap-2">

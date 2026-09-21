@@ -204,6 +204,29 @@ describe('ContentAuthoringView', () => {
       expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
     })
 
+    it('flags a media URL that is not http(s) and keeps Save disabled', async () => {
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
+      const wrapper = mountView()
+      await flushPromises()
+      await classify(wrapper)
+
+      expect(wrapper.find('[data-test="media-url-error"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="media-url-input"]').setValue('javascript:alert(1)')
+
+      expect(wrapper.get('[data-test="media-url-error"]').text()).toBe('Enter a full link starting with http:// or https://')
+      expect(wrapper.get('[data-test="media-url-input"]').attributes('aria-invalid')).toBe('true')
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
+
+      expect(wrapper.find('[data-test="media-url-error"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
+    })
+
     it('swaps the media URL field for the rich-text editor when the type is article', async () => {
       const wrapper = mountView()
       await flushPromises()

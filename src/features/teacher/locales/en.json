@@ -209,6 +209,7 @@
     "mediaUrlLabel": "Video URL",
     "mediaUrlPlaceholder": "https://…",
     "mediaUrlHint": "A direct video file (MP4) or a YouTube link — students watch it in the lesson player.",
+    "mediaUrlInvalid": "Enter a full link starting with http:// or https://",
     "articleBodyLabel": "Article",
     "classificationLabel": "Classification",
     "timedPopupsLabel": "Timed pop-ups",

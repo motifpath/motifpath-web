@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import { isHttpUrl } from '@/shared/utils/httpUrl'
 
 type CreateContentNodeRequest = components['schemas']['CreateContentNodeRequest']
 type UpdateContentNodeRequest = components['schemas']['UpdateContentNodeRequest']
@@ -32,8 +33,17 @@ export function useContentNodeForm() {
 
   const hasBody = computed(() =>
     contentType.value === 'video'
-      ? mediaUrl.value.trim() !== ''
+      ? isHttpUrl(mediaUrl.value.trim())
       : richContent.value.content.length > 0,
+  )
+
+  // Only a typed-but-unusable video URL counts as an error; an empty field is
+  // just "not filled in yet" and shouldn't show one.
+  const mediaUrlInvalid = computed(
+    () =>
+      contentType.value === 'video' &&
+      mediaUrl.value.trim() !== '' &&
+      !isHttpUrl(mediaUrl.value.trim()),
   )
 
   function body() {
@@ -90,6 +100,7 @@ export function useContentNodeForm() {
     mediaUrl,
     richContent,
     hasBody,
+    mediaUrlInvalid,
     toCreateContentNodeRequest,
     toUpdateContentNodeRequest,
     loadFromContentNode,

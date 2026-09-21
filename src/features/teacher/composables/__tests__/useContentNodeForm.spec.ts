@@ -35,6 +35,36 @@ describe('useContentNodeForm', () => {
       expect(form.hasBody.value).toBe(true)
     })
 
+    it.each(['not a url', '/videos/lesson.mp4', 'javascript:alert(1)', 'ftp://cdn.example.com/a.mp4'])(
+      'for a video, is false for a media URL that is not http(s): %s',
+      (value) => {
+        const form = useContentNodeForm()
+        form.contentType.value = 'video'
+        form.mediaUrl.value = value
+
+        expect(form.hasBody.value).toBe(false)
+        expect(form.mediaUrlInvalid.value).toBe(true)
+      },
+    )
+
+    it('reports a media URL as invalid only when one was typed', () => {
+      const form = useContentNodeForm()
+      form.contentType.value = 'video'
+
+      expect(form.mediaUrlInvalid.value).toBe(false)
+
+      form.mediaUrl.value = 'https://youtu.be/dQw4w9WgXcQ'
+      expect(form.mediaUrlInvalid.value).toBe(false)
+    })
+
+    it('never reports a media URL as invalid for an article', () => {
+      const form = useContentNodeForm()
+      form.contentType.value = 'article'
+      form.mediaUrl.value = 'not a url'
+
+      expect(form.mediaUrlInvalid.value).toBe(false)
+    })
+
     it('for an article, is true once the document has content, ignoring any stale media URL', () => {
       const form = useContentNodeForm()
       form.contentType.value = 'article'
