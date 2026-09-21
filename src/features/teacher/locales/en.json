@@ -226,7 +226,9 @@
     "challengePassThreshold": "Pass at {threshold}%",
     "challengeEmptyWarning": "This challenge has no exercises, so students can't take it — edit it and add at least one.",
     "challengeExerciseCountSingular": "{count} exercise",
-    "challengeExerciseCountPlural": "{count} exercises"
+    "challengeExerciseCountPlural": "{count} exercises",
+    "challengeExercisesError": "Couldn't load this challenge's exercises.",
+    "challengeExercisesLoading": "Loading exercises…"
   },
   "contentListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",

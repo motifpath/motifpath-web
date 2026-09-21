@@ -136,6 +136,15 @@ const { exercises: exercisePool } = useListExercises()
 const challengeModalOpen = ref(false)
 const savingChallenge = ref(false)
 const challengeExercises = computed(() => challengeExercisesState.value?.exercises.value ?? [])
+const challengeExercisesFailed = computed(() => challengeExercisesState.value?.error.value ?? false)
+// The modal seeds its draft from the linked exercises once, when it opens, and
+// saving unlinks whatever the draft leaves out. Opening it before they have
+// loaded (or after a failed load, which leaves the list empty) would therefore
+// save an empty draft over the challenge's real exercises.
+const challengeExercisesReady = computed(() => {
+  const state = challengeExercisesState.value
+  return !!state && !state.isLoading.value && !state.error.value
+})
 
 // A challenge's subject must belong to its content node's own classification.
 // If the teacher removed that skill/concept from Classification after picking
@@ -438,7 +447,8 @@ async function onSaveChallenge({
           <button
             type="button"
             data-test="open-challenge-modal"
-            class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold"
+            :disabled="!!challenge && !challengeExercisesReady"
+            class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             @click="challengeModalOpen = true"
           >
             {{ challenge ? t('contentAuthoringView.editChallenge') : t('contentAuthoringView.buildChallenge') }}
@@ -465,7 +475,21 @@ async function onSaveChallenge({
                 : t('contentAuthoringView.challengeExerciseCountPlural', { count: challengeExercises.length })
             }}
           </span>
-          <p v-if="challengeExercises.length === 0" data-test="challenge-empty-warning" class="text-sm text-danger">
+          <p v-if="challengeExercisesFailed" data-test="challenge-exercises-error" class="flex items-center gap-2 text-sm text-danger">
+            {{ t('contentAuthoringView.challengeExercisesError') }}
+            <button
+              type="button"
+              data-test="challenge-exercises-retry"
+              class="rounded-md border border-border bg-surface-raised px-2.5 py-1 text-[0.8125rem] font-semibold text-ink"
+              @click="challengeExercisesState?.retry()"
+            >
+              {{ t('buttons.tryAgain') }}
+            </button>
+          </p>
+          <p v-else-if="!challengeExercisesReady" class="text-sm text-ink-subtle">
+            {{ t('contentAuthoringView.challengeExercisesLoading') }}
+          </p>
+          <p v-else-if="challengeExercises.length === 0" data-test="challenge-empty-warning" class="text-sm text-danger">
             {{ t('contentAuthoringView.challengeEmptyWarning') }}
           </p>
           <ul v-else class="flex flex-col gap-1">

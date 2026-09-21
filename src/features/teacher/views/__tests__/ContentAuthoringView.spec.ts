@@ -583,6 +583,55 @@ describe('ContentAuthoringView', () => {
         ])
       })
 
+      it('keeps Edit challenge disabled, and shows no empty warning, until the linked exercises have loaded', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord')])
+        let resolveExercises: (value: unknown) => void = () => {}
+        const pending = new Promise((resolve) => {
+          resolveExercises = resolve
+        })
+        const defaultGET = GET.getMockImplementation()
+        GET.mockImplementation((path: string) =>
+          path === '/challenges/{challenge_id}/exercises' ? pending : defaultGET?.(path),
+        )
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('[data-test="challenge-empty-warning"]').exists()).toBe(false)
+
+        resolveExercises(okResponse([exerciseFixture('e-1', 'Name the chord')]))
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeUndefined()
+      })
+
+      it('offers a retry instead of an editable empty list when the linked exercises fail to load', async () => {
+        routeChallenge([exerciseFixture('e-1', 'Name the chord')])
+        const defaultGET = GET.getMockImplementation()
+        GET.mockImplementation((path: string) =>
+          path === '/challenges/{challenge_id}/exercises'
+            ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+            : defaultGET?.(path),
+        )
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="challenge-exercises-error"]').exists()).toBe(true)
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('[data-test="challenge-empty-warning"]').exists()).toBe(false)
+
+        GET.mockImplementation((path: string) =>
+          path === '/challenges/{challenge_id}/exercises'
+            ? Promise.resolve(okResponse([exerciseFixture('e-1', 'Name the chord')]))
+            : defaultGET?.(path),
+        )
+        await wrapper.get('[data-test="challenge-exercises-retry"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="challenge-exercises-error"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="open-challenge-modal"]').attributes('disabled')).toBeUndefined()
+      })
+
       it('unlinks an exercise removed in the modal', async () => {
         routeChallenge([exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')])
         PUT.mockResolvedValueOnce(okResponse(challengeFixture))

@@ -226,7 +226,9 @@
     "challengePassThreshold": "Aprovação com {threshold}%",
     "challengeEmptyWarning": "Este desafio não tem exercícios, então os alunos não podem realizá-lo — edite-o e adicione pelo menos um.",
     "challengeExerciseCountSingular": "{count} exercício",
-    "challengeExerciseCountPlural": "{count} exercícios"
+    "challengeExerciseCountPlural": "{count} exercícios",
+    "challengeExercisesError": "Não foi possível carregar os exercícios deste desafio.",
+    "challengeExercisesLoading": "Carregando exercícios…"
   },
   "contentListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
