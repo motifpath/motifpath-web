@@ -45,12 +45,14 @@ export function useSaveChallenge() {
     const toUnlink = input.linkedExerciseIds.filter((id) => !input.exerciseIds.includes(id))
     const toLink = input.exerciseIds.filter((id) => !input.linkedExerciseIds.includes(id))
 
-    // Sequential, not parallel: exercises are returned in link order.
-    for (const exerciseId of toUnlink) {
-      await unlinkExerciseFromChallenge(challenge.challenge_id, exerciseId)
-    }
+    // Sequential, not parallel: exercises are returned in link order. New ones
+    // are linked before removed ones are unlinked, so a failure partway through
+    // (e.g. swapping A for B) can never leave the challenge with no exercises.
     for (const exerciseId of toLink) {
       await linkExerciseToChallenge(challenge.challenge_id, exerciseId)
+    }
+    for (const exerciseId of toUnlink) {
+      await unlinkExerciseFromChallenge(challenge.challenge_id, exerciseId)
     }
 
     return challenge

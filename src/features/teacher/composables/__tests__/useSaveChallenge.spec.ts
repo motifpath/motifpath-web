@@ -81,6 +81,30 @@ describe('useSaveChallenge', () => {
     ])
   })
 
+  it('links new exercises before unlinking removed ones, so the challenge never drops to none', async () => {
+    const order: string[] = []
+    PUT.mockResolvedValueOnce(ok)
+    POST.mockImplementation(async (_path: string, options: { params: { path: { exercise_id: string } } }) => {
+      order.push(`link:${options.params.path.exercise_id}`)
+      return noContent
+    })
+    DELETE.mockImplementation(async (_path: string, options: { params: { path: { exercise_id: string } } }) => {
+      order.push(`unlink:${options.params.path.exercise_id}`)
+      return noContent
+    })
+
+    const { saveChallenge } = useSaveChallenge()
+    await saveChallenge({
+      contentNodeId: 'cn-1',
+      challengeId: 'ch-1',
+      fields,
+      exerciseIds: ['e-2'],
+      linkedExerciseIds: ['e-1'],
+    })
+
+    expect(order).toEqual(['link:e-2', 'unlink:e-1'])
+  })
+
   it('refuses to save a challenge with no exercises, without calling the API', async () => {
     const { saveChallenge } = useSaveChallenge()
 
