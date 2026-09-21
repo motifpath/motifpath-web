@@ -69,9 +69,15 @@ watch(
 
 const draftExerciseIds = computed(() => draftExercises.value.map((e) => e.exercise_id))
 
+// The panel emits Number(input), so an emptied field arrives as 0.
+const thresholdValid = computed(
+  () => Number.isInteger(draft.passThreshold) && draft.passThreshold >= 1 && draft.passThreshold <= 100,
+)
+
 const canSave = computed(
   () =>
     !props.saving &&
+    thresholdValid.value &&
     (!!draft.subjectSkillId || !!draft.subjectConceptId) &&
     draftExercises.value.length > 0,
 )
@@ -125,6 +131,9 @@ function save() {
         :allowed-skill-ids="allowedSkillIds"
         :allowed-concept-ids="allowedConceptIds"
       />
+      <p v-if="!thresholdValid" data-test="challenge-threshold-error" class="-mt-2 text-sm text-danger">
+        {{ t('challengeModal.thresholdInvalid') }}
+      </p>
 
       <div class="flex flex-col gap-2 border-t border-border pt-4">
         <div class="flex items-center justify-between">

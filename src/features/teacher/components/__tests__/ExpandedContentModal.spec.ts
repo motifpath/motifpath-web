@@ -101,6 +101,60 @@ describe('ExpandedContentModal', () => {
     ])
   })
 
+  it('lets a rich-text pop-up carry a caption too', async () => {
+    const wrapper = mount(ExpandedContentModal, { props: baseProps })
+
+    await wrapper.get('[data-test="popup-kind"]').setValue('rich_text')
+    await wrapper.get('[data-test="popup-trigger-seconds"]').setValue('5')
+    await wrapper.get('[data-test="popup-hide-seconds"]').setValue('9')
+    await wrapper.get('[data-test="popup-caption"]').setValue('Key idea')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', BODY)
+    await wrapper.get('[data-test="popup-save"]').trigger('click')
+
+    expect(wrapper.emitted('save')).toEqual([
+      [{ content_type: 'rich_text', rich_content: BODY, trigger_at_seconds: 5, hide_at_seconds: 9, caption: 'Key idea' }],
+    ])
+  })
+
+  it("keeps an existing rich-text pop-up's caption when it is edited", async () => {
+    const item = makeItem({
+      content_type: 'rich_text',
+      rich_content: BODY,
+      trigger_at_seconds: 5,
+      hide_at_seconds: 9,
+      caption: 'Key idea',
+    })
+    const wrapper = mount(ExpandedContentModal, { props: { ...baseProps, item } })
+
+    await wrapper.get('[data-test="popup-hide-seconds"]').setValue('12')
+    await wrapper.get('[data-test="popup-save"]').trigger('click')
+
+    expect(wrapper.emitted('save')).toEqual([
+      [{ content_type: 'rich_text', rich_content: BODY, trigger_at_seconds: 5, hide_at_seconds: 12, caption: 'Key idea' }],
+    ])
+  })
+
+  it.each([
+    ['seconds', 'popup-trigger-seconds', '1.5'],
+    ['seconds', 'popup-hide-seconds', '-1'],
+    ['paragraph', 'popup-paragraph', '0'],
+    ['paragraph', 'popup-duration-ms', '2.5'],
+  ] as const)('explains why Save is disabled when a %s timing field is %j', async (timing, field, value) => {
+    const wrapper = mount(ExpandedContentModal, { props: { ...baseProps, timing } })
+    await wrapper.get('[data-test="popup-media-url"]').setValue('https://cdn.example.com/a.png')
+
+    await wrapper.get(`[data-test="${field}"]`).setValue(value)
+
+    expect(wrapper.find('[data-test="popup-timing-invalid"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="popup-save"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('shows no timing message for an untouched, empty field', () => {
+    const wrapper = mount(ExpandedContentModal, { props: baseProps })
+
+    expect(wrapper.find('[data-test="popup-timing-invalid"]').exists()).toBe(false)
+  })
+
   it('keeps Save disabled until a rich-text pop-up has content', async () => {
     const wrapper = mount(ExpandedContentModal, { props: baseProps })
     await wrapper.get('[data-test="popup-kind"]').setValue('rich_text')

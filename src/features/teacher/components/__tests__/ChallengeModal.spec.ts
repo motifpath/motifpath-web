@@ -40,6 +40,15 @@ const baseProps = {
   saving: false,
 }
 
+const readyInitial = {
+  subjectSkillId: 's-1',
+  subjectConceptId: undefined,
+  passThreshold: 70,
+  shuffleExercises: false,
+  shuffleOptions: false,
+  exercises: [pool[0]!],
+}
+
 async function pickExercise(wrapper: ReturnType<typeof mount>, title: string) {
   await wrapper.get('[data-test="attach-exercise"]').trigger('click')
   const row = wrapper.findAll('[data-test="exercise-picker-row"]').find((r) => r.text().includes(title))
@@ -151,6 +160,24 @@ describe('ChallengeModal', () => {
     await wrapper.setProps({ open: true })
 
     expect(wrapper.findAll('[data-test="challenge-exercise"]')).toHaveLength(0)
+  })
+
+  it.each(['', '0', '101', '70.5'])('flags a pass threshold of %j and keeps Save disabled', async (value) => {
+    const wrapper = mount(ChallengeModal, { props: { ...baseProps, initial: readyInitial } })
+
+    await wrapper.get('[data-test="pass-threshold"]').setValue(value)
+
+    expect(wrapper.find('[data-test="challenge-threshold-error"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeDefined()
+  })
+
+  it.each(['1', '100'])('accepts a pass threshold of %s', async (value) => {
+    const wrapper = mount(ChallengeModal, { props: { ...baseProps, initial: readyInitial } })
+
+    await wrapper.get('[data-test="pass-threshold"]').setValue(value)
+
+    expect(wrapper.find('[data-test="challenge-threshold-error"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="save-challenge"]').attributes('disabled')).toBeUndefined()
   })
 
   it('disables Save while a save is in flight', () => {

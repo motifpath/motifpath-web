@@ -81,6 +81,22 @@ const hideNotAfterTrigger = computed(() => {
   return props.timing === 'seconds' && trigger !== null && hide !== null && hide <= trigger
 })
 
+// An empty field is just "not filled in yet"; only a typed-but-unusable value
+// (decimal, negative, zero paragraph) is an error worth explaining.
+const timingInvalid = computed(() => {
+  const fields: [string | number, number][] =
+    props.timing === 'seconds'
+      ? [
+          [triggerSeconds.value, 0],
+          [hideSeconds.value, 0],
+        ]
+      : [
+          [paragraph.value, 1],
+          [durationMs.value, 1],
+        ]
+  return fields.some(([raw, min]) => String(raw).trim() !== '' && wholeNumber(raw, min) === null)
+})
+
 const mediaUrlInvalid = computed(
   () => !isRichText.value && mediaUrl.value.trim() !== '' && !isHttpUrl(mediaUrl.value.trim()),
 )
@@ -105,16 +121,13 @@ function save() {
           duration_ms: Number(durationMs.value),
         }
 
+  const captionField = caption.value.trim() ? { caption: caption.value.trim() } : {}
+
   if (isRichText.value) {
-    emit('save', { content_type: 'rich_text', rich_content: richContent.value, ...timingFields })
+    emit('save', { content_type: 'rich_text', rich_content: richContent.value, ...timingFields, ...captionField })
     return
   }
-  emit('save', {
-    content_type: kind.value,
-    media_url: mediaUrl.value.trim(),
-    ...timingFields,
-    ...(caption.value.trim() ? { caption: caption.value.trim() } : {}),
-  })
+  emit('save', { content_type: kind.value, media_url: mediaUrl.value.trim(), ...timingFields, ...captionField })
 }
 
 const inputClass = 'w-full rounded-md border border-border bg-surface-raised px-2 py-1.5 text-sm'
@@ -199,6 +212,9 @@ const inputClass = 'w-full rounded-md border border-border bg-surface-raised px-
           />
         </div>
       </div>
+      <p v-if="timingInvalid" data-test="popup-timing-invalid" class="text-sm text-danger">
+        {{ timing === 'seconds' ? t('expandedContentModal.timingInvalidSeconds') : t('expandedContentModal.timingInvalidParagraph') }}
+      </p>
       <p v-if="hideNotAfterTrigger" data-test="popup-timing-error" class="text-sm text-danger">
         {{ t('expandedContentModal.hideNotAfterTrigger') }}
       </p>
@@ -224,11 +240,12 @@ const inputClass = 'w-full rounded-md border border-border bg-surface-raised px-
             {{ t('expandedContentModal.mediaUrlInvalid') }}
           </span>
         </div>
-        <div class="flex flex-col gap-1">
-          <label for="popup-caption" class="text-xs text-ink-subtle">{{ t('expandedContentModal.captionLabel') }}</label>
-          <input id="popup-caption" v-model="caption" data-test="popup-caption" type="text" :class="inputClass" />
-        </div>
       </template>
+
+      <div class="flex flex-col gap-1">
+        <label for="popup-caption" class="text-xs text-ink-subtle">{{ t('expandedContentModal.captionLabel') }}</label>
+        <input id="popup-caption" v-model="caption" data-test="popup-caption" type="text" :class="inputClass" />
+      </div>
 
       <div class="flex justify-end gap-2 border-t border-border pt-4">
         <button

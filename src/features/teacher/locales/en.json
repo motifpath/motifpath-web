@@ -272,7 +272,8 @@
     "needsExercises": "A challenge needs at least one exercise — add some to be able to save it.",
     "removeExerciseAriaLabel": "Remove exercise",
     "cancel": "Cancel",
-    "save": "Save challenge"
+    "save": "Save challenge",
+    "thresholdInvalid": "Enter a whole number from 1 to 100."
   },
   "expandedContentModal": {
     "addTitle": "Add pop-up",
@@ -293,6 +294,8 @@
     "mediaUrlInvalid": "Enter a full link starting with http:// or https://",
     "captionLabel": "Caption (optional)",
     "cancel": "Cancel",
-    "save": "Save pop-up"
+    "save": "Save pop-up",
+    "timingInvalidSeconds": "Use whole seconds, starting at 0.",
+    "timingInvalidParagraph": "Use whole numbers: the paragraph starts at 1 and the duration is at least 1 ms."
   }
 }

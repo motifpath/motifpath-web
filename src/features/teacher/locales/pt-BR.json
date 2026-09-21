@@ -272,7 +272,8 @@
     "needsExercises": "Um desafio precisa de pelo menos um exercício — adicione alguns para poder salvá-lo.",
     "removeExerciseAriaLabel": "Remover exercício",
     "cancel": "Cancelar",
-    "save": "Salvar desafio"
+    "save": "Salvar desafio",
+    "thresholdInvalid": "Informe um número inteiro de 1 a 100."
   },
   "expandedContentModal": {
     "addTitle": "Adicionar pop-up",
@@ -293,6 +294,8 @@
     "mediaUrlInvalid": "Informe um link completo começando com http:// ou https://",
     "captionLabel": "Legenda (opcional)",
     "cancel": "Cancelar",
-    "save": "Salvar pop-up"
+    "save": "Salvar pop-up",
+    "timingInvalidSeconds": "Use segundos inteiros, a partir de 0.",
+    "timingInvalidParagraph": "Use números inteiros: o parágrafo começa em 1 e a duração é de pelo menos 1 ms."
   }
 }
