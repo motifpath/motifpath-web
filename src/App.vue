@@ -71,6 +71,16 @@ watch(
 </script>
 
 <template>
-  <RouterView />
+  <!--
+    Keyed by path (not fullPath, so query-only changes don't remount): Vue
+    Router reuses a component instance across navigations that resolve to the
+    same route record with only a param changing (e.g. /teacher/content/A/edit
+    -> /teacher/content/B/edit). Several authoring views capture their :id
+    param once at setup and never re-derive it, so without this key they'd
+    silently keep editing the previous id while the URL shows the new one.
+  -->
+  <RouterView v-slot="{ Component }">
+    <component :is="Component" :key="$route.path" />
+  </RouterView>
   <ToastStack />
 </template>

@@ -15,7 +15,7 @@ describe('useCreateExercise', () => {
     POST.mockResolvedValueOnce({ data: exercise, error: undefined, response: { status: 201 } })
 
     const { createExercise } = useCreateExercise()
-    const request = { title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response' as const, options: [], language_codes: ['any'] }
+    const request = { title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response' as const, skill_ids: [], concept_ids: [], options: [], language_codes: ['any'] }
 
     const result = await createExercise(request)
 
@@ -29,7 +29,7 @@ describe('useCreateExercise', () => {
     const { createExercise } = useCreateExercise()
 
     await expect(
-      createExercise({ title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response', options: [], language_codes: ['any'] }),
+      createExercise({ title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response', skill_ids: [], concept_ids: [], options: [], language_codes: ['any'] }),
     ).rejects.toThrow('Boom')
   })
 
@@ -43,7 +43,7 @@ describe('useCreateExercise', () => {
     const { createExercise } = useCreateExercise()
 
     await expect(
-      createExercise({ title: 't', prompt: plainTextPrompt(''), exercise_type: 'text_response', options: [], language_codes: ['any'] }),
+      createExercise({ title: 't', prompt: plainTextPrompt(''), exercise_type: 'text_response', skill_ids: [], concept_ids: [], options: [], language_codes: ['any'] }),
     ).rejects.toThrow('Request failed validation:\n• /prompt: must not be empty')
   })
 
@@ -53,7 +53,7 @@ describe('useCreateExercise', () => {
     const { createExercise } = useCreateExercise()
 
     await expect(
-      createExercise({ title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response', options: [], language_codes: ['any'] }),
+      createExercise({ title: 't', prompt: plainTextPrompt('p'), exercise_type: 'text_response', skill_ids: [], concept_ids: [], options: [], language_codes: ['any'] }),
     ).rejects.toThrow('Failed to create the exercise')
   })
 })

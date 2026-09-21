@@ -1,7 +1,9 @@
 {
   "nav": {
     "student": "Minha trilha",
-    "teacher": "Exercícios"
+    "content": "Conteúdo",
+    "paths": "Trilhas",
+    "exercises": "Exercícios"
   },
   "appBar": {
     "menuAriaLabel": "Menu",

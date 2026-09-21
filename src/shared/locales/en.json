@@ -1,7 +1,9 @@
 {
   "nav": {
     "student": "My path",
-    "teacher": "Exercises"
+    "content": "Content",
+    "paths": "Paths",
+    "exercises": "Exercises"
   },
   "appBar": {
     "menuAriaLabel": "Menu",

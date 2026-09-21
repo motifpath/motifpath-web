@@ -1,0 +1,81 @@
+<script setup lang="ts">
+import SkillConceptTreePicker, { type TreeNode } from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
+import type { components } from '@/api/generated/core-domain'
+
+type DifficultyLevel = components['schemas']['ClassificationInput']['difficulty_level']
+type ReviewState = components['schemas']['Classification']['review_state']
+
+defineProps<{
+  skillIds: string[]
+  conceptIds: string[]
+  skillNodes: TreeNode[]
+  conceptNodes: TreeNode[]
+  skillsLoading?: boolean
+  conceptsLoading?: boolean
+  difficultyLevel: DifficultyLevel
+  reviewState: ReviewState | null
+}>()
+const emit = defineEmits<{
+  'update:skillIds': [value: string[]]
+  'update:conceptIds': [value: string[]]
+  'update:difficultyLevel': [value: DifficultyLevel]
+  createSkill: [{ name: string; parentId: string | null }]
+  createConcept: [{ name: string; parentId: string | null }]
+}>()
+
+const difficultyLevels: DifficultyLevel[] = ['beginner', 'early_intermediate', 'intermediate', 'advanced', 'expert']
+
+function isDifficultyLevel(value: string): value is DifficultyLevel {
+  return (difficultyLevels as string[]).includes(value)
+}
+
+function onDifficultyLevelChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  if (isDifficultyLevel(value)) emit('update:difficultyLevel', value)
+}
+
+const { t } = useTypedT()
+</script>
+
+<template>
+  <div class="flex flex-col gap-4">
+    <SkillConceptTreePicker
+      :label="t('classificationFields.skillLabel')"
+      :nodes="skillNodes"
+      :selected-ids="skillIds"
+      :is-loading="skillsLoading"
+      @update:selected-ids="emit('update:skillIds', $event)"
+      @create="emit('createSkill', $event)"
+    />
+
+    <SkillConceptTreePicker
+      :label="t('classificationFields.conceptLabel')"
+      :nodes="conceptNodes"
+      :selected-ids="conceptIds"
+      :is-loading="conceptsLoading"
+      @update:selected-ids="emit('update:conceptIds', $event)"
+      @create="emit('createConcept', $event)"
+    />
+
+    <div class="flex flex-col gap-1.5">
+      <label class="text-sm font-semibold">{{ t('classificationFields.difficultyLevelLabel') }}</label>
+      <select
+        data-test="difficulty-level"
+        :value="difficultyLevel"
+        class="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm"
+        @change="onDifficultyLevelChange"
+      >
+        <option v-for="level in difficultyLevels" :key="level" :value="level">{{ level }}</option>
+      </select>
+    </div>
+
+    <span
+      v-if="reviewState"
+      data-test="review-state"
+      class="w-fit rounded-full bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-ink-muted"
+    >
+      {{ t('classificationFields.reviewLabel', { state: reviewState }) }}
+    </span>
+  </div>
+</template>

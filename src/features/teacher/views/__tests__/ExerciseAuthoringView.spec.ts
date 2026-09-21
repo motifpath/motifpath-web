@@ -70,6 +70,7 @@ function mountView() {
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
+import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -80,6 +81,16 @@ async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
   await wrapper.get('[data-test="add-option"]').trigger('click')
   await wrapper.get('input[placeholder="Option text"]').setValue('G major')
   await wrapper.get('[data-test="option-correct"]').trigger('click')
+  await selectClassification(wrapper)
+}
+
+// Classification (at least one skill and one concept) is required by the
+// API -- set it directly via the pickers' own update event rather than
+// depending on whatever fixture list each individual test's GET mock returns.
+async function selectClassification(wrapper: ReturnType<typeof mountView>) {
+  const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+  await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
+  await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
 }
 
 describe('ExerciseAuthoringView', () => {
@@ -94,6 +105,12 @@ describe('ExerciseAuthoringView', () => {
     document.documentElement.classList.remove('dark')
     mockMatchMedia(false)
     useToast().clear()
+    // The skill/concept tree pickers always fetch their lists on mount --
+    // default both to empty so tests that don't care about classification
+    // don't have to stub every GET call. Individual tests still layer a
+    // mockResolvedValueOnce ahead of this for whichever call they do care
+    // about (e.g. the exercise-load call in edit mode).
+    GET.mockResolvedValue({ data: [], error: undefined, response: { status: 200 } })
   })
 
   it('renders the AppBar in teacher context with a New exercise breadcrumb', () => {
@@ -201,7 +218,7 @@ describe('ExerciseAuthoringView', () => {
     const indicator = wrapper.get('[data-test="reuse-indicator"]')
     expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('Not linked to any challenge yet')
     expect(indicator.get('[data-test="usage-path-exercises"]').text()).toContain('Not linked to any path node yet')
-    expect(indicator.get('[data-test="usage-practice-sessions"]').text()).toContain('Not eligible')
+    expect(indicator.get('[data-test="usage-practice-sessions"]').text()).toContain('Eligible')
   })
 
   it('lists linked challenges and path exercises after saving', async () => {
@@ -222,22 +239,32 @@ describe('ExerciseAuthoringView', () => {
     expect(indicator.get('[data-test="usage-path-exercises"]').text()).toContain('n-1')
   })
 
-  it('shows practice-session eligibility once a skill tag is added', async () => {
+  it('shows practice-session eligibility once a skill is linked', async () => {
+    GET.mockImplementation((path: string) => {
+      if (path === '/skills') {
+        return Promise.resolve({
+          data: [{ skill_id: 's-1', name: 'alternate_picking', parent_id: null }],
+          error: undefined,
+          response: { status: 200 },
+        })
+      }
+      return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+    })
     POST.mockResolvedValueOnce({
       data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] },
       error: undefined,
       response: { status: 201 },
     })
     const wrapper = mountView()
+    await flushPromises()
     await fillMinimalTextResponse(wrapper)
-    const input = wrapper.get('input[placeholder="Type a skill and press Enter"]')
-    await input.setValue('alternate_picking')
-    await input.trigger('keydown.enter')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-test="usage-practice-sessions"]').text()).toContain('alternate_picking')
+    expect(wrapper.get('[data-test="usage-practice-sessions"]').text()).toContain('Eligible')
   })
 
   it('switches editors when the exercise type tab changes', async () => {
@@ -269,31 +296,65 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).props('imageUrl')).toBe('blob:fret.png')
   })
 
-  it('adds and removes skill tags', async () => {
+  it('loads the skill and concept trees for classification', async () => {
     const wrapper = mountView()
+    await flushPromises()
 
-    const input = wrapper.get('input[placeholder="Type a skill and press Enter"]')
-    await input.setValue('technique')
-    await input.trigger('keydown.enter')
+    expect(GET).toHaveBeenCalledWith('/skills', {})
+    expect(GET).toHaveBeenCalledWith('/concepts', {})
+    expect(wrapper.findComponent({ name: 'SkillConceptTreePicker' }).exists()).toBe(true)
+  })
+
+  it('selects a skill via the tree picker', async () => {
+    GET.mockImplementation((path: string) => {
+      if (path === '/skills') {
+        return Promise.resolve({
+          data: [{ skill_id: 's-1', name: 'technique', parent_id: null }],
+          error: undefined,
+          response: { status: 200 },
+        })
+      }
+      return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
 
     expect(wrapper.text()).toContain('technique')
   })
 
-  it('loads and offers skill tags already used on other exercises once the tag input is focused', async () => {
-    GET.mockResolvedValueOnce({
-      data: [{ exercise_id: 'e-1', skill_tags: ['alternate-picking'] }],
-      error: undefined,
-      response: { status: 200 },
+  it('selects a newly created skill together with its parent chain', async () => {
+    const rootSkill = { skill_id: 's-1', name: 'technique', parent_id: null }
+    const childSkill = { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' }
+    let skillsRequestCount = 0
+    GET.mockImplementation((path: string) => {
+      if (path === '/skills') {
+        skillsRequestCount += 1
+        // The first load happens before the skill exists; reloadSkills()
+        // after the create call reflects the real backend's post-create state.
+        const data = skillsRequestCount === 1 ? [rootSkill] : [rootSkill, childSkill]
+        return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+      }
+      return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
     })
+    POST.mockResolvedValueOnce({ data: childSkill, error: undefined, response: { status: 201 } })
     const wrapper = mountView()
-
-    const input = wrapper.get('input[placeholder="Type a skill and press Enter"]')
-    await input.trigger('focus')
     await flushPromises()
-    await input.setValue('alt')
 
-    expect(GET).toHaveBeenCalledWith('/exercises', {})
-    expect(wrapper.get('[data-test="tag-suggestion"]').text()).toBe('alternate-picking')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.get('[data-test="tree-create-name"]').setValue('sweep-picking')
+    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
+    await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="s-1"]').trigger('click')
+    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+    await flushPromises()
+
+    const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
+    expect(chips).toHaveLength(2)
+    expect(chips.map((c) => c.text())).toEqual(
+      expect.arrayContaining([expect.stringContaining('technique'), expect.stringContaining('sweep-picking')]),
+    )
   })
 
   it('disables the AppBar Save button until at least one option is marked correct', async () => {
@@ -384,6 +445,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -406,6 +468,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -472,6 +535,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('[data-test="add-option"]').trigger('click')
     await wrapper.get('input[placeholder="Option text"]').setValue('a')
     await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -580,6 +644,7 @@ describe('ExerciseAuthoringView', () => {
     const file = new File(['data'], 'a.mp3', { type: 'audio/mpeg' })
     await editor.vm.$emit('setFile', id, file)
     await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await flushPromises()
@@ -690,6 +755,7 @@ describe('ExerciseAuthoringView', () => {
     await editor.vm.$emit('setFile', ids[0], new File(['a'], 'a.png'))
     await editor.vm.$emit('setFile', ids[1], new File(['b'], 'b.png'))
     await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
 
     const savePromise = wrapper.get('[data-test="app-bar-save"]').trigger('click')
     await Promise.resolve()
@@ -712,20 +778,33 @@ describe('ExerciseAuthoringView', () => {
     })
 
     it('loads the exercise by id and pre-fills the form', async () => {
-      GET.mockResolvedValueOnce({
-        data: {
-          exercise_id: 'e-1',
-          title: 'Name the chord',
-          prompt: plainTextPrompt('Name this chord shape'),
-          exercise_type: 'text_response',
-          skill_tags: ['theory'],
-          options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
-          challenge_ids: ['c-1'],
-          content_node_ids: [],
-          created_at: '2026-01-01T00:00:00Z',
-        },
-        error: undefined,
-        response: { status: 200 },
+      GET.mockImplementation((path: string) => {
+        if (path === '/exercises/{exercise_id}') {
+          return Promise.resolve({
+            data: {
+              exercise_id: 'e-1',
+              title: 'Name the chord',
+              prompt: plainTextPrompt('Name this chord shape'),
+              exercise_type: 'text_response',
+              skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+              concepts: [],
+              options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+              challenge_ids: ['c-1'],
+              content_node_ids: [],
+              created_at: '2026-01-01T00:00:00Z',
+            },
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        if (path === '/skills') {
+          return Promise.resolve({
+            data: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
       })
 
       const wrapper = mountView()
@@ -748,7 +827,9 @@ describe('ExerciseAuthoringView', () => {
           title: 't',
           prompt: plainTextPrompt('p'),
           exercise_type: 'text_response',
-          options: [],
+          skills: [],
+              concepts: [],
+options: [],
           challenge_ids: [],
           content_node_ids: [],
           created_at: '2026-01-01T00:00:00Z',
@@ -770,7 +851,9 @@ describe('ExerciseAuthoringView', () => {
           title: 't',
           prompt: plainTextPrompt('p'),
           exercise_type: 'text_response',
-          options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+          skills: [],
+              concepts: [],
+options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
           challenge_ids: [],
           content_node_ids: [],
           created_at: '2026-01-01T00:00:00Z',
@@ -787,6 +870,7 @@ describe('ExerciseAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
       await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Updated title')
+      await selectClassification(wrapper)
 
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()
@@ -807,20 +891,31 @@ describe('ExerciseAuthoringView', () => {
     })
 
     it('shows an error state with retry when loading the exercise fails', async () => {
-      GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
-      GET.mockResolvedValueOnce({
-        data: {
-          exercise_id: 'e-1',
-          title: 't',
-          prompt: plainTextPrompt('p'),
-          exercise_type: 'text_response',
-          options: [],
-          challenge_ids: [],
-          content_node_ids: [],
-          created_at: '2026-01-01T00:00:00Z',
-        },
-        error: undefined,
-        response: { status: 200 },
+      let exerciseCallCount = 0
+      GET.mockImplementation((path: string) => {
+        if (path === '/exercises/{exercise_id}') {
+          exerciseCallCount += 1
+          if (exerciseCallCount === 1) {
+            return Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+          }
+          return Promise.resolve({
+            data: {
+              exercise_id: 'e-1',
+              title: 't',
+              prompt: plainTextPrompt('p'),
+              exercise_type: 'text_response',
+              skills: [],
+              concepts: [],
+              options: [],
+              challenge_ids: [],
+              content_node_ids: [],
+              created_at: '2026-01-01T00:00:00Z',
+            },
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
       })
 
       const wrapper = mountView()

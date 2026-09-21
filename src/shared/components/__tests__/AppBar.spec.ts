@@ -86,6 +86,56 @@ describe('AppBar', () => {
     expect(wrapper.text()).toContain('New exercise')
   })
 
+  it('shows a Content-rooted breadcrumb when primaryNavTo points at the content section', () => {
+    const wrapper = mountBar({
+      context: 'teacher',
+      primaryNavTo: { name: 'teacher-content' },
+      breadcrumbLabel: 'New content',
+    })
+
+    expect(wrapper.text()).toContain('Content')
+    expect(wrapper.text()).toContain('New content')
+  })
+
+  it('shows all three teacher tabs (Content, Paths, Exercises) with no breadcrumb', () => {
+    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-exercises' } })
+
+    const links = wrapper.findAllComponents(RouterLinkStub)
+    expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Exercises'])
+  })
+
+  it('highlights the tab matching primaryNavTo as active', () => {
+    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-paths' } })
+
+    const links = wrapper.findAllComponents(RouterLinkStub)
+    const pathsTab = links.find((l) => l.text() === 'Paths')
+    const contentTab = links.find((l) => l.text() === 'Content')
+    expect(pathsTab?.classes()).toContain('bg-accent-muted')
+    expect(contentTab?.classes()).not.toContain('bg-accent-muted')
+  })
+
+  it('falls back to the Exercises tab and warns when primaryNavTo names an unknown teacher section', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-reports' } })
+
+    const links = wrapper.findAllComponents(RouterLinkStub)
+    const exercisesTab = links.find((l) => l.text() === 'Exercises')
+    expect(exercisesTab?.classes()).toContain('bg-accent-muted')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('teacher-reports'))
+
+    warn.mockRestore()
+  })
+
+  it('shows all three teacher tabs in the compact drawer', async () => {
+    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-content' }, compact: true })
+
+    await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
+
+    const drawerLinks = wrapper.get('[data-test="app-bar-drawer"]').findAllComponents(RouterLinkStub)
+    expect(drawerLinks.map((link: { text: () => string }) => link.text())).toEqual(['Content', 'Paths', 'Exercises'])
+  })
+
   it('hides the hamburger and shows inline nav when not compact', () => {
     const wrapper = mountBar({ context: 'student' })
 

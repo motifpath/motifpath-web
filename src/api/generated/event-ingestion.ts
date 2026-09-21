@@ -404,12 +404,13 @@ export interface components {
              */
             challenge_id?: string;
             /**
-             * @description The skill tag this exercise was selected for. Present only when
-             *     source is practice_session — the tag passed to
+             * Format: uuid
+             * @description ID of the Skill this exercise was selected for. Present only when
+             *     source is practice_session — the skill_id passed to
              *     GET /practice-sessions. Lets the Aggregation Worker compute
              *     per-skill accuracy for the recommendation engine.
              */
-            skill_tag?: string;
+            skill_id?: string;
             /**
              * Format: uuid
              * @description ID of the generated practice session this exercise belongs to.

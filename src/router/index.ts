@@ -116,6 +116,60 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/teacher/content',
+    // Pass-through parent so all three content routes share one beforeEnter
+    // instead of each repeating it, the same hoisting used for /teacher/exercises
+    // above -- a route added under this prefix gets locale loading for free.
+    component: RouterView,
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'teacher-content',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ContentListView.vue'),
+      },
+      {
+        path: 'new',
+        name: 'teacher-content-new',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
+      },
+      {
+        path: ':id/edit',
+        name: 'teacher-content-edit',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/ContentAuthoringView.vue'),
+      },
+    ],
+  },
+  {
+    path: '/teacher/paths',
+    // Same pass-through hoisting as /teacher/content above.
+    component: RouterView,
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'teacher-paths',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/PathListView.vue'),
+      },
+      {
+        path: 'new',
+        name: 'teacher-path-new',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+      },
+      {
+        path: ':id/edit',
+        name: 'teacher-path-edit',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+      },
+    ],
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/shared/components/NotFoundView.vue'),
