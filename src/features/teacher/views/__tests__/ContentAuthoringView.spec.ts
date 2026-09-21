@@ -44,7 +44,23 @@ function mockMatchMedia(compact: boolean): void {
   }))
 }
 
+import type { components } from '@/api/generated/core-domain'
+import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import ContentAuthoringView from '@/features/teacher/views/ContentAuthoringView.vue'
+
+// Already in the shape PromptEditor's Tiptap round trip emits (paragraphs gain
+// a null textAlign), so it compares equal after passing through the editor.
+const ARTICLE_BODY: components['schemas']['PromptDocument'] = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      attrs: { textAlign: null },
+      content: [{ type: 'text', text: 'Picking starts at the wrist' }],
+    },
+  ],
+}
+const VIDEO_URL = 'https://cdn.example.com/lesson.mp4'
 
 function mountView() {
   return mount(ContentAuthoringView, {
@@ -63,6 +79,7 @@ const contentNodeFixture = {
   teacher_id: 't-1',
   title: 't',
   content_type: 'video',
+  media_url: VIDEO_URL,
   classification: {
     skills: [skillFixture],
     concepts: [conceptFixture],
@@ -145,6 +162,7 @@ describe('ContentAuthoringView', () => {
       await flushPromises()
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('Alternate picking basics')
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
@@ -156,6 +174,98 @@ describe('ContentAuthoringView', () => {
         body: {
           title: 'Alternate picking basics',
           content_type: 'video',
+          media_url: VIDEO_URL,
+          classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
+          language_codes: ['any'],
+        },
+      })
+    })
+
+    async function classify(wrapper: ReturnType<typeof mountView>) {
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
+    }
+
+    it('keeps Save disabled until a video has a media URL', async () => {
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
+      const wrapper = mountView()
+      await flushPromises()
+      await classify(wrapper)
+
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
+
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
+    })
+
+    it('flags a media URL that is not http(s) and keeps Save disabled', async () => {
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
+      const wrapper = mountView()
+      await flushPromises()
+      await classify(wrapper)
+
+      expect(wrapper.find('[data-test="media-url-error"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="media-url-input"]').setValue('javascript:alert(1)')
+
+      expect(wrapper.get('[data-test="media-url-error"]').text()).toBe('Enter a full link starting with http:// or https://')
+      expect(wrapper.get('[data-test="media-url-input"]').attributes('aria-invalid')).toBe('true')
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
+
+      expect(wrapper.find('[data-test="media-url-error"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
+    })
+
+    it('swaps the media URL field for the rich-text editor when the type is article', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(true)
+      expect(wrapper.findComponent(PromptEditor).exists()).toBe(false)
+
+      await wrapper.get('[data-test="content-type-article"]').trigger('click')
+
+      expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(false)
+      expect(wrapper.findComponent(PromptEditor).exists()).toBe(true)
+    })
+
+    it('posts an article with rich_content and no media_url', async () => {
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
+      POST.mockResolvedValueOnce({
+        data: { ...contentNodeFixture, content_type: 'article', media_url: undefined, rich_content: ARTICLE_BODY },
+        error: undefined,
+        response: { status: 201 },
+      })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('input[placeholder="Untitled content"]').setValue('Picking theory')
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
+      await wrapper.get('[data-test="content-type-article"]').trigger('click')
+      await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', ARTICLE_BODY)
+      await classify(wrapper)
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(POST).toHaveBeenCalledWith('/content-nodes', {
+        body: {
+          title: 'Picking theory',
+          content_type: 'article',
+          rich_content: ARTICLE_BODY,
           classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
         },
@@ -194,6 +304,7 @@ describe('ContentAuthoringView', () => {
       await flushPromises()
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('Sweep basics')
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-create-name"]').setValue('sweep-picking')
       await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
@@ -212,6 +323,7 @@ describe('ContentAuthoringView', () => {
         body: {
           title: 'Sweep basics',
           content_type: 'video',
+          media_url: VIDEO_URL,
           classification: { skill_ids: ['s-2', 's-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
         },
@@ -228,6 +340,7 @@ describe('ContentAuthoringView', () => {
       await flushPromises()
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
@@ -287,6 +400,39 @@ describe('ContentAuthoringView', () => {
         params: { path: { content_node_id: 'cn-1' } },
         body: {
           title: 'Updated title',
+          media_url: VIDEO_URL,
+          classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
+          language_codes: ['any'],
+        },
+      })
+    })
+
+    it('pre-fills a video node\'s media URL', async () => {
+      routeGET({ '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect((wrapper.get('[data-test="media-url-input"]').element as HTMLInputElement).value).toBe(VIDEO_URL)
+    })
+
+    it('loads an article node\'s body into the editor and saves it back via PUT', async () => {
+      const articleNode = { ...contentNodeFixture, content_type: 'article', media_url: undefined, rich_content: ARTICLE_BODY }
+      routeGET({ '/content-nodes/{content_node_id}': { data: articleNode, error: undefined, response: { status: 200 } } })
+      PUT.mockResolvedValueOnce({ data: articleNode, error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.findComponent(PromptEditor).props('modelValue')).toEqual(ARTICLE_BODY)
+      expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(PUT).toHaveBeenCalledWith('/content-nodes/{content_node_id}', {
+        params: { path: { content_node_id: 'cn-1' } },
+        body: {
+          title: 't',
+          rich_content: ARTICLE_BODY,
           classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
         },

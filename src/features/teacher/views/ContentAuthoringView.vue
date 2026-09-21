@@ -8,6 +8,7 @@ import ChallengeConfigPanel from '@/features/teacher/components/ChallengeConfigP
 import ClassificationFields from '@/features/teacher/components/ClassificationFields.vue'
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
 import ExercisePickerModal from '@/features/teacher/components/ExercisePickerModal.vue'
+import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEditor.vue'
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
@@ -97,7 +98,7 @@ const hasClassification = computed(
 )
 
 async function save() {
-  if (!hasClassification.value) return
+  if (!hasClassification.value || !form.hasBody.value) return
 
   saving.value = true
   const isUpdate = !!savedContentNodeId.value
@@ -327,7 +328,7 @@ async function onUnlinkExercise(exerciseId: string) {
       :primary-nav-to="{ name: 'teacher-content' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"
       :show-save="canAuthor"
-      :save-disabled="saving || !hasClassification"
+      :save-disabled="saving || !hasClassification || !form.hasBody.value"
       :just-saved="justSaved"
       :on-save="save"
     />
@@ -373,6 +374,29 @@ async function onUnlinkExercise(exerciseId: string) {
               : t('contentAuthoringView.typeUnlockedHint')
           }}
         </span>
+      </div>
+
+      <div v-if="form.contentType.value === 'video'" class="flex flex-col gap-2">
+        <label for="content-media-url" class="text-sm font-semibold">{{ t('contentAuthoringView.mediaUrlLabel') }}</label>
+        <input
+          id="content-media-url"
+          v-model="form.mediaUrl.value"
+          data-test="media-url-input"
+          type="url"
+          :aria-invalid="form.mediaUrlInvalid.value"
+          :placeholder="t('contentAuthoringView.mediaUrlPlaceholder')"
+          class="w-full rounded-md border bg-surface-raised px-3 py-2 text-sm text-ink"
+          :class="form.mediaUrlInvalid.value ? 'border-danger' : 'border-border'"
+        />
+        <span v-if="form.mediaUrlInvalid.value" data-test="media-url-error" class="text-sm text-danger">
+          {{ t('contentAuthoringView.mediaUrlInvalid') }}
+        </span>
+        <span v-else class="text-sm text-ink-subtle">{{ t('contentAuthoringView.mediaUrlHint') }}</span>
+      </div>
+
+      <div v-else class="flex flex-col gap-2">
+        <label class="text-sm font-semibold">{{ t('contentAuthoringView.articleBodyLabel') }}</label>
+        <PromptEditor v-model="form.richContent.value" />
       </div>
 
       <div class="flex flex-col gap-2 border-t border-border pt-4">

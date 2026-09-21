@@ -1,6 +1,7 @@
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import { isHttpUrl } from '@/shared/utils/httpUrl'
 
 type CreateContentNodeRequest = components['schemas']['CreateContentNodeRequest']
 type UpdateContentNodeRequest = components['schemas']['UpdateContentNodeRequest']
@@ -8,10 +9,15 @@ type ContentNode = components['schemas']['ContentNode']
 type ContentType = CreateContentNodeRequest['content_type']
 type DifficultyLevel = components['schemas']['ClassificationInput']['difficulty_level']
 type ReviewState = components['schemas']['Classification']['review_state']
+type PromptDocument = components['schemas']['PromptDocument']
+
+const EMPTY_BODY: PromptDocument = { type: 'doc', content: [] }
 
 /**
  * Holds authoring state for one content node (video or article) and maps it
- * to the Create/UpdateContentNodeRequest shapes the API expects.
+ * to the Create/UpdateContentNodeRequest shapes the API expects. A video's
+ * body is its media URL, an article's is its rich content; requests carry only
+ * the one matching the content type, since the API rejects both together.
  * content_node-level language tagging has no authoring UI yet — every
  * content node is authored as language-agnostic, same as exercises.
  */
@@ -22,6 +28,29 @@ export function useContentNodeForm() {
   const conceptIds = ref<string[]>([])
   const difficultyLevel = ref<DifficultyLevel>('beginner')
   const reviewState = ref<ReviewState | null>(null)
+  const mediaUrl = ref('')
+  const richContent = ref<PromptDocument>(EMPTY_BODY)
+
+  const hasBody = computed(() =>
+    contentType.value === 'video'
+      ? isHttpUrl(mediaUrl.value.trim())
+      : richContent.value.content.length > 0,
+  )
+
+  // Only a typed-but-unusable video URL counts as an error; an empty field is
+  // just "not filled in yet" and shouldn't show one.
+  const mediaUrlInvalid = computed(
+    () =>
+      contentType.value === 'video' &&
+      mediaUrl.value.trim() !== '' &&
+      !isHttpUrl(mediaUrl.value.trim()),
+  )
+
+  function body() {
+    return contentType.value === 'video'
+      ? { media_url: mediaUrl.value.trim() }
+      : { rich_content: richContent.value }
+  }
 
   function classification() {
     return {
@@ -35,6 +64,7 @@ export function useContentNodeForm() {
     return {
       title: title.value,
       content_type: contentType.value,
+      ...body(),
       classification: classification(),
       language_codes: ['any'],
     }
@@ -43,6 +73,7 @@ export function useContentNodeForm() {
   function toUpdateContentNodeRequest(): UpdateContentNodeRequest {
     return {
       title: title.value,
+      ...body(),
       classification: classification(),
       language_codes: ['any'],
     }
@@ -55,6 +86,8 @@ export function useContentNodeForm() {
     conceptIds.value = contentNode.classification.concepts.map((c) => c.concept_id)
     difficultyLevel.value = contentNode.classification.difficulty_level
     reviewState.value = contentNode.classification.review_state
+    mediaUrl.value = contentNode.media_url ?? ''
+    richContent.value = contentNode.rich_content ?? EMPTY_BODY
   }
 
   return {
@@ -64,6 +97,10 @@ export function useContentNodeForm() {
     conceptIds,
     difficultyLevel,
     reviewState,
+    mediaUrl,
+    richContent,
+    hasBody,
+    mediaUrlInvalid,
     toCreateContentNodeRequest,
     toUpdateContentNodeRequest,
     loadFromContentNode,
