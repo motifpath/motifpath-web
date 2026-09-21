@@ -61,6 +61,10 @@ export interface paths {
          *     regardless of the value supplied; an admin must explicitly confirm it.
          *     Classification is the minimum semantic layer required for gap detection
          *     to function.
+         *
+         *     The node's actual content is supplied by exactly one of media_url
+         *     (video) or rich_content (article), matching content_type — the two
+         *     are mutually exclusive and the one matching content_type is required.
          */
         post: operations["createContentNode"];
         delete?: never;
@@ -790,6 +794,20 @@ export interface components {
             content_type: "video" | "article";
             classification: components["schemas"]["ClassificationInput"];
             /**
+             * Format: uri
+             * @description The video file or embeddable video URL students watch. Required
+             *     when content_type is video; must be absent when content_type is
+             *     article.
+             */
+            media_url?: string;
+            /**
+             * @description The article's body, authored with the same Tiptap-based rich
+             *     content model used for exercise prompts and expanded content.
+             *     Required when content_type is article; must be absent when
+             *     content_type is video.
+             */
+            rich_content?: components["schemas"]["PromptDocument"];
+            /**
              * @description One or more Language.code values this content node is available
              *     in. A single-element array containing "any" marks the content as
              *     language-agnostic; "any" cannot be combined with other language
@@ -881,6 +899,14 @@ export interface components {
             content_type: "video" | "article";
             classification: components["schemas"]["Classification"];
             /**
+             * Format: uri
+             * @description The video file or embeddable video URL students watch. Present
+             *     only when content_type is video.
+             */
+            media_url?: string;
+            /** @description The article's body. Present only when content_type is article. */
+            rich_content?: components["schemas"]["PromptDocument"];
+            /**
              * @description The language(s) this content node is available in, or a single
              *     "any" entry for language-agnostic content. A student whose locale
              *     matches none of these (and "any" is absent) sees this node
@@ -902,6 +928,19 @@ export interface components {
             /** @description Human-readable title of the content node, displayed to students. */
             title: string;
             classification: components["schemas"]["ClassificationInput"];
+            /**
+             * Format: uri
+             * @description The video file or embeddable video URL students watch, replacing
+             *     the current value. Required when the content node's content_type
+             *     is video; must be absent when it is article.
+             */
+            media_url?: string;
+            /**
+             * @description The article's body, replacing the current value. Required when
+             *     the content node's content_type is article; must be absent when
+             *     it is video.
+             */
+            rich_content?: components["schemas"]["PromptDocument"];
             /**
              * @description One or more Language.code values this content node is available
              *     in, replacing its current set. A single-element array containing
