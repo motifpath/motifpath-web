@@ -3,7 +3,8 @@
     "student": "My path",
     "content": "Content",
     "paths": "Paths",
-    "exercises": "Exercises"
+    "exercises": "Exercises",
+    "diagrams": "Diagrams"
   },
   "appBar": {
     "menuAriaLabel": "Menu",

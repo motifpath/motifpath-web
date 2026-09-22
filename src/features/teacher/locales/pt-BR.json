@@ -4,6 +4,7 @@
     "removeOption": "Remover opção",
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar exercícios.",
     "newExercise": "Novo exercício",
+    "newDiagram": "Novo diagrama",
     "studentPreview": "Pré-visualização do aluno",
     "exerciseTypes": {
       "image_recognition": "Reconhecimento de imagem",
@@ -122,6 +123,43 @@
     "loadErrorMessage": "Não foi possível carregar os exercícios.",
     "emptyHeading": "Ainda não há exercícios",
     "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável."
+  },
+  "diagramListView": {
+    "heading": "Diagramas",
+    "loadingNoun": "diagramas",
+    "loadErrorMessage": "Não foi possível carregar os diagramas.",
+    "emptyHeading": "Ainda não há diagramas",
+    "emptyMessage": "Crie seu primeiro diagrama para começar a construir a biblioteca reutilizável."
+  },
+  "diagramAuthoringView": {
+    "newDiagramBreadcrumb": "Novo diagrama",
+    "editDiagramBreadcrumb": "Editar diagrama",
+    "loadingNoun": "diagrama",
+    "loadErrorMessage": "Não foi possível carregar o diagrama.",
+    "namePlaceholder": "Nome do diagrama",
+    "nameLabel": "Nome",
+    "instrumentLabel": "Instrumento",
+    "instrumentLoading": "Carregando instrumentos…",
+    "instrumentPlaceholder": "Escolha um instrumento",
+    "instrumentLockedHint": "O instrumento não pode ser alterado depois que o diagrama é criado.",
+    "positionsLabel": "Posições",
+    "classificationLabel": "Classificação",
+    "classificationHint": "Um diagrama precisa de pelo menos uma habilidade e um conceito para ser reutilizável na biblioteca.",
+    "previewLabel": "Pré-visualização",
+    "previewEmpty": "Posicione uma marcação para ver a pré-visualização.",
+    "diagramUpdated": "Diagrama atualizado.",
+    "diagramCreated": "Diagrama criado.",
+    "saveFailed": "Falha ao salvar o diagrama",
+    "createSkillFailed": "Falha ao criar a habilidade",
+    "createConceptFailed": "Falha ao criar o conceito"
+  },
+  "frettedDiagramEditor": {
+    "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
+    "stringFret": "Corda {string}, casa {fret}",
+    "intervalPlaceholder": "Intervalo",
+    "noteNamePlaceholder": "Nota",
+    "sequencePlaceholder": "Ordem",
+    "removePositionAriaLabel": "Remover esta posição"
   },
   "skillConceptTreePicker": {
     "removeSelectedAriaLabel": "Remover {name}",

@@ -3,7 +3,8 @@
     "student": "Minha trilha",
     "content": "Conteúdo",
     "paths": "Trilhas",
-    "exercises": "Exercícios"
+    "exercises": "Exercícios",
+    "diagrams": "Diagramas"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
