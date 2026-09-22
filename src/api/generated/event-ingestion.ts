@@ -323,7 +323,7 @@ export interface components {
              *     the event payload to avoid a lookup at aggregation time.
              * @enum {string}
              */
-            content_type?: "video" | "article" | "diagram";
+            content_type?: "video" | "article";
             /**
              * Format: uuid
              * @description ID of the teacher who published this content node. Enables teacher-scoped

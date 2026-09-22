@@ -203,7 +203,7 @@ async function uploadPendingMedia() {
 const previewOpen = ref(false)
 // Only computed while the preview is actually open, so editing the form
 // doesn't re-run the options mapping on every keystroke for no observer.
-const previewOptions = computed(() => (previewOpen.value ? (form.toCreateExerciseRequest().options ?? []) : []))
+const previewOptions = computed(() => (previewOpen.value ? form.toCreateExerciseRequest().options : []))
 const saving = ref(false)
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined

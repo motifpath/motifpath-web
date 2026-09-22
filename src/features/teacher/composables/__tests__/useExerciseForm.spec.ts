@@ -228,7 +228,7 @@ describe('useExerciseForm', () => {
 
       const request = form.toCreateExerciseRequest()
 
-      const region = (request.options![0] as { region: { width: number; height: number } }).region
+      const region = (request.options[0] as { region: { width: number; height: number } }).region
       expect(region.width).toBe(0)
       expect(region.height).toBe(0)
     })
