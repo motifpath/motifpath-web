@@ -2,7 +2,7 @@
 export interface PathBuilderItem {
   content_node_id: string
   title: string
-  content_type: 'video' | 'article'
+  content_type: 'video' | 'article' | 'diagram'
   section_label?: string
 }
 </script>

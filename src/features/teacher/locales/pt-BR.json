@@ -14,7 +14,8 @@
     },
     "contentTypes": {
       "video": "Vídeo",
-      "article": "Artigo"
+      "article": "Artigo",
+      "diagram": "Diagrama"
     }
   },
   "audioSelectionOptionsEditor": {

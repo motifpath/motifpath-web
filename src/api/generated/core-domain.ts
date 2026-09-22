@@ -63,8 +63,9 @@ export interface paths {
          *     to function.
          *
          *     The node's actual content is supplied by exactly one of media_url
-         *     (video) or rich_content (article), matching content_type — the two
-         *     are mutually exclusive and the one matching content_type is required.
+         *     (video), rich_content (article), or diagram_ref/diagram_stack_ref
+         *     (diagram), matching content_type — these are mutually exclusive and
+         *     whichever matches content_type is required.
          */
         post: operations["createContentNode"];
         delete?: never;
@@ -563,6 +564,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all known instruments
+         * @description Returns every Instrument currently known to the system. Any
+         *     authenticated user may list instruments.
+         */
+        get: operations["listInstruments"];
+        put?: never;
+        /**
+         * Create an instrument
+         * @description Creates a new instrument. Only teachers and admins may create an
+         *     instrument — instruments are an authoring surface, expected to be
+         *     created rarely.
+         */
+        post: operations["createInstrument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List prebuilt diagrams for authoring
+         * @description Returns diagrams from the reusable library, for browsing and
+         *     picking one to attach to a content node or exercise. Results are
+         *     unordered beyond a stable id order and are not paginated. Any
+         *     authenticated user may list diagrams.
+         */
+        get: operations["listDiagrams"];
+        put?: never;
+        /**
+         * Create a prebuilt diagram
+         * @description Creates a new, reusable diagram against an existing instrument.
+         *     Only teachers and admins may create a diagram.
+         */
+        post: operations["createDiagram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams/{diagram_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieve a diagram by ID */
+        get: operations["getDiagram"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a diagram's name, positions, or classification
+         * @description Only teachers and admins may update a diagram. Updating a diagram
+         *     that is already referenced by one or more diagram_refs changes what
+         *     every one of them renders — there is no versioning or copy-on-write.
+         */
+        patch: operations["updateDiagram"];
+        trace?: never;
+    };
     "/learning-paths": {
         parameters: {
             query?: never;
@@ -627,7 +706,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/students/{student_id}/path-assignments": {
+    "/students/{student_id}/student-paths": {
         parameters: {
             query?: never;
             header?: never;
@@ -638,11 +717,13 @@ export interface paths {
         put?: never;
         /**
          * Assign a learning path to a student
-         * @description Assigns a learning path to the specified student. The student must have
-         *     role student. If the student already has an active path assignment, the
-         *     existing assignment is replaced by this one and the student's progress
-         *     is reset to the first item. Only one active assignment per student is
-         *     supported for MVP.
+         * @description Copies the specified learning path template's items into a new
+         *     StudentPath owned by the student, and sets it as the student's
+         *     current path. The student must have role student. Copying is
+         *     additive: any existing StudentPath the student has is left
+         *     untouched — including the one that was current before this call —
+         *     and remains reachable unless separately archived. A student may
+         *     hold many StudentPaths at once.
          */
         post: operations["assignLearningPath"];
         delete?: never;
@@ -660,9 +741,9 @@ export interface paths {
         };
         /**
          * Get the authenticated student's current learning path and progress
-         * @description Returns the student's active learning path assignment together with the
-         *     progress state of each item. This is the primary endpoint for the SPA's
-         *     main screen.
+         * @description Resolves the caller's current path and returns it together with the
+         *     progress state of each item. This is the primary endpoint for the
+         *     SPA's main screen.
          *
          *     Item status values:
          *     - completed — the student has finished this content node.
@@ -671,8 +752,8 @@ export interface paths {
          *     - locked — the student must complete an earlier node before accessing this one.
          *
          *     Accessible by authenticated users with role student, teacher, or admin,
-         *     returning the caller's own active assignment in every case. Returns 404
-         *     if the caller has no active path assignment.
+         *     returning the caller's own current StudentPath in every case. Returns
+         *     404 if the caller has no current path set.
          */
         get: operations["getMyPath"];
         put?: never;
@@ -791,22 +872,39 @@ export interface components {
              * @description The media format of this content node.
              * @enum {string}
              */
-            content_type: "video" | "article";
+            content_type: "video" | "article" | "diagram";
             classification: components["schemas"]["ClassificationInput"];
             /**
              * Format: uri
              * @description The video file or embeddable video URL students watch. Required
              *     when content_type is video; must be absent when content_type is
-             *     article.
+             *     article or diagram.
+             *     Must be an absolute http or https URL; any other scheme, or a
+             *     value that is not a URL at all, is rejected.
              */
             media_url?: string;
             /**
              * @description The article's body, authored with the same Tiptap-based rich
              *     content model used for exercise prompts and expanded content.
              *     Required when content_type is article; must be absent when
-             *     content_type is video.
+             *     content_type is video or diagram.
              */
             rich_content?: components["schemas"]["PromptDocument"];
+            /**
+             * @description A single prebuilt diagram, shown per its layer/styling/playback
+             *     config. Required when content_type is diagram and
+             *     diagram_stack_ref is absent; must be absent when content_type is
+             *     video or article, or when diagram_stack_ref is present.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more prebuilt diagrams composited in one view (e.g. a
+             *     scale overlaid on its relative major). Required when
+             *     content_type is diagram and diagram_ref is absent; must be
+             *     absent when content_type is video or article, or when
+             *     diagram_ref is present.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * @description One or more Language.code values this content node is available
              *     in. A single-element array containing "any" marks the content as
@@ -896,7 +994,7 @@ export interface components {
              * @description The media format of this content node.
              * @enum {string}
              */
-            content_type: "video" | "article";
+            content_type: "video" | "article" | "diagram";
             classification: components["schemas"]["Classification"];
             /**
              * Format: uri
@@ -906,6 +1004,18 @@ export interface components {
             media_url?: string;
             /** @description The article's body. Present only when content_type is article. */
             rich_content?: components["schemas"]["PromptDocument"];
+            /**
+             * @description A single prebuilt diagram and its render config. Present only
+             *     when content_type is diagram and the node uses a single diagram
+             *     rather than a stack.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams. Present only when
+             *     content_type is diagram and the node uses a stack rather than a
+             *     single diagram.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * @description The language(s) this content node is available in, or a single
              *     "any" entry for language-agnostic content. A student whose locale
@@ -932,15 +1042,32 @@ export interface components {
              * Format: uri
              * @description The video file or embeddable video URL students watch, replacing
              *     the current value. Required when the content node's content_type
-             *     is video; must be absent when it is article.
+             *     is video; must be absent when it is article or diagram.
+             *     Must be an absolute http or https URL; any other scheme, or a
+             *     value that is not a URL at all, is rejected.
              */
             media_url?: string;
             /**
              * @description The article's body, replacing the current value. Required when
              *     the content node's content_type is article; must be absent when
-             *     it is video.
+             *     it is video or diagram.
              */
             rich_content?: components["schemas"]["PromptDocument"];
+            /**
+             * @description A single prebuilt diagram and its render config, replacing the
+             *     current value. Required when the content node's content_type is
+             *     diagram and it uses a single diagram rather than a stack; must
+             *     be absent when it is video or article, or when diagram_stack_ref
+             *     is present.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams, replacing the current
+             *     value. Required when the content node's content_type is diagram
+             *     and it uses a stack rather than a single diagram; must be absent
+             *     when it is video or article, or when diagram_ref is present.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * @description One or more Language.code values this content node is available
              *     in, replacing its current set. A single-element array containing
@@ -1027,6 +1154,328 @@ export interface components {
              */
             parent_id?: string;
         };
+        /**
+         * @description An instrument a Diagram can be authored against. family decides the
+         *     shape of every Diagram.positions[].coordinate written for this
+         *     instrument — fretted instruments (guitar, bass, ...) share one
+         *     coordinate shape (string, fret); keyboard instruments (piano) use a
+         *     different one (key). family is open-ended: a genuinely new
+         *     coordinate shape is a new family value plus new coordinate fields,
+         *     not a breaking change to existing instruments or diagrams.
+         */
+        Instrument: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this instrument.
+             */
+            instrument_id: string;
+            /**
+             * @description Human-readable name (e.g. "6-string guitar, standard tuning",
+             *     "4-string bass", "Piano").
+             */
+            name: string;
+            /**
+             * @description Which coordinate shape Diagrams authored against this
+             *     instrument use. fretted diagrams populate
+             *     positions[].string/positions[].fret; keyboard diagrams populate
+             *     positions[].key. A single Diagram cannot mix families.
+             * @enum {string}
+             */
+            family: "fretted" | "keyboard";
+            /**
+             * @description Number of strings/courses. Present only when family is fretted;
+             *     absent when family is keyboard.
+             */
+            string_count?: number;
+            /**
+             * @description Open-string note name per string, lowest string first (e.g.
+             *     ["E", "A", "D", "G", "B", "E"] for standard guitar tuning).
+             *     Present only when family is fretted, with length equal to
+             *     string_count; absent when family is keyboard.
+             */
+            tuning?: string[];
+            /**
+             * @description The lowest and highest playable key, by note name. Present only
+             *     when family is keyboard; absent when family is fretted.
+             */
+            key_range?: {
+                /** @description Note name of the lowest key (e.g. "A0"). */
+                lowest: string;
+                /** @description Note name of the highest key (e.g. "C8"). */
+                highest: string;
+            };
+        };
+        /**
+         * @description Payload for creating a new instrument. There is no update or delete
+         *     endpoint yet — instruments are expected to be created rarely, and
+         *     changing family or string/key shape after Diagrams exist against it
+         *     is a deliberately open question.
+         */
+        CreateInstrumentRequest: {
+            /** @description Human-readable name for this instrument. */
+            name: string;
+            /**
+             * @description Which coordinate shape Diagrams against this instrument will use.
+             * @enum {string}
+             */
+            family: "fretted" | "keyboard";
+            /** @description Required when family is fretted; must be absent when family is keyboard. */
+            string_count?: number;
+            /**
+             * @description Required when family is fretted, with length equal to
+             *     string_count; must be absent when family is keyboard.
+             */
+            tuning?: string[];
+            /** @description Required when family is keyboard; must be absent when family is fretted. */
+            key_range?: {
+                /** @description Note name of the lowest key (e.g. "A0"). */
+                lowest: string;
+                /** @description Note name of the highest key (e.g. "C8"). */
+                highest: string;
+            };
+        };
+        /**
+         * @description One marked location in a Diagram — a note the diagram shows, at a
+         *     specific physical location on its instrument. interval, note_name,
+         *     and sequence_index are shared by every instrument family; string/
+         *     fret vs. key depend on the parent Diagram's Instrument.family and
+         *     are mutually exclusive, mirroring how Option's per-type fields
+         *     (region, image_url, audio_url) already work in this spec.
+         */
+        DiagramPosition: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this position, addressable independently
+             *     of its array order — used to derive Exercise options from a
+             *     diagram-driven image_recognition exercise (see Option). Always
+             *     present in a response; optional in a create/update request —
+             *     omitted values are assigned by the server.
+             */
+            position_id?: string;
+            /**
+             * @description The interval this position represents, relative to the
+             *     Diagram's own (unstated) root — e.g. "R", "b3", "4", "5", "b7",
+             *     "2", "3", "6", "7". Not globally standardized beyond being
+             *     consistent within one Diagram; MotifPath does not validate
+             *     interval names against a fixed enum.
+             */
+            interval: string;
+            /**
+             * @description The concrete note name this position sounds at the Diagram's own
+             *     root (e.g. "A", "C"). A diagram_ref's root_override recomputes
+             *     the note actually shown; note_name here is always relative to
+             *     this Diagram's own authored root.
+             */
+            note_name: string;
+            /**
+             * @description This position's order in an authored playback sequence (e.g. a
+             *     scale run). Null means this position is not part of any defined
+             *     sequence — playback (see DiagramRef) skips it regardless of
+             *     playback config.
+             */
+            sequence_index?: number | null;
+            /**
+             * @description Which string this position is on (1 = highest-pitched string).
+             *     Present only when the parent Diagram's instrument family is
+             *     fretted; absent when keyboard.
+             */
+            string?: number;
+            /**
+             * @description Which fret this position is on. Present only when the parent
+             *     Diagram's instrument family is fretted; absent when keyboard.
+             */
+            fret?: number;
+            /**
+             * @description Note name of the key, relative to the Diagram's own root (e.g.
+             *     "C4"). Present only when the parent Diagram's instrument family
+             *     is keyboard; absent when fretted.
+             */
+            key?: string;
+        };
+        /**
+         * @description Classification for a new or updated Diagram. Diagrams share the
+         *     exact Skill/Concept tree ContentNode and Exercise use (see
+         *     ClassificationInput) — not a separate tagging scheme — but carry no
+         *     difficulty_level; a diagram is a reusable shape, not a leveled
+         *     piece of content.
+         */
+        DiagramClassificationInput: {
+            /**
+             * @description The id(s) of the Skill tree node(s) this diagram illustrates.
+             *     Must not be empty; each id must reference an existing skill.
+             */
+            skill_ids: string[];
+            /**
+             * @description The id(s) of the Concept tree node(s) this diagram addresses.
+             *     Must not be empty; each id must reference an existing concept.
+             */
+            concept_ids: string[];
+        };
+        /**
+         * @description A Diagram's classification as returned by the API — skills/concepts
+         *     embedded in full (id, name, parent_id), the same convention
+         *     Classification uses for ContentNode.
+         */
+        DiagramClassification: {
+            /** @description The Skill tree node(s) this diagram illustrates, in full. */
+            skills: components["schemas"]["Skill"][];
+            /** @description The Concept tree node(s) this diagram addresses, in full. */
+            concepts: components["schemas"]["Concept"][];
+        };
+        /**
+         * @description A prebuilt, reusable diagram — structured position data for a scale,
+         *     chord, or similar pattern on a specific instrument. Never stores a
+         *     rendered image or SVG; motifpath-web renders positions client-side
+         *     per the layer/styling/playback config carried in whatever diagram_ref
+         *     points at this diagram.
+         */
+        Diagram: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this diagram.
+             */
+            diagram_id: string;
+            /**
+             * Format: uuid
+             * @description The instrument this diagram is authored against.
+             */
+            instrument_id: string;
+            /** @description Human-readable name (e.g. "Minor Pentatonic — Position 1"). */
+            name: string;
+            /**
+             * @description Every marked position in this diagram. All positions share the
+             *     same coordinate shape, decided by this diagram's instrument's
+             *     family.
+             */
+            positions: components["schemas"]["DiagramPosition"][];
+            classification: components["schemas"]["DiagramClassification"];
+            /**
+             * Format: date-time
+             * @description Timestamp at which the diagram was created.
+             */
+            created_at: string;
+        };
+        /**
+         * @description Payload for creating a new diagram. Every position's string/fret vs.
+         *     key must match the referenced instrument's family — the API rejects
+         *     a request that mixes shapes or supplies the wrong shape for the
+         *     instrument.
+         */
+        CreateDiagramRequest: {
+            /**
+             * Format: uuid
+             * @description The instrument this diagram is authored against. Must reference an existing instrument.
+             */
+            instrument_id: string;
+            /** @description Human-readable name for this diagram. */
+            name: string;
+            /**
+             * @description Every marked position in this diagram, in the coordinate shape
+             *     matching the referenced instrument's family. position_id may be
+             *     supplied by the client or left for the server to assign.
+             */
+            positions: components["schemas"]["DiagramPosition"][];
+            classification: components["schemas"]["DiagramClassificationInput"];
+        };
+        /**
+         * @description Payload for replacing an existing diagram's name, positions, or
+         *     classification. instrument_id is not present here — it cannot be
+         *     changed after creation, since every position's coordinate shape
+         *     depends on it.
+         */
+        UpdateDiagramRequest: {
+            /** @description Human-readable name for this diagram, replacing the current value. */
+            name?: string;
+            /**
+             * @description The diagram's full position list, replacing the current set. A
+             *     caller that only wants to change one position must resend the
+             *     full set.
+             */
+            positions?: components["schemas"]["DiagramPosition"][];
+            classification?: components["schemas"]["DiagramClassificationInput"];
+        };
+        /**
+         * @description A usage of one Diagram — its render config, never a stored variant
+         *     of the diagram itself. The same Diagram can be pointed at by any
+         *     number of DiagramRefs with different configs.
+         */
+        DiagramRef: {
+            /**
+             * Format: uuid
+             * @description The diagram this ref points at. Must reference an existing diagram.
+             */
+            diagram_id: string;
+            /**
+             * @description Transposes the diagram to this root note (e.g. "C"). Null uses
+             *     the diagram's own authored root. The actual transposition math
+             *     is motifpath-web rendering logic, not decided by this schema.
+             */
+            root_override?: string | null;
+            /** @description Which optional layers are shown, decorating the diagram's base positions. */
+            layers: {
+                /** @description Whether to show each visible position's interval label. */
+                intervals: boolean;
+                /**
+                 * @description Interval names to show; positions with any other interval
+                 *     are hidden. Null shows every position.
+                 */
+                subset?: string[] | null;
+                /**
+                 * @description Identifier of a shape overlay style (e.g. a box outline) to
+                 *     draw around the currently-visible positions. Null shows no
+                 *     overlay.
+                 */
+                shape_overlay?: string | null;
+            };
+            /**
+             * @description Author-chosen colors for this usage. Null uses motifpath-web's
+             *     default colors entirely.
+             */
+            styling?: {
+                /** @description Color for root-interval positions. Null uses the default. */
+                root_color?: string | null;
+                /** @description Color for every visible non-root position. Null uses the default. */
+                interval_color?: string | null;
+            } | null;
+            /**
+             * @description Sequenced playback config. Only affects positions with a
+             *     non-null sequence_index; null means this usage does not play
+             *     back.
+             */
+            playback?: {
+                /**
+                 * @description Order to step through sequence_index values in.
+                 * @enum {string}
+                 */
+                direction: "as_authored" | "reversed";
+                /** @description Milliseconds between each position during playback. */
+                step_ms: number;
+            } | null;
+            /**
+             * @description Which interval value(s) among this diagram's currently-visible
+             *     positions (after layers.subset filtering) are correct answers.
+             *     Meaningful, and required, only when this diagram_ref is an
+             *     Exercise's image_recognition stimulus (see Exercise.diagram_ref)
+             *     — ignored when used as a ContentNode body or as an image_choice
+             *     Option's own diagram_ref.
+             */
+            correct_intervals?: string[] | null;
+        };
+        /**
+         * @description Two or more DiagramRefs composited into one view — e.g. a scale
+         *     overlaid on its relative major, at the same fretboard position.
+         *     Painted in array order; later entries render on top of earlier
+         *     ones. Every entry must reference a Diagram on the same instrument —
+         *     stacking diagrams from different instruments is rejected, since
+         *     there is no shared coordinate space to composite into.
+         */
+        DiagramStackRef: {
+            /**
+             * @description The diagrams to composite, in paint order. Every referenced
+             *     Diagram must share the same instrument_id.
+             */
+            stack: components["schemas"]["DiagramRef"][];
+        };
         /** @description Payload for creating a learning path. */
         CreateLearningPathRequest: {
             /** @description Human-readable name for this learning path, displayed to teachers and admins. */
@@ -1057,7 +1506,7 @@ export interface components {
              * @description Media format of the content node, denormalised for display.
              * @enum {string}
              */
-            content_type: "video" | "article";
+            content_type: "video" | "article" | "diagram";
             /** @description Optional label grouping this item with its immediate neighbors under a named section. Consecutive items that share the same label render together under that heading; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area, not a time period. */
             section_label?: string;
         };
@@ -1112,35 +1561,44 @@ export interface components {
             learning_path_id: string;
         };
         /**
-         * @description A record of a learning path being assigned to a student. One active
-         *     assignment exists per student at any time for MVP.
+         * @description A student's own copy of a learning path template's items. Created by
+         *     copying a LearningPath at assign time; independently editable
+         *     afterwards and never affected by later changes to the template it
+         *     was copied from.
          */
-        PathAssignment: {
+        StudentPath: {
             /**
              * Format: uuid
-             * @description Stable identifier for this assignment record.
+             * @description Stable identifier for this StudentPath.
              */
-            assignment_id: string;
+            student_path_id: string;
             /**
              * Format: uuid
-             * @description The user_id of the student this path is assigned to.
+             * @description The user_id of the student who owns this path.
              */
             student_id: string;
             /**
              * Format: uuid
-             * @description The learning path assigned to the student.
+             * @description The learning path this StudentPath was copied from.
              */
-            learning_path_id: string;
+            source_template_id: string;
+            /** @description Title of the path, copied from the template at assign time and independently editable afterwards. */
+            title: string;
             /**
              * Format: uuid
-             * @description The user_id of the teacher or admin who created this assignment.
+             * @description The user_id of the teacher or admin who assigned this path.
              */
             assigned_by: string;
             /**
              * Format: date-time
-             * @description Timestamp at which the assignment was created.
+             * @description Timestamp at which this StudentPath was created.
              */
             assigned_at: string;
+            /**
+             * Format: date-time
+             * @description Timestamp at which this StudentPath was archived, hiding it from the student. Null means the path is active and visible.
+             */
+            archived_at?: string | null;
         };
         /** @description A content node in the student's learning path with their current progress state. */
         StudentPathItem: {
@@ -1157,7 +1615,7 @@ export interface components {
              * @description Media format of the content node.
              * @enum {string}
              */
-            content_type: "video" | "article";
+            content_type: "video" | "article" | "diagram";
             /**
              * @description The student's current progress state for this item. completed — finished.
              *     in_progress — started but not finished. not_started — not yet reached.
@@ -1169,22 +1627,22 @@ export interface components {
             section_label?: string;
         };
         /**
-         * @description The student's active learning path with per-item progress state.
+         * @description The student's current learning path with per-item progress state.
          *     Returned by GET /students/me/path and used by the SPA to render
          *     the main learning screen.
          */
         StudentPathView: {
             /**
              * Format: uuid
-             * @description The active assignment record ID.
+             * @description The current StudentPath's ID.
              */
-            assignment_id: string;
+            student_path_id: string;
             /**
              * Format: uuid
-             * @description The assigned learning path ID.
+             * @description The learning path this StudentPath was copied from.
              */
-            learning_path_id: string;
-            /** @description Title of the assigned learning path. */
+            source_template_id: string;
+            /** @description Title of the current StudentPath. */
             title: string;
             /**
              * @description The position of the item the student should work on next. Points to
@@ -1584,9 +2042,10 @@ export interface components {
              * @description The type of practice interaction, which determines how its
              *     options are authored and rendered. text_response and
              *     audio_recognition options carry a text label; image_recognition
-             *     options carry a region on image_url; image_choice options each
-             *     carry their own image_url; audio_selection options each carry
-             *     their own audio_url.
+             *     options carry a region on image_url (or are derived from
+             *     diagram_ref/diagram_stack_ref — see below); image_choice
+             *     options each carry their own image_url or diagram_ref;
+             *     audio_selection options each carry their own audio_url.
              * @enum {string}
              */
             exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
@@ -1604,10 +2063,30 @@ export interface components {
             concept_ids: string[];
             /**
              * Format: uri
-             * @description The stimulus image for this exercise. Required when exercise_type
-             *     is image_recognition; absent otherwise.
+             * @description The stimulus image for this exercise. For exercise_type
+             *     image_recognition, required unless diagram_ref or
+             *     diagram_stack_ref is given instead; absent otherwise.
              */
             image_url?: string;
+            /**
+             * @description A single prebuilt diagram as this exercise's stimulus, replacing
+             *     image_url. Only meaningful when exercise_type is
+             *     image_recognition. Its correct_intervals must be set — the
+             *     diagram's own positions (after layers.subset filtering) become
+             *     this exercise's options automatically; options must be omitted
+             *     when this is given. Mutually exclusive with image_url and
+             *     diagram_stack_ref.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams as this exercise's
+             *     stimulus, replacing image_url. Only meaningful when
+             *     exercise_type is image_recognition. Each entry's own
+             *     correct_intervals must be set; options must be omitted when
+             *     this is given. Mutually exclusive with image_url and
+             *     diagram_ref.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
              * @description The stimulus audio for this exercise. Required when exercise_type
@@ -1617,9 +2096,12 @@ export interface components {
             /**
              * @description The exercise's selectable answer choices. At least one option
              *     must have is_correct set to true — an exercise with no correct
-             *     option cannot be graded.
+             *     option cannot be graded. Required unless exercise_type is
+             *     image_recognition and diagram_ref or diagram_stack_ref is
+             *     given, in which case options are derived automatically from the
+             *     diagram's positions and must be omitted here.
              */
-            options: components["schemas"]["Option"][];
+            options?: components["schemas"]["Option"][];
             /**
              * @description Authoring estimate of the time a student needs to attempt this
              *     exercise once. Optional — used to fit practice sessions and
@@ -1694,10 +2176,25 @@ export interface components {
             concept_ids: string[];
             /**
              * Format: uri
-             * @description The stimulus image for this exercise. Required when the
-             *     exercise's exercise_type is image_recognition; absent otherwise.
+             * @description The stimulus image for this exercise. For exercise_type
+             *     image_recognition, required unless diagram_ref or
+             *     diagram_stack_ref is given instead; absent otherwise.
              */
             image_url?: string;
+            /**
+             * @description A single prebuilt diagram as this exercise's stimulus, replacing
+             *     image_url, replacing the current value. Only meaningful when the
+             *     exercise's exercise_type is image_recognition. Mutually
+             *     exclusive with image_url and diagram_stack_ref.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams as this exercise's
+             *     stimulus, replacing the current value. Only meaningful when the
+             *     exercise's exercise_type is image_recognition. Mutually
+             *     exclusive with image_url and diagram_ref.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
              * @description The stimulus audio for this exercise. Required when the
@@ -1707,9 +2204,11 @@ export interface components {
             /**
              * @description The exercise's selectable answer choices, replacing its current
              *     set. At least one option must have is_correct set to true — an
-             *     exercise with no correct option cannot be graded.
+             *     exercise with no correct option cannot be graded. Must be
+             *     omitted when the exercise's exercise_type is image_recognition
+             *     and diagram_ref or diagram_stack_ref is given.
              */
-            options: components["schemas"]["Option"][];
+            options?: components["schemas"]["Option"][];
             /**
              * @description Authoring estimate of the time a student needs to attempt this
              *     exercise once. Optional — used to fit practice sessions and
@@ -1759,15 +2258,33 @@ export interface components {
             concepts: components["schemas"]["Concept"][];
             /**
              * Format: uri
-             * @description The stimulus image for this exercise, present when exercise_type is image_recognition.
+             * @description The stimulus image for this exercise, present when exercise_type
+             *     is image_recognition and diagram_ref/diagram_stack_ref are absent.
              */
             image_url?: string;
+            /**
+             * @description The single prebuilt diagram used as this exercise's stimulus,
+             *     present only when exercise_type is image_recognition and the
+             *     exercise uses one diagram rather than a stack.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description The composited prebuilt diagrams used as this exercise's
+             *     stimulus, present only when exercise_type is image_recognition
+             *     and the exercise uses a stack rather than one diagram.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
              * @description The stimulus audio for this exercise, present when exercise_type is audio_recognition.
              */
             audio_url?: string;
-            /** @description The exercise's selectable answer choices. */
+            /**
+             * @description The exercise's selectable answer choices. When diagram_ref or
+             *     diagram_stack_ref is present, these are derived automatically
+             *     from the diagram's positions (see Option.diagram_position_id)
+             *     rather than authored directly.
+             */
             options: components["schemas"]["Option"][];
             /**
              * @description The challenges this exercise is currently linked to. May be
@@ -1840,9 +2357,11 @@ export interface components {
          *     correct answer is expressed by marking one or more options as
          *     is_correct. The fields expected beyond option_id and is_correct
          *     depend on the parent exercise's exercise_type: image_recognition
-         *     options carry region, image_choice options carry image_url,
-         *     audio_selection options carry audio_url, and text_response /
-         *     audio_recognition options carry label.
+         *     options carry region, or are entirely server-derived (see
+         *     diagram_id/diagram_position_id) when the exercise uses diagram_ref/
+         *     diagram_stack_ref instead of image_url; image_choice options carry
+         *     image_url or diagram_ref; audio_selection options carry audio_url;
+         *     text_response/audio_recognition options carry label.
          */
         Option: {
             /**
@@ -1859,10 +2378,19 @@ export interface components {
             label?: string;
             /**
              * Format: uri
-             * @description The image shown for this option. Required for image_choice
-             *     options; absent otherwise.
+             * @description The image shown for this option. For image_choice options,
+             *     required unless diagram_ref is given instead; absent otherwise.
              */
             image_url?: string;
+            /**
+             * @description A prebuilt diagram rendered as this option's own thumbnail,
+             *     replacing image_url — e.g. "which of these four diagrams shows
+             *     C major?" where each option is a different diagram. Only
+             *     meaningful for image_choice options; correct_intervals is
+             *     ignored here since correctness is this Option's own is_correct.
+             *     Mutually exclusive with image_url.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
             /**
              * Format: uri
              * @description The audio clip shown for this option. Required for
@@ -1870,6 +2398,23 @@ export interface components {
              */
             audio_url?: string;
             region?: components["schemas"]["OptionRegion"];
+            /**
+             * Format: uuid
+             * @description Which Diagram this option's clickable position came from.
+             *     Server-derived and read-only: present only on options belonging
+             *     to an image_recognition exercise whose stimulus is diagram_ref/
+             *     diagram_stack_ref, absent for every authored option (including
+             *     image_choice's own diagram_ref, which is a per-option thumbnail,
+             *     not a source of derived options).
+             */
+            diagram_id?: string;
+            /**
+             * Format: uuid
+             * @description Which position (DiagramPosition.position_id) within diagram_id
+             *     this option represents. Server-derived and read-only, present
+             *     under the same condition as diagram_id.
+             */
+            diagram_position_id?: string;
         };
         /**
          * @description A rectangular or circular region on the parent exercise's image_url,
@@ -2063,12 +2608,22 @@ export type SchemaSkill = components['schemas']['Skill'];
 export type SchemaCreateSkillRequest = components['schemas']['CreateSkillRequest'];
 export type SchemaConcept = components['schemas']['Concept'];
 export type SchemaCreateConceptRequest = components['schemas']['CreateConceptRequest'];
+export type SchemaInstrument = components['schemas']['Instrument'];
+export type SchemaCreateInstrumentRequest = components['schemas']['CreateInstrumentRequest'];
+export type SchemaDiagramPosition = components['schemas']['DiagramPosition'];
+export type SchemaDiagramClassificationInput = components['schemas']['DiagramClassificationInput'];
+export type SchemaDiagramClassification = components['schemas']['DiagramClassification'];
+export type SchemaDiagram = components['schemas']['Diagram'];
+export type SchemaCreateDiagramRequest = components['schemas']['CreateDiagramRequest'];
+export type SchemaUpdateDiagramRequest = components['schemas']['UpdateDiagramRequest'];
+export type SchemaDiagramRef = components['schemas']['DiagramRef'];
+export type SchemaDiagramStackRef = components['schemas']['DiagramStackRef'];
 export type SchemaCreateLearningPathRequest = components['schemas']['CreateLearningPathRequest'];
 export type SchemaLearningPathItem = components['schemas']['LearningPathItem'];
 export type SchemaLearningPath = components['schemas']['LearningPath'];
 export type SchemaReplaceLearningPathRequest = components['schemas']['ReplaceLearningPathRequest'];
 export type SchemaAssignLearningPathRequest = components['schemas']['AssignLearningPathRequest'];
-export type SchemaPathAssignment = components['schemas']['PathAssignment'];
+export type SchemaStudentPath = components['schemas']['StudentPath'];
 export type SchemaStudentPathItem = components['schemas']['StudentPathItem'];
 export type SchemaStudentPathView = components['schemas']['StudentPathView'];
 export type SchemaCreateExpandedContentRequest = components['schemas']['CreateExpandedContentRequest'];
@@ -2164,7 +2719,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description When given, only content nodes of this type are returned. */
-                content_type?: "video" | "article";
+                content_type?: "video" | "article" | "diagram";
                 /** @description When given, only content nodes with this exact skill id among their linked skills are returned. Matches that node only, not its ancestors or descendants. */
                 skill_id?: string;
                 /** @description When given, only content nodes with this exact concept id among their linked concepts are returned. Matches that node only, not its ancestors or descendants. */
@@ -3680,6 +4235,285 @@ export interface operations {
             };
         };
     };
+    listInstruments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All known instruments, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instrument"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createInstrument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInstrumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Instrument created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instrument"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — including
+             *     string_count/tuning present with family keyboard, key_range
+             *     present with family fretted, or the matching field-group
+             *     missing for the given family.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to create an instrument. Only teachers and admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listDiagrams: {
+        parameters: {
+            query?: {
+                /** @description When given, only diagrams authored against this instrument are returned. */
+                instrument_id?: string;
+                /** @description When given, only diagrams with this exact skill id among their linked skills are returned. */
+                skill_id?: string;
+                /** @description When given, only diagrams with this exact concept id among their linked concepts are returned. */
+                concept_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matching diagrams, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiagramRequest"];
+            };
+        };
+        responses: {
+            /** @description Diagram created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — including a
+             *     position's coordinate fields not matching the referenced
+             *     instrument's family, or a skill_ids/concept_ids entry that does
+             *     not reference an existing skill or concept.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to create a diagram. Only teachers and admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    getDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagram_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requested diagram. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No diagram exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagram_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiagramRequest"];
+            };
+        };
+        responses: {
+            /** @description Diagram updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            /** @description The request body failed schema validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to update this diagram. Only teachers and admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No diagram exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     listLearningPaths: {
         parameters: {
             query?: never;
@@ -3908,13 +4742,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Path assigned. Returns the new assignment record. */
+            /** @description Path assigned. Returns the new StudentPath. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PathAssignment"];
+                    "application/json": components["schemas"]["StudentPath"];
                 };
             };
             /** @description The request body failed schema validation. */
@@ -3985,7 +4819,7 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description The authenticated caller has no active path assignment. */
+            /** @description The authenticated caller has no current path set. */
             404: {
                 headers: {
                     [name: string]: unknown;
