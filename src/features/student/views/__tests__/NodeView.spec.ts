@@ -173,6 +173,18 @@ describe('NodeView', () => {
       expect(wrapper.get('h1').text()).toBe('Minor pentatonic shape 1')
     })
 
+    it('gives the title less room on a phone than the video below it, so the video is not pushed halfway off screen', async () => {
+      const wrapper = await mountView()
+
+      expect(wrapper.get('h1').classes()).toContain('text-lg')
+    })
+
+    it('trims the page shell top padding on a phone, where every pixel above the video is wasted', async () => {
+      const wrapper = await mountView()
+
+      expect(wrapper.get('[data-test="node"]').classes()).toContain('-mt-7')
+    })
+
     it('plays the lesson video', async () => {
       const wrapper = await mountView()
 

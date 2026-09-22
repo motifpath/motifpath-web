@@ -102,7 +102,13 @@ async function finish(to: RouteLocationRaw): Promise<void> {
 </script>
 
 <template>
-  <section data-test="node" class="flex flex-col gap-4">
+  <!-- The page shell's own py-8 top padding is 4rem — sized for desktop; on a
+       phone the video is the whole point of this screen, so pull the content
+       up toward the header instead of losing height to it (leaves 1rem, not
+       the shell's usual 4rem). The title is also given noticeably less room
+       than the shell's other pages use, so a long one can't push the video
+       halfway down the screen. -->
+  <section data-test="node" class="-mt-7 flex flex-col gap-4 md:mt-0">
     <RouterLink
       v-if="lesson.state.value !== 'locked'"
       :to="{ name: 'path' }"
@@ -112,7 +118,7 @@ async function finish(to: RouteLocationRaw): Promise<void> {
       {{ t('nodeView.backToPath') }}
     </RouterLink>
 
-    <h1 class="text-2xl font-semibold text-accent-text">
+    <h1 class="text-lg font-semibold text-accent-text md:text-2xl">
       {{ lesson.node.value?.title ?? t('nodeView.heading') }}
     </h1>
 
