@@ -55,7 +55,14 @@ export function useDiagramForm() {
   const hasName = computed(() => name.value.trim() !== '')
   const hasPositions = computed(() => positions.value.length > 0)
   const hasClassification = computed(() => skillIds.value.length > 0 && conceptIds.value.length > 0)
-  const canSave = computed(() => hasName.value && hasPositions.value && hasClassification.value)
+  // The server rejects any position with an empty interval or note_name --
+  // checked here too so a save attempt never round-trips just to learn that.
+  const hasCompletePositions = computed(() =>
+    positions.value.every((p) => p.interval.trim() !== '' && p.noteName.trim() !== ''),
+  )
+  const canSave = computed(
+    () => hasName.value && hasPositions.value && hasCompletePositions.value && hasClassification.value,
+  )
 
   function addPosition(cell: FrettedCell) {
     if (positions.value.some((p) => sameCell(p, cell))) return
@@ -127,6 +134,7 @@ export function useDiagramForm() {
     conceptIds,
     hasName,
     hasPositions,
+    hasCompletePositions,
     hasClassification,
     canSave,
     addPosition,

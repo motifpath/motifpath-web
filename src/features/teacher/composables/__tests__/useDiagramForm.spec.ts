@@ -85,6 +85,8 @@ describe('useDiagramForm', () => {
     expect(form.canSave.value).toBe(false)
 
     form.addPosition({ string: 6, fret: 5 })
+    form.editPositionInterval(form.positions.value[0].id, 'R')
+    form.editPositionNoteName(form.positions.value[0].id, 'A')
     expect(form.canSave.value).toBe(false)
 
     form.skillIds.value = ['s-1']
@@ -92,6 +94,27 @@ describe('useDiagramForm', () => {
 
     form.conceptIds.value = ['c-1']
     expect(form.canSave.value).toBe(true)
+  })
+
+  it('canSave stays false while any placed position is missing an interval or note name', () => {
+    const form = useDiagramForm()
+    form.name.value = 'Minor Pentatonic'
+    form.skillIds.value = ['s-1']
+    form.conceptIds.value = ['c-1']
+    form.addPosition({ string: 6, fret: 5 })
+
+    // Freshly placed: interval and noteName both start empty.
+    expect(form.canSave.value).toBe(false)
+
+    form.editPositionInterval(form.positions.value[0].id, 'R')
+    expect(form.canSave.value).toBe(false)
+
+    form.editPositionNoteName(form.positions.value[0].id, 'A')
+    expect(form.canSave.value).toBe(true)
+
+    // A second position added later re-blocks save until it's tagged too.
+    form.addPosition({ string: 5, fret: 3 })
+    expect(form.canSave.value).toBe(false)
   })
 
   it('maps form state to a CreateDiagramRequest', () => {

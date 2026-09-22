@@ -120,6 +120,14 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
 
     await selectClassification(wrapper)
+    // Still disabled: the placed position has no interval/note name yet, and
+    // the server rejects an incomplete position outright.
+    expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+
+    const editor = wrapper.findComponent(FrettedDiagramEditor)
+    const positionId = editor.props('positions')[0]!.id
+    await editor.vm.$emit('edit-interval', positionId, 'R')
+    await editor.vm.$emit('edit-note-name', positionId, 'A')
     expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
   })
 
@@ -144,6 +152,11 @@ describe('DiagramAuthoringView', () => {
     await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic — Position 1')
     await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
     await selectClassification(wrapper)
+
+    const editor = wrapper.findComponent(FrettedDiagramEditor)
+    const positionId = editor.props('positions')[0]!.id
+    await editor.vm.$emit('edit-interval', positionId, 'R')
+    await editor.vm.$emit('edit-note-name', positionId, 'A')
 
     await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
 
