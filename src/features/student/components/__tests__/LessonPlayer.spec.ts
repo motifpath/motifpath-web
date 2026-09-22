@@ -107,4 +107,23 @@ describe('LessonPlayer', () => {
       expect(wrapper.find('[style]').exists()).toBe(false)
     })
   })
+
+  describe('aside content', () => {
+    it('has no aside area when the caller passes nothing', () => {
+      const wrapper = mountPlayer()
+
+      expect(wrapper.find('[data-test="player-aside"]').exists()).toBe(false)
+    })
+
+    it("renders the caller's aside content inside the player, so it is included when the player goes fullscreen", () => {
+      const wrapper = mount(LessonPlayer, {
+        props: { src: SRC },
+        slots: { aside: '<p data-test="cue-probe">a cue</p>' },
+      })
+
+      const player = wrapper.get('media-player')
+      const aside = player.get('[data-test="player-aside"]')
+      expect(aside.get('[data-test="cue-probe"]').text()).toBe('a cue')
+    })
+  })
 })

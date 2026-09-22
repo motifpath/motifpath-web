@@ -194,12 +194,10 @@ describe('NodeView', () => {
       expect(link.props('to')).toEqual({ name: 'path' })
     })
 
-    it('lays the video and its cue out side by side in landscape and stacked in portrait', async () => {
+    it('reserves no space for a cue when this lesson has none, so the video gets the full frame', async () => {
       const wrapper = await mountView()
 
-      const classes = wrapper.get('[data-test="lesson"]').classes()
-      expect(classes).toContain('flex-col')
-      expect(classes).toContain('landscape:flex-row')
+      expect(wrapper.find('[data-test="player-aside"]').exists()).toBe(false)
     })
 
     describe('cues', () => {
@@ -238,8 +236,12 @@ describe('NodeView', () => {
         expect(wrapper.find('[data-test="cue"]').exists()).toBe(true)
       })
 
-      it('announces a cue politely to assistive technology', async () => {
+      it('announces a cue politely to assistive technology, and keeps that region mounted between cues', async () => {
         const wrapper = await mountView()
+
+        expect(wrapper.get('[data-test="cue-region"]').attributes('aria-live')).toBe('polite')
+
+        await playTo(wrapper, 20) // past the only cue's window
 
         expect(wrapper.get('[data-test="cue-region"]').attributes('aria-live')).toBe('polite')
       })
@@ -247,7 +249,7 @@ describe('NodeView', () => {
       it('gives the cue a fixed width, not a share of the video, so a wider screen keeps the video full size', async () => {
         const wrapper = await mountView()
 
-        const classes = wrapper.get('[data-test="cue-region"]').classes()
+        const classes = wrapper.get('[data-test="player-aside"]').classes()
         expect(classes).toContain('landscape:w-80')
         expect(classes).not.toContain('landscape:w-1/3')
       })

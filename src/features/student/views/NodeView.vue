@@ -157,25 +157,32 @@ async function finish(to: RouteLocationRaw): Promise<void> {
     />
 
     <template v-else>
-      <!-- Stacked in portrait; side by side in landscape, where the video
-           shrinks to share the row with a cue only while one is showing. -->
-      <div data-test="lesson" class="flex flex-col gap-4 landscape:flex-row landscape:items-start">
-        <div class="min-w-0 flex-1">
-          <LessonPlayer
-            :key="playerKey"
-            :src="mediaUrl"
-            @time="playbackSeconds = $event"
-            @ended="videoEnded = true"
-            @error="playbackFailed = true"
-          />
-        </div>
-        <div
-          data-test="cue-region"
-          aria-live="polite"
-          class="empty:hidden landscape:w-80 landscape:shrink-0"
+      <!-- The cue lives inside LessonPlayer's aside slot (not beside it as a
+           separate element) so it is still shown when the player goes
+           fullscreen — the Fullscreen API only renders an element's own
+           descendants. Stacked below the video in portrait, beside it in
+           landscape.
+
+           The slot is provided whenever this lesson has any cues at all, not
+           only while one is active: an aria-live region has to stay mounted
+           for a screen reader to announce what changes inside it later — one
+           that's added already full of content, or removed and re-added each
+           time, is typically read as silent. CuePanel itself still renders
+           nothing between cues, via the empty:hidden rule below. -->
+      <div data-test="lesson">
+        <LessonPlayer
+          :key="playerKey"
+          :src="mediaUrl"
+          @time="playbackSeconds = $event"
+          @ended="videoEnded = true"
+          @error="playbackFailed = true"
         >
-          <CuePanel v-if="cue" :cue="cue" />
-        </div>
+          <template v-if="lesson.cues.value.length > 0" #aside>
+            <div data-test="cue-region" aria-live="polite" class="empty:hidden">
+              <CuePanel v-if="cue" :cue="cue" />
+            </div>
+          </template>
+        </LessonPlayer>
       </div>
 
       <!-- A completed step is reviewed, not finished, so practice is offered
