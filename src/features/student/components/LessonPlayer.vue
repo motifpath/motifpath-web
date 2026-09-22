@@ -258,7 +258,7 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
       ref="asideEl"
       data-test="player-aside"
       :style="asideStyle"
-      class="relative w-full shrink-0 overflow-y-auto p-3 landscape:w-80 landscape:xl:w-96"
+      class="relative w-full shrink-0 self-stretch overflow-y-auto p-3 landscape:w-80 landscape:xl:w-1/3"
     >
       <button
         v-if="canResizeAside && asideWidthPx !== null"

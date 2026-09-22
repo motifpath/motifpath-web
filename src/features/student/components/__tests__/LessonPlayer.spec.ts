@@ -181,7 +181,13 @@ describe('LessonPlayer', () => {
 
       const classes = wrapper.get('[data-test="player-aside"]').classes()
       expect(classes).toContain('landscape:w-80')
-      expect(classes).toContain('landscape:xl:w-96')
+      expect(classes).toContain('landscape:xl:w-1/3')
+    })
+
+    it('stretches the aside to the full height of the row, not the zero-height box a flex child gets by default when it has no cue showing', () => {
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('[data-test="player-aside"]').classes()).toContain('self-stretch')
     })
   })
 
