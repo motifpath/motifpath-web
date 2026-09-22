@@ -284,7 +284,8 @@
     "kinds": {
       "image": "Image",
       "gif": "GIF",
-      "rich_text": "Rich text"
+      "rich_text": "Rich text",
+      "diagram": "Diagram"
     },
     "triggerSecondsLabel": "Show at (seconds)",
     "hideSecondsLabel": "Hide at (seconds)",

@@ -63,8 +63,11 @@ export interface paths {
          *     to function.
          *
          *     The node's actual content is supplied by exactly one of media_url
-         *     (video) or rich_content (article), matching content_type — the two
-         *     are mutually exclusive and the one matching content_type is required.
+         *     (video) or rich_content (article), matching content_type — these are
+         *     mutually exclusive and whichever matches content_type is required. A
+         *     diagram is not a content node type of its own — embed one inline in
+         *     rich_content via a PromptNode, or attach it as an ExpandedContent
+         *     item, either alongside media_url or rich_content.
          */
         post: operations["createContentNode"];
         delete?: never;
@@ -99,6 +102,37 @@ export interface paths {
          */
         put: operations["updateContentNode"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/content-nodes/{content_node_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a content node's current draft
+         * @description Snapshots the content node's current reader-facing state — title,
+         *     classification, and whichever of media_url or rich_content applies,
+         *     plus languages — into
+         *     a new immutable ContentNodeVersion, and advances the node's
+         *     latest_published_version to it. Every future copy of an item
+         *     referencing this node (into a StudentPathItem, at assignment,
+         *     enrollment, or checkpoint advance) resolves to this version
+         *     until a newer one is published. Already-copied StudentPathItems
+         *     keep the version they were copied at; they are never
+         *     retargeted. Same authorisation as content node authoring — not
+         *     admin-only, since nodes are not student-browsable the way a
+         *     course is.
+         */
+        post: operations["publishContentNode"];
         delete?: never;
         options?: never;
         head?: never;
@@ -391,12 +425,19 @@ export interface paths {
          *     These timing rules apply the same way regardless of content_type.
          *
          *     **Content rules by content_type:** `image` and `gif` require `media_url`
-         *     and must not carry `rich_content`. `rich_text` requires `rich_content`
-         *     and must not carry `media_url` — video or audio embeds go inside the
-         *     rich content itself, there is no separate `video`/`audio` content_type.
+         *     and must not carry any of `rich_content`, `diagram_ref`, or
+         *     `diagram_stack_ref`. `rich_text` requires `rich_content` and must not
+         *     carry the others — video, audio, or diagram embeds go inside the rich
+         *     content itself, there is no separate `video`/`audio` content_type, and
+         *     an *inline* diagram belongs there too (see PromptNode) rather than as
+         *     its own content_type. `diagram` requires exactly one of `diagram_ref`
+         *     or `diagram_stack_ref` and must not carry `media_url` or
+         *     `rich_content` — this is for a diagram shown as a *triggered overlay*
+         *     at a specific timestamp or paragraph, not an inline one.
          *
          *     These constraints are enforced at write time. A request that mixes fields
-         *     from either group (trigger/hide, or media_url/rich_content) is rejected
+         *     from either the timing group (trigger/hide) or the content group
+         *     (media_url/rich_content/diagram_ref/diagram_stack_ref) is rejected
          *     with 400.
          */
         post: operations["createExpandedContent"];
@@ -563,6 +604,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List all known instruments
+         * @description Returns every Instrument currently known to the system. Any
+         *     authenticated user may list instruments.
+         */
+        get: operations["listInstruments"];
+        put?: never;
+        /**
+         * Create an instrument
+         * @description Creates a new instrument. Only teachers and admins may create an
+         *     instrument — instruments are an authoring surface, expected to be
+         *     created rarely.
+         */
+        post: operations["createInstrument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List prebuilt diagrams for authoring
+         * @description Returns diagrams from the reusable library, for browsing and
+         *     picking one to attach to a content node or exercise. Results are
+         *     unordered beyond a stable id order and are not paginated. Any
+         *     authenticated user may list diagrams.
+         */
+        get: operations["listDiagrams"];
+        put?: never;
+        /**
+         * Create a prebuilt diagram
+         * @description Creates a new, reusable diagram against an existing instrument.
+         *     Only teachers and admins may create a diagram.
+         */
+        post: operations["createDiagram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams/{diagram_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieve a diagram by ID */
+        get: operations["getDiagram"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a diagram's name, positions, or classification
+         * @description Only teachers and admins may update a diagram. Updating a diagram
+         *     that is already referenced by one or more diagram_refs changes what
+         *     every one of them renders — there is no versioning or copy-on-write.
+         */
+        patch: operations["updateDiagram"];
+        trace?: never;
+    };
     "/learning-paths": {
         parameters: {
             query?: never;
@@ -627,7 +746,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/students/{student_id}/path-assignments": {
+    "/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List courses
+         * @description Returns the course catalog as lightweight entries — never a
+         *     checkpoint's learning_path_id or other live-draft authoring
+         *     detail (see GET /courses/{course_id} for that). Students see
+         *     only published courses, rendered from each course's latest
+         *     published version. Teachers and admins see courses of every
+         *     status; passing status narrows the list to just that status,
+         *     otherwise every status is returned, each annotated with whether
+         *     its live draft has unpublished changes. Results are unordered
+         *     beyond a stable id order and are not paginated; the catalog is
+         *     expected to stay small.
+         */
+        get: operations["listCourses"];
+        put?: never;
+        /**
+         * Create a course
+         * @description Creates a new course as a draft — an ordered sequence of
+         *     checkpoints, each pointing at one existing learning path
+         *     template. The course is not visible to students, and has no
+         *     published version, until it is explicitly published. Checkpoints
+         *     are specified in the desired order; the service assigns each a
+         *     1-based position. All learning_path_ids must exist in the
+         *     system. A course must contain at least one checkpoint. Only
+         *     teachers and admins may create courses.
+         */
+        post: operations["createCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{course_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a course's live, current state by ID
+         * @description Returns the course's live, currently-being-authored row — title,
+         *     summary, level, status, and checkpoints with each checkpoint's
+         *     learning_path_id — regardless of whether it has ever been
+         *     published. This is the resource's actual current state, and the
+         *     representation to fetch before editing: its checkpoints array
+         *     can be resent as-is (after modification) to PUT
+         *     /courses/{course_id}. Teachers and admins only. To see what
+         *     students currently see — the latest published version, rendered
+         *     as an outline, never the live row — use GET
+         *     /courses/{course_id}/published instead.
+         */
+        get: operations["getCourse"];
+        /**
+         * Replace a course's draft title, summary, level, and checkpoints
+         * @description Replaces the given course's live draft wholesale, the same way
+         *     POST /courses establishes it initially — a caller that wants to
+         *     add, remove, reorder, or relabel a single checkpoint resends the
+         *     full checkpoints array with the desired result. Positions are
+         *     reassigned 1-based from the new array's order. This never
+         *     changes what students following an already-published version
+         *     see; it only takes effect for new enrollments and future
+         *     checkpoint advances once separately published. Only the
+         *     creating teacher or an admin may replace a course.
+         */
+        put: operations["replaceCourse"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{course_id}/published": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a course's latest published version, as students see it
+         * @description Returns the course's latest published version rendered as an
+         *     outline — each checkpoint's title and its ordered item titles
+         *     grouped by section_label, never lesson content or authoring
+         *     detail such as a checkpoint's learning_path_id. This is the
+         *     specific, derived view of the course every non-owning caller
+         *     gets: it never reflects unpublished draft edits, even for a
+         *     teacher or admin previewing what students currently see. 404s
+         *     if the course has never been published, regardless of caller
+         *     role — "the published version" genuinely does not exist yet.
+         */
+        get: operations["getPublishedCourse"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{course_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a course's current draft
+         * @description Snapshots the course's current title, summary, level, and
+         *     checkpoints, field for field, into a new immutable CourseVersion,
+         *     and advances the course's latest_published_version to it. The
+         *     course's status becomes published if this is its first
+         *     publication. Every already-enrolled student is unaffected — they
+         *     keep progressing on the version their enrollment is pinned to.
+         *     Admin-only, because publishing exposes the draft to students for
+         *     the first time.
+         */
+        post: operations["publishCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{course_id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retire a course
+         * @description Removes the course from the catalog for new enrollment only.
+         *     This is not a delete: it does not cascade, and every
+         *     CourseEnrollment already created against the course, and the
+         *     StudentPaths under it, continue to resolve normally. A retired
+         *     course's templates remain undeletable if referenced by any
+         *     published CourseVersion. Admin-only.
+         */
+        post: operations["retireCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/{student_id}/student-paths": {
         parameters: {
             query?: never;
             header?: never;
@@ -638,11 +918,19 @@ export interface paths {
         put?: never;
         /**
          * Assign a learning path to a student
-         * @description Assigns a learning path to the specified student. The student must have
-         *     role student. If the student already has an active path assignment, the
-         *     existing assignment is replaced by this one and the student's progress
-         *     is reset to the first item. Only one active assignment per student is
-         *     supported for MVP.
+         * @description Copies the specified learning path template's items into a new,
+         *     standalone StudentPath (not tied to any course) owned by the
+         *     student, and sets it as the student's current path
+         *     unconditionally — an explicit, supervised act, unlike
+         *     self-enrollment in a course, which only sets current if nothing
+         *     is currently set. The student must have role student. Copying is
+         *     additive: any existing StudentPath or course enrollment the
+         *     student has is left untouched — including whichever was current
+         *     before this call — and remains reachable unless separately
+         *     archived or abandoned. A student may hold many StudentPaths at
+         *     once. Every content node the template's items reference must
+         *     have at least one published version; each item's copy resolves
+         *     to that node's latest published version at this instant.
          */
         post: operations["assignLearningPath"];
         delete?: never;
@@ -660,9 +948,10 @@ export interface paths {
         };
         /**
          * Get the authenticated student's current learning path and progress
-         * @description Returns the student's active learning path assignment together with the
-         *     progress state of each item. This is the primary endpoint for the SPA's
-         *     main screen.
+         * @description Resolves the caller's current path — whichever course enrollment's
+         *     active checkpoint, or standalone path, is currently set — and
+         *     returns it together with the progress state of each item. This is
+         *     the primary endpoint for the SPA's main screen.
          *
          *     Item status values:
          *     - completed — the student has finished this content node.
@@ -671,11 +960,124 @@ export interface paths {
          *     - locked — the student must complete an earlier node before accessing this one.
          *
          *     Accessible by authenticated users with role student, teacher, or admin,
-         *     returning the caller's own active assignment in every case. Returns 404
-         *     if the caller has no active path assignment.
+         *     returning the caller's own current StudentPath in every case. Returns
+         *     404 if the caller has no current path set.
          */
         get: operations["getMyPath"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/course-enrollments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the authenticated student's course enrollments
+         * @description Returns every CourseEnrollment the student has ever held —
+         *     active, completed, and abandoned — each with its course summary
+         *     and derived progress. Used to render the congrats page after a
+         *     course completes (offering other active enrollments to resume,
+         *     or the catalog if none remain) and any other multi-course
+         *     browsing surface.
+         */
+        get: operations["listMyCourseEnrollments"];
+        put?: never;
+        /**
+         * Self-enroll the authenticated student in a course
+         * @description Creates a CourseEnrollment pinned to the course's latest
+         *     published version, plus checkpoint 1's StudentPath
+         *     (copy-on-assign, as for a standalone path), which becomes the
+         *     enrollment's active_checkpoint_student_path_id. Sets the new
+         *     enrollment as the student's current course, but only if nothing
+         *     is currently set — a student actively running another course or
+         *     a standalone path is never silently switched away from it.
+         */
+        post: operations["createCourseEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/course-enrollments/{course_enrollment_id}/abandon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abandon a course enrollment
+         * @description Sets the enrollment's status to abandoned. All of its
+         *     checkpoints' StudentPaths are implicitly left behind —
+         *     per-checkpoint partial archiving does not exist, since
+         *     checkpoints are sequential and owned by one enrollment. Refused
+         *     if this is the student's only current course or path and
+         *     nothing else exists to become current — the student must switch
+         *     via PUT /students/me/current-path first, unless this truly is
+         *     the only thing they have running, in which case abandoning is
+         *     allowed and clears their current pointer entirely.
+         */
+        post: operations["abandonCourseEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/paths/{student_path_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a standalone student path
+         * @description Archives a standalone StudentPath (one not tied to any course
+         *     checkpoint — course checkpoints are managed via POST
+         *     /students/me/course-enrollments/{id}/abandon instead), hiding it
+         *     from the student. Refused if this is the student's only current
+         *     course or path and nothing else exists to become current, on
+         *     the same terms as abandoning a course enrollment.
+         */
+        post: operations["archiveStandaloneStudentPath"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/current-path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Switch the authenticated student's current course or path
+         * @description Repoints StudentLearningState to a different course enrollment
+         *     or standalone path the student already holds. Does not touch
+         *     any CourseEnrollment's own checkpoint progress — switching back
+         *     later resumes exactly where that course's checkpoint was left.
+         *     Exactly one of course_enrollment_id or student_path_id must be
+         *     given.
+         */
+        put: operations["setCurrentPath"];
         post?: never;
         delete?: never;
         options?: never;
@@ -788,7 +1190,9 @@ export interface components {
             /** @description Human-readable title of the content node, displayed to students. */
             title: string;
             /**
-             * @description The media format of this content node.
+             * @description The media format of this content node. A diagram is not a
+             *     content_type of its own — embed one inline in rich_content via a
+             *     PromptNode, or attach it via ExpandedContent, on either type.
              * @enum {string}
              */
             content_type: "video" | "article";
@@ -798,13 +1202,16 @@ export interface components {
              * @description The video file or embeddable video URL students watch. Required
              *     when content_type is video; must be absent when content_type is
              *     article.
+             *     Must be an absolute http or https URL; any other scheme, or a
+             *     value that is not a URL at all, is rejected.
              */
             media_url?: string;
             /**
              * @description The article's body, authored with the same Tiptap-based rich
-             *     content model used for exercise prompts and expanded content.
-             *     Required when content_type is article; must be absent when
-             *     content_type is video.
+             *     content model used for exercise prompts and expanded content —
+             *     may embed a diagram inline via a PromptNode, alongside text,
+             *     images, video, and audio. Required when content_type is article;
+             *     must be absent when content_type is video.
              */
             rich_content?: components["schemas"]["PromptDocument"];
             /**
@@ -904,7 +1311,10 @@ export interface components {
              *     only when content_type is video.
              */
             media_url?: string;
-            /** @description The article's body. Present only when content_type is article. */
+            /**
+             * @description The article's body — may embed a diagram inline via a
+             *     PromptNode. Present only when content_type is article.
+             */
             rich_content?: components["schemas"]["PromptDocument"];
             /**
              * @description The language(s) this content node is available in, or a single
@@ -918,6 +1328,42 @@ export interface components {
              * @description Timestamp at which the content node was created.
              */
             created_at: string;
+            /** @description The version_number of the most recently published ContentNodeVersion, or null if this node has never been published. A node with no published version cannot be copied into a StudentPathItem. */
+            latest_published_version?: number | null;
+        };
+        /**
+         * @description An immutable, permanent snapshot of a content node's
+         *     reader-facing state at the moment it was published. Every copy
+         *     of an item referencing this node resolves to the latest
+         *     ContentNodeVersion at the moment of copy and stores that
+         *     version's id; an already-copied item is never retargeted by a
+         *     later publish.
+         */
+        ContentNodeVersion: {
+            /**
+             * Format: uuid
+             * @description The content node this version belongs to.
+             */
+            content_node_id: string;
+            /** @description 1-based, increasing per content node. */
+            version_number: number;
+            /** @description The node's title at the moment of publishing. */
+            title_snapshot: string;
+            classification_snapshot: components["schemas"]["Classification"];
+            /**
+             * Format: uri
+             * @description Present only when the node's content_type is video.
+             */
+            media_url_snapshot?: string;
+            /** @description Present only when the node's content_type is article. */
+            rich_content_snapshot?: components["schemas"]["PromptDocument"];
+            /** @description The node's available languages at the moment of publishing. */
+            languages_snapshot: components["schemas"]["Language"][];
+            /**
+             * Format: date-time
+             * @description Timestamp at which this version was published.
+             */
+            published_at: string;
         };
         /**
          * @description Payload for updating an existing content node's title and
@@ -933,12 +1379,14 @@ export interface components {
              * @description The video file or embeddable video URL students watch, replacing
              *     the current value. Required when the content node's content_type
              *     is video; must be absent when it is article.
+             *     Must be an absolute http or https URL; any other scheme, or a
+             *     value that is not a URL at all, is rejected.
              */
             media_url?: string;
             /**
-             * @description The article's body, replacing the current value. Required when
-             *     the content node's content_type is article; must be absent when
-             *     it is video.
+             * @description The article's body, replacing the current value — may embed a
+             *     diagram inline via a PromptNode. Required when the content
+             *     node's content_type is article; must be absent when it is video.
              */
             rich_content?: components["schemas"]["PromptDocument"];
             /**
@@ -1027,6 +1475,328 @@ export interface components {
              */
             parent_id?: string;
         };
+        /**
+         * @description An instrument a Diagram can be authored against. family decides the
+         *     shape of every Diagram.positions[].coordinate written for this
+         *     instrument — fretted instruments (guitar, bass, ...) share one
+         *     coordinate shape (string, fret); keyboard instruments (piano) use a
+         *     different one (key). family is open-ended: a genuinely new
+         *     coordinate shape is a new family value plus new coordinate fields,
+         *     not a breaking change to existing instruments or diagrams.
+         */
+        Instrument: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this instrument.
+             */
+            instrument_id: string;
+            /**
+             * @description Human-readable name (e.g. "6-string guitar, standard tuning",
+             *     "4-string bass", "Piano").
+             */
+            name: string;
+            /**
+             * @description Which coordinate shape Diagrams authored against this
+             *     instrument use. fretted diagrams populate
+             *     positions[].string/positions[].fret; keyboard diagrams populate
+             *     positions[].key. A single Diagram cannot mix families.
+             * @enum {string}
+             */
+            family: "fretted" | "keyboard";
+            /**
+             * @description Number of strings/courses. Present only when family is fretted;
+             *     absent when family is keyboard.
+             */
+            string_count?: number;
+            /**
+             * @description Open-string note name per string, lowest string first (e.g.
+             *     ["E", "A", "D", "G", "B", "E"] for standard guitar tuning).
+             *     Present only when family is fretted, with length equal to
+             *     string_count; absent when family is keyboard.
+             */
+            tuning?: string[];
+            /**
+             * @description The lowest and highest playable key, by note name. Present only
+             *     when family is keyboard; absent when family is fretted.
+             */
+            key_range?: {
+                /** @description Note name of the lowest key (e.g. "A0"). */
+                lowest: string;
+                /** @description Note name of the highest key (e.g. "C8"). */
+                highest: string;
+            };
+        };
+        /**
+         * @description Payload for creating a new instrument. There is no update or delete
+         *     endpoint yet — instruments are expected to be created rarely, and
+         *     changing family or string/key shape after Diagrams exist against it
+         *     is a deliberately open question.
+         */
+        CreateInstrumentRequest: {
+            /** @description Human-readable name for this instrument. */
+            name: string;
+            /**
+             * @description Which coordinate shape Diagrams against this instrument will use.
+             * @enum {string}
+             */
+            family: "fretted" | "keyboard";
+            /** @description Required when family is fretted; must be absent when family is keyboard. */
+            string_count?: number;
+            /**
+             * @description Required when family is fretted, with length equal to
+             *     string_count; must be absent when family is keyboard.
+             */
+            tuning?: string[];
+            /** @description Required when family is keyboard; must be absent when family is fretted. */
+            key_range?: {
+                /** @description Note name of the lowest key (e.g. "A0"). */
+                lowest: string;
+                /** @description Note name of the highest key (e.g. "C8"). */
+                highest: string;
+            };
+        };
+        /**
+         * @description One marked location in a Diagram — a note the diagram shows, at a
+         *     specific physical location on its instrument. interval, note_name,
+         *     and sequence_index are shared by every instrument family; string/
+         *     fret vs. key depend on the parent Diagram's Instrument.family and
+         *     are mutually exclusive, mirroring how Option's per-type fields
+         *     (region, image_url, audio_url) already work in this spec.
+         */
+        DiagramPosition: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this position, addressable independently
+             *     of its array order — used to derive Exercise options from a
+             *     diagram-driven image_recognition exercise (see Option). Always
+             *     present in a response; optional in a create/update request —
+             *     omitted values are assigned by the server.
+             */
+            position_id?: string;
+            /**
+             * @description The interval this position represents, relative to the
+             *     Diagram's own (unstated) root — e.g. "R", "b3", "4", "5", "b7",
+             *     "2", "3", "6", "7". Not globally standardized beyond being
+             *     consistent within one Diagram; MotifPath does not validate
+             *     interval names against a fixed enum.
+             */
+            interval: string;
+            /**
+             * @description The concrete note name this position sounds at the Diagram's own
+             *     root (e.g. "A", "C"). A diagram_ref's root_override recomputes
+             *     the note actually shown; note_name here is always relative to
+             *     this Diagram's own authored root.
+             */
+            note_name: string;
+            /**
+             * @description This position's order in an authored playback sequence (e.g. a
+             *     scale run). Null means this position is not part of any defined
+             *     sequence — playback (see DiagramRef) skips it regardless of
+             *     playback config.
+             */
+            sequence_index?: number | null;
+            /**
+             * @description Which string this position is on (1 = highest-pitched string).
+             *     Present only when the parent Diagram's instrument family is
+             *     fretted; absent when keyboard.
+             */
+            string?: number;
+            /**
+             * @description Which fret this position is on. Present only when the parent
+             *     Diagram's instrument family is fretted; absent when keyboard.
+             */
+            fret?: number;
+            /**
+             * @description Note name of the key, relative to the Diagram's own root (e.g.
+             *     "C4"). Present only when the parent Diagram's instrument family
+             *     is keyboard; absent when fretted.
+             */
+            key?: string;
+        };
+        /**
+         * @description Classification for a new or updated Diagram. Diagrams share the
+         *     exact Skill/Concept tree ContentNode and Exercise use (see
+         *     ClassificationInput) — not a separate tagging scheme — but carry no
+         *     difficulty_level; a diagram is a reusable shape, not a leveled
+         *     piece of content.
+         */
+        DiagramClassificationInput: {
+            /**
+             * @description The id(s) of the Skill tree node(s) this diagram illustrates.
+             *     Must not be empty; each id must reference an existing skill.
+             */
+            skill_ids: string[];
+            /**
+             * @description The id(s) of the Concept tree node(s) this diagram addresses.
+             *     Must not be empty; each id must reference an existing concept.
+             */
+            concept_ids: string[];
+        };
+        /**
+         * @description A Diagram's classification as returned by the API — skills/concepts
+         *     embedded in full (id, name, parent_id), the same convention
+         *     Classification uses for ContentNode.
+         */
+        DiagramClassification: {
+            /** @description The Skill tree node(s) this diagram illustrates, in full. */
+            skills: components["schemas"]["Skill"][];
+            /** @description The Concept tree node(s) this diagram addresses, in full. */
+            concepts: components["schemas"]["Concept"][];
+        };
+        /**
+         * @description A prebuilt, reusable diagram — structured position data for a scale,
+         *     chord, or similar pattern on a specific instrument. Never stores a
+         *     rendered image or SVG; motifpath-web renders positions client-side
+         *     per the layer/styling/playback config carried in whatever diagram_ref
+         *     points at this diagram.
+         */
+        Diagram: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this diagram.
+             */
+            diagram_id: string;
+            /**
+             * Format: uuid
+             * @description The instrument this diagram is authored against.
+             */
+            instrument_id: string;
+            /** @description Human-readable name (e.g. "Minor Pentatonic — Position 1"). */
+            name: string;
+            /**
+             * @description Every marked position in this diagram. All positions share the
+             *     same coordinate shape, decided by this diagram's instrument's
+             *     family.
+             */
+            positions: components["schemas"]["DiagramPosition"][];
+            classification: components["schemas"]["DiagramClassification"];
+            /**
+             * Format: date-time
+             * @description Timestamp at which the diagram was created.
+             */
+            created_at: string;
+        };
+        /**
+         * @description Payload for creating a new diagram. Every position's string/fret vs.
+         *     key must match the referenced instrument's family — the API rejects
+         *     a request that mixes shapes or supplies the wrong shape for the
+         *     instrument.
+         */
+        CreateDiagramRequest: {
+            /**
+             * Format: uuid
+             * @description The instrument this diagram is authored against. Must reference an existing instrument.
+             */
+            instrument_id: string;
+            /** @description Human-readable name for this diagram. */
+            name: string;
+            /**
+             * @description Every marked position in this diagram, in the coordinate shape
+             *     matching the referenced instrument's family. position_id may be
+             *     supplied by the client or left for the server to assign.
+             */
+            positions: components["schemas"]["DiagramPosition"][];
+            classification: components["schemas"]["DiagramClassificationInput"];
+        };
+        /**
+         * @description Payload for replacing an existing diagram's name, positions, or
+         *     classification. instrument_id is not present here — it cannot be
+         *     changed after creation, since every position's coordinate shape
+         *     depends on it.
+         */
+        UpdateDiagramRequest: {
+            /** @description Human-readable name for this diagram, replacing the current value. */
+            name?: string;
+            /**
+             * @description The diagram's full position list, replacing the current set. A
+             *     caller that only wants to change one position must resend the
+             *     full set.
+             */
+            positions?: components["schemas"]["DiagramPosition"][];
+            classification?: components["schemas"]["DiagramClassificationInput"];
+        };
+        /**
+         * @description A usage of one Diagram — its render config, never a stored variant
+         *     of the diagram itself. The same Diagram can be pointed at by any
+         *     number of DiagramRefs with different configs.
+         */
+        DiagramRef: {
+            /**
+             * Format: uuid
+             * @description The diagram this ref points at. Must reference an existing diagram.
+             */
+            diagram_id: string;
+            /**
+             * @description Transposes the diagram to this root note (e.g. "C"). Null uses
+             *     the diagram's own authored root. The actual transposition math
+             *     is motifpath-web rendering logic, not decided by this schema.
+             */
+            root_override?: string | null;
+            /** @description Which optional layers are shown, decorating the diagram's base positions. */
+            layers: {
+                /** @description Whether to show each visible position's interval label. */
+                intervals: boolean;
+                /**
+                 * @description Interval names to show; positions with any other interval
+                 *     are hidden. Null shows every position.
+                 */
+                subset?: string[] | null;
+                /**
+                 * @description Identifier of a shape overlay style (e.g. a box outline) to
+                 *     draw around the currently-visible positions. Null shows no
+                 *     overlay.
+                 */
+                shape_overlay?: string | null;
+            };
+            /**
+             * @description Author-chosen colors for this usage. Null uses motifpath-web's
+             *     default colors entirely.
+             */
+            styling?: {
+                /** @description Color for root-interval positions. Null uses the default. */
+                root_color?: string | null;
+                /** @description Color for every visible non-root position. Null uses the default. */
+                interval_color?: string | null;
+            } | null;
+            /**
+             * @description Sequenced playback config. Only affects positions with a
+             *     non-null sequence_index; null means this usage does not play
+             *     back.
+             */
+            playback?: {
+                /**
+                 * @description Order to step through sequence_index values in.
+                 * @enum {string}
+                 */
+                direction: "as_authored" | "reversed";
+                /** @description Milliseconds between each position during playback. */
+                step_ms: number;
+            } | null;
+            /**
+             * @description Which interval value(s) among this diagram's currently-visible
+             *     positions (after layers.subset filtering) are correct answers.
+             *     Meaningful, and required, only when this diagram_ref is an
+             *     Exercise's image_recognition stimulus (see Exercise.diagram_ref)
+             *     — ignored when used inline via a PromptNode, attached via
+             *     ExpandedContent, or as an image_choice Option's own diagram_ref.
+             */
+            correct_intervals?: string[] | null;
+        };
+        /**
+         * @description Two or more DiagramRefs composited into one view — e.g. a scale
+         *     overlaid on its relative major, at the same fretboard position.
+         *     Painted in array order; later entries render on top of earlier
+         *     ones. Every entry must reference a Diagram on the same instrument —
+         *     stacking diagrams from different instruments is rejected, since
+         *     there is no shared coordinate space to composite into.
+         */
+        DiagramStackRef: {
+            /**
+             * @description The diagrams to composite, in paint order. Every referenced
+             *     Diagram must share the same instrument_id.
+             */
+            stack: components["schemas"]["DiagramRef"][];
+        };
         /** @description Payload for creating a learning path. */
         CreateLearningPathRequest: {
             /** @description Human-readable name for this learning path, displayed to teachers and admins. */
@@ -1112,35 +1882,51 @@ export interface components {
             learning_path_id: string;
         };
         /**
-         * @description A record of a learning path being assigned to a student. One active
-         *     assignment exists per student at any time for MVP.
+         * @description A student's own copy of a learning path template's items. Created by
+         *     copying a LearningPath at assign time; independently editable
+         *     afterwards and never affected by later changes to the template it
+         *     was copied from.
          */
-        PathAssignment: {
+        StudentPath: {
             /**
              * Format: uuid
-             * @description Stable identifier for this assignment record.
+             * @description Stable identifier for this StudentPath.
              */
-            assignment_id: string;
+            student_path_id: string;
             /**
              * Format: uuid
-             * @description The user_id of the student this path is assigned to.
+             * @description The user_id of the student who owns this path.
              */
             student_id: string;
             /**
              * Format: uuid
-             * @description The learning path assigned to the student.
+             * @description The learning path this StudentPath was copied from.
              */
-            learning_path_id: string;
+            source_template_id: string;
+            /** @description Title of the path, copied from the template at assign time and independently editable afterwards. */
+            title: string;
             /**
              * Format: uuid
-             * @description The user_id of the teacher or admin who created this assignment.
+             * @description The user_id of the teacher or admin who assigned this path.
              */
             assigned_by: string;
             /**
              * Format: date-time
-             * @description Timestamp at which the assignment was created.
+             * @description Timestamp at which this StudentPath was created.
              */
             assigned_at: string;
+            /**
+             * Format: date-time
+             * @description Timestamp at which this StudentPath was archived, hiding it from the student. Null means the path is active and visible.
+             */
+            archived_at?: string | null;
+            /**
+             * Format: uuid
+             * @description The CourseEnrollment this StudentPath is a checkpoint of, or null when it is a standalone path (staff-assigned directly, not via a course). Set together with course_checkpoint_position.
+             */
+            source_course_enrollment_id?: string | null;
+            /** @description 1-based position of this checkpoint within its course, or null for a standalone path. Set together with source_course_enrollment_id. */
+            course_checkpoint_position?: number | null;
         };
         /** @description A content node in the student's learning path with their current progress state. */
         StudentPathItem: {
@@ -1151,6 +1937,11 @@ export interface components {
              * @description The ID of the content node at this position.
              */
             content_node_id: string;
+            /**
+             * Format: uuid
+             * @description The specific ContentNodeVersion this item was copied at — the node's latest published version at the moment of copy. Never retargeted by a later publish of the same node.
+             */
+            content_node_version_id: string;
             /** @description Title of the content node. */
             title: string;
             /**
@@ -1169,23 +1960,30 @@ export interface components {
             section_label?: string;
         };
         /**
-         * @description The student's active learning path with per-item progress state.
+         * @description The student's current learning path with per-item progress state.
          *     Returned by GET /students/me/path and used by the SPA to render
          *     the main learning screen.
          */
         StudentPathView: {
             /**
              * Format: uuid
-             * @description The active assignment record ID.
+             * @description The current StudentPath's ID.
              */
-            assignment_id: string;
+            student_path_id: string;
             /**
              * Format: uuid
-             * @description The assigned learning path ID.
+             * @description The learning path this StudentPath was copied from.
              */
-            learning_path_id: string;
-            /** @description Title of the assigned learning path. */
+            source_template_id: string;
+            /** @description Title of the current StudentPath. */
             title: string;
+            /**
+             * Format: uuid
+             * @description The CourseEnrollment this is a checkpoint of, or null when the caller's current path is a standalone path. Set together with course_checkpoint_position.
+             */
+            course_enrollment_id?: string | null;
+            /** @description 1-based position of this checkpoint within its course, or null for a standalone path. Set together with course_enrollment_id. */
+            course_checkpoint_position?: number | null;
             /**
              * @description The position of the item the student should work on next. Points to
              *     the first item that is not completed.
@@ -1193,6 +1991,285 @@ export interface components {
             current_position: number;
             /** @description All path items with progress state, sorted by position ascending. */
             items: components["schemas"]["StudentPathItem"][];
+        };
+        /** @description Payload for creating a course as a draft. */
+        CreateCourseRequest: {
+            /** @description Title of the course. */
+            title: string;
+            /** @description Short description of the course shown in the catalog. */
+            summary: string;
+            /**
+             * @description The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            checkpoints: {
+                /**
+                 * Format: uuid
+                 * @description The learning path template at this checkpoint. Must exist in the system.
+                 */
+                learning_path_id: string;
+                /** @description Optional override shown for this checkpoint instead of the learning path's own title (e.g. "Stage 1: Open chords"). */
+                title?: string;
+            }[];
+        };
+        /** @description Payload for replacing a course's draft wholesale. */
+        ReplaceCourseRequest: {
+            /** @description Title of the course. */
+            title: string;
+            /** @description Short description of the course shown in the catalog. */
+            summary: string;
+            /**
+             * @description The level a student should be at to start this course, using the same five-value rubric applied to content nodes.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            checkpoints: {
+                /**
+                 * Format: uuid
+                 * @description The learning path template at this checkpoint. Must exist in the system.
+                 */
+                learning_path_id: string;
+                /** @description Optional override shown for this checkpoint instead of the learning path's own title. */
+                title?: string;
+            }[];
+        };
+        /** @description One stage of a course's journey, pointing at a learning path template. */
+        CourseCheckpoint: {
+            /** @description 1-based position of this checkpoint within the course. */
+            position: number;
+            /**
+             * Format: uuid
+             * @description The learning path template at this checkpoint.
+             */
+            learning_path_id: string;
+            /** @description The title override for this checkpoint, if one was set; absent when the checkpoint uses the learning path's own title. */
+            title?: string;
+            /** @description The title actually shown for this checkpoint — the override if one was set, otherwise the learning path's own title. */
+            effective_title: string;
+        };
+        /**
+         * @description A course as it appears in the catalog list — enough to browse
+         *     and pick one, never authoring detail such as a checkpoint's
+         *     learning_path_id. Returned by GET /courses for every caller,
+         *     teacher/admin and student alike.
+         */
+        CourseCatalogEntry: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this course.
+             */
+            course_id: string;
+            /** @description Title of the course. */
+            title: string;
+            /** @description Short description of the course. */
+            summary: string;
+            /**
+             * @description The level a student should be at to start this course.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /**
+             * @description A student's result is always published. Teachers and admins may see any status.
+             * @enum {string}
+             */
+            status: "draft" | "published" | "retired";
+            /**
+             * Format: date-time
+             * @description Timestamp the latest published version was published at, or null if the course has never been published.
+             */
+            published_at: string | null;
+            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the teacher/admin representation; a student never receives this field. */
+            has_unpublished_changes?: boolean;
+        };
+        /**
+         * @description A course: an ordered, author-editable journey of learning-path
+         *     checkpoints, with an explicit draft/publish split. This
+         *     representation is the live, currently-being-authored draft,
+         *     returned to teachers and admins. Editing it never affects what
+         *     an already-enrolled student sees — only publishing does that.
+         */
+        Course: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this course.
+             */
+            course_id: string;
+            /** @description Title of the course's current draft. */
+            title: string;
+            /** @description Short description of the course's current draft. */
+            summary: string;
+            /**
+             * @description The level a student should be at to start this course.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /**
+             * @description draft — never published. published — has at least one CourseVersion. retired — removed from the catalog for new enrollment only; existing enrollments are unaffected.
+             * @enum {string}
+             */
+            status: "draft" | "published" | "retired";
+            /**
+             * Format: uuid
+             * @description The user_id of the teacher or admin who created this course.
+             */
+            created_by: string;
+            /**
+             * Format: date-time
+             * @description Timestamp at which the course was created.
+             */
+            created_at: string;
+            /** @description The version_number of the most recently published CourseVersion, or null if the course has never been published. */
+            latest_published_version?: number | null;
+            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). */
+            has_unpublished_changes: boolean;
+            /** @description The course's checkpoints, sorted by position ascending. */
+            checkpoints: components["schemas"]["CourseCheckpoint"][];
+        };
+        /** @description One content node's title within a checkpoint's outline. */
+        CourseOutlineItem: {
+            /** @description Title of the content node. */
+            title: string;
+            /** @description Optional label grouping this item with its immediate neighbors under a named section, carried through from the underlying learning path. */
+            section_label?: string;
+        };
+        /** @description A checkpoint as shown to a prospective or enrolled student — title and item outline, never lesson content. */
+        CourseOutlineCheckpoint: {
+            /** @description 1-based position of this checkpoint within the course. */
+            position: number;
+            /** @description The title shown for this checkpoint. */
+            title: string;
+            /** @description The checkpoint's items, in order, as a title-only outline. */
+            items: components["schemas"]["CourseOutlineItem"][];
+        };
+        /**
+         * @description A single course's detail. For a student, this is always the
+         *     latest published version's snapshot, rendered as an outline. For
+         *     a teacher or admin, this is the live draft with its checkpoints'
+         *     full outlines resolved.
+         */
+        CourseDetail: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this course.
+             */
+            course_id: string;
+            /** @description Title of the course. */
+            title: string;
+            /** @description Short description of the course. */
+            summary: string;
+            /**
+             * @description The level a student should be at to start this course.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /**
+             * @description The course's authoring status. A student's result is always published.
+             * @enum {string}
+             */
+            status: "draft" | "published" | "retired";
+            /**
+             * Format: date-time
+             * @description Timestamp the latest published version was published at, or null if the course has never been published.
+             */
+            published_at?: string | null;
+            /** @description The course's checkpoints, sorted by position ascending. */
+            checkpoints: components["schemas"]["CourseOutlineCheckpoint"][];
+        };
+        /**
+         * @description An immutable, permanent snapshot of a course's title, summary,
+         *     level, and checkpoints at the moment it was published. Students
+         *     and the catalog only ever read the latest CourseVersion, never
+         *     the live draft.
+         */
+        CourseVersion: {
+            /**
+             * Format: uuid
+             * @description The course this version belongs to.
+             */
+            course_id: string;
+            /** @description 1-based, increasing per course. */
+            version_number: number;
+            /** @description The course's title at the moment of publishing. */
+            title_snapshot: string;
+            /** @description The course's summary at the moment of publishing. */
+            summary_snapshot: string;
+            /**
+             * @description The course's level at the moment of publishing.
+             * @enum {string}
+             */
+            level_snapshot: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /**
+             * Format: date-time
+             * @description Timestamp at which this version was published.
+             */
+            published_at: string;
+            /** @description When false, this version can no longer be self-enrolled into, without retiring the course or requiring a newer version. Already-enrolled students are unaffected. */
+            available_for_new_enrollments: boolean;
+        };
+        /** @description Payload for self-enrolling in a course. */
+        CreateCourseEnrollmentRequest: {
+            /**
+             * Format: uuid
+             * @description The ID of the course to enroll in. Must be published and currently open to new enrollments.
+             */
+            course_id: string;
+        };
+        /**
+         * @description A student's enrollment in one course, tracking their active
+         *     checkpoint independently of whichever course or path is
+         *     currently focused.
+         */
+        CourseEnrollment: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this enrollment.
+             */
+            course_enrollment_id: string;
+            /**
+             * Format: uuid
+             * @description The user_id of the enrolled student.
+             */
+            student_id: string;
+            /**
+             * Format: uuid
+             * @description The enrolled course.
+             */
+            course_id: string;
+            /** @description The course's title, as of the pinned version. */
+            course_title: string;
+            /** @description The CourseVersion this enrollment is pinned to. */
+            course_version_number: number;
+            /**
+             * @description active — in progress. completed — every checkpoint finished. abandoned — the student left this enrollment.
+             * @enum {string}
+             */
+            status: "active" | "completed" | "abandoned";
+            /**
+             * Format: uuid
+             * @description The StudentPath for the checkpoint the student is currently working through. Null once the enrollment is completed or abandoned.
+             */
+            active_checkpoint_student_path_id: string | null;
+            /** @description 1-based position of the active checkpoint within the course. Null once the enrollment is completed or abandoned. */
+            active_checkpoint_position: number | null;
+            /**
+             * Format: date-time
+             * @description Timestamp at which the student enrolled.
+             */
+            enrolled_at: string;
+        };
+        /** @description Payload for switching the caller's current course or path. Exactly one of course_enrollment_id or student_path_id must be given. */
+        SetCurrentPathRequest: {
+            /**
+             * Format: uuid
+             * @description An active CourseEnrollment already belonging to the caller, to make current.
+             */
+            course_enrollment_id?: string;
+            /**
+             * Format: uuid
+             * @description A non-archived standalone StudentPath already belonging to the caller, to make current.
+             */
+            student_path_id?: string;
         };
         /**
          * @description Payload for attaching an expositive item to a content node. The
@@ -1206,25 +2283,40 @@ export interface components {
         CreateExpandedContentRequest: {
             /**
              * @description The format of the expanded content item. image and gif require
-             *     media_url; rich_text requires rich_content instead — the two
-             *     are mutually exclusive.
+             *     media_url; rich_text requires rich_content instead; diagram
+             *     requires diagram_ref or diagram_stack_ref instead — each is
+             *     mutually exclusive with the others.
              * @enum {string}
              */
-            content_type: "image" | "gif" | "rich_text";
+            content_type: "image" | "gif" | "rich_text" | "diagram";
             /**
              * Format: uri
              * @description External URL of the image or GIF to display. Required when
-             *     content_type is image or gif; must be absent when content_type
-             *     is rich_text.
+             *     content_type is image or gif; must be absent otherwise.
              */
             media_url?: string;
             /**
              * @description Rich content authored with the Tiptap-based content editor,
-             *     which may embed video or audio alongside text and images —
-             *     no separate video/audio content_type is needed. Required when
+             *     which may embed video, audio, or a diagram alongside text and
+             *     images — no separate video/audio/diagram content_type is
+             *     needed for an *inline* embed (see PromptNode). Required when
              *     content_type is rich_text; must be absent otherwise.
              */
             rich_content?: components["schemas"]["PromptDocument"];
+            /**
+             * @description A single prebuilt diagram, shown per its layer/styling/playback
+             *     config, triggered at the same video timestamp or article
+             *     paragraph any other expanded content item would be. Required
+             *     when content_type is diagram and diagram_stack_ref is absent;
+             *     must be absent otherwise.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more prebuilt diagrams composited in one view. Required
+             *     when content_type is diagram and diagram_ref is absent; must be
+             *     absent otherwise.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * @description Video nodes only. The video timestamp (in seconds) at which to show
              *     this item. Must be absent for article nodes.
@@ -1250,8 +2342,8 @@ export interface components {
             caption?: string;
         };
         /**
-         * @description An expositive item (image, GIF, or rich content) attached to a
-         *     content node and shown to the student at a specific point during
+         * @description An expositive item (image, GIF, rich content, or diagram) attached to
+         *     a content node and shown to the student at a specific point during
          *     content consumption. For video nodes the item is synced to the
          *     video timeline; for article nodes it is triggered by paragraph
          *     position.
@@ -1269,10 +2361,11 @@ export interface components {
             content_node_id: string;
             /**
              * @description The format of this item. image and gif carry media_url;
-             *     rich_text carries rich_content instead.
+             *     rich_text carries rich_content instead; diagram carries
+             *     diagram_ref or diagram_stack_ref instead.
              * @enum {string}
              */
-            content_type: "image" | "gif" | "rich_text";
+            content_type: "image" | "gif" | "rich_text" | "diagram";
             /**
              * Format: uri
              * @description External URL of the image or GIF. Present only when content_type is image or gif.
@@ -1280,10 +2373,22 @@ export interface components {
             media_url?: string;
             /**
              * @description Rich content authored with the Tiptap-based content editor,
-             *     which may embed video or audio. Present only when content_type
-             *     is rich_text.
+             *     which may embed video, audio, or a diagram. Present only when
+             *     content_type is rich_text.
              */
             rich_content?: components["schemas"]["PromptDocument"];
+            /**
+             * @description A single prebuilt diagram and its render config. Present only
+             *     when content_type is diagram and this item uses a single
+             *     diagram rather than a stack.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams. Present only when
+             *     content_type is diagram and this item uses a stack rather than
+             *     a single diagram.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /** @description Video nodes only. Video timestamp (seconds) at which this item is shown. */
             trigger_at_seconds?: number;
             /** @description Video nodes only. Video timestamp (seconds) at which this item is hidden. */
@@ -1307,20 +2412,20 @@ export interface components {
          *     content node's type (seconds-based for video, paragraph-based for
          *     article) — the parent content node's own type cannot change, so
          *     which trigger group is valid is unchanged by this update. The
-         *     item's own content_type (image/gif/rich_text) may change.
+         *     item's own content_type (image/gif/rich_text/diagram) may change.
          */
         UpdateExpandedContentRequest: {
             /**
              * @description The format of the expanded content item. image and gif require
-             *     media_url; rich_text requires rich_content instead.
+             *     media_url; rich_text requires rich_content instead; diagram
+             *     requires diagram_ref or diagram_stack_ref instead.
              * @enum {string}
              */
-            content_type: "image" | "gif" | "rich_text";
+            content_type: "image" | "gif" | "rich_text" | "diagram";
             /**
              * Format: uri
              * @description External URL of the image or GIF to display. Required when
-             *     content_type is image or gif; must be absent when content_type
-             *     is rich_text.
+             *     content_type is image or gif; must be absent otherwise.
              */
             media_url?: string;
             /**
@@ -1329,6 +2434,19 @@ export interface components {
              *     otherwise.
              */
             rich_content?: components["schemas"]["PromptDocument"];
+            /**
+             * @description A single prebuilt diagram and its render config, replacing the
+             *     current value. Required when content_type is diagram and this
+             *     item uses a single diagram rather than a stack; must be absent
+             *     otherwise.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams, replacing the current
+             *     value. Required when content_type is diagram and this item uses
+             *     a stack rather than a single diagram; must be absent otherwise.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /** @description Video nodes only. Must be absent for article nodes. */
             trigger_at_seconds?: number;
             /**
@@ -1519,19 +2637,23 @@ export interface components {
          *     content; the text node is a leaf that carries the literal string
          *     under text and any inline marks under marks. attrs holds
          *     type-specific attributes (e.g. heading's level, paragraph/heading's
-         *     text alignment, image's src and alt, audio/video's src, table
-         *     cell's colspan, rowspan, backgroundColor, and borderColor) and is
-         *     validated by the authoring editor, not by this schema.
+         *     text alignment, image's src and alt, audio/video's src, diagram's
+         *     diagram_ref or diagram_stack_ref (the same shapes DiagramRef/
+         *     DiagramStackRef carry elsewhere in this spec), table cell's colspan,
+         *     rowspan, backgroundColor, and borderColor) and is validated by the
+         *     authoring editor, not by this schema.
          */
         PromptNode: {
             /**
-             * @description The kind of node this is. audio and video are available to
-             *     rich_text expanded content and remediation content; the
-             *     exercise-prompt authoring toolbar does not offer them, so they
-             *     do not appear in a PromptDocument used as an exercise's prompt.
+             * @description The kind of node this is. audio, video, and diagram are
+             *     available to rich_text expanded content and remediation
+             *     content; the exercise-prompt authoring toolbar does not offer
+             *     audio/video, but does offer diagram — a diagram can be embedded
+             *     inline in any PromptDocument, including an exercise's own
+             *     prompt.
              * @enum {string}
              */
-            type: "heading" | "paragraph" | "text" | "bulletList" | "orderedList" | "listItem" | "table" | "tableRow" | "tableHeader" | "tableCell" | "image" | "audio" | "video";
+            type: "heading" | "paragraph" | "text" | "bulletList" | "orderedList" | "listItem" | "table" | "tableRow" | "tableHeader" | "tableCell" | "image" | "audio" | "video" | "diagram";
             /**
              * @description Type-specific attributes for this node. Absent when the node
              *     type has none set.
@@ -1584,9 +2706,10 @@ export interface components {
              * @description The type of practice interaction, which determines how its
              *     options are authored and rendered. text_response and
              *     audio_recognition options carry a text label; image_recognition
-             *     options carry a region on image_url; image_choice options each
-             *     carry their own image_url; audio_selection options each carry
-             *     their own audio_url.
+             *     options carry a region on image_url (or are derived from
+             *     diagram_ref/diagram_stack_ref — see below); image_choice
+             *     options each carry their own image_url or diagram_ref;
+             *     audio_selection options each carry their own audio_url.
              * @enum {string}
              */
             exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
@@ -1604,10 +2727,30 @@ export interface components {
             concept_ids: string[];
             /**
              * Format: uri
-             * @description The stimulus image for this exercise. Required when exercise_type
-             *     is image_recognition; absent otherwise.
+             * @description The stimulus image for this exercise. For exercise_type
+             *     image_recognition, required unless diagram_ref or
+             *     diagram_stack_ref is given instead; absent otherwise.
              */
             image_url?: string;
+            /**
+             * @description A single prebuilt diagram as this exercise's stimulus, replacing
+             *     image_url. Only meaningful when exercise_type is
+             *     image_recognition. Its correct_intervals must be set — the
+             *     diagram's own positions (after layers.subset filtering) become
+             *     this exercise's options automatically; options must be omitted
+             *     when this is given. Mutually exclusive with image_url and
+             *     diagram_stack_ref.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams as this exercise's
+             *     stimulus, replacing image_url. Only meaningful when
+             *     exercise_type is image_recognition. Each entry's own
+             *     correct_intervals must be set; options must be omitted when
+             *     this is given. Mutually exclusive with image_url and
+             *     diagram_ref.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
              * @description The stimulus audio for this exercise. Required when exercise_type
@@ -1617,9 +2760,12 @@ export interface components {
             /**
              * @description The exercise's selectable answer choices. At least one option
              *     must have is_correct set to true — an exercise with no correct
-             *     option cannot be graded.
+             *     option cannot be graded. Required unless exercise_type is
+             *     image_recognition and diagram_ref or diagram_stack_ref is
+             *     given, in which case options are derived automatically from the
+             *     diagram's positions and must be omitted here.
              */
-            options: components["schemas"]["Option"][];
+            options?: components["schemas"]["Option"][];
             /**
              * @description Authoring estimate of the time a student needs to attempt this
              *     exercise once. Optional — used to fit practice sessions and
@@ -1694,10 +2840,25 @@ export interface components {
             concept_ids: string[];
             /**
              * Format: uri
-             * @description The stimulus image for this exercise. Required when the
-             *     exercise's exercise_type is image_recognition; absent otherwise.
+             * @description The stimulus image for this exercise. For exercise_type
+             *     image_recognition, required unless diagram_ref or
+             *     diagram_stack_ref is given instead; absent otherwise.
              */
             image_url?: string;
+            /**
+             * @description A single prebuilt diagram as this exercise's stimulus, replacing
+             *     image_url, replacing the current value. Only meaningful when the
+             *     exercise's exercise_type is image_recognition. Mutually
+             *     exclusive with image_url and diagram_stack_ref.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description Two or more composited prebuilt diagrams as this exercise's
+             *     stimulus, replacing the current value. Only meaningful when the
+             *     exercise's exercise_type is image_recognition. Mutually
+             *     exclusive with image_url and diagram_ref.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
              * @description The stimulus audio for this exercise. Required when the
@@ -1707,9 +2868,11 @@ export interface components {
             /**
              * @description The exercise's selectable answer choices, replacing its current
              *     set. At least one option must have is_correct set to true — an
-             *     exercise with no correct option cannot be graded.
+             *     exercise with no correct option cannot be graded. Must be
+             *     omitted when the exercise's exercise_type is image_recognition
+             *     and diagram_ref or diagram_stack_ref is given.
              */
-            options: components["schemas"]["Option"][];
+            options?: components["schemas"]["Option"][];
             /**
              * @description Authoring estimate of the time a student needs to attempt this
              *     exercise once. Optional — used to fit practice sessions and
@@ -1759,15 +2922,33 @@ export interface components {
             concepts: components["schemas"]["Concept"][];
             /**
              * Format: uri
-             * @description The stimulus image for this exercise, present when exercise_type is image_recognition.
+             * @description The stimulus image for this exercise, present when exercise_type
+             *     is image_recognition and diagram_ref/diagram_stack_ref are absent.
              */
             image_url?: string;
+            /**
+             * @description The single prebuilt diagram used as this exercise's stimulus,
+             *     present only when exercise_type is image_recognition and the
+             *     exercise uses one diagram rather than a stack.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
+            /**
+             * @description The composited prebuilt diagrams used as this exercise's
+             *     stimulus, present only when exercise_type is image_recognition
+             *     and the exercise uses a stack rather than one diagram.
+             */
+            diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
              * @description The stimulus audio for this exercise, present when exercise_type is audio_recognition.
              */
             audio_url?: string;
-            /** @description The exercise's selectable answer choices. */
+            /**
+             * @description The exercise's selectable answer choices. When diagram_ref or
+             *     diagram_stack_ref is present, these are derived automatically
+             *     from the diagram's positions (see Option.diagram_position_id)
+             *     rather than authored directly.
+             */
             options: components["schemas"]["Option"][];
             /**
              * @description The challenges this exercise is currently linked to. May be
@@ -1840,9 +3021,11 @@ export interface components {
          *     correct answer is expressed by marking one or more options as
          *     is_correct. The fields expected beyond option_id and is_correct
          *     depend on the parent exercise's exercise_type: image_recognition
-         *     options carry region, image_choice options carry image_url,
-         *     audio_selection options carry audio_url, and text_response /
-         *     audio_recognition options carry label.
+         *     options carry region, or are entirely server-derived (see
+         *     diagram_id/diagram_position_id) when the exercise uses diagram_ref/
+         *     diagram_stack_ref instead of image_url; image_choice options carry
+         *     image_url or diagram_ref; audio_selection options carry audio_url;
+         *     text_response/audio_recognition options carry label.
          */
         Option: {
             /**
@@ -1859,10 +3042,19 @@ export interface components {
             label?: string;
             /**
              * Format: uri
-             * @description The image shown for this option. Required for image_choice
-             *     options; absent otherwise.
+             * @description The image shown for this option. For image_choice options,
+             *     required unless diagram_ref is given instead; absent otherwise.
              */
             image_url?: string;
+            /**
+             * @description A prebuilt diagram rendered as this option's own thumbnail,
+             *     replacing image_url — e.g. "which of these four diagrams shows
+             *     C major?" where each option is a different diagram. Only
+             *     meaningful for image_choice options; correct_intervals is
+             *     ignored here since correctness is this Option's own is_correct.
+             *     Mutually exclusive with image_url.
+             */
+            diagram_ref?: components["schemas"]["DiagramRef"];
             /**
              * Format: uri
              * @description The audio clip shown for this option. Required for
@@ -1870,6 +3062,23 @@ export interface components {
              */
             audio_url?: string;
             region?: components["schemas"]["OptionRegion"];
+            /**
+             * Format: uuid
+             * @description Which Diagram this option's clickable position came from.
+             *     Server-derived and read-only: present only on options belonging
+             *     to an image_recognition exercise whose stimulus is diagram_ref/
+             *     diagram_stack_ref, absent for every authored option (including
+             *     image_choice's own diagram_ref, which is a per-option thumbnail,
+             *     not a source of derived options).
+             */
+            diagram_id?: string;
+            /**
+             * Format: uuid
+             * @description Which position (DiagramPosition.position_id) within diagram_id
+             *     this option represents. Server-derived and read-only, present
+             *     under the same condition as diagram_id.
+             */
+            diagram_position_id?: string;
         };
         /**
          * @description A rectangular or circular region on the parent exercise's image_url,
@@ -2058,19 +3267,42 @@ export type SchemaCreateContentNodeRequest = components['schemas']['CreateConten
 export type SchemaClassificationInput = components['schemas']['ClassificationInput'];
 export type SchemaClassification = components['schemas']['Classification'];
 export type SchemaContentNode = components['schemas']['ContentNode'];
+export type SchemaContentNodeVersion = components['schemas']['ContentNodeVersion'];
 export type SchemaUpdateContentNodeRequest = components['schemas']['UpdateContentNodeRequest'];
 export type SchemaSkill = components['schemas']['Skill'];
 export type SchemaCreateSkillRequest = components['schemas']['CreateSkillRequest'];
 export type SchemaConcept = components['schemas']['Concept'];
 export type SchemaCreateConceptRequest = components['schemas']['CreateConceptRequest'];
+export type SchemaInstrument = components['schemas']['Instrument'];
+export type SchemaCreateInstrumentRequest = components['schemas']['CreateInstrumentRequest'];
+export type SchemaDiagramPosition = components['schemas']['DiagramPosition'];
+export type SchemaDiagramClassificationInput = components['schemas']['DiagramClassificationInput'];
+export type SchemaDiagramClassification = components['schemas']['DiagramClassification'];
+export type SchemaDiagram = components['schemas']['Diagram'];
+export type SchemaCreateDiagramRequest = components['schemas']['CreateDiagramRequest'];
+export type SchemaUpdateDiagramRequest = components['schemas']['UpdateDiagramRequest'];
+export type SchemaDiagramRef = components['schemas']['DiagramRef'];
+export type SchemaDiagramStackRef = components['schemas']['DiagramStackRef'];
 export type SchemaCreateLearningPathRequest = components['schemas']['CreateLearningPathRequest'];
 export type SchemaLearningPathItem = components['schemas']['LearningPathItem'];
 export type SchemaLearningPath = components['schemas']['LearningPath'];
 export type SchemaReplaceLearningPathRequest = components['schemas']['ReplaceLearningPathRequest'];
 export type SchemaAssignLearningPathRequest = components['schemas']['AssignLearningPathRequest'];
-export type SchemaPathAssignment = components['schemas']['PathAssignment'];
+export type SchemaStudentPath = components['schemas']['StudentPath'];
 export type SchemaStudentPathItem = components['schemas']['StudentPathItem'];
 export type SchemaStudentPathView = components['schemas']['StudentPathView'];
+export type SchemaCreateCourseRequest = components['schemas']['CreateCourseRequest'];
+export type SchemaReplaceCourseRequest = components['schemas']['ReplaceCourseRequest'];
+export type SchemaCourseCheckpoint = components['schemas']['CourseCheckpoint'];
+export type SchemaCourseCatalogEntry = components['schemas']['CourseCatalogEntry'];
+export type SchemaCourse = components['schemas']['Course'];
+export type SchemaCourseOutlineItem = components['schemas']['CourseOutlineItem'];
+export type SchemaCourseOutlineCheckpoint = components['schemas']['CourseOutlineCheckpoint'];
+export type SchemaCourseDetail = components['schemas']['CourseDetail'];
+export type SchemaCourseVersion = components['schemas']['CourseVersion'];
+export type SchemaCreateCourseEnrollmentRequest = components['schemas']['CreateCourseEnrollmentRequest'];
+export type SchemaCourseEnrollment = components['schemas']['CourseEnrollment'];
+export type SchemaSetCurrentPathRequest = components['schemas']['SetCurrentPathRequest'];
 export type SchemaCreateExpandedContentRequest = components['schemas']['CreateExpandedContentRequest'];
 export type SchemaExpandedContent = components['schemas']['ExpandedContent'];
 export type SchemaUpdateExpandedContentRequest = components['schemas']['UpdateExpandedContentRequest'];
@@ -2351,6 +3583,59 @@ export interface operations {
             /**
              * @description The authenticated user does not have permission to update this
              *     content node. Only the creating teacher or an admin may update it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No content node exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    publishContentNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the content node to publish. */
+                content_node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new ContentNodeVersion. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentNodeVersion"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description Only the creating teacher or an admin may publish this
+             *     content node.
              */
             403: {
                 headers: {
@@ -3680,6 +4965,285 @@ export interface operations {
             };
         };
     };
+    listInstruments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description All known instruments, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instrument"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createInstrument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInstrumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Instrument created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instrument"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — including
+             *     string_count/tuning present with family keyboard, key_range
+             *     present with family fretted, or the matching field-group
+             *     missing for the given family.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to create an instrument. Only teachers and admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listDiagrams: {
+        parameters: {
+            query?: {
+                /** @description When given, only diagrams authored against this instrument are returned. */
+                instrument_id?: string;
+                /** @description When given, only diagrams with this exact skill id among their linked skills are returned. */
+                skill_id?: string;
+                /** @description When given, only diagrams with this exact concept id among their linked concepts are returned. */
+                concept_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matching diagrams, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiagramRequest"];
+            };
+        };
+        responses: {
+            /** @description Diagram created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — including a
+             *     position's coordinate fields not matching the referenced
+             *     instrument's family, or a skill_ids/concept_ids entry that does
+             *     not reference an existing skill or concept.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to create a diagram. Only teachers and admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    getDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagram_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requested diagram. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No diagram exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                diagram_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiagramRequest"];
+            };
+        };
+        responses: {
+            /** @description Diagram updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Diagram"];
+                };
+            };
+            /** @description The request body failed schema validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to update this diagram. Only teachers and admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No diagram exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     listLearningPaths: {
         parameters: {
             query?: never;
@@ -3892,6 +5456,363 @@ export interface operations {
             };
         };
     };
+    listCourses: {
+        parameters: {
+            query?: {
+                /**
+                 * @description Restricts the results to courses in this status. Only
+                 *     teachers and admins may use this parameter; a student's
+                 *     results are always implicitly published regardless of this
+                 *     parameter.
+                 */
+                status?: "draft" | "published" | "retired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The courses visible to the caller, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseCatalogEntry"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCourseRequest"];
+            };
+        };
+        responses: {
+            /** @description Course created as a draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — missing title,
+             *     empty checkpoints array, or a learning_path_id that does
+             *     not exist.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only teachers and admins may create courses. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    getCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the course to retrieve. */
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The course's live, current state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only teachers and admins may view a course's live state. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No course exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    replaceCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the course to replace. */
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceCourseRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated course draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — missing title,
+             *     empty checkpoints array, or a learning_path_id that does
+             *     not exist.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to replace
+             *     this course. Only the creating teacher or an admin may
+             *     replace it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No course exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    getPublishedCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the course to retrieve the published version of. */
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The course's latest published version, as an outline. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseDetail"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description No course exists with the given ID, or it has never been
+             *     published.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    publishCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the course to publish. */
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new CourseVersion. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseVersion"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins may publish a course. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No course exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    retireCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the course to retire. */
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The retired course. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins may retire a course. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No course exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     assignLearningPath: {
         parameters: {
             query?: never;
@@ -3908,13 +5829,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Path assigned. Returns the new assignment record. */
+            /** @description Path assigned. Returns the new StudentPath. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PathAssignment"];
+                    "application/json": components["schemas"]["StudentPath"];
                 };
             };
             /** @description The request body failed schema validation. */
@@ -3946,7 +5867,8 @@ export interface operations {
             };
             /**
              * @description The student_id does not exist, the student's role is not student,
-             *     or the learning_path_id does not exist.
+             *     the learning_path_id does not exist, or one of its items'
+             *     content nodes has never been published.
              */
             404: {
                 headers: {
@@ -3985,7 +5907,321 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description The authenticated caller has no active path assignment. */
+            /** @description The authenticated caller has no current path set. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listMyCourseEnrollments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's course enrollments, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseEnrollment"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only students hold course enrollments. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    createCourseEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCourseEnrollmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Enrollment created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseEnrollment"];
+                };
+            };
+            /** @description The request body failed schema validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only students may self-enroll. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description The course_id does not exist, the course is draft or
+             *     retired, or its latest published version is not currently
+             *     available for new enrollments.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The student already has an active CourseEnrollment for this
+             *     course.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    abandonCourseEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the enrollment to abandon. */
+                course_enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The abandoned enrollment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseEnrollment"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only students hold course enrollments. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No active enrollment with this ID exists for the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description This is the student's only current course or path, and they
+             *     have nothing else eligible to become current. Switch to
+             *     another course or path first via PUT
+             *     /students/me/current-path.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    archiveStandaloneStudentPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the standalone StudentPath to archive. */
+                student_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The archived StudentPath. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPath"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only students hold standalone student paths. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description No non-archived standalone StudentPath with this ID exists
+             *     for the caller. (A StudentPath tied to a course checkpoint
+             *     is also refused here with this status — abandon its
+             *     enrollment instead.)
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description This is the student's only current course or path, and they
+             *     have nothing else eligible to become current. Switch to
+             *     another course or path first via PUT
+             *     /students/me/current-path.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    setCurrentPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCurrentPathRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's current path after switching. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPathView"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation — neither or both
+             *     of course_enrollment_id and student_path_id were given.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only students hold a current course or path. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description The given course_enrollment_id does not belong to the
+             *     caller or is not active, or the given student_path_id does
+             *     not belong to the caller or is archived.
+             */
             404: {
                 headers: {
                     [name: string]: unknown;
