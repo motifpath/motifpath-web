@@ -76,4 +76,12 @@ describe('AuthenticatedLayout', () => {
     expect(wrapper.get('main').classes()).toContain('max-w-7xl')
     expect(wrapper.get('main').classes()).not.toContain('max-w-4xl')
   })
+
+  it('grows that column further still on a very large screen, rather than capping it the same as a laptop', () => {
+    route.meta = { wideContent: true }
+
+    const wrapper = mountLayout()
+
+    expect(wrapper.get('main').classes()).toContain('2xl:max-w-[96rem]')
+  })
 })

@@ -112,7 +112,7 @@ const controlClass =
     <div
       v-if="$slots.aside"
       data-test="player-aside"
-      class="w-full shrink-0 overflow-y-auto p-3 landscape:w-80"
+      class="w-full shrink-0 overflow-y-auto p-3 landscape:w-80 landscape:xl:w-96"
     >
       <slot name="aside" />
     </div>

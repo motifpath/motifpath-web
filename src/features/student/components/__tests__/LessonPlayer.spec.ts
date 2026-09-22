@@ -125,6 +125,17 @@ describe('LessonPlayer', () => {
       const aside = player.get('[data-test="player-aside"]')
       expect(aside.get('[data-test="cue-probe"]').text()).toBe('a cue')
     })
+
+    it('gives the aside more room on a wide desktop screen, not a fixed sliver regardless of how much space there is', () => {
+      const wrapper = mount(LessonPlayer, {
+        props: { src: SRC },
+        slots: { aside: '<p>a cue</p>' },
+      })
+
+      const classes = wrapper.get('[data-test="player-aside"]').classes()
+      expect(classes).toContain('landscape:w-80')
+      expect(classes).toContain('landscape:xl:w-96')
+    })
   })
 
   describe('recovering from a video that failed to load', () => {

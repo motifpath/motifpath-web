@@ -10,9 +10,14 @@ const { isCompact } = useIsCompact()
 // A route can opt into a wider content column (route.meta.wideContent) —
 // currently only the lesson screen, whose video would otherwise be squeezed
 // into the app's usual reading-width column even when the viewport has
-// spare room beside it.
+// spare room beside it. That column grows again past a large-desktop
+// viewport (2xl) rather than staying capped the same as a laptop, so a wide
+// monitor isn't left with the video and its cue pinned to a laptop-sized
+// strip in the middle of the screen.
 const route = useRoute()
-const contentWidthClass = computed(() => (route.meta.wideContent ? 'max-w-7xl' : 'max-w-4xl'))
+const contentWidthClass = computed(() =>
+  route.meta.wideContent ? 'max-w-7xl 2xl:max-w-[96rem]' : 'max-w-4xl',
+)
 </script>
 
 <template>
