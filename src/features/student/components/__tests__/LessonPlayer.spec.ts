@@ -14,8 +14,12 @@ vi.mock('vidstack/player/styles/base.css', () => ({}))
 // Defaults to landscape so every test that doesn't care about orientation
 // doesn't have to set it up.
 const canResizeAside = ref(true)
+const useMediaQuerySpy = vi.fn((query: string) => {
+  void query
+  return { matches: canResizeAside }
+})
 vi.mock('@/shared/composables/useMediaQuery', () => ({
-  useMediaQuery: () => ({ matches: canResizeAside }),
+  useMediaQuery: (query: string) => useMediaQuerySpy(query),
 }))
 
 import LessonPlayer from '@/features/student/components/LessonPlayer.vue'
@@ -38,10 +42,27 @@ async function fireDrag(wrapper: ReturnType<typeof mountPlayer>, fromX: number, 
   await nextTick()
 }
 
+// jsdom lays nothing out, so `getBoundingClientRect` returns 0 for every
+// element unless a test stands in for the browser's own measurement.
+function setPlayerWidth(wrapper: ReturnType<typeof mountPlayer>, width: number) {
+  vi.spyOn(wrapper.get('media-player').element, 'getBoundingClientRect').mockReturnValue({
+    width,
+    height: 0,
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  })
+}
+
 describe('LessonPlayer', () => {
   beforeEach(() => {
     canResizeAside.value = true
     localStorage.clear()
+    useMediaQuerySpy.mockClear()
   })
 
   it('plays the given source', () => {
@@ -345,6 +366,103 @@ describe('LessonPlayer', () => {
       const wrapper = mountPlayer(true)
 
       expect(wrapper.get('[data-test="lesson-player"] > div').classes()).toContain('min-w-80')
+    })
+
+    it('is available in landscape at any width, including a phone, not just a desktop-sized screen', () => {
+      mountPlayer(true)
+
+      expect(useMediaQuerySpy).toHaveBeenCalledWith('(orientation: landscape)')
+    })
+
+    it('shows a grip glyph on the handle so its purpose is visible, not just discoverable by hovering', () => {
+      const wrapper = mountPlayer(true)
+
+      expect(
+        wrapper.get('[data-test="aside-resize-handle"]').find('svg.lucide-grip-vertical').exists(),
+      ).toBe(true)
+    })
+
+    it('captures the pointer on drag start, so tracking survives the cursor crossing an embedded video iframe', () => {
+      const wrapper = mountPlayer(true)
+      const handleEl = wrapper.get('[data-test="aside-resize-handle"]').element as HTMLElement
+      const captureSpy = vi.fn()
+      // jsdom does not implement pointer capture; stand in for it.
+      handleEl.setPointerCapture = captureSpy
+
+      handleEl.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, bubbles: true }))
+
+      expect(captureSpy).toHaveBeenCalled()
+    })
+
+    it('disables page text selection while dragging, so a fast drag does not highlight the cue text', async () => {
+      const wrapper = mountPlayer(true)
+
+      const handle = wrapper.get('[data-test="aside-resize-handle"]')
+      handle.element.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, bubbles: true }))
+      await nextTick()
+      expect(document.body.classList.contains('select-none')).toBe(true)
+
+      window.dispatchEvent(new MouseEvent('pointerup', { clientX: 400 }))
+      await nextTick()
+      expect(document.body.classList.contains('select-none')).toBe(false)
+    })
+
+    it('stops listening for drag movement if the player is removed mid-drag', () => {
+      const wrapper = mountPlayer(true)
+      const handle = wrapper.get('[data-test="aside-resize-handle"]')
+      handle.element.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, bubbles: true }))
+      const removeSpy = vi.spyOn(window, 'removeEventListener')
+
+      wrapper.unmount()
+
+      expect(removeSpy).toHaveBeenCalledWith('pointermove', expect.any(Function))
+      expect(removeSpy).toHaveBeenCalledWith('pointerup', expect.any(Function))
+      expect(document.body.classList.contains('select-none')).toBe(false)
+    })
+
+    it('clamps the maximum width to what the player can actually spare, not just the static ceiling, so a narrow landscape phone keeps the video usable', async () => {
+      const wrapper = mountPlayer(true)
+      setPlayerWidth(wrapper, 600) // a narrow landscape phone, not a desktop screen
+
+      await fireDrag(wrapper, 500, -1000) // drag as far left as possible
+
+      // 600px player - the video's own 320px floor = 280px left for the aside.
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 280px',
+      )
+    })
+
+    describe('resetting to the default width', () => {
+      it('has no reset control until the panel has actually been resized', () => {
+        const wrapper = mountPlayer(true)
+
+        expect(wrapper.find('[data-test="aside-reset-button"]').exists()).toBe(false)
+      })
+
+      it('shows a reset control once the panel has a custom width, and it restores the default', async () => {
+        const wrapper = mountPlayer(true)
+        await fireDrag(wrapper, 500, 100)
+
+        const resetButton = wrapper.get('[data-test="aside-reset-button"]')
+        expect(resetButton.attributes('aria-label')).toBe(
+          'Reset the notes panel to its default size',
+        )
+
+        await resetButton.trigger('click')
+
+        expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toBeFalsy()
+        expect(localStorage.getItem(ASIDE_WIDTH_KEY)).toBeNull()
+        expect(wrapper.find('[data-test="aside-reset-button"]').exists()).toBe(false)
+      })
+
+      it('shows a reset control for a width restored from a previous lesson too', async () => {
+        localStorage.setItem(ASIDE_WIDTH_KEY, '450')
+
+        const wrapper = mountPlayer(true)
+        await nextTick()
+
+        expect(wrapper.find('[data-test="aside-reset-button"]').exists()).toBe(true)
+      })
     })
   })
 })

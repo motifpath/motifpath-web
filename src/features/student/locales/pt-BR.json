@@ -46,7 +46,8 @@
     "seek": "Buscar no vídeo",
     "mute": "Silenciar",
     "fullscreen": "Tela cheia",
-    "resizeAside": "Redimensionar o painel de anotações"
+    "resizeAside": "Redimensionar o painel de anotações",
+    "resetAsideWidth": "Redefinir o painel de anotações para o tamanho padrão"
   },
   "practiceView": {
     "loadingNoun": "os exercícios de prática",

@@ -23,7 +23,8 @@
  *   too, and that's exactly the element an aria-live announcement needs to
  *   stay mounted.
  * - The aside's width is student-controlled (drag or arrow keys on the
- *   handle) and remembered per browser, only while in landscape — in
+ *   handle) and remembered per browser, only while in landscape — including
+ *   a phone rotated to landscape, not just a desktop-sized screen — since in
  *   portrait the aside stacks full-width below the video, where a pixel
  *   width would fight the layout.
  */
@@ -31,7 +32,7 @@ import 'vidstack/player'
 import 'vidstack/player/ui'
 import 'vidstack/player/styles/base.css'
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import Icon from '@/shared/components/Icon.vue'
 import { useMediaQuery } from '@/shared/composables/useMediaQuery'
@@ -60,17 +61,27 @@ function onTimeUpdate(event: CustomEvent<{ currentTime: number }>): void {
 const controlClass =
   'group flex shrink-0 items-center justify-center rounded-sm p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus'
 
-const { matches: canResizeAside } = useMediaQuery(
-  '(orientation: landscape) and (min-width: 1024px)',
-)
+const { matches: canResizeAside } = useMediaQuery('(orientation: landscape)')
 
 const ASIDE_MIN_PX = 240
 const ASIDE_MAX_PX = 640
 const ASIDE_STEP_PX = 16
 const ASIDE_WIDTH_STORAGE_KEY = 'motifpath:lesson-aside-width'
+// Matches the video wrapper's own min-w-80: on a narrow landscape phone the
+// static 640px ceiling below would leave the video with no room at all, so
+// the real ceiling is whatever the player can spare beyond that floor.
+const VIDEO_MIN_PX = 320
+
+const playerEl = ref<HTMLElement | null>(null)
+
+function asideMaxPx(): number {
+  const playerWidth = playerEl.value?.getBoundingClientRect().width
+  if (!playerWidth) return ASIDE_MAX_PX
+  return Math.min(ASIDE_MAX_PX, Math.max(ASIDE_MIN_PX, playerWidth - VIDEO_MIN_PX))
+}
 
 function clamp(value: number): number {
-  return Math.min(ASIDE_MAX_PX, Math.max(ASIDE_MIN_PX, value))
+  return Math.min(asideMaxPx(), Math.max(ASIDE_MIN_PX, value))
 }
 
 // null means "use the default responsive width" (the landscape:w-80
@@ -110,9 +121,32 @@ function resetAsideWidth(): void {
   }
 }
 
+// Tracked outside beginAsideDrag so a component unmounted mid-drag can still
+// remove exactly the listeners it added, not just the ones from its last
+// drag.
+let activeDragMove: ((event: PointerEvent) => void) | null = null
+let activeDragUp: (() => void) | null = null
+
+function endActiveDrag(): void {
+  if (activeDragMove) window.removeEventListener('pointermove', activeDragMove)
+  if (activeDragUp) window.removeEventListener('pointerup', activeDragUp)
+  activeDragMove = null
+  activeDragUp = null
+  document.body.classList.remove('select-none')
+}
+
 function beginAsideDrag(event: PointerEvent): void {
   const startX = event.clientX
   const startWidth = asideWidthPx.value ?? asideEl.value?.getBoundingClientRect().width ?? 0
+
+  // Without capture, a fast drag that crosses an embedded video (a real
+  // iframe for a YouTube source) stops delivering pointermove the moment the
+  // cursor enters it — the iframe's own document takes over the pointer.
+  ;(event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId)
+  // A drag this fast otherwise highlights whatever text it crosses (the cue
+  // panel's own content) as a side effect of the browser's native
+  // text-selection gesture.
+  document.body.classList.add('select-none')
 
   function onMove(moveEvent: PointerEvent): void {
     // The aside sits to the right of the video, so dragging the handle left
@@ -120,13 +154,17 @@ function beginAsideDrag(event: PointerEvent): void {
     asideWidthPx.value = clamp(startWidth + (startX - moveEvent.clientX))
   }
   function onUp(): void {
-    window.removeEventListener('pointermove', onMove)
-    window.removeEventListener('pointerup', onUp)
+    endActiveDrag()
     if (asideWidthPx.value !== null) persistAsideWidth(asideWidthPx.value)
   }
+
+  activeDragMove = onMove
+  activeDragUp = onUp
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
 }
+
+onBeforeUnmount(endActiveDrag)
 
 function onAsideHandleKeydown(event: KeyboardEvent): void {
   const current = asideWidthPx.value ?? asideEl.value?.getBoundingClientRect().width ?? 0
@@ -143,6 +181,7 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
 
 <template>
   <media-player
+    ref="playerEl"
     :src="src"
     playsinline
     data-test="lesson-player"
@@ -205,20 +244,33 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
       :aria-label="t('lessonPlayer.resizeAside')"
       :aria-valuenow="asideWidthPx ?? undefined"
       :aria-valuemin="ASIDE_MIN_PX"
-      :aria-valuemax="ASIDE_MAX_PX"
-      class="w-1 shrink-0 self-stretch cursor-col-resize rounded-full bg-border hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+      :aria-valuemax="asideMaxPx()"
+      class="flex w-4 shrink-0 touch-none cursor-col-resize items-center justify-center self-stretch rounded-full bg-border/60 text-ink-muted hover:bg-accent hover:text-accent-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
       @pointerdown="beginAsideDrag"
       @keydown="onAsideHandleKeydown"
       @dblclick="resetAsideWidth"
-    />
+    >
+      <Icon name="grip" :size="14" />
+    </div>
 
     <div
       v-if="$slots.aside"
       ref="asideEl"
       data-test="player-aside"
       :style="asideStyle"
-      class="w-full shrink-0 overflow-y-auto p-3 landscape:w-80 landscape:xl:w-96"
+      class="relative w-full shrink-0 overflow-y-auto p-3 landscape:w-80 landscape:xl:w-96"
     >
+      <button
+        v-if="canResizeAside && asideWidthPx !== null"
+        type="button"
+        data-test="aside-reset-button"
+        :aria-label="t('lessonPlayer.resetAsideWidth')"
+        class="absolute right-2 top-2 z-30 rounded-sm bg-surface/90 p-1 text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+        @click="resetAsideWidth"
+      >
+        <Icon name="reset" :size="16" />
+      </button>
+
       <slot name="aside" />
     </div>
   </media-player>

@@ -13,12 +13,14 @@ import {
   Circle,
   CircleCheck,
   CircleDot,
+  GripVertical,
   Lock,
   Maximize,
   Menu,
   Moon,
   Pause,
   Play,
+  RotateCcw,
   Sun,
   Volume2,
   VolumeX,
@@ -39,6 +41,8 @@ type IconName =
   | 'volume'
   | 'volume-off'
   | 'fullscreen'
+  | 'grip'
+  | 'reset'
 
 const props = withDefaults(
   defineProps<{
@@ -67,6 +71,8 @@ const glyph = computed(
       volume: Volume2,
       'volume-off': VolumeX,
       fullscreen: Maximize,
+      grip: GripVertical,
+      reset: RotateCcw,
     })[props.name],
 )
 
