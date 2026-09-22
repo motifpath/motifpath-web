@@ -22,12 +22,19 @@
  *   — but keying the whole player would tear down and rebuild the aside slot
  *   too, and that's exactly the element an aria-live announcement needs to
  *   stay mounted.
+ * - The aside's width is student-controlled (drag or arrow keys on the
+ *   handle) and remembered per browser, only while in landscape — in
+ *   portrait the aside stacks full-width below the video, where a pixel
+ *   width would fight the layout.
  */
 import 'vidstack/player'
 import 'vidstack/player/ui'
 import 'vidstack/player/styles/base.css'
 
+import { computed, onMounted, ref } from 'vue'
+
 import Icon from '@/shared/components/Icon.vue'
+import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 defineProps<{
@@ -52,6 +59,86 @@ function onTimeUpdate(event: CustomEvent<{ currentTime: number }>): void {
 
 const controlClass =
   'group flex shrink-0 items-center justify-center rounded-sm p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus'
+
+const { matches: canResizeAside } = useMediaQuery(
+  '(orientation: landscape) and (min-width: 1024px)',
+)
+
+const ASIDE_MIN_PX = 240
+const ASIDE_MAX_PX = 640
+const ASIDE_STEP_PX = 16
+const ASIDE_WIDTH_STORAGE_KEY = 'motifpath:lesson-aside-width'
+
+function clamp(value: number): number {
+  return Math.min(ASIDE_MAX_PX, Math.max(ASIDE_MIN_PX, value))
+}
+
+// null means "use the default responsive width" (the landscape:w-80
+// classes below) — set once the student has ever dragged or keyed a size,
+// here or in an earlier lesson.
+const asideWidthPx = ref<number | null>(null)
+const asideEl = ref<HTMLElement | null>(null)
+const asideStyle = computed(() =>
+  asideWidthPx.value === null ? undefined : { width: `${asideWidthPx.value}px` },
+)
+
+onMounted(() => {
+  try {
+    const stored = localStorage.getItem(ASIDE_WIDTH_STORAGE_KEY)
+    const parsed = stored === null ? NaN : Number(stored)
+    if (Number.isFinite(parsed)) asideWidthPx.value = clamp(parsed)
+  } catch {
+    // Storage unavailable (private browsing, etc.) — the default width
+    // still works fine for this viewing, just isn't remembered.
+  }
+})
+
+function persistAsideWidth(width: number): void {
+  try {
+    localStorage.setItem(ASIDE_WIDTH_STORAGE_KEY, String(width))
+  } catch {
+    // Resizing still works for this viewing; it just won't be remembered.
+  }
+}
+
+function resetAsideWidth(): void {
+  asideWidthPx.value = null
+  try {
+    localStorage.removeItem(ASIDE_WIDTH_STORAGE_KEY)
+  } catch {
+    // Nothing to clean up if storage was never available.
+  }
+}
+
+function beginAsideDrag(event: PointerEvent): void {
+  const startX = event.clientX
+  const startWidth = asideWidthPx.value ?? asideEl.value?.getBoundingClientRect().width ?? 0
+
+  function onMove(moveEvent: PointerEvent): void {
+    // The aside sits to the right of the video, so dragging the handle left
+    // (toward the video) widens it — moving right narrows it back.
+    asideWidthPx.value = clamp(startWidth + (startX - moveEvent.clientX))
+  }
+  function onUp(): void {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    if (asideWidthPx.value !== null) persistAsideWidth(asideWidthPx.value)
+  }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+}
+
+function onAsideHandleKeydown(event: KeyboardEvent): void {
+  const current = asideWidthPx.value ?? asideEl.value?.getBoundingClientRect().width ?? 0
+  if (event.key === 'ArrowLeft') asideWidthPx.value = clamp(current + ASIDE_STEP_PX)
+  else if (event.key === 'ArrowRight') asideWidthPx.value = clamp(current - ASIDE_STEP_PX)
+  else if (event.key === 'Home') asideWidthPx.value = ASIDE_MIN_PX
+  else if (event.key === 'End') asideWidthPx.value = ASIDE_MAX_PX
+  else return
+
+  event.preventDefault()
+  persistAsideWidth(asideWidthPx.value)
+}
 </script>
 
 <template>
@@ -64,7 +151,7 @@ const controlClass =
     @ended="emit('ended')"
     @error="emit('error')"
   >
-    <div class="relative aspect-video w-full min-w-0 flex-1">
+    <div class="relative aspect-video w-full min-w-80 flex-1">
       <media-provider :key="resetToken" />
 
       <media-gesture
@@ -110,8 +197,26 @@ const controlClass =
     </div>
 
     <div
+      v-if="$slots.aside && canResizeAside"
+      data-test="aside-resize-handle"
+      role="separator"
+      aria-orientation="vertical"
+      tabindex="0"
+      :aria-label="t('lessonPlayer.resizeAside')"
+      :aria-valuenow="asideWidthPx ?? undefined"
+      :aria-valuemin="ASIDE_MIN_PX"
+      :aria-valuemax="ASIDE_MAX_PX"
+      class="w-1 shrink-0 self-stretch cursor-col-resize rounded-full bg-border hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+      @pointerdown="beginAsideDrag"
+      @keydown="onAsideHandleKeydown"
+      @dblclick="resetAsideWidth"
+    />
+
+    <div
       v-if="$slots.aside"
+      ref="asideEl"
       data-test="player-aside"
+      :style="asideStyle"
       class="w-full shrink-0 overflow-y-auto p-3 landscape:w-80 landscape:xl:w-96"
     >
       <slot name="aside" />

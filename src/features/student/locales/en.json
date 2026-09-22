@@ -45,7 +45,8 @@
     "play": "Play",
     "seek": "Seek",
     "mute": "Mute",
-    "fullscreen": "Fullscreen"
+    "fullscreen": "Fullscreen",
+    "resizeAside": "Resize the notes panel"
   },
   "practiceView": {
     "loadingNoun": "the practice exercises",

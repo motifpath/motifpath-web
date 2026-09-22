@@ -1,5 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 
 // The player library registers web components that need a real browser to
 // play anything; what is under test here is the wrapper around them, so the
@@ -9,15 +11,39 @@ vi.mock('vidstack/player', () => ({}))
 vi.mock('vidstack/player/ui', () => ({}))
 vi.mock('vidstack/player/styles/base.css', () => ({}))
 
+// Defaults to landscape so every test that doesn't care about orientation
+// doesn't have to set it up.
+const canResizeAside = ref(true)
+vi.mock('@/shared/composables/useMediaQuery', () => ({
+  useMediaQuery: () => ({ matches: canResizeAside }),
+}))
+
 import LessonPlayer from '@/features/student/components/LessonPlayer.vue'
 
 const SRC = 'https://cdn.example.test/lesson.mp4'
+const ASIDE_WIDTH_KEY = 'motifpath:lesson-aside-width'
 
-function mountPlayer() {
-  return mount(LessonPlayer, { props: { src: SRC } })
+function mountPlayer(withAside = false) {
+  return mount(
+    LessonPlayer,
+    withAside ? { props: { src: SRC }, slots: { aside: '<p>a cue</p>' } } : { props: { src: SRC } },
+  )
+}
+
+async function fireDrag(wrapper: ReturnType<typeof mountPlayer>, fromX: number, toX: number) {
+  const handle = wrapper.get('[data-test="aside-resize-handle"]')
+  handle.element.dispatchEvent(new MouseEvent('pointerdown', { clientX: fromX, bubbles: true }))
+  window.dispatchEvent(new MouseEvent('pointermove', { clientX: toX }))
+  window.dispatchEvent(new MouseEvent('pointerup', { clientX: toX }))
+  await nextTick()
 }
 
 describe('LessonPlayer', () => {
+  beforeEach(() => {
+    canResizeAside.value = true
+    localStorage.clear()
+  })
+
   it('plays the given source', () => {
     const wrapper = mountPlayer()
 
@@ -176,6 +202,149 @@ describe('LessonPlayer', () => {
       await wrapper.setProps({ resetToken: 2 })
 
       expect(wrapper.get('media-player').element).toBe(before)
+    })
+  })
+
+  describe('resizing the aside', () => {
+    it('has no resize handle when there is no aside to resize', () => {
+      const wrapper = mountPlayer()
+
+      expect(wrapper.find('[data-test="aside-resize-handle"]').exists()).toBe(false)
+    })
+
+    it('has no resize handle on a screen too small or too narrow to resize on', () => {
+      canResizeAside.value = false
+
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.find('[data-test="aside-resize-handle"]').exists()).toBe(false)
+    })
+
+    it('marks the handle as a draggable separator for assistive technology', () => {
+      const wrapper = mountPlayer(true)
+
+      const handle = wrapper.get('[data-test="aside-resize-handle"]')
+      expect(handle.attributes('role')).toBe('separator')
+      expect(handle.attributes('aria-orientation')).toBe('vertical')
+      expect(handle.attributes('tabindex')).toBe('0')
+      expect(handle.attributes('aria-label')).toBe('Resize the notes panel')
+    })
+
+    it('stretches the handle to the full height of the row, not the zero-height box a flex child gets by default', () => {
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('[data-test="aside-resize-handle"]').classes()).toContain('self-stretch')
+    })
+
+    it('widens the aside when the handle is dragged toward the video', async () => {
+      const wrapper = mountPlayer(true)
+
+      await fireDrag(wrapper, 500, 100) // drag left by 400px
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 400px',
+      )
+    })
+
+    it('never lets the aside shrink past a readable minimum', async () => {
+      const wrapper = mountPlayer(true)
+
+      await fireDrag(wrapper, 500, 450) // drag left by only 50px
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 240px',
+      )
+    })
+
+    it('never lets the aside swallow the whole row', async () => {
+      const wrapper = mountPlayer(true)
+
+      await fireDrag(wrapper, 500, -1000) // drag left by 1500px
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 640px',
+      )
+    })
+
+    it('remembers the dragged width for the next lesson opened in this browser', async () => {
+      const wrapper = mountPlayer(true)
+
+      await fireDrag(wrapper, 500, 100)
+
+      expect(localStorage.getItem(ASIDE_WIDTH_KEY)).toBe('400')
+    })
+
+    it('starts a fresh lesson at the width remembered from a previous one', async () => {
+      localStorage.setItem(ASIDE_WIDTH_KEY, '450')
+
+      const wrapper = mountPlayer(true)
+      await nextTick()
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 450px',
+      )
+    })
+
+    it('ignores a corrupted stored width and falls back to the default size', async () => {
+      localStorage.setItem(ASIDE_WIDTH_KEY, 'not-a-number')
+
+      const wrapper = mountPlayer(true)
+      await nextTick()
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toBeFalsy()
+    })
+
+    it('clamps a stored width that is now out of range', async () => {
+      localStorage.setItem(ASIDE_WIDTH_KEY, '99999')
+
+      const wrapper = mountPlayer(true)
+      await nextTick()
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 640px',
+      )
+    })
+
+    it('resizes with the keyboard, for a student who cannot drag', async () => {
+      const wrapper = mountPlayer(true)
+      await fireDrag(wrapper, 500, 100) // seed a known width (400px) to adjust from
+      const handle = wrapper.get('[data-test="aside-resize-handle"]')
+
+      await handle.trigger('keydown', { key: 'ArrowRight' })
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 384px',
+      )
+
+      await handle.trigger('keydown', { key: 'ArrowLeft' })
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 400px',
+      )
+
+      await handle.trigger('keydown', { key: 'Home' })
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 240px',
+      )
+
+      await handle.trigger('keydown', { key: 'End' })
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
+        'width: 640px',
+      )
+    })
+
+    it('resets to the default width on a double-click, forgetting the stored one too', async () => {
+      const wrapper = mountPlayer(true)
+      await fireDrag(wrapper, 500, 100)
+
+      await wrapper.get('[data-test="aside-resize-handle"]').trigger('dblclick')
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toBeFalsy()
+      expect(localStorage.getItem(ASIDE_WIDTH_KEY)).toBeNull()
+    })
+
+    it('gives the video a floor so a wide aside cannot crush it away', () => {
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('[data-test="lesson-player"] > div').classes()).toContain('min-w-80')
     })
   })
 })

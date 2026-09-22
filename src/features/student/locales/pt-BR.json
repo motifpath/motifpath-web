@@ -45,7 +45,8 @@
     "play": "Reproduzir",
     "seek": "Buscar no vídeo",
     "mute": "Silenciar",
-    "fullscreen": "Tela cheia"
+    "fullscreen": "Tela cheia",
+    "resizeAside": "Redimensionar o painel de anotações"
   },
   "practiceView": {
     "loadingNoun": "os exercícios de prática",
