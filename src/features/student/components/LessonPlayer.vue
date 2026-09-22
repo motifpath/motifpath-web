@@ -16,6 +16,12 @@
  *   is forced to a 16:9 box by the library's own styles; that forced ratio is
  *   undone here and reapplied to just the video's own wrapper, so an aside
  *   panel doesn't squash the video's proportions.
+ * - `resetToken` is keyed only on `<media-provider>`, not on the whole
+ *   player. A stuck video engine needs a genuinely new provider element to
+ *   recover — the same swap Vidstack itself does when `src` changes providers
+ *   — but keying the whole player would tear down and rebuild the aside slot
+ *   too, and that's exactly the element an aria-live announcement needs to
+ *   stay mounted.
  */
 import 'vidstack/player'
 import 'vidstack/player/ui'
@@ -24,7 +30,11 @@ import 'vidstack/player/styles/base.css'
 import Icon from '@/shared/components/Icon.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-defineProps<{ src: string }>()
+defineProps<{
+  src: string
+  /** Changing this value throws away and reconnects the video provider. */
+  resetToken?: number | string
+}>()
 
 const emit = defineEmits<{
   /** The playback position, in seconds, as it advances. */
@@ -55,7 +65,7 @@ const controlClass =
     @error="emit('error')"
   >
     <div class="relative aspect-video w-full min-w-0 flex-1">
-      <media-provider />
+      <media-provider :key="resetToken" />
 
       <media-gesture
         event="pointerup"

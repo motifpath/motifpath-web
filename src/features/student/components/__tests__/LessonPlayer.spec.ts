@@ -126,4 +126,45 @@ describe('LessonPlayer', () => {
       expect(aside.get('[data-test="cue-probe"]').text()).toBe('a cue')
     })
   })
+
+  describe('recovering from a video that failed to load', () => {
+    it('starts a fresh provider when resetToken changes, so a stuck video engine is thrown away', async () => {
+      const wrapper = mount(LessonPlayer, { props: { src: SRC, resetToken: 1 } })
+      const before = wrapper.get('media-provider').element
+
+      await wrapper.setProps({ resetToken: 2 })
+
+      expect(wrapper.get('media-provider').element).not.toBe(before)
+    })
+
+    it('does not touch the video at all when resetToken is unchanged', async () => {
+      const wrapper = mount(LessonPlayer, { props: { src: SRC, resetToken: 1 } })
+      const before = wrapper.get('media-provider').element
+
+      await wrapper.setProps({ src: SRC })
+
+      expect(wrapper.get('media-provider').element).toBe(before)
+    })
+
+    it('keeps the aside content mounted across a reset, so an aria-live region stays observable', async () => {
+      const wrapper = mount(LessonPlayer, {
+        props: { src: SRC, resetToken: 1 },
+        slots: { aside: '<p data-test="cue-probe">a cue</p>' },
+      })
+      const before = wrapper.get('[data-test="cue-probe"]').element
+
+      await wrapper.setProps({ resetToken: 2 })
+
+      expect(wrapper.get('[data-test="cue-probe"]').element).toBe(before)
+    })
+
+    it('keeps the player itself mounted across a reset, so its controls are not rebuilt', async () => {
+      const wrapper = mount(LessonPlayer, { props: { src: SRC, resetToken: 1 } })
+      const before = wrapper.get('media-player').element
+
+      await wrapper.setProps({ resetToken: 2 })
+
+      expect(wrapper.get('media-player').element).toBe(before)
+    })
+  })
 })
