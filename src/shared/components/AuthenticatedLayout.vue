@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 
 import AppBar from '@/shared/components/AppBar.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 
 const { isCompact } = useIsCompact()
+
+// A route can opt into a wider content column (route.meta.wideContent) —
+// currently only the lesson screen, whose video would otherwise be squeezed
+// into the app's usual reading-width column even when the viewport has
+// spare room beside it.
+const route = useRoute()
+const contentWidthClass = computed(() => (route.meta.wideContent ? 'max-w-7xl' : 'max-w-4xl'))
 </script>
 
 <template>
   <div class="flex min-h-screen flex-col">
     <AppBar context="student" :compact="isCompact" :primary-nav-to="{ name: 'path' }" />
 
-    <main class="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
+    <main class="mx-auto w-full flex-1 px-4 py-8" :class="contentWidthClass">
       <RouterView />
     </main>
   </div>

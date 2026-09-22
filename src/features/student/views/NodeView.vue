@@ -169,7 +169,11 @@ async function finish(to: RouteLocationRaw): Promise<void> {
             @error="playbackFailed = true"
           />
         </div>
-        <div data-test="cue-region" aria-live="polite" class="empty:hidden landscape:w-1/3">
+        <div
+          data-test="cue-region"
+          aria-live="polite"
+          class="empty:hidden landscape:w-80 landscape:shrink-0"
+        >
           <CuePanel v-if="cue" :cue="cue" />
         </div>
       </div>

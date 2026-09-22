@@ -243,6 +243,14 @@ describe('NodeView', () => {
 
         expect(wrapper.get('[data-test="cue-region"]').attributes('aria-live')).toBe('polite')
       })
+
+      it('gives the cue a fixed width, not a share of the video, so a wider screen keeps the video full size', async () => {
+        const wrapper = await mountView()
+
+        const classes = wrapper.get('[data-test="cue-region"]').classes()
+        expect(classes).toContain('landscape:w-80')
+        expect(classes).not.toContain('landscape:w-1/3')
+      })
     })
 
     describe('finishing without a challenge', () => {
