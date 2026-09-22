@@ -38,6 +38,15 @@ const lesson = {
 }
 vi.mock('@/features/student/composables/useLessonNode', () => ({ useLessonNode: () => lesson }))
 
+// A real device's width and height are independent — a phone rotated to
+// landscape is wide but short. Tests drive this directly rather than via
+// window.matchMedia, since useMediaQuery's own reactivity to the query is
+// already covered by its own tests.
+const isShortViewport = ref(false)
+vi.mock('@/shared/composables/useMediaQuery', () => ({
+  useMediaQuery: () => ({ matches: isShortViewport }),
+}))
+
 const complete = vi.fn()
 const useLessonTracking = vi.fn<(source: unknown) => { complete: typeof complete }>(() => ({
   complete,
@@ -100,6 +109,7 @@ describe('NodeView', () => {
     complete.mockReset().mockResolvedValue(undefined)
     useLessonTracking.mockClear()
     lesson.retry.mockReset()
+    isShortViewport.value = false
     setLesson({})
   })
 
@@ -173,16 +183,33 @@ describe('NodeView', () => {
       expect(wrapper.get('h1').text()).toBe('Minor pentatonic shape 1')
     })
 
-    it('gives the title less room on a phone than the video below it, so the video is not pushed halfway off screen', async () => {
-      const wrapper = await mountView()
+    describe('on a short viewport — a narrow phone, or any phone rotated to landscape', () => {
+      beforeEach(() => {
+        isShortViewport.value = true
+      })
 
-      expect(wrapper.get('h1').classes()).toContain('text-lg')
+      it('gives the title less room than the video below it, so the video is not pushed halfway off screen', async () => {
+        const wrapper = await mountView()
+
+        expect(wrapper.get('h1').classes()).toContain('text-lg')
+        expect(wrapper.get('h1').classes()).not.toContain('text-2xl')
+      })
+
+      it('trims the page shell top padding, where every pixel above the video is wasted', async () => {
+        const wrapper = await mountView()
+
+        expect(wrapper.get('[data-test="node"]').classes()).toContain('-mt-7')
+      })
     })
 
-    it('trims the page shell top padding on a phone, where every pixel above the video is wasted', async () => {
-      const wrapper = await mountView()
+    describe('on a tall enough viewport', () => {
+      it('uses the page shell’s usual title size and top padding', async () => {
+        const wrapper = await mountView()
 
-      expect(wrapper.get('[data-test="node"]').classes()).toContain('-mt-7')
+        expect(wrapper.get('h1').classes()).toContain('text-2xl')
+        expect(wrapper.get('h1').classes()).not.toContain('text-lg')
+        expect(wrapper.get('[data-test="node"]').classes()).not.toContain('-mt-7')
+      })
     })
 
     it('plays the lesson video', async () => {

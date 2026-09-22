@@ -11,11 +11,18 @@ import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import StateLocked from '@/shared/components/StateLocked.vue'
+import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 const { t } = useTypedT()
 const route = useRoute()
 const router = useRouter()
+
+// A CSS width breakpoint alone can't tell a phone from a phone rotated to
+// landscape — a rotated phone is wide, but still short. The video is the
+// point of this screen, so the trimmed title and spacing apply whenever
+// either dimension is small, not just a narrow width.
+const { matches: isShortViewport } = useMediaQuery('(max-width: 767px), (max-height: 500px)')
 
 // Vue Router types a param as `string | string[]` (array only for a
 // repeatable segment, which `:nodeId` isn't) — narrow instead of asserting.
@@ -103,12 +110,14 @@ async function finish(to: RouteLocationRaw): Promise<void> {
 
 <template>
   <!-- The page shell's own py-8 top padding is 4rem — sized for desktop; on a
-       phone the video is the whole point of this screen, so pull the content
-       up toward the header instead of losing height to it (leaves 1rem, not
-       the shell's usual 4rem). The title is also given noticeably less room
-       than the shell's other pages use, so a long one can't push the video
-       halfway down the screen. -->
-  <section data-test="node" class="-mt-7 flex flex-col gap-4 md:mt-0">
+       short viewport the video is the whole point of this screen, so pull the
+       content up toward the header instead of losing height to it (leaves
+       1rem, not the shell's usual 4rem). The title is also given noticeably
+       less room than the shell's other pages use, so a long one can't push
+       the video halfway down the screen. "Short" means either dimension —
+       a narrow phone, or a phone rotated to landscape, is short on height
+       even though it's plenty wide. -->
+  <section data-test="node" class="flex flex-col gap-4" :class="isShortViewport && '-mt-7'">
     <RouterLink
       v-if="lesson.state.value !== 'locked'"
       :to="{ name: 'path' }"
@@ -118,7 +127,7 @@ async function finish(to: RouteLocationRaw): Promise<void> {
       {{ t('nodeView.backToPath') }}
     </RouterLink>
 
-    <h1 class="text-lg font-semibold text-accent-text md:text-2xl">
+    <h1 class="font-semibold text-accent-text" :class="isShortViewport ? 'text-lg' : 'text-2xl'">
       {{ lesson.node.value?.title ?? t('nodeView.heading') }}
     </h1>
 
