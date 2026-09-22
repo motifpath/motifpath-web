@@ -365,6 +365,43 @@ describe('NodeView', () => {
         expect(wrapper.find('[data-test="playback-error"]').exists()).toBe(false)
         expect(wrapper.find('media-player').exists()).toBe(true)
       })
+
+      it('hides the video rather than tearing it down, so a cue region stays mounted through the error', async () => {
+        setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+        const wrapper = await mountView()
+        const region = wrapper.get('[data-test="cue-region"]').element
+
+        wrapper.get('media-player').element.dispatchEvent(new CustomEvent('error', { detail: {} }))
+        await nextTick()
+
+        expect(wrapper.get('[data-test="cue-region"]').element).toBe(region)
+        expect(wrapper.get('[data-test="lesson"]').isVisible()).toBe(false)
+      })
+
+      it('keeps the cue region mounted through a retry too', async () => {
+        setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+        const wrapper = await mountView()
+        const region = wrapper.get('[data-test="cue-region"]').element
+        wrapper.get('media-player').element.dispatchEvent(new CustomEvent('error', { detail: {} }))
+        await nextTick()
+
+        await wrapper.get('[data-test="playback-error"] [data-test="retry"]').trigger('click')
+        await settle(wrapper)
+
+        expect(wrapper.get('[data-test="cue-region"]').element).toBe(region)
+        expect(wrapper.get('[data-test="lesson"]').isVisible()).toBe(true)
+      })
+
+      it('offers nothing to finish while the video is failing, even once it has ended once before', async () => {
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        wrapper.get('media-player').element.dispatchEvent(new CustomEvent('error', { detail: {} }))
+        await nextTick()
+
+        expect(wrapper.find('[data-test="complete"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="practice-link"]').exists()).toBe(false)
+      })
     })
   })
 

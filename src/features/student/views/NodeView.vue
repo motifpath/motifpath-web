@@ -50,7 +50,9 @@ const LessonPlayer = defineAsyncComponent({
 const playbackSeconds = ref(0)
 const videoEnded = ref(false)
 const playbackFailed = ref(false)
-// Bumped to throw the player away and start a fresh one after a failure.
+// Bumped after a playback failure; LessonPlayer keys just its video provider
+// on this, not itself, so the player and its aside slot — the aria-live
+// region a cue lives in — stay mounted across the reset.
 const playerKey = ref(0)
 const finishing = ref(false)
 
@@ -68,11 +70,14 @@ function resetPlayback(): void {
   finishing.value = false
 }
 
-// A reload, or a different lesson, starts a fresh viewing.
+// A reload, or a different lesson, starts a fresh viewing. A node change
+// always makes useLessonNode's own watcher call load(), which synchronously
+// sets state to 'loading' — so watching state alone already covers a node
+// change too; a separate watch(nodeId, ...) would only ever fire redundantly
+// alongside this one.
 watch([nodeId, () => lesson.state.value], ([, state], [, previousState]) => {
   if (state === 'loading' && previousState !== 'loading') resetPlayback()
 })
-watch(nodeId, resetPlayback)
 
 function retryPlayback(): void {
   playbackSeconds.value = 0
@@ -149,14 +154,20 @@ async function finish(to: RouteLocationRaw): Promise<void> {
       <p class="text-sm text-ink-muted">{{ t('nodeView.checkBackSoon') }}</p>
     </div>
 
-    <StateError
-      v-else-if="playbackFailed"
-      data-test="playback-error"
-      :message="t('nodeView.playbackError')"
-      @retry="retryPlayback()"
-    />
-
     <template v-else>
+      <!-- A playback failure shows an error, but does not unmount the player
+           below it (v-show, not v-if): the video engine still needs a fresh
+           provider on retry, but the player itself, and the aside slot the
+           cue's aria-live region lives in, must stay mounted throughout — an
+           announcement region that's removed and re-added is typically read
+           as silent by a screen reader. -->
+      <StateError
+        v-if="playbackFailed"
+        data-test="playback-error"
+        :message="t('nodeView.playbackError')"
+        @retry="retryPlayback()"
+      />
+
       <!-- The cue lives inside LessonPlayer's aside slot (not beside it as a
            separate element) so it is still shown when the player goes
            fullscreen — the Fullscreen API only renders an element's own
@@ -169,9 +180,9 @@ async function finish(to: RouteLocationRaw): Promise<void> {
            that's added already full of content, or removed and re-added each
            time, is typically read as silent. CuePanel itself still renders
            nothing between cues, via the empty:hidden rule below. -->
-      <div data-test="lesson">
+      <div v-show="!playbackFailed" data-test="lesson">
         <LessonPlayer
-          :key="playerKey"
+          :reset-token="playerKey"
           :src="mediaUrl"
           @time="playbackSeconds = $event"
           @ended="videoEnded = true"
@@ -187,7 +198,10 @@ async function finish(to: RouteLocationRaw): Promise<void> {
 
       <!-- A completed step is reviewed, not finished, so practice is offered
            right away rather than waiting for the video to end. -->
-      <div v-if="isReview && lesson.hasChallenge.value" class="flex flex-wrap items-center gap-4">
+      <div
+        v-if="!playbackFailed && isReview && lesson.hasChallenge.value"
+        class="flex flex-wrap items-center gap-4"
+      >
         <RouterLink
           data-test="practice-link"
           :to="{ name: 'practice', params: { nodeId } }"
@@ -197,7 +211,10 @@ async function finish(to: RouteLocationRaw): Promise<void> {
         </RouterLink>
       </div>
 
-      <div v-else-if="!isReview && videoEnded" class="flex flex-wrap items-center gap-4">
+      <div
+        v-else-if="!playbackFailed && !isReview && videoEnded"
+        class="flex flex-wrap items-center gap-4"
+      >
         <PrimaryButton
           v-if="lesson.hasChallenge.value"
           data-test="practice-link"
