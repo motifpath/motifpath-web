@@ -30,7 +30,24 @@
     "unavailable": "This lesson isn't available yet.",
     "checkBackSoon": "We're still building it — check back soon.",
     "practiceLink": "Practice this lesson ›",
-    "backToPath": "‹ Back to your path"
+    "backToPath": "‹ Back to your path",
+    "loadingNoun": "your lesson",
+    "errorMessage": "We couldn't load this lesson.",
+    "notFoundHeading": "Lesson not found",
+    "notFoundMessage": "This lesson isn't on your path.",
+    "noVideo": "This lesson doesn't have a video yet.",
+    "playbackError": "We couldn't play this video.",
+    "playerLoadError": "The video player couldn't load. Reload the page to try again.",
+    "markComplete": "Mark complete",
+    "goToPractice": "Go to practice ›"
+  },
+  "lessonPlayer": {
+    "play": "Play",
+    "seek": "Seek",
+    "mute": "Mute",
+    "fullscreen": "Fullscreen",
+    "resizeAside": "Resize the notes panel",
+    "resetAsideWidth": "Reset the notes panel to its default size"
   },
   "practiceView": {
     "loadingNoun": "the practice exercises",

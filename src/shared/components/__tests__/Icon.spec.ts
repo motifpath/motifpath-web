@@ -13,6 +13,13 @@ describe('Icon', () => {
     ['chevron-right', 'chevron-right'],
     ['sun', 'sun'],
     ['moon', 'moon'],
+    ['play', 'play'],
+    ['pause', 'pause'],
+    ['volume', 'volume-2'],
+    ['volume-off', 'volume-x'],
+    ['fullscreen', 'maximize'],
+    ['grip', 'grip-vertical'],
+    ['reset', 'rotate-ccw'],
   ] as const)('renders the %s role as the %s glyph', (name, iconClass) => {
     const wrapper = mount(Icon, { props: { name } })
 

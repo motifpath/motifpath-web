@@ -1,6 +1,7 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as VueRouter from 'vue-router'
 
 const signOut = vi.fn(async () => {})
 
@@ -13,6 +14,12 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
     displayInitial: { value: 'G' },
   }),
 }))
+
+const route: { meta: Record<string, unknown> } = { meta: {} }
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return { ...actual, useRoute: () => route }
+})
 
 import AuthenticatedLayout from '@/shared/components/AuthenticatedLayout.vue'
 
@@ -27,6 +34,7 @@ function mountLayout() {
 
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {
+    route.meta = {}
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -51,5 +59,29 @@ describe('AuthenticatedLayout', () => {
     const wrapper = mountLayout()
 
     expect(wrapper.findComponent({ name: 'RouterView' }).exists()).toBe(true)
+  })
+
+  it('uses the standard content width for an ordinary route', () => {
+    const wrapper = mountLayout()
+
+    expect(wrapper.get('main').classes()).toContain('max-w-4xl')
+    expect(wrapper.get('main').classes()).not.toContain('max-w-7xl')
+  })
+
+  it("gives a route marked 'wideContent' a wider column, so it isn't squeezed into the usual width", () => {
+    route.meta = { wideContent: true }
+
+    const wrapper = mountLayout()
+
+    expect(wrapper.get('main').classes()).toContain('max-w-7xl')
+    expect(wrapper.get('main').classes()).not.toContain('max-w-4xl')
+  })
+
+  it('grows that column further still on a very large screen, rather than capping it the same as a laptop', () => {
+    route.meta = { wideContent: true }
+
+    const wrapper = mountLayout()
+
+    expect(wrapper.get('main').classes()).toContain('2xl:max-w-[96rem]')
   })
 })

@@ -30,7 +30,24 @@
     "unavailable": "Esta lição ainda não está disponível.",
     "checkBackSoon": "Ainda estamos preparando. Volte em breve.",
     "practiceLink": "Praticar esta lição ›",
-    "backToPath": "‹ Voltar para sua trilha"
+    "backToPath": "‹ Voltar para sua trilha",
+    "loadingNoun": "sua lição",
+    "errorMessage": "Não foi possível carregar esta lição.",
+    "notFoundHeading": "Lição não encontrada",
+    "notFoundMessage": "Esta lição não está na sua trilha.",
+    "noVideo": "Esta lição ainda não tem vídeo.",
+    "playbackError": "Não foi possível reproduzir este vídeo.",
+    "playerLoadError": "O player de vídeo não carregou. Recarregue a página para tentar de novo.",
+    "markComplete": "Marcar como concluída",
+    "goToPractice": "Ir para a prática ›"
+  },
+  "lessonPlayer": {
+    "play": "Reproduzir",
+    "seek": "Buscar no vídeo",
+    "mute": "Silenciar",
+    "fullscreen": "Tela cheia",
+    "resizeAside": "Redimensionar o painel de anotações",
+    "resetAsideWidth": "Redefinir o painel de anotações para o tamanho padrão"
   },
   "practiceView": {
     "loadingNoun": "os exercícios de prática",

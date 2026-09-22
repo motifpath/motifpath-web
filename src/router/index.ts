@@ -12,6 +12,8 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     /** Route additionally requires the signed-in identity's role to be one of these. */
     requiresRole?: Role[]
+    /** Route wants a wider content column than the app's usual reading width. */
+    wideContent?: boolean
   }
 }
 
@@ -38,7 +40,9 @@ const routes: RouteRecordRaw[] = [
         // entry into this whole `/` subtree, instead of waiting on the
         // parent's beforeEnter above to settle first.
         beforeEnter: () =>
-          Promise.all([ensureAuthLocaleLoaded(), ensureStudentLocaleLoaded()]).then(() => undefined),
+          Promise.all([ensureAuthLocaleLoaded(), ensureStudentLocaleLoaded()]).then(
+            () => undefined,
+          ),
         component: () => import('@/features/student/views/HomeView.vue'),
       },
       {
@@ -77,6 +81,9 @@ const routes: RouteRecordRaw[] = [
         // (ADR-017 multi-path readiness). PB-8e replaces the placeholder body.
         path: 'nodes/:nodeId',
         name: 'node',
+        // Wider than the app's usual column: the video would otherwise be
+        // squeezed by a timed cue even when the viewport has room to spare.
+        meta: { wideContent: true },
         component: () => import('@/features/student/views/NodeView.vue'),
       },
       {
