@@ -34,16 +34,17 @@ const { t } = useTypedT()
 const isStudent = computed(() => props.context === 'student')
 const hasCrumb = computed(() => !isStudent.value && !!props.breadcrumbLabel)
 
-// Three permanent top-level sections for teachers, Content/Paths/Exercises,
-// resolved against `primaryNavTo`'s route name (never route-inferred, same
+// Four permanent top-level sections for teachers, Content/Paths/Exercises/
+// Diagrams, resolved against `primaryNavTo`'s route name (never route-inferred, same
 // explicit-prop style as breadcrumbLabel) so a view's existing
 // `primary-nav-to="{ name: 'teacher-exercises' }"` keeps working unchanged
 // and also drives which tab renders active / which section a breadcrumb
 // drills down from.
-const teacherNavItems: { name: string; labelKey: 'nav.content' | 'nav.paths' | 'nav.exercises' }[] = [
+const teacherNavItems: { name: string; labelKey: 'nav.content' | 'nav.paths' | 'nav.exercises' | 'nav.diagrams' }[] = [
   { name: 'teacher-content', labelKey: 'nav.content' },
   { name: 'teacher-paths', labelKey: 'nav.paths' },
   { name: 'teacher-exercises', labelKey: 'nav.exercises' },
+  { name: 'teacher-diagrams', labelKey: 'nav.diagrams' },
 ]
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string }).name)
 const fallbackTeacherSection = { name: 'teacher-exercises', labelKey: 'nav.exercises' as const }

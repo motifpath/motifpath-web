@@ -97,11 +97,11 @@ describe('AppBar', () => {
     expect(wrapper.text()).toContain('New content')
   })
 
-  it('shows all three teacher tabs (Content, Paths, Exercises) with no breadcrumb', () => {
+  it('shows all four teacher tabs (Content, Paths, Exercises, Diagrams) with no breadcrumb', () => {
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-exercises' } })
 
     const links = wrapper.findAllComponents(RouterLinkStub)
-    expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Exercises'])
+    expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Exercises', 'Diagrams'])
   })
 
   it('highlights the tab matching primaryNavTo as active', () => {
@@ -127,13 +127,13 @@ describe('AppBar', () => {
     warn.mockRestore()
   })
 
-  it('shows all three teacher tabs in the compact drawer', async () => {
+  it('shows all four teacher tabs in the compact drawer', async () => {
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-content' }, compact: true })
 
     await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
 
     const drawerLinks = wrapper.get('[data-test="app-bar-drawer"]').findAllComponents(RouterLinkStub)
-    expect(drawerLinks.map((link: { text: () => string }) => link.text())).toEqual(['Content', 'Paths', 'Exercises'])
+    expect(drawerLinks.map((link: { text: () => string }) => link.text())).toEqual(['Content', 'Paths', 'Exercises', 'Diagrams'])
   })
 
   it('hides the hamburger and shows inline nav when not compact', () => {

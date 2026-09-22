@@ -177,6 +177,32 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/teacher/diagrams',
+    // Same pass-through hoisting as /teacher/content and /teacher/paths above.
+    component: RouterView,
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'teacher-diagrams',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/DiagramListView.vue'),
+      },
+      {
+        path: 'new',
+        name: 'teacher-diagram-new',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/DiagramAuthoringView.vue'),
+      },
+      {
+        path: ':id/edit',
+        name: 'teacher-diagram-edit',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/DiagramAuthoringView.vue'),
+      },
+    ],
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/shared/components/NotFoundView.vue'),

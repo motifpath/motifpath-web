@@ -1,0 +1,119 @@
+import { mount, RouterLinkStub } from '@vue/test-utils'
+import { createPinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
+
+const GET = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { GET }, eventApi: {} }),
+}))
+
+const currentUser = reactive({ profile: { role: 'teacher' as 'student' | 'teacher' | 'admin' } })
+vi.mock('@/stores/currentUser', () => ({
+  useCurrentUserStore: () => currentUser,
+}))
+
+vi.mock('@/features/auth/composables/useAuth', () => ({
+  useAuth: () => ({
+    isLoaded: { value: true },
+    isSignedIn: { value: true },
+    getToken: async () => 'jwt',
+    signOut: vi.fn(async () => {}),
+    displayInitial: { value: 'G' },
+  }),
+}))
+
+function mockMatchMedia(compact: boolean): void {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: compact,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}
+
+import DiagramListView from '@/features/teacher/views/DiagramListView.vue'
+
+function mountView() {
+  return mount(DiagramListView, {
+    global: {
+      plugins: [createPinia()],
+      stubs: { RouterLink: RouterLinkStub },
+    },
+  })
+}
+
+describe('DiagramListView', () => {
+  beforeEach(() => {
+    GET.mockReset()
+    currentUser.profile.role = 'teacher'
+    mockMatchMedia(false)
+  })
+
+  it('shows a permission-denied state for a student instead of the list', () => {
+    currentUser.profile.role = 'student'
+    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
+  })
+
+  it('shows a loading state while fetching', () => {
+    GET.mockReturnValueOnce(new Promise(() => {}))
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
+  })
+
+  it('shows an error state with retry when loading fails', async () => {
+    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(wrapper.find('[data-test="error"]').exists()).toBe(true)
+
+    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    await wrapper.get('[data-test="retry"]').trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(wrapper.find('[data-test="error"]').exists()).toBe(false)
+  })
+
+  it('shows an empty state with a link to create the first diagram', async () => {
+    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(wrapper.find('[data-test="empty"]').exists()).toBe(true)
+    const link = wrapper.get('[data-test="empty"]').findComponent(RouterLinkStub)
+    expect(link.props('to')).toEqual({ name: 'teacher-diagram-new' })
+  })
+
+  it('lists diagrams, each linking to its edit route', async () => {
+    GET.mockResolvedValueOnce({
+      data: [
+        { diagram_id: 'd-1', name: 'Minor Pentatonic — Position 1', instrument_id: 'i-1' },
+        { diagram_id: 'd-2', name: 'C Major Scale', instrument_id: 'i-1' },
+      ],
+      error: undefined,
+      response: { status: 200 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(wrapper.text()).toContain('Minor Pentatonic — Position 1')
+    expect(wrapper.text()).toContain('C Major Scale')
+
+    const links = wrapper
+      .findAllComponents(RouterLinkStub)
+      .filter((l) => typeof l.props('to') === 'object' && (l.props('to') as { name?: string }).name === 'teacher-diagram-edit')
+    expect(links.map((l) => l.props('to'))).toEqual(
+      expect.arrayContaining([
+        { name: 'teacher-diagram-edit', params: { id: 'd-1' } },
+        { name: 'teacher-diagram-edit', params: { id: 'd-2' } },
+      ]),
+    )
+  })
+})
