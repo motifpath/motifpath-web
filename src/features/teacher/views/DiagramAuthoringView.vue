@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
+import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
@@ -17,6 +18,7 @@ import StateLoading from '@/shared/components/StateLoading.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
+import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
 import type { components } from '@/api/generated/core-domain'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -73,13 +75,35 @@ const selectedInstrument = computed(() =>
   instruments.value.find((i) => i.instrument_id === form.instrumentId.value),
 )
 
+// Only tracks tuning here — never auto-recomputes on instrument change, since that would
+// blindly overwrite interval/note_name an edit-mode load just populated from the server (no
+// root note is persisted to derive them back from). Recompute only happens from an explicit
+// root-note pick (onRootNoteChange) or when a brand new position is placed.
+watch(
+  selectedInstrument,
+  (instrument) => {
+    form.tuning.value = instrument?.tuning ?? []
+  },
+  { immediate: true },
+)
+
+function onRootNoteChange(rootNote: string) {
+  form.rootNote.value = rootNote
+  form.recomputeFromRoot()
+}
+
+const showPreviewModal = ref(false)
+
 const previewDiagram = computed<Diagram | null>(() => {
   if (!selectedInstrument.value || form.positions.value.length === 0) return null
+  const request = form.toCreateDiagramRequest()
   return {
     diagram_id: savedDiagramId.value,
     instrument_id: form.instrumentId.value,
     name: form.name.value,
-    positions: form.toCreateDiagramRequest().positions,
+    root_note: request.root_note ?? null,
+    label_display: form.labelDisplay.value,
+    positions: request.positions,
     classification: { skills: [], concepts: [] },
     created_at: '',
   }
@@ -174,7 +198,7 @@ async function save() {
               :key="instrument.instrument_id"
               type="button"
               data-test="instrument-option"
-              :disabled="isEditMode"
+              :disabled="isEditMode || form.hasPositions.value"
               class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               :class="form.instrumentId.value === instrument.instrument_id ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
               @click="form.instrumentId.value = instrument.instrument_id"
@@ -182,20 +206,66 @@ async function save() {
               {{ instrument.name }}
             </button>
           </div>
-          <span v-if="isEditMode" class="text-sm text-ink-subtle">
+          <span v-if="isEditMode || form.hasPositions.value" class="text-sm text-ink-subtle">
             {{ t('diagramAuthoringView.instrumentLockedHint') }}
           </span>
         </div>
 
+        <div v-if="selectedInstrument" class="flex flex-col gap-2.5">
+          <label class="text-sm font-semibold" for="diagram-root-note">{{ t('diagramAuthoringView.rootNoteLabel') }}</label>
+          <select
+            id="diagram-root-note"
+            data-test="root-note-select"
+            :value="form.rootNote.value"
+            class="w-fit rounded-md border border-border bg-surface px-3 py-2 text-sm"
+            @change="onRootNoteChange(($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">{{ t('diagramAuthoringView.rootNotePlaceholder') }}</option>
+            <option v-for="note in CHROMATIC_SCALE" :key="note" :value="note">{{ note }}</option>
+          </select>
+          <span class="text-sm text-ink-subtle">{{ t('diagramAuthoringView.rootNoteHint') }}</span>
+        </div>
+
         <div v-if="selectedInstrument" class="flex flex-col gap-2">
-          <label class="text-sm font-semibold">{{ t('diagramAuthoringView.positionsLabel') }}</label>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-semibold">{{ t('diagramAuthoringView.positionsLabel') }}</label>
+            <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
+              <button
+                type="button"
+                data-test="label-mode-interval"
+                class="rounded-md px-3 py-1 text-xs font-semibold"
+                :class="form.labelDisplay.value === 'interval' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+                @click="form.labelDisplay.value = 'interval'"
+              >
+                {{ t('diagramAuthoringView.labelModeInterval') }}
+              </button>
+              <button
+                type="button"
+                data-test="label-mode-note"
+                class="rounded-md px-3 py-1 text-xs font-semibold"
+                :class="form.labelDisplay.value === 'note' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+                @click="form.labelDisplay.value = 'note'"
+              >
+                {{ t('diagramAuthoringView.labelModeNote') }}
+              </button>
+              <button
+                type="button"
+                data-test="label-mode-hidden"
+                class="rounded-md px-3 py-1 text-xs font-semibold"
+                :class="form.labelDisplay.value === 'hidden' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+                @click="form.labelDisplay.value = 'hidden'"
+              >
+                {{ t('diagramAuthoringView.labelModeHidden') }}
+              </button>
+            </div>
+          </div>
           <FrettedDiagramEditor
             :instrument="selectedInstrument"
             :positions="form.positions.value"
+            :label-mode="form.labelDisplay.value"
             @toggle-cell="form.toggleCell"
-            @edit-interval="form.editPositionInterval"
-            @edit-note-name="form.editPositionNoteName"
-            @set-sequence-index="form.setSequenceIndex"
+            @reorder="form.reorderPositions"
+            @set-shape="form.setPositionShape"
             @remove="form.removePosition"
           />
         </div>
@@ -238,15 +308,35 @@ async function save() {
           <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">
             {{ t('diagramAuthoringView.previewLabel') }}
           </span>
-          <FrettedDiagramView
-            v-if="previewDiagram && selectedInstrument"
-            :diagram="previewDiagram"
-            :instrument="selectedInstrument"
-            :diagram-ref="previewDiagramRef"
-          />
+          <template v-if="previewDiagram && selectedInstrument">
+            <FrettedDiagramView
+              :diagram="previewDiagram"
+              :instrument="selectedInstrument"
+              :diagram-ref="previewDiagramRef"
+              :label-mode="form.labelDisplay.value"
+            />
+            <button
+              type="button"
+              data-test="open-preview-modal"
+              class="w-fit rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink-muted"
+              @click="showPreviewModal = true"
+            >
+              {{ t('diagramAuthoringView.viewPreviewButton') }}
+            </button>
+          </template>
           <p v-else class="text-sm text-ink-subtle">{{ t('diagramAuthoringView.previewEmpty') }}</p>
         </div>
       </aside>
+
+      <DiagramPreviewModal
+        v-if="previewDiagram && selectedInstrument"
+        :open="showPreviewModal"
+        :diagram="previewDiagram"
+        :instrument="selectedInstrument"
+        :diagram-ref="previewDiagramRef"
+        :label-mode="form.labelDisplay.value"
+        @close="showPreviewModal = false"
+      />
     </div>
   </div>
 </template>

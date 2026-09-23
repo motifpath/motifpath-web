@@ -124,6 +124,9 @@
     "emptyHeading": "No exercises yet",
     "emptyMessage": "Create your first exercise to start building the reusable pool."
   },
+  "diagramPreviewModal": {
+    "title": "Diagram preview"
+  },
   "diagramListView": {
     "heading": "Diagrams",
     "loadingNoun": "diagrams",
@@ -141,12 +144,19 @@
     "instrumentLabel": "Instrument",
     "instrumentLoading": "Loading instruments…",
     "instrumentPlaceholder": "Choose an instrument",
-    "instrumentLockedHint": "The instrument can't be changed after the diagram is created.",
+    "instrumentLockedHint": "The instrument can't be changed once a position has been placed — remove every position first if you need to switch.",
+    "rootNoteLabel": "Root note",
+    "rootNotePlaceholder": "Choose a root note",
+    "rootNoteHint": "Used to auto-fill each position's interval and note name — not saved on the diagram itself.",
     "positionsLabel": "Positions",
+    "labelModeInterval": "Interval",
+    "labelModeNote": "Note",
+    "labelModeHidden": "Hidden",
     "classificationLabel": "Classification",
     "classificationHint": "A diagram needs at least one skill and one concept to be reusable across the library.",
     "previewLabel": "Preview",
     "previewEmpty": "Place a position to see a preview.",
+    "viewPreviewButton": "View full preview",
     "diagramUpdated": "Diagram updated.",
     "diagramCreated": "Diagram created.",
     "saveFailed": "Failed to save the diagram",
@@ -156,9 +166,8 @@
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
     "stringFret": "String {string}, fret {fret}",
-    "intervalPlaceholder": "Interval",
-    "noteNamePlaceholder": "Note",
-    "sequencePlaceholder": "Order",
+    "reorderHint": "Drag a position to reorder its place in the sequence",
+    "shapeAriaLabel": "Show this position as a {shape}",
     "removePositionAriaLabel": "Remove this position"
   },
   "skillConceptTreePicker": {

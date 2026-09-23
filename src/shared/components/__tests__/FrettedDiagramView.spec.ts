@@ -85,6 +85,81 @@ describe('FrettedDiagramView', () => {
     expect(defaultRoot?.classes()).toContain('fill-accent')
   })
 
+  it('sets the marker fill directly on the circle, not via inherited currentColor', () => {
+    // Regression guard: a bare fill="currentColor" on the circle would silently pick up
+    // whatever `color` happens to be ambient on the page instead of the intended
+    // root/interval color, since fill-accent/fill-ink set `fill`, not `color` — invisible in
+    // isolation but capable of rendering a marker's label unreadable against its own circle.
+    const wrapper = mount(FrettedDiagramView, {
+      props: {
+        diagram: makeFrettedDiagram(),
+        instrument: makeFrettedInstrument(),
+        diagramRef: makeDiagramRef({ styling: { root_color: '#c0392b' } }),
+      },
+    })
+
+    const circle = wrapper.find('[data-test="diagram-position"]')
+    expect(circle.attributes('fill')).not.toBe('currentColor')
+    expect(circle.attributes('style')).toContain('fill: #c0392b')
+  })
+
+  it('renders a position\'s marker shape as a square or star rather than always a dot', () => {
+    const diagram = makeFrettedDiagram()
+    diagram.positions[0]!.shape = 'star'
+    diagram.positions[1]!.shape = 'square'
+    const wrapper = mount(FrettedDiagramView, {
+      props: { diagram, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
+    })
+
+    const markers = wrapper.findAll('[data-test="diagram-position"]')
+    expect(markers[0]?.element.tagName).toBe('polygon')
+    expect(markers[1]?.element.tagName).toBe('rect')
+    expect(markers[2]?.element.tagName).toBe('circle')
+  })
+
+  it('hides every label when labelMode is "hidden"', () => {
+    const wrapper = mount(FrettedDiagramView, {
+      props: {
+        diagram: makeFrettedDiagram(),
+        instrument: makeFrettedInstrument(),
+        diagramRef: makeDiagramRef({ layers: { intervals: true } }),
+        labelMode: 'hidden',
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="diagram-position-label"]')).toHaveLength(0)
+  })
+
+  it('draws string 1 above string 6 (high string on top, matching tab convention)', () => {
+    const wrapper = mount(FrettedDiagramView, {
+      props: {
+        diagram: makeFrettedDiagram(),
+        instrument: makeFrettedInstrument(),
+        diagramRef: makeDiagramRef(),
+      },
+    })
+
+    // p0 is on string 6, p5 is on string 4 — both lower-numbered-string positions
+    // (higher pitched) must sit above higher-numbered-string ones.
+    const circles = wrapper.findAll('[data-test="diagram-position"]')
+    const p0 = circles[0] // string 6
+    const p4 = circles[4] // string 4
+    expect(Number(p4?.attributes('cy'))).toBeLessThan(Number(p0?.attributes('cy')))
+  })
+
+  it('shows note names instead of intervals when labelMode is "note"', () => {
+    const wrapper = mount(FrettedDiagramView, {
+      props: {
+        diagram: makeFrettedDiagram(),
+        instrument: makeFrettedInstrument(),
+        diagramRef: makeDiagramRef({ layers: { intervals: true } }),
+        labelMode: 'note',
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="diagram-position-label"]')[0]?.text()).toBe('A')
+  })
+
   it('renders an accessible label on the root svg element', () => {
     const wrapper = mount(FrettedDiagramView, {
       props: {

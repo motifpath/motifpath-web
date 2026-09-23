@@ -9,16 +9,21 @@ import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
+import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 type DiagramRef = components['schemas']['DiagramRef']
 
-const props = defineProps<{
-  diagram: Diagram
-  instrument: Instrument
-  diagramRef: DiagramRef
-}>()
+const props = withDefaults(
+  defineProps<{
+    diagram: Diagram
+    instrument: Instrument
+    diagramRef: DiagramRef
+    labelMode?: 'interval' | 'note' | 'hidden'
+  }>(),
+  { labelMode: 'interval' },
+)
 
 const VIEW_W = 720
 const VIEW_H = 300
@@ -41,8 +46,19 @@ function x(fret: number): number {
   return MARGIN_LEFT + (fret - layout.value.minFret) * colGap.value
 }
 
+/**
+ * X position for a position marker — the middle of the fret space behind
+ * the fret wire, matching standard fretboard-diagram convention (mirrors
+ * `frettedFretboardEditor.ts`'s `positionX`, which the editor uses; this
+ * viewer keeps its own local geometry rather than sharing that module).
+ */
+function markerX(fret: number): number {
+  if (fret === 0) return x(0) - colGap.value / 2
+  return (x(fret - 1) + x(fret)) / 2
+}
+
 function y(stringNumber: number): number {
-  return MARGIN_TOP + (layout.value.stringCount - stringNumber) * rowGap.value
+  return MARGIN_TOP + (stringNumber - 1) * rowGap.value
 }
 
 const frets = computed(() => {
@@ -51,6 +67,21 @@ const frets = computed(() => {
   const result: number[] = []
   for (let fret = start; fret <= end; fret++) result.push(fret)
   return result
+})
+
+// Conventional fretboard inlay-dot frets — single dot, except a double dot at the octave marks.
+const SINGLE_DOT_FRETS = [3, 5, 7, 9, 15, 17, 19, 21]
+const DOUBLE_DOT_FRETS = [12, 24]
+const boardMidY = computed(() => (y(1) + y(layout.value.stringCount)) / 2)
+const inlayDots = computed(() => {
+  const dots: { fret: number; cy: number }[] = []
+  for (const fret of frets.value) {
+    if (SINGLE_DOT_FRETS.includes(fret)) dots.push({ fret, cy: boardMidY.value })
+    if (DOUBLE_DOT_FRETS.includes(fret)) {
+      dots.push({ fret, cy: boardMidY.value - 22 }, { fret, cy: boardMidY.value + 22 })
+    }
+  }
+  return dots
 })
 
 const rootColor = computed(() => props.diagramRef.styling?.root_color ?? null)
@@ -89,13 +120,32 @@ function labelClass(isRoot: boolean): string {
     class="w-full"
     font-family="monospace"
   >
+    <defs>
+      <linearGradient :id="`fretboard-wood-${diagram.diagram_id}`" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.55" />
+        <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="1" />
+        <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.7" />
+      </linearGradient>
+    </defs>
+
     <rect
       :x="MARGIN_LEFT"
       :y="MARGIN_TOP - rowGap / 2"
       :width="BOARD_W"
       :height="BOARD_H + rowGap"
       rx="6"
-      class="fill-surface-sunken"
+      :fill="`url(#fretboard-wood-${diagram.diagram_id})`"
+    />
+
+    <circle
+      v-for="(dot, index) in inlayDots"
+      :key="`inlay-${dot.fret}-${index}`"
+      data-test="fret-inlay"
+      :cx="markerX(dot.fret)"
+      :cy="dot.cy"
+      r="4"
+      class="fill-ink-subtle"
+      opacity="0.4"
     />
 
     <line
@@ -129,27 +179,46 @@ function labelClass(isRoot: boolean): string {
       </text>
     </g>
 
-    <g
-      v-for="position in layout.positions"
-      :key="position.positionId"
-      data-test="diagram-position"
-      :class="shapeClass(position.isRoot)"
-      :style="shapeStyle(position.isRoot)"
-    >
-      <circle :cx="x(position.fret)" :cy="y(position.string)" r="13.5" fill="currentColor" />
+    <g v-for="position in layout.positions" :key="position.positionId">
+      <circle
+        v-if="position.shape === 'dot'"
+        data-test="diagram-position"
+        :cx="markerX(position.fret)"
+        :cy="y(position.string)"
+        r="13.5"
+        :class="shapeClass(position.isRoot)"
+        :style="shapeStyle(position.isRoot)"
+      />
+      <rect
+        v-else-if="position.shape === 'square'"
+        data-test="diagram-position"
+        :x="markerX(position.fret) - 12"
+        :y="y(position.string) - 12"
+        width="24"
+        height="24"
+        rx="3"
+        :class="shapeClass(position.isRoot)"
+        :style="shapeStyle(position.isRoot)"
+      />
+      <polygon
+        v-else
+        data-test="diagram-position"
+        :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
+        :class="shapeClass(position.isRoot)"
+        :style="shapeStyle(position.isRoot)"
+      />
       <text
-        v-if="diagramRef.layers.intervals"
+        v-if="diagramRef.layers.intervals && labelMode !== 'hidden'"
         data-test="diagram-position-label"
-        :x="x(position.fret)"
+        :x="markerX(position.fret)"
         :y="y(position.string) + 4.5"
         text-anchor="middle"
         font-size="11.5"
         font-weight="600"
         :class="labelClass(position.isRoot)"
         :style="labelStyle(position.isRoot)"
-        fill="currentColor"
       >
-        {{ position.interval }}
+        {{ labelMode === 'note' ? position.noteName : position.interval }}
       </text>
     </g>
   </svg>

@@ -16,14 +16,24 @@ describe('useDiagramForm', () => {
     expect(form.canSave.value).toBe(false)
   })
 
-  it('adds a position at the given cell with empty interval/note_name and no sequence', () => {
+  it('adds a position at the given cell with empty interval/note_name, sequenced by placement order, shaped as a dot', () => {
     const form = useDiagramForm()
 
     form.addPosition({ string: 6, fret: 5 })
 
     expect(form.positions.value).toHaveLength(1)
-    expect(form.positions.value[0]).toMatchObject({ string: 6, fret: 5, interval: '', noteName: '', sequenceIndex: null })
+    expect(form.positions.value[0]).toMatchObject({ string: 6, fret: 5, interval: '', noteName: '', shape: 'dot', sequenceIndex: 0 })
     expect(form.positions.value[0].id).toBeTruthy()
+  })
+
+  it('sets a position\'s shape', () => {
+    const form = useDiagramForm()
+    form.addPosition({ string: 6, fret: 5 })
+    const id = form.positions.value[0].id
+
+    form.setPositionShape(id, 'star')
+
+    expect(form.positions.value[0].shape).toBe('star')
   })
 
   it('does not add a second position on a cell that already has one', () => {
@@ -55,38 +65,59 @@ describe('useDiagramForm', () => {
     expect(form.positions.value).toHaveLength(0)
   })
 
-  it('edits a position interval and note name', () => {
+  it('reorders positions and re-derives every sequence_index from the new array order', () => {
     const form = useDiagramForm()
     form.addPosition({ string: 6, fret: 5 })
-    const id = form.positions.value[0].id
+    form.addPosition({ string: 5, fret: 3 })
+    form.addPosition({ string: 4, fret: 2 })
+    const [first, second, third] = form.positions.value.map((p) => p.id)
+    expect(form.positions.value.map((p) => p.sequenceIndex)).toEqual([0, 1, 2])
 
-    form.editPositionInterval(id, 'R')
-    form.editPositionNoteName(id, 'A')
+    form.reorderPositions(0, 2)
 
-    expect(form.positions.value[0]).toMatchObject({ interval: 'R', noteName: 'A' })
+    expect(form.positions.value.map((p) => p.id)).toEqual([second, third, first])
+    expect(form.positions.value.map((p) => p.sequenceIndex)).toEqual([0, 1, 2])
   })
 
-  it('sets and clears a position sequence index', () => {
+  it('auto-fills interval and note_name from tuning + root note when a position is placed', () => {
     const form = useDiagramForm()
+    form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+    form.rootNote.value = 'A'
+
     form.addPosition({ string: 6, fret: 5 })
-    const id = form.positions.value[0].id
 
-    form.setSequenceIndex(id, 0)
-    expect(form.positions.value[0].sequenceIndex).toBe(0)
+    expect(form.positions.value[0]).toMatchObject({ noteName: 'A', interval: 'R' })
+  })
 
-    form.setSequenceIndex(id, null)
-    expect(form.positions.value[0].sequenceIndex).toBeNull()
+  it('leaves interval/note_name empty when tuning or root note is not set yet', () => {
+    const form = useDiagramForm()
+
+    form.addPosition({ string: 6, fret: 5 })
+
+    expect(form.positions.value[0]).toMatchObject({ interval: '', noteName: '' })
+  })
+
+  it('recomputes every position from the new root when the root note changes', () => {
+    const form = useDiagramForm()
+    form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+    form.rootNote.value = 'A'
+    form.addPosition({ string: 6, fret: 5 }) // A
+
+    form.rootNote.value = 'E'
+    form.recomputeFromRoot()
+
+    expect(form.positions.value[0]).toMatchObject({ noteName: 'A', interval: '4' })
   })
 
   it('canSave requires a name, at least one position, and both a skill and a concept', () => {
     const form = useDiagramForm()
+    form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+    form.rootNote.value = 'A'
 
     form.name.value = 'Minor Pentatonic'
     expect(form.canSave.value).toBe(false)
 
     form.addPosition({ string: 6, fret: 5 })
-    form.editPositionInterval(form.positions.value[0].id, 'R')
-    form.editPositionNoteName(form.positions.value[0].id, 'A')
     expect(form.canSave.value).toBe(false)
 
     form.skillIds.value = ['s-1']
@@ -96,48 +127,62 @@ describe('useDiagramForm', () => {
     expect(form.canSave.value).toBe(true)
   })
 
-  it('canSave stays false while any placed position is missing an interval or note name', () => {
+  it('canSave stays false while any placed position is missing an interval or note name (no root/tuning set yet)', () => {
     const form = useDiagramForm()
     form.name.value = 'Minor Pentatonic'
     form.skillIds.value = ['s-1']
     form.conceptIds.value = ['c-1']
     form.addPosition({ string: 6, fret: 5 })
 
-    // Freshly placed: interval and noteName both start empty.
+    // No tuning/root set: interval and noteName both stay empty (auto-fill has nothing to compute from).
     expect(form.canSave.value).toBe(false)
 
-    form.editPositionInterval(form.positions.value[0].id, 'R')
-    expect(form.canSave.value).toBe(false)
-
-    form.editPositionNoteName(form.positions.value[0].id, 'A')
+    form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+    form.rootNote.value = 'A'
+    form.recomputeFromRoot()
     expect(form.canSave.value).toBe(true)
 
-    // A second position added later re-blocks save until it's tagged too.
+    // A second position added after tuning/root are set is auto-filled immediately, so save stays enabled.
     form.addPosition({ string: 5, fret: 3 })
-    expect(form.canSave.value).toBe(false)
+    expect(form.canSave.value).toBe(true)
   })
 
-  it('maps form state to a CreateDiagramRequest', () => {
+  it('maps form state to a CreateDiagramRequest, including root_note and label_display', () => {
     const form = useDiagramForm()
     form.name.value = 'Minor Pentatonic — Position 1'
     form.instrumentId.value = 'instrument-guitar'
     form.skillIds.value = ['s-1']
     form.conceptIds.value = ['c-1']
+    form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+    form.rootNote.value = 'A'
+    form.labelDisplay.value = 'note'
     form.addPosition({ string: 6, fret: 5 })
-    form.editPositionInterval(form.positions.value[0].id, 'R')
-    form.editPositionNoteName(form.positions.value[0].id, 'A')
+    form.setPositionShape(form.positions.value[0].id, 'star')
 
     const request = form.toCreateDiagramRequest()
 
     expect(request).toEqual({
       instrument_id: 'instrument-guitar',
       name: 'Minor Pentatonic — Position 1',
-      positions: [{ position_id: form.positions.value[0].id, string: 6, fret: 5, interval: 'R', note_name: 'A', sequence_index: null }],
+      root_note: 'A',
+      label_display: 'note',
+      positions: [{ position_id: form.positions.value[0].id, string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'star', sequence_index: 0 }],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
     })
   })
 
-  it('maps form state to an UpdateDiagramRequest, without instrument_id', () => {
+  it('sends a null root_note on create when none has been set', () => {
+    const form = useDiagramForm()
+    form.name.value = 'D'
+    form.instrumentId.value = 'instrument-guitar'
+
+    const request = form.toCreateDiagramRequest()
+
+    expect(request.root_note).toBeNull()
+    expect(request.label_display).toBe('interval')
+  })
+
+  it('maps form state to an UpdateDiagramRequest, without instrument_id, omitting an unset root_note', () => {
     const form = useDiagramForm()
     form.name.value = 'Renamed'
     form.skillIds.value = ['s-1']
@@ -147,14 +192,28 @@ describe('useDiagramForm', () => {
 
     expect(request).toEqual({
       name: 'Renamed',
+      label_display: 'interval',
       positions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
     })
+    expect(request.root_note).toBeUndefined()
   })
 
-  it('loads form state from an existing Diagram', () => {
+  it('includes root_note in an UpdateDiagramRequest once set', () => {
+    const form = useDiagramForm()
+    form.name.value = 'Renamed'
+    form.rootNote.value = 'E'
+
+    const request = form.toUpdateDiagramRequest()
+
+    expect(request.root_note).toBe('E')
+  })
+
+  it('loads form state from an existing Diagram, including root_note, label_display and each position\'s shape', () => {
     const form = useDiagramForm()
     const diagram = makeFrettedDiagram({
+      root_note: 'A',
+      label_display: 'note',
       classification: {
         skills: [{ skill_id: 's-1', name: 'Pentatonic scales', parent_id: null }],
         concepts: [{ concept_id: 'c-1', name: 'Scale construction', parent_id: null }],
@@ -165,6 +224,8 @@ describe('useDiagramForm', () => {
 
     expect(form.name.value).toBe(diagram.name)
     expect(form.instrumentId.value).toBe(diagram.instrument_id)
+    expect(form.rootNote.value).toBe('A')
+    expect(form.labelDisplay.value).toBe('note')
     expect(form.positions.value).toHaveLength(diagram.positions.length)
     expect(form.positions.value[0]).toMatchObject({
       id: 'p0',
@@ -172,9 +233,19 @@ describe('useDiagramForm', () => {
       fret: 5,
       interval: 'R',
       noteName: 'A',
+      shape: 'dot',
       sequenceIndex: 0,
     })
     expect(form.skillIds.value).toEqual(['s-1'])
     expect(form.conceptIds.value).toEqual(['c-1'])
+  })
+
+  it('loads an unrecorded root_note as empty', () => {
+    const form = useDiagramForm()
+    const diagram = makeFrettedDiagram({ root_note: null })
+
+    form.loadFromDiagram(diagram)
+
+    expect(form.rootNote.value).toBe('')
   })
 })

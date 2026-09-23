@@ -124,6 +124,9 @@
     "emptyHeading": "Ainda não há exercícios",
     "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável."
   },
+  "diagramPreviewModal": {
+    "title": "Pré-visualização do diagrama"
+  },
   "diagramListView": {
     "heading": "Diagramas",
     "loadingNoun": "diagramas",
@@ -141,12 +144,19 @@
     "instrumentLabel": "Instrumento",
     "instrumentLoading": "Carregando instrumentos…",
     "instrumentPlaceholder": "Escolha um instrumento",
-    "instrumentLockedHint": "O instrumento não pode ser alterado depois que o diagrama é criado.",
+    "instrumentLockedHint": "O instrumento não pode ser alterado depois que uma posição é colocada — remova todas as posições primeiro se precisar trocar.",
+    "rootNoteLabel": "Nota fundamental",
+    "rootNotePlaceholder": "Escolha a nota fundamental",
+    "rootNoteHint": "Usada para preencher automaticamente o intervalo e o nome da nota de cada posição — não é salva no diagrama.",
     "positionsLabel": "Posições",
+    "labelModeInterval": "Intervalo",
+    "labelModeNote": "Nota",
+    "labelModeHidden": "Oculto",
     "classificationLabel": "Classificação",
     "classificationHint": "Um diagrama precisa de pelo menos uma habilidade e um conceito para ser reutilizável na biblioteca.",
     "previewLabel": "Pré-visualização",
     "previewEmpty": "Posicione uma marcação para ver a pré-visualização.",
+    "viewPreviewButton": "Ver pré-visualização completa",
     "diagramUpdated": "Diagrama atualizado.",
     "diagramCreated": "Diagrama criado.",
     "saveFailed": "Falha ao salvar o diagrama",
@@ -156,9 +166,8 @@
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
     "stringFret": "Corda {string}, casa {fret}",
-    "intervalPlaceholder": "Intervalo",
-    "noteNamePlaceholder": "Nota",
-    "sequencePlaceholder": "Ordem",
+    "reorderHint": "Arraste uma posição para reordenar sua sequência",
+    "shapeAriaLabel": "Mostrar esta posição como {shape}",
     "removePositionAriaLabel": "Remover esta posição"
   },
   "skillConceptTreePicker": {
