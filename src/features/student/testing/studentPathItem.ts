@@ -41,6 +41,7 @@ export function makeStudentPathView(
     title: 'Blues Foundations',
     current_position: firstUndone ? firstUndone.position : items.length + 1,
     items,
+    course_completed: false,
     ...overrides,
   }
 }
