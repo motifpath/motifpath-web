@@ -10,6 +10,7 @@ vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
@@ -56,9 +57,26 @@ describe('PromptEditor', () => {
       'font-color',
       'background-color',
     ]
+    const paletteMenus = new Set(['font-color', 'background-color'])
     for (const name of expected) {
-      expect(wrapper.find(`[data-test="prompt-toolbar-${name}"]`).exists(), name).toBe(true)
+      const selector = paletteMenus.has(name) ? `prompt-toolbar-${name}-trigger` : `prompt-toolbar-${name}`
+      expect(wrapper.find(`[data-test="${selector}"]`).exists(), name).toBe(true)
     }
+  })
+
+  it('offers only the fixed palette for text and background color — no free color input', async () => {
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    await nextTick()
+
+    expect(wrapper.find('input[type="color"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="prompt-toolbar-font-color-trigger"]').trigger('click')
+    expect(wrapper.findAll('[data-test^="color-swatch-"]')).toHaveLength(COLOR_PALETTE.length)
+    await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[0].key}"]`).trigger('click')
+    expect(wrapper.find('[data-test="color-palette"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="prompt-toolbar-background-color-trigger"]').trigger('click')
+    expect(wrapper.find('[data-test="color-palette"]').exists()).toBe(true)
   })
 
   it('toggling a heading changes the current block and emits the updated document', async () => {
@@ -192,11 +210,16 @@ describe('PromptEditor', () => {
     await nextTick()
     expect(firstCell()?.attrs?.borderColor).toBeFalsy()
 
-    const backgroundInput = wrapper.find('[data-test="prompt-table-cell-background"]')
-    Object.defineProperty(backgroundInput.element, 'value', { value: '#f3ecff', writable: true })
-    await backgroundInput.trigger('input')
+    const swatch = COLOR_PALETTE[3]
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
+    await wrapper.find(`[data-test="color-swatch-${swatch.key}"]`).trigger('click')
     await nextTick()
-    expect(firstCell()?.attrs?.backgroundColor).toBe('#f3ecff')
+    expect(firstCell()?.attrs?.backgroundColor).toBe(swatch.hex)
+
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
+    await wrapper.find('[data-test="color-palette-clear"]').trigger('click')
+    await nextTick()
+    expect(firstCell()?.attrs?.backgroundColor).toBeFalsy()
   })
 
   it('has merge and split cell buttons available inside a table', async () => {
