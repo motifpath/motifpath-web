@@ -26,10 +26,17 @@ function choose(color: string | null): void {
       :title="title"
       :aria-label="title"
       :aria-expanded="open"
-      class="flex items-center rounded p-1.5 text-ink-muted"
+      class="flex flex-col items-center gap-0.5 rounded p-1.5 text-ink-muted"
       @click="open = !open"
     >
       <slot />
+      <span
+        :data-test="`${testId}-indicator`"
+        :data-color="modelValue ?? ''"
+        class="h-[3px] w-4 rounded-full"
+        :class="modelValue ? '' : 'bg-border'"
+        :style="modelValue ? { backgroundColor: modelValue } : undefined"
+      />
     </button>
     <template v-if="open">
       <div data-test="color-palette-overlay" class="fixed inset-0 z-30" @click="open = false" />

@@ -48,4 +48,30 @@ describe('ColorPaletteMenu', () => {
     expect(wrapper.find('[data-test="color-palette"]').exists()).toBe(false)
     expect(wrapper.emitted('select')).toBeUndefined()
   })
+
+  it('shows the current color as an indicator on the trigger', () => {
+    const wrapper = mount(ColorPaletteMenu, {
+      props: { title: 'Font color', testId: 'font', modelValue: COLOR_PALETTE[0].hex },
+    })
+
+    const indicator = wrapper.get('[data-test="font-indicator"]')
+    expect(indicator.attributes('style')).toContain('background-color')
+    expect(indicator.attributes('data-color')).toBe(COLOR_PALETTE[0].hex)
+  })
+
+  it('shows an empty indicator when there is no color', () => {
+    const wrapper = mountMenu()
+
+    expect(wrapper.get('[data-test="font-indicator"]').attributes('data-color')).toBe('')
+  })
+
+  it('highlights the current color inside the opened palette', async () => {
+    const current = COLOR_PALETTE[4]
+    const wrapper = mount(ColorPaletteMenu, {
+      props: { title: 'Font color', testId: 'font', modelValue: current.hex },
+    })
+    await wrapper.get('[data-test="font-trigger"]').trigger('click')
+
+    expect(wrapper.get(`[data-test="color-swatch-${current.key}"]`).attributes('aria-pressed')).toBe('true')
+  })
 })

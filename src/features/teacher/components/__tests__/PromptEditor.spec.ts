@@ -64,6 +64,30 @@ describe('PromptEditor', () => {
     }
   })
 
+  it('shows the font and background color at the cursor on the toolbar indicators', async () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Hello',
+              marks: [{ type: 'textStyle', attrs: { color: '#EF4444', backgroundColor: '#3B82F6' } }],
+            },
+          ],
+        },
+      ],
+    } as PromptDocument
+    const wrapper = mount(PromptEditor, { props: { modelValue: doc } })
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.get('[data-test="prompt-toolbar-font-color-indicator"]').attributes('data-color')).toBe('#EF4444')
+    expect(wrapper.get('[data-test="prompt-toolbar-background-color-indicator"]').attributes('data-color')).toBe('#3B82F6')
+  })
+
   it('offers only the fixed palette for text and background color — no free color input', async () => {
     const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
     await nextTick()
@@ -215,6 +239,10 @@ describe('PromptEditor', () => {
     await wrapper.find(`[data-test="color-swatch-${swatch.key}"]`).trigger('click')
     await nextTick()
     expect(firstCell()?.attrs?.backgroundColor).toBe(swatch.hex)
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
+    expect(wrapper.get(`[data-test="color-swatch-${swatch.key}"]`).attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="prompt-table-cell-background-indicator"]').attributes('data-color')).toBe(swatch.hex)
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
 
     await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
     await wrapper.find('[data-test="color-palette-clear"]').trigger('click')

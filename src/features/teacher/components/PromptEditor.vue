@@ -240,8 +240,14 @@ function currentCellAttrs(): Record<string, unknown> {
   return editor.value.isActive('tableHeader') ? editor.value.getAttributes('tableHeader') : editor.value.getAttributes('tableCell')
 }
 function currentCellBackground(): string | null {
+  void activeStateTick.value
   const color = currentCellAttrs().backgroundColor
   return typeof color === 'string' ? color : null
+}
+function currentTextStyle(key: 'color' | 'backgroundColor'): string | null {
+  void activeStateTick.value
+  const value = editor.value?.getAttributes('textStyle')[key]
+  return typeof value === 'string' ? value : null
 }
 function toggleCellBorder() {
   const hasNoBorder = currentCellAttrs().borderColor === 'transparent'
@@ -390,6 +396,7 @@ async function onImagePicked(event: Event) {
         <ColorPaletteMenu
           test-id="prompt-toolbar-font-color"
           :title="t('promptEditor.fontColor')"
+          :model-value="currentTextStyle('color')"
           @select="setFontColor"
         >
           <Baseline :size="16" aria-hidden="true" />
@@ -397,6 +404,7 @@ async function onImagePicked(event: Event) {
         <ColorPaletteMenu
           test-id="prompt-toolbar-background-color"
           :title="t('promptEditor.backgroundColor')"
+          :model-value="currentTextStyle('backgroundColor')"
           @select="setBackgroundColor"
         >
           <PaintBucket :size="16" aria-hidden="true" />
