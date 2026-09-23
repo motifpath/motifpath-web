@@ -740,7 +740,20 @@ export interface paths {
          */
         put: operations["replaceLearningPath"];
         post?: never;
-        delete?: never;
+        /**
+         * Delete a learning path template
+         * @description Permanently deletes the learning path template. This never
+         *     touches existing progress: every StudentPath already copied
+         *     from this template (standalone or as a course checkpoint) is
+         *     its own independent snapshot and is unaffected. Refused if the
+         *     template is referenced by any checkpoint of any published
+         *     CourseVersion, even a version belonging to a since-retired
+         *     course — a published course's checkpoint sequence must always
+         *     resolve, for both future re-publishes and any student still
+         *     reading it. Only the creating teacher or an admin may delete a
+         *     learning path.
+         */
+        delete: operations["deleteLearningPath"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1574,20 +1587,33 @@ export interface components {
              */
             position_id?: string;
             /**
-             * @description The interval this position represents, relative to the
-             *     Diagram's own (unstated) root — e.g. "R", "b3", "4", "5", "b7",
-             *     "2", "3", "6", "7". Not globally standardized beyond being
-             *     consistent within one Diagram; MotifPath does not validate
-             *     interval names against a fixed enum.
+             * @description The interval this position represents, relative to the parent
+             *     Diagram's own root (see Diagram.root_note) — e.g. "R", "b3",
+             *     "4", "5", "b7", "2", "3", "6", "7". Not globally standardized
+             *     beyond being consistent within one Diagram; MotifPath does not
+             *     validate interval names against a fixed enum.
              */
             interval: string;
             /**
              * @description The concrete note name this position sounds at the Diagram's own
              *     root (e.g. "A", "C"). A diagram_ref's root_override recomputes
              *     the note actually shown; note_name here is always relative to
-             *     this Diagram's own authored root.
+             *     this Diagram's own authored root (see Diagram.root_note).
              */
             note_name: string;
+            /**
+             * @description Which marker shape this position renders as (standard fretboard-
+             *     diagram terminology — a round marker is a "dot", not a
+             *     "circle", which this spec already uses for Option's rectangle/
+             *     circle region shape and isn't reused here to keep every
+             *     generated enum constant name unambiguous). Lets an author
+             *     visually distinguish a subset of positions (e.g. every root, or
+             *     one particular degree) without relying on color alone. Defaults
+             *     to dot when omitted.
+             * @default dot
+             * @enum {string}
+             */
+            shape: "dot" | "square" | "star";
             /**
              * @description This position's order in an authored playback sequence (e.g. a
              *     scale run). Null means this position is not part of any defined
@@ -1664,6 +1690,23 @@ export interface components {
             /** @description Human-readable name (e.g. "Minor Pentatonic — Position 1"). */
             name: string;
             /**
+             * @description The root note this diagram was authored against (e.g. "A"),
+             *     relative to which every position's interval and note_name are
+             *     computed. Null for a diagram with no recorded root (e.g. created
+             *     before this field existed).
+             */
+            root_note: string | null;
+            /**
+             * @description Which of a position's interval or note_name its marker shows by
+             *     default when this diagram is opened for authoring; hidden shows
+             *     neither. An authoring-time display preference, independent of a
+             *     diagram_ref's own layers.intervals visibility toggle for one
+             *     particular embedding.
+             * @default interval
+             * @enum {string}
+             */
+            label_display: "interval" | "note" | "hidden";
+            /**
              * @description Every marked position in this diagram. All positions share the
              *     same coordinate shape, decided by this diagram's instrument's
              *     family.
@@ -1691,6 +1734,18 @@ export interface components {
             /** @description Human-readable name for this diagram. */
             name: string;
             /**
+             * @description The root note this diagram is authored against (e.g. "A"). Null
+             *     (or omitted) leaves it unrecorded.
+             */
+            root_note?: string | null;
+            /**
+             * @description Which of a position's interval or note_name its marker shows by
+             *     default when reopened for authoring; hidden shows neither.
+             *     Omitted defaults to interval.
+             * @enum {string}
+             */
+            label_display?: "interval" | "note" | "hidden";
+            /**
              * @description Every marked position in this diagram, in the coordinate shape
              *     matching the referenced instrument's family. position_id may be
              *     supplied by the client or left for the server to assign.
@@ -1699,14 +1754,29 @@ export interface components {
             classification: components["schemas"]["DiagramClassificationInput"];
         };
         /**
-         * @description Payload for replacing an existing diagram's name, positions, or
-         *     classification. instrument_id is not present here — it cannot be
-         *     changed after creation, since every position's coordinate shape
-         *     depends on it.
+         * @description Payload for replacing an existing diagram's name, positions,
+         *     classification, root_note, or label_display. instrument_id is not
+         *     present here — it cannot be changed after creation, since every
+         *     position's coordinate shape depends on it.
          */
         UpdateDiagramRequest: {
             /** @description Human-readable name for this diagram, replacing the current value. */
             name?: string;
+            /**
+             * @description The root note this diagram is authored against (e.g. "A"),
+             *     replacing the current value. Omitted leaves the current value
+             *     unchanged; there is currently no way to clear an already-set
+             *     root note back to unrecorded via this request.
+             */
+            root_note?: string;
+            /**
+             * @description Which of a position's interval or note_name its marker shows by
+             *     default when reopened for authoring, replacing the current
+             *     value; hidden shows neither. Omitted leaves the current value
+             *     unchanged.
+             * @enum {string}
+             */
+            label_display?: "interval" | "note" | "hidden";
             /**
              * @description The diagram's full position list, replacing the current set. A
              *     caller that only wants to change one position must resend the
@@ -1991,6 +2061,8 @@ export interface components {
             current_position: number;
             /** @description All path items with progress state, sorted by position ascending. */
             items: components["schemas"]["StudentPathItem"][];
+            /** @description True when this response reflects the checkpoint that just completed the student's course — every item shown here is complete, the request that returned this view was the one that discovered it, and the student's current course/path pointer has already been cleared as a result. Always false for a standalone path, and false on every subsequent read (the pointer is null afterward, so there is nothing left to return this flag on). The client should treat true as a one-time signal to show course completion, not a recheckable status field. */
+            course_completed: boolean;
         };
         /** @description Payload for creating a course as a draft. */
         CreateCourseRequest: {
@@ -5452,6 +5524,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    deleteLearningPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the learning path to delete. */
+                learning_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Learning path deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The authenticated user does not have permission to delete
+             *     this learning path. Only the creating teacher or an admin
+             *     may delete it.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No learning path exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description This learning path is referenced by a checkpoint of at
+             *     least one published CourseVersion and cannot be deleted.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
                 };
             };
         };

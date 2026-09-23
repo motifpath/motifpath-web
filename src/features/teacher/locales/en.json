@@ -4,6 +4,7 @@
     "removeOption": "Remove option",
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author exercises.",
     "newExercise": "New exercise",
+    "newDiagram": "New diagram",
     "studentPreview": "Student preview",
     "exerciseTypes": {
       "image_recognition": "Image recognition",
@@ -122,6 +123,52 @@
     "loadErrorMessage": "We couldn't load the exercises.",
     "emptyHeading": "No exercises yet",
     "emptyMessage": "Create your first exercise to start building the reusable pool."
+  },
+  "diagramPreviewModal": {
+    "title": "Diagram preview"
+  },
+  "diagramListView": {
+    "heading": "Diagrams",
+    "loadingNoun": "diagrams",
+    "loadErrorMessage": "We couldn't load the diagrams.",
+    "emptyHeading": "No diagrams yet",
+    "emptyMessage": "Create your first diagram to start building the reusable library."
+  },
+  "diagramAuthoringView": {
+    "newDiagramBreadcrumb": "New diagram",
+    "editDiagramBreadcrumb": "Edit diagram",
+    "loadingNoun": "diagram",
+    "loadErrorMessage": "We couldn't load the diagram.",
+    "namePlaceholder": "Diagram name",
+    "nameLabel": "Name",
+    "instrumentLabel": "Instrument",
+    "instrumentLoading": "Loading instruments…",
+    "instrumentPlaceholder": "Choose an instrument",
+    "instrumentLockedHint": "The instrument can't be changed once a position has been placed — remove every position first if you need to switch.",
+    "rootNoteLabel": "Root note",
+    "rootNotePlaceholder": "Choose a root note",
+    "rootNoteHint": "Used to auto-fill each position's interval and note name — not saved on the diagram itself.",
+    "positionsLabel": "Positions",
+    "labelModeInterval": "Interval",
+    "labelModeNote": "Note",
+    "labelModeHidden": "Hidden",
+    "classificationLabel": "Classification",
+    "classificationHint": "A diagram needs at least one skill and one concept to be reusable across the library.",
+    "previewLabel": "Preview",
+    "previewEmpty": "Place a position to see a preview.",
+    "viewPreviewButton": "View full preview",
+    "diagramUpdated": "Diagram updated.",
+    "diagramCreated": "Diagram created.",
+    "saveFailed": "Failed to save the diagram",
+    "createSkillFailed": "Failed to create the skill",
+    "createConceptFailed": "Failed to create the concept"
+  },
+  "frettedDiagramEditor": {
+    "fretboardAriaLabel": "Click a fret to place or remove a position",
+    "stringFret": "String {string}, fret {fret}",
+    "reorderHint": "Drag a position to reorder its place in the sequence",
+    "shapeAriaLabel": "Show this position as a {shape}",
+    "removePositionAriaLabel": "Remove this position"
   },
   "skillConceptTreePicker": {
     "removeSelectedAriaLabel": "Remove {name}",

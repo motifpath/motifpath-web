@@ -11,6 +11,7 @@ export interface VisibleFrettedPosition {
   fret: number
   interval: string
   noteName: string
+  shape: components['schemas']['DiagramPosition']['shape']
   isRoot: boolean
 }
 
@@ -49,6 +50,7 @@ export function computeFrettedDiagramLayout(
       fret: position.fret ?? 0,
       interval: position.interval,
       noteName: position.note_name,
+      shape: position.shape,
       isRoot: position.interval === 'R',
     }))
 

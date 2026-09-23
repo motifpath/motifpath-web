@@ -32,6 +32,7 @@ describe('computeFrettedDiagramLayout', () => {
       fret: 5,
       interval: 'R',
       noteName: 'A',
+      shape: 'dot',
       isRoot: true,
     })
     const nonRoot = layout.positions.find((p) => p.positionId === 'p1')
@@ -86,8 +87,8 @@ describe('computeFrettedDiagramLayout', () => {
   it('widens a narrow fret window to a minimum span of 3', () => {
     const diagram = makeFrettedDiagram({
       positions: [
-        { position_id: 'p0', string: 6, fret: 5, interval: 'R', note_name: 'A' },
-        { position_id: 'p1', string: 5, fret: 5, interval: '4', note_name: 'D' },
+        { position_id: 'p0', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
+        { position_id: 'p1', string: 5, fret: 5, interval: '4', note_name: 'D', shape: 'star' },
       ],
     })
     const instrument = makeFrettedInstrument()
