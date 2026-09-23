@@ -16,6 +16,7 @@ export function makeStudentPathItem(
   return {
     position,
     content_node_id: `node-${position}`,
+    content_node_version_id: `node-version-${position}`,
     title: `Step ${position}`,
     content_type: 'video',
     status,
@@ -35,8 +36,8 @@ export function makeStudentPathView(
   const firstUndone = items.find((item) => item.status !== 'completed')
 
   return {
-    assignment_id: '00000000-0000-0000-0000-000000000001',
-    learning_path_id: '00000000-0000-0000-0000-000000000002',
+    student_path_id: '00000000-0000-0000-0000-000000000001',
+    source_template_id: '00000000-0000-0000-0000-000000000002',
     title: 'Blues Foundations',
     current_position: firstUndone ? firstUndone.position : items.length + 1,
     items,
