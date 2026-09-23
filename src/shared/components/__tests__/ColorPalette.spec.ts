@@ -13,6 +13,14 @@ describe('ColorPalette', () => {
     expect(wrapper.find('input[type="color"]').exists()).toBe(false)
   })
 
+  it('lays swatches out on fixed-width tracks so a shrink-to-fit popover cannot collapse them', () => {
+    // jsdom does no layout: guard the class instead. `grid-cols-6` (minmax(0,1fr))
+    // collapses inside an absolutely positioned, shrink-to-fit container.
+    const wrapper = mount(ColorPalette)
+
+    expect(wrapper.get('[data-test="color-palette"]').classes()).toContain('grid-cols-[repeat(6,1.5rem)]')
+  })
+
   it('emits the swatch hex when a swatch is clicked', async () => {
     const wrapper = mount(ColorPalette)
     const first = COLOR_PALETTE[0]
