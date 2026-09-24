@@ -9,7 +9,7 @@ import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
-import { readableTextColor } from '@/shared/utils/diagramColors'
+import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 
 type Diagram = components['schemas']['Diagram']
@@ -103,7 +103,7 @@ function markerColor(position: Marker): string | null {
 /** A styling override keeps the reference renderer's fixed dark/light heuristic; a persisted
  *  color picks whichever text color reads better on it. */
 function labelStyle(position: Marker): { fill: string } | undefined {
-  if (stylingColor(position.isRoot)) return { fill: position.isRoot ? '#1a1a1a' : '#f4f4f4' }
+  if (stylingColor(position.isRoot)) return { fill: position.isRoot ? LABEL_TEXT_DARK : LABEL_TEXT_LIGHT }
   return position.color ? { fill: readableTextColor(position.color) } : undefined
 }
 

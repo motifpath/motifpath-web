@@ -11,8 +11,9 @@ export function resolveMarkerColor(
   return positionColor ?? diagramColor ?? null
 }
 
-const DARK_TEXT = '#1A1A1A'
-const LIGHT_TEXT = '#F4F4F4'
+/** Label text drawn on a user-chosen marker color — fixed, since the marker color ignores the theme. */
+export const LABEL_TEXT_DARK = '#1A1A1A'
+export const LABEL_TEXT_LIGHT = '#F4F4F4'
 
 function linearChannel(channel: number): number {
   const c = channel / 255
@@ -35,7 +36,7 @@ function contrast(a: number, b: number): number {
 /** Dark or light label text — whichever has the higher WCAG contrast on `hex` (#RRGGBB). */
 export function readableTextColor(hex: string): string {
   const background = relativeLuminance(hex)
-  const dark = contrast(background, relativeLuminance(DARK_TEXT))
-  const light = contrast(background, relativeLuminance(LIGHT_TEXT))
-  return dark >= light ? DARK_TEXT : LIGHT_TEXT
+  const dark = contrast(background, relativeLuminance(LABEL_TEXT_DARK))
+  const light = contrast(background, relativeLuminance(LABEL_TEXT_LIGHT))
+  return dark >= light ? LABEL_TEXT_DARK : LABEL_TEXT_LIGHT
 }
