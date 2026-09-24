@@ -4,6 +4,7 @@ import { computed } from 'vue'
 
 import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
 import AppBar from '@/shared/components/AppBar.vue'
+import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -18,7 +19,8 @@ const canAuthor = computed(
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
-const { contentNodes, isLoading, error, retry } = useListContentNodes()
+const { contentNodes, total, isLoading, isLoadingMore, error, loadMoreError, retry, loadMore } =
+  useListContentNodes()
 </script>
 
 <template>
@@ -61,18 +63,27 @@ const { contentNodes, isLoading, error, retry } = useListContentNodes()
         </template>
       </StateEmpty>
 
-      <ul v-else class="flex flex-col gap-2">
-        <li v-for="contentNode in contentNodes" :key="contentNode.content_node_id">
-          <RouterLink
-            :to="{ name: 'teacher-content-edit', params: { id: contentNode.content_node_id } }"
-            data-test="content-node-row"
-            class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
-          >
-            <span class="font-semibold text-ink">{{ contentNode.title }}</span>
-            <span class="text-sm text-ink-subtle">{{ t(`common.contentTypes.${contentNode.content_type}`) }}</span>
-          </RouterLink>
-        </li>
-      </ul>
+      <template v-else>
+        <ul class="flex flex-col gap-2">
+          <li v-for="contentNode in contentNodes" :key="contentNode.content_node_id">
+            <RouterLink
+              :to="{ name: 'teacher-content-edit', params: { id: contentNode.content_node_id } }"
+              data-test="content-node-row"
+              class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
+            >
+              <span class="font-semibold text-ink">{{ contentNode.title }}</span>
+              <span class="text-sm text-ink-subtle">{{ t(`common.contentTypes.${contentNode.content_type}`) }}</span>
+            </RouterLink>
+          </li>
+        </ul>
+        <LoadMoreButton
+          :loaded="contentNodes.length"
+          :total="total"
+          :loading="isLoadingMore"
+          :failed="loadMoreError"
+          @load="loadMore"
+        />
+      </template>
     </div>
   </div>
 </template>

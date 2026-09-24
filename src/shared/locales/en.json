@@ -72,5 +72,10 @@
       "black": "Black",
       "white": "White"
     }
+  },
+  "loadMore": {
+    "showingCount": "Showing {loaded} of {total}",
+    "button": "Load more",
+    "failed": "Couldn't load more. Try again."
   }
 }

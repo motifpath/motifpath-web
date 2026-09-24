@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -7,40 +7,68 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import { useListExercises } from '@/features/teacher/composables/useListExercises'
 
-describe('useListExercises', () => {
-  it('loads exercises on creation', async () => {
-    const exercises = [{ exercise_id: 'e-1' }, { exercise_id: 'e-2' }]
-    GET.mockResolvedValueOnce({ data: exercises, error: undefined, response: { status: 200 } })
+function ok(items: unknown[], total = items.length, offset = 0, limit = 20) {
+  return { data: { items, total, limit, offset }, error: undefined, response: { status: 200 } }
+}
 
-    const { exercises: result, isLoading, error } = useListExercises()
+describe('useListExercises', () => {
+  beforeEach(() => GET.mockReset())
+
+  it('loads the first page on creation', async () => {
+    const page = [{ exercise_id: 'x-1' }]
+    GET.mockResolvedValueOnce(ok(page, 30))
+
+    const { exercises: result, total, hasMore, isLoading, error } = useListExercises()
     expect(isLoading.value).toBe(true)
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(GET).toHaveBeenCalledWith('/exercises', {})
-    expect(result.value).toEqual(exercises)
+    expect(GET).toHaveBeenCalledWith('/exercises', { params: { query: { limit: 20, offset: 0 } } })
+    expect(result.value).toEqual(page)
+    expect(total.value).toBe(30)
+    expect(hasMore.value).toBe(true)
     expect(error.value).toBe(false)
+  })
+
+  it('appends the next page on loadMore', async () => {
+    GET.mockResolvedValueOnce(ok([{ exercise_id: 'x-1' }], 2)).mockResolvedValueOnce(ok([{ exercise_id: 'x-2' }], 2, 1))
+
+    const { exercises: result, isLoading, loadMore } = useListExercises()
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+    await loadMore()
+
+    expect(GET).toHaveBeenLastCalledWith('/exercises', { params: { query: { limit: 20, offset: 1 } } })
+    expect(result.value).toEqual([{ exercise_id: 'x-1' }, { exercise_id: 'x-2' }])
+  })
+
+  it('fetches every page when loadAll is set', async () => {
+    GET.mockResolvedValueOnce(ok([{ exercise_id: 'x-1' }], 2, 0, 100)).mockResolvedValueOnce(ok([{ exercise_id: 'x-2' }], 2, 1, 100))
+
+    const { exercises: result, isLoading } = useListExercises({ loadAll: true })
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(GET).toHaveBeenCalledWith('/exercises', { params: { query: { limit: 100, offset: 0 } } })
+    expect(result.value).toEqual([{ exercise_id: 'x-1' }, { exercise_id: 'x-2' }])
   })
 
   it('sets error and an empty list when the request fails', async () => {
     GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
 
-    const { exercises, isLoading, error } = useListExercises()
+    const { exercises: result, isLoading, error } = useListExercises()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(exercises.value).toEqual([])
+    expect(result.value).toEqual([])
     expect(error.value).toBe(true)
   })
 
-  it('retry re-fetches the list', async () => {
+  it('retry re-fetches from the first page', async () => {
     GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
-    const { exercises, isLoading, error, retry } = useListExercises()
+    const { exercises: result, isLoading, error, retry } = useListExercises()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
-    expect(error.value).toBe(true)
 
-    GET.mockResolvedValueOnce({ data: [{ exercise_id: 'e-1' }], error: undefined, response: { status: 200 } })
+    GET.mockResolvedValueOnce(ok([{ exercise_id: 'x-1' }]))
     await retry()
 
     expect(error.value).toBe(false)
-    expect(exercises.value).toEqual([{ exercise_id: 'e-1' }])
+    expect(result.value).toEqual([{ exercise_id: 'x-1' }])
   })
 })

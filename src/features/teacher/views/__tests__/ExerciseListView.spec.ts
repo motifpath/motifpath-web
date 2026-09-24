@@ -54,7 +54,7 @@ describe('ExerciseListView', () => {
 
   it('shows a permission-denied state for a student instead of the list', () => {
     currentUser.profile.role = 'student'
-    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
     const wrapper = mountView()
 
     expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
@@ -74,7 +74,7 @@ describe('ExerciseListView', () => {
 
     expect(wrapper.find('[data-test="error"]').exists()).toBe(true)
 
-    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
     await wrapper.get('[data-test="retry"]').trigger('click')
     await new Promise((r) => setTimeout(r, 0))
 
@@ -82,7 +82,7 @@ describe('ExerciseListView', () => {
   })
 
   it('shows an empty state with a link to create the first exercise', async () => {
-    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
     const wrapper = mountView()
     await new Promise((r) => setTimeout(r, 0))
 
@@ -93,11 +93,16 @@ describe('ExerciseListView', () => {
 
   it('lists exercises, each linking to its edit route', async () => {
     GET.mockResolvedValueOnce({
-      data: [
-        { exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response', skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }], concepts: [] },
-        { exercise_id: 'e-2', title: 'Pick the diagram', exercise_type: 'image_choice', skills: [], concepts: [] },
-        { exercise_id: 'e-3', title: 'Pick the lick', exercise_type: 'audio_selection', skills: [], concepts: [] },
-      ],
+      data: {
+        items: [
+          { exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response', skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }], concepts: [] },
+          { exercise_id: 'e-2', title: 'Pick the diagram', exercise_type: 'image_choice', skills: [], concepts: [] },
+          { exercise_id: 'e-3', title: 'Pick the lick', exercise_type: 'audio_selection', skills: [], concepts: [] },
+        ],
+        total: 2,
+        limit: 20,
+        offset: 0,
+      },
       error: undefined,
       response: { status: 200 },
     })
@@ -118,5 +123,28 @@ describe('ExerciseListView', () => {
         { name: 'teacher-exercise-edit', params: { id: 'e-2' } },
       ]),
     )
+  })
+
+  it('loads the next page when the teacher asks for more', async () => {
+    GET.mockResolvedValueOnce({
+      data: { items: [{ exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response' }], total: 2, limit: 20, offset: 0 },
+      error: undefined,
+      response: { status: 200 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(wrapper.text()).toContain('Showing 1 of 2')
+
+    GET.mockResolvedValueOnce({
+      data: { items: [{ exercise_id: 'e-2', title: 'Pick the diagram', exercise_type: 'image_choice' }], total: 2, limit: 20, offset: 1 },
+      error: undefined,
+      response: { status: 200 },
+    })
+    await wrapper.get('[data-test="load-more"]').trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(GET).toHaveBeenLastCalledWith('/exercises', { params: { query: { limit: 20, offset: 1 } } })
+    expect(wrapper.findAll('[data-test="exercise-row"]')).toHaveLength(2)
+    expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
   })
 })

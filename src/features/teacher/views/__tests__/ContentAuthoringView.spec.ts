@@ -102,13 +102,12 @@ function routeGET(overrides: Record<string, unknown>) {
     if (path in overrides) return Promise.resolve(overrides[path])
     if (
       path === '/content-nodes/{content_node_id}/challenges' ||
-      path === '/exercises' ||
       path === '/skills' ||
       path === '/concepts'
     ) {
       return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
     }
-    if (path === '/content-nodes/{content_node_id}/expanded-content') {
+    if (path === '/content-nodes/{content_node_id}/expanded-content' || path === '/exercises') {
       return Promise.resolve({ data: { items: [], total: 0 }, error: undefined, response: { status: 200 } })
     }
     return Promise.resolve({ data: undefined, error: { message: 'unhandled in test' }, response: { status: 500 } })
@@ -467,7 +466,7 @@ describe('ContentAuthoringView', () => {
           '/skills': okResponse([skillFixture]),
           '/content-nodes/{content_node_id}/challenges': okResponse([challengeFixture]),
           '/challenges/{challenge_id}/exercises': okResponse(linkedExercises),
-          '/exercises': okResponse(pool),
+          '/exercises': okResponse({ items: pool, total: pool.length, limit: 100, offset: 0 }),
         })
       }
 
@@ -485,7 +484,7 @@ describe('ContentAuthoringView', () => {
         routeGET({
           '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
           '/skills': okResponse([skillFixture]),
-          '/exercises': okResponse([exerciseFixture('e-1', 'Name the chord')]),
+          '/exercises': okResponse({ items: [exerciseFixture('e-1', 'Name the chord')], total: 1, limit: 100, offset: 0 }),
         })
         POST.mockResolvedValueOnce({ data: challengeFixture, error: undefined, response: { status: 201 } }).mockResolvedValueOnce(
           noContent,
@@ -694,7 +693,7 @@ describe('ContentAuthoringView', () => {
           routeGET({
             '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
             '/skills': okResponse([skillFixture]),
-            '/exercises': okResponse([exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')]),
+            '/exercises': okResponse({ items: [exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')], total: 2, limit: 100, offset: 0 }),
           })
           const defaultGET = GET.getMockImplementation()
           let resolveRefresh: (value: unknown) => void = () => {}

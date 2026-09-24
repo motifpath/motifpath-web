@@ -42,7 +42,7 @@ const {
   ? useLearningPath(learningPathId)
   : { learningPath: ref(null), isLoading: ref(false), error: ref(false), retry: async () => {} }
 
-const { contentNodes } = useListContentNodes()
+const { contentNodes } = useListContentNodes({ loadAll: true })
 const { createLearningPath } = useCreateLearningPath()
 const { replaceLearningPath } = useReplaceLearningPath()
 

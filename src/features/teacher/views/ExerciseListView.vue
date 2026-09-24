@@ -5,6 +5,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { useListExercises } from '@/features/teacher/composables/useListExercises'
 import AppBar from '@/shared/components/AppBar.vue'
+import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -17,7 +18,8 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
-const { exercises, isLoading, error, retry } = useListExercises()
+const { exercises, total, isLoading, isLoadingMore, error, loadMoreError, retry, loadMore } =
+  useListExercises()
 const { t } = useTypedT()
 
 const exerciseTypeLabels = computed<Record<string, string>>(() => ({
@@ -69,18 +71,27 @@ const exerciseTypeLabels = computed<Record<string, string>>(() => ({
         </template>
       </StateEmpty>
 
-      <ul v-else class="flex flex-col gap-2">
-        <li v-for="exercise in exercises" :key="exercise.exercise_id">
-          <RouterLink
-            :to="{ name: 'teacher-exercise-edit', params: { id: exercise.exercise_id } }"
-            data-test="exercise-row"
-            class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
-          >
-            <span class="font-semibold text-ink">{{ exercise.title }}</span>
-            <span class="text-sm text-ink-subtle">{{ exerciseTypeLabels[exercise.exercise_type] ?? exercise.exercise_type }}</span>
-          </RouterLink>
-        </li>
-      </ul>
+      <template v-else>
+        <ul class="flex flex-col gap-2">
+          <li v-for="exercise in exercises" :key="exercise.exercise_id">
+            <RouterLink
+              :to="{ name: 'teacher-exercise-edit', params: { id: exercise.exercise_id } }"
+              data-test="exercise-row"
+              class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
+            >
+              <span class="font-semibold text-ink">{{ exercise.title }}</span>
+              <span class="text-sm text-ink-subtle">{{ exerciseTypeLabels[exercise.exercise_type] ?? exercise.exercise_type }}</span>
+            </RouterLink>
+          </li>
+        </ul>
+        <LoadMoreButton
+          :loaded="exercises.length"
+          :total="total"
+          :loading="isLoadingMore"
+          :failed="loadMoreError"
+          @load="loadMore"
+        />
+      </template>
     </div>
   </div>
 </template>
