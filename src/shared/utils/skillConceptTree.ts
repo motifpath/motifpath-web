@@ -23,3 +23,20 @@ export function descendantIds(nodes: TreeNode[], id: string): string[] {
   const children = nodes.filter((n) => n.parent_id === id)
   return children.flatMap((child) => [child.id, ...descendantIds(nodes, child.id)])
 }
+
+/**
+ * Drops every selected id that is an ancestor of another selected id. Tagging
+ * content with a node also tags it with that node's ancestors, so filtering by
+ * the whole selection would match everything under the broadest pick — the
+ * most specific picks are what narrow the results.
+ */
+export function mostSpecificIds(nodes: TreeNode[], ids: string[]): string[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+  const coveredAncestors = new Set(
+    ids.flatMap((id) => {
+      const node = byId.get(id)
+      return node ? ancestorIds(nodes, node) : []
+    }),
+  )
+  return ids.filter((id) => !coveredAncestors.has(id))
+}

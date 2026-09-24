@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ancestorIds, descendantIds } from '@/shared/utils/skillConceptTree'
+import { ancestorIds, descendantIds, mostSpecificIds } from '@/shared/utils/skillConceptTree'
 
 const nodes = [
   { id: 'root-1', name: 'chord-theory', parent_id: null },
@@ -33,5 +33,19 @@ describe('descendantIds', () => {
 
   it('returns an empty array for a leaf node', () => {
     expect(descendantIds(nodes, 'grandchild-1')).toEqual([])
+  })
+})
+
+describe('mostSpecificIds', () => {
+  it('drops a selected id that is an ancestor of another selected id', () => {
+    expect(mostSpecificIds(nodes, ['root-1', 'child-1', 'grandchild-1'])).toEqual(['grandchild-1'])
+  })
+
+  it('keeps unrelated selections side by side', () => {
+    expect(mostSpecificIds(nodes, ['root-1', 'child-1', 'root-2'])).toEqual(['child-1', 'root-2'])
+  })
+
+  it('keeps an id whose node is unknown', () => {
+    expect(mostSpecificIds(nodes, ['missing'])).toEqual(['missing'])
   })
 })
