@@ -44,9 +44,11 @@ export interface paths {
          * List content nodes for authoring
          * @description Returns content nodes from the library, for browsing and picking one
          *     to edit, use as a remediation target, or add to a learning path —
-         *     not a student-facing catalog. Results are unordered beyond a stable
-         *     id order and are not paginated. Only teachers and admins may list
-         *     content nodes.
+         *     not a student-facing catalog.
+         *     Results are paginated (ADR-031): ordered by title, then id and
+         *     returned in a {items, total, limit, offset} envelope. An offset
+         *     past the end returns an empty items array, not an error.
+         *     Only teachers and admins may list content nodes.
          */
         get: operations["listContentNodes"];
         put?: never;
@@ -139,6 +141,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/content-nodes/{content_node_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a content node's published version history
+         * @description Returns every ContentNodeVersion the node has ever been
+         *     published as, newest first. A node that has never been
+         *     published returns an empty array. Same authorisation as
+         *     publishing — the creating teacher or an admin.
+         */
+        get: operations["listContentNodeVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/content-nodes/{content_node_id}/challenges": {
         parameters: {
             query?: never;
@@ -220,9 +245,12 @@ export interface paths {
          * @description Returns exercises from the reusable pool, for browsing and picking one
          *     to edit in an authoring tool — not the randomized, skill-targeted
          *     selection GET /practice-sessions performs for a student's practice
-         *     attempt. Results are unordered beyond a stable id order and are not
-         *     paginated. Only teachers and admins may list exercises; the pool is
-         *     an authoring surface, not a student-facing catalog.
+         *     attempt.
+         *     Results are paginated (ADR-031): ordered by id and
+         *     returned in a {items, total, limit, offset} envelope. An offset
+         *     past the end returns an empty items array, not an error.
+         *     Only teachers and admins may list exercises; the pool is an
+         *     authoring surface, not a student-facing catalog.
          */
         get: operations["listExercises"];
         put?: never;
@@ -641,16 +669,41 @@ export interface paths {
         /**
          * List prebuilt diagrams for authoring
          * @description Returns diagrams from the reusable library, for browsing and
-         *     picking one to attach to a content node or exercise. Results are
-         *     unordered beyond a stable id order and are not paginated. Any
-         *     authenticated user may list diagrams.
+         *     picking one to attach to a content node or exercise, or to open as
+         *     the starting point of a new one. Only teachers and admins may list
+         *     diagrams; students never browse the library, and read the diagrams
+         *     embedded in their content by id instead.
+         *
+         *     Which diagrams a caller sees depends on their role. A teacher sees
+         *     every basic diagram plus the custom diagrams they created
+         *     themselves, never another teacher's custom diagrams. An admin sees
+         *     every diagram.
+         *
+         *     The created_by filter is role-scoped. A teacher may pass only their
+         *     own user_id; passing any other created_by is refused with 403. An
+         *     admin may pass any created_by, or omit it for every creator's
+         *     diagrams.
+         *
+         *     Results are paginated in a {items, total, limit, offset} envelope,
+         *     ordered by name, then id; an offset past the end returns an empty
+         *     items array. Every filter below is optional and they combine with
+         *     AND.
          */
         get: operations["listDiagrams"];
         put?: never;
         /**
          * Create a prebuilt diagram
          * @description Creates a new, reusable diagram against an existing instrument.
-         *     Only teachers and admins may create a diagram.
+         *     Only teachers and admins may create a diagram. The caller is
+         *     recorded as its creator (created_by). kind defaults to custom; only
+         *     an admin may create a basic diagram. Neither kind nor created_by
+         *     can change after creation.
+         *
+         *     This is also how a copy of an existing diagram is saved, and how
+         *     several overlaid diagrams are saved as one: the client composes the
+         *     new diagram from what its editor shows and creates it here. The
+         *     source diagrams are never modified, and the new diagram records no
+         *     link to them.
          */
         post: operations["createDiagram"];
         delete?: never;
@@ -666,7 +719,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Retrieve a diagram by ID */
+        /**
+         * Retrieve a diagram by ID
+         * @description Any authenticated user may retrieve a diagram by its id, whatever
+         *     its kind or creator, so that students can render the diagrams
+         *     embedded in the content they study. The role scoping of the diagram
+         *     list governs discovery, not access to a known id.
+         */
         get: operations["getDiagram"];
         put?: never;
         post?: never;
@@ -675,7 +734,9 @@ export interface paths {
         head?: never;
         /**
          * Update a diagram's name, positions, or classification
-         * @description Only teachers and admins may update a diagram. Updating a diagram
+         * @description Only an admin may update a basic diagram. A custom diagram may be
+         *     updated only by its creator or by an admin. An update never changes
+         *     a diagram's kind or created_by. Updating a diagram
          *     that is already referenced by one or more diagram_refs changes what
          *     every one of them renders — there is no versioning or copy-on-write.
          */
@@ -692,10 +753,13 @@ export interface paths {
         /**
          * List learning paths for authoring
          * @description Returns learning paths from the library, for browsing and picking one
-         *     to edit or assign to a student. Results are unordered beyond a stable
-         *     id order and are not paginated. Teachers and admins may list learning
-         *     paths; students may not browse paths directly — their view is
-         *     through GET /students/me/path.
+         *     to edit or assign to a student.
+         *     Results are paginated (ADR-031): ordered by title, then id and
+         *     returned in a {items, total, limit, offset} envelope. An offset
+         *     past the end returns an empty items array, not an error.
+         *     Teachers and admins may list learning paths; students may not
+         *     browse paths directly — their view is through
+         *     GET /students/me/path.
          */
         get: operations["listLearningPaths"];
         put?: never;
@@ -775,9 +839,29 @@ export interface paths {
          *     published version. Teachers and admins see courses of every
          *     status; passing status narrows the list to just that status,
          *     otherwise every status is returned, each annotated with whether
-         *     its live draft has unpublished changes. Results are unordered
-         *     beyond a stable id order and are not paginated; the catalog is
-         *     expected to stay small.
+         *     its live draft has unpublished changes. Results are ordered by
+         *     title, then id.
+         *
+         *     Results are paginated (ADR-031) in a {items, total, limit,
+         *     offset} envelope; an offset past the end returns an empty items
+         *     array. Every filter below is optional and they combine with AND,
+         *     so a student can mix any of them; levels, skill_ids and
+         *     concept_ids are any-of within themselves.
+         *
+         *     The created_by filter is role-scoped. A teacher caller is
+         *     always limited to the courses they created; passing a
+         *     created_by other than their own user_id is refused with 403.
+         *     An admin may pass any created_by, or omit it for every
+         *     creator's courses. For a student it is a free discovery filter.
+         *
+         *     skill_ids and concept_ids each accept several ids (repeat the
+         *     parameter). A course matches when any of its checkpoints'
+         *     learning path templates contains a content node classified with
+         *     any of the given skills, and, if both parameters are given,
+         *     also with any of the given concepts. A student's match is
+         *     evaluated against the checkpoints of the course's latest
+         *     published version; a teacher's or admin's, against the live
+         *     draft's checkpoints — the same split as status.
          */
         get: operations["listCourses"];
         put?: never;
@@ -985,6 +1069,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/students/me/student-paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the authenticated student's standalone paths
+         * @description Returns every StudentPath the student holds that is not part of
+         *     a course enrollment (source_course_enrollment_id is null) —
+         *     active and archived alike — so a student can browse and switch
+         *     to one via PUT /students/me/current-path. Paths belonging to a
+         *     course enrollment are reached through
+         *     GET /students/me/course-enrollments instead.
+         */
+        get: operations["listMyStandalonePaths"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/students/me/course-enrollments": {
         parameters: {
             query?: never;
@@ -1178,6 +1287,35 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Pagination metadata shared by every paginated list response
+         *     (ADR-031). total counts every item matching the request's
+         *     filters, not just this page.
+         */
+        PageMeta: {
+            /** @description Number of items matching the filters across all pages. */
+            total: number;
+            /** @description The page size that was applied. */
+            limit: number;
+            /** @description The number of matching items skipped before this page. */
+            offset: number;
+        };
+        PagedContentNodes: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["ContentNode"][];
+        };
+        PagedExercises: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["Exercise"][];
+        };
+        PagedLearningPaths: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["LearningPath"][];
+        };
+        PagedCourseCatalog: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["CourseCatalogEntry"][];
+        };
+        PagedDiagrams: components["schemas"]["PageMeta"] & {
+            /** @description The diagrams on this page, ordered by name, then id. */
+            items: components["schemas"]["Diagram"][];
+        };
         /**
          * @description Response body for liveness and readiness probes. Shared by every MotifPath
          *     service that exposes an HTTP health surface so the contract cannot drift
@@ -1587,18 +1725,24 @@ export interface components {
              */
             position_id?: string;
             /**
-             * @description The interval this position represents, relative to the parent
-             *     Diagram's own root (see Diagram.root_note) — e.g. "R", "b3",
-             *     "4", "5", "b7", "2", "3", "6", "7". Not globally standardized
-             *     beyond being consistent within one Diagram; MotifPath does not
-             *     validate interval names against a fixed enum.
+             * @description The interval this position represents — e.g. "R", "b3", "4",
+             *     "5", "b7", "2", "3", "6", "7" — relative to the root it was
+             *     authored against. That is normally the parent Diagram's own root
+             *     (see Diagram.root_note). In a diagram saved by combining several
+             *     overlaid diagrams into one, each position keeps the interval it
+             *     had in the diagram it came from, relative to that diagram's
+             *     root. Not globally standardized beyond being consistent within
+             *     one authored diagram; MotifPath does not validate interval names
+             *     against a fixed enum.
              */
             interval: string;
             /**
-             * @description The concrete note name this position sounds at the Diagram's own
-             *     root (e.g. "A", "C"). A diagram_ref's root_override recomputes
-             *     the note actually shown; note_name here is always relative to
-             *     this Diagram's own authored root (see Diagram.root_note).
+             * @description The concrete note name this position sounds at the root it was
+             *     authored against (e.g. "A", "C") — the parent Diagram's own root
+             *     (see Diagram.root_note), or, in a diagram saved by combining
+             *     several overlaid diagrams into one, the root of the diagram the
+             *     position came from. A diagram_ref's root_override recomputes the
+             *     note actually shown.
              */
             note_name: string;
             /**
@@ -1700,10 +1844,27 @@ export interface components {
             /** @description Human-readable name (e.g. "Minor Pentatonic — Position 1"). */
             name: string;
             /**
+             * @description basic diagrams are curated templates: every teacher can find and
+             *     use them, and only an admin may create or update one. custom
+             *     diagrams belong to their creator: only the creator and admins can
+             *     find them in the diagram list, and only the creator or an admin
+             *     may update one. Fixed at creation.
+             * @enum {string}
+             */
+            kind: "basic" | "custom";
+            /**
+             * Format: uuid
+             * @description The user_id of the teacher or admin who created this diagram.
+             *     Fixed at creation.
+             */
+            created_by: string;
+            /**
              * @description The root note this diagram was authored against (e.g. "A"),
-             *     relative to which every position's interval and note_name are
-             *     computed. Null for a diagram with no recorded root (e.g. created
-             *     before this field existed).
+             *     relative to which its positions' interval and note_name are
+             *     computed — except in a diagram saved by combining several
+             *     overlaid diagrams into one, where each position stays relative
+             *     to the root of the diagram it came from. Null for a diagram with
+             *     no recorded root (e.g. created before this field existed).
              */
             root_note: string | null;
             /**
@@ -1753,6 +1914,16 @@ export interface components {
             /** @description Human-readable name for this diagram. */
             name: string;
             /**
+             * @description Whether the new diagram is a curated basic template or the
+             *     caller's own custom diagram. Omitted defaults to custom. Only an
+             *     admin may create a basic diagram. The caller is always recorded
+             *     as the creator; there is no way to create a diagram on another
+             *     user's behalf.
+             * @default custom
+             * @enum {string}
+             */
+            kind: "basic" | "custom";
+            /**
              * @description The root note this diagram is authored against (e.g. "A"). Null
              *     (or omitted) leaves it unrecorded.
              */
@@ -1781,7 +1952,9 @@ export interface components {
          * @description Payload for replacing an existing diagram's name, positions,
          *     classification, root_note, label_display, or color. instrument_id is not
          *     present here — it cannot be changed after creation, since every
-         *     position's coordinate shape depends on it.
+         *     position's coordinate shape depends on it. Nor are kind and
+         *     created_by, which are fixed at creation; a copy saved under a
+         *     different kind or creator is a new diagram.
          */
         UpdateDiagramRequest: {
             /** @description Human-readable name for this diagram, replacing the current value. */
@@ -2174,6 +2347,11 @@ export interface components {
              * @enum {string}
              */
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /**
+             * Format: uuid
+             * @description The user_id of the teacher or admin who created this course.
+             */
+            created_by: string;
             /**
              * @description A student's result is always published. Teachers and admins may see any status.
              * @enum {string}
@@ -3362,11 +3540,24 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description Maximum number of items to return in this page (ADR-031). */
+        Limit: number;
+        /** @description Number of matching items to skip before this page (ADR-031). */
+        Offset: number;
+        /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
+        SearchText: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
 }
+export type SchemaPageMeta = components['schemas']['PageMeta'];
+export type SchemaPagedContentNodes = components['schemas']['PagedContentNodes'];
+export type SchemaPagedExercises = components['schemas']['PagedExercises'];
+export type SchemaPagedLearningPaths = components['schemas']['PagedLearningPaths'];
+export type SchemaPagedCourseCatalog = components['schemas']['PagedCourseCatalog'];
+export type SchemaPagedDiagrams = components['schemas']['PagedDiagrams'];
 export type SchemaHealthStatus = components['schemas']['HealthStatus'];
 export type SchemaCreateContentNodeRequest = components['schemas']['CreateContentNodeRequest'];
 export type SchemaClassificationInput = components['schemas']['ClassificationInput'];
@@ -3435,6 +3626,9 @@ export type SchemaValidationError = components['schemas']['ValidationError'];
 export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError'];
 export type SchemaConflictError = components['schemas']['ConflictError'];
 export type SchemaNotFoundError = components['schemas']['NotFoundError'];
+export type ParameterLimit = components['parameters']['Limit'];
+export type ParameterOffset = components['parameters']['Offset'];
+export type ParameterSearchText = components['parameters']['SearchText'];
 export type $defs = Record<string, never>;
 export interface operations {
     registerUser: {
@@ -3500,6 +3694,12 @@ export interface operations {
     listContentNodes: {
         parameters: {
             query?: {
+                /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
+                q?: components["parameters"]["SearchText"];
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
                 /** @description When given, only content nodes of this type are returned. */
                 content_type?: "video" | "article";
                 /** @description When given, only content nodes with this exact skill id among their linked skills are returned. Matches that node only, not its ancestors or descendants. */
@@ -3515,13 +3715,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The matching content nodes, possibly empty. */
+            /** @description One page of the matching content nodes, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ContentNode"][];
+                    "application/json": components["schemas"]["PagedContentNodes"];
+                };
+            };
+            /** @description limit or offset is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
             /** @description Missing or invalid Bearer token. */
@@ -3761,6 +3970,59 @@ export interface operations {
             };
         };
     };
+    listContentNodeVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the content node whose history to list. */
+                content_node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The node's versions, newest first, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentNodeVersion"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description Only the creating teacher or an admin may view this
+             *     content node's version history.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No content node exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     listContentNodeChallenges: {
         parameters: {
             query?: never;
@@ -3978,6 +4240,10 @@ export interface operations {
     listExercises: {
         parameters: {
             query?: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
                 /**
                  * @description When given, only exercises linked to this exact skill id are
                  *     returned.
@@ -3992,13 +4258,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The matching exercises, possibly empty. */
+            /** @description One page of the matching exercises, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Exercise"][];
+                    "application/json": components["schemas"]["PagedExercises"];
+                };
+            };
+            /** @description limit or offset is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
             /** @description Missing or invalid Bearer token. */
@@ -5158,6 +5433,20 @@ export interface operations {
     listDiagrams: {
         parameters: {
             query?: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+                /**
+                 * @description Restricts the results to diagrams of this kind. For a teacher,
+                 *     custom means only their own custom diagrams.
+                 */
+                kind?: "basic" | "custom";
+                /**
+                 * @description Restricts the results to diagrams created by this user. A
+                 *     teacher may pass only their own user_id.
+                 */
+                created_by?: string;
                 /** @description When given, only diagrams authored against this instrument are returned. */
                 instrument_id?: string;
                 /** @description When given, only diagrams with this exact skill id among their linked skills are returned. */
@@ -5171,13 +5460,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The matching diagrams, possibly empty. */
+            /** @description One page of the diagrams visible to the caller, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Diagram"][];
+                    "application/json": components["schemas"]["PagedDiagrams"];
+                };
+            };
+            /** @description limit, offset or kind is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
             /** @description Missing or invalid Bearer token. */
@@ -5187,6 +5485,18 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The caller is a student, or a teacher passed a created_by other
+             *     than their own user_id.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
@@ -5236,7 +5546,11 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description The authenticated user does not have permission to create a diagram. Only teachers and admins may. */
+            /**
+             * @description The authenticated user does not have permission to create this
+             *     diagram. Only teachers and admins may create a diagram, and only
+             *     an admin may create a basic one.
+             */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5329,7 +5643,11 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description The authenticated user does not have permission to update this diagram. Only teachers and admins may. */
+            /**
+             * @description The authenticated user does not have permission to update this
+             *     diagram: they are a student, a teacher updating a basic diagram,
+             *     or a teacher updating another user's custom diagram.
+             */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5351,20 +5669,36 @@ export interface operations {
     };
     listLearningPaths: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
+                q?: components["parameters"]["SearchText"];
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description The existing learning paths, possibly empty. */
+            /** @description One page of the existing learning paths, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["LearningPath"][];
+                    "application/json": components["schemas"]["PagedLearningPaths"];
+                };
+            };
+            /** @description limit or offset is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
             /** @description Missing or invalid Bearer token. */
@@ -5628,6 +5962,20 @@ export interface operations {
     listCourses: {
         parameters: {
             query?: {
+                /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
+                q?: components["parameters"]["SearchText"];
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Restricts the results to courses at any of these levels. */
+                levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
+                /** @description Restricts the results to courses created by this user. */
+                created_by?: string;
+                /** @description Restricts the results to courses classified with at least one of these skills. */
+                skill_ids?: string[];
+                /** @description Restricts the results to courses classified with at least one of these concepts. */
+                concept_ids?: string[];
                 /**
                  * @description Restricts the results to courses in this status. Only
                  *     teachers and admins may use this parameter; a student's
@@ -5642,13 +5990,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The courses visible to the caller, possibly empty. */
+            /** @description One page of the courses visible to the caller, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CourseCatalogEntry"][];
+                    "application/json": components["schemas"]["PagedCourseCatalog"];
+                };
+            };
+            /** @description limit or offset is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
             /** @description Missing or invalid Bearer token. */
@@ -5658,6 +6015,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description A teacher passed a created_by other than their own user_id. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
@@ -6083,6 +6449,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listMyStandalonePaths: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's standalone paths, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPath"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only students hold student paths. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
