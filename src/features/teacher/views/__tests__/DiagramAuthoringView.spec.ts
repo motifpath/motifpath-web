@@ -522,6 +522,17 @@ describe('DiagramAuthoringView', () => {
       expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
     })
 
+    it('puts every way of saving in the top bar', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-teacher' })
+
+      const appBar = wrapper.findComponent({ name: 'AppBar' })
+      expect(appBar.find('[data-test="app-bar-save"]').exists()).toBe(true)
+      expect(appBar.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(appBar.find('[data-test="save-as-template"]').exists()).toBe(true)
+    })
+
     it('only lets a teacher save a basic template as a copy, and says why', async () => {
       const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
 
@@ -655,10 +666,43 @@ describe('DiagramAuthoringView', () => {
       expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
     })
 
-    it('does not offer Save as for a diagram that has never been saved', () => {
+    it('does not offer Save as, or a teacher Save as template, for a diagram that has never been saved', () => {
       const wrapper = mountView()
 
       expect(wrapper.find('[data-test="save-as"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="save-as-template"]').exists()).toBe(false)
+    })
+
+    it('lets an admin save a new diagram straight away as a template, under its own name', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-tpl', name: 'G Major Template', kind: 'basic', created_by: 'u-admin' },
+        error: undefined,
+        response: { status: 201 },
+      })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('G Major Template')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+
+      const appBar = wrapper.findComponent({ name: 'AppBar' })
+      expect(appBar.find('[data-test="save-as"]').exists()).toBe(false)
+      await appBar.get('[data-test="save-as-template"]').trigger('click')
+      expect((wrapper.get('[data-test="save-as-name"]').element as HTMLInputElement).value).toBe('G Major Template')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ name: 'G Major Template', kind: 'basic' }) }),
+      )
+      expect(router.replace).toHaveBeenCalledWith({ name: 'teacher-diagram-edit', params: { id: 'd-tpl' } })
+      expect(appBarShowsSave(wrapper)).toBe(true)
     })
 
     it('sends a new diagram as a custom diagram', async () => {

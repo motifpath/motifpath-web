@@ -199,6 +199,29 @@ describe('AppBar', () => {
     expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
   })
 
+  it('renders page-specific save actions in the bar, just before Save', () => {
+    const wrapper = mount(AppBar, {
+      props: { context: 'teacher', primaryNavTo: { name: 'path' }, showSave: true },
+      slots: { actions: '<button data-test="page-action">Save as…</button>' },
+      global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub, AccountMenu: true } },
+    })
+
+    const action = wrapper.get('[data-test="page-action"]')
+    const save = wrapper.get('[data-test="app-bar-save"]')
+    expect(action.element.compareDocumentPosition(save.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('renders page-specific save actions even when there is no plain Save', () => {
+    const wrapper = mount(AppBar, {
+      props: { context: 'teacher', primaryNavTo: { name: 'path' } },
+      slots: { actions: '<button data-test="page-action">Save as…</button>' },
+      global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub, AccountMenu: true } },
+    })
+
+    expect(wrapper.find('[data-test="page-action"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="app-bar-save"]').exists()).toBe(false)
+  })
+
   it('renders a "Saved" indicator when justSaved is true', () => {
     const wrapper = mountBar({ context: 'teacher', justSaved: true })
 

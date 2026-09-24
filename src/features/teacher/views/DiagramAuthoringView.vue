@@ -93,6 +93,17 @@ const canSaveInPlace = computed(
 )
 // Only a saved diagram has something to copy; a new one is saved with the plain Save.
 const canSaveAs = computed(() => canAuthor.value && savedDiagramId.value !== '')
+// An admin may save as a template at any point, including a brand new diagram.
+const canSaveAsTemplate = computed(() => isAdmin.value)
+// Outlined counterpart of the bar's filled Save pill: clearly a live button, but secondary.
+const secondarySaveClass =
+  'rounded-full border border-accent px-[14px] py-[7px] text-[13px] font-bold text-accent-text disabled:cursor-not-allowed disabled:opacity-50'
+// A copy of a saved diagram is suggested as "<name> (copy)"; a new diagram keeps its own name.
+const saveAsInitialName = computed(() =>
+  savedDiagramId.value
+    ? t('diagramAuthoringView.copyName', { name: form.name.value })
+    : form.name.value,
+)
 const readOnlyReason = computed(() => {
   if (canSaveInPlace.value || !savedOwnership.value) return ''
   return savedOwnership.value.kind === 'basic'
@@ -233,7 +244,30 @@ async function saveAs(name: string) {
       :save-disabled="!form.canSave.value || saving"
       :just-saved="justSaved"
       :on-save="save"
-    />
+    >
+      <template #actions>
+        <button
+          v-if="canSaveAs"
+          type="button"
+          data-test="save-as"
+          :disabled="!form.canSave.value || savingAs"
+          :class="secondarySaveClass"
+          @click="openSaveAs('custom')"
+        >
+          {{ t('diagramAuthoringView.saveAsButton') }}
+        </button>
+        <button
+          v-if="canSaveAsTemplate"
+          type="button"
+          data-test="save-as-template"
+          :disabled="!form.canSave.value || savingAs"
+          :class="secondarySaveClass"
+          @click="openSaveAs('basic')"
+        >
+          {{ t('diagramAuthoringView.saveAsTemplateButton') }}
+        </button>
+      </template>
+    </AppBar>
 
     <div
       v-if="!canAuthor"
@@ -286,27 +320,6 @@ async function saveAs(name: string) {
           {{ readOnlyReason }}
         </p>
 
-        <div v-if="canSaveAs" class="flex flex-wrap gap-2">
-          <button
-            type="button"
-            data-test="save-as"
-            :disabled="!form.canSave.value"
-            class="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
-            @click="openSaveAs('custom')"
-          >
-            {{ t('diagramAuthoringView.saveAsButton') }}
-          </button>
-          <button
-            v-if="isAdmin"
-            type="button"
-            data-test="save-as-template"
-            :disabled="!form.canSave.value"
-            class="rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
-            @click="openSaveAs('basic')"
-          >
-            {{ t('diagramAuthoringView.saveAsTemplateButton') }}
-          </button>
-        </div>
 
         <div class="flex flex-col gap-2.5">
           <label class="text-sm font-semibold">{{
@@ -498,7 +511,7 @@ async function saveAs(name: string) {
 
       <SaveDiagramAsModal
         :open="saveAsKind !== null"
-        :initial-name="t('diagramAuthoringView.copyName', { name: form.name.value })"
+        :initial-name="saveAsInitialName"
         :as-template="saveAsKind === 'basic'"
         :saving="savingAs"
         @confirm="saveAs"

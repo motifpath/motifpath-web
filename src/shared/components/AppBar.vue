@@ -151,6 +151,9 @@ function closeDrawer(): void {
       >{{ t('buttons.saved') }}</span
     >
 
+    <!-- Page-specific save actions (e.g. "Save as…"), kept next to Save so every way of saving is in one place. -->
+    <slot name="actions" />
+
     <button
       v-if="showSave"
       type="button"
