@@ -55,5 +55,22 @@
   },
   "toastStack": {
     "dismissAriaLabel": "Dismiss"
+  },
+  "colorPalette": {
+    "clear": "Default color",
+    "colors": {
+      "red": "Red",
+      "orange": "Orange",
+      "amber": "Amber",
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "indigo": "Indigo",
+      "purple": "Purple",
+      "pink": "Pink",
+      "gray": "Gray",
+      "black": "Black",
+      "white": "White"
+    }
   }
 }

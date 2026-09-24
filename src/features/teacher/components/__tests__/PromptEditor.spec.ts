@@ -9,7 +9,8 @@ vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
 
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import { useToast } from '@/shared/composables/useToast'
-import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { coloredTextPrompt, plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
@@ -56,9 +57,81 @@ describe('PromptEditor', () => {
       'font-color',
       'background-color',
     ]
+    const paletteMenus = new Set(['font-color', 'background-color'])
     for (const name of expected) {
-      expect(wrapper.find(`[data-test="prompt-toolbar-${name}"]`).exists(), name).toBe(true)
+      const selector = paletteMenus.has(name) ? `prompt-toolbar-${name}-trigger` : `prompt-toolbar-${name}`
+      expect(wrapper.find(`[data-test="${selector}"]`).exists(), name).toBe(true)
     }
+  })
+
+  it('shows the font and background color at the cursor on the toolbar indicators', async () => {
+    const doc = coloredTextPrompt('Hello', { color: '#EF4444', backgroundColor: '#3B82F6' })
+    const wrapper = mount(PromptEditor, { props: { modelValue: doc } })
+    await nextTick()
+    await nextTick()
+
+    expect(wrapper.get('[data-test="prompt-toolbar-font-color-indicator"]').attributes('data-color')).toBe('#EF4444')
+    expect(wrapper.get('[data-test="prompt-toolbar-background-color-indicator"]').attributes('data-color')).toBe('#3B82F6')
+  })
+
+  describe('with the text selected', () => {
+    async function selectAll(wrapper: ReturnType<typeof mount>) {
+      await wrapper.get('.ProseMirror').trigger('keydown', { key: 'a', ctrlKey: true })
+      await nextTick()
+    }
+
+    function styleOfFirstText(wrapper: ReturnType<typeof mount>): Record<string, unknown> {
+      const text = lastEmittedDocument(wrapper).content[0]?.content?.[0]
+      return (text?.marks?.find((m) => m.type === 'textStyle')?.attrs ?? {}) as Record<string, unknown>
+    }
+
+    it('applies a chosen font color and background color to the selection', async () => {
+      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+      await nextTick()
+      await nextTick()
+      await selectAll(wrapper)
+
+      await wrapper.get('[data-test="prompt-toolbar-font-color-trigger"]').trigger('click')
+      await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[0].key}"]`).trigger('click')
+      await wrapper.get('[data-test="prompt-toolbar-background-color-trigger"]').trigger('click')
+      await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
+      await nextTick()
+
+      expect(styleOfFirstText(wrapper)).toMatchObject({ color: COLOR_PALETTE[0].hex, backgroundColor: COLOR_PALETTE[5].hex })
+    })
+
+    it('removes the font color and the background color when the default swatch is chosen', async () => {
+      const doc = coloredTextPrompt('Hello', { color: '#EF4444', backgroundColor: '#3B82F6' })
+      const wrapper = mount(PromptEditor, { props: { modelValue: doc } })
+      await nextTick()
+      await nextTick()
+      await selectAll(wrapper)
+
+      await wrapper.get('[data-test="prompt-toolbar-font-color-trigger"]').trigger('click')
+      await wrapper.get('[data-test="color-palette-clear"]').trigger('click')
+      await wrapper.get('[data-test="prompt-toolbar-background-color-trigger"]').trigger('click')
+      await wrapper.get('[data-test="color-palette-clear"]').trigger('click')
+      await nextTick()
+
+      const style = styleOfFirstText(wrapper)
+      expect(style.color ?? null).toBeNull()
+      expect(style.backgroundColor ?? null).toBeNull()
+    })
+  })
+
+  it('offers only the fixed palette for text and background color — no free color input', async () => {
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    await nextTick()
+
+    expect(wrapper.find('input[type="color"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="prompt-toolbar-font-color-trigger"]').trigger('click')
+    expect(wrapper.findAll('[data-test^="color-swatch-"]')).toHaveLength(COLOR_PALETTE.length)
+    await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[0].key}"]`).trigger('click')
+    expect(wrapper.find('[data-test="color-palette"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="prompt-toolbar-background-color-trigger"]').trigger('click')
+    expect(wrapper.find('[data-test="color-palette"]').exists()).toBe(true)
   })
 
   it('toggling a heading changes the current block and emits the updated document', async () => {
@@ -192,11 +265,20 @@ describe('PromptEditor', () => {
     await nextTick()
     expect(firstCell()?.attrs?.borderColor).toBeFalsy()
 
-    const backgroundInput = wrapper.find('[data-test="prompt-table-cell-background"]')
-    Object.defineProperty(backgroundInput.element, 'value', { value: '#f3ecff', writable: true })
-    await backgroundInput.trigger('input')
+    const swatch = COLOR_PALETTE[3]
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
+    await wrapper.find(`[data-test="color-swatch-${swatch.key}"]`).trigger('click')
     await nextTick()
-    expect(firstCell()?.attrs?.backgroundColor).toBe('#f3ecff')
+    expect(firstCell()?.attrs?.backgroundColor).toBe(swatch.hex)
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
+    expect(wrapper.get(`[data-test="color-swatch-${swatch.key}"]`).attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="prompt-table-cell-background-indicator"]').attributes('data-color')).toBe(swatch.hex)
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
+
+    await wrapper.find('[data-test="prompt-table-cell-background-trigger"]').trigger('click')
+    await wrapper.find('[data-test="color-palette-clear"]').trigger('click')
+    await nextTick()
+    expect(firstCell()?.attrs?.backgroundColor).toBeFalsy()
   })
 
   it('has merge and split cell buttons available inside a table', async () => {

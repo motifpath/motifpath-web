@@ -50,6 +50,7 @@ const StyledTableHeader = TableHeader.extend({
 import TextAlign from '@tiptap/extension-text-align'
 import TiptapText from '@tiptap/extension-text'
 import { BackgroundColor, Color, TextStyle } from '@tiptap/extension-text-style'
+import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import {
   Baseline,
@@ -238,12 +239,21 @@ function currentCellAttrs(): Record<string, unknown> {
   if (!editor.value) return {}
   return editor.value.isActive('tableHeader') ? editor.value.getAttributes('tableHeader') : editor.value.getAttributes('tableCell')
 }
+function currentCellBackground(): string | null {
+  void activeStateTick.value
+  const color = currentCellAttrs().backgroundColor
+  return typeof color === 'string' ? color : null
+}
+function currentTextStyle(key: 'color' | 'backgroundColor'): string | null {
+  void activeStateTick.value
+  const value = editor.value?.getAttributes('textStyle')[key]
+  return typeof value === 'string' ? value : null
+}
 function toggleCellBorder() {
   const hasNoBorder = currentCellAttrs().borderColor === 'transparent'
   editor.value?.chain().focus().setCellAttribute('borderColor', hasNoBorder ? null : 'transparent').run()
 }
-function setCellBackground(event: Event) {
-  const color = (event.target as HTMLInputElement).value
+function setCellBackground(color: string | null) {
   editor.value?.chain().focus().setCellAttribute('backgroundColor', color).run()
 }
 function setLink() {
@@ -251,13 +261,15 @@ function setLink() {
   if (!url) return
   editor.value?.chain().focus().setLink({ href: url }).run()
 }
-function setFontColor(event: Event) {
-  const color = (event.target as HTMLInputElement).value
-  editor.value?.chain().focus().setColor(color).run()
+function setFontColor(color: string | null) {
+  const chain = editor.value?.chain().focus()
+  if (color) chain?.setColor(color).run()
+  else chain?.unsetColor().run()
 }
-function setBackgroundColor(event: Event) {
-  const color = (event.target as HTMLInputElement).value
-  editor.value?.chain().focus().setBackgroundColor(color).run()
+function setBackgroundColor(color: string | null) {
+  const chain = editor.value?.chain().focus()
+  if (color) chain?.setBackgroundColor(color).run()
+  else chain?.unsetBackgroundColor().run()
 }
 function pickImage() {
   imageInput.value?.click()
@@ -381,30 +393,22 @@ async function onImagePicked(event: Event) {
         >
           <Highlighter :size="16" aria-hidden="true" />
         </button>
-        <label
-          class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted"
+        <ColorPaletteMenu
+          test-id="prompt-toolbar-font-color"
           :title="t('promptEditor.fontColor')"
+          :model-value="currentTextStyle('color')"
+          @select="setFontColor"
         >
           <Baseline :size="16" aria-hidden="true" />
-          <input
-            type="color"
-            data-test="prompt-toolbar-font-color"
-            class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            @input="setFontColor"
-          />
-        </label>
-        <label
-          class="relative flex cursor-pointer items-center rounded p-1.5 text-ink-muted"
+        </ColorPaletteMenu>
+        <ColorPaletteMenu
+          test-id="prompt-toolbar-background-color"
           :title="t('promptEditor.backgroundColor')"
+          :model-value="currentTextStyle('backgroundColor')"
+          @select="setBackgroundColor"
         >
           <PaintBucket :size="16" aria-hidden="true" />
-          <input
-            type="color"
-            data-test="prompt-toolbar-background-color"
-            class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            @input="setBackgroundColor"
-          />
-        </label>
+        </ColorPaletteMenu>
 
         <div class="mx-1 h-4 w-px bg-border" />
 
@@ -596,15 +600,14 @@ async function onImagePicked(event: Event) {
         >
           <SquareDashed :size="16" aria-hidden="true" />
         </button>
-        <label class="relative flex cursor-pointer items-center rounded p-1.5" :title="t('promptEditor.cellBackgroundColor')">
+        <ColorPaletteMenu
+          test-id="prompt-table-cell-background"
+          :title="t('promptEditor.cellBackgroundColor')"
+          :model-value="currentCellBackground()"
+          @select="setCellBackground"
+        >
           <PaintBucket :size="16" aria-hidden="true" />
-          <input
-            type="color"
-            data-test="prompt-table-cell-background"
-            class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            @input="setCellBackground"
-          />
-        </label>
+        </ColorPaletteMenu>
         <div class="mx-1 h-4 w-px bg-border" />
         <button
           type="button"
