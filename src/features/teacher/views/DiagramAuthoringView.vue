@@ -5,6 +5,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import ColorPalette from '@/shared/components/ColorPalette.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
@@ -103,6 +104,7 @@ const previewDiagram = computed<Diagram | null>(() => {
     name: form.name.value,
     root_note: request.root_note ?? null,
     label_display: form.labelDisplay.value,
+    color: form.color.value,
     positions: request.positions,
     classification: { skills: [], concepts: [] },
     created_at: '',
@@ -226,6 +228,12 @@ async function save() {
           <span class="text-sm text-ink-subtle">{{ t('diagramAuthoringView.rootNoteHint') }}</span>
         </div>
 
+        <div v-if="selectedInstrument" data-test="diagram-color" class="flex flex-col gap-2">
+          <label class="text-sm font-semibold">{{ t('diagramAuthoringView.colorLabel') }}</label>
+          <ColorPalette :model-value="form.color.value" @select="(color) => (form.color.value = color)" />
+          <span class="text-sm text-ink-subtle">{{ t('diagramAuthoringView.colorHint') }}</span>
+        </div>
+
         <div v-if="selectedInstrument" class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <label class="text-sm font-semibold">{{ t('diagramAuthoringView.positionsLabel') }}</label>
@@ -263,9 +271,11 @@ async function save() {
             :instrument="selectedInstrument"
             :positions="form.positions.value"
             :label-mode="form.labelDisplay.value"
+            :color="form.color.value"
             @toggle-cell="form.toggleCell"
             @reorder="form.reorderPositions"
             @set-shape="form.setPositionShape"
+            @set-color="form.setPositionColor"
             @remove="form.removePosition"
           />
         </div>

@@ -161,14 +161,17 @@
     "diagramCreated": "Diagram created.",
     "saveFailed": "Failed to save the diagram",
     "createSkillFailed": "Failed to create the skill",
-    "createConceptFailed": "Failed to create the concept"
+    "createConceptFailed": "Failed to create the concept",
+    "colorLabel": "Marker color",
+    "colorHint": "Applies to every marker without a color of its own. Pick a color on a single position to override it."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
     "stringFret": "String {string}, fret {fret}",
     "reorderHint": "Drag a position to reorder its place in the sequence",
     "shapeAriaLabel": "Show this position as a {shape}",
-    "removePositionAriaLabel": "Remove this position"
+    "removePositionAriaLabel": "Remove this position",
+    "positionColor": "Marker color"
   },
   "skillConceptTreePicker": {
     "removeSelectedAriaLabel": "Remove {name}",

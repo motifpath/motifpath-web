@@ -166,6 +166,7 @@ describe('useDiagramForm', () => {
       name: 'Minor Pentatonic — Position 1',
       root_note: 'A',
       label_display: 'note',
+      color: null,
       positions: [{ position_id: form.positions.value[0].id, string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'star', sequence_index: 0 }],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
     })
@@ -247,5 +248,87 @@ describe('useDiagramForm', () => {
     form.loadFromDiagram(diagram)
 
     expect(form.rootNote.value).toBe('')
+  })
+
+  describe('colors', () => {
+    function placedForm() {
+      const form = useDiagramForm()
+      form.name.value = 'D'
+      form.instrumentId.value = 'instrument-guitar'
+      form.addPosition({ string: 6, fret: 5 })
+      form.addPosition({ string: 6, fret: 8 })
+      return form
+    }
+
+    it('starts with no general color and no position colors', () => {
+      const form = placedForm()
+
+      expect(form.color.value).toBeNull()
+      expect(form.positions.value.every((p) => p.color === null)).toBe(true)
+    })
+
+    it("sets and clears a position's own color", () => {
+      const form = placedForm()
+      const id = form.positions.value[0]!.id
+
+      form.setPositionColor(id, '#EF4444')
+      expect(form.positions.value[0]?.color).toBe('#EF4444')
+      expect(form.positions.value[1]?.color).toBeNull()
+
+      form.setPositionColor(id, null)
+      expect(form.positions.value[0]?.color).toBeNull()
+    })
+
+    it('sends the general and per-position colors on create, and null when unset', () => {
+      const form = placedForm()
+      form.color.value = '#3B82F6'
+      form.setPositionColor(form.positions.value[0]!.id, '#EF4444')
+
+      const request = form.toCreateDiagramRequest()
+
+      expect(request.color).toBe('#3B82F6')
+      expect(request.positions[0]?.color).toBe('#EF4444')
+      expect(request.positions[1]?.color).toBeUndefined()
+
+      const bare = useDiagramForm()
+      bare.name.value = 'D'
+      expect(bare.toCreateDiagramRequest().color).toBeNull()
+    })
+
+    it('sends the general color on update only once set (it cannot be cleared), and per-position colors with the positions', () => {
+      const form = placedForm()
+      expect(form.toUpdateDiagramRequest().color).toBeUndefined()
+
+      form.color.value = '#22C55E'
+      form.setPositionColor(form.positions.value[1]!.id, '#F59E0B')
+      const request = form.toUpdateDiagramRequest()
+
+      expect(request.color).toBe('#22C55E')
+      expect(request.positions?.[1]?.color).toBe('#F59E0B')
+      expect(request.positions?.[0]?.color).toBeUndefined()
+    })
+
+    it("loads the general color and each position's color from an existing Diagram", () => {
+      const base = makeFrettedDiagram()
+      const diagram = makeFrettedDiagram({
+        color: '#3B82F6',
+        positions: base.positions.map((p, i) => (i === 0 ? { ...p, color: '#EF4444' } : p)),
+      })
+      const form = useDiagramForm()
+
+      form.loadFromDiagram(diagram)
+
+      expect(form.color.value).toBe('#3B82F6')
+      expect(form.positions.value[0]?.color).toBe('#EF4444')
+      expect(form.positions.value[1]?.color).toBeNull()
+    })
+
+    it('loads an unrecorded general color as null', () => {
+      const form = useDiagramForm()
+
+      form.loadFromDiagram(makeFrettedDiagram())
+
+      expect(form.color.value).toBeNull()
+    })
   })
 })

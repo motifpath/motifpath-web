@@ -70,6 +70,7 @@ function mountView() {
   })
 }
 
+import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import DiagramAuthoringView from '@/features/teacher/views/DiagramAuthoringView.vue'
@@ -194,6 +195,64 @@ describe('DiagramAuthoringView', () => {
     )
   })
 
+  it("saves the general color chosen from the palette and a position's own color", async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    POST.mockResolvedValueOnce({
+      data: {
+        diagram_id: 'd-new',
+        instrument_id: 'i-1',
+        name: 'Colored',
+        root_note: null,
+        label_display: 'interval',
+        color: '#3B82F6',
+        positions: [],
+        classification: { skills: [], concepts: [] },
+        created_at: '2026-09-23T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Colored')
+    const editor = wrapper.findComponent(FrettedDiagramEditor)
+    await editor.vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    await selectClassification(wrapper)
+
+    await wrapper.get(`[data-test="diagram-color"] [data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
+    const positionId = wrapper.findComponent(FrettedDiagramEditor).props('positions')[0]!.id
+    await editor.vm.$emit('set-color', positionId, COLOR_PALETTE[0].hex)
+
+    expect(wrapper.findComponent(FrettedDiagramEditor).props('color')).toBe(COLOR_PALETTE[5].hex)
+
+    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+
+    expect(POST).toHaveBeenCalledWith(
+      '/diagrams',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          color: COLOR_PALETTE[5].hex,
+          positions: [expect.objectContaining({ color: COLOR_PALETTE[0].hex })],
+        }),
+      }),
+    )
+  })
+
+  it('offers only the fixed palette for the general color, with a way back to the default', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    const palette = wrapper.get('[data-test="diagram-color"]')
+    expect(palette.findAll('[data-test^="color-swatch-"]')).toHaveLength(COLOR_PALETTE.length)
+    expect(palette.find('[data-test="color-palette-clear"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('input[type="color"]').exists()).toBe(false)
+  })
+
   it('opens the full-size preview modal from the "view full preview" button', async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     const wrapper = mountView()
@@ -292,6 +351,41 @@ describe('DiagramAuthoringView', () => {
       expect(wrapper.get('[data-test="label-mode-note"]').classes()).toContain('bg-accent')
       const shapeOptions = wrapper.findComponent(FrettedDiagramEditor).findAll('[data-test="position-shape-option"]')
       expect(shapeOptions[2]?.attributes('aria-pressed')).toBe('true') // star is the third option
+    })
+
+    it("restores the saved general color and each position's own color when reopened for editing", async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          diagram_id: 'd-1',
+          instrument_id: 'i-1',
+          name: 'C Major Scale',
+          root_note: 'C',
+          label_display: 'interval',
+          color: '#3B82F6',
+          positions: [
+            { position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', color: '#EF4444', string: 2, fret: 1, sequence_index: 0 },
+            { position_id: 'p-2', interval: '3', note_name: 'E', shape: 'dot', string: 2, fret: 5, sequence_index: 1 },
+          ],
+          classification: {
+            skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
+            concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+          },
+          created_at: '2026-09-22T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      const blue = COLOR_PALETTE.find((c) => c.hex === '#3B82F6')!
+      expect(wrapper.get(`[data-test="diagram-color"] [data-test="color-swatch-${blue.key}"]`).attributes('aria-pressed')).toBe('true')
+      const editor = wrapper.findComponent(FrettedDiagramEditor)
+      expect(editor.props('color')).toBe('#3B82F6')
+      expect(editor.props('positions').map((p: { color: string | null }) => p.color)).toEqual(['#EF4444', null])
+      expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).props('diagram').color).toBe('#3B82F6')
     })
   })
 })
