@@ -82,6 +82,13 @@ async function selectClassification(wrapper: ReturnType<typeof mountView>) {
   await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
 }
 
+/** Opens the general marker color palette (from its toolbar icon button) if it is not already open. */
+async function openColorMenu(wrapper: ReturnType<typeof mountView>) {
+  if (!wrapper.find('[data-test="color-palette"]').exists()) {
+    await wrapper.get('[data-test="diagram-color-trigger"]').trigger('click')
+  }
+}
+
 describe('DiagramAuthoringView', () => {
   beforeEach(() => {
     POST.mockReset()
@@ -222,7 +229,8 @@ describe('DiagramAuthoringView', () => {
     await wrapper.get('[data-test="root-note-select"]').setValue('G')
     await selectClassification(wrapper)
 
-    await wrapper.get(`[data-test="diagram-color"] [data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
+    await openColorMenu(wrapper)
+    await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
     const positionId = wrapper.findComponent(FrettedDiagramEditor).props('positions')[0]!.id
     await editor.vm.$emit('set-color', positionId, COLOR_PALETTE[0].hex)
 
@@ -247,7 +255,10 @@ describe('DiagramAuthoringView', () => {
     await new Promise((r) => setTimeout(r, 0))
     await wrapper.get('[data-test="instrument-option"]').trigger('click')
 
-    const palette = wrapper.get('[data-test="diagram-color"]')
+    expect(wrapper.find('[data-test="color-palette"]').exists()).toBe(false)
+    await openColorMenu(wrapper)
+
+    const palette = wrapper.get('[data-test="color-palette"]')
     expect(palette.findAll('[data-test^="color-swatch-"]')).toHaveLength(COLOR_PALETTE.length)
     expect(palette.find('[data-test="color-palette-clear"]').attributes('aria-pressed')).toBe('true')
     expect(wrapper.find('input[type="color"]').exists()).toBe(false)
@@ -277,14 +288,18 @@ describe('DiagramAuthoringView', () => {
     await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
     await wrapper.get('[data-test="root-note-select"]').setValue('G')
     await selectClassification(wrapper)
-    await wrapper.get(`[data-test="diagram-color"] [data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
+    await openColorMenu(wrapper)
+    await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
 
-    const clearSelector = '[data-test="diagram-color"] [data-test="color-palette-clear"]'
+    const clearSelector = '[data-test="color-palette-clear"]'
+    await openColorMenu(wrapper)
     expect(wrapper.get(clearSelector).attributes('disabled')).toBeUndefined()
+    await wrapper.get(clearSelector).trigger('keydown', { key: 'Escape' })
 
     await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
     await new Promise((r) => setTimeout(r, 0))
 
+    await openColorMenu(wrapper)
     expect(wrapper.get(clearSelector).attributes('disabled')).toBeDefined()
   })
 
@@ -416,7 +431,9 @@ describe('DiagramAuthoringView', () => {
       await new Promise((r) => setTimeout(r, 0))
 
       const blue = COLOR_PALETTE.find((c) => c.hex === '#3B82F6')!
-      expect(wrapper.get(`[data-test="diagram-color"] [data-test="color-swatch-${blue.key}"]`).attributes('aria-pressed')).toBe('true')
+      expect(wrapper.get('[data-test="diagram-color-indicator"]').attributes('data-color')).toBe('#3B82F6')
+      await openColorMenu(wrapper)
+      expect(wrapper.get(`[data-test="color-swatch-${blue.key}"]`).attributes('aria-pressed')).toBe('true')
       const editor = wrapper.findComponent(FrettedDiagramEditor)
       expect(editor.props('color')).toBe('#3B82F6')
       expect(editor.props('positions').map((p: { color: string | null }) => p.color)).toEqual(['#EF4444', null])
@@ -447,9 +464,9 @@ describe('DiagramAuthoringView', () => {
       const wrapper = mountView()
       await new Promise((r) => setTimeout(r, 0))
 
-      const clear = wrapper.get('[data-test="diagram-color"] [data-test="color-palette-clear"]')
-      expect(clear.attributes('disabled')).toBeDefined()
-      expect(wrapper.find('[data-test="diagram-color-cannot-clear"]').exists()).toBe(true)
+      await openColorMenu(wrapper)
+      expect(wrapper.get('[data-test="color-palette-clear"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="color-palette-hint"]').exists()).toBe(true)
     })
   })
 })
