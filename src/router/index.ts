@@ -95,6 +95,21 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/courses',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'course-catalog',
+        // Student-only: a teacher's or admin's course list is their own
+        // authoring list (drafts included), not this published catalog.
+        meta: { requiresAuth: true, requiresRole: ['student'] },
+        component: () => import('@/features/student/views/CourseCatalogView.vue'),
+      },
+    ],
+  },
+  {
     path: '/teacher/exercises',
     // A pass-through parent (no layout of its own — just RouterView) so all
     // three exercise routes below share one beforeEnter instead of each

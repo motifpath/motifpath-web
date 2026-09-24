@@ -247,6 +247,34 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it('lets a registered student reach the course catalog', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/courses')
+
+    expect(router.currentRoute.value.name).toBe('course-catalog')
+  })
+
+  it('sends a registered teacher away from the student course catalog to home', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('teacher')
+
+    await router.push('/courses')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('sends an unauthenticated visitor from the course catalog to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/courses')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 

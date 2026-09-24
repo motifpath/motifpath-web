@@ -127,5 +127,12 @@
     "createSubmit": "Adicionar",
     "duplicateName": "Já existe um item chamado \"{name}\" sob esse item pai — selecione-o na lista acima em vez de criar um quase duplicado.",
     "closeButton": "Fechar"
+  },
+  "levels": {
+    "beginner": "Iniciante",
+    "early_intermediate": "Pré-intermediário",
+    "intermediate": "Intermediário",
+    "advanced": "Avançado",
+    "expert": "Especialista"
   }
 }

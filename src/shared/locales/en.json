@@ -127,5 +127,12 @@
     "createSubmit": "Add",
     "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate.",
     "closeButton": "Close"
+  },
+  "levels": {
+    "beginner": "Beginner",
+    "early_intermediate": "Early intermediate",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced",
+    "expert": "Expert"
   }
 }

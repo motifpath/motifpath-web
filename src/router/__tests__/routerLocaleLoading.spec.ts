@@ -57,6 +57,17 @@ describe('router locale loading', () => {
     expect(ensureStudentLocaleLoaded).toHaveBeenCalled()
   })
 
+  it('loads the student locale when entering the course catalog', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/courses')
+
+    expect(router.currentRoute.value.name).toBe('course-catalog')
+    expect(ensureStudentLocaleLoaded).toHaveBeenCalled()
+  })
+
   it('does not load the student locale when navigating to sign-in', async () => {
     await router.push('/')
     ensureStudentLocaleLoaded.mockClear()

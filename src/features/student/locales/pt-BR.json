@@ -71,5 +71,27 @@
     },
     "clearHintBefore": "Toque novamente em uma resposta selecionada para limpá-la. Use",
     "clearHintAfter": "para revisar e alterar a resposta de um exercício anterior."
+  },
+  "courseCatalogView": {
+    "heading": "Encontre um curso",
+    "searchLabel": "Buscar cursos",
+    "searchPlaceholder": "Busque por título ou resumo",
+    "levelFilterLabel": "Nível",
+    "skillFilterLabel": "Habilidade",
+    "conceptFilterLabel": "Conceito",
+    "teacherFilter": "Mesmo professor de “{title}”",
+    "teacherFilterRemoveAriaLabel": "Remover o filtro de professor",
+    "clearFilters": "Limpar filtros",
+    "loadingNoun": "os cursos",
+    "errorMessage": "Não foi possível carregar o catálogo de cursos.",
+    "emptyHeading": "Nenhum curso ainda",
+    "emptyMessage": "Novos cursos aparecerão aqui assim que forem publicados.",
+    "noMatchesHeading": "Nenhum curso encontrado",
+    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
+    "enroll": "Inscrever-se",
+    "enrolling": "Inscrevendo…",
+    "enrolled": "Inscrito",
+    "enrolledToast": "Você está inscrito em {title}.",
+    "moreFromTeacher": "Mais deste professor"
   }
 }
