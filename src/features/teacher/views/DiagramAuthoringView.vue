@@ -131,6 +131,7 @@ async function save() {
       ? await updateDiagram(savedDiagramId.value, form.toUpdateDiagramRequest())
       : await createDiagram(form.toCreateDiagramRequest())
     savedDiagramId.value = diagram.diagram_id
+    form.markSaved(diagram)
 
     justSaved.value = true
     clearTimeout(justSavedTimeout)
@@ -230,8 +231,15 @@ async function save() {
 
         <div v-if="selectedInstrument" data-test="diagram-color" class="flex flex-col gap-2">
           <label class="text-sm font-semibold">{{ t('diagramAuthoringView.colorLabel') }}</label>
-          <ColorPalette :model-value="form.color.value" @select="(color) => (form.color.value = color)" />
+          <ColorPalette
+            :model-value="form.color.value"
+            :allow-clear="form.canClearColor.value"
+            @select="(color) => (form.color.value = color)"
+          />
           <span class="text-sm text-ink-subtle">{{ t('diagramAuthoringView.colorHint') }}</span>
+          <span v-if="!form.canClearColor.value" data-test="diagram-color-cannot-clear" class="text-sm text-ink-subtle">
+            {{ t('diagramAuthoringView.colorCannotClearHint') }}
+          </span>
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2">

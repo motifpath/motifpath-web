@@ -69,6 +69,10 @@ export function useDiagramForm() {
   const labelDisplay = ref<LabelDisplay>('interval')
   // Persisted with the diagram (Diagram.color): the general marker color as #RRGGBB, null = unrecorded.
   const color = ref<string | null>(null)
+  // The general color the server last returned. An update cannot unset an already-saved color, so
+  // clearing is only offered while none is saved.
+  const savedColor = ref<string | null>(null)
+  const canClearColor = computed(() => savedColor.value === null)
 
   const hasName = computed(() => name.value.trim() !== '')
   const hasPositions = computed(() => positions.value.length > 0)
@@ -163,12 +167,18 @@ export function useDiagramForm() {
     }
   }
 
+  /** Records the server's copy of a just-saved diagram, so later saves are updates against it. */
+  function markSaved(diagram: Diagram) {
+    savedColor.value = diagram.color ?? null
+  }
+
   function loadFromDiagram(diagram: Diagram) {
     name.value = diagram.name
     instrumentId.value = diagram.instrument_id
     rootNote.value = diagram.root_note ?? ''
     labelDisplay.value = diagram.label_display ?? 'interval'
     color.value = diagram.color ?? null
+    savedColor.value = diagram.color ?? null
     positions.value = [...diagram.positions]
       .sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0))
       .map((p) => ({
@@ -196,6 +206,7 @@ export function useDiagramForm() {
     rootNote,
     labelDisplay,
     color,
+    canClearColor,
     hasName,
     hasPositions,
     hasCompletePositions,
@@ -211,5 +222,6 @@ export function useDiagramForm() {
     toCreateDiagramRequest,
     toUpdateDiagramRequest,
     loadFromDiagram,
+    markSaved,
   }
 }

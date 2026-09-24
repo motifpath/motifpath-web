@@ -323,6 +323,20 @@ describe('useDiagramForm', () => {
       expect(form.positions.value[1]?.color).toBeNull()
     })
 
+    it('can clear the general color until a color has been saved, since an update cannot unset it', () => {
+      const form = useDiagramForm()
+      expect(form.canClearColor.value).toBe(true)
+
+      form.loadFromDiagram(makeFrettedDiagram({ color: '#3B82F6' }))
+      expect(form.canClearColor.value).toBe(false)
+
+      form.loadFromDiagram(makeFrettedDiagram({ color: null }))
+      expect(form.canClearColor.value).toBe(true)
+
+      form.markSaved(makeFrettedDiagram({ color: '#22C55E' }))
+      expect(form.canClearColor.value).toBe(false)
+    })
+
     it('loads an unrecorded general color as null', () => {
       const form = useDiagramForm()
 

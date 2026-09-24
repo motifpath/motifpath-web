@@ -163,7 +163,8 @@
     "createSkillFailed": "Failed to create the skill",
     "createConceptFailed": "Failed to create the concept",
     "colorLabel": "Marker color",
-    "colorHint": "Applies to every marker without a color of its own. Pick a color on a single position to override it."
+    "colorHint": "Applies to every marker without a color of its own. Pick a color on a single position to override it.",
+    "colorCannotClearHint": "A saved color can be changed but not removed yet."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",

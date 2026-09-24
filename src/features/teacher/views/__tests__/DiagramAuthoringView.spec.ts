@@ -253,6 +253,41 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.find('input[type="color"]').exists()).toBe(false)
   })
 
+  it('lets the general color be cleared while unsaved, and locks that once a color has been saved', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    POST.mockResolvedValueOnce({
+      data: {
+        diagram_id: 'd-new',
+        instrument_id: 'i-1',
+        name: 'Colored',
+        root_note: 'G',
+        label_display: 'interval',
+        color: '#3B82F6',
+        positions: [],
+        classification: { skills: [], concepts: [] },
+        created_at: '2026-09-23T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Colored')
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    await selectClassification(wrapper)
+    await wrapper.get(`[data-test="diagram-color"] [data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
+
+    const clearSelector = '[data-test="diagram-color"] [data-test="color-palette-clear"]'
+    expect(wrapper.get(clearSelector).attributes('disabled')).toBeUndefined()
+
+    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(wrapper.get(clearSelector).attributes('disabled')).toBeDefined()
+  })
+
   it('opens the full-size preview modal from the "view full preview" button', async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     const wrapper = mountView()
@@ -386,6 +421,35 @@ describe('DiagramAuthoringView', () => {
       expect(editor.props('color')).toBe('#3B82F6')
       expect(editor.props('positions').map((p: { color: string | null }) => p.color)).toEqual(['#EF4444', null])
       expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).props('diagram').color).toBe('#3B82F6')
+    })
+
+    it('does not offer to clear a saved general color, since the API cannot unset it', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          diagram_id: 'd-1',
+          instrument_id: 'i-1',
+          name: 'C Major Scale',
+          root_note: 'C',
+          label_display: 'interval',
+          color: '#3B82F6',
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', string: 2, fret: 1, sequence_index: 0 }],
+          classification: {
+            skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
+            concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+          },
+          created_at: '2026-09-22T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      const clear = wrapper.get('[data-test="diagram-color"] [data-test="color-palette-clear"]')
+      expect(clear.attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="diagram-color-cannot-clear"]').exists()).toBe(true)
     })
   })
 })
