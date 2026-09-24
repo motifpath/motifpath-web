@@ -132,7 +132,14 @@
     "loadingNoun": "diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "No diagrams yet",
-    "emptyMessage": "Create your first diagram to start building the reusable library."
+    "emptyMessage": "Create your first diagram to start building the reusable library.",
+    "scopeLabel": "Show",
+    "scopes": {
+      "all": "All",
+      "templates": "Templates",
+      "mine": "Mine"
+    },
+    "templateBadge": "Template"
   },
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "New diagram",
@@ -164,7 +171,14 @@
     "createConceptFailed": "Failed to create the concept",
     "colorLabel": "Marker color",
     "colorHint": "Applies to every marker without a color of its own. Pick a color on a single position to override it.",
-    "colorCannotClearHint": "A saved color can be changed but not removed yet."
+    "colorCannotClearHint": "A saved color can be changed but not removed yet.",
+    "readOnlyTemplate": "This is a template, so only an admin can change it. Use Save as to make your own copy.",
+    "readOnlyOtherTeacher": "This diagram belongs to another teacher. Use Save as to make your own copy.",
+    "saveAsButton": "Save as…",
+    "saveAsTemplateButton": "Save as template…",
+    "copyName": "{name} (copy)",
+    "copySaved": "Copy saved",
+    "templateSaved": "Template saved"
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
@@ -351,5 +365,14 @@
     "save": "Save pop-up",
     "timingInvalidSeconds": "Use whole seconds, starting at 0.",
     "timingInvalidParagraph": "Use whole numbers: the paragraph starts at 1 and the duration is at least 1 ms."
+  },
+  "saveDiagramAsModal": {
+    "copyTitle": "Save a copy",
+    "templateTitle": "Save as template",
+    "nameLabel": "Name",
+    "copyHint": "Creates a new diagram of your own. The diagram you started from stays as it is.",
+    "templateHint": "Creates a new template every teacher can use. The diagram you started from stays as it is.",
+    "cancel": "Cancel",
+    "confirm": "Save"
   }
 }

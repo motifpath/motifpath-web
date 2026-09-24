@@ -6,6 +6,9 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
+import type { components } from '@/api/generated/core-domain'
+
+type CreateDiagramRequest = components['schemas']['CreateDiagramRequest']
 
 describe('useCreateDiagram', () => {
   it('posts the request and returns the created diagram', async () => {
@@ -13,9 +16,10 @@ describe('useCreateDiagram', () => {
     POST.mockResolvedValueOnce({ data: diagram, error: undefined, response: { status: 201 } })
 
     const { createDiagram } = useCreateDiagram()
-    const request = {
+    const request: CreateDiagramRequest = {
       instrument_id: 'i-1',
       name: 'Minor Pentatonic',
+      kind: 'custom',
       positions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
     }
@@ -32,7 +36,7 @@ describe('useCreateDiagram', () => {
     const { createDiagram } = useCreateDiagram()
 
     await expect(
-      createDiagram({ instrument_id: 'i-1', name: '', positions: [], classification: { skill_ids: [], concept_ids: [] } }),
+      createDiagram({ instrument_id: 'i-1', name: '', kind: 'custom', positions: [], classification: { skill_ids: [], concept_ids: [] } }),
     ).rejects.toThrow('Boom')
   })
 })
