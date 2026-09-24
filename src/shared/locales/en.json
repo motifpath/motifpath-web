@@ -118,6 +118,7 @@
     "search": "Search by name",
     "loading": "Loading…",
     "empty": "No matching nodes yet — create one below.",
+    "emptyNoCreate": "No matching nodes.",
     "createHeading": "Create new",
     "createNamePlaceholder": "New {label} name",
     "noParentRoot": "No parent (root)",

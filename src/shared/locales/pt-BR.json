@@ -118,6 +118,7 @@
     "search": "Buscar por nome",
     "loading": "Carregando…",
     "empty": "Nenhum item encontrado ainda — crie um abaixo.",
+    "emptyNoCreate": "Nenhum item encontrado.",
     "createHeading": "Criar novo",
     "createNamePlaceholder": "Nome do novo item ({label})",
     "noParentRoot": "Sem item pai (raiz)",

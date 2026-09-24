@@ -303,4 +303,26 @@ describe('SkillConceptTreePicker', () => {
     const emptyMessage = wrapper.get('[data-test="tree-empty"]')
     expect(emptyMessage.element.closest('.h-48')).not.toBeNull()
   })
+
+  describe('when creation is turned off', () => {
+    it('hides the create-new section', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes, selectedIds: [], creatable: false },
+      })
+      await open(wrapper)
+
+      expect(wrapper.find('[data-test="tree-create-name"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Create new')
+    })
+
+    it('does not suggest creating a node when the search matches nothing', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes, selectedIds: [], creatable: false },
+      })
+      await open(wrapper)
+      await wrapper.get('[data-test="tree-search"]').setValue('zzz')
+
+      expect(wrapper.get('[data-test="tree-empty"]').text()).toBe('No matching nodes.')
+    })
+  })
 })
