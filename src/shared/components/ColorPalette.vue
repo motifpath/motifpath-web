@@ -15,7 +15,7 @@ function isSelected(hex: string): boolean {
 </script>
 
 <template>
-  <div data-test="color-palette" class="grid grid-cols-[repeat(6,1.5rem)] gap-1.5">
+  <div data-test="color-palette" class="grid w-max grid-cols-6 gap-1.5">
     <button
       v-for="color in COLOR_PALETTE"
       :key="color.key"

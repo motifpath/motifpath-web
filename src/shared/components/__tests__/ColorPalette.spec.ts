@@ -13,12 +13,14 @@ describe('ColorPalette', () => {
     expect(wrapper.find('input[type="color"]').exists()).toBe(false)
   })
 
-  it('lays swatches out on fixed-width tracks so a shrink-to-fit popover cannot collapse them', () => {
-    // jsdom does no layout: guard the class instead. `grid-cols-6` (minmax(0,1fr))
-    // collapses inside an absolutely positioned, shrink-to-fit container.
-    const wrapper = mount(ColorPalette)
+  it('sizes the grid to its swatches so a shrink-to-fit popover cannot collapse them', () => {
+    // jsdom does no layout: guard the classes instead. Bare `grid-cols-6` (minmax(0,1fr) tracks)
+    // collapses to ~0 width inside an absolutely positioned, shrink-to-fit container and the
+    // swatches overlap; `w-max` makes the grid as wide as its swatches. Verified in real Chrome.
+    const classes = mount(ColorPalette).get('[data-test="color-palette"]').classes()
 
-    expect(wrapper.get('[data-test="color-palette"]').classes()).toContain('grid-cols-[repeat(6,1.5rem)]')
+    expect(classes).toContain('grid-cols-6')
+    expect(classes).toContain('w-max')
   })
 
   it('emits the swatch hex when a swatch is clicked', async () => {

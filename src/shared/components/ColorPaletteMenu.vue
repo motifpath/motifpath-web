@@ -33,7 +33,7 @@ function choose(color: string | null): void {
       <span
         :data-test="`${testId}-indicator`"
         :data-color="modelValue ?? ''"
-        class="h-[3px] w-4 rounded-full"
+        class="h-0.5 w-4 rounded-full"
         :class="modelValue ? '' : 'bg-border'"
         :style="modelValue ? { backgroundColor: modelValue } : undefined"
       />
