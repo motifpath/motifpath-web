@@ -7,6 +7,7 @@ type Diagram = components['schemas']['Diagram']
 type CreateDiagramRequest = components['schemas']['CreateDiagramRequest']
 type UpdateDiagramRequest = components['schemas']['UpdateDiagramRequest']
 type DiagramPosition = components['schemas']['DiagramPosition']
+type DiagramKind = Diagram['kind']
 
 export interface FrettedCell {
   string: number
@@ -34,9 +35,10 @@ function sameCell(position: FrettedCell, cell: FrettedCell): boolean {
   return position.string === cell.string && position.fret === cell.fret
 }
 
-function toDiagramPosition(position: LocalPosition): DiagramPosition {
+/** `withId: false` leaves position_id for the server to assign. */
+function toDiagramPosition(position: LocalPosition, { withId = true } = {}): DiagramPosition {
   return {
-    position_id: position.id,
+    ...(withId ? { position_id: position.id } : {}),
     interval: position.interval,
     note_name: position.noteName,
     shape: position.shape,
@@ -143,15 +145,33 @@ export function useDiagramForm() {
     else addPosition(cell)
   }
 
+  /** A new custom diagram from the form; the caller becomes its creator. */
   function toCreateDiagramRequest(): CreateDiagramRequest {
     return {
       instrument_id: instrumentId.value,
       name: name.value,
+      kind: 'custom',
       root_note: rootNote.value.trim() === '' ? null : rootNote.value,
       label_display: labelDisplay.value,
       color: color.value,
-      positions: positions.value.map(toDiagramPosition),
+      positions: positions.value.map((position) => toDiagramPosition(position)),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
+    }
+  }
+
+  /**
+   * A new diagram of `kind`, named `copyName`, copying everything the form
+   * currently shows — how "Save as" creates a copy while leaving the source
+   * untouched. Position ids are left out for the server to assign: a
+   * position id is unique across every diagram, so the source's ids can't be
+   * reused.
+   */
+  function toCopyRequest(copyName: string, kind: DiagramKind): CreateDiagramRequest {
+    return {
+      ...toCreateDiagramRequest(),
+      name: copyName,
+      kind,
+      positions: positions.value.map((position) => toDiagramPosition(position, { withId: false })),
     }
   }
 
@@ -162,7 +182,7 @@ export function useDiagramForm() {
       label_display: labelDisplay.value,
       // An already-set general color can't be cleared through an update, so an unset one is omitted.
       ...(color.value ? { color: color.value } : {}),
-      positions: positions.value.map(toDiagramPosition),
+      positions: positions.value.map((position) => toDiagramPosition(position)),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
     }
   }
@@ -220,6 +240,7 @@ export function useDiagramForm() {
     reorderPositions,
     recomputeFromRoot,
     toCreateDiagramRequest,
+    toCopyRequest,
     toUpdateDiagramRequest,
     loadFromDiagram,
     markSaved,

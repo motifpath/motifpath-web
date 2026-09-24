@@ -14,12 +14,15 @@ vi.mock('@/shared/composables/useApi', () => ({
 // Defaults to create mode (no :id param) -- the edit-mode describe block
 // below sets route.params.id before mounting.
 const route = reactive<{ params: { id?: string } }>({ params: {} })
+const router = { replace: vi.fn() }
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
-  return { ...actual, useRoute: () => route }
+  return { ...actual, useRoute: () => route, useRouter: () => router }
 })
 
-const currentUser = reactive({ profile: { role: 'teacher' as 'student' | 'teacher' | 'admin' } })
+const currentUser = reactive({
+  profile: { user_id: 'u-teacher', role: 'teacher' as 'student' | 'teacher' | 'admin' },
+})
 vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
@@ -95,7 +98,9 @@ describe('DiagramAuthoringView', () => {
     GET.mockReset()
     PATCH.mockReset()
     currentUser.profile.role = 'teacher'
+    currentUser.profile.user_id = 'u-teacher'
     route.params = {}
+    router.replace.mockReset()
     mockMatchMedia(false)
     useToast().clear()
     // Instruments + skill/concept list fetches all land on the same mocked
@@ -328,6 +333,8 @@ describe('DiagramAuthoringView', () => {
         data: {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: 'u-teacher',
           name: 'C Major Scale',
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
           classification: {
@@ -344,6 +351,8 @@ describe('DiagramAuthoringView', () => {
         data: {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: 'u-teacher',
           name: 'C Major Scale (updated)',
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
           classification: {
@@ -379,6 +388,8 @@ describe('DiagramAuthoringView', () => {
         data: {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: 'u-teacher',
           name: 'C Major Scale',
           root_note: 'C',
           label_display: 'note',
@@ -408,6 +419,8 @@ describe('DiagramAuthoringView', () => {
         data: {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: 'u-teacher',
           name: 'C Major Scale',
           root_note: 'C',
           label_display: 'interval',
@@ -445,6 +458,8 @@ describe('DiagramAuthoringView', () => {
         data: {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: 'u-teacher',
           name: 'C Major Scale',
           root_note: 'C',
           label_display: 'interval',
@@ -467,6 +482,203 @@ describe('DiagramAuthoringView', () => {
       await openColorMenu(wrapper)
       expect(wrapper.get('[data-test="color-palette-clear"]').attributes('disabled')).toBeDefined()
       expect(wrapper.find('[data-test="color-palette-hint"]').exists()).toBe(true)
+    })
+  })
+
+  describe('ownership and Save as', () => {
+    const scale = {
+      diagram_id: 'd-1',
+      instrument_id: 'i-1',
+      name: 'C Major Scale',
+      root_note: 'C',
+      label_display: 'interval',
+      color: null,
+      positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
+      classification: {
+        skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
+        concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+      },
+      created_at: '2026-09-22T00:00:00Z',
+    }
+
+    async function openDiagram(owner: { kind: 'basic' | 'custom'; created_by: string }) {
+      route.params = { id: 'd-1' }
+      GET.mockResolvedValueOnce({ data: { ...scale, ...owner }, error: undefined, response: { status: 200 } })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      return wrapper
+    }
+
+    const appBarShowsSave = (wrapper: ReturnType<typeof mountView>) =>
+      wrapper.findComponent({ name: 'AppBar' }).props('showSave')
+
+    it('lets a teacher save over their own diagram, and offers Save as but not Save as template', async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-teacher' })
+
+      expect(appBarShowsSave(wrapper)).toBe(true)
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="save-as-template"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+    })
+
+    it('only lets a teacher save a basic template as a copy, and says why', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+
+      expect(appBarShowsSave(wrapper)).toBe(false)
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('template')
+    })
+
+    it("only lets a teacher save another teacher's diagram as a copy, and says why", async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-other' })
+
+      expect(appBarShowsSave(wrapper)).toBe(false)
+      expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('another teacher')
+    })
+
+    it('lets an admin save over a template and also offers Save as template', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-someone' })
+
+      expect(appBarShowsSave(wrapper)).toBe(true)
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="save-as-template"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+    })
+
+    it('saves a copy of a template as a new custom diagram, then keeps editing the copy', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+      POST.mockResolvedValueOnce({
+        data: {
+          ...scale,
+          diagram_id: 'd-copy',
+          name: 'My C Major',
+          kind: 'custom',
+          created_by: 'u-teacher',
+          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
+        },
+        error: undefined,
+        response: { status: 201 },
+      })
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      expect((wrapper.get('[data-test="save-as-name"]').element as HTMLInputElement).value).toBe('C Major Scale (copy)')
+      await wrapper.get('[data-test="save-as-name"]').setValue('My C Major')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            name: 'My C Major',
+            kind: 'custom',
+            positions: [expect.not.objectContaining({ position_id: expect.anything() })],
+          }),
+        }),
+      )
+      expect(router.replace).toHaveBeenCalledWith({ name: 'teacher-diagram-edit', params: { id: 'd-copy' } })
+      expect(wrapper.find('[data-test="save-as-name"]').exists()).toBe(false)
+      expect(appBarShowsSave(wrapper)).toBe(true)
+      expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('My C Major')
+    })
+
+    it('updates the copy, not the source, on the next save, using the positions the server assigned', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+      POST.mockResolvedValueOnce({
+        data: {
+          ...scale,
+          diagram_id: 'd-copy',
+          name: 'My C Major',
+          kind: 'custom',
+          created_by: 'u-teacher',
+          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
+        },
+        error: undefined,
+        response: { status: 201 },
+      })
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      PATCH.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-copy', kind: 'custom', created_by: 'u-teacher' },
+        error: undefined,
+        response: { status: 200 },
+      })
+      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+
+      expect(PATCH).toHaveBeenCalledWith(
+        '/diagrams/{diagram_id}',
+        expect.objectContaining({
+          params: { path: { diagram_id: 'd-copy' } },
+          body: expect.objectContaining({ positions: [expect.objectContaining({ position_id: 'p-new' })] }),
+        }),
+      )
+    })
+
+    it('lets an admin save a copy as a new basic template', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-teacher' })
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-tpl', name: 'C Major Template', kind: 'basic', created_by: 'u-admin' },
+        error: undefined,
+        response: { status: 201 },
+      })
+
+      await wrapper.get('[data-test="save-as-template"]').trigger('click')
+      expect(wrapper.text()).toContain('Save as template')
+      await wrapper.get('[data-test="save-as-name"]').setValue('C Major Template')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ name: 'C Major Template', kind: 'basic' }) }),
+      )
+    })
+
+    it('keeps the dialog open and reports the error when the copy cannot be saved', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+      POST.mockResolvedValueOnce({ data: undefined, error: { message: 'Could not save' }, response: { status: 500 } })
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(wrapper.find('[data-test="save-as-name"]').exists()).toBe(true)
+      expect(router.replace).not.toHaveBeenCalled()
+      expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
+    })
+
+    it('does not offer Save as for a diagram that has never been saved', () => {
+      const wrapper = mountView()
+
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(false)
+    })
+
+    it('sends a new diagram as a custom diagram', async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-new', kind: 'custom', created_by: 'u-teacher' },
+        error: undefined,
+        response: { status: 201 },
+      })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('New one')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+
+      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+
+      expect(POST).toHaveBeenCalledWith('/diagrams', expect.objectContaining({ body: expect.objectContaining({ kind: 'custom' }) }))
     })
   })
 })
