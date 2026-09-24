@@ -21,6 +21,8 @@ export interface LocalPosition extends FrettedCell {
   interval: string
   noteName: string
   shape: PositionShape
+  /** This marker's own #RRGGBB color; null = use the diagram's general color. */
+  color: string | null
   sequenceIndex: number | null
 }
 
@@ -38,6 +40,7 @@ function toDiagramPosition(position: LocalPosition): DiagramPosition {
     interval: position.interval,
     note_name: position.noteName,
     shape: position.shape,
+    ...(position.color ? { color: position.color } : {}),
     sequence_index: position.sequenceIndex,
     string: position.string,
     fret: position.fret,
@@ -64,6 +67,12 @@ export function useDiagramForm() {
   const rootNote = ref('')
   // Persisted with the diagram (Diagram.label_display); defaults to 'interval' like the API does.
   const labelDisplay = ref<LabelDisplay>('interval')
+  // Persisted with the diagram (Diagram.color): the general marker color as #RRGGBB, null = unrecorded.
+  const color = ref<string | null>(null)
+  // The general color the server last returned. An update cannot unset an already-saved color, so
+  // clearing is only offered while none is saved.
+  const savedColor = ref<string | null>(null)
+  const canClearColor = computed(() => savedColor.value === null)
 
   const hasName = computed(() => name.value.trim() !== '')
   const hasPositions = computed(() => positions.value.length > 0)
@@ -96,13 +105,18 @@ export function useDiagramForm() {
 
   function addPosition(cell: FrettedCell) {
     if (positions.value.some((p) => sameCell(p, cell))) return
-    positions.value.push({ id: makeId(), ...cell, ...computeNotes(cell), shape: 'dot', sequenceIndex: null })
+    positions.value.push({ id: makeId(), ...cell, ...computeNotes(cell), shape: 'dot', color: null, sequenceIndex: null })
     reindexSequence()
   }
 
   function setPositionShape(id: string, shape: PositionShape) {
     const position = positions.value.find((p) => p.id === id)
     if (position) position.shape = shape
+  }
+
+  function setPositionColor(id: string, positionColor: string | null) {
+    const position = positions.value.find((p) => p.id === id)
+    if (position) position.color = positionColor
   }
 
   function removePosition(id: string) {
@@ -135,6 +149,7 @@ export function useDiagramForm() {
       name: name.value,
       root_note: rootNote.value.trim() === '' ? null : rootNote.value,
       label_display: labelDisplay.value,
+      color: color.value,
       positions: positions.value.map(toDiagramPosition),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
     }
@@ -145,9 +160,16 @@ export function useDiagramForm() {
       name: name.value,
       ...(rootNote.value.trim() === '' ? {} : { root_note: rootNote.value }),
       label_display: labelDisplay.value,
+      // An already-set general color can't be cleared through an update, so an unset one is omitted.
+      ...(color.value ? { color: color.value } : {}),
       positions: positions.value.map(toDiagramPosition),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
     }
+  }
+
+  /** Records the server's copy of a just-saved diagram, so later saves are updates against it. */
+  function markSaved(diagram: Diagram) {
+    savedColor.value = diagram.color ?? null
   }
 
   function loadFromDiagram(diagram: Diagram) {
@@ -155,6 +177,8 @@ export function useDiagramForm() {
     instrumentId.value = diagram.instrument_id
     rootNote.value = diagram.root_note ?? ''
     labelDisplay.value = diagram.label_display ?? 'interval'
+    color.value = diagram.color ?? null
+    savedColor.value = diagram.color ?? null
     positions.value = [...diagram.positions]
       .sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0))
       .map((p) => ({
@@ -164,6 +188,7 @@ export function useDiagramForm() {
         interval: p.interval,
         noteName: p.note_name,
         shape: p.shape ?? 'dot',
+        color: p.color ?? null,
         sequenceIndex: p.sequence_index ?? null,
       }))
     reindexSequence()
@@ -180,6 +205,8 @@ export function useDiagramForm() {
     tuning,
     rootNote,
     labelDisplay,
+    color,
+    canClearColor,
     hasName,
     hasPositions,
     hasCompletePositions,
@@ -188,11 +215,13 @@ export function useDiagramForm() {
     addPosition,
     removePosition,
     setPositionShape,
+    setPositionColor,
     toggleCell,
     reorderPositions,
     recomputeFromRoot,
     toCreateDiagramRequest,
     toUpdateDiagramRequest,
     loadFromDiagram,
+    markSaved,
   }
 }

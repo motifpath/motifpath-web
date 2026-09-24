@@ -161,14 +161,18 @@
     "diagramCreated": "Diagrama criado.",
     "saveFailed": "Falha ao salvar o diagrama",
     "createSkillFailed": "Falha ao criar a habilidade",
-    "createConceptFailed": "Falha ao criar o conceito"
+    "createConceptFailed": "Falha ao criar o conceito",
+    "colorLabel": "Cor dos marcadores",
+    "colorHint": "Vale para todos os marcadores sem cor própria. Escolha uma cor em uma posição para substituí-la.",
+    "colorCannotClearHint": "Uma cor salva pode ser trocada, mas ainda não pode ser removida."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
     "stringFret": "Corda {string}, casa {fret}",
     "reorderHint": "Arraste uma posição para reordenar sua sequência",
     "shapeAriaLabel": "Mostrar esta posição como {shape}",
-    "removePositionAriaLabel": "Remover esta posição"
+    "removePositionAriaLabel": "Remover esta posição",
+    "positionColor": "Cor do marcador"
   },
   "skillConceptTreePicker": {
     "removeSelectedAriaLabel": "Remover {name}",

@@ -1615,6 +1615,16 @@ export interface components {
              */
             shape: "dot" | "square" | "star";
             /**
+             * @description A custom marker color for this one position, as a #RRGGBB hex
+             *     string — overrides the parent Diagram's general color for this
+             *     marker only. Null (or omitted) means the position uses the
+             *     Diagram's general color, or motifpath-web's default when that is
+             *     also unset. Independent of shape and of a diagram_ref's own
+             *     styling, which still takes precedence for one particular
+             *     embedding.
+             */
+            color?: string | null;
+            /**
              * @description This position's order in an authored playback sequence (e.g. a
              *     scale run). Null means this position is not part of any defined
              *     sequence — playback (see DiagramRef) skips it regardless of
@@ -1707,6 +1717,15 @@ export interface components {
              */
             label_display: "interval" | "note" | "hidden";
             /**
+             * @description The diagram's general marker color, as a #RRGGBB hex string,
+             *     applied to every position that has no color of its own (see
+             *     DiagramPosition.color). Null means no general color is recorded
+             *     and motifpath-web's default colors apply. An authoring-time
+             *     choice, independent of — and overridden by — a diagram_ref's
+             *     styling for one particular embedding.
+             */
+            color: string | null;
+            /**
              * @description Every marked position in this diagram. All positions share the
              *     same coordinate shape, decided by this diagram's instrument's
              *     family.
@@ -1746,6 +1765,11 @@ export interface components {
              */
             label_display?: "interval" | "note" | "hidden";
             /**
+             * @description The diagram's general marker color as #RRGGBB. Null (or omitted)
+             *     leaves it unrecorded.
+             */
+            color?: string | null;
+            /**
              * @description Every marked position in this diagram, in the coordinate shape
              *     matching the referenced instrument's family. position_id may be
              *     supplied by the client or left for the server to assign.
@@ -1755,7 +1779,7 @@ export interface components {
         };
         /**
          * @description Payload for replacing an existing diagram's name, positions,
-         *     classification, root_note, or label_display. instrument_id is not
+         *     classification, root_note, label_display, or color. instrument_id is not
          *     present here — it cannot be changed after creation, since every
          *     position's coordinate shape depends on it.
          */
@@ -1777,6 +1801,15 @@ export interface components {
              * @enum {string}
              */
             label_display?: "interval" | "note" | "hidden";
+            /**
+             * @description The diagram's general marker color as #RRGGBB, replacing the
+             *     current value. Omitted leaves the current value unchanged; like
+             *     root_note, there is currently no way to clear an already-set
+             *     general color back to unrecorded via this request. Per-position
+             *     colors are replaced together with positions and can be cleared
+             *     by omitting them.
+             */
+            color?: string;
             /**
              * @description The diagram's full position list, replacing the current set. A
              *     caller that only wants to change one position must resend the

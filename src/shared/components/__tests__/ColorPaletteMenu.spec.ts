@@ -74,4 +74,28 @@ describe('ColorPaletteMenu', () => {
 
     expect(wrapper.get(`[data-test="color-swatch-${current.key}"]`).attributes('aria-pressed')).toBe('true')
   })
+
+  it('passes allowClear through to the palette, and shows an optional hint under it', async () => {
+    const wrapper = mount(ColorPaletteMenu, {
+      props: { title: 'Font color', testId: 'font', allowClear: false, hint: 'A saved color cannot be removed.' },
+    })
+    await wrapper.get('[data-test="font-trigger"]').trigger('click')
+
+    expect(wrapper.get('[data-test="color-palette-clear"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-test="color-palette-hint"]').text()).toBe('A saved color cannot be removed.')
+  })
+
+  it('leaves the default swatch enabled unless clearing is disallowed', async () => {
+    const wrapper = mountMenu()
+    await wrapper.get('[data-test="font-trigger"]').trigger('click')
+
+    expect(wrapper.get('[data-test="color-palette-clear"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('shows no hint by default', async () => {
+    const wrapper = mountMenu()
+    await wrapper.get('[data-test="font-trigger"]').trigger('click')
+
+    expect(wrapper.find('[data-test="color-palette-hint"]').exists()).toBe(false)
+  })
 })

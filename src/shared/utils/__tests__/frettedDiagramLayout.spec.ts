@@ -98,4 +98,20 @@ describe('computeFrettedDiagramLayout', () => {
 
     expect(layout.maxFret - layout.minFret).toBe(3)
   })
+
+  it("resolves each position's persisted color: its own, else the diagram's, else null", () => {
+    const base = makeFrettedDiagram()
+    const diagram = makeFrettedDiagram({
+      color: '#3B82F6',
+      positions: base.positions.map((p, i) => (i === 0 ? { ...p, color: '#EF4444' } : p)),
+    })
+
+    const colored = computeFrettedDiagramLayout(diagram, makeFrettedInstrument(), makeDiagramRef())
+
+    expect(colored.positions[0]?.color).toBe('#EF4444')
+    expect(colored.positions[1]?.color).toBe('#3B82F6')
+
+    const plain = computeFrettedDiagramLayout(makeFrettedDiagram(), makeFrettedInstrument(), makeDiagramRef())
+    expect(plain.positions.every((p) => p.color === null)).toBe(true)
+  })
 })

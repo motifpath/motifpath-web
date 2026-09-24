@@ -62,4 +62,19 @@ describe('ColorPalette', () => {
       expect(button.attributes('aria-label')?.length).toBeGreaterThan(0)
     }
   })
+
+  it('disables the default swatch when clearing is not allowed', async () => {
+    const wrapper = mount(ColorPalette, { props: { modelValue: COLOR_PALETTE[0].hex, allowClear: false } })
+    const clear = wrapper.get('[data-test="color-palette-clear"]')
+
+    expect(clear.attributes('disabled')).toBeDefined()
+    await clear.trigger('click')
+    expect(wrapper.emitted('select')).toBeUndefined()
+  })
+
+  it('allows clearing by default', () => {
+    const wrapper = mount(ColorPalette)
+
+    expect(wrapper.get('[data-test="color-palette-clear"]').attributes('disabled')).toBeUndefined()
+  })
 })

@@ -24,6 +24,7 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
     name: 'Minor Pentatonic — Position 1',
     root_note: 'A',
     label_display: 'interval',
+    color: null,
     positions: [
       { position_id: 'p0', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 0 },
       {

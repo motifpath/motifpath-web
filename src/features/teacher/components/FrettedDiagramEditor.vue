@@ -8,11 +8,13 @@
  * already uses for its own click-to-place editor.
  */
 import { computed, ref } from 'vue'
-import { Circle, GripVertical, Square, Star, X } from 'lucide-vue-next'
+import { Circle, GripVertical, Palette, Square, Star, X } from 'lucide-vue-next'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import type { LocalPosition, PositionShape } from '@/features/teacher/composables/useDiagramForm'
 import type { components } from '@/api/generated/core-domain'
+import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
+import { readableTextColor, resolveMarkerColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
   EDITOR_BOARD_H,
@@ -35,6 +37,8 @@ const props = withDefaults(
     instrument: Instrument
     positions: LocalPosition[]
     labelMode?: 'interval' | 'note' | 'hidden'
+    /** The diagram's general marker color (#RRGGBB); a position's own color wins over it. */
+    color?: string | null
   }>(),
   { labelMode: 'interval' },
 )
@@ -43,6 +47,7 @@ const emit = defineEmits<{
   'toggle-cell': [cell: { string: number; fret: number }]
   reorder: [fromIndex: number, toIndex: number]
   'set-shape': [id: string, shape: PositionShape]
+  'set-color': [id: string, color: string | null]
   remove: [id: string]
 }>()
 
@@ -50,6 +55,18 @@ const SHAPES: PositionShape[] = ['dot', 'square', 'star']
 const SHAPE_ICONS = { dot: Circle, square: Square, star: Star } as const
 
 const { t } = useTypedT()
+
+function markerFill(position: LocalPosition): string | null {
+  return resolveMarkerColor(position.color, props.color)
+}
+function markerStyle(position: LocalPosition): { fill: string } | undefined {
+  const fill = markerFill(position)
+  return fill ? { fill } : undefined
+}
+function labelStyle(position: LocalPosition): { fill: string } | undefined {
+  const fill = markerFill(position)
+  return fill ? { fill: readableTextColor(fill) } : undefined
+}
 
 const geometry = computed(() => frettedEditorGeometry(props.instrument.string_count ?? 0))
 const viewWidth = computed(() => editorViewWidth(geometry.value))
@@ -216,7 +233,8 @@ function onDrop(index: number) {
             :cx="markerX(position.fret)"
             :cy="y(position.string)"
             r="13.5"
-            class="fill-accent"
+            :class="markerFill(position) ? '' : 'fill-accent'"
+            :style="markerStyle(position)"
           />
           <rect
             v-else-if="position.shape === 'square'"
@@ -225,12 +243,14 @@ function onDrop(index: number) {
             width="24"
             height="24"
             rx="3"
-            class="fill-accent"
+            :class="markerFill(position) ? '' : 'fill-accent'"
+            :style="markerStyle(position)"
           />
           <polygon
             v-else
             :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
-            class="fill-accent"
+            :class="markerFill(position) ? '' : 'fill-accent'"
+            :style="markerStyle(position)"
           />
           <text
             v-if="labelMode !== 'hidden'"
@@ -239,7 +259,8 @@ function onDrop(index: number) {
             text-anchor="middle"
             font-size="11.5"
             font-weight="600"
-            class="fill-accent-fg"
+            :class="markerFill(position) ? '' : 'fill-accent-fg'"
+            :style="labelStyle(position)"
           >
             {{ labelFor(position) }}
           </text>
@@ -300,6 +321,16 @@ function onDrop(index: number) {
           >
             <component :is="SHAPE_ICONS[shape]" :size="13" aria-hidden="true" />
           </button>
+        </div>
+        <div class="rounded-md bg-surface-sunken" @click.stop @keydown.stop>
+          <ColorPaletteMenu
+            test-id="position-color"
+            :title="t('frettedDiagramEditor.positionColor')"
+            :model-value="position.color"
+            @select="(color) => emit('set-color', position.id, color)"
+          >
+            <Palette :size="13" aria-hidden="true" />
+          </ColorPaletteMenu>
         </div>
         <button
           type="button"

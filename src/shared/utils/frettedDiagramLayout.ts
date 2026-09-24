@@ -1,4 +1,5 @@
 import type { components } from '@/api/generated/core-domain'
+import { resolveMarkerColor } from '@/shared/utils/diagramColors'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -13,6 +14,8 @@ export interface VisibleFrettedPosition {
   noteName: string
   shape: components['schemas']['DiagramPosition']['shape']
   isRoot: boolean
+  /** The persisted marker color (own, else the diagram's general color); null = renderer default. */
+  color: string | null
 }
 
 export interface FrettedDiagramLayout {
@@ -52,6 +55,7 @@ export function computeFrettedDiagramLayout(
       noteName: position.note_name,
       shape: position.shape,
       isRoot: position.interval === 'R',
+      color: resolveMarkerColor(position.color, diagram.color),
     }))
 
   const frets = positions.map((position) => position.fret)

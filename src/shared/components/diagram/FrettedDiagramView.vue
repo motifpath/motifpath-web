@@ -9,6 +9,7 @@ import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
+import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 
 type Diagram = components['schemas']['Diagram']
@@ -87,28 +88,38 @@ const inlayDots = computed(() => {
 const rootColor = computed(() => props.diagramRef.styling?.root_color ?? null)
 const intervalColor = computed(() => props.diagramRef.styling?.interval_color ?? null)
 
-/** Simple fixed-contrast heuristic (dark text on a custom root color, light text on a custom
- *  other color) matching the reference renderer — not accessibility-validated contrast. */
-function labelStyle(isRoot: boolean): { fill: string } | undefined {
-  const custom = isRoot ? rootColor.value : intervalColor.value
-  if (!custom) return undefined
-  return { fill: isRoot ? '#1a1a1a' : '#f4f4f4' }
+type Marker = (typeof layout.value.positions)[number]
+
+/** The color a marker is filled with: the ref's styling override for this embedding wins,
+ *  then the diagram's persisted color (its own, else the general one); null = design token. */
+function stylingColor(isRoot: boolean): string | null {
+  return isRoot ? rootColor.value : intervalColor.value
 }
 
-function shapeStyle(isRoot: boolean): { fill: string } | undefined {
-  const custom = isRoot ? rootColor.value : intervalColor.value
-  return custom ? { fill: custom } : undefined
+function markerColor(position: Marker): string | null {
+  return stylingColor(position.isRoot) ?? position.color
 }
 
-function shapeClass(isRoot: boolean): string {
-  if (isRoot) return rootColor.value ? '' : 'fill-accent'
-  return intervalColor.value ? '' : 'fill-ink'
+/** A styling override keeps the reference renderer's fixed dark/light heuristic; a persisted
+ *  color picks whichever text color reads better on it. */
+function labelStyle(position: Marker): { fill: string } | undefined {
+  if (stylingColor(position.isRoot)) return { fill: position.isRoot ? LABEL_TEXT_DARK : LABEL_TEXT_LIGHT }
+  return position.color ? { fill: readableTextColor(position.color) } : undefined
 }
 
-function labelClass(isRoot: boolean): string {
-  const custom = isRoot ? rootColor.value : intervalColor.value
-  if (custom) return ''
-  return isRoot ? 'fill-accent-fg' : 'fill-surface'
+function shapeStyle(position: Marker): { fill: string } | undefined {
+  const color = markerColor(position)
+  return color ? { fill: color } : undefined
+}
+
+function shapeClass(position: Marker): string {
+  if (markerColor(position)) return ''
+  return position.isRoot ? 'fill-accent' : 'fill-ink'
+}
+
+function labelClass(position: Marker): string {
+  if (markerColor(position)) return ''
+  return position.isRoot ? 'fill-accent-fg' : 'fill-surface'
 }
 </script>
 
@@ -186,8 +197,8 @@ function labelClass(isRoot: boolean): string {
         :cx="markerX(position.fret)"
         :cy="y(position.string)"
         r="13.5"
-        :class="shapeClass(position.isRoot)"
-        :style="shapeStyle(position.isRoot)"
+        :class="shapeClass(position)"
+        :style="shapeStyle(position)"
       />
       <rect
         v-else-if="position.shape === 'square'"
@@ -197,15 +208,15 @@ function labelClass(isRoot: boolean): string {
         width="24"
         height="24"
         rx="3"
-        :class="shapeClass(position.isRoot)"
-        :style="shapeStyle(position.isRoot)"
+        :class="shapeClass(position)"
+        :style="shapeStyle(position)"
       />
       <polygon
         v-else
         data-test="diagram-position"
         :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
-        :class="shapeClass(position.isRoot)"
-        :style="shapeStyle(position.isRoot)"
+        :class="shapeClass(position)"
+        :style="shapeStyle(position)"
       />
       <text
         v-if="diagramRef.layers.intervals && labelMode !== 'hidden'"
@@ -215,8 +226,8 @@ function labelClass(isRoot: boolean): string {
         text-anchor="middle"
         font-size="11.5"
         font-weight="600"
-        :class="labelClass(position.isRoot)"
-        :style="labelStyle(position.isRoot)"
+        :class="labelClass(position)"
+        :style="labelStyle(position)"
       >
         {{ labelMode === 'note' ? position.noteName : position.interval }}
       </text>

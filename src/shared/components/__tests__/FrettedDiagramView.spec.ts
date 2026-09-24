@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT } from '@/shared/utils/diagramColors'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import {
   makeDiagramRef,
@@ -171,5 +172,58 @@ describe('FrettedDiagramView', () => {
 
     expect(wrapper.get('svg').attributes('role')).toBe('img')
     expect(wrapper.get('svg').attributes('aria-label')).toBe(makeFrettedDiagram().name)
+  })
+
+  describe('persisted colors', () => {
+    function mountColored(diagramOverrides = {}, ref = makeDiagramRef()) {
+      const base = makeFrettedDiagram()
+      const diagram = makeFrettedDiagram({
+        color: '#3B82F6',
+        positions: base.positions.map((p, i) => (i === 0 ? { ...p, color: '#EF4444' } : p)),
+        ...diagramOverrides,
+      })
+      return mount(FrettedDiagramView, {
+        props: { diagram, instrument: makeFrettedInstrument(), diagramRef: ref },
+      })
+    }
+
+    it("fills a marker with the diagram's general color, and a position's own color wins over it", () => {
+      const wrapper = mountColored()
+      const markers = wrapper.findAll('[data-test="diagram-position"]')
+
+      expect(markers[0]?.attributes('style')).toContain('fill: #EF4444')
+      expect(markers[1]?.attributes('style')).toContain('fill: #3B82F6')
+      expect(markers[1]?.classes()).not.toContain('fill-ink')
+    })
+
+    it("lets a diagram_ref's styling override the persisted colors for that embedding", () => {
+      const wrapper = mountColored({}, makeDiagramRef({ styling: { root_color: '#c0392b' } }))
+
+      expect(wrapper.findAll('[data-test="diagram-position"]')[0]?.attributes('style')).toContain('fill: #c0392b')
+    })
+
+    it('keeps the label readable on a persisted color', () => {
+      const wrapper = mountColored({ color: '#111827' })
+      const labels = wrapper.findAll('[data-test="diagram-position-label"]')
+
+      expect(labels[1]?.attributes('style')).toContain('fill: #F4F4F4')
+      expect(labels[0]?.attributes('style')).toContain('fill: #1A1A1A')
+    })
+
+    it('uses the shared dark/light label colors on a styling override', () => {
+      const wrapper = mountColored({}, makeDiagramRef({ styling: { root_color: '#c0392b', interval_color: '#2c3e50' } }))
+      const labels = wrapper.findAll('[data-test="diagram-position-label"]')
+
+      expect(labels[0]?.attributes('style')).toContain(`fill: ${LABEL_TEXT_DARK}`)
+      expect(labels[1]?.attributes('style')).toContain(`fill: ${LABEL_TEXT_LIGHT}`)
+    })
+
+    it('falls back to the design tokens when no color is recorded', () => {
+      const wrapper = mountColored({ color: null, positions: makeFrettedDiagram().positions })
+      const marker = wrapper.findAll('[data-test="diagram-position"]')[1]
+
+      expect(marker?.attributes('style') ?? '').not.toContain('fill:')
+      expect(marker?.classes()).toContain('fill-ink')
+    })
   })
 })
