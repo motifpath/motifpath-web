@@ -189,23 +189,6 @@
     "removePositionAriaLabel": "Remove this position",
     "positionColor": "Marker color"
   },
-  "skillConceptTreePicker": {
-    "removeSelectedAriaLabel": "Remove {name}",
-    "addButton": "Add {label}",
-    "changeButton": "Change {label}",
-    "modalTitle": "Select {label}",
-    "search": "Search by name",
-    "loading": "Loading…",
-    "empty": "No matching nodes yet — create one below.",
-    "createHeading": "Create new",
-    "createNamePlaceholder": "New {label} name",
-    "noParentRoot": "No parent (root)",
-    "parentSearchPlaceholder": "No parent (root) — search to set a parent",
-    "clearParentAriaLabel": "Clear parent",
-    "createSubmit": "Add",
-    "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate.",
-    "closeButton": "Close"
-  },
   "challengeConfigPanel": {
     "subjectLabel": "Subject",
     "subjectHint": "Exactly one of skill or concept — must be one of this node's own linked skills/concepts.",

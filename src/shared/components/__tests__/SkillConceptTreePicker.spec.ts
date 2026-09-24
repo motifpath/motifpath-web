@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
-import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 
 const nodes = [
   { id: 'root-1', name: 'chord-theory', parent_id: null },

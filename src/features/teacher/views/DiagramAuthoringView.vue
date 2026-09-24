@@ -9,7 +9,7 @@ import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTa
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
-import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'

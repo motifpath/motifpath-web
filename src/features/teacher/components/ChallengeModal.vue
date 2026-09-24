@@ -4,7 +4,7 @@ import { computed, reactive, ref, watch } from 'vue'
 
 import ChallengeConfigPanel from '@/features/teacher/components/ChallengeConfigPanel.vue'
 import ExercisePickerModal from '@/features/teacher/components/ExercisePickerModal.vue'
-import type { TreeNode } from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import type { TreeNode } from '@/shared/components/SkillConceptTreePicker.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'

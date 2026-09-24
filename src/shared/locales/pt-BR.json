@@ -109,5 +109,22 @@
   "languages": {
     "en": "Inglês",
     "pt_BR": "Português"
+  },
+  "skillConceptTreePicker": {
+    "removeSelectedAriaLabel": "Remover {name}",
+    "addButton": "Adicionar {label}",
+    "changeButton": "Alterar {label}",
+    "modalTitle": "Selecionar {label}",
+    "search": "Buscar por nome",
+    "loading": "Carregando…",
+    "empty": "Nenhum item encontrado ainda — crie um abaixo.",
+    "createHeading": "Criar novo",
+    "createNamePlaceholder": "Nome do novo item ({label})",
+    "noParentRoot": "Sem item pai (raiz)",
+    "parentSearchPlaceholder": "Sem item pai (raiz) — busque para definir um item pai",
+    "clearParentAriaLabel": "Limpar item pai",
+    "createSubmit": "Adicionar",
+    "duplicateName": "Já existe um item chamado \"{name}\" sob esse item pai — selecione-o na lista acima em vez de criar um quase duplicado.",
+    "closeButton": "Fechar"
   }
 }
