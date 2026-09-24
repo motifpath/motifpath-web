@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import { EDITOR_VIEW_H, editorViewWidth, fretX, frettedEditorGeometry, stringY } from '@/shared/utils/frettedFretboardEditor'
 import type { LocalPosition } from '@/features/teacher/composables/useDiagramForm'
 
@@ -22,7 +23,7 @@ function mockOneToOneBoundingRect(el: Element, width: number) {
 }
 
 function makeLocalPosition(overrides: Partial<LocalPosition> = {}): LocalPosition {
-  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', sequenceIndex: null, ...overrides }
+  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', color: null, sequenceIndex: null, ...overrides }
 }
 
 describe('FrettedDiagramEditor', () => {
@@ -231,5 +232,64 @@ describe('FrettedDiagramEditor', () => {
     await items[2]?.trigger('drop')
 
     expect(wrapper.emitted('reorder')).toEqual([[0, 2]])
+  })
+
+  describe('colors', () => {
+    it("fills markers with the diagram's general color, and a position's own color wins", () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: {
+          instrument: makeFrettedInstrument(),
+          color: '#3B82F6',
+          positions: [makeLocalPosition({ id: 'pos-1', color: '#EF4444' }), makeLocalPosition({ id: 'pos-2', fret: 7 })],
+        },
+      })
+
+      const markers = wrapper.findAll('[data-test="editor-position"]')
+      expect(markers[0]?.find('circle').attributes('style')).toContain('fill: #EF4444')
+      expect(markers[1]?.find('circle').attributes('style')).toContain('fill: #3B82F6')
+      expect(markers[1]?.find('circle').classes()).not.toContain('fill-accent')
+    })
+
+    it('keeps the theme accent when no color is set', () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition()] },
+      })
+
+      const circle = wrapper.find('[data-test="editor-position"] circle')
+      expect(circle.classes()).toContain('fill-accent')
+      expect(circle.attributes('style') ?? '').not.toContain('fill:')
+    })
+
+    it('shows a readable label on a colored marker', () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), color: '#111827', positions: [makeLocalPosition()] },
+      })
+
+      expect(wrapper.find('[data-test="editor-position"] text').attributes('style')).toContain('fill: #F4F4F4')
+    })
+
+    it('emits set-color from a position row palette without also selecting the row', async () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition()] },
+      })
+
+      await wrapper.get('[data-test="position-color-trigger"]').trigger('click')
+      await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[0].key}"]`).trigger('click')
+
+      expect(wrapper.emitted('set-color')).toEqual([['pos-1', COLOR_PALETTE[0].hex]])
+      expect(wrapper.findAll('[data-test="marker-highlight"]')).toHaveLength(0)
+
+      await wrapper.get('[data-test="position-color-trigger"]').trigger('click')
+      await wrapper.get('[data-test="color-palette-clear"]').trigger('click')
+      expect(wrapper.emitted('set-color')?.[1]).toEqual(['pos-1', null])
+    })
+
+    it("shows the position's own color on its row button", () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition({ color: '#EF4444' })] },
+      })
+
+      expect(wrapper.get('[data-test="position-color-indicator"]').attributes('data-color')).toBe('#EF4444')
+    })
   })
 })

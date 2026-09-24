@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { Palette } from 'lucide-vue-next'
 import { useRoute } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
@@ -94,6 +96,12 @@ function onRootNoteChange(rootNote: string) {
 
 const showPreviewModal = ref(false)
 
+const colorHint = computed(() =>
+  form.canClearColor.value
+    ? t('diagramAuthoringView.colorHint')
+    : `${t('diagramAuthoringView.colorHint')} ${t('diagramAuthoringView.colorCannotClearHint')}`,
+)
+
 const previewDiagram = computed<Diagram | null>(() => {
   if (!selectedInstrument.value || form.positions.value.length === 0) return null
   const request = form.toCreateDiagramRequest()
@@ -103,6 +111,7 @@ const previewDiagram = computed<Diagram | null>(() => {
     name: form.name.value,
     root_note: request.root_note ?? null,
     label_display: form.labelDisplay.value,
+    color: form.color.value,
     positions: request.positions,
     classification: { skills: [], concepts: [] },
     created_at: '',
@@ -129,11 +138,16 @@ async function save() {
       ? await updateDiagram(savedDiagramId.value, form.toUpdateDiagramRequest())
       : await createDiagram(form.toCreateDiagramRequest())
     savedDiagramId.value = diagram.diagram_id
+    form.markSaved(diagram)
 
     justSaved.value = true
     clearTimeout(justSavedTimeout)
     justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
-    toast.success(isUpdate ? t('diagramAuthoringView.diagramUpdated') : t('diagramAuthoringView.diagramCreated'))
+    toast.success(
+      isUpdate
+        ? t('diagramAuthoringView.diagramUpdated')
+        : t('diagramAuthoringView.diagramCreated'),
+    )
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('diagramAuthoringView.saveFailed'))
   } finally {
@@ -148,14 +162,22 @@ async function save() {
       context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-diagrams' }"
-      :breadcrumb-label="isEditMode ? form.name.value || t('diagramAuthoringView.editDiagramBreadcrumb') : t('diagramAuthoringView.newDiagramBreadcrumb')"
+      :breadcrumb-label="
+        isEditMode
+          ? form.name.value || t('diagramAuthoringView.editDiagramBreadcrumb')
+          : t('diagramAuthoringView.newDiagramBreadcrumb')
+      "
       :show-save="canAuthor"
       :save-disabled="!form.canSave.value || saving"
       :just-saved="justSaved"
       :on-save="save"
     />
 
-    <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
+    <div
+      v-if="!canAuthor"
+      data-test="permission-denied"
+      class="flex flex-1 items-center justify-center p-10"
+    >
       <p class="max-w-md text-center text-ink-muted">
         {{ t('common.permissionDenied') }}
       </p>
@@ -165,7 +187,11 @@ async function save() {
       <StateLoading :noun="t('diagramAuthoringView.loadingNoun')" />
     </div>
 
-    <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
+    <div
+      v-else-if="loadError"
+      data-test="load-error"
+      class="flex flex-1 items-center justify-center p-10"
+    >
       <StateError :message="t('diagramAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
@@ -191,7 +217,9 @@ async function save() {
         </div>
 
         <div class="flex flex-col gap-2.5">
-          <label class="text-sm font-semibold">{{ t('diagramAuthoringView.instrumentLabel') }}</label>
+          <label class="text-sm font-semibold">{{
+            t('diagramAuthoringView.instrumentLabel')
+          }}</label>
           <div class="flex w-fit flex-wrap gap-2 rounded-lg bg-surface-sunken p-1">
             <button
               v-for="instrument in frettedInstruments"
@@ -200,7 +228,11 @@ async function save() {
               data-test="instrument-option"
               :disabled="isEditMode || form.hasPositions.value"
               class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-              :class="form.instrumentId.value === instrument.instrument_id ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+              :class="
+                form.instrumentId.value === instrument.instrument_id
+                  ? 'bg-accent text-accent-fg'
+                  : 'text-ink-muted'
+              "
               @click="form.instrumentId.value = instrument.instrument_id"
             >
               {{ instrument.name }}
@@ -212,7 +244,9 @@ async function save() {
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2.5">
-          <label class="text-sm font-semibold" for="diagram-root-note">{{ t('diagramAuthoringView.rootNoteLabel') }}</label>
+          <label class="text-sm font-semibold" for="diagram-root-note">{{
+            t('diagramAuthoringView.rootNoteLabel')
+          }}</label>
           <select
             id="diagram-root-note"
             data-test="root-note-select"
@@ -228,51 +262,81 @@ async function save() {
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
-            <label class="text-sm font-semibold">{{ t('diagramAuthoringView.positionsLabel') }}</label>
-            <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
-              <button
-                type="button"
-                data-test="label-mode-interval"
-                class="rounded-md px-3 py-1 text-xs font-semibold"
-                :class="form.labelDisplay.value === 'interval' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-                @click="form.labelDisplay.value = 'interval'"
+            <label class="text-sm font-semibold">{{
+              t('diagramAuthoringView.positionsLabel')
+            }}</label>
+            <div class="flex items-center gap-2">
+              <ColorPaletteMenu
+                test-id="diagram-color"
+                :title="t('diagramAuthoringView.colorLabel')"
+                :model-value="form.color.value"
+                :allow-clear="form.canClearColor.value"
+                :hint="colorHint"
+                @select="(color) => (form.color.value = color)"
               >
-                {{ t('diagramAuthoringView.labelModeInterval') }}
-              </button>
-              <button
-                type="button"
-                data-test="label-mode-note"
-                class="rounded-md px-3 py-1 text-xs font-semibold"
-                :class="form.labelDisplay.value === 'note' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-                @click="form.labelDisplay.value = 'note'"
-              >
-                {{ t('diagramAuthoringView.labelModeNote') }}
-              </button>
-              <button
-                type="button"
-                data-test="label-mode-hidden"
-                class="rounded-md px-3 py-1 text-xs font-semibold"
-                :class="form.labelDisplay.value === 'hidden' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-                @click="form.labelDisplay.value = 'hidden'"
-              >
-                {{ t('diagramAuthoringView.labelModeHidden') }}
-              </button>
+                <Palette :size="16" aria-hidden="true" />
+              </ColorPaletteMenu>
+              <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
+                <button
+                  type="button"
+                  data-test="label-mode-interval"
+                  class="rounded-md px-3 py-1 text-xs font-semibold"
+                  :class="
+                    form.labelDisplay.value === 'interval'
+                      ? 'bg-accent text-accent-fg'
+                      : 'text-ink-muted'
+                  "
+                  @click="form.labelDisplay.value = 'interval'"
+                >
+                  {{ t('diagramAuthoringView.labelModeInterval') }}
+                </button>
+                <button
+                  type="button"
+                  data-test="label-mode-note"
+                  class="rounded-md px-3 py-1 text-xs font-semibold"
+                  :class="
+                    form.labelDisplay.value === 'note'
+                      ? 'bg-accent text-accent-fg'
+                      : 'text-ink-muted'
+                  "
+                  @click="form.labelDisplay.value = 'note'"
+                >
+                  {{ t('diagramAuthoringView.labelModeNote') }}
+                </button>
+                <button
+                  type="button"
+                  data-test="label-mode-hidden"
+                  class="rounded-md px-3 py-1 text-xs font-semibold"
+                  :class="
+                    form.labelDisplay.value === 'hidden'
+                      ? 'bg-accent text-accent-fg'
+                      : 'text-ink-muted'
+                  "
+                  @click="form.labelDisplay.value = 'hidden'"
+                >
+                  {{ t('diagramAuthoringView.labelModeHidden') }}
+                </button>
+              </div>
             </div>
           </div>
           <FrettedDiagramEditor
             :instrument="selectedInstrument"
             :positions="form.positions.value"
             :label-mode="form.labelDisplay.value"
+            :color="form.color.value"
             @toggle-cell="form.toggleCell"
             @reorder="form.reorderPositions"
             @set-shape="form.setPositionShape"
+            @set-color="form.setPositionColor"
             @remove="form.removePosition"
           />
         </div>
 
         <div class="flex flex-col gap-4 border-t border-border pt-2">
           <div>
-            <label class="text-sm font-semibold">{{ t('diagramAuthoringView.classificationLabel') }}</label>
+            <label class="text-sm font-semibold">{{
+              t('diagramAuthoringView.classificationLabel')
+            }}</label>
             <span class="-mt-1 block text-[0.8125rem] text-ink-subtle">
               {{ t('diagramAuthoringView.classificationHint') }}
             </span>
@@ -287,7 +351,9 @@ async function save() {
           />
           <SkillConceptTreePicker
             :label="t('classificationFields.conceptLabel')"
-            :nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+            :nodes="
+              concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))
+            "
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"
             @update:selected-ids="form.conceptIds.value = $event"
