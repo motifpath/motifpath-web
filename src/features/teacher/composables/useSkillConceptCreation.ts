@@ -2,8 +2,8 @@ import type { Ref } from 'vue'
 
 import { useCreateConcept } from '@/features/teacher/composables/useCreateConcept'
 import { useCreateSkill } from '@/features/teacher/composables/useCreateSkill'
-import { useListConcepts } from '@/features/teacher/composables/useListConcepts'
-import { useListSkills } from '@/features/teacher/composables/useListSkills'
+import { useListConcepts } from '@/shared/composables/useListConcepts'
+import { useListSkills } from '@/shared/composables/useListSkills'
 import { useToast } from '@/shared/composables/useToast'
 import { ancestorIds } from '@/shared/utils/skillConceptTree'
 

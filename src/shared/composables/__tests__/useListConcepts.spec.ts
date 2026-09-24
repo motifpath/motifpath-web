@@ -5,29 +5,29 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
-import { useListSkills } from '@/features/teacher/composables/useListSkills'
+import { useListConcepts } from '@/shared/composables/useListConcepts'
 
-describe('useListSkills', () => {
-  it('loads skills on creation', async () => {
-    const skills = [{ skill_id: 's-1', name: 'triad-shapes', parent_id: null }]
-    GET.mockResolvedValueOnce({ data: skills, error: undefined, response: { status: 200 } })
+describe('useListConcepts', () => {
+  it('loads concepts on creation', async () => {
+    const concepts = [{ concept_id: 'c-1', name: 'chord-theory', parent_id: null }]
+    GET.mockResolvedValueOnce({ data: concepts, error: undefined, response: { status: 200 } })
 
-    const { skills: result, isLoading, error } = useListSkills()
+    const { concepts: result, isLoading, error } = useListConcepts()
     expect(isLoading.value).toBe(true)
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(GET).toHaveBeenCalledWith('/skills', {})
-    expect(result.value).toEqual(skills)
+    expect(GET).toHaveBeenCalledWith('/concepts', {})
+    expect(result.value).toEqual(concepts)
     expect(error.value).toBe(false)
   })
 
   it('sets error and an empty list when the request fails', async () => {
     GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
 
-    const { skills, isLoading, error } = useListSkills()
+    const { concepts, isLoading, error } = useListConcepts()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(skills.value).toEqual([])
+    expect(concepts.value).toEqual([])
     expect(error.value).toBe(true)
   })
 })
