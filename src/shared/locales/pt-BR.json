@@ -1,8 +1,11 @@
 {
   "nav": {
     "student": "Minha trilha",
+    "myCourses": "Meus cursos",
+    "findCourse": "Encontrar um curso",
     "content": "Conteúdo",
     "paths": "Trilhas",
+    "courses": "Cursos",
     "exercises": "Exercícios",
     "diagrams": "Diagramas"
   },
@@ -109,5 +112,53 @@
   "languages": {
     "en": "Inglês",
     "pt_BR": "Português"
+  },
+  "skillConceptTreePicker": {
+    "removeSelectedAriaLabel": "Remover {name}",
+    "addButton": "Adicionar {label}",
+    "changeButton": "Alterar {label}",
+    "modalTitle": "Selecionar {label}",
+    "search": "Buscar por nome",
+    "loading": "Carregando…",
+    "empty": "Nenhum item encontrado ainda — crie um abaixo.",
+    "emptyNoCreate": "Nenhum item encontrado.",
+    "createHeading": "Criar novo",
+    "createNamePlaceholder": "Nome do novo item ({label})",
+    "noParentRoot": "Sem item pai (raiz)",
+    "parentSearchPlaceholder": "Sem item pai (raiz) — busque para definir um item pai",
+    "clearParentAriaLabel": "Limpar item pai",
+    "createSubmit": "Adicionar",
+    "duplicateName": "Já existe um item chamado \"{name}\" sob esse item pai — selecione-o na lista acima em vez de criar um quase duplicado.",
+    "closeButton": "Fechar"
+  },
+  "levels": {
+    "beginner": "Iniciante",
+    "early_intermediate": "Pré-intermediário",
+    "intermediate": "Intermediário",
+    "advanced": "Avançado",
+    "expert": "Especialista"
+  },
+  "courseFilters": {
+    "searchLabel": "Buscar cursos",
+    "searchPlaceholder": "Busque por título ou resumo",
+    "levelFilterLabel": "Nível",
+    "skillFilterLabel": "Habilidade",
+    "conceptFilterLabel": "Conceito",
+    "clearFilters": "Limpar filtros"
+  },
+  "teacherFilterPicker": {
+    "label": "Professor",
+    "anyTeacher": "Qualquer professor",
+    "searchPlaceholder": "Buscar pelo nome",
+    "clearAriaLabel": "Remover o filtro de professor",
+    "loading": "Carregando professores…",
+    "errorMessage": "Não foi possível carregar os professores.",
+    "retry": "Tentar novamente",
+    "noMatches": "Nenhum professor com esse nome."
+  },
+  "courseStatus": {
+    "draft": "Rascunho",
+    "published": "Publicado",
+    "retired": "Descontinuado"
   }
 }

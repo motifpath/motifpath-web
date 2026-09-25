@@ -71,5 +71,38 @@
     },
     "clearHintBefore": "Tap a selected answer again to clear it. Use",
     "clearHintAfter": "to revisit and change a previous exercise's answer."
+  },
+  "courseCatalogView": {
+    "heading": "Find a course",
+    "loadingNoun": "courses",
+    "errorMessage": "We couldn't load the course catalog.",
+    "emptyHeading": "No courses yet",
+    "emptyMessage": "New courses will appear here as soon as they are published.",
+    "noMatchesHeading": "No matching courses",
+    "noMatchesMessage": "Try fewer filters or a different search.",
+    "enroll": "Enroll",
+    "enrolling": "Enrolling…",
+    "enrolled": "Enrolled",
+    "enrolledToast": "You are now enrolled in {title}.",
+    "moreFromTeacher": "More from this teacher",
+    "courseTeacher": "by {name}"
+  },
+  "myCoursesView": {
+    "heading": "My courses and paths",
+    "findAnotherCourse": "Find another course",
+    "loadingNoun": "your courses",
+    "errorMessage": "We couldn't load your courses and paths.",
+    "emptyHeading": "No courses yet",
+    "emptyMessage": "Enroll in a course and it will show up here.",
+    "browseCatalog": "Browse the course catalog",
+    "coursesHeading": "Courses",
+    "pathsHeading": "Other paths",
+    "archivedHeading": "Archived",
+    "stage": "Stage {position}",
+    "statusCompleted": "Completed",
+    "statusAbandoned": "Left",
+    "assignedBy": "Assigned by {name}",
+    "current": "Current",
+    "switch": "Switch to this"
   }
 }

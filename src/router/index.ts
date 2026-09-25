@@ -95,6 +95,26 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/courses',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'course-catalog',
+        // Open to every role: anyone can learn.
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/CourseCatalogView.vue'),
+      },
+      {
+        path: 'mine',
+        name: 'my-courses',
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/MyCoursesView.vue'),
+      },
+    ],
+  },
+  {
     path: '/teacher/exercises',
     // A pass-through parent (no layout of its own — just RouterView) so all
     // three exercise routes below share one beforeEnter instead of each
@@ -173,6 +193,21 @@ const routes: RouteRecordRaw[] = [
         name: 'teacher-path-edit',
         meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
         component: () => import('@/features/teacher/views/PathBuilderView.vue'),
+      },
+    ],
+  },
+  {
+    path: '/teacher/courses',
+    // Pass-through parent so the teacher locale loads on entry, as for the
+    // other teacher sections.
+    component: RouterView,
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'teacher-courses',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/CourseListView.vue'),
       },
     ],
   },

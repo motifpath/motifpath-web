@@ -24,8 +24,10 @@ const props = withDefaults(
     isLoading?: boolean
     /** Restricts which nodes can be browsed/picked, e.g. to a content node's own linked classification. */
     allowedIds?: string[] | null
+    /** false hides the create-new section, for pickers that only filter by existing nodes. */
+    creatable?: boolean
   }>(),
-  { multiple: true, isLoading: false, allowedIds: null },
+  { multiple: true, isLoading: false, allowedIds: null, creatable: true },
 )
 const emit = defineEmits<{
   'update:selectedIds': [ids: string[]]
@@ -274,7 +276,7 @@ function submitCreate() {
             {{ t('skillConceptTreePicker.loading') }}
           </p>
           <p v-else-if="visibleNodes.length === 0" data-test="tree-empty" class="p-1.5 text-sm text-ink-subtle">
-            {{ t('skillConceptTreePicker.empty') }}
+            {{ creatable ? t('skillConceptTreePicker.empty') : t('skillConceptTreePicker.emptyNoCreate') }}
           </p>
           <ul v-else class="flex flex-1 flex-col gap-1 overflow-y-auto p-1.5">
             <li
@@ -307,7 +309,7 @@ function submitCreate() {
           </ul>
         </div>
 
-        <div class="flex flex-col gap-1.5 border-t border-border pt-2.5">
+        <div v-if="creatable" class="flex flex-col gap-1.5 border-t border-border pt-2.5">
           <span class="text-xs font-semibold text-ink-subtle">{{ t('skillConceptTreePicker.createHeading') }}</span>
           <input
             v-model="createName"

@@ -10,7 +10,7 @@ import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceO
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
-import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.vue'
 import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
 import { useExercise } from '@/features/teacher/composables/useExercise'

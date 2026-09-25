@@ -70,7 +70,7 @@ function mountView() {
 
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
-import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SkillConceptTreePicker, { type TreeNode } from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import SkillConceptTreePicker, { type TreeNode } from '@/shared/components/SkillConceptTreePicker.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { components } from '@/api/generated/core-domain'
 

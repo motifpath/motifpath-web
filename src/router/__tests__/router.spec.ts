@@ -247,6 +247,69 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it('lets a registered student reach the course catalog', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/courses')
+
+    expect(router.currentRoute.value.name).toBe('course-catalog')
+  })
+
+  it("lets a registered student reach their courses and paths", async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/courses/mine')
+
+    expect(router.currentRoute.value.name).toBe('my-courses')
+  })
+
+  it.each([
+    ['teacher', '/courses'],
+    ['teacher', '/courses/mine'],
+    ['admin', '/courses'],
+    ['admin', '/courses/mine'],
+  ] as const)('lets a registered %s reach the learner page %s', async (role, path) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge(role)
+
+    await router.push(path)
+
+    expect(router.currentRoute.value.path).toBe(path)
+  })
+
+  it.each(['teacher', 'admin'] as const)("lets a registered %s reach the teacher course list", async (role) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge(role)
+
+    await router.push('/teacher/courses')
+
+    expect(router.currentRoute.value.name).toBe('teacher-courses')
+  })
+
+  it('sends a registered student away from the teacher course list to home', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/teacher/courses')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('sends an unauthenticated visitor from the course catalog to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/courses')
+
+    expect(router.currentRoute.value.name).toBe('sign-in')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 

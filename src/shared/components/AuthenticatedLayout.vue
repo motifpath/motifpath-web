@@ -15,6 +15,15 @@ const { isCompact } = useIsCompact()
 // monitor isn't left with the video and its cue pinned to a laptop-sized
 // strip in the middle of the screen.
 const route = useRoute()
+// Which student tab a route sits under: the catalog and "my courses" are
+// their own sections; everything else (the path and the lesson/practice
+// screens reached from it) belongs to My path.
+const STUDENT_SECTIONS = new Set(['my-courses', 'course-catalog'])
+const primaryNavTo = computed(() => {
+  const name = typeof route.name === 'string' ? route.name : ''
+  return { name: STUDENT_SECTIONS.has(name) ? name : 'path' }
+})
+
 const contentWidthClass = computed(() =>
   route.meta.wideContent ? 'max-w-7xl 2xl:max-w-[96rem]' : 'max-w-4xl',
 )
@@ -22,7 +31,7 @@ const contentWidthClass = computed(() =>
 
 <template>
   <div class="flex min-h-screen flex-col">
-    <AppBar context="student" :compact="isCompact" :primary-nav-to="{ name: 'path' }" />
+    <AppBar context="student" :compact="isCompact" :primary-nav-to="primaryNavTo" />
 
     <main class="mx-auto w-full flex-1 px-4 py-8" :class="contentWidthClass">
       <RouterView />

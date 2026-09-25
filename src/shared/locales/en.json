@@ -1,8 +1,11 @@
 {
   "nav": {
     "student": "My path",
+    "myCourses": "My courses",
+    "findCourse": "Find a course",
     "content": "Content",
     "paths": "Paths",
+    "courses": "Courses",
     "exercises": "Exercises",
     "diagrams": "Diagrams"
   },
@@ -109,5 +112,53 @@
   "languages": {
     "en": "English",
     "pt_BR": "Portuguese"
+  },
+  "skillConceptTreePicker": {
+    "removeSelectedAriaLabel": "Remove {name}",
+    "addButton": "Add {label}",
+    "changeButton": "Change {label}",
+    "modalTitle": "Select {label}",
+    "search": "Search by name",
+    "loading": "Loading…",
+    "empty": "No matching nodes yet — create one below.",
+    "emptyNoCreate": "No matching nodes.",
+    "createHeading": "Create new",
+    "createNamePlaceholder": "New {label} name",
+    "noParentRoot": "No parent (root)",
+    "parentSearchPlaceholder": "No parent (root) — search to set a parent",
+    "clearParentAriaLabel": "Clear parent",
+    "createSubmit": "Add",
+    "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate.",
+    "closeButton": "Close"
+  },
+  "levels": {
+    "beginner": "Beginner",
+    "early_intermediate": "Early intermediate",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced",
+    "expert": "Expert"
+  },
+  "courseFilters": {
+    "searchLabel": "Search courses",
+    "searchPlaceholder": "Search by title or summary",
+    "levelFilterLabel": "Level",
+    "skillFilterLabel": "Skill",
+    "conceptFilterLabel": "Concept",
+    "clearFilters": "Clear filters"
+  },
+  "teacherFilterPicker": {
+    "label": "Teacher",
+    "anyTeacher": "Any teacher",
+    "searchPlaceholder": "Search by name",
+    "clearAriaLabel": "Remove the teacher filter",
+    "loading": "Loading teachers…",
+    "errorMessage": "We couldn't load the teachers.",
+    "retry": "Try again",
+    "noMatches": "No teacher matches that name."
+  },
+  "courseStatus": {
+    "draft": "Draft",
+    "published": "Published",
+    "retired": "Retired"
   }
 }

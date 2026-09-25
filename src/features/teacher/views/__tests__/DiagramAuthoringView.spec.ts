@@ -78,7 +78,7 @@ function mountView() {
 import { i18n } from '@/i18n'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
-import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import DiagramAuthoringView from '@/features/teacher/views/DiagramAuthoringView.vue'
 import type { components } from '@/api/generated/core-domain'
 import { useToast } from '@/shared/composables/useToast'

@@ -5,11 +5,18 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
 import Icon from '@/shared/components/Icon.vue'
+import { type NavSection, STUDENT_SECTIONS, TEACHER_SECTIONS, sectionsFor } from '@/shared/navigation'
+import { useCurrentUserStore } from '@/stores/currentUser'
 import { useThemeStore } from '@/stores/theme'
 
 const props = withDefaults(
   defineProps<{
-    context: 'student' | 'teacher'
+    /**
+     * Which sections the bar offers. `overview` is for pages outside any
+     * section (e.g. home): every section the viewer's role can reach, none
+     * highlighted.
+     */
+    context: 'student' | 'teacher' | 'overview'
     /** Mobile layout: hamburger + nav-only drawer instead of the inline nav pill. */
     compact?: boolean
     /**
@@ -17,7 +24,7 @@ const props = withDefaults(
      * of the three permanent tabs (Content/Paths/Exercises) is active, and
      * the breadcrumb root when breadcrumbLabel is set.
      */
-    primaryNavTo: RouteLocationRaw
+    primaryNavTo?: RouteLocationRaw
     /** When set in teacher context, renders as a breadcrumb: Exercises › label. */
     breadcrumbLabel?: string
     showSave?: boolean
@@ -31,37 +38,43 @@ const props = withDefaults(
 const themeStore = useThemeStore()
 const { t } = useTypedT()
 
-const isStudent = computed(() => props.context === 'student')
-const hasCrumb = computed(() => !isStudent.value && !!props.breadcrumbLabel)
+const currentUser = useCurrentUserStore()
 
-// Four permanent top-level sections for teachers, Content/Paths/Exercises/
-// Diagrams, resolved against `primaryNavTo`'s route name (never route-inferred, same
-// explicit-prop style as breadcrumbLabel) so a view's existing
-// `primary-nav-to="{ name: 'teacher-exercises' }"` keeps working unchanged
-// and also drives which tab renders active / which section a breadcrumb
-// drills down from.
-const teacherNavItems: { name: string; labelKey: 'nav.content' | 'nav.paths' | 'nav.exercises' | 'nav.diagrams' }[] = [
-  { name: 'teacher-content', labelKey: 'nav.content' },
-  { name: 'teacher-paths', labelKey: 'nav.paths' },
-  { name: 'teacher-exercises', labelKey: 'nav.exercises' },
-  { name: 'teacher-diagrams', labelKey: 'nav.diagrams' },
-]
-const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string }).name)
-const fallbackTeacherSection = { name: 'teacher-exercises', labelKey: 'nav.exercises' as const }
-const activeTeacherSection = computed(() => {
-  const match = teacherNavItems.find((item) => item.name === primaryNavToName.value)
-  if (!match && !isStudent.value && import.meta.env.DEV) {
+const isStudent = computed(() => props.context === 'student')
+const isOverview = computed(() => props.context === 'overview')
+const hasCrumb = computed(() => props.context === 'teacher' && !!props.breadcrumbLabel)
+
+// Permanent top-level sections, resolved against `primaryNavTo`'s route name
+// (never route-inferred, same explicit-prop style as breadcrumbLabel) so a
+// view's existing `primary-nav-to="{ name: 'teacher-exercises' }"` keeps
+// working unchanged and also drives which tab renders active / which section
+// a breadcrumb drills down from.
+const navItems = computed<NavSection[]>(() => {
+  if (isOverview.value) return currentUser.profile ? sectionsFor(currentUser.profile.role) : []
+  return isStudent.value ? STUDENT_SECTIONS : TEACHER_SECTIONS
+})
+const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string } | undefined)?.name)
+const fallbackSection = computed(
+  () =>
+    (isStudent.value ? STUDENT_SECTIONS : TEACHER_SECTIONS).find((section) =>
+      isStudent.value ? section.name === 'path' : section.name === 'teacher-exercises',
+    )!,
+)
+// The section the page belongs to; an overview page belongs to none.
+const activeSection = computed<NavSection | null>(() => {
+  if (isOverview.value) return null
+  const match = navItems.value.find((item) => item.name === primaryNavToName.value)
+  if (!match && import.meta.env.DEV) {
     // Falling back silently would highlight the wrong tab and mislabel the
     // breadcrumb root with no visible sign anything's wrong — surface it
     // loudly in development instead of shipping a plausible-looking bug.
     console.warn(
-      `AppBar: primaryNavTo route name "${String(primaryNavToName.value)}" is not one of the known teacher ` +
-        `sections (${teacherNavItems.map((item) => item.name).join(', ')}); falling back to "${fallbackTeacherSection.name}".`,
+      `AppBar: primaryNavTo route name "${String(primaryNavToName.value)}" is not one of the known ${props.context} ` +
+        `sections (${navItems.value.map((item) => item.name).join(', ')}); falling back to "${fallbackSection.value.name}".`,
     )
   }
-  return match ?? fallbackTeacherSection
+  return match ?? fallbackSection.value
 })
-const primaryNavLabel = computed(() => (isStudent.value ? t('nav.student') : t(activeTeacherSection.value.labelKey)))
 
 const drawerOpen = ref(false)
 function toggleDrawer(): void {
@@ -87,7 +100,7 @@ function closeDrawer(): void {
       <Icon name="menu" :size="18" />
     </button>
 
-    <div class="flex items-center gap-2.5">
+    <RouterLink :to="{ name: 'home' }" data-test="app-bar-home" class="flex items-center gap-2.5">
       <div class="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-accent-muted">
         <svg width="16" height="16" viewBox="200 100 860 860" role="img" :aria-label="t('appBar.brand')">
           <defs>
@@ -109,33 +122,26 @@ function closeDrawer(): void {
         </svg>
       </div>
       <span class="text-[15px] font-bold text-ink">{{ t('appBar.brand') }}</span>
-    </div>
+    </RouterLink>
 
     <template v-if="!compact">
       <div class="h-[22px] w-px bg-border" />
 
-      <RouterLink
-        v-if="isStudent && !hasCrumb"
-        :to="primaryNavTo"
-        class="rounded-full bg-accent-muted px-3.5 py-1.5 text-sm font-semibold text-accent-text"
-        >{{ primaryNavLabel }}</RouterLink
-      >
-
-      <div v-else-if="!isStudent && !hasCrumb" data-test="app-bar-teacher-tabs" class="flex items-center gap-1">
+      <div v-if="!hasCrumb" data-test="app-bar-tabs" class="flex items-center gap-1">
         <RouterLink
-          v-for="item in teacherNavItems"
+          v-for="item in navItems"
           :key="item.name"
           :to="{ name: item.name }"
           class="rounded-full px-3.5 py-1.5 text-sm font-semibold"
-          :class="
-            item.name === activeTeacherSection.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'
-          "
+          :class="item.name === activeSection?.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
           >{{ t(item.labelKey) }}</RouterLink
         >
       </div>
 
       <div v-else class="flex items-center gap-1.5 text-[13px]">
-        <RouterLink :to="primaryNavTo" class="text-ink-muted">{{ t(activeTeacherSection.labelKey) }}</RouterLink>
+        <RouterLink :to="primaryNavTo ?? { name: fallbackSection.name }" class="text-ink-muted">{{
+          t((activeSection ?? fallbackSection).labelKey)
+        }}</RouterLink>
         <Icon name="chevron-right" :size="14" class="text-ink-subtle" />
         <span class="rounded-full bg-accent-muted px-3.5 py-1.5 text-sm font-semibold text-accent-text">{{
           breadcrumbLabel
@@ -188,23 +194,14 @@ function closeDrawer(): void {
         class="fixed bottom-0 left-0 top-16 z-40 flex w-[260px] flex-col gap-1 bg-surface-raised py-4 shadow-level1"
       >
         <RouterLink
-          v-if="isStudent"
-          :to="primaryNavTo"
-          class="mx-3 rounded-[10px] bg-accent-muted px-3.5 py-3 text-sm font-semibold text-accent-text"
+          v-for="item in navItems"
+          :key="item.name"
+          :to="{ name: item.name }"
+          class="mx-3 rounded-[10px] px-3.5 py-3 text-sm font-semibold"
+          :class="item.name === activeSection?.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
           @click="closeDrawer"
-          >{{ primaryNavLabel }}</RouterLink
+          >{{ t(item.labelKey) }}</RouterLink
         >
-        <template v-else>
-          <RouterLink
-            v-for="item in teacherNavItems"
-            :key="item.name"
-            :to="{ name: item.name }"
-            class="mx-3 rounded-[10px] px-3.5 py-3 text-sm font-semibold"
-            :class="item.name === activeTeacherSection.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
-            @click="closeDrawer"
-            >{{ t(item.labelKey) }}</RouterLink
-          >
-        </template>
         <div v-if="hasCrumb" class="px-[26px] pt-2 text-xs text-ink-subtle">
           {{ t('appBar.editingCrumb', { label: breadcrumbLabel ?? '' }) }}
         </div>
