@@ -6,6 +6,7 @@ import ArticlePopupListEditor from '@/features/teacher/components/ArticlePopupLi
 import ChallengeModal, { type ChallengeModalInitial } from '@/features/teacher/components/ChallengeModal.vue'
 import ClassificationFields from '@/features/teacher/components/ClassificationFields.vue'
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
+import ContentVersionHistory from '@/features/teacher/components/ContentVersionHistory.vue'
 import ExpandedContentModal from '@/features/teacher/components/ExpandedContentModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEditor.vue'
@@ -16,8 +17,10 @@ import { useCreateExpandedContent } from '@/features/teacher/composables/useCrea
 import { useDeleteExpandedContent, useUpdateExpandedContent } from '@/features/teacher/composables/useUpdateExpandedContent'
 import { useListChallengeExercises } from '@/features/teacher/composables/useListChallengeExercises'
 import { useListContentNodeChallenges } from '@/features/teacher/composables/useListContentNodeChallenges'
+import { useListContentNodeVersions } from '@/features/teacher/composables/useListContentNodeVersions'
 import { useListExercises } from '@/features/teacher/composables/useListExercises'
 import { useListExpandedContent } from '@/features/teacher/composables/useListExpandedContent'
+import { usePublishContentNode } from '@/features/teacher/composables/usePublishContentNode'
 import { useSaveChallenge } from '@/features/teacher/composables/useSaveChallenge'
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
@@ -32,6 +35,7 @@ import type { components } from '@/api/generated/core-domain'
 
 type CreateExpandedContentRequest = components['schemas']['CreateExpandedContentRequest']
 type UpdateExpandedContentRequest = components['schemas']['UpdateExpandedContentRequest']
+type ContentNode = components['schemas']['ContentNode']
 
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
@@ -66,13 +70,20 @@ const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreat
   })
 
 const savedContentNodeId = ref('')
+const savedTeacherId = ref('')
+const latestPublishedVersion = ref<number | null>(null)
+
+function applySavedContentNode(contentNode: ContentNode) {
+  form.loadFromContentNode(contentNode)
+  savedContentNodeId.value = contentNode.content_node_id
+  savedTeacherId.value = contentNode.teacher.user_id
+  latestPublishedVersion.value = contentNode.latest_published_version ?? null
+}
 
 watch(
   loadedContentNode,
   (contentNode) => {
-    if (!contentNode) return
-    form.loadFromContentNode(contentNode)
-    savedContentNodeId.value = contentNode.content_node_id
+    if (contentNode) applySavedContentNode(contentNode)
   },
   { immediate: true },
 )
@@ -90,19 +101,23 @@ const toast = useToast()
 const hasClassification = computed(
   () => form.skillIds.value.length > 0 && form.conceptIds.value.length > 0,
 )
+const canSave = computed(() => hasClassification.value && form.hasBody.value)
+
+async function persist() {
+  const contentNode = savedContentNodeId.value
+    ? await updateContentNode(savedContentNodeId.value, form.toUpdateContentNodeRequest())
+    : await createContentNode(form.toCreateContentNodeRequest())
+  applySavedContentNode(contentNode)
+}
 
 async function save() {
-  if (!hasClassification.value || !form.hasBody.value) return
+  if (!canSave.value) return
 
   saving.value = true
   const isUpdate = !!savedContentNodeId.value
 
   try {
-    const contentNode = isUpdate
-      ? await updateContentNode(savedContentNodeId.value, form.toUpdateContentNodeRequest())
-      : await createContentNode(form.toCreateContentNodeRequest())
-    savedContentNodeId.value = contentNode.content_node_id
-    form.loadFromContentNode(contentNode)
+    await persist()
 
     justSaved.value = true
     clearTimeout(justSavedTimeout)
@@ -112,6 +127,53 @@ async function save() {
     toast.error(e instanceof Error ? e.message : t('contentAuthoringView.saveContentNodeFailed'))
   } finally {
     saving.value = false
+  }
+}
+
+// Publishing (and reading the version history) is limited to the node's
+// creating teacher or an admin -- the same rule the API enforces.
+const canPublish = computed(() => {
+  const profile = currentUser.profile
+  if (!profile || !savedContentNodeId.value) return false
+  return profile.role === 'admin' || (profile.role === 'teacher' && profile.user_id === savedTeacherId.value)
+})
+
+type VersionsState = ReturnType<typeof useListContentNodeVersions>
+const versionsState = shallowRef<VersionsState | null>(null)
+
+watch(
+  [savedContentNodeId, canPublish],
+  ([id, allowed]) => {
+    if (!id || !allowed) return
+    versionsState.value = useListContentNodeVersions(id)
+  },
+  { immediate: true },
+)
+
+const { publishContentNode } = usePublishContentNode()
+const publishing = ref(false)
+
+// A publish snapshots the node's saved state, so the draft on screen is saved
+// first -- otherwise unsaved edits would silently be left out of the version.
+async function publish() {
+  if (!canSave.value) return
+
+  publishing.value = true
+  try {
+    try {
+      await persist()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('contentAuthoringView.saveContentNodeFailed'))
+      return
+    }
+    const version = await publishContentNode(savedContentNodeId.value)
+    latestPublishedVersion.value = version.version_number
+    toast.success(t('contentAuthoringView.publishedVersion', { version: version.version_number }))
+    await versionsState.value?.retry()
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : t('contentAuthoringView.publishFailed'))
+  } finally {
+    publishing.value = false
   }
 }
 
@@ -348,7 +410,7 @@ async function onSaveChallenge({
       :primary-nav-to="{ name: 'teacher-content' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"
       :show-save="canAuthor"
-      :save-disabled="saving || !hasClassification || !form.hasBody.value"
+      :save-disabled="saving || publishing || !canSave"
       :just-saved="justSaved"
       :on-save="save"
     />
@@ -529,6 +591,40 @@ async function onSaveChallenge({
             </li>
           </ul>
         </div>
+      </div>
+
+      <div v-if="canPublish" data-test="publish-section" class="flex flex-col gap-3 border-t border-border pt-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-col gap-0.5">
+            <label class="text-sm font-semibold">{{ t('contentAuthoringView.publishingLabel') }}</label>
+            <span data-test="publish-status" class="text-sm text-ink-subtle">
+              {{
+                latestPublishedVersion === null
+                  ? t('contentAuthoringView.notPublishedYet')
+                  : t('contentAuthoringView.publishedAs', { version: latestPublishedVersion })
+              }}
+            </span>
+          </div>
+          <button
+            type="button"
+            data-test="publish-button"
+            :disabled="publishing || saving || !canSave"
+            class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
+            @click="publish"
+          >
+            {{ publishing ? t('contentAuthoringView.publishing') : t('contentAuthoringView.publishButton') }}
+          </button>
+        </div>
+        <span class="text-sm text-ink-subtle">{{ t('contentAuthoringView.publishHint') }}</span>
+
+        <label class="text-sm font-semibold">{{ t('contentVersionHistory.heading') }}</label>
+        <ContentVersionHistory
+          :versions="versionsState?.versions.value ?? []"
+          :loading="versionsState?.isLoading.value ?? true"
+          :error="versionsState?.error.value ?? false"
+          :latest-version="latestPublishedVersion"
+          @retry="versionsState?.retry()"
+        />
       </div>
     </main>
 
