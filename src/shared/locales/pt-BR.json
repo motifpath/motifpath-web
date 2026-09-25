@@ -80,5 +80,34 @@
     "showingCount": "Mostrando {loaded} de {total}",
     "button": "Carregar mais",
     "failed": "Não foi possível carregar mais. Tente novamente."
+  },
+  "intervals": {
+    "root": "T",
+    "flat2": "2m",
+    "natural2": "2M",
+    "sharp2": "2aum",
+    "flat3": "3m",
+    "natural3": "3M",
+    "natural4": "4J",
+    "sharp4": "4aum",
+    "flat5": "5dim",
+    "natural5": "5J",
+    "sharp5": "5aum",
+    "flat6": "6m",
+    "natural6": "6M",
+    "doubleFlat7": "7dim",
+    "flat7": "7m",
+    "natural7": "7M",
+    "flat9": "9m",
+    "natural9": "9M",
+    "sharp9": "9aum",
+    "natural11": "11J",
+    "sharp11": "11aum",
+    "flat13": "13m",
+    "natural13": "13M"
+  },
+  "languages": {
+    "en": "Inglês",
+    "pt_BR": "Português"
   }
 }

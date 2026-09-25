@@ -36,6 +36,7 @@ function mockMatchMedia(compact: boolean): void {
   }))
 }
 
+import { i18n } from '@/i18n'
 import DiagramListView from '@/features/teacher/views/DiagramListView.vue'
 
 function page(items: unknown[], total = items.length) {
@@ -102,8 +103,8 @@ describe('DiagramListView', () => {
   it('lists diagrams, each linking to its edit route', async () => {
     GET.mockResolvedValueOnce(
       page([
-        { diagram_id: 'd-1', name: 'Minor Pentatonic — Position 1', instrument_id: 'i-1', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
-        { diagram_id: 'd-2', name: 'C Major Scale', instrument_id: 'i-1', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
+        { diagram_id: 'd-1', names: { en: 'Minor Pentatonic — Position 1' }, instrument_id: 'i-1', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
+        { diagram_id: 'd-2', names: { en: 'C Major Scale' }, instrument_id: 'i-1', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
       ]),
     )
     const wrapper = mountView()
@@ -123,11 +124,26 @@ describe('DiagramListView', () => {
     )
   })
 
+  it("names each diagram in the viewer's language", async () => {
+    i18n.global.locale.value = 'pt-BR'
+    try {
+      GET.mockResolvedValueOnce(
+        page([{ diagram_id: 'd-1', names: { en: 'Major Scale', pt_BR: 'Escala maior' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }]),
+      )
+      const wrapper = mountView()
+      await flush()
+
+      expect(wrapper.get('[data-test="diagram-row"]').text()).toContain('Escala maior')
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
+  })
+
   it('marks basic diagrams as templates, and only them', async () => {
     GET.mockResolvedValueOnce(
       page([
-        { diagram_id: 'd-1', name: 'Mine', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
-        { diagram_id: 'd-2', name: 'Template', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
+        { diagram_id: 'd-1', names: { en: 'Mine' }, kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
+        { diagram_id: 'd-2', names: { en: 'Template' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
       ]),
     )
     const wrapper = mountView()
@@ -160,14 +176,14 @@ describe('DiagramListView', () => {
   })
 
   it('shows how many diagrams are loaded and loads the next page on request', async () => {
-    GET.mockResolvedValueOnce(page([{ diagram_id: 'd-1', name: 'A', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], 2))
+    GET.mockResolvedValueOnce(page([{ diagram_id: 'd-1', names: { en: 'A' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], 2))
     const wrapper = mountView()
     await flush()
 
     expect(wrapper.text()).toContain('Showing 1 of 2')
 
     GET.mockResolvedValueOnce({
-      data: { items: [{ diagram_id: 'd-2', name: 'B', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], total: 2, limit: 20, offset: 1 },
+      data: { items: [{ diagram_id: 'd-2', names: { en: 'B' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], total: 2, limit: 20, offset: 1 },
       error: undefined,
       response: { status: 200 },
     })

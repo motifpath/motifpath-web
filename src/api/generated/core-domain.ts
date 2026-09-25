@@ -716,9 +716,11 @@ export interface paths {
          *     diagrams.
          *
          *     Results are paginated in a {items, total, limit, offset} envelope,
-         *     ordered by name, then id; an offset past the end returns an empty
-         *     items array. Every filter below is optional and they combine with
-         *     AND.
+         *     ordered by the name the caller sees — the diagram's name in the
+         *     caller's locale, else its English name, else its name in the
+         *     alphabetically first language it has — then by id; an offset past
+         *     the end returns an empty items array. Every filter below is
+         *     optional and they combine with AND.
          */
         get: operations["listDiagrams"];
         put?: never;
@@ -1758,17 +1760,19 @@ export interface components {
              */
             position_id?: string;
             /**
-             * @description The interval this position represents — e.g. "R", "b3", "4",
-             *     "5", "b7", "2", "3", "6", "7" — relative to the root it was
-             *     authored against. That is normally the parent Diagram's own root
-             *     (see Diagram.root_note). In a diagram saved by combining several
-             *     overlaid diagrams into one, each position keeps the interval it
-             *     had in the diagram it came from, relative to that diagram's
-             *     root. Not globally standardized beyond being consistent within
-             *     one authored diagram; MotifPath does not validate interval names
-             *     against a fixed enum.
+             * @description The interval this position represents, as a canonical code (R is
+             *     the root) — a storage identifier, not display text: clients show
+             *     each code in the viewer's language (e.g. R as "T" and b3 as "3m"
+             *     in Brazilian Portuguese). Enharmonic codes stay distinct (#4 vs
+             *     b5) because the author's spelling carries musical meaning. The
+             *     interval is relative to the root it was authored against:
+             *     normally the parent Diagram's own root (see Diagram.root_note).
+             *     In a diagram saved by combining several overlaid diagrams into
+             *     one, each position keeps the interval it had in the diagram it
+             *     came from, relative to that diagram's root.
+             * @enum {string}
              */
-            interval: string;
+            interval: "R" | "b2" | "2" | "#2" | "b3" | "3" | "4" | "#4" | "b5" | "5" | "#5" | "b6" | "6" | "bb7" | "b7" | "7" | "b9" | "9" | "#9" | "11" | "#11" | "b13" | "13";
             /**
              * @description The concrete note name this position sounds at the root it was
              *     authored against (e.g. "A", "C") — the parent Diagram's own root
@@ -1874,8 +1878,18 @@ export interface components {
              * @description The instrument this diagram is authored against.
              */
             instrument_id: string;
-            /** @description Human-readable name (e.g. "Minor Pentatonic — Position 1"). */
-            name: string;
+            /**
+             * @description The diagram's name in each language it has one for (e.g. {"en":
+             *     "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor
+             *     de Lá — Posição 1"}). A basic diagram has a name in every
+             *     language MotifPath offers; a custom one in at least one.
+             */
+            names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description The Language.code of every language this diagram has a name in —
+             *     the keys of names, sorted.
+             */
+            languages: string[];
             /**
              * @description basic diagrams are curated templates: every teacher can find and
              *     use them, and only an admin may create or update one. custom
@@ -1939,8 +1953,12 @@ export interface components {
              * @description The instrument this diagram is authored against. Must reference an existing instrument.
              */
             instrument_id: string;
-            /** @description Human-readable name for this diagram. */
-            name: string;
+            /**
+             * @description The diagram's name in each of its languages. A basic diagram
+             *     needs a name in every language MotifPath offers; a custom one
+             *     needs at least one.
+             */
+            names: components["schemas"]["LocalizedNames"];
             /**
              * @description Whether the new diagram is a curated basic template or the
              *     caller's own custom diagram. Omitted defaults to custom. Only an
@@ -1977,7 +1995,7 @@ export interface components {
             classification: components["schemas"]["DiagramClassificationInput"];
         };
         /**
-         * @description Payload for replacing an existing diagram's name, positions,
+         * @description Payload for replacing an existing diagram's names, positions,
          *     classification, root_note, label_display, or color. instrument_id is not
          *     present here — it cannot be changed after creation, since every
          *     position's coordinate shape depends on it. Nor are kind and
@@ -1985,8 +2003,12 @@ export interface components {
          *     different kind or creator is a new diagram.
          */
         UpdateDiagramRequest: {
-            /** @description Human-readable name for this diagram, replacing the current value. */
-            name?: string;
+            /**
+             * @description The diagram's names, replacing the current set. A basic diagram
+             *     must keep a name in every language MotifPath offers. Omitted
+             *     leaves the names unchanged.
+             */
+            names?: components["schemas"]["LocalizedNames"];
             /**
              * @description The root note this diagram is authored against (e.g. "A"),
              *     replacing the current value. Omitted leaves the current value
@@ -5556,6 +5578,12 @@ export interface operations {
                 /** @description Number of matching items to skip before this page (ADR-031). */
                 offset?: components["parameters"]["Offset"];
                 /**
+                 * @description Restricts the results to diagrams with a name in this language
+                 *     (a Language.code other than "any") — e.g. to offer only
+                 *     diagrams that read natively in a content node's language.
+                 */
+                language?: string;
+                /**
                  * @description Restricts the results to diagrams of this kind. For a teacher,
                  *     custom means only their own custom diagrams.
                  */
@@ -5587,7 +5615,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedDiagrams"];
                 };
             };
-            /** @description limit, offset or kind is out of range. */
+            /** @description limit, offset, kind or language is out of range. */
             400: {
                 headers: {
                     [name: string]: unknown;

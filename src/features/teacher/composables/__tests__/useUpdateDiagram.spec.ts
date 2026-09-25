@@ -9,11 +9,11 @@ import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagra
 
 describe('useUpdateDiagram', () => {
   it('patches the diagram and returns the updated resource', async () => {
-    const diagram = { diagram_id: 'd-1', name: 'Renamed' }
+    const diagram = { diagram_id: 'd-1', names: { en: 'Renamed' } }
     PATCH.mockResolvedValueOnce({ data: diagram, error: undefined, response: { status: 200 } })
 
     const { updateDiagram } = useUpdateDiagram()
-    const request = { name: 'Renamed' }
+    const request = { names: { en: 'Renamed' } }
 
     const result = await updateDiagram('d-1', request)
 
@@ -29,6 +29,6 @@ describe('useUpdateDiagram', () => {
 
     const { updateDiagram } = useUpdateDiagram()
 
-    await expect(updateDiagram('missing', { name: 'x' })).rejects.toThrow('Boom')
+    await expect(updateDiagram('missing', { names: { en: 'x' } })).rejects.toThrow('Boom')
   })
 })

@@ -1,37 +1,53 @@
 <script setup lang="ts">
 /**
- * Asks for the name of a new diagram saved from the one being edited —
- * "Save as…" (a custom copy) or, for admins, "Save as template…" (a basic
- * one). Only collects the name; the caller does the saving.
+ * Asks for the names of a new diagram saved from the one being edited —
+ * "Save as…" (a custom copy, in the languages it is named in) or, for admins,
+ * "Save as template…" (a basic diagram, named in every language). Only
+ * collects the names; the caller does the saving.
  */
 import { computed, ref, watch } from 'vue'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { languageLabelKey } from '@/shared/utils/languageLabels'
 
 const props = defineProps<{
   open: boolean
-  initialName: string
+  /** The Language.code of every language to ask a name in, in display order. */
+  languages: string[]
+  initialNames: Record<string, string>
   asTemplate: boolean
   saving: boolean
 }>()
-const emit = defineEmits<{ confirm: [name: string]; close: [] }>()
+const emit = defineEmits<{ confirm: [names: Record<string, string>]; close: [] }>()
 
 const { t } = useTypedT()
 
-const name = ref(props.initialName)
+function suggestedNames(): Record<string, string> {
+  return Object.fromEntries(props.languages.map((code) => [code, props.initialNames[code] ?? '']))
+}
+
+const names = ref<Record<string, string>>(suggestedNames())
 watch(
   () => props.open,
   (open) => {
-    if (open) name.value = props.initialName
+    if (open) names.value = suggestedNames()
   },
 )
 
-const canConfirm = computed(() => name.value.trim() !== '' && !props.saving)
+function languageLabel(code: string): string {
+  const key = languageLabelKey(code)
+  return key === null ? code : t(key)
+}
+
+const canConfirm = computed(
+  () => !props.saving && props.languages.every((code) => (names.value[code] ?? '').trim() !== ''),
+)
 
 function confirm() {
-  if (canConfirm.value) emit('confirm', name.value.trim())
+  if (!canConfirm.value) return
+  emit('confirm', Object.fromEntries(props.languages.map((code) => [code, (names.value[code] ?? '').trim()])))
 }
 </script>
 
@@ -49,15 +65,19 @@ function confirm() {
         <ModalCloseButton @close="emit('close')" />
       </div>
 
-      <div class="flex flex-col gap-2 p-5">
-        <label for="save-as-name" class="text-sm font-semibold">{{ t('saveDiagramAsModal.nameLabel') }}</label>
-        <input
-          id="save-as-name"
-          v-model="name"
-          type="text"
-          data-test="save-as-name"
-          class="rounded-md border border-border bg-surface px-3 py-2 text-sm"
-        />
+      <div class="flex flex-col gap-3 p-5">
+        <div v-for="code in languages" :key="code" class="flex flex-col gap-1.5">
+          <label :for="`save-as-name-${code}`" class="text-sm font-semibold">
+            {{ t('saveDiagramAsModal.nameLabel') }} ({{ languageLabel(code) }})
+          </label>
+          <input
+            :id="`save-as-name-${code}`"
+            v-model="names[code]"
+            type="text"
+            :data-test="`save-as-name-${code}`"
+            class="rounded-md border border-border bg-surface px-3 py-2 text-sm"
+          />
+        </div>
         <p class="text-sm text-ink-subtle">
           {{ asTemplate ? t('saveDiagramAsModal.templateHint') : t('saveDiagramAsModal.copyHint') }}
         </p>

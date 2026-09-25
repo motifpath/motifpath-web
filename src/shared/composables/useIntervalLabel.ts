@@ -1,0 +1,17 @@
+import { i18n } from '@/i18n'
+import { intervalLabelKey } from '@/shared/utils/intervalLabels'
+
+/**
+ * Displays an interval code in the current UI language. A value that isn't a
+ * canonical code (e.g. an empty interval while a position has no root yet) is
+ * shown as it is. Uses the global i18n instance, so it works outside a
+ * component's setup and re-renders on a locale switch like any template text.
+ */
+export function useIntervalLabel() {
+  function intervalLabel(code: string): string {
+    const key = intervalLabelKey(code)
+    return key === null ? code : i18n.global.t(key)
+  }
+
+  return { intervalLabel }
+}

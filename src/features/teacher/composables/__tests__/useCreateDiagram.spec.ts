@@ -12,13 +12,13 @@ type CreateDiagramRequest = components['schemas']['CreateDiagramRequest']
 
 describe('useCreateDiagram', () => {
   it('posts the request and returns the created diagram', async () => {
-    const diagram = { diagram_id: 'd-1', name: 'Minor Pentatonic' }
+    const diagram = { diagram_id: 'd-1', names: { en: 'Minor Pentatonic' } }
     POST.mockResolvedValueOnce({ data: diagram, error: undefined, response: { status: 201 } })
 
     const { createDiagram } = useCreateDiagram()
     const request: CreateDiagramRequest = {
       instrument_id: 'i-1',
-      name: 'Minor Pentatonic',
+      names: { en: 'Minor Pentatonic' },
       kind: 'custom',
       positions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
@@ -36,7 +36,7 @@ describe('useCreateDiagram', () => {
     const { createDiagram } = useCreateDiagram()
 
     await expect(
-      createDiagram({ instrument_id: 'i-1', name: '', kind: 'custom', positions: [], classification: { skill_ids: [], concept_ids: [] } }),
+      createDiagram({ instrument_id: 'i-1', names: { en: '' }, kind: 'custom', positions: [], classification: { skill_ids: [], concept_ids: [] } }),
     ).rejects.toThrow('Boom')
   })
 })

@@ -78,3 +78,9 @@ export function fromApiLanguageCode(code: string): SupportedLocale {
   )
   return match?.[0] ?? 'en'
 }
+
+/**
+ * The Language.code of every language this UI is offered in — the languages
+ * a basic diagram (or any shared catalog item) must be named in.
+ */
+export const OFFERED_LANGUAGE_CODES: string[] = SUPPORTED_LOCALES.map(toApiLanguageCode)

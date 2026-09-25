@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 
+import { OFFERED_LANGUAGE_CODES } from '@/i18n'
 import { intervalFromRoot, noteAtFret } from '@/shared/utils/musicTheory'
 import type { components } from '@/api/generated/core-domain'
 
@@ -8,6 +9,8 @@ type CreateDiagramRequest = components['schemas']['CreateDiagramRequest']
 type UpdateDiagramRequest = components['schemas']['UpdateDiagramRequest']
 type DiagramPosition = components['schemas']['DiagramPosition']
 type DiagramKind = Diagram['kind']
+type LocalizedNames = components['schemas']['LocalizedNames']
+type IntervalCode = DiagramPosition['interval']
 
 export interface FrettedCell {
   string: number
@@ -19,7 +22,8 @@ export type LabelDisplay = Diagram['label_display']
 
 export interface LocalPosition extends FrettedCell {
   id: string
-  interval: string
+  /** Empty until a root note is chosen, since the interval is computed from it. */
+  interval: IntervalCode | ''
   noteName: string
   shape: PositionShape
   /** This marker's own #RRGGBB color; null = use the diagram's general color. */
@@ -35,8 +39,15 @@ function sameCell(position: FrettedCell, cell: FrettedCell): boolean {
   return position.string === cell.string && position.fret === cell.fret
 }
 
+type IntervalledPosition = LocalPosition & { interval: IntervalCode }
+
+/** Whether a position has its interval yet — it can't be sent without one. */
+function hasInterval(position: LocalPosition): position is IntervalledPosition {
+  return position.interval !== ''
+}
+
 /** `withId: false` leaves position_id for the server to assign. */
-function toDiagramPosition(position: LocalPosition, { withId = true } = {}): DiagramPosition {
+function toDiagramPosition(position: IntervalledPosition, { withId = true } = {}): DiagramPosition {
   return {
     ...(withId ? { position_id: position.id } : {}),
     interval: position.interval,
@@ -56,8 +67,18 @@ function toDiagramPosition(position: LocalPosition, { withId = true } = {}): Dia
  * any save round trip), matching the API's own allowance for a
  * client-supplied position_id.
  */
+/** The filled-in names, trimmed; blank ones are left out. */
+function filledNames(names: LocalizedNames): LocalizedNames {
+  return Object.fromEntries(
+    Object.entries(names)
+      .map(([code, value]) => [code, value.trim()] as const)
+      .filter(([, value]) => value !== ''),
+  )
+}
+
 export function useDiagramForm() {
-  const name = ref('')
+  // The diagram's name per language code; a language with no name is absent or blank.
+  const names = ref<LocalizedNames>({})
   const instrumentId = ref('')
   const positions = ref<LocalPosition[]>([])
   const skillIds = ref<string[]>([])
@@ -76,7 +97,14 @@ export function useDiagramForm() {
   const savedColor = ref<string | null>(null)
   const canClearColor = computed(() => savedColor.value === null)
 
-  const hasName = computed(() => name.value.trim() !== '')
+  const namedLanguages = computed(() => Object.keys(filledNames(names.value)).sort())
+  const hasName = computed(() => namedLanguages.value.length > 0)
+  // A basic diagram is shared with every teacher, so it needs a name in every offered language.
+  const hasEveryName = computed(() => OFFERED_LANGUAGE_CODES.every((code) => namedLanguages.value.includes(code)))
+
+  function setName(code: string, value: string) {
+    names.value = { ...names.value, [code]: value }
+  }
   const hasPositions = computed(() => positions.value.length > 0)
   const hasClassification = computed(() => skillIds.value.length > 0 && conceptIds.value.length > 0)
   // The server rejects any position with an empty interval or note_name --
@@ -94,7 +122,7 @@ export function useDiagramForm() {
     return tuning.value.length > 0 ? tuning.value[tuning.value.length - stringNumber] : undefined
   }
 
-  function computeNotes(cell: FrettedCell): { interval: string; noteName: string } {
+  function computeNotes(cell: FrettedCell): { interval: IntervalCode | ''; noteName: string } {
     const openNote = openStringNote(cell.string)
     if (!openNote || rootNote.value.trim() === '') return { interval: '', noteName: '' }
     const noteName = noteAtFret(openNote, cell.fret)
@@ -149,12 +177,12 @@ export function useDiagramForm() {
   function toCreateDiagramRequest(): CreateDiagramRequest {
     return {
       instrument_id: instrumentId.value,
-      name: name.value,
+      names: filledNames(names.value),
       kind: 'custom',
       root_note: rootNote.value.trim() === '' ? null : rootNote.value,
       label_display: labelDisplay.value,
       color: color.value,
-      positions: positions.value.map((position) => toDiagramPosition(position)),
+      positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position)),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
     }
   }
@@ -166,23 +194,23 @@ export function useDiagramForm() {
    * position id is unique across every diagram, so the source's ids can't be
    * reused.
    */
-  function toCopyRequest(copyName: string, kind: DiagramKind): CreateDiagramRequest {
+  function toCopyRequest(copyNames: LocalizedNames, kind: DiagramKind): CreateDiagramRequest {
     return {
       ...toCreateDiagramRequest(),
-      name: copyName,
+      names: filledNames(copyNames),
       kind,
-      positions: positions.value.map((position) => toDiagramPosition(position, { withId: false })),
+      positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position, { withId: false })),
     }
   }
 
   function toUpdateDiagramRequest(): UpdateDiagramRequest {
     return {
-      name: name.value,
+      names: filledNames(names.value),
       ...(rootNote.value.trim() === '' ? {} : { root_note: rootNote.value }),
       label_display: labelDisplay.value,
       // An already-set general color can't be cleared through an update, so an unset one is omitted.
       ...(color.value ? { color: color.value } : {}),
-      positions: positions.value.map((position) => toDiagramPosition(position)),
+      positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position)),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
     }
   }
@@ -193,7 +221,7 @@ export function useDiagramForm() {
   }
 
   function loadFromDiagram(diagram: Diagram) {
-    name.value = diagram.name
+    names.value = { ...diagram.names }
     instrumentId.value = diagram.instrument_id
     rootNote.value = diagram.root_note ?? ''
     labelDisplay.value = diagram.label_display ?? 'interval'
@@ -217,7 +245,10 @@ export function useDiagramForm() {
   }
 
   return {
-    name,
+    names,
+    namedLanguages,
+    hasEveryName,
+    setName,
     instrumentId,
     positions,
     skillIds,
