@@ -8,7 +8,8 @@ type DiagramRef = components['schemas']['DiagramRef']
 export function makeFrettedInstrument(overrides: Partial<Instrument> = {}): Instrument {
   return {
     instrument_id: 'instrument-guitar',
-    name: '6-string guitar (standard tuning)',
+    names: { en: '6-string guitar (standard tuning)', pt_BR: 'Violão de 6 cordas (afinação padrão)' },
+    languages: ['en', 'pt_BR'],
     family: 'fretted',
     string_count: 6,
     tuning: ['E', 'A', 'D', 'G', 'B', 'E'],
