@@ -766,6 +766,26 @@ describe('DiagramAuthoringView', () => {
       expect(appBarShowsSave(wrapper)).toBe(true)
     })
 
+    it("won't save as a template while a label, note or region caption is missing a language every template needs", async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('G Major')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      const templateButton = () => wrapper.findComponent({ name: 'AppBar' }).get('[data-test="save-as-template"]')
+      expect(templateButton().attributes('disabled')).toBeUndefined()
+
+      await wrapper.get('[data-test="position-note"]').setValue('Start here')
+
+      expect(templateButton().attributes('disabled')).toBeDefined()
+      expect(templateButton().attributes('title')).toBeTruthy()
+    })
+
     it('sends a new diagram as a custom diagram', async () => {
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
       POST.mockResolvedValueOnce({
@@ -840,6 +860,58 @@ describe('DiagramAuthoringView', () => {
       expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="language-tab-en"]').attributes('aria-selected')).toBe('true')
       expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+    })
+
+    it("edits marker labels, notes and region captions in each tab's language, and saves them only once every language has them", async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await wrapper.get('[data-test="position-custom-label"]').setValue('Av')
+      await wrapper.get('[data-test="position-note"]').setValue('Start here')
+      await wrapper.get('[data-test="region-add"]').trigger('click')
+      await wrapper.get('[data-test="region-description"]').setValue('Box 1')
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+
+      await addPortuguese(wrapper)
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Pentatônica menor')
+      expect(wrapper.get<HTMLInputElement>('[data-test="position-note"]').element.value).toBe('')
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+
+      await wrapper.get('[data-test="position-custom-label"]').setValue('Ev')
+      await wrapper.get('[data-test="position-note"]').setValue('Comece aqui')
+      await wrapper.get('[data-test="region-description"]').setValue('Caixa 1')
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+      expect(wrapper.findAll('[data-test="diagram-region"]').length).toBeGreaterThan(0)
+
+      POST.mockResolvedValueOnce({ data: undefined, error: { message: 'stop here' }, response: { status: 400 } })
+      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+
+      const body = POST.mock.calls.at(-1)?.[1]?.body
+      expect(body.positions[0]).toMatchObject({ custom_label: { en: 'Av', pt_BR: 'Ev' }, note: { en: 'Start here', pt_BR: 'Comece aqui' } })
+      expect(body.regions).toEqual([
+        expect.objectContaining({ fret_start: 3, fret_end: 3, description: { en: 'Box 1', pt_BR: 'Caixa 1' } }),
+      ])
+    })
+
+    it('does not save while a region runs backwards', async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await wrapper.get('[data-test="region-add"]').trigger('click')
+      await wrapper.get('[data-test="region-description"]').setValue('Box 1')
+
+      await wrapper.get('[data-test="region-fret-start"]').setValue('9')
+
+      expect(wrapper.find('[data-test="region-invalid"]').exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
     })
   })
 })

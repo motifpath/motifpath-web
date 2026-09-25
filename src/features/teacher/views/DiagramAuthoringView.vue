@@ -6,6 +6,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
 import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
+import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
@@ -114,6 +115,8 @@ const canSaveInPlace = computed(
 const canSaveAs = computed(() => canAuthor.value && savedDiagramId.value !== '')
 // An admin may save as a template at any point, including a brand new diagram.
 const canSaveAsTemplate = computed(() => isAdmin.value)
+// A template is named in every offered language, so its labels, notes and captions must be too.
+const templateTextComplete = computed(() => form.hasTextIn(OFFERED_LANGUAGE_CODES))
 // Outlined counterpart of the bar's filled Save pill: clearly a live button, but secondary.
 const secondarySaveClass =
   'rounded-full border border-accent px-[14px] py-[7px] text-[13px] font-bold text-accent-text disabled:cursor-not-allowed disabled:opacity-50'
@@ -202,7 +205,7 @@ const previewDiagram = computed<Diagram | null>(() => {
     label_display: form.labelDisplay.value,
     color: form.color.value,
     positions: request.positions,
-    regions: [],
+    regions: request.regions ?? [],
     classification: { skills: [], concepts: [] },
     created_at: '',
   }
@@ -310,7 +313,8 @@ async function saveAs(names: Record<string, string>) {
           v-if="canSaveAsTemplate"
           type="button"
           data-test="save-as-template"
-          :disabled="!form.canSave.value || savingAs"
+          :disabled="!form.canSave.value || savingAs || !templateTextComplete"
+          :title="templateTextComplete ? undefined : t('diagramAuthoringView.templateNeedsEveryText')"
           :class="secondarySaveClass"
           @click="openSaveAs('basic')"
         >
@@ -354,7 +358,7 @@ async function saveAs(names: Record<string, string>) {
         <DiagramLanguageTabs
           :languages="form.languages.value"
           :active="activeLanguage"
-          :incomplete="form.missingNameLanguages.value"
+          :incomplete="form.missingTextLanguages.value"
           :locked="editsTemplate"
           @select="selectedLanguage = $event"
           @add="addLanguage"
@@ -495,13 +499,30 @@ async function saveAs(names: Record<string, string>) {
             :positions="form.positions.value"
             :label-mode="form.labelDisplay.value"
             :color="form.color.value"
+            :language="activeLanguage"
             @toggle-cell="form.toggleCell"
             @reorder="form.reorderPositions"
             @set-shape="form.setPositionShape"
             @set-color="form.setPositionColor"
+            @set-custom-label="(id, value) => form.setPositionCustomLabel(id, activeLanguage, value)"
+            @set-note="(id, value) => form.setPositionNote(id, activeLanguage, value)"
             @remove="form.removePosition"
           />
         </div>
+
+        <DiagramRegionsEditor
+          v-if="selectedInstrument"
+          :regions="form.regions.value"
+          :string-count="selectedInstrument.string_count ?? 0"
+          :language="activeLanguage"
+          :invalid-ids="form.invalidRegionIds.value"
+          @add="form.addRegion"
+          @set-frets="form.setRegionFrets"
+          @set-strings="form.setRegionStrings"
+          @set-description="(id, value) => form.setRegionDescription(id, activeLanguage, value)"
+          @set-color="form.setRegionColor"
+          @remove="form.removeRegion"
+        />
 
         <div class="flex flex-col gap-4 border-t border-border pt-2">
           <div>

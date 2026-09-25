@@ -11,6 +11,8 @@ import { computed, ref } from 'vue'
 import { Circle, GripVertical, Palette, Square, Star, X } from 'lucide-vue-next'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
+import { useScopedLocale } from '@/shared/composables/useScopedLocale'
+import { toApiLanguageCode } from '@/i18n'
 
 import type { LocalPosition, PositionShape } from '@/features/teacher/composables/useDiagramForm'
 import type { components } from '@/api/generated/core-domain'
@@ -40,6 +42,9 @@ const props = withDefaults(
     labelMode?: 'interval' | 'note' | 'hidden'
     /** The diagram's general marker color (#RRGGBB); a position's own color wins over it. */
     color?: string | null
+    /** The language code whose custom labels and notes are shown and edited; defaults to the
+     *  language the editor is displayed in. */
+    language?: string
   }>(),
   { labelMode: 'interval' },
 )
@@ -49,8 +54,13 @@ const emit = defineEmits<{
   reorder: [fromIndex: number, toIndex: number]
   'set-shape': [id: string, shape: PositionShape]
   'set-color': [id: string, color: string | null]
+  'set-custom-label': [id: string, value: string]
+  'set-note': [id: string, value: string]
   remove: [id: string]
 }>()
+
+const scopedLocale = useScopedLocale()
+const editingLanguage = computed(() => props.language ?? toApiLanguageCode(scopedLocale.value))
 
 const SHAPES: PositionShape[] = ['dot', 'square', 'star']
 const SHAPE_ICONS = { dot: Circle, square: Square, star: Star } as const
@@ -119,8 +129,15 @@ function onFretboardClick(event: MouseEvent) {
 
 const { intervalLabel } = useIntervalLabel()
 
+/** A marker's label: its custom label in the editing language wins over the interval or note name. */
 function labelFor(position: LocalPosition): string {
+  const custom = (position.customLabel[editingLanguage.value] ?? '').trim()
+  if (custom !== '') return custom
   return props.labelMode === 'note' ? position.noteName : intervalLabel(position.interval)
+}
+
+function inputValue(event: Event): string {
+  return event.target instanceof HTMLInputElement ? event.target.value : ''
 }
 
 // Selecting a position row highlights its marker on the fretboard, so a teacher can see which
@@ -334,6 +351,28 @@ function onDrop(index: number) {
           >
             <Palette :size="13" aria-hidden="true" />
           </ColorPaletteMenu>
+        </div>
+        <div class="flex w-full gap-2" @click.stop @keydown.stop>
+          <input
+            :value="position.customLabel[editingLanguage] ?? ''"
+            type="text"
+            maxlength="2"
+            data-test="position-custom-label"
+            :aria-label="t('frettedDiagramEditor.customLabelAriaLabel')"
+            :placeholder="t('frettedDiagramEditor.customLabelPlaceholder')"
+            class="w-16 rounded border border-border bg-surface px-2 py-1 text-center text-sm text-ink"
+            @input="emit('set-custom-label', position.id, inputValue($event))"
+          />
+          <input
+            :value="position.note[editingLanguage] ?? ''"
+            type="text"
+            maxlength="280"
+            data-test="position-note"
+            :aria-label="t('frettedDiagramEditor.noteAriaLabel')"
+            :placeholder="t('frettedDiagramEditor.notePlaceholder')"
+            class="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 text-sm text-ink"
+            @input="emit('set-note', position.id, inputValue($event))"
+          />
         </div>
         <button
           type="button"

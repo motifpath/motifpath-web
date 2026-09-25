@@ -179,7 +179,8 @@
     "copyName": "{name} (copy)",
     "copySaved": "Copy saved",
     "templateSaved": "Template saved",
-    "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving."
+    "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving.",
+    "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
@@ -187,7 +188,29 @@
     "reorderHint": "Drag a position to reorder its place in the sequence",
     "shapeAriaLabel": "Show this position as a {shape}",
     "removePositionAriaLabel": "Remove this position",
-    "positionColor": "Marker color"
+    "positionColor": "Marker color",
+    "customLabelAriaLabel": "Custom label shown inside this marker (up to 2 characters)",
+    "customLabelPlaceholder": "Label",
+    "noteAriaLabel": "Note about this position",
+    "notePlaceholder": "Note for students (optional)"
+  },
+  "diagramRegionsEditor": {
+    "title": "Highlighted regions",
+    "hint": "Bands behind the markers, e.g. to show where each shape sits.",
+    "add": "Add region",
+    "fretsLabel": "Frets",
+    "rangeTo": "to",
+    "fretStartAriaLabel": "First fret of the region",
+    "fretEndAriaLabel": "Last fret of the region",
+    "allStrings": "All strings",
+    "stringsLabel": "Strings",
+    "stringStartAriaLabel": "First string of the region",
+    "stringEndAriaLabel": "Last string of the region",
+    "colorTitle": "Region color",
+    "removeAriaLabel": "Remove this region",
+    "descriptionAriaLabel": "Region caption",
+    "descriptionPlaceholder": "Caption, e.g. Shape 1",
+    "invalid": "Check the range: it runs backwards or past the last string."
   },
   "challengeConfigPanel": {
     "subjectLabel": "Subject",

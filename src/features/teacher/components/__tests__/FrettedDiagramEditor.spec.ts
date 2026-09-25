@@ -24,7 +24,7 @@ function mockOneToOneBoundingRect(el: Element, width: number) {
 }
 
 function makeLocalPosition(overrides: Partial<LocalPosition> = {}): LocalPosition {
-  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', color: null, sequenceIndex: null, ...overrides }
+  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', color: null, sequenceIndex: null, customLabel: {}, note: {}, ...overrides }
 }
 
 describe('FrettedDiagramEditor', () => {
@@ -305,6 +305,52 @@ describe('FrettedDiagramEditor', () => {
       })
 
       expect(wrapper.get('[data-test="position-color-indicator"]').attributes('data-color')).toBe('#EF4444')
+    })
+  })
+
+  describe('custom labels and notes', () => {
+    const annotated = () =>
+      makeLocalPosition({ customLabel: { en: 'Av', pt_BR: 'Ev' }, note: { en: 'Avoid it', pt_BR: 'Evite' } })
+
+    it("shows each position's custom label and note in the editor's language", () => {
+      const inLanguage = (language: string) =>
+        mount(FrettedDiagramEditor, { props: { instrument: makeFrettedInstrument(), positions: [annotated()], language } })
+
+      const en = inLanguage('en')
+      expect((en.get('[data-test="position-custom-label"]').element as HTMLInputElement).value).toBe('Av')
+      expect((en.get('[data-test="position-note"]').element as HTMLInputElement).value).toBe('Avoid it')
+      const pt = inLanguage('pt_BR')
+      expect((pt.get('[data-test="position-custom-label"]').element as HTMLInputElement).value).toBe('Ev')
+      expect((pt.get('[data-test="position-note"]').element as HTMLInputElement).value).toBe('Evite')
+    })
+
+    it('emits a typed custom label and note for the position', async () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition()], language: 'en' },
+      })
+
+      await wrapper.get('[data-test="position-custom-label"]').setValue('Av')
+      await wrapper.get('[data-test="position-note"]').setValue('Avoid it')
+
+      expect(wrapper.emitted('set-custom-label')).toEqual([['pos-1', 'Av']])
+      expect(wrapper.emitted('set-note')).toEqual([['pos-1', 'Avoid it']])
+    })
+
+    it('limits a custom label to two characters and a note to 280', () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition()], language: 'en' },
+      })
+
+      expect(wrapper.get('[data-test="position-custom-label"]').attributes('maxlength')).toBe('2')
+      expect(wrapper.get('[data-test="position-note"]').attributes('maxlength')).toBe('280')
+    })
+
+    it("shows a position's custom label on its fretboard marker instead of the interval", () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [annotated(), makeLocalPosition({ id: 'pos-2', fret: 8 })], language: 'pt_BR' },
+      })
+
+      expect(wrapper.findAll('[data-test="editor-position"] text').map((t) => t.text())).toEqual(['Ev', 'R'])
     })
   })
 })
