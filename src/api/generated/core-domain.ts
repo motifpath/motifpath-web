@@ -19,6 +19,13 @@ export interface paths {
          *     caller supplies their intended role (student or teacher); the service maps
          *     the JWT sub claim to a new user_id and persists the record.
          *
+         *     The user's display name is taken from the "name" claim of the Clerk
+         *     session token (trimmed, at most 200 characters), never from the
+         *     request body. A token without a non-blank name claim is rejected
+         *     with 400 on field "name". On every later authenticated request the
+         *     stored name is refreshed when the claim differs from it; a missing
+         *     or blank claim on a later request leaves the stored name unchanged.
+         *
          *     This endpoint must be called once per Clerk identity before any other
          *     authenticated operation. Subsequent calls with the same JWT sub return 409.
          *
@@ -1443,11 +1450,7 @@ export interface components {
              * @description Stable identifier for this content node. Used as content_node_id in tracking events.
              */
             content_node_id: string;
-            /**
-             * Format: uuid
-             * @description The user_id of the teacher who created this content node.
-             */
-            teacher_id: string;
+            teacher: components["schemas"]["UserRef"];
             /** @description Human-readable title of the content node. */
             title: string;
             /**
@@ -1852,12 +1855,7 @@ export interface components {
              * @enum {string}
              */
             kind: "basic" | "custom";
-            /**
-             * Format: uuid
-             * @description The user_id of the teacher or admin who created this diagram.
-             *     Fixed at creation.
-             */
-            created_by: string;
+            created_by: components["schemas"]["UserRef"];
             /**
              * @description The root note this diagram was authored against (e.g. "A"),
              *     relative to which its positions' interval and note_name are
@@ -2114,11 +2112,7 @@ export interface components {
              * @description Stable identifier for this learning path.
              */
             learning_path_id: string;
-            /**
-             * Format: uuid
-             * @description The user_id of the teacher or admin who created this path.
-             */
-            teacher_id: string;
+            teacher: components["schemas"]["UserRef"];
             /** @description Human-readable name for this learning path. */
             title: string;
             /** @description Ordered content nodes, sorted by position ascending. */
@@ -2169,11 +2163,7 @@ export interface components {
              * @description Stable identifier for this StudentPath.
              */
             student_path_id: string;
-            /**
-             * Format: uuid
-             * @description The user_id of the student who owns this path.
-             */
-            student_id: string;
+            student: components["schemas"]["UserRef"];
             /**
              * Format: uuid
              * @description The learning path this StudentPath was copied from.
@@ -2181,11 +2171,7 @@ export interface components {
             source_template_id: string;
             /** @description Title of the path, copied from the template at assign time and independently editable afterwards. */
             title: string;
-            /**
-             * Format: uuid
-             * @description The user_id of the teacher or admin who assigned this path.
-             */
-            assigned_by: string;
+            assigned_by: components["schemas"]["UserRef"];
             /**
              * Format: date-time
              * @description Timestamp at which this StudentPath was created.
@@ -2347,11 +2333,7 @@ export interface components {
              * @enum {string}
              */
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
-            /**
-             * Format: uuid
-             * @description The user_id of the teacher or admin who created this course.
-             */
-            created_by: string;
+            created_by: components["schemas"]["UserRef"];
             /**
              * @description A student's result is always published. Teachers and admins may see any status.
              * @enum {string}
@@ -2392,11 +2374,7 @@ export interface components {
              * @enum {string}
              */
             status: "draft" | "published" | "retired";
-            /**
-             * Format: uuid
-             * @description The user_id of the teacher or admin who created this course.
-             */
-            created_by: string;
+            created_by: components["schemas"]["UserRef"];
             /**
              * Format: date-time
              * @description Timestamp at which the course was created.
@@ -2509,11 +2487,7 @@ export interface components {
              * @description Stable identifier for this enrollment.
              */
             course_enrollment_id: string;
-            /**
-             * Format: uuid
-             * @description The user_id of the enrolled student.
-             */
-            student_id: string;
+            student: components["schemas"]["UserRef"];
             /**
              * Format: uuid
              * @description The enrolled course.
@@ -3486,6 +3460,26 @@ export interface components {
             locale: string;
         };
         /**
+         * @description A reference to another MotifPath user, as it appears in any response
+         *     that points at a user (ADR-035). display_name is read from the
+         *     user's record when the response is built, never copied onto the
+         *     referencing entity, so a rename shows everywhere at once. A UserRef
+         *     appears only in responses the caller is already authorized to
+         *     receive.
+         */
+        UserRef: {
+            /**
+             * Format: uuid
+             * @description Stable MotifPath identifier of the referenced user.
+             */
+            user_id: string;
+            /**
+             * @description The user's full name, as held by Clerk. User-supplied text: render
+             *     it escaped and never use it as an identifier.
+             */
+            display_name: string;
+        };
+        /**
          * @description The stable MotifPath identity for a registered user. The user_id is the
          *     value that other services (e.g. Event Ingestion Service) use to identify
          *     this user in payloads and JWT claim validation.
@@ -3504,6 +3498,12 @@ export interface components {
              * @enum {string}
              */
             role: "student" | "teacher" | "admin";
+            /**
+             * @description The user's full name, taken from the "name" claim of the Clerk
+             *     session token and refreshed whenever that claim changes. This is
+             *     what other users see wherever this user is referenced (UserRef).
+             */
+            display_name: string;
             locale: components["schemas"]["Language"];
             /**
              * Format: date-time
@@ -3621,6 +3621,7 @@ export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
 export type SchemaLanguage = components['schemas']['Language'];
 export type SchemaUpdateMyLocaleRequest = components['schemas']['UpdateMyLocaleRequest'];
+export type SchemaUserRef = components['schemas']['UserRef'];
 export type SchemaUserProfile = components['schemas']['UserProfile'];
 export type SchemaValidationError = components['schemas']['ValidationError'];
 export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError'];
@@ -3654,8 +3655,9 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body is invalid. The role field is missing or contains an
-             *     unrecognised value.
+             * @description The request is invalid. The role field is missing or contains an
+             *     unrecognised value (field "role"), or the session token carries no
+             *     non-blank name claim (field "name").
              */
             400: {
                 headers: {

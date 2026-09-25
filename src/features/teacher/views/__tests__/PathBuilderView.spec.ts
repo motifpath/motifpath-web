@@ -56,13 +56,13 @@ function mountView() {
 }
 
 const contentNodePool = [
-  { content_node_id: 'cn-1', title: 'Open position triads', content_type: 'video', teacher_id: 't-1', classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' }, languages: [], created_at: '2026-01-01T00:00:00Z' },
-  { content_node_id: 'cn-2', title: 'Reading the fretboard', content_type: 'article', teacher_id: 't-1', classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' }, languages: [], created_at: '2026-01-01T00:00:00Z' },
+  { content_node_id: 'cn-1', title: 'Open position triads', content_type: 'video', teacher: { user_id: 't-1', display_name: 'Teacher One' }, classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' }, languages: [], created_at: '2026-01-01T00:00:00Z' },
+  { content_node_id: 'cn-2', title: 'Reading the fretboard', content_type: 'article', teacher: { user_id: 't-1', display_name: 'Teacher One' }, classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' }, languages: [], created_at: '2026-01-01T00:00:00Z' },
 ]
 
 const learningPathFixture = {
   learning_path_id: 'lp-1',
-  teacher_id: 't-1',
+  teacher: { user_id: 't-1', display_name: 'Teacher One' },
   title: 'Beginner path',
   items: [
     { position: 1, content_node_id: 'cn-1', title: 'Open position triads', content_type: 'video', section_label: 'Chords' },

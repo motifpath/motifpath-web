@@ -26,7 +26,7 @@ function freshNodeId(): string {
 function videoNode(id: string): ContentNode {
   return {
     content_node_id: id,
-    teacher_id: 'teacher-1',
+    teacher: { user_id: 'teacher-1', display_name: 'Teacher One' },
     title: 'A lesson',
     content_type: 'video',
     classification: {

@@ -6,7 +6,7 @@ type ContentNode = components['schemas']['ContentNode']
 export function makeVideoNode(id: string, overrides: Partial<ContentNode> = {}): ContentNode {
   return {
     content_node_id: id,
-    teacher_id: 'teacher-1',
+    teacher: { user_id: 'teacher-1', display_name: 'Teacher One' },
     title: 'Minor pentatonic shape 1',
     content_type: 'video',
     classification: {

@@ -11,7 +11,7 @@ const classification = { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_le
 
 describe('useCreateContentNode', () => {
   it('posts the request and returns the created content node', async () => {
-    const contentNode = { content_node_id: 'cn-1', teacher_id: 't-1' }
+    const contentNode = { content_node_id: 'cn-1', teacher: { user_id: 't-1', display_name: 'Teacher One' } }
     POST.mockResolvedValueOnce({ data: contentNode, error: undefined, response: { status: 201 } })
 
     const { createContentNode } = useCreateContentNode()
