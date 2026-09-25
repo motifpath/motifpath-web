@@ -856,6 +856,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse the published course catalog
+         * @description The learner catalog, the same for every caller whatever their
+         *     role: published courses only, each rendered from its latest
+         *     published version, never a draft, a retired course, or authoring
+         *     detail such as a checkpoint's learning_path_id. Every filter is
+         *     evaluated against that latest published version. Results are
+         *     ordered by the published title, then id.
+         *
+         *     Results are paginated in a {items, total, limit,
+         *     offset} envelope; an offset past the end returns an empty items
+         *     array. Every filter below is optional and they combine with AND;
+         *     levels, skill_ids and concept_ids are any-of within themselves.
+         *     created_by is a free discovery filter for every caller.
+         *
+         *     skill_ids and concept_ids each accept several ids (repeat the
+         *     parameter). A course matches when any of its latest published
+         *     version's checkpoints' learning path templates contains a
+         *     content node classified with any of the given skills, and, if
+         *     both parameters are given, also with any of the given concepts.
+         */
+        get: operations["listCatalogCourses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the published courses
+         * @description Returns every distinct user who created at least one published
+         *     course, so a learner can filter GET /catalog/courses by creator
+         *     (its created_by parameter) from a complete list, without paging
+         *     through the catalog. The same for every caller whatever their
+         *     role; a creator whose courses are all drafts or retired is left
+         *     out.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the size of the catalog. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         */
+        get: operations["listCatalogCreators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses": {
         parameters: {
             query?: never;
@@ -864,37 +932,32 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List courses
-         * @description Returns the course catalog as lightweight entries — never a
-         *     checkpoint's learning_path_id or other live-draft authoring
-         *     detail (see GET /courses/{course_id} for that). Students see
-         *     only published courses, rendered from each course's latest
-         *     published version. Teachers and admins see courses of every
-         *     status; passing status narrows the list to just that status,
-         *     otherwise every status is returned, each annotated with whether
-         *     its live draft has unpublished changes. Results are ordered by
-         *     title, then id.
+         * List the courses the caller authors or manages
+         * @description The authoring course list, for teachers and admins: courses of
+         *     every status as lightweight entries, never a checkpoint's
+         *     learning_path_id or other live-draft detail (see GET
+         *     /courses/{course_id} for that). Passing status narrows the list
+         *     to that status; otherwise every status is returned, each
+         *     annotated with whether its live draft has unpublished changes.
+         *     Every filter is evaluated against the live draft. Results are
+         *     ordered by title, then id. To browse the published catalog as a
+         *     learner, whatever your role, use GET /catalog/courses.
          *
-         *     Results are paginated (ADR-031) in a {items, total, limit,
+         *     Results are paginated in a {items, total, limit,
          *     offset} envelope; an offset past the end returns an empty items
-         *     array. Every filter below is optional and they combine with AND,
-         *     so a student can mix any of them; levels, skill_ids and
-         *     concept_ids are any-of within themselves.
+         *     array. Every filter below is optional and they combine with AND;
+         *     levels, skill_ids and concept_ids are any-of within themselves.
          *
-         *     The created_by filter is role-scoped. A teacher caller is
-         *     always limited to the courses they created; passing a
-         *     created_by other than their own user_id is refused with 403.
-         *     An admin may pass any created_by, or omit it for every
-         *     creator's courses. For a student it is a free discovery filter.
+         *     A teacher is always limited to the courses they created; passing
+         *     a created_by other than their own user_id is refused with 403.
+         *     An admin may pass any created_by, or omit it for every creator's
+         *     courses. A student is refused with 403.
          *
          *     skill_ids and concept_ids each accept several ids (repeat the
-         *     parameter). A course matches when any of its checkpoints'
-         *     learning path templates contains a content node classified with
-         *     any of the given skills, and, if both parameters are given,
-         *     also with any of the given concepts. A student's match is
-         *     evaluated against the checkpoints of the course's latest
-         *     published version; a teacher's or admin's, against the live
-         *     draft's checkpoints — the same split as status.
+         *     parameter). A course matches when any of its live draft's
+         *     checkpoints' learning path templates contains a content node
+         *     classified with any of the given skills, and, if both parameters
+         *     are given, also with any of the given concepts.
          */
         get: operations["listCourses"];
         put?: never;
@@ -924,21 +987,17 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the creators of the courses visible to the caller
-         * @description Returns every distinct user who created at least one course the
-         *     caller would see in GET /courses, so a client can offer a
-         *     complete creator filter (the created_by parameter of GET
-         *     /courses) without paging through the whole catalog.
-         *
-         *     Visibility follows GET /courses exactly. A student gets the
-         *     creators of published courses only — a creator whose courses are
-         *     all drafts or retired is left out. A teacher gets at most
-         *     themselves, since their course list is always limited to their
-         *     own courses. An admin gets the creator of every course, whatever
-         *     its status.
+         * List the creators of the courses the caller authors or manages
+         * @description Returns every distinct user who created at least one course in
+         *     the caller's authoring course list (GET /courses), so an
+         *     authoring screen can offer a complete creator filter without
+         *     paging. A teacher gets at most themselves, since their course
+         *     list is always limited to their own courses. An admin gets the
+         *     creator of every course, whatever its status. A student is
+         *     refused with 403; learners use GET /catalog/creators.
          *
          *     The list is unpaginated: it is bounded by the number of teachers
-         *     and admins, not by the size of the catalog. Results are always
+         *     and admins, not by the number of courses. Results are always
          *     ordered by display_name, alphabetically as a person reads names —
          *     ignoring case and accents, so "Álvaro" sorts with the A's — then
          *     by user_id; an empty array means no creator matches.
@@ -1089,7 +1148,8 @@ export interface paths {
          *     student, and sets it as the student's current path
          *     unconditionally — an explicit, supervised act, unlike
          *     self-enrollment in a course, which only sets current if nothing
-         *     is currently set. The student must have role student. Copying is
+         *     is currently set. Any user may be assigned a path, whatever their
+         *     role — every user can learn. Copying is
          *     additive: any existing StudentPath or course enrollment the
          *     student has is left untouched — including whichever was current
          *     before this call — and remains reachable unless separately
@@ -2493,8 +2553,8 @@ export interface components {
         /**
          * @description A course as it appears in the catalog list — enough to browse
          *     and pick one, never authoring detail such as a checkpoint's
-         *     learning_path_id. Returned by GET /courses for every caller,
-         *     teacher/admin and student alike.
+         *     learning_path_id. Returned by GET /catalog/courses to every
+         *     caller and by GET /courses to teachers and admins.
          */
         CourseCatalogEntry: {
             /**
@@ -2513,7 +2573,7 @@ export interface components {
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
             created_by: components["schemas"]["UserRef"];
             /**
-             * @description A student's result is always published. Teachers and admins may see any status.
+             * @description Always published in GET /catalog/courses; any status in the authoring list, GET /courses.
              * @enum {string}
              */
             status: "draft" | "published" | "retired";
@@ -2522,7 +2582,7 @@ export interface components {
              * @description Timestamp the latest published version was published at, or null if the course has never been published.
              */
             published_at: string | null;
-            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the teacher/admin representation; a student never receives this field. */
+            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the authoring list, GET /courses; GET /catalog/courses never returns it. */
             has_unpublished_changes?: boolean;
         };
         /**
@@ -6263,7 +6323,7 @@ export interface operations {
             };
         };
     };
-    listCourses: {
+    listCatalogCourses: {
         parameters: {
             query?: {
                 /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
@@ -6280,13 +6340,6 @@ export interface operations {
                 skill_ids?: string[];
                 /** @description Restricts the results to courses classified with at least one of these concepts. */
                 concept_ids?: string[];
-                /**
-                 * @description Restricts the results to courses in this status. Only
-                 *     teachers and admins may use this parameter; a student's
-                 *     results are always implicitly published regardless of this
-                 *     parameter.
-                 */
-                status?: "draft" | "published" | "retired";
             };
             header?: never;
             path?: never;
@@ -6294,7 +6347,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description One page of the courses visible to the caller, possibly empty. */
+            /** @description One page of the published catalog, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6321,7 +6374,97 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description A teacher passed a created_by other than their own user_id. */
+        };
+    };
+    listCatalogCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the published courses, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    listCourses: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
+                q?: components["parameters"]["SearchText"];
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Restricts the results to courses at any of these levels. */
+                levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
+                /** @description Restricts the results to courses created by this user. */
+                created_by?: string;
+                /** @description Restricts the results to courses classified with at least one of these skills. */
+                skill_ids?: string[];
+                /** @description Restricts the results to courses classified with at least one of these concepts. */
+                concept_ids?: string[];
+                /** @description Restricts the results to courses in this status. */
+                status?: "draft" | "published" | "retired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of the courses the caller authors or manages, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedCourseCatalog"];
+                };
+            };
+            /** @description limit or offset is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The caller is a student, or a teacher passed a created_by other
+             *     than their own user_id.
+             */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6399,7 +6542,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The creators of the courses visible to the caller, possibly empty. */
+            /** @description The creators of the courses the caller authors or manages, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6415,6 +6558,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
@@ -6689,7 +6841,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description The user_id of the student to assign the path to. */
+                /** @description The user_id of the user to assign the path to. */
                 student_id: string;
             };
             cookie?: never;
@@ -6737,9 +6889,9 @@ export interface operations {
                 };
             };
             /**
-             * @description The student_id does not exist, the student's role is not student,
-             *     the learning_path_id does not exist, or one of its items'
-             *     content nodes has never been published.
+             * @description The student_id does not exist, the learning_path_id does not
+             *     exist, or one of its items' content nodes has never been
+             *     published.
              */
             404: {
                 headers: {
@@ -6816,15 +6968,6 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description Only students hold student paths. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
-                };
-            };
         };
     };
     listMyCourseEnrollments: {
@@ -6852,15 +6995,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
-                };
-            };
-            /** @description Only students hold course enrollments. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
@@ -6903,15 +7037,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
-                };
-            };
-            /** @description Only students may self-enroll. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
             /**
@@ -6971,15 +7096,6 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description Only students hold course enrollments. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
-                };
-            };
             /** @description No active enrollment with this ID exists for the caller. */
             404: {
                 headers: {
@@ -7033,15 +7149,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
-                };
-            };
-            /** @description Only students hold standalone student paths. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
             /**
@@ -7115,15 +7222,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
-                };
-            };
-            /** @description Only students hold a current course or path. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
             /**
