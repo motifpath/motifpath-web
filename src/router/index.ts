@@ -102,15 +102,14 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'course-catalog',
-        // Learners only: a student, or an admin trying the learner side with
-        // their own account. A teacher cannot enroll in courses.
-        meta: { requiresAuth: true, requiresRole: ['student', 'admin'] },
+        // Open to every role: anyone can learn.
+        meta: { requiresAuth: true },
         component: () => import('@/features/student/views/CourseCatalogView.vue'),
       },
       {
         path: 'mine',
         name: 'my-courses',
-        meta: { requiresAuth: true, requiresRole: ['student', 'admin'] },
+        meta: { requiresAuth: true },
         component: () => import('@/features/student/views/MyCoursesView.vue'),
       },
     ],

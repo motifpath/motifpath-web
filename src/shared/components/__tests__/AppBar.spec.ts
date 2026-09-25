@@ -101,12 +101,12 @@ describe('AppBar', () => {
     expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course'])
   })
 
-  it("hides the course tabs from a teacher, who can't enroll in courses", () => {
+  it('shows a teacher every student tab too, since everyone can learn', () => {
     currentUser.profile = { role: 'teacher' }
 
     const links = navLinks(mountBar({ context: 'student' }))
 
-    expect(links.map((l) => l.text())).toEqual(['My path'])
+    expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course'])
   })
 
   it('highlights the student tab matching primaryNavTo as active', () => {

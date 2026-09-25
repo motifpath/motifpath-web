@@ -5,8 +5,7 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
 import Icon from '@/shared/components/Icon.vue'
-import { STUDENT_SECTIONS, TEACHER_SECTIONS, studentSectionsFor } from '@/shared/navigation'
-import { useCurrentUserStore } from '@/stores/currentUser'
+import { STUDENT_SECTIONS, TEACHER_SECTIONS } from '@/shared/navigation'
 import { useThemeStore } from '@/stores/theme'
 
 const props = withDefaults(
@@ -40,12 +39,8 @@ const hasCrumb = computed(() => !isStudent.value && !!props.breadcrumbLabel)
 // (never route-inferred, same explicit-prop style as breadcrumbLabel) so a
 // view's existing `primary-nav-to="{ name: 'teacher-exercises' }"` keeps
 // working unchanged and also drives which tab renders active / which section
-// a breadcrumb drills down from. A teacher on the student side gets no course
-// tabs: only a learner can enroll in or switch between courses.
-const currentUser = useCurrentUserStore()
-const studentNavItems = computed(() => studentSectionsFor(currentUser.profile?.role))
-const teacherNavItems = TEACHER_SECTIONS
-const navItems = computed(() => (isStudent.value ? studentNavItems.value : teacherNavItems))
+// a breadcrumb drills down from.
+const navItems = computed(() => (isStudent.value ? STUDENT_SECTIONS : TEACHER_SECTIONS))
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string }).name)
 const fallbackSection = computed(() => (isStudent.value ? STUDENT_SECTIONS[0]! : TEACHER_SECTIONS[2]!))
 const activeSection = computed(() => {

@@ -70,10 +70,18 @@ describe('PublicLayout', () => {
     expect(navLabels()).toEqual(['My path', 'My courses', 'Find a course'])
   })
 
-  it('offers a teacher the authoring sections', () => {
+  it('offers a teacher the learner sections as well as the authoring ones', () => {
     signInAs('teacher')
 
-    expect(navLabels()).toEqual(['Content', 'Paths', 'Exercises', 'Diagrams'])
+    expect(navLabels()).toEqual([
+      'My path',
+      'My courses',
+      'Find a course',
+      'Content',
+      'Paths',
+      'Exercises',
+      'Diagrams',
+    ])
   })
 
   it('offers an admin both the learner and the authoring sections', () => {

@@ -28,7 +28,7 @@ describe('useCourseCreators', () => {
     const { creators, isLoading } = useCourseCreators()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(GET).toHaveBeenCalledWith('/courses/creators', { params: { query: {} } })
+    expect(GET).toHaveBeenCalledWith('/catalog/creators', { params: { query: {} } })
     expect(creators.value).toEqual([bob, carol])
   })
 
@@ -47,7 +47,7 @@ describe('useCourseCreators', () => {
     await vi.runAllTimersAsync()
 
     expect(GET).toHaveBeenCalledTimes(1)
-    expect(GET).toHaveBeenCalledWith('/courses/creators', { params: { query: { q: 'dias' } } })
+    expect(GET).toHaveBeenCalledWith('/catalog/creators', { params: { query: { q: 'dias' } } })
   })
 
   it('drops the name filter once the query is emptied', async () => {
@@ -59,7 +59,7 @@ describe('useCourseCreators', () => {
     nameQuery.value = '   '
     await vi.runAllTimersAsync()
 
-    expect(GET).toHaveBeenLastCalledWith('/courses/creators', { params: { query: {} } })
+    expect(GET).toHaveBeenLastCalledWith('/catalog/creators', { params: { query: {} } })
   })
 
   it('keeps the latest search when an earlier one answers last', async () => {

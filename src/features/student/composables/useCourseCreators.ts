@@ -31,7 +31,7 @@ export function useCourseCreators() {
     error.value = false
 
     const query = appliedQuery ? { q: appliedQuery } : {}
-    const result = await coreApi.GET('/courses/creators', { params: { query } })
+    const result = await coreApi.GET('/catalog/creators', { params: { query } })
     if (request !== latestRequest) return
 
     if (result.error || !result.data) {

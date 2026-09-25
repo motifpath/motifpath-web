@@ -257,16 +257,6 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('course-catalog')
   })
 
-  it('sends a registered teacher away from the student course catalog to home', async () => {
-    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
-    updateRegistrationBridge('registered')
-    updateRoleBridge('teacher')
-
-    await router.push('/courses')
-
-    expect(router.currentRoute.value.name).toBe('home')
-  })
-
   it("lets a registered student reach their courses and paths", async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')
@@ -277,20 +267,15 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('my-courses')
   })
 
-  it("sends a registered teacher away from a student's courses and paths to home", async () => {
+  it.each([
+    ['teacher', '/courses'],
+    ['teacher', '/courses/mine'],
+    ['admin', '/courses'],
+    ['admin', '/courses/mine'],
+  ] as const)('lets a registered %s reach the learner page %s', async (role, path) => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')
-    updateRoleBridge('teacher')
-
-    await router.push('/courses/mine')
-
-    expect(router.currentRoute.value.name).toBe('home')
-  })
-
-  it.each(['/courses', '/courses/mine'])('lets an admin reach the learner page %s', async (path) => {
-    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
-    updateRegistrationBridge('registered')
-    updateRoleBridge('admin')
+    updateRoleBridge(role)
 
     await router.push(path)
 

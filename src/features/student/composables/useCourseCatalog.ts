@@ -5,7 +5,7 @@ import type { components, operations } from '@/api/generated/core-domain'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 type CourseLevel = CourseCatalogEntry['level']
-type CatalogQuery = NonNullable<operations['listCourses']['parameters']['query']>
+type CatalogQuery = NonNullable<operations['listCatalogCourses']['parameters']['query']>
 
 type UserRef = components['schemas']['UserRef']
 
@@ -50,11 +50,7 @@ export function useCourseCatalog() {
     reload,
     ...page
   } = useApiPagedList<CourseCatalogEntry>((coreApi, pageRequest) =>
-    // Always published: that is all a student sees anyway, and it keeps an
-    // admin browsing as a learner out of drafts and retired courses.
-    coreApi.GET('/courses', {
-      params: { query: { ...pageRequest, status: 'published', ...query.value } },
-    }),
+    coreApi.GET('/catalog/courses', { params: { query: { ...pageRequest, ...query.value } } }),
   )
 
   watch(query, () => void reload(), { deep: true })
