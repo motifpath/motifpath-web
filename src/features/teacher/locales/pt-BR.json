@@ -279,7 +279,23 @@
     "challengeExercisesError": "Não foi possível carregar os exercícios deste desafio.",
     "challengeExercisesLoading": "Carregando exercícios…",
     "challengesError": "Não foi possível carregar os desafios deste nó.",
-    "challengesLoading": "Carregando desafios…"
+    "challengesLoading": "Carregando desafios…",
+    "publishingLabel": "Publicação",
+    "notPublishedYet": "Ainda não publicado — este conteúdo só pode entrar na trilha de um aluno depois de publicado.",
+    "publishedAs": "Os alunos recebem a versão {version}.",
+    "publishButton": "Publicar",
+    "publishing": "Publicando…",
+    "publishHint": "Publicar salva suas alterações e cria uma nova versão. Quem já recebeu este conteúdo continua com a versão que recebeu.",
+    "publishedVersion": "Versão {version} publicada.",
+    "publishFailed": "Falha ao publicar o nó de conteúdo"
+  },
+  "contentVersionHistory": {
+    "heading": "Histórico de versões",
+    "loading": "Carregando versões…",
+    "loadError": "Não foi possível carregar o histórico de versões.",
+    "empty": "Nenhuma versão ainda.",
+    "versionLabel": "Versão {version}",
+    "latestBadge": "Mais recente"
   },
   "contentListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",

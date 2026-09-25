@@ -18,7 +18,7 @@ vi.mock('vue-router', async () => {
   return { ...actual, useRoute: () => route }
 })
 
-const currentUser = reactive({ profile: { role: 'teacher' as 'student' | 'teacher' | 'admin' } })
+const currentUser = reactive({ profile: { user_id: 't-1', role: 'teacher' as 'student' | 'teacher' | 'admin' } })
 vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
@@ -76,7 +76,7 @@ const conceptFixture = { concept_id: 'c-1', name: 'picking-technique', parent_id
 
 const contentNodeFixture = {
   content_node_id: 'cn-1',
-  teacher_id: 't-1',
+  teacher: { user_id: 't-1', display_name: 'Tina Teacher' },
   title: 't',
   content_type: 'video',
   media_url: VIDEO_URL,
@@ -122,6 +122,7 @@ describe('ContentAuthoringView', () => {
     DELETE.mockReset()
     route.params = {}
     currentUser.profile.role = 'teacher'
+    currentUser.profile.user_id = 't-1'
     mockMatchMedia(false)
     routeGET({})
   })
@@ -134,6 +135,31 @@ describe('ContentAuthoringView', () => {
   })
 
   describe('create mode', () => {
+    it('offers publishing only once the new node has been saved', async () => {
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/content-nodes/{content_node_id}/versions': { data: [], error: undefined, response: { status: 200 } },
+      })
+      POST.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 201 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(false)
+
+      await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="no-versions"]').exists()).toBe(true)
+    })
+
     it('posts a CreateContentNodeRequest on save', async () => {
       routeGET({
         '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
@@ -142,7 +168,7 @@ describe('ContentAuthoringView', () => {
       POST.mockResolvedValueOnce({
         data: {
           content_node_id: 'cn-1',
-          teacher_id: 't-1',
+          teacher: { user_id: 't-1', display_name: 'Tina Teacher' },
           title: 'Alternate picking basics',
           content_type: 'video',
           classification: {
@@ -284,7 +310,7 @@ describe('ContentAuthoringView', () => {
       POST.mockResolvedValueOnce({
         data: {
           content_node_id: 'cn-1',
-          teacher_id: 't-1',
+          teacher: { user_id: 't-1', display_name: 'Tina Teacher' },
           title: 'Sweep basics',
           content_type: 'video',
           classification: {
@@ -899,6 +925,166 @@ describe('ContentAuthoringView', () => {
 
         expect(wrapper.find('[data-test="popup-paragraph"]').exists()).toBe(true)
         expect(wrapper.find('[data-test="popup-trigger-seconds"]').exists()).toBe(false)
+      })
+    })
+
+    describe('publishing and version history', () => {
+      const okResponse = (data: unknown) => ({ data, error: undefined, response: { status: 200 } })
+      const versionFixture = (version_number: number, title_snapshot: string) => ({
+        content_node_id: 'cn-1',
+        version_number,
+        title_snapshot,
+        classification_snapshot: contentNodeFixture.classification,
+        media_url_snapshot: VIDEO_URL,
+        languages_snapshot: [],
+        published_at: '2026-09-20T14:30:00Z',
+      })
+
+      it('says a never-published node has no versions yet', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse({ ...contentNodeFixture, latest_published_version: null }),
+          '/content-nodes/{content_node_id}/versions': okResponse([]),
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="publish-status"]').text()).toContain('Not published yet')
+        expect(wrapper.find('[data-test="no-versions"]').exists()).toBe(true)
+      })
+
+      it('lists the published versions newest first, with the latest one called out', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse({ ...contentNodeFixture, latest_published_version: 2 }),
+          '/content-nodes/{content_node_id}/versions': okResponse([
+            versionFixture(2, 'Second title'),
+            versionFixture(1, 'First title'),
+          ]),
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(GET).toHaveBeenCalledWith('/content-nodes/{content_node_id}/versions', {
+          params: { path: { content_node_id: 'cn-1' } },
+        })
+        expect(wrapper.get('[data-test="publish-status"]').text()).toMatch(/version 2/i)
+        const rows = wrapper.findAll('[data-test="version-row"]')
+        expect(rows).toHaveLength(2)
+        expect(rows[0].text()).toContain('Version 2')
+        expect(rows[0].text()).toContain('Second title')
+        expect(rows[0].text()).toContain('Latest')
+        expect(rows[1].text()).toContain('Version 1')
+        expect(rows[1].text()).toContain('First title')
+        expect(rows[1].text()).not.toContain('Latest')
+      })
+
+      it('saves the current draft, then publishes it and refreshes the history', async () => {
+        let versions = [versionFixture(1, 't')]
+        GET.mockImplementation((path: string) => {
+          if (path === '/content-nodes/{content_node_id}') {
+            return Promise.resolve(okResponse({ ...contentNodeFixture, latest_published_version: 1 }))
+          }
+          if (path === '/content-nodes/{content_node_id}/versions') return Promise.resolve(okResponse(versions))
+          if (path === '/exercises' || path === '/content-nodes/{content_node_id}/expanded-content') {
+            return Promise.resolve(okResponse({ items: [], total: 0 }))
+          }
+          return Promise.resolve(okResponse([]))
+        })
+        PUT.mockResolvedValueOnce(okResponse({ ...contentNodeFixture, title: 'Edited title', latest_published_version: 1 }))
+        POST.mockImplementationOnce(() => {
+          versions = [versionFixture(2, 'Edited title'), ...versions]
+          return Promise.resolve({ data: versions[0], error: undefined, response: { status: 201 } })
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('input[placeholder="Untitled content"]').setValue('Edited title')
+        await wrapper.get('[data-test="publish-button"]').trigger('click')
+        await flushPromises()
+
+        expect(PUT).toHaveBeenCalledWith(
+          '/content-nodes/{content_node_id}',
+          expect.objectContaining({ body: expect.objectContaining({ title: 'Edited title' }) }),
+        )
+        expect(POST).toHaveBeenCalledWith('/content-nodes/{content_node_id}/publish', {
+          params: { path: { content_node_id: 'cn-1' } },
+        })
+        expect(PUT.mock.invocationCallOrder[0]).toBeLessThan(POST.mock.invocationCallOrder[0])
+        expect(wrapper.get('[data-test="publish-status"]').text()).toMatch(/version 2/i)
+        const rows = wrapper.findAll('[data-test="version-row"]')
+        expect(rows).toHaveLength(2)
+        expect(rows[0].text()).toContain('Edited title')
+      })
+
+      it('does not publish when saving the draft fails', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/versions': okResponse([]),
+        })
+        PUT.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 400 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="publish-button"]').trigger('click')
+        await flushPromises()
+
+        expect(PUT).toHaveBeenCalled()
+        expect(POST).not.toHaveBeenCalled()
+      })
+
+      it('disables publishing while the draft could not be saved', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/versions': okResponse([]),
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="media-url-input"]').setValue('not a url')
+
+        expect(wrapper.get('[data-test="publish-button"]').attributes('disabled')).toBeDefined()
+      })
+
+      it('shows a retryable error when the history fails to load', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/versions': { data: undefined, error: { message: 'boom' }, response: { status: 500 } },
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="versions-error"]').exists()).toBe(true)
+
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/versions': okResponse([versionFixture(1, 't')]),
+        })
+        await wrapper.get('[data-test="versions-retry"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.findAll('[data-test="version-row"]')).toHaveLength(1)
+      })
+
+      it('hides publishing from a teacher who did not create the node, without fetching its history', async () => {
+        currentUser.profile.user_id = 't-other'
+        routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(false)
+        expect(GET).not.toHaveBeenCalledWith('/content-nodes/{content_node_id}/versions', expect.anything())
+      })
+
+      it('shows publishing to an admin on any node', async () => {
+        currentUser.profile.user_id = 'admin-1'
+        currentUser.profile.role = 'admin'
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/versions': okResponse([]),
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(true)
       })
     })
   })

@@ -279,7 +279,23 @@
     "challengeExercisesError": "Couldn't load this challenge's exercises.",
     "challengeExercisesLoading": "Loading exercises…",
     "challengesError": "Couldn't load this node's challenges.",
-    "challengesLoading": "Loading challenges…"
+    "challengesLoading": "Loading challenges…",
+    "publishingLabel": "Publishing",
+    "notPublishedYet": "Not published yet — this content can't be added to a student's path until you publish it.",
+    "publishedAs": "Students get version {version}.",
+    "publishButton": "Publish",
+    "publishing": "Publishing…",
+    "publishHint": "Publishing saves your changes and creates a new version. Students who already have this content keep the version they got.",
+    "publishedVersion": "Published version {version}.",
+    "publishFailed": "Failed to publish the content node"
+  },
+  "contentVersionHistory": {
+    "heading": "Version history",
+    "loading": "Loading versions…",
+    "loadError": "Couldn't load the version history.",
+    "empty": "No versions yet.",
+    "versionLabel": "Version {version}",
+    "latestBadge": "Latest"
   },
   "contentListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
