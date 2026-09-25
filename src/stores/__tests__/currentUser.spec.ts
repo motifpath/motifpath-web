@@ -122,6 +122,56 @@ describe('useCurrentUserStore', () => {
     await store.ensure()
 
     expect(store.state).toBe('failed')
+    expect(store.failureReason).toBeNull()
+  })
+
+  it('records that the name is missing when registration is refused because the account has no name', async () => {
+    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+    POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'validation failed', errors: [{ field: 'name', reason: 'must not be blank' }] },
+      response: { status: 400 },
+    })
+
+    const store = useCurrentUserStore()
+    await store.ensure()
+
+    expect(store.state).toBe('failed')
+    expect(store.failureReason).toBe('name-required')
+  })
+
+  it('does not blame the name for a validation failure on another field', async () => {
+    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+    POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'validation failed', errors: [{ field: 'role', reason: 'must be student or teacher' }] },
+      response: { status: 400 },
+    })
+
+    const store = useCurrentUserStore()
+    await store.ensure()
+
+    expect(store.state).toBe('failed')
+    expect(store.failureReason).toBeNull()
+  })
+
+  it('clears the missing-name reason once a retry registers the user', async () => {
+    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+    POST.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'validation failed', errors: [{ field: 'name', reason: 'must not be blank' }] },
+      response: { status: 400 },
+    })
+    const store = useCurrentUserStore()
+    await store.ensure()
+    expect(store.failureReason).toBe('name-required')
+
+    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+    POST.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 201 } })
+    await store.retry()
+
+    expect(store.state).toBe('registered')
+    expect(store.failureReason).toBeNull()
   })
 
   it('ensure does not restart a genuinely failed registration — that is what retry() is for', async () => {

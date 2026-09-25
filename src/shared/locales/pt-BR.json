@@ -21,7 +21,9 @@
     "signOutTryDifferentAccount": "Sair e tentar outra conta",
     "signIn": "Entrar",
     "backToPath": "Voltar para a trilha",
-    "back": "‹ Voltar"
+    "back": "‹ Voltar",
+    "addYourName": "Adicionar seu nome",
+    "nameAddedTryAgain": "Já adicionei meu nome — tentar novamente"
   },
   "states": {
     "loading": "Carregando…",
@@ -32,7 +34,8 @@
   },
   "errors": {
     "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente.",
-    "registrationFailed": "Não conseguimos concluir a configuração da sua conta. Isso costuma ser temporário."
+    "registrationFailed": "Não conseguimos concluir a configuração da sua conta. Isso costuma ser temporário.",
+    "registrationNameRequired": "Sua conta ainda não tem um nome. Adicione seu nome e sobrenome ao seu perfil e tente novamente."
   },
   "localeSwitcher": {
     "label": "Idioma",
