@@ -50,7 +50,11 @@ export function useCourseCatalog() {
     reload,
     ...page
   } = useApiPagedList<CourseCatalogEntry>((coreApi, pageRequest) =>
-    coreApi.GET('/courses', { params: { query: { ...pageRequest, ...query.value } } }),
+    // Always published: that is all a student sees anyway, and it keeps an
+    // admin browsing as a learner out of drafts and retired courses.
+    coreApi.GET('/courses', {
+      params: { query: { ...pageRequest, status: 'published', ...query.value } },
+    }),
   )
 
   watch(query, () => void reload(), { deep: true })

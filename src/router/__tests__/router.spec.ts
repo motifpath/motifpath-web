@@ -287,6 +287,16 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it.each(['/courses', '/courses/mine'])('lets an admin reach the learner page %s', async (path) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('admin')
+
+    await router.push(path)
+
+    expect(router.currentRoute.value.path).toBe(path)
+  })
+
   it('sends an unauthenticated visitor from the course catalog to sign-in', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 

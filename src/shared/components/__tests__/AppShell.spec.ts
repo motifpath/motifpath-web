@@ -50,6 +50,14 @@ describe('AppShell', () => {
     expect(wrapper.find('nav').exists()).toBe(false)
   })
 
+  it('links the wordmark to home', () => {
+    const wrapper = mountShell()
+
+    const home = wrapper.findAllComponents(RouterLinkStub).find((l) => l.attributes('data-test') === 'app-shell-home')
+    expect(home?.text()).toBe('MotifPath')
+    expect(home?.props('to')).toEqual({ name: 'home' })
+  })
+
   it('renders nav links when given', () => {
     const wrapper = mountShell({
       nav: [

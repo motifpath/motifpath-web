@@ -5,6 +5,8 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
 import Icon from '@/shared/components/Icon.vue'
+import { STUDENT_SECTIONS, TEACHER_SECTIONS, studentSectionsFor } from '@/shared/navigation'
+import { useCurrentUserStore } from '@/stores/currentUser'
 import { useThemeStore } from '@/stores/theme'
 
 const props = withDefaults(
@@ -38,34 +40,14 @@ const hasCrumb = computed(() => !isStudent.value && !!props.breadcrumbLabel)
 // (never route-inferred, same explicit-prop style as breadcrumbLabel) so a
 // view's existing `primary-nav-to="{ name: 'teacher-exercises' }"` keeps
 // working unchanged and also drives which tab renders active / which section
-// a breadcrumb drills down from. Students get My path/My courses/Find a
-// course; teachers Content/Paths/Exercises/Diagrams.
-type NavLabelKey =
-  | 'nav.student'
-  | 'nav.myCourses'
-  | 'nav.findCourse'
-  | 'nav.content'
-  | 'nav.paths'
-  | 'nav.exercises'
-  | 'nav.diagrams'
-interface NavItem {
-  name: string
-  labelKey: NavLabelKey
-}
-const studentNavItems: NavItem[] = [
-  { name: 'path', labelKey: 'nav.student' },
-  { name: 'my-courses', labelKey: 'nav.myCourses' },
-  { name: 'course-catalog', labelKey: 'nav.findCourse' },
-]
-const teacherNavItems: NavItem[] = [
-  { name: 'teacher-content', labelKey: 'nav.content' },
-  { name: 'teacher-paths', labelKey: 'nav.paths' },
-  { name: 'teacher-exercises', labelKey: 'nav.exercises' },
-  { name: 'teacher-diagrams', labelKey: 'nav.diagrams' },
-]
-const navItems = computed(() => (isStudent.value ? studentNavItems : teacherNavItems))
+// a breadcrumb drills down from. A teacher on the student side gets no course
+// tabs: only a learner can enroll in or switch between courses.
+const currentUser = useCurrentUserStore()
+const studentNavItems = computed(() => studentSectionsFor(currentUser.profile?.role))
+const teacherNavItems = TEACHER_SECTIONS
+const navItems = computed(() => (isStudent.value ? studentNavItems.value : teacherNavItems))
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string }).name)
-const fallbackSection = computed(() => (isStudent.value ? studentNavItems[0]! : teacherNavItems[2]!))
+const fallbackSection = computed(() => (isStudent.value ? STUDENT_SECTIONS[0]! : TEACHER_SECTIONS[2]!))
 const activeSection = computed(() => {
   const match = navItems.value.find((item) => item.name === primaryNavToName.value)
   if (!match && import.meta.env.DEV) {
@@ -104,7 +86,7 @@ function closeDrawer(): void {
       <Icon name="menu" :size="18" />
     </button>
 
-    <div class="flex items-center gap-2.5">
+    <RouterLink :to="{ name: 'home' }" data-test="app-bar-home" class="flex items-center gap-2.5">
       <div class="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-accent-muted">
         <svg width="16" height="16" viewBox="200 100 860 860" role="img" :aria-label="t('appBar.brand')">
           <defs>
@@ -126,7 +108,7 @@ function closeDrawer(): void {
         </svg>
       </div>
       <span class="text-[15px] font-bold text-ink">{{ t('appBar.brand') }}</span>
-    </div>
+    </RouterLink>
 
     <template v-if="!compact">
       <div class="h-[22px] w-px bg-border" />

@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+
+import { reactive } from 'vue'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
+
+const currentUser = reactive({ profile: null as { role: 'student' | 'teacher' | 'admin' } | null })
+vi.mock('@/stores/currentUser', () => ({
+  useCurrentUserStore: () => currentUser,
+}))
 
 const { default: AppBar } = await import('@/shared/components/AppBar.vue')
 
@@ -28,6 +35,11 @@ interface Props {
   onSave?: () => void
 }
 
+// Every tab/drawer link — the wordmark's home link is not a nav tab.
+function navLinks(wrapper: VueWrapper) {
+  return wrapper.findAllComponents(RouterLinkStub).filter((l) => l.attributes('data-test') !== 'app-bar-home')
+}
+
 function mountBar(props: Props) {
   return mount(AppBar, {
     props: { primaryNavTo: { name: 'path' }, ...props },
@@ -41,6 +53,7 @@ function mountBar(props: Props) {
 describe('AppBar', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    currentUser.profile = { role: 'student' }
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     mockMatchMedia()
@@ -62,7 +75,7 @@ describe('AppBar', () => {
   it('shows the three student tabs (My path, My courses, Find a course)', () => {
     const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'path' } })
 
-    const links = wrapper.findAllComponents(RouterLinkStub)
+    const links = navLinks(wrapper)
     expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course'])
     expect(links.map((l) => l.props('to'))).toEqual([
       { name: 'path' },
@@ -71,10 +84,35 @@ describe('AppBar', () => {
     ])
   })
 
+  it('links the wordmark to home', () => {
+    const wrapper = mountBar({ context: 'student' })
+
+    const home = wrapper.get('[data-test="app-bar-home"]')
+    expect(home.text()).toContain('MotifPath')
+    const homeLink = wrapper.findAllComponents(RouterLinkStub).find((l) => l.attributes('data-test') === 'app-bar-home')
+    expect(homeLink?.props().to).toEqual({ name: 'home' })
+  })
+
+  it('shows an admin every student tab, since an admin can use the learner side too', () => {
+    currentUser.profile = { role: 'admin' }
+
+    const links = navLinks(mountBar({ context: 'student' }))
+
+    expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course'])
+  })
+
+  it("hides the course tabs from a teacher, who can't enroll in courses", () => {
+    currentUser.profile = { role: 'teacher' }
+
+    const links = navLinks(mountBar({ context: 'student' }))
+
+    expect(links.map((l) => l.text())).toEqual(['My path'])
+  })
+
   it('highlights the student tab matching primaryNavTo as active', () => {
     const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'course-catalog' } })
 
-    const links = wrapper.findAllComponents(RouterLinkStub)
+    const links = navLinks(wrapper)
     expect(links.find((l) => l.text() === 'Find a course')?.classes()).toContain('bg-accent-muted')
     expect(links.find((l) => l.text() === 'My path')?.classes()).not.toContain('bg-accent-muted')
   })
@@ -92,7 +130,7 @@ describe('AppBar', () => {
   it("shows an 'Exercises' link for teacher context with no breadcrumb", () => {
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-exercises' } })
 
-    const links = wrapper.findAllComponents(RouterLinkStub)
+    const links = navLinks(wrapper)
     expect(links.some((l) => l.text() === 'Exercises')).toBe(true)
     expect(wrapper.text()).not.toContain('My path')
   })
@@ -122,14 +160,14 @@ describe('AppBar', () => {
   it('shows all four teacher tabs (Content, Paths, Exercises, Diagrams) with no breadcrumb', () => {
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-exercises' } })
 
-    const links = wrapper.findAllComponents(RouterLinkStub)
+    const links = navLinks(wrapper)
     expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Exercises', 'Diagrams'])
   })
 
   it('highlights the tab matching primaryNavTo as active', () => {
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-paths' } })
 
-    const links = wrapper.findAllComponents(RouterLinkStub)
+    const links = navLinks(wrapper)
     const pathsTab = links.find((l) => l.text() === 'Paths')
     const contentTab = links.find((l) => l.text() === 'Content')
     expect(pathsTab?.classes()).toContain('bg-accent-muted')
@@ -141,7 +179,7 @@ describe('AppBar', () => {
 
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-reports' } })
 
-    const links = wrapper.findAllComponents(RouterLinkStub)
+    const links = navLinks(wrapper)
     const exercisesTab = links.find((l) => l.text() === 'Exercises')
     expect(exercisesTab?.classes()).toContain('bg-accent-muted')
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('teacher-reports'))
@@ -162,14 +200,14 @@ describe('AppBar', () => {
     const wrapper = mountBar({ context: 'student' })
 
     expect(wrapper.find('[data-test="app-bar-menu"]').exists()).toBe(false)
-    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(true)
+    expect(navLinks(wrapper)).not.toHaveLength(0)
   })
 
   it('shows the hamburger and hides inline nav when compact', () => {
     const wrapper = mountBar({ context: 'student', compact: true })
 
     expect(wrapper.find('[data-test="app-bar-menu"]').exists()).toBe(true)
-    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+    expect(navLinks(wrapper)).toHaveLength(0)
   })
 
   it('opens a nav-only drawer with the primary nav link when the hamburger is clicked', async () => {

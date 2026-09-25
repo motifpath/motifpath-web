@@ -30,7 +30,7 @@ describe('useCourseCatalog', () => {
     const { courses: result, total, isLoading } = useCourseCatalog()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(GET).toHaveBeenCalledWith('/courses', { params: { query: { limit: 20, offset: 0 } } })
+    expect(GET).toHaveBeenCalledWith('/courses', { params: { query: { limit: 20, offset: 0, status: 'published' } } })
     expect(result.value).toEqual(courses)
     expect(total.value).toBe(1)
   })
@@ -49,6 +49,7 @@ describe('useCourseCatalog', () => {
     expect(lastQuery()).toEqual({
       limit: 20,
       offset: 0,
+      status: 'published',
       levels: ['beginner', 'intermediate'],
       skill_ids: ['s-1'],
       concept_ids: ['c-1'],
@@ -66,7 +67,7 @@ describe('useCourseCatalog', () => {
     await nextTick()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(lastQuery()).toEqual({ limit: 20, offset: 0 })
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, status: 'published' })
   })
 
   it('waits for typing to pause before searching by text', async () => {
@@ -84,7 +85,7 @@ describe('useCourseCatalog', () => {
 
     await vi.advanceTimersByTimeAsync(1)
     expect(GET).toHaveBeenCalledTimes(1)
-    expect(lastQuery()).toEqual({ limit: 20, offset: 0, q: 'finger' })
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, status: 'published', q: 'finger' })
   })
 
   it('does not send a blank search', async () => {
@@ -96,7 +97,7 @@ describe('useCourseCatalog', () => {
     await nextTick()
     await vi.advanceTimersByTimeAsync(300)
 
-    expect(lastQuery()).toEqual({ limit: 20, offset: 0 })
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, status: 'published' })
   })
 
   it('reports whether any filter is active and clears them all at once', async () => {
@@ -114,6 +115,6 @@ describe('useCourseCatalog', () => {
     await vi.advanceTimersByTimeAsync(300)
     expect(hasActiveFilters.value).toBe(false)
     expect(searchText.value).toBe('')
-    expect(lastQuery()).toEqual({ limit: 20, offset: 0 })
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, status: 'published' })
   })
 })

@@ -21,6 +21,10 @@ vi.mock('vue-router', async () => {
   return { ...actual, useRoute: () => route }
 })
 
+vi.mock('@/stores/currentUser', () => ({
+  useCurrentUserStore: () => ({ profile: { role: 'student' } }),
+}))
+
 import AuthenticatedLayout from '@/shared/components/AuthenticatedLayout.vue'
 
 function mountLayout() {
