@@ -3,7 +3,7 @@
  * Shows everything inside it in `locale` rather than the UI locale — messages,
  * interval labels and per-language names — without touching the user's
  * language setting. The diagram editor uses it so each language tab shows the
- * diagram as a reader of that language will see it (ADR-034, 2026-09-25 amendment).
+ * diagram as a reader of that language will see it.
  */
 import { toRef } from 'vue'
 

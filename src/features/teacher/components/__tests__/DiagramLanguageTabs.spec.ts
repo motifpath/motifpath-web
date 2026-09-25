@@ -39,11 +39,52 @@ describe('DiagramLanguageTabs', () => {
     expect(wrapper.emitted('select')).toEqual([['pt_BR']])
   })
 
-  it('flags a language that is still missing text', () => {
+  it('flags a language that is still missing text, for screen readers too', () => {
     const wrapper = mountTabs({ incomplete: ['pt_BR'] })
 
     expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="language-tab-missing-en"]').exists()).toBe(false)
+    expect(tab(wrapper, 'pt_BR').attributes('aria-label')).toBe('Portuguese is missing text')
+    expect(tab(wrapper, 'en').attributes('aria-label')).toBe('English')
+  })
+
+  it('holds nothing but tabs in its tab list, so assistive tech reads it as one', () => {
+    const wrapper = mountTabs()
+
+    const tablist = wrapper.get('[role="tablist"]')
+    const focusable = tablist.findAll('button')
+    expect(focusable.length).toBeGreaterThan(0)
+    expect(focusable.every((button) => button.attributes('role') === 'tab')).toBe(true)
+    expect(tablist.findAll('div').every((div) => div.attributes('role') === 'presentation')).toBe(true)
+  })
+
+  it('closes the add menu on Escape', async () => {
+    const wrapper = mountTabs({ languages: ['en'] })
+    await wrapper.get('[data-test="add-language"]').trigger('click')
+
+    await wrapper.get('[data-test="add-language-menu"]').trigger('keydown', { key: 'Escape' })
+
+    expect(wrapper.find('[data-test="add-language-menu"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="add-language"]').attributes('aria-expanded')).toBe('false')
+  })
+
+  it('closes the add menu once focus moves somewhere else', async () => {
+    const wrapper = mountTabs({ languages: ['en'] })
+    await wrapper.get('[data-test="add-language"]').trigger('click')
+
+    await wrapper.get('[data-test="add-language-picker"]').trigger('focusout', { relatedTarget: document.body })
+
+    expect(wrapper.find('[data-test="add-language-menu"]').exists()).toBe(false)
+  })
+
+  it('keeps the add menu open while focus moves between its own options', async () => {
+    const wrapper = mountTabs({ languages: ['en'] })
+    await wrapper.get('[data-test="add-language"]').trigger('click')
+    const option = wrapper.get('[data-test="add-language-option-pt_BR"]').element
+
+    await wrapper.get('[data-test="add-language-picker"]').trigger('focusout', { relatedTarget: option })
+
+    expect(wrapper.find('[data-test="add-language-menu"]').exists()).toBe(true)
   })
 
   it('offers to add only the languages the diagram does not have yet', async () => {
@@ -62,8 +103,9 @@ describe('DiagramLanguageTabs', () => {
     expect(mountTabs().find('[data-test="add-language"]').exists()).toBe(false)
   })
 
-  it('removes a language only after the author confirms', async () => {
-    const wrapper = mountTabs()
+  it('removes the active language only after the author confirms', async () => {
+    const wrapper = mountTabs({ active: 'pt_BR' })
+    expect(wrapper.find('[data-test="remove-language-en"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="remove-language-pt_BR"]').trigger('click')
     expect(wrapper.emitted('remove')).toBeUndefined()

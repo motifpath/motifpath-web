@@ -64,7 +64,7 @@ const frettedInstruments = computed(() => instruments.value.filter((i) => i.fami
 const form = useDiagramForm()
 
 // The editor below the language tabs is shown in the active tab's language, as a reader of
-// that language will see the diagram (ADR-034, 2026-09-25 amendment); the top bar stays in the
+// that language will see the diagram; the top bar stays in the
 // author's UI language. The tab stays on the UI language, or the first one, until one is picked.
 const selectedLanguage = ref<string | null>(null)
 const activeLanguage = computed(() => {
@@ -119,7 +119,7 @@ const secondarySaveClass =
   'rounded-full border border-accent px-[14px] py-[7px] text-[13px] font-bold text-accent-text disabled:cursor-not-allowed disabled:opacity-50'
 // A basic diagram is shared with every teacher, so it can only be saved named in every
 // language. Whoever may save over one (an admin) edits it in every language, with none
-// removable; anyone else only copies it, and a custom copy may drop languages (ADR-033).
+// removable; anyone else only copies it, and a custom copy may drop languages.
 const isBasic = computed(() => savedOwnership.value?.kind === 'basic')
 const editsTemplate = computed(() => isBasic.value && canSaveInPlace.value)
 const namesMissing = computed(() => editsTemplate.value && !form.hasEveryName.value)

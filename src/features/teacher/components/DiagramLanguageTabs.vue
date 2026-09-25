@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * The diagram editor's language bar (ADR-034, 2026-09-25 amendment): one flag
+ * The diagram editor's language bar: one flag
  * tab per language the diagram supports, the active one setting the language
- * the editor below is shown in. Custom diagrams can add or remove languages
- * here; removing one asks first, since it deletes that language's text.
+ * the editor below is shown in. Custom diagrams can add languages, or remove
+ * the active one; removing asks first, since it deletes that language's text.
  */
 import { computed, ref } from 'vue'
 import { AlertCircle, Plus, X } from 'lucide-vue-next'
@@ -31,6 +31,13 @@ function languageLabel(code: string): string {
   return key === null ? code : t(key)
 }
 
+// The tab's accessible name replaces its content, so a missing-text warning has to be part of it.
+function tabLabel(code: string): string {
+  return props.incomplete.includes(code)
+    ? t('diagramLanguageTabs.missingText', { language: languageLabel(code) })
+    : languageLabel(code)
+}
+
 const addable = computed(() =>
   props.locked ? [] : OFFERED_LANGUAGE_CODES.filter((code) => !props.languages.includes(code)),
 )
@@ -40,6 +47,14 @@ const addMenuOpen = ref(false)
 function add(code: string) {
   addMenuOpen.value = false
   emit('add', code)
+}
+
+// Closes the menu once focus leaves the picker (its button and options), not when it moves within.
+function onPickerFocusOut(event: FocusEvent) {
+  const picker = event.currentTarget
+  const next = event.relatedTarget
+  if (picker instanceof HTMLElement && next instanceof Node && picker.contains(next)) return
+  addMenuOpen.value = false
 }
 
 const pendingRemoval = ref<string | null>(null)
@@ -52,46 +67,49 @@ function confirmRemoval() {
 <template>
   <div class="flex flex-wrap items-center gap-2">
     <div role="tablist" :aria-label="t('diagramLanguageTabs.label')" class="flex flex-wrap gap-1 rounded-lg bg-surface-sunken p-1">
-      <div
+      <button
         v-for="code in languages"
         :key="code"
-        class="flex items-center rounded-md"
+        type="button"
+        role="tab"
+        :data-test="`language-tab-${code}`"
+        :aria-selected="code === active"
+        :aria-label="tabLabel(code)"
+        class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold"
         :class="code === active ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+        @click="emit('select', code)"
       >
-        <button
-          type="button"
-          role="tab"
-          :data-test="`language-tab-${code}`"
-          :aria-selected="code === active"
-          :aria-label="languageLabel(code)"
-          class="flex items-center gap-1.5 py-1.5 pl-3 text-sm font-semibold"
-          :class="canRemove ? 'pr-1' : 'pr-3'"
-          @click="emit('select', code)"
-        >
-          <span aria-hidden="true" class="text-base leading-none">{{ languageBadge(code).flag }}</span>
-          <span aria-hidden="true">{{ languageBadge(code).shortCode }}</span>
-          <AlertCircle
-            v-if="incomplete.includes(code)"
-            :data-test="`language-tab-missing-${code}`"
-            :size="14"
-            class="text-warning"
-            :aria-label="t('diagramLanguageTabs.missingText', { language: languageLabel(code) })"
-          />
-        </button>
-        <button
-          v-if="canRemove"
-          type="button"
-          :data-test="`remove-language-${code}`"
-          :aria-label="t('diagramLanguageTabs.removeLanguage', { language: languageLabel(code) })"
-          class="mr-1 rounded p-1 opacity-70 hover:opacity-100"
-          @click="pendingRemoval = code"
-        >
-          <X :size="12" aria-hidden="true" />
-        </button>
-      </div>
+        <span aria-hidden="true" class="text-base leading-none">{{ languageBadge(code).flag }}</span>
+        <span aria-hidden="true">{{ languageBadge(code).shortCode }}</span>
+        <AlertCircle
+          v-if="incomplete.includes(code)"
+          :data-test="`language-tab-missing-${code}`"
+          :size="14"
+          class="text-warning"
+          aria-hidden="true"
+        />
+      </button>
     </div>
 
-    <div v-if="addable.length > 0" class="relative">
+    <button
+      v-if="canRemove"
+      type="button"
+      :data-test="`remove-language-${active}`"
+      :aria-label="t('diagramLanguageTabs.removeLanguage', { language: languageLabel(active) })"
+      :title="t('diagramLanguageTabs.removeLanguage', { language: languageLabel(active) })"
+      class="flex items-center rounded-md p-2 text-ink-muted hover:text-ink"
+      @click="pendingRemoval = active"
+    >
+      <X :size="14" aria-hidden="true" />
+    </button>
+
+    <div
+      v-if="addable.length > 0"
+      data-test="add-language-picker"
+      class="relative"
+      @focusout="onPickerFocusOut"
+      @keydown.escape="addMenuOpen = false"
+    >
       <button
         type="button"
         data-test="add-language"
@@ -105,6 +123,7 @@ function confirmRemoval() {
       </button>
       <div
         v-if="addMenuOpen"
+        data-test="add-language-menu"
         class="absolute left-0 top-full z-10 mt-1 flex min-w-40 flex-col rounded-md border border-border bg-surface-raised p-1 shadow-level2"
       >
         <button

@@ -88,7 +88,7 @@ function inOfferedOrder(codes: string[]): string[] {
 export function useDiagramForm() {
   // The diagram's name per language code; a language with no name is absent or blank.
   const names = ref<LocalizedNames>({})
-  // The languages the author chose for the diagram (ADR-034, 2026-09-25 amendment); a new one
+  // The languages the author chose for the diagram; a new one
   // starts in the author's UI language. Only these languages' names are ever sent.
   const languages = ref<string[]>([toApiLanguageCode(i18n.global.locale.value)])
   const instrumentId = ref('')

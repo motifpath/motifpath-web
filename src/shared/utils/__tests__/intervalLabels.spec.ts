@@ -3,7 +3,7 @@ import { nextTick } from 'vue'
 
 import { i18n } from '@/i18n'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
-import { INTERVAL_CODES } from '@/shared/utils/intervalLabels'
+import { INTERVAL_CODES, intervalLabelKey } from '@/shared/utils/intervalLabels'
 
 describe('useIntervalLabel', () => {
   afterEach(() => {
@@ -49,5 +49,20 @@ describe('useIntervalLabel', () => {
 
   it('shows an empty interval as empty, rather than a missing-key path', () => {
     expect(useIntervalLabel().intervalLabel('')).toBe('')
+  })
+
+  it("shows a value that isn't a canonical code as it is, even one named like a built-in object property", () => {
+    const { intervalLabel } = useIntervalLabel()
+
+    expect(intervalLabel('')).toBe('')
+    expect(intervalLabelKey('constructor')).toBeNull()
+    expect(intervalLabelKey('toString')).toBeNull()
+    expect(intervalLabel('constructor')).toBe('constructor')
+  })
+
+  it('lists all 23 canonical codes, once each', () => {
+    expect(INTERVAL_CODES).toHaveLength(23)
+    expect(new Set(INTERVAL_CODES).size).toBe(23)
+    expect(INTERVAL_CODES.every((code) => intervalLabelKey(code) !== null)).toBe(true)
   })
 })
