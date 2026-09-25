@@ -20,6 +20,7 @@ import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useToast } from '@/shared/composables/useToast'
 import { canEditDiagram } from '@/shared/utils/diagramOwnership'
 import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
@@ -36,6 +37,7 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
+const { localizedName } = useLocalizedName()
 const { t } = useTypedT()
 
 const route = useRoute()
@@ -343,7 +345,7 @@ async function saveAs(name: string) {
               "
               @click="form.instrumentId.value = instrument.instrument_id"
             >
-              {{ instrument.name }}
+              {{ localizedName(instrument.names) }}
             </button>
           </div>
           <span v-if="isEditMode || form.hasPositions.value" class="text-sm text-ink-subtle">

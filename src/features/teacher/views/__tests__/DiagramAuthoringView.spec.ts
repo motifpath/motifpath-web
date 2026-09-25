@@ -50,15 +50,17 @@ function mockMatchMedia(compact: boolean): void {
 
 const guitar = {
   instrument_id: 'i-1',
-  name: '6-string guitar',
+  names: { en: '6-string guitar', pt_BR: 'Violão de 6 cordas' },
+  languages: ['en', 'pt_BR'],
   family: 'fretted' as const,
   string_count: 6,
   tuning: ['E', 'A', 'D', 'G', 'B', 'E'],
 }
-const piano = { instrument_id: 'i-2', name: 'Piano', family: 'keyboard' as const }
+const piano = { instrument_id: 'i-2', names: { en: 'Piano', pt_BR: 'Piano' }, languages: ['en', 'pt_BR'], family: 'keyboard' as const }
 const bass = {
   instrument_id: 'i-3',
-  name: '4-string bass',
+  names: { en: '4-string bass', pt_BR: 'Contrabaixo de 4 cordas' },
+  languages: ['en', 'pt_BR'],
   family: 'fretted' as const,
   string_count: 4,
   tuning: ['E', 'A', 'D', 'G'],
@@ -73,6 +75,7 @@ function mountView() {
   })
 }
 
+import { i18n } from '@/i18n'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
@@ -134,6 +137,19 @@ describe('DiagramAuthoringView', () => {
     const options = wrapper.findAll('[data-test="instrument-option"]')
     expect(options).toHaveLength(1)
     expect(options[0]!.text()).toContain('6-string guitar')
+  })
+
+  it("names each instrument in the viewer's language", async () => {
+    i18n.global.locale.value = 'pt-BR'
+    try {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(wrapper.get('[data-test="instrument-option"]').text()).toBe('Violão de 6 cordas')
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
   })
 
   it('locks the instrument picker once a position has been placed, even in create mode', async () => {
