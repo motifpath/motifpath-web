@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Check, Search, X } from 'lucide-vue-next'
+import { Check, Search } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import TeacherFilterPicker from '@/features/student/components/TeacherFilterPicker.vue'
 import { useCourseCatalog } from '@/features/student/composables/useCourseCatalog'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
@@ -73,7 +74,7 @@ function toggleLevel(level: CourseLevel) {
 }
 
 function filterByTeacher(course: CourseCatalogEntry) {
-  filters.teacher = { userId: course.created_by, courseTitle: course.title }
+  filters.teacher = course.created_by
 }
 
 function onClearFilters() {
@@ -152,7 +153,8 @@ async function enroll(course: CourseCatalogEntry) {
         </div>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <TeacherFilterPicker v-model="filters.teacher" />
         <SkillConceptTreePicker
           :label="t('courseCatalogView.skillFilterLabel')"
           :nodes="skillNodes"
@@ -171,24 +173,8 @@ async function enroll(course: CourseCatalogEntry) {
         />
       </div>
 
-      <div v-if="filters.teacher || hasActiveFilters" class="flex flex-wrap items-center gap-2">
-        <span
-          v-if="filters.teacher"
-          data-test="teacher-filter"
-          class="flex items-center gap-1 rounded-full bg-accent-muted px-3 py-1 text-sm text-accent-text"
-        >
-          {{ t('courseCatalogView.teacherFilter', { title: filters.teacher.courseTitle }) }}
-          <button
-            type="button"
-            data-test="teacher-filter-remove"
-            :aria-label="t('courseCatalogView.teacherFilterRemoveAriaLabel')"
-            @click="filters.teacher = null"
-          >
-            <X :size="14" aria-hidden="true" />
-          </button>
-        </span>
+      <div v-if="hasActiveFilters" class="flex flex-wrap items-center gap-2">
         <button
-          v-if="hasActiveFilters"
           type="button"
           class="text-sm font-semibold text-accent-text underline"
           @click="onClearFilters"
@@ -241,6 +227,9 @@ async function enroll(course: CourseCatalogEntry) {
               {{ t(`levels.${course.level}`) }}
             </span>
           </div>
+          <p data-test="course-teacher" class="text-sm text-ink-subtle">
+            {{ t('courseCatalogView.courseTeacher', { name: course.created_by.display_name }) }}
+          </p>
           <p class="text-sm text-ink-muted">{{ course.summary }}</p>
           <div class="flex flex-wrap items-center justify-between gap-3">
             <button

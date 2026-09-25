@@ -19,7 +19,7 @@ const catalog = {
     levels: [] as string[],
     skillIds: [] as string[],
     conceptIds: [] as string[],
-    teacher: null as { userId: string; courseTitle: string } | null,
+    teacher: null as { user_id: string; display_name: string } | null,
   }),
   searchText: ref(''),
   hasActiveFilters: ref(false),
@@ -52,6 +52,10 @@ vi.mock('@/shared/composables/useListConcepts', () => ({
   useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 
+vi.mock('@/features/student/composables/useCourseCreators', () => ({
+  useCourseCreators: () => ({ creators: ref([]), nameQuery: ref(''), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
+
 const toast = { success: vi.fn(), error: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
@@ -65,7 +69,7 @@ function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry
     title: 'Fingerstyle journey',
     summary: 'From first arpeggios to full arrangements.',
     level: 'beginner',
-    created_by: 'teacher-1',
+    created_by: { user_id: 'teacher-1', display_name: 'Bob Martins' },
     status: 'published',
     published_at: '2026-09-01T00:00:00Z',
     ...overrides,
@@ -75,7 +79,7 @@ function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry
 function enrollment(overrides: Partial<CourseEnrollment> = {}): CourseEnrollment {
   return {
     course_enrollment_id: 'e-1',
-    student_id: 'st-1',
+    student: { user_id: 'st-1', display_name: 'Alice Souza' },
     course_id: 'c-1',
     course_title: 'Fingerstyle journey',
     course_version_number: 1,
@@ -177,18 +181,38 @@ describe('CourseCatalogView', () => {
     expect(catalog.filters.skillIds).toEqual(['triads'])
   })
 
-  it('narrows the catalog to one course\'s teacher and shows that as a removable filter', async () => {
+  it('names each course\'s teacher on its card', () => {
+    catalog.courses.value = [course()]
+    catalog.total.value = 1
+
+    expect(mountView().get('[data-test="course-teacher"]').text()).toContain('Bob Martins')
+  })
+
+  it('filters by the teacher picked in the teacher filter, and clears it again', async () => {
+    const wrapper = mountView()
+    const picker = wrapper.getComponent({ name: 'TeacherFilterPicker' })
+
+    picker.vm.$emit('update:modelValue', { user_id: 'teacher-2', display_name: 'Carol Dias' })
+    await flushPromises()
+    expect(catalog.filters.teacher).toEqual({ user_id: 'teacher-2', display_name: 'Carol Dias' })
+
+    picker.vm.$emit('update:modelValue', null)
+    await flushPromises()
+    expect(catalog.filters.teacher).toBeNull()
+  })
+
+  it('narrows the catalog to one course\'s teacher and shows them in the teacher filter', async () => {
     catalog.courses.value = [course()]
     catalog.total.value = 1
     const wrapper = mountView()
 
     await wrapper.get('[data-test="more-from-teacher"]').trigger('click')
-    expect(catalog.filters.teacher).toEqual({ userId: 'teacher-1', courseTitle: 'Fingerstyle journey' })
 
-    const chip = wrapper.get('[data-test="teacher-filter"]')
-    expect(chip.text()).toContain('Fingerstyle journey')
-    await chip.get('[data-test="teacher-filter-remove"]').trigger('click')
-    expect(catalog.filters.teacher).toBeNull()
+    expect(catalog.filters.teacher).toEqual({ user_id: 'teacher-1', display_name: 'Bob Martins' })
+    expect(wrapper.getComponent({ name: 'TeacherFilterPicker' }).props('modelValue')).toEqual({
+      user_id: 'teacher-1',
+      display_name: 'Bob Martins',
+    })
   })
 
   it('enrolls in a course and then marks it as enrolled', async () => {

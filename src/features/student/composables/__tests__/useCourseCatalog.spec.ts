@@ -42,7 +42,7 @@ describe('useCourseCatalog', () => {
     filters.levels = ['beginner', 'intermediate']
     filters.skillIds = ['s-1']
     filters.conceptIds = ['c-1']
-    filters.teacher = { userId: 'u-1', courseTitle: 'Fingerstyle journey' }
+    filters.teacher = { user_id: 'u-1', display_name: 'Bob Martins' }
     await nextTick()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 

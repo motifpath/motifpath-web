@@ -79,8 +79,6 @@
     "levelFilterLabel": "Level",
     "skillFilterLabel": "Skill",
     "conceptFilterLabel": "Concept",
-    "teacherFilter": "Same teacher as “{title}”",
-    "teacherFilterRemoveAriaLabel": "Remove the teacher filter",
     "clearFilters": "Clear filters",
     "loadingNoun": "courses",
     "errorMessage": "We couldn't load the course catalog.",
@@ -92,6 +90,17 @@
     "enrolling": "Enrolling…",
     "enrolled": "Enrolled",
     "enrolledToast": "You are now enrolled in {title}.",
-    "moreFromTeacher": "More from this teacher"
+    "moreFromTeacher": "More from this teacher",
+    "courseTeacher": "by {name}"
+  },
+  "teacherFilterPicker": {
+    "label": "Teacher",
+    "anyTeacher": "Any teacher",
+    "searchPlaceholder": "Search by name",
+    "clearAriaLabel": "Remove the teacher filter",
+    "loading": "Loading teachers…",
+    "errorMessage": "We couldn't load the teachers.",
+    "retry": "Try again",
+    "noMatches": "No teacher matches that name."
   }
 }

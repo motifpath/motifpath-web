@@ -7,17 +7,13 @@ type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 type CourseLevel = CourseCatalogEntry['level']
 type CatalogQuery = NonNullable<operations['listCourses']['parameters']['query']>
 
-/** A teacher filter, remembered with the course it was picked from — the catalog has no teacher names to show. */
-export interface TeacherFilter {
-  userId: string
-  courseTitle: string
-}
+type UserRef = components['schemas']['UserRef']
 
 interface CatalogFilters {
   levels: CourseLevel[]
   skillIds: string[]
   conceptIds: string[]
-  teacher: TeacherFilter | null
+  teacher: UserRef | null
 }
 
 const SEARCH_DEBOUNCE_MS = 300
@@ -45,7 +41,7 @@ export function useCourseCatalog() {
     if (filters.levels.length) q.levels = [...filters.levels]
     if (filters.skillIds.length) q.skill_ids = [...filters.skillIds]
     if (filters.conceptIds.length) q.concept_ids = [...filters.conceptIds]
-    if (filters.teacher) q.created_by = filters.teacher.userId
+    if (filters.teacher) q.created_by = filters.teacher.user_id
     return q
   })
 
