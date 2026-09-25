@@ -10,6 +10,13 @@ type UserProfile = components['schemas']['UserProfile']
 
 export type CurrentUserState = 'idle' | 'registering' | 'registered' | 'failed'
 
+/**
+ * Why registration failed, when the reason is one the user can fix
+ * themselves: 'name-required' means their account has no name, which
+ * registration requires. null for any other failure.
+ */
+export type RegistrationFailureReason = 'name-required' | null
+
 const LOCALE_STORAGE_KEY = 'motifpath:locale'
 
 function isSupportedLocale(value: string): value is SupportedLocale {
@@ -58,6 +65,16 @@ export function resolveAnonymousLocale(): SupportedLocale {
 }
 
 /**
+ * Registration refuses an account whose identity carries no name, reporting
+ * it as a validation failure on field "name".
+ */
+function isMissingNameError(status: number | undefined, error: unknown): boolean {
+  if (status !== 400 || typeof error !== 'object' || error === null || !('errors' in error)) return false
+  const { errors } = error
+  return Array.isArray(errors) && errors.some((e: unknown) => typeof e === 'object' && e !== null && 'field' in e && e.field === 'name')
+}
+
+/**
  * The authenticated Clerk identity's MotifPath registration state. Resolves the
  * caller's profile via `GET /users/me`, self-registering as a student on 404 and
  * reconciling a 409 race by re-reading the profile. `ensure()` is idempotent —
@@ -69,6 +86,7 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
 
   const state = ref<CurrentUserState>('idle')
   const profile = ref<UserProfile | null>(null)
+  const failureReason = ref<RegistrationFailureReason>(null)
 
   // Resolved once, at store creation, before any authenticated profile is
   // known — the same visitor-preference pattern as `theme.ts`. Overridden by
@@ -111,6 +129,7 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
 
   async function register(myEpoch: number): Promise<void> {
     state.value = 'registering'
+    failureReason.value = null
 
     // A network-level failure (unreachable core-domain, DNS, CORS preflight)
     // rejects rather than resolving with a {data,error,response} shape —
@@ -133,6 +152,9 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
         if (applyIfRegistered(myEpoch, reconciled.data)) return
       }
 
+      if (isMissingNameError(created.response?.status, created.error)) {
+        failureReason.value = 'name-required'
+      }
       state.value = 'failed'
     } catch {
       if (myEpoch === epoch) {
@@ -177,6 +199,7 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     epoch++
     state.value = 'idle'
     profile.value = null
+    failureReason.value = null
     inFlight = null
   }
 
@@ -226,5 +249,5 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     }
   }
 
-  return { state, profile, isRegistered, locale, ensure, retry, reset, setLocale }
+  return { state, profile, failureReason, isRegistered, locale, ensure, retry, reset, setLocale }
 })

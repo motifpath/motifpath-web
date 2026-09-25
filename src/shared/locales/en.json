@@ -21,7 +21,9 @@
     "signOutTryDifferentAccount": "Sign out and try a different account",
     "signIn": "Sign in",
     "backToPath": "Back to path",
-    "back": "‹ Back"
+    "back": "‹ Back",
+    "addYourName": "Add your name",
+    "nameAddedTryAgain": "I've added my name — try again"
   },
   "states": {
     "loading": "Loading…",
@@ -32,7 +34,8 @@
   },
   "errors": {
     "localeUpdateFailed": "Could not update your language preference. Please try again.",
-    "registrationFailed": "We couldn't finish setting up your account. This is usually temporary."
+    "registrationFailed": "We couldn't finish setting up your account. This is usually temporary.",
+    "registrationNameRequired": "Your account doesn't have a name yet. Add your first and last name to your profile, then try again."
   },
   "localeSwitcher": {
     "label": "Language",

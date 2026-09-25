@@ -15,6 +15,10 @@ interface ClerkUserStub {
 
 const clerkUser = ref<ClerkUserStub | null | undefined>(undefined)
 
+const clerkInstance = {
+  openUserProfile: vi.fn(),
+}
+
 vi.mock('@clerk/vue', () => ({
   useAuth: () => ({
     isLoaded: computed(() => clerk.isLoaded.value),
@@ -25,6 +29,7 @@ vi.mock('@clerk/vue', () => ({
   useUser: () => ({
     user: computed(() => clerkUser.value),
   }),
+  useClerk: () => computed(() => clerkInstance),
 }))
 
 const { useAuth } = await import('@/features/auth/composables/useAuth')
@@ -72,5 +77,20 @@ describe('useAuth', () => {
     clerkUser.value = null
 
     expect(useAuth().displayInitial.value).toBe('?')
+  })
+
+  it('forces Clerk to mint a fresh token instead of reusing its cached one', async () => {
+    clerk.getToken.mockClear()
+
+    const token = await useAuth().refreshToken()
+
+    expect(clerk.getToken).toHaveBeenCalledWith({ skipCache: true })
+    expect(token).toBe('jwt-abc')
+  })
+
+  it("opens Clerk's own profile screen, where users edit their name", () => {
+    useAuth().openUserProfile()
+
+    expect(clerkInstance.openUserProfile).toHaveBeenCalledOnce()
   })
 })
