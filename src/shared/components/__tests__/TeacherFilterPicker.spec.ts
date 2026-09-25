@@ -16,7 +16,7 @@ const creatorsState = {
   error: ref(false),
   retry: vi.fn(),
 }
-const useCourseCreators = vi.fn((_scope: string) => creatorsState)
+const useCourseCreators = vi.fn<(scope: string) => typeof creatorsState>(() => creatorsState)
 vi.mock('@/shared/composables/useCourseCreators', () => ({
   useCourseCreators: (scope: string) => useCourseCreators(scope),
 }))
