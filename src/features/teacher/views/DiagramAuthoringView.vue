@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
+import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
@@ -16,6 +17,7 @@ import { useListInstruments } from '@/features/teacher/composables/useListInstru
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
 import AppBar from '@/shared/components/AppBar.vue'
+import LocaleScope from '@/shared/components/LocaleScope.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
@@ -24,7 +26,6 @@ import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useToast } from '@/shared/composables/useToast'
 import { canEditDiagram } from '@/shared/utils/diagramOwnership'
 import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
-import { languageLabelKey } from '@/shared/utils/languageLabels'
 import { i18n, OFFERED_LANGUAGE_CODES, fromApiLanguageCode, toApiLanguageCode } from '@/i18n'
 import type { components } from '@/api/generated/core-domain'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -61,6 +62,20 @@ const { instruments } = useListInstruments()
 const frettedInstruments = computed(() => instruments.value.filter((i) => i.family === 'fretted'))
 
 const form = useDiagramForm()
+
+// The editor below the language tabs is shown in the active tab's language, as a reader of
+// that language will see the diagram; the top bar stays in the
+// author's UI language. The tab stays on the UI language, or the first one, until one is picked.
+const selectedLanguage = ref<string | null>(null)
+const activeLanguage = computed(() => {
+  const languages = form.languages.value
+  if (selectedLanguage.value && languages.includes(selectedLanguage.value)) return selectedLanguage.value
+  const uiLanguage = toApiLanguageCode(i18n.global.locale.value)
+  return languages.includes(uiLanguage) ? uiLanguage : (languages[0] ?? uiLanguage)
+})
+const editingLocale = computed(() => fromApiLanguageCode(activeLanguage.value))
+const { t: te } = useTypedT({ locale: editingLocale })
+const { localizedName: localizedNameInEditor } = useLocalizedName({ locale: editingLocale })
 const { createDiagram } = useCreateDiagram()
 const { updateDiagram } = useUpdateDiagram()
 const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
@@ -102,23 +117,26 @@ const canSaveAsTemplate = computed(() => isAdmin.value)
 // Outlined counterpart of the bar's filled Save pill: clearly a live button, but secondary.
 const secondarySaveClass =
   'rounded-full border border-accent px-[14px] py-[7px] text-[13px] font-bold text-accent-text disabled:cursor-not-allowed disabled:opacity-50'
-// The name typed in the big title field is the one in the current UI language; every other
-// offered language gets its own smaller field below it.
-const currentLanguage = computed(() => toApiLanguageCode(i18n.global.locale.value))
-const otherLanguages = computed(() => OFFERED_LANGUAGE_CODES.filter((code) => code !== currentLanguage.value))
-
-function languageLabel(code: string): string {
-  const key = languageLabelKey(code)
-  return key === null ? code : t(key)
-}
-
-// A basic diagram is shared with every teacher, so it can only be saved named in every language.
+// A basic diagram is shared with every teacher, so it can only be saved named in every
+// language. Whoever may save over one (an admin) edits it in every language, with none
+// removable; anyone else only copies it, and a custom copy may drop languages.
 const isBasic = computed(() => savedOwnership.value?.kind === 'basic')
-const namesMissing = computed(() => isBasic.value && !form.hasEveryName.value)
+const editsTemplate = computed(() => isBasic.value && canSaveInPlace.value)
+const namesMissing = computed(() => editsTemplate.value && !form.hasEveryName.value)
+watchEffect(() => {
+  if (!editsTemplate.value) return
+  OFFERED_LANGUAGE_CODES.filter((code) => !form.languages.value.includes(code)).forEach(form.addLanguage)
+})
+
+/** Adds a language and opens its tab, so its text can be filled in straight away. */
+function addLanguage(code: string) {
+  form.addLanguage(code)
+  selectedLanguage.value = code
+}
 
 // Save as keeps the diagram's own languages; Save as template needs every language.
 const saveAsLanguages = computed(() =>
-  saveAsKind.value === 'basic' ? OFFERED_LANGUAGE_CODES : form.namedLanguages.value,
+  saveAsKind.value === 'basic' ? OFFERED_LANGUAGE_CODES : form.languages.value,
 )
 // A copy of a saved diagram is suggested as "<name> (copy)" in each language's own words; a
 // new diagram keeps its own names.
@@ -134,8 +152,8 @@ const saveAsInitialNames = computed(() =>
 const readOnlyReason = computed(() => {
   if (canSaveInPlace.value || !savedOwnership.value) return ''
   return savedOwnership.value.kind === 'basic'
-    ? t('diagramAuthoringView.readOnlyTemplate')
-    : t('diagramAuthoringView.readOnlyOtherTeacher')
+    ? te('diagramAuthoringView.readOnlyTemplate')
+    : te('diagramAuthoringView.readOnlyOtherTeacher')
 })
 
 const selectedInstrument = computed(() =>
@@ -163,8 +181,8 @@ const showPreviewModal = ref(false)
 
 const colorHint = computed(() =>
   form.canClearColor.value
-    ? t('diagramAuthoringView.colorHint')
-    : `${t('diagramAuthoringView.colorHint')} ${t('diagramAuthoringView.colorCannotClearHint')}`,
+    ? te('diagramAuthoringView.colorHint')
+    : `${te('diagramAuthoringView.colorHint')} ${te('diagramAuthoringView.colorCannotClearHint')}`,
 )
 
 const previewDiagram = computed<Diagram | null>(() => {
@@ -332,32 +350,30 @@ async function saveAs(names: Record<string, string>) {
         class="flex min-w-0 flex-1 flex-col gap-6"
         :class="isCompact ? 'px-4 pb-6 pt-[20px]' : 'px-[48px] pb-[80px] pt-10'"
       >
+        <DiagramLanguageTabs
+          :languages="form.languages.value"
+          :active="activeLanguage"
+          :incomplete="form.missingNameLanguages.value"
+          :locked="editsTemplate"
+          @select="selectedLanguage = $event"
+          @add="addLanguage"
+          @remove="form.removeLanguage"
+        />
+
+        <LocaleScope :locale="editingLocale">
         <div class="flex flex-col gap-1.5">
           <input
-            :value="form.names.value[currentLanguage] ?? ''"
+            :value="form.names.value[activeLanguage] ?? ''"
             type="text"
             data-test="diagram-name"
-            :placeholder="t('diagramAuthoringView.namePlaceholder')"
+            :lang="editingLocale"
+            :placeholder="te('diagramAuthoringView.namePlaceholder')"
             class="border-none bg-transparent font-bold text-ink outline-none"
             :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
-            @input="form.setName(currentLanguage, ($event.target as HTMLInputElement).value)"
+            @input="form.setName(activeLanguage, ($event.target as HTMLInputElement).value)"
           />
-          <label
-            v-for="code in otherLanguages"
-            :key="code"
-            class="flex items-center gap-2 text-sm text-ink-muted"
-          >
-            <span class="w-28 shrink-0">{{ t('diagramAuthoringView.nameInLanguage', { language: languageLabel(code) }) }}</span>
-            <input
-              :value="form.names.value[code] ?? ''"
-              type="text"
-              :data-test="`diagram-name-${code}`"
-              class="min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-ink"
-              @input="form.setName(code, ($event.target as HTMLInputElement).value)"
-            />
-          </label>
           <p v-if="namesMissing" data-test="names-missing-hint" class="text-sm text-ink-subtle">
-            {{ t('diagramAuthoringView.templateNeedsEveryName') }}
+            {{ te('diagramAuthoringView.templateNeedsEveryName') }}
           </p>
         </div>
 
@@ -372,7 +388,7 @@ async function saveAs(names: Record<string, string>) {
 
         <div class="flex flex-col gap-2.5">
           <label class="text-sm font-semibold">{{
-            t('diagramAuthoringView.instrumentLabel')
+            te('diagramAuthoringView.instrumentLabel')
           }}</label>
           <div class="flex w-fit flex-wrap gap-2 rounded-lg bg-surface-sunken p-1">
             <button
@@ -389,17 +405,17 @@ async function saveAs(names: Record<string, string>) {
               "
               @click="form.instrumentId.value = instrument.instrument_id"
             >
-              {{ localizedName(instrument.names) }}
+              {{ localizedNameInEditor(instrument.names) }}
             </button>
           </div>
           <span v-if="isEditMode || form.hasPositions.value" class="text-sm text-ink-subtle">
-            {{ t('diagramAuthoringView.instrumentLockedHint') }}
+            {{ te('diagramAuthoringView.instrumentLockedHint') }}
           </span>
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2.5">
           <label class="text-sm font-semibold" for="diagram-root-note">{{
-            t('diagramAuthoringView.rootNoteLabel')
+            te('diagramAuthoringView.rootNoteLabel')
           }}</label>
           <select
             id="diagram-root-note"
@@ -408,21 +424,21 @@ async function saveAs(names: Record<string, string>) {
             class="w-fit rounded-md border border-border bg-surface px-3 py-2 text-sm"
             @change="onRootNoteChange(($event.target as HTMLSelectElement).value)"
           >
-            <option value="">{{ t('diagramAuthoringView.rootNotePlaceholder') }}</option>
+            <option value="">{{ te('diagramAuthoringView.rootNotePlaceholder') }}</option>
             <option v-for="note in CHROMATIC_SCALE" :key="note" :value="note">{{ note }}</option>
           </select>
-          <span class="text-sm text-ink-subtle">{{ t('diagramAuthoringView.rootNoteHint') }}</span>
+          <span class="text-sm text-ink-subtle">{{ te('diagramAuthoringView.rootNoteHint') }}</span>
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <label class="text-sm font-semibold">{{
-              t('diagramAuthoringView.positionsLabel')
+              te('diagramAuthoringView.positionsLabel')
             }}</label>
             <div class="flex items-center gap-2">
               <ColorPaletteMenu
                 test-id="diagram-color"
-                :title="t('diagramAuthoringView.colorLabel')"
+                :title="te('diagramAuthoringView.colorLabel')"
                 :model-value="form.color.value"
                 :allow-clear="form.canClearColor.value"
                 :hint="colorHint"
@@ -442,7 +458,7 @@ async function saveAs(names: Record<string, string>) {
                   "
                   @click="form.labelDisplay.value = 'interval'"
                 >
-                  {{ t('diagramAuthoringView.labelModeInterval') }}
+                  {{ te('diagramAuthoringView.labelModeInterval') }}
                 </button>
                 <button
                   type="button"
@@ -455,7 +471,7 @@ async function saveAs(names: Record<string, string>) {
                   "
                   @click="form.labelDisplay.value = 'note'"
                 >
-                  {{ t('diagramAuthoringView.labelModeNote') }}
+                  {{ te('diagramAuthoringView.labelModeNote') }}
                 </button>
                 <button
                   type="button"
@@ -468,7 +484,7 @@ async function saveAs(names: Record<string, string>) {
                   "
                   @click="form.labelDisplay.value = 'hidden'"
                 >
-                  {{ t('diagramAuthoringView.labelModeHidden') }}
+                  {{ te('diagramAuthoringView.labelModeHidden') }}
                 </button>
               </div>
             </div>
@@ -489,14 +505,14 @@ async function saveAs(names: Record<string, string>) {
         <div class="flex flex-col gap-4 border-t border-border pt-2">
           <div>
             <label class="text-sm font-semibold">{{
-              t('diagramAuthoringView.classificationLabel')
+              te('diagramAuthoringView.classificationLabel')
             }}</label>
             <span class="-mt-1 block text-[0.8125rem] text-ink-subtle">
-              {{ t('diagramAuthoringView.classificationHint') }}
+              {{ te('diagramAuthoringView.classificationHint') }}
             </span>
           </div>
           <SkillConceptTreePicker
-            :label="t('classificationFields.skillLabel')"
+            :label="te('classificationFields.skillLabel')"
             :nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
             :selected-ids="form.skillIds.value"
             :is-loading="skillsLoading"
@@ -504,7 +520,7 @@ async function saveAs(names: Record<string, string>) {
             @create="onCreateSkill"
           />
           <SkillConceptTreePicker
-            :label="t('classificationFields.conceptLabel')"
+            :label="te('classificationFields.conceptLabel')"
             :nodes="
               concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))
             "
@@ -514,8 +530,10 @@ async function saveAs(names: Record<string, string>) {
             @create="onCreateConcept"
           />
         </div>
+        </LocaleScope>
       </main>
 
+      <LocaleScope :locale="editingLocale">
       <aside
         class="flex flex-col gap-5 bg-surface-raised"
         :class="
@@ -526,7 +544,7 @@ async function saveAs(names: Record<string, string>) {
       >
         <div class="flex flex-col gap-2.5">
           <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">
-            {{ t('diagramAuthoringView.previewLabel') }}
+            {{ te('diagramAuthoringView.previewLabel') }}
           </span>
           <template v-if="previewDiagram && selectedInstrument">
             <FrettedDiagramView
@@ -541,10 +559,10 @@ async function saveAs(names: Record<string, string>) {
               class="w-fit rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink-muted"
               @click="showPreviewModal = true"
             >
-              {{ t('diagramAuthoringView.viewPreviewButton') }}
+              {{ te('diagramAuthoringView.viewPreviewButton') }}
             </button>
           </template>
-          <p v-else class="text-sm text-ink-subtle">{{ t('diagramAuthoringView.previewEmpty') }}</p>
+          <p v-else class="text-sm text-ink-subtle">{{ te('diagramAuthoringView.previewEmpty') }}</p>
         </div>
       </aside>
 
@@ -557,6 +575,7 @@ async function saveAs(names: Record<string, string>) {
         :label-mode="form.labelDisplay.value"
         @close="showPreviewModal = false"
       />
+      </LocaleScope>
 
       <SaveDiagramAsModal
         :open="saveAsKind !== null"

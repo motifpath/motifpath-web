@@ -36,9 +36,17 @@ const INTERVAL_LABEL_KEYS: Record<IntervalCode, MessageKey> = {
 }
 
 /** Every canonical interval code, in the order the API lists them. */
-export const INTERVAL_CODES = Object.keys(INTERVAL_LABEL_KEYS) as IntervalCode[]
+export const INTERVAL_CODES: IntervalCode[] = [
+  'R', 'b2', '2', '#2', 'b3', '3', '4', '#4', 'b5', '5', '#5', 'b6', '6', 'bb7', 'b7', '7',
+  'b9', '9', '#9', '11', '#11', 'b13', '13',
+]
+
+/** Whether `code` is a canonical interval code — an own key only, never an inherited property like "toString". */
+function isIntervalCode(code: string): code is IntervalCode {
+  return Object.prototype.hasOwnProperty.call(INTERVAL_LABEL_KEYS, code)
+}
 
 /** The message key for `code`, or null when it isn't a canonical code. */
 export function intervalLabelKey(code: string): MessageKey | null {
-  return code in INTERVAL_LABEL_KEYS ? INTERVAL_LABEL_KEYS[code as IntervalCode] : null
+  return isIntervalCode(code) ? INTERVAL_LABEL_KEYS[code] : null
 }
