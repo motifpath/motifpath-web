@@ -1015,6 +1015,28 @@ describe('ContentAuthoringView', () => {
         expect(rows[0].text()).toContain('Edited title')
       })
 
+      it('keeps the node\'s languages when publishing saves the draft first', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse({
+            ...contentNodeFixture,
+            languages: [{ code: 'pt_BR', name: 'Portuguese (Brazil)' }],
+          }),
+          '/content-nodes/{content_node_id}/versions': okResponse([]),
+        })
+        PUT.mockResolvedValueOnce(okResponse(contentNodeFixture))
+        POST.mockResolvedValueOnce({ data: versionFixture(1, 't'), error: undefined, response: { status: 201 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="publish-button"]').trigger('click')
+        await flushPromises()
+
+        expect(PUT).toHaveBeenCalledWith(
+          '/content-nodes/{content_node_id}',
+          expect.objectContaining({ body: expect.objectContaining({ language_codes: ['pt_BR'] }) }),
+        )
+      })
+
       it('does not publish when saving the draft fails', async () => {
         routeGET({
           '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),

@@ -245,5 +245,44 @@ describe('useContentNodeForm', () => {
       expect(form.mediaUrl.value).toBe('')
       expect(form.hasBody.value).toBe(false)
     })
+
+    it('sends the loaded node\'s own languages back on update instead of resetting them', () => {
+      const form = useContentNodeForm()
+
+      form.loadFromContentNode({
+        content_node_id: 'cn-1',
+        teacher: { user_id: 't-1', display_name: 'Teacher One' },
+        title: 'Palhetada alternada',
+        content_type: 'video',
+        media_url: 'https://cdn.example.com/lesson.mp4',
+        classification: {
+          skills: [{ skill_id: 's-1', name: 'alternate-picking', parent_id: null }],
+          concepts: [{ concept_id: 'c-1', name: 'picking-technique', parent_id: null }],
+          difficulty_level: 'beginner',
+          review_state: 'pending',
+        },
+        languages: [{ code: 'pt_BR', name: 'Portuguese (Brazil)' }],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.toUpdateContentNodeRequest().language_codes).toEqual(['pt_BR'])
+    })
+
+    it('falls back to language-agnostic when the loaded node carries no languages', () => {
+      const form = useContentNodeForm()
+
+      form.loadFromContentNode({
+        content_node_id: 'cn-1',
+        teacher: { user_id: 't-1', display_name: 'Teacher One' },
+        title: 'Legacy',
+        content_type: 'video',
+        media_url: 'https://cdn.example.com/lesson.mp4',
+        classification: { skills: [], concepts: [], difficulty_level: 'beginner', review_state: 'pending' },
+        languages: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.toUpdateContentNodeRequest().language_codes).toEqual(['any'])
+    })
   })
 })
