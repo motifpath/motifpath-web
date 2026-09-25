@@ -79,7 +79,11 @@ function routeGET(overrides: Record<string, unknown>) {
   GET.mockImplementation((path: string) => {
     if (path in overrides) return Promise.resolve(overrides[path])
     if (path === '/content-nodes') {
-      return Promise.resolve({ data: contentNodePool, error: undefined, response: { status: 200 } })
+      return Promise.resolve({
+        data: { items: contentNodePool, total: contentNodePool.length, limit: 100, offset: 0 },
+        error: undefined,
+        response: { status: 200 },
+      })
     }
     return Promise.resolve({ data: undefined, error: { message: 'unhandled in test' }, response: { status: 500 } })
   })

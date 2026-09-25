@@ -131,7 +131,7 @@ const challengeExercisesState = shallowRef<ChallengeExercisesState | null>(null)
 const challenge = computed(() => challengesState.value?.challenges.value[0] ?? null)
 
 const { saveChallenge } = useSaveChallenge()
-const { exercises: exercisePool } = useListExercises()
+const { exercises: exercisePool } = useListExercises({ loadAll: true })
 
 const challengeModalOpen = ref(false)
 const savingChallenge = ref(false)

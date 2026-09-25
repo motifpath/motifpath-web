@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { Palette } from 'lucide-vue-next'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
@@ -20,12 +21,14 @@ import StateLoading from '@/shared/components/StateLoading.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
+import { canEditDiagram } from '@/shared/utils/diagramOwnership'
 import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
 import type { components } from '@/api/generated/core-domain'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
+type DiagramKind = Diagram['kind']
 
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
@@ -36,6 +39,7 @@ const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 
 const route = useRoute()
+const router = useRouter()
 const rawDiagramId = route.params.id
 const diagramId = Array.isArray(rawDiagramId) ? rawDiagramId[0] : rawDiagramId
 const isEditMode = !!diagramId
@@ -62,16 +66,50 @@ const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreat
   })
 
 const savedDiagramId = ref('')
+// Who may save over the diagram being edited follows from the server's copy of it; null
+// until it has been saved once, since a brand new diagram is always the caller's own.
+const savedOwnership = ref<Pick<Diagram, 'kind' | 'created_by'> | null>(null)
+
+function adoptSaved(diagram: Diagram) {
+  savedDiagramId.value = diagram.diagram_id
+  savedOwnership.value = { kind: diagram.kind, created_by: diagram.created_by }
+}
 
 watch(
   loadedDiagram,
   (diagram) => {
     if (!diagram) return
     form.loadFromDiagram(diagram)
-    savedDiagramId.value = diagram.diagram_id
+    adoptSaved(diagram)
   },
   { immediate: true },
 )
+
+const isAdmin = computed(() => currentUser.profile?.role === 'admin')
+const canSaveInPlace = computed(
+  () =>
+    canAuthor.value &&
+    (savedOwnership.value === null || canEditDiagram(savedOwnership.value, currentUser.profile)),
+)
+// Only a saved diagram has something to copy; a new one is saved with the plain Save.
+const canSaveAs = computed(() => canAuthor.value && savedDiagramId.value !== '')
+// An admin may save as a template at any point, including a brand new diagram.
+const canSaveAsTemplate = computed(() => isAdmin.value)
+// Outlined counterpart of the bar's filled Save pill: clearly a live button, but secondary.
+const secondarySaveClass =
+  'rounded-full border border-accent px-[14px] py-[7px] text-[13px] font-bold text-accent-text disabled:cursor-not-allowed disabled:opacity-50'
+// A copy of a saved diagram is suggested as "<name> (copy)"; a new diagram keeps its own name.
+const saveAsInitialName = computed(() =>
+  savedDiagramId.value
+    ? t('diagramAuthoringView.copyName', { name: form.name.value })
+    : form.name.value,
+)
+const readOnlyReason = computed(() => {
+  if (canSaveInPlace.value || !savedOwnership.value) return ''
+  return savedOwnership.value.kind === 'basic'
+    ? t('diagramAuthoringView.readOnlyTemplate')
+    : t('diagramAuthoringView.readOnlyOtherTeacher')
+})
 
 const selectedInstrument = computed(() =>
   instruments.value.find((i) => i.instrument_id === form.instrumentId.value),
@@ -109,6 +147,8 @@ const previewDiagram = computed<Diagram | null>(() => {
     diagram_id: savedDiagramId.value,
     instrument_id: form.instrumentId.value,
     name: form.name.value,
+    kind: savedOwnership.value?.kind ?? 'custom',
+    created_by: savedOwnership.value?.created_by ?? currentUser.profile?.user_id ?? '',
     root_note: request.root_note ?? null,
     label_display: form.labelDisplay.value,
     color: form.color.value,
@@ -137,7 +177,7 @@ async function save() {
     const diagram = isUpdate
       ? await updateDiagram(savedDiagramId.value, form.toUpdateDiagramRequest())
       : await createDiagram(form.toCreateDiagramRequest())
-    savedDiagramId.value = diagram.diagram_id
+    adoptSaved(diagram)
     form.markSaved(diagram)
 
     justSaved.value = true
@@ -154,6 +194,39 @@ async function save() {
     saving.value = false
   }
 }
+
+const saveAsKind = ref<DiagramKind | null>(null)
+const savingAs = ref(false)
+
+function openSaveAs(kind: DiagramKind) {
+  if (form.canSave.value) saveAsKind.value = kind
+}
+
+/**
+ * Saves what the editor shows as a new diagram, leaving the one it was opened from
+ * untouched, then carries on editing the new one. The form is reloaded from the
+ * server's copy so the positions carry the ids the server assigned to it.
+ */
+async function saveAs(name: string) {
+  if (!saveAsKind.value) return
+  savingAs.value = true
+  const isTemplate = saveAsKind.value === 'basic'
+  try {
+    const created = await createDiagram(form.toCopyRequest(name, saveAsKind.value))
+    form.loadFromDiagram(created)
+    form.markSaved(created)
+    adoptSaved(created)
+    saveAsKind.value = null
+    await router.replace({ name: 'teacher-diagram-edit', params: { id: created.diagram_id } })
+    toast.success(
+      isTemplate ? t('diagramAuthoringView.templateSaved') : t('diagramAuthoringView.copySaved'),
+    )
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : t('diagramAuthoringView.saveFailed'))
+  } finally {
+    savingAs.value = false
+  }
+}
 </script>
 
 <template>
@@ -167,11 +240,34 @@ async function save() {
           ? form.name.value || t('diagramAuthoringView.editDiagramBreadcrumb')
           : t('diagramAuthoringView.newDiagramBreadcrumb')
       "
-      :show-save="canAuthor"
+      :show-save="canSaveInPlace"
       :save-disabled="!form.canSave.value || saving"
       :just-saved="justSaved"
       :on-save="save"
-    />
+    >
+      <template #actions>
+        <button
+          v-if="canSaveAs"
+          type="button"
+          data-test="save-as"
+          :disabled="!form.canSave.value || savingAs"
+          :class="secondarySaveClass"
+          @click="openSaveAs('custom')"
+        >
+          {{ t('diagramAuthoringView.saveAsButton') }}
+        </button>
+        <button
+          v-if="canSaveAsTemplate"
+          type="button"
+          data-test="save-as-template"
+          :disabled="!form.canSave.value || savingAs"
+          :class="secondarySaveClass"
+          @click="openSaveAs('basic')"
+        >
+          {{ t('diagramAuthoringView.saveAsTemplateButton') }}
+        </button>
+      </template>
+    </AppBar>
 
     <div
       v-if="!canAuthor"
@@ -215,6 +311,15 @@ async function save() {
             :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
           />
         </div>
+
+        <p
+          v-if="readOnlyReason"
+          data-test="read-only-notice"
+          class="rounded-md border border-border bg-surface-sunken px-4 py-3 text-sm text-ink-muted"
+        >
+          {{ readOnlyReason }}
+        </p>
+
 
         <div class="flex flex-col gap-2.5">
           <label class="text-sm font-semibold">{{
@@ -402,6 +507,15 @@ async function save() {
         :diagram-ref="previewDiagramRef"
         :label-mode="form.labelDisplay.value"
         @close="showPreviewModal = false"
+      />
+
+      <SaveDiagramAsModal
+        :open="saveAsKind !== null"
+        :initial-name="saveAsInitialName"
+        :as-template="saveAsKind === 'basic'"
+        :saving="savingAs"
+        @confirm="saveAs"
+        @close="saveAsKind = null"
       />
     </div>
   </div>

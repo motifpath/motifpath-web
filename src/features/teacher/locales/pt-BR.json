@@ -132,7 +132,14 @@
     "loadingNoun": "diagramas",
     "loadErrorMessage": "Não foi possível carregar os diagramas.",
     "emptyHeading": "Ainda não há diagramas",
-    "emptyMessage": "Crie seu primeiro diagrama para começar a construir a biblioteca reutilizável."
+    "emptyMessage": "Crie seu primeiro diagrama para começar a construir a biblioteca reutilizável.",
+    "scopeLabel": "Mostrar",
+    "scopes": {
+      "all": "Todos",
+      "templates": "Modelos",
+      "mine": "Meus"
+    },
+    "templateBadge": "Modelo"
   },
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "Novo diagrama",
@@ -164,7 +171,14 @@
     "createConceptFailed": "Falha ao criar o conceito",
     "colorLabel": "Cor dos marcadores",
     "colorHint": "Vale para todos os marcadores sem cor própria. Escolha uma cor em uma posição para substituí-la.",
-    "colorCannotClearHint": "Uma cor salva pode ser trocada, mas ainda não pode ser removida."
+    "colorCannotClearHint": "Uma cor salva pode ser trocada, mas ainda não pode ser removida.",
+    "readOnlyTemplate": "Este é um modelo, então só um administrador pode alterá-lo. Use Salvar como para criar sua própria cópia.",
+    "readOnlyOtherTeacher": "Este diagrama pertence a outro professor. Use Salvar como para criar sua própria cópia.",
+    "saveAsButton": "Salvar como…",
+    "saveAsTemplateButton": "Salvar como modelo…",
+    "copyName": "{name} (cópia)",
+    "copySaved": "Cópia salva",
+    "templateSaved": "Modelo salvo"
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
@@ -351,5 +365,14 @@
     "save": "Salvar pop-up",
     "timingInvalidSeconds": "Use segundos inteiros, a partir de 0.",
     "timingInvalidParagraph": "Use números inteiros: o parágrafo começa em 1 e a duração é de pelo menos 1 ms."
+  },
+  "saveDiagramAsModal": {
+    "copyTitle": "Salvar uma cópia",
+    "templateTitle": "Salvar como modelo",
+    "nameLabel": "Nome",
+    "copyHint": "Cria um novo diagrama seu. O diagrama de origem continua como está.",
+    "templateHint": "Cria um novo modelo que todos os professores podem usar. O diagrama de origem continua como está.",
+    "cancel": "Cancelar",
+    "confirm": "Salvar"
   }
 }

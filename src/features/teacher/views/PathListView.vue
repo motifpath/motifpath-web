@@ -4,6 +4,7 @@ import { computed } from 'vue'
 
 import { useListLearningPaths } from '@/features/teacher/composables/useListLearningPaths'
 import AppBar from '@/shared/components/AppBar.vue'
+import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -18,7 +19,8 @@ const canAuthor = computed(
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
-const { learningPaths, isLoading, error, retry } = useListLearningPaths()
+const { learningPaths, total, isLoading, isLoadingMore, error, loadMoreError, retry, loadMore } =
+  useListLearningPaths()
 </script>
 
 <template>
@@ -61,22 +63,31 @@ const { learningPaths, isLoading, error, retry } = useListLearningPaths()
         </template>
       </StateEmpty>
 
-      <ul v-else class="flex flex-col gap-2">
-        <li v-for="learningPath in learningPaths" :key="learningPath.learning_path_id">
-          <RouterLink
-            :to="{ name: 'teacher-path-edit', params: { id: learningPath.learning_path_id } }"
-            data-test="learning-path-row"
-            class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
-          >
-            <span class="font-semibold text-ink">{{ learningPath.title }}</span>
-            <span class="text-sm text-ink-subtle">{{
-              learningPath.items.length === 1
-                ? t('pathListView.nodeCountSingular', { count: learningPath.items.length })
-                : t('pathListView.nodeCountPlural', { count: learningPath.items.length })
-            }}</span>
-          </RouterLink>
-        </li>
-      </ul>
+      <template v-else>
+        <ul class="flex flex-col gap-2">
+          <li v-for="learningPath in learningPaths" :key="learningPath.learning_path_id">
+            <RouterLink
+              :to="{ name: 'teacher-path-edit', params: { id: learningPath.learning_path_id } }"
+              data-test="learning-path-row"
+              class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
+            >
+              <span class="font-semibold text-ink">{{ learningPath.title }}</span>
+              <span class="text-sm text-ink-subtle">{{
+                learningPath.items.length === 1
+                  ? t('pathListView.nodeCountSingular', { count: learningPath.items.length })
+                  : t('pathListView.nodeCountPlural', { count: learningPath.items.length })
+              }}</span>
+            </RouterLink>
+          </li>
+        </ul>
+        <LoadMoreButton
+          :loaded="learningPaths.length"
+          :total="total"
+          :loading="isLoadingMore"
+          :failed="loadMoreError"
+          @load="loadMore"
+        />
+      </template>
     </div>
   </div>
 </template>

@@ -54,7 +54,7 @@ describe('ContentListView', () => {
 
   it('shows a permission-denied state for a student instead of the list', () => {
     currentUser.profile.role = 'student'
-    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
     const wrapper = mountView()
 
     expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
@@ -74,7 +74,7 @@ describe('ContentListView', () => {
 
     expect(wrapper.find('[data-test="error"]').exists()).toBe(true)
 
-    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
     await wrapper.get('[data-test="retry"]').trigger('click')
     await new Promise((r) => setTimeout(r, 0))
 
@@ -82,7 +82,7 @@ describe('ContentListView', () => {
   })
 
   it('shows an empty state with a link to create the first content node', async () => {
-    GET.mockResolvedValueOnce({ data: [], error: undefined, response: { status: 200 } })
+    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
     const wrapper = mountView()
     await new Promise((r) => setTimeout(r, 0))
 
@@ -93,20 +93,25 @@ describe('ContentListView', () => {
 
   it('lists content nodes, each linking to its edit route', async () => {
     GET.mockResolvedValueOnce({
-      data: [
-        {
-          content_node_id: 'cn-1',
-          title: 'Alternate picking basics',
-          content_type: 'video',
-          classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' },
-        },
-        {
-          content_node_id: 'cn-2',
-          title: 'Chord theory primer',
-          content_type: 'article',
-          classification: { skill: 's', concept: 'c', difficulty_level: 'advanced', review_state: 'confirmed' },
-        },
-      ],
+      data: {
+        items: [
+          {
+            content_node_id: 'cn-1',
+            title: 'Alternate picking basics',
+            content_type: 'video',
+            classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' },
+          },
+          {
+            content_node_id: 'cn-2',
+            title: 'Chord theory primer',
+            content_type: 'article',
+            classification: { skill: 's', concept: 'c', difficulty_level: 'advanced', review_state: 'confirmed' },
+          },
+        ],
+        total: 2,
+        limit: 20,
+        offset: 0,
+      },
       error: undefined,
       response: { status: 200 },
     })
@@ -126,5 +131,28 @@ describe('ContentListView', () => {
         { name: 'teacher-content-edit', params: { id: 'cn-2' } },
       ]),
     )
+  })
+
+  it('loads the next page when the teacher asks for more', async () => {
+    GET.mockResolvedValueOnce({
+      data: { items: [{ content_node_id: 'cn-1', title: 'Alternate picking basics', content_type: 'video' }], total: 2, limit: 20, offset: 0 },
+      error: undefined,
+      response: { status: 200 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(wrapper.text()).toContain('Showing 1 of 2')
+
+    GET.mockResolvedValueOnce({
+      data: { items: [{ content_node_id: 'cn-2', title: 'Chord theory primer', content_type: 'article' }], total: 2, limit: 20, offset: 1 },
+      error: undefined,
+      response: { status: 200 },
+    })
+    await wrapper.get('[data-test="load-more"]').trigger('click')
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(GET).toHaveBeenLastCalledWith('/content-nodes', { params: { query: { limit: 20, offset: 1 } } })
+    expect(wrapper.findAll('[data-test="content-node-row"]')).toHaveLength(2)
+    expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
   })
 })

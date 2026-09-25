@@ -6,8 +6,8 @@ type CoreApi = ReturnType<typeof useApi>['coreApi']
 
 /**
  * Generic factory for a "fetch a list on setup, expose loading/error/retry"
- * composable. `perform` makes the actual typed openapi-fetch GET call (and
- * unwraps an `{items, total}` envelope when the endpoint returns one) —
+ * composable, for endpoints that return a bare array (paginated endpoints use
+ * `useApiPagedList`). `perform` makes the actual typed openapi-fetch GET call —
  * this only centralizes the shared ref/loading/error/auto-load/retry
  * contract every list composable in this codebase follows. Args are
  * captured once, at composable-construction time, matching every existing

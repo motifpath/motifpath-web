@@ -164,6 +164,7 @@ describe('useDiagramForm', () => {
     expect(request).toEqual({
       instrument_id: 'instrument-guitar',
       name: 'Minor Pentatonic — Position 1',
+      kind: 'custom',
       root_note: 'A',
       label_display: 'note',
       color: null,
@@ -343,6 +344,40 @@ describe('useDiagramForm', () => {
       form.loadFromDiagram(makeFrettedDiagram())
 
       expect(form.color.value).toBeNull()
+    })
+  })
+
+  describe('saving a copy', () => {
+    function loadedForm() {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeFrettedDiagram({ color: '#3B82F6' }))
+      return form
+    }
+
+    it('builds a custom copy under the new name, with everything the editor shows', () => {
+      const form = loadedForm()
+
+      const request = form.toCopyRequest('My Pentatonic', 'custom')
+
+      expect(request.name).toBe('My Pentatonic')
+      expect(request.kind).toBe('custom')
+      expect(request.instrument_id).toBe('instrument-guitar')
+      expect(request.root_note).toBe('A')
+      expect(request.color).toBe('#3B82F6')
+      expect(request.positions.map((p) => [p.string, p.fret, p.interval])).toEqual(
+        form.toCreateDiagramRequest().positions.map((p) => [p.string, p.fret, p.interval]),
+      )
+    })
+
+    it('builds a basic copy when saving as a template', () => {
+      expect(loadedForm().toCopyRequest('Pentatonic Template', 'basic').kind).toBe('basic')
+    })
+
+    it("leaves every position id for the server to assign, since the source diagram's ids are already taken", () => {
+      const request = loadedForm().toCopyRequest('My Pentatonic', 'custom')
+
+      expect(request.positions.length).toBeGreaterThan(0)
+      expect(request.positions.every((p) => p.position_id === undefined)).toBe(true)
     })
   })
 })
