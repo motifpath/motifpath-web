@@ -114,4 +114,63 @@ describe('computeFrettedDiagramLayout', () => {
     const plain = computeFrettedDiagramLayout(makeFrettedDiagram(), makeFrettedInstrument(), makeDiagramRef())
     expect(plain.positions.every((p) => p.color === null)).toBe(true)
   })
+
+  it("carries each position's custom label and note, null when it has none", () => {
+    const base = makeFrettedDiagram()
+    const diagram = makeFrettedDiagram({
+      positions: base.positions.map((p, i) =>
+        i === 1 ? { ...p, custom_label: { en: 'Av', pt_BR: 'Ev' }, note: { en: 'Avoid it', pt_BR: 'Evite' } } : p,
+      ),
+    })
+
+    const layout = computeFrettedDiagramLayout(diagram, makeFrettedInstrument(), makeDiagramRef())
+
+    expect(layout.positions[1]).toMatchObject({
+      customLabel: { en: 'Av', pt_BR: 'Ev' },
+      note: { en: 'Avoid it', pt_BR: 'Evite' },
+    })
+    expect(layout.positions[0]).toMatchObject({ customLabel: null, note: null })
+  })
+
+  it('resolves regions in drawing order, a band without string bounds covering every string', () => {
+    const diagram = makeFrettedDiagram({
+      regions: [
+        { region_id: 'r1', fret_start: 5, fret_end: 8, description: { en: 'Box 1' }, color: null },
+        {
+          region_id: 'r2',
+          fret_start: 7,
+          fret_end: 8,
+          string_start: 1,
+          string_end: 3,
+          description: { en: 'Box 2' },
+          color: '#22C55E',
+        },
+      ],
+    })
+
+    const layout = computeFrettedDiagramLayout(diagram, makeFrettedInstrument(), makeDiagramRef())
+
+    expect(layout.regions).toEqual([
+      { regionId: 'r1', fretStart: 5, fretEnd: 8, stringStart: 1, stringEnd: 6, description: { en: 'Box 1' }, color: null },
+      { regionId: 'r2', fretStart: 7, fretEnd: 8, stringStart: 1, stringEnd: 3, description: { en: 'Box 2' }, color: '#22C55E' },
+    ])
+  })
+
+  it('widens the fret window to cover every region, not just the positions', () => {
+    const diagram = makeFrettedDiagram({
+      regions: [{ region_id: 'r1', fret_start: 3, fret_end: 12, description: { en: 'Wide' }, color: null }],
+    })
+
+    const layout = computeFrettedDiagramLayout(diagram, makeFrettedInstrument(), makeDiagramRef())
+
+    // positions span 5..8; the region spans 3..12
+    expect(layout.minFret).toBe(2)
+    expect(layout.maxFret).toBe(13)
+  })
+
+  it('has no regions when the diagram has none', () => {
+    const layout = computeFrettedDiagramLayout(makeFrettedDiagram(), makeFrettedInstrument(), makeDiagramRef())
+
+    expect(layout.regions).toEqual([])
+  })
 })
