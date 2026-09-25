@@ -916,6 +916,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/courses/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the courses visible to the caller
+         * @description Returns every distinct user who created at least one course the
+         *     caller would see in GET /courses, so a client can offer a
+         *     complete creator filter (the created_by parameter of GET
+         *     /courses) without paging through the whole catalog.
+         *
+         *     Visibility follows GET /courses exactly. A student gets the
+         *     creators of published courses only — a creator whose courses are
+         *     all drafts or retired is left out. A teacher gets at most
+         *     themselves, since their course list is always limited to their
+         *     own courses. An admin gets the creator of every course, whatever
+         *     its status.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the size of the catalog. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         */
+        get: operations["listCourseCreators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses/{course_id}": {
         parameters: {
             query?: never;
@@ -1829,6 +1865,74 @@ export interface components {
              *     is keyboard; absent when fretted.
              */
             key?: string;
+            /**
+             * @description A short label (at most 2 characters per language, e.g. {"en":
+             *     "Av", "pt_BR": "Ev"}) the marker shows instead of the interval or
+             *     note name chosen by the Diagram's label_display; hidden still
+             *     hides every label, this one included. Absent means none. Keyed
+             *     by exactly the parent Diagram's languages.
+             */
+            custom_label?: components["schemas"]["LocalizedMarkerLabel"];
+            /**
+             * @description A note about this position (at most 280 characters per
+             *     language), shown when the marker is hovered, focused or tapped
+             *     and read by screen readers as the marker's description. Absent
+             *     means none. Keyed by exactly the parent Diagram's languages.
+             */
+            note?: components["schemas"]["LocalizedNote"];
+        };
+        /**
+         * @description A highlighted area of a Diagram, drawn as a translucent band behind
+         *     the markers with its description shown alongside. Coordinates are
+         *     physical and follow the parent Diagram's instrument family, like
+         *     positions: fret_start/fret_end (and optionally string_start/
+         *     string_end) for fretted instruments, key_start/key_end for keyboard
+         *     ones — never both. Regions may overlap.
+         */
+        DiagramRegion: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this region. Always present in a response;
+             *     optional in a create/update request — omitted values are
+             *     assigned by the server.
+             */
+            region_id?: string;
+            /**
+             * @description First fret of the band, inclusive. Required, with fret_end, when
+             *     the instrument family is fretted; absent when keyboard.
+             */
+            fret_start?: number;
+            /** @description Last fret of the band, inclusive; not below fret_start. */
+            fret_end?: number;
+            /**
+             * @description First string of the band, inclusive (1 = highest-pitched).
+             *     Optional, and only with string_end, for fretted instruments;
+             *     both omitted means the band covers every string.
+             */
+            string_start?: number;
+            /**
+             * @description Last string of the band, inclusive; not below string_start and
+             *     not beyond the instrument's string count.
+             */
+            string_end?: number;
+            /**
+             * @description First key of the band (e.g. "C4"), inclusive. Required, with
+             *     key_end, when the instrument family is keyboard; absent when
+             *     fretted.
+             */
+            key_start?: string;
+            /** @description Last key of the band (e.g. "B4"), inclusive; not below key_start. */
+            key_end?: string;
+            /**
+             * @description The band's caption, at most 60 characters per language. Keyed
+             *     by exactly the parent Diagram's languages.
+             */
+            description: components["schemas"]["LocalizedCaption"];
+            /**
+             * @description The band's tint as #RRGGBB. Null (or omitted) means the default
+             *     tint.
+             */
+            color?: string | null;
         };
         /**
          * @description Classification for a new or updated Diagram. Diagrams share the
@@ -1934,6 +2038,11 @@ export interface components {
              *     family.
              */
             positions: components["schemas"]["DiagramPosition"][];
+            /**
+             * @description The diagram's highlighted regions, in drawing order (later ones
+             *     on top); empty when there are none.
+             */
+            regions: components["schemas"]["DiagramRegion"][];
             classification: components["schemas"]["DiagramClassification"];
             /**
              * Format: date-time
@@ -1943,9 +2052,11 @@ export interface components {
         };
         /**
          * @description Payload for creating a new diagram. Every position's string/fret vs.
-         *     key must match the referenced instrument's family — the API rejects
-         *     a request that mixes shapes or supplies the wrong shape for the
-         *     instrument.
+         *     key, and every region's coordinates, must match the referenced
+         *     instrument's family — the API rejects a request that mixes shapes or
+         *     supplies the wrong shape for the instrument. Every per-language text
+         *     (positions' custom_label and note, regions' description) must be
+         *     keyed by exactly the languages of names.
          */
         CreateDiagramRequest: {
             /**
@@ -1992,11 +2103,20 @@ export interface components {
              *     supplied by the client or left for the server to assign.
              */
             positions: components["schemas"]["DiagramPosition"][];
+            /**
+             * @description The diagram's highlighted regions, in drawing order, in the
+             *     coordinate shape matching the instrument's family. Omitted means
+             *     none. region_id may be supplied or left for the server to assign.
+             */
+            regions?: components["schemas"]["DiagramRegion"][];
             classification: components["schemas"]["DiagramClassificationInput"];
         };
         /**
          * @description Payload for replacing an existing diagram's names, positions,
-         *     classification, root_note, label_display, or color. instrument_id is not
+         *     regions, classification, root_note, label_display, or color. Every
+         *     per-language text on the diagram — names, positions' custom_label
+         *     and note, regions' description — must cover exactly the same
+         *     languages once the update is applied. instrument_id is not
          *     present here — it cannot be changed after creation, since every
          *     position's coordinate shape depends on it. Nor are kind and
          *     created_by, which are fixed at creation; a copy saved under a
@@ -2039,6 +2159,12 @@ export interface components {
              *     full set.
              */
             positions?: components["schemas"]["DiagramPosition"][];
+            /**
+             * @description The diagram's full region list, replacing the current set; an
+             *     empty list removes every region. Omitted leaves the regions
+             *     unchanged.
+             */
+            regions?: components["schemas"]["DiagramRegion"][];
             classification?: components["schemas"]["DiagramClassificationInput"];
         };
         /**
@@ -3493,6 +3619,27 @@ export interface components {
         LocalizedNames: {
             [key: string]: string;
         };
+        /**
+         * @description A marker label in one or more languages, keyed by Language.code
+         *     (never "any"); each value fits inside a marker.
+         */
+        LocalizedMarkerLabel: {
+            [key: string]: string;
+        };
+        /**
+         * @description A short note in one or more languages, keyed by Language.code
+         *     (never "any").
+         */
+        LocalizedNote: {
+            [key: string]: string;
+        };
+        /**
+         * @description A caption in one or more languages, keyed by Language.code (never
+         *     "any").
+         */
+        LocalizedCaption: {
+            [key: string]: string;
+        };
         /** @description Payload for replacing an instrument's names. */
         UpdateInstrumentRequest: {
             /**
@@ -3641,6 +3788,7 @@ export type SchemaCreateConceptRequest = components['schemas']['CreateConceptReq
 export type SchemaInstrument = components['schemas']['Instrument'];
 export type SchemaCreateInstrumentRequest = components['schemas']['CreateInstrumentRequest'];
 export type SchemaDiagramPosition = components['schemas']['DiagramPosition'];
+export type SchemaDiagramRegion = components['schemas']['DiagramRegion'];
 export type SchemaDiagramClassificationInput = components['schemas']['DiagramClassificationInput'];
 export type SchemaDiagramClassification = components['schemas']['DiagramClassification'];
 export type SchemaDiagram = components['schemas']['Diagram'];
@@ -3689,6 +3837,9 @@ export type SchemaMediaUploadUrl = components['schemas']['MediaUploadUrl'];
 export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
 export type SchemaLocalizedNames = components['schemas']['LocalizedNames'];
+export type SchemaLocalizedMarkerLabel = components['schemas']['LocalizedMarkerLabel'];
+export type SchemaLocalizedNote = components['schemas']['LocalizedNote'];
+export type SchemaLocalizedCaption = components['schemas']['LocalizedCaption'];
 export type SchemaUpdateInstrumentRequest = components['schemas']['UpdateInstrumentRequest'];
 export type SchemaLanguage = components['schemas']['Language'];
 export type SchemaUpdateMyLocaleRequest = components['schemas']['UpdateMyLocaleRequest'];
@@ -5671,9 +5822,12 @@ export interface operations {
             };
             /**
              * @description The request body failed schema validation — including a
-             *     position's coordinate fields not matching the referenced
-             *     instrument's family, or a skill_ids/concept_ids entry that does
-             *     not reference an existing skill or concept.
+             *     position's or region's coordinate fields not matching the
+             *     referenced instrument's family, a region range that runs
+             *     backwards or past the instrument's strings, per-language text
+             *     (custom_label, note, region description) not keyed by exactly
+             *     the languages of names, or a skill_ids/concept_ids entry that
+             *     does not reference an existing skill or concept.
              */
             400: {
                 headers: {
@@ -5771,7 +5925,11 @@ export interface operations {
                     "application/json": components["schemas"]["Diagram"];
                 };
             };
-            /** @description The request body failed schema validation. */
+            /**
+             * @description The request body failed validation — including the same rules
+             *     as createDiagram, checked against the diagram as it would be
+             *     after the update.
+             */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6225,6 +6383,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listCourseCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the courses visible to the caller, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
         };
