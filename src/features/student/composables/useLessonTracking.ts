@@ -53,7 +53,7 @@ export function useLessonTracking(lesson: LessonTrackingSource) {
     return {
       content_node_id: node.content_node_id,
       content_type: node.content_type,
-      teacher_id: node.teacher_id,
+      teacher_id: node.teacher.user_id,
     }
   }
 

@@ -16,5 +16,5 @@ export function canEditDiagram(
 ): boolean {
   if (!user) return false
   if (user.role === 'admin') return true
-  return user.role === 'teacher' && diagram.kind === 'custom' && diagram.created_by === user.user_id
+  return user.role === 'teacher' && diagram.kind === 'custom' && diagram.created_by.user_id === user.user_id
 }

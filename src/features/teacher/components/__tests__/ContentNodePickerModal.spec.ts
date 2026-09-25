@@ -9,7 +9,7 @@ type ContentNode = components['schemas']['ContentNode']
 function makeContentNode(overrides: Partial<ContentNode>): ContentNode {
   return {
     content_node_id: 'cn-1',
-    teacher_id: 't-1',
+    teacher: { user_id: 't-1', display_name: 'Teacher One' },
     title: 'Untitled',
     content_type: 'video',
     classification: {

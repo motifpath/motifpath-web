@@ -23,7 +23,7 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
     instrument_id: 'instrument-guitar',
     name: 'Minor Pentatonic — Position 1',
     kind: 'custom',
-    created_by: 'user-teacher',
+    created_by: { user_id: 'user-teacher', display_name: 'Bob Ferreira' },
     root_note: 'A',
     label_display: 'interval',
     color: null,

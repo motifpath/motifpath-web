@@ -148,7 +148,10 @@ const previewDiagram = computed<Diagram | null>(() => {
     instrument_id: form.instrumentId.value,
     name: form.name.value,
     kind: savedOwnership.value?.kind ?? 'custom',
-    created_by: savedOwnership.value?.created_by ?? currentUser.profile?.user_id ?? '',
+    created_by: savedOwnership.value?.created_by ?? {
+      user_id: currentUser.profile?.user_id ?? '',
+      display_name: currentUser.profile?.display_name ?? '',
+    },
     root_note: request.root_note ?? null,
     label_display: form.labelDisplay.value,
     color: form.color.value,

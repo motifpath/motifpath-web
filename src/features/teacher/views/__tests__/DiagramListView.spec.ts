@@ -102,8 +102,8 @@ describe('DiagramListView', () => {
   it('lists diagrams, each linking to its edit route', async () => {
     GET.mockResolvedValueOnce(
       page([
-        { diagram_id: 'd-1', name: 'Minor Pentatonic — Position 1', instrument_id: 'i-1', kind: 'custom', created_by: 'u-teacher' },
-        { diagram_id: 'd-2', name: 'C Major Scale', instrument_id: 'i-1', kind: 'basic', created_by: 'u-admin' },
+        { diagram_id: 'd-1', name: 'Minor Pentatonic — Position 1', instrument_id: 'i-1', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
+        { diagram_id: 'd-2', name: 'C Major Scale', instrument_id: 'i-1', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
       ]),
     )
     const wrapper = mountView()
@@ -126,8 +126,8 @@ describe('DiagramListView', () => {
   it('marks basic diagrams as templates, and only them', async () => {
     GET.mockResolvedValueOnce(
       page([
-        { diagram_id: 'd-1', name: 'Mine', kind: 'custom', created_by: 'u-teacher' },
-        { diagram_id: 'd-2', name: 'Template', kind: 'basic', created_by: 'u-admin' },
+        { diagram_id: 'd-1', name: 'Mine', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
+        { diagram_id: 'd-2', name: 'Template', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
       ]),
     )
     const wrapper = mountView()
@@ -160,14 +160,14 @@ describe('DiagramListView', () => {
   })
 
   it('shows how many diagrams are loaded and loads the next page on request', async () => {
-    GET.mockResolvedValueOnce(page([{ diagram_id: 'd-1', name: 'A', kind: 'basic', created_by: 'u-admin' }], 2))
+    GET.mockResolvedValueOnce(page([{ diagram_id: 'd-1', name: 'A', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], 2))
     const wrapper = mountView()
     await flush()
 
     expect(wrapper.text()).toContain('Showing 1 of 2')
 
     GET.mockResolvedValueOnce({
-      data: { items: [{ diagram_id: 'd-2', name: 'B', kind: 'basic', created_by: 'u-admin' }], total: 2, limit: 20, offset: 1 },
+      data: { items: [{ diagram_id: 'd-2', name: 'B', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], total: 2, limit: 20, offset: 1 },
       error: undefined,
       response: { status: 200 },
     })

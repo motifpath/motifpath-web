@@ -77,7 +77,10 @@ import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import SkillConceptTreePicker from '@/features/teacher/components/SkillConceptTreePicker.vue'
 import DiagramAuthoringView from '@/features/teacher/views/DiagramAuthoringView.vue'
+import type { components } from '@/api/generated/core-domain'
 import { useToast } from '@/shared/composables/useToast'
+
+type Diagram = components['schemas']['Diagram']
 
 async function selectClassification(wrapper: ReturnType<typeof mountView>) {
   const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
@@ -334,7 +337,7 @@ describe('DiagramAuthoringView', () => {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
           kind: 'custom',
-          created_by: 'u-teacher',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           name: 'C Major Scale',
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
           classification: {
@@ -352,7 +355,7 @@ describe('DiagramAuthoringView', () => {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
           kind: 'custom',
-          created_by: 'u-teacher',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           name: 'C Major Scale (updated)',
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
           classification: {
@@ -389,7 +392,7 @@ describe('DiagramAuthoringView', () => {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
           kind: 'custom',
-          created_by: 'u-teacher',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           name: 'C Major Scale',
           root_note: 'C',
           label_display: 'note',
@@ -420,7 +423,7 @@ describe('DiagramAuthoringView', () => {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
           kind: 'custom',
-          created_by: 'u-teacher',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           name: 'C Major Scale',
           root_note: 'C',
           label_display: 'interval',
@@ -459,7 +462,7 @@ describe('DiagramAuthoringView', () => {
           diagram_id: 'd-1',
           instrument_id: 'i-1',
           kind: 'custom',
-          created_by: 'u-teacher',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           name: 'C Major Scale',
           root_note: 'C',
           label_display: 'interval',
@@ -501,7 +504,7 @@ describe('DiagramAuthoringView', () => {
       created_at: '2026-09-22T00:00:00Z',
     }
 
-    async function openDiagram(owner: { kind: 'basic' | 'custom'; created_by: string }) {
+    async function openDiagram(owner: Pick<Diagram, 'kind' | 'created_by'>) {
       route.params = { id: 'd-1' }
       GET.mockResolvedValueOnce({ data: { ...scale, ...owner }, error: undefined, response: { status: 200 } })
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
@@ -514,7 +517,7 @@ describe('DiagramAuthoringView', () => {
       wrapper.findComponent({ name: 'AppBar' }).props('showSave')
 
     it('lets a teacher save over their own diagram, and offers Save as but not Save as template', async () => {
-      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-teacher' })
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
 
       expect(appBarShowsSave(wrapper)).toBe(true)
       expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
@@ -525,7 +528,7 @@ describe('DiagramAuthoringView', () => {
     it('puts every way of saving in the top bar', async () => {
       currentUser.profile.role = 'admin'
       currentUser.profile.user_id = 'u-admin'
-      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-teacher' })
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
 
       const appBar = wrapper.findComponent({ name: 'AppBar' })
       expect(appBar.find('[data-test="app-bar-save"]').exists()).toBe(true)
@@ -534,7 +537,7 @@ describe('DiagramAuthoringView', () => {
     })
 
     it('only lets a teacher save a basic template as a copy, and says why', async () => {
-      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
 
       expect(appBarShowsSave(wrapper)).toBe(false)
       expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
@@ -542,7 +545,7 @@ describe('DiagramAuthoringView', () => {
     })
 
     it("only lets a teacher save another teacher's diagram as a copy, and says why", async () => {
-      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-other' })
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-other', display_name: 'Carol Dias' } })
 
       expect(appBarShowsSave(wrapper)).toBe(false)
       expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('another teacher')
@@ -551,7 +554,7 @@ describe('DiagramAuthoringView', () => {
     it('lets an admin save over a template and also offers Save as template', async () => {
       currentUser.profile.role = 'admin'
       currentUser.profile.user_id = 'u-admin'
-      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-someone' })
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-someone', display_name: 'Carol Dias' } })
 
       expect(appBarShowsSave(wrapper)).toBe(true)
       expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
@@ -560,14 +563,14 @@ describe('DiagramAuthoringView', () => {
     })
 
     it('saves a copy of a template as a new custom diagram, then keeps editing the copy', async () => {
-      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
       POST.mockResolvedValueOnce({
         data: {
           ...scale,
           diagram_id: 'd-copy',
           name: 'My C Major',
           kind: 'custom',
-          created_by: 'u-teacher',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
         },
         error: undefined,
@@ -598,14 +601,14 @@ describe('DiagramAuthoringView', () => {
     })
 
     it('updates the copy, not the source, on the next save, using the positions the server assigned', async () => {
-      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
       POST.mockResolvedValueOnce({
         data: {
           ...scale,
           diagram_id: 'd-copy',
           name: 'My C Major',
           kind: 'custom',
-          created_by: 'u-teacher',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
         },
         error: undefined,
@@ -616,7 +619,7 @@ describe('DiagramAuthoringView', () => {
       await new Promise((r) => setTimeout(r, 0))
 
       PATCH.mockResolvedValueOnce({
-        data: { ...scale, diagram_id: 'd-copy', kind: 'custom', created_by: 'u-teacher' },
+        data: { ...scale, diagram_id: 'd-copy', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
         error: undefined,
         response: { status: 200 },
       })
@@ -634,9 +637,9 @@ describe('DiagramAuthoringView', () => {
     it('lets an admin save a copy as a new basic template', async () => {
       currentUser.profile.role = 'admin'
       currentUser.profile.user_id = 'u-admin'
-      const wrapper = await openDiagram({ kind: 'custom', created_by: 'u-teacher' })
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
       POST.mockResolvedValueOnce({
-        data: { ...scale, diagram_id: 'd-tpl', name: 'C Major Template', kind: 'basic', created_by: 'u-admin' },
+        data: { ...scale, diagram_id: 'd-tpl', name: 'C Major Template', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
         error: undefined,
         response: { status: 201 },
       })
@@ -654,7 +657,7 @@ describe('DiagramAuthoringView', () => {
     })
 
     it('keeps the dialog open and reports the error when the copy cannot be saved', async () => {
-      const wrapper = await openDiagram({ kind: 'basic', created_by: 'u-admin' })
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
       POST.mockResolvedValueOnce({ data: undefined, error: { message: 'Could not save' }, response: { status: 500 } })
 
       await wrapper.get('[data-test="save-as"]').trigger('click')
@@ -678,7 +681,7 @@ describe('DiagramAuthoringView', () => {
       currentUser.profile.user_id = 'u-admin'
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
       POST.mockResolvedValueOnce({
-        data: { ...scale, diagram_id: 'd-tpl', name: 'G Major Template', kind: 'basic', created_by: 'u-admin' },
+        data: { ...scale, diagram_id: 'd-tpl', name: 'G Major Template', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
         error: undefined,
         response: { status: 201 },
       })
@@ -708,7 +711,7 @@ describe('DiagramAuthoringView', () => {
     it('sends a new diagram as a custom diagram', async () => {
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
       POST.mockResolvedValueOnce({
-        data: { ...scale, diagram_id: 'd-new', kind: 'custom', created_by: 'u-teacher' },
+        data: { ...scale, diagram_id: 'd-new', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
         error: undefined,
         response: { status: 201 },
       })

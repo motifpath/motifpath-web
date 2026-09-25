@@ -156,7 +156,7 @@ describe('useContentNodeForm', () => {
 
       form.loadFromContentNode({
         content_node_id: 'cn-1',
-        teacher_id: 't-1',
+        teacher: { user_id: 't-1', display_name: 'Teacher One' },
         title: 'Alternate picking basics',
         content_type: 'article',
         classification: {
@@ -182,7 +182,7 @@ describe('useContentNodeForm', () => {
 
       form.loadFromContentNode({
         content_node_id: 'cn-1',
-        teacher_id: 't-1',
+        teacher: { user_id: 't-1', display_name: 'Teacher One' },
         title: 'Alternate picking basics',
         content_type: 'video',
         media_url: 'https://cdn.example.com/lesson.mp4',
@@ -206,7 +206,7 @@ describe('useContentNodeForm', () => {
 
       form.loadFromContentNode({
         content_node_id: 'cn-1',
-        teacher_id: 't-1',
+        teacher: { user_id: 't-1', display_name: 'Teacher One' },
         title: 'Picking theory',
         content_type: 'article',
         rich_content: ARTICLE_BODY,
@@ -229,7 +229,7 @@ describe('useContentNodeForm', () => {
 
       form.loadFromContentNode({
         content_node_id: 'cn-1',
-        teacher_id: 't-1',
+        teacher: { user_id: 't-1', display_name: 'Teacher One' },
         title: 'Legacy',
         content_type: 'video',
         classification: {
