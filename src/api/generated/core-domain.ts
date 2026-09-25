@@ -666,6 +666,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instruments/{instrument_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Replace an instrument's names
+         * @description Replaces an instrument's names — the only part of an instrument that
+         *     can change after creation. family and the string/key shape are
+         *     fixed, because every diagram's positions depend on them. Only admins
+         *     may update an instrument, since instruments are shared by every user
+         *     of the platform.
+         */
+        patch: operations["updateInstrument"];
+        trace?: never;
+    };
     "/diagrams": {
         parameters: {
             query?: never;
@@ -1644,11 +1668,13 @@ export interface components {
              * @description Stable identifier for this instrument.
              */
             instrument_id: string;
+            /** @description The instrument's name in each language it has one for. */
+            names: components["schemas"]["LocalizedNames"];
             /**
-             * @description Human-readable name (e.g. "6-string guitar, standard tuning",
-             *     "4-string bass", "Piano").
+             * @description The Language.code of every language this instrument has a name
+             *     in — the keys of names, sorted.
              */
-            name: string;
+            languages: string[];
             /**
              * @description Which coordinate shape Diagrams authored against this
              *     instrument use. fretted diagrams populate
@@ -1681,14 +1707,18 @@ export interface components {
             };
         };
         /**
-         * @description Payload for creating a new instrument. There is no update or delete
-         *     endpoint yet — instruments are expected to be created rarely, and
+         * @description Payload for creating a new instrument. Only its names can change
+         *     afterwards (see updateInstrument); there is no delete endpoint, and
          *     changing family or string/key shape after Diagrams exist against it
          *     is a deliberately open question.
          */
         CreateInstrumentRequest: {
-            /** @description Human-readable name for this instrument. */
-            name: string;
+            /**
+             * @description The instrument's name in every language MotifPath offers — an
+             *     instrument is shared by every user, so every language is
+             *     required.
+             */
+            names: components["schemas"]["LocalizedNames"];
             /**
              * @description Which coordinate shape Diagrams against this instrument will use.
              * @enum {string}
@@ -3433,6 +3463,23 @@ export interface components {
             role: "student" | "teacher";
         };
         /**
+         * @description Text in one or more languages, keyed by Language.code — for example
+         *     {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
+         *     always words in some language. Clients display the name for the
+         *     viewer's locale, falling back to "en", then to any name present.
+         */
+        LocalizedNames: {
+            [key: string]: string;
+        };
+        /** @description Payload for replacing an instrument's names. */
+        UpdateInstrumentRequest: {
+            /**
+             * @description The instrument's names, replacing the current set — one for
+             *     every language MotifPath offers.
+             */
+            names: components["schemas"]["LocalizedNames"];
+        };
+        /**
          * @description A language MotifPath content or a user's locale preference can be
          *     tagged with. Includes the literal code "any", which marks content as
          *     language-agnostic (e.g. an image with no spoken or written words)
@@ -3619,6 +3666,8 @@ export type SchemaCreateMediaUploadUrlRequest = components['schemas']['CreateMed
 export type SchemaMediaUploadUrl = components['schemas']['MediaUploadUrl'];
 export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
+export type SchemaLocalizedNames = components['schemas']['LocalizedNames'];
+export type SchemaUpdateInstrumentRequest = components['schemas']['UpdateInstrumentRequest'];
 export type SchemaLanguage = components['schemas']['Language'];
 export type SchemaUpdateMyLocaleRequest = components['schemas']['UpdateMyLocaleRequest'];
 export type SchemaUserRef = components['schemas']['UserRef'];
@@ -5401,8 +5450,9 @@ export interface operations {
             /**
              * @description The request body failed schema validation — including
              *     string_count/tuning present with family keyboard, key_range
-             *     present with family fretted, or the matching field-group
-             *     missing for the given family.
+             *     present with family fretted, the matching field-group missing
+             *     for the given family, or names missing a language, carrying
+             *     "any" or an unknown language code, or holding an empty name.
              */
             400: {
                 headers: {
@@ -5428,6 +5478,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    updateInstrument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                instrument_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInstrumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Instrument updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instrument"];
+                };
+            };
+            /**
+             * @description The request body failed validation — including names missing a
+             *     language, carrying "any" or an unknown language code, or a name
+             *     that is empty.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to update an instrument. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No instrument exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
                 };
             };
         };
