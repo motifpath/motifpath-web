@@ -1,7 +1,7 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive, ref } from 'vue'
+import { nextTick, reactive, ref } from 'vue'
 
 const isSignedIn = ref(false)
 vi.mock('@/features/auth/composables/useAuth', () => ({
@@ -18,19 +18,20 @@ vi.mock('@/stores/currentUser', () => ({
 
 import PublicLayout from '@/shared/components/PublicLayout.vue'
 
-function navLabels() {
-  const wrapper = mount(PublicLayout, {
+function mountLayout() {
+  return mount(PublicLayout, {
     global: {
       plugins: [createPinia()],
       stubs: { RouterLink: RouterLinkStub, RouterView: true, AccountMenu: true },
     },
   })
-  return wrapper.find('nav').exists()
-    ? wrapper
-        .get('nav')
-        .findAllComponents(RouterLinkStub)
-        .map((link: { text: () => string }) => link.text())
-    : []
+}
+
+function tabLabels(wrapper: ReturnType<typeof mountLayout>) {
+  return wrapper
+    .get('[data-test="app-bar-tabs"]')
+    .findAllComponents(RouterLinkStub)
+    .map((link: { text: () => string }) => link.text())
 }
 
 function signInAs(role: 'student' | 'teacher' | 'admin') {
@@ -54,26 +55,38 @@ describe('PublicLayout', () => {
     }))
   })
 
-  it('offers no app navigation to a signed-out visitor', () => {
-    expect(navLabels()).toEqual([])
+  it('shows a signed-out visitor the public header, not the app bar', () => {
+    const wrapper = mountLayout()
+
+    expect(wrapper.find('[data-test="app-shell-home"]').exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'AppBar' }).exists()).toBe(false)
   })
 
-  it('offers no app navigation until registration has finished', () => {
+  it('keeps the public header until registration has finished', () => {
     isSignedIn.value = true
 
-    expect(navLabels()).toEqual([])
+    expect(mountLayout().findComponent({ name: 'AppBar' }).exists()).toBe(false)
+  })
+
+  it('gives a signed-in user the same app bar as every other page', () => {
+    signInAs('student')
+    const wrapper = mountLayout()
+
+    expect(wrapper.findComponent({ name: 'AppBar' }).exists()).toBe(true)
+    expect(wrapper.find('[data-test="app-shell-home"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="app-bar-home"]').exists()).toBe(true)
   })
 
   it('offers a student the learner sections', () => {
     signInAs('student')
 
-    expect(navLabels()).toEqual(['My path', 'My courses', 'Find a course'])
+    expect(tabLabels(mountLayout())).toEqual(['My path', 'My courses', 'Find a course'])
   })
 
   it('offers a teacher the learner sections as well as the authoring ones', () => {
     signInAs('teacher')
 
-    expect(navLabels()).toEqual([
+    expect(tabLabels(mountLayout())).toEqual([
       'My path',
       'My courses',
       'Find a course',
@@ -85,18 +98,20 @@ describe('PublicLayout', () => {
     ])
   })
 
-  it('offers an admin both the learner and the authoring sections', () => {
+  it('offers the hamburger menu on a narrow screen', async () => {
     signInAs('admin')
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
 
-    expect(navLabels()).toEqual([
-      'My path',
-      'My courses',
-      'Find a course',
-      'Content',
-      'Paths',
-      'Courses',
-      'Exercises',
-      'Diagrams',
-    ])
+    const wrapper = mountLayout()
+    await nextTick()
+
+    expect(wrapper.find('[data-test="app-bar-menu"]').exists()).toBe(true)
   })
 })

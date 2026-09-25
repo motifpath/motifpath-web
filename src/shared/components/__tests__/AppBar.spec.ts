@@ -25,7 +25,7 @@ function mockMatchMedia(prefersDark = false): void {
 }
 
 interface Props {
-  context: 'student' | 'teacher'
+  context: 'student' | 'teacher' | 'overview'
   compact?: boolean
   primaryNavTo?: { name: string }
   breadcrumbLabel?: string
@@ -107,6 +107,45 @@ describe('AppBar', () => {
     const links = navLinks(mountBar({ context: 'student' }))
 
     expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course'])
+  })
+
+  describe('overview context, for pages outside any section', () => {
+    it("shows a student's sections with none highlighted", () => {
+      const links = navLinks(mountBar({ context: 'overview' }))
+
+      expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course'])
+      expect(links.some((l) => l.classes().includes('bg-accent-muted'))).toBe(false)
+    })
+
+    it('shows an admin the learner and authoring sections, without warning about an active tab', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      currentUser.profile = { role: 'admin' }
+
+      const links = navLinks(mountBar({ context: 'overview' }))
+
+      expect(links.map((l) => l.text())).toEqual([
+        'My path',
+        'My courses',
+        'Find a course',
+        'Content',
+        'Paths',
+        'Courses',
+        'Exercises',
+        'Diagrams',
+      ])
+      expect(warn).not.toHaveBeenCalled()
+      warn.mockRestore()
+    })
+
+    it('offers the same sections in the compact drawer', async () => {
+      currentUser.profile = { role: 'teacher' }
+      const wrapper = mountBar({ context: 'overview', compact: true })
+
+      await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
+
+      const drawerLinks = wrapper.get('[data-test="app-bar-drawer"]').findAllComponents(RouterLinkStub)
+      expect(drawerLinks).toHaveLength(8)
+    })
   })
 
   it('highlights the student tab matching primaryNavTo as active', () => {
