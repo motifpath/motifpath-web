@@ -51,15 +51,23 @@ export function useCourseCreators(scope: CourseCreatorsScope = 'catalog') {
     isLoading.value = false
   }
 
+  function applyQuery(text: string) {
+    const trimmed = text.trim()
+    if (trimmed === appliedQuery) return
+    appliedQuery = trimmed
+    void load()
+  }
+
+  // A search waits for typing to pause; clearing the name restores the full
+  // list at once, so reopening a picker never shows the previous search.
   let searchTimer: ReturnType<typeof setTimeout> | undefined
   watch(nameQuery, (text) => {
     clearTimeout(searchTimer)
-    searchTimer = setTimeout(() => {
-      const trimmed = text.trim()
-      if (trimmed === appliedQuery) return
-      appliedQuery = trimmed
-      void load()
-    }, SEARCH_DEBOUNCE_MS)
+    if (text.trim() === '') {
+      applyQuery(text)
+      return
+    }
+    searchTimer = setTimeout(() => applyQuery(text), SEARCH_DEBOUNCE_MS)
   })
   onScopeDispose(() => clearTimeout(searchTimer))
 

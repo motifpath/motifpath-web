@@ -62,6 +62,19 @@ describe('useCourseCreators', () => {
     expect(GET).toHaveBeenLastCalledWith('/catalog/creators', { params: { query: {} } })
   })
 
+  it('restores the full list at once when the name is cleared, without waiting for typing to pause', async () => {
+    vi.useFakeTimers()
+    const { nameQuery } = useCourseCreators()
+    nameQuery.value = 'dias'
+    await vi.runAllTimersAsync()
+    GET.mockClear()
+
+    nameQuery.value = ''
+    await nextTick()
+
+    expect(GET).toHaveBeenCalledWith('/catalog/creators', { params: { query: {} } })
+  })
+
   it('keeps the latest search when an earlier one answers last', async () => {
     vi.useFakeTimers()
     let answerFirst: (value: unknown) => void = () => {}
