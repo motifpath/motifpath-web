@@ -202,6 +202,7 @@ const previewDiagram = computed<Diagram | null>(() => {
     label_display: form.labelDisplay.value,
     color: form.color.value,
     positions: request.positions,
+    regions: [],
     classification: { skills: [], concepts: [] },
     created_at: '',
   }

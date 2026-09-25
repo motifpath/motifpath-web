@@ -53,6 +53,7 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
       },
       { position_id: 'p5', string: 4, fret: 7, interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 5 },
     ],
+    regions: [],
     classification: { skills: [], concepts: [] },
     created_at: '2026-09-21T12:00:00Z',
     ...overrides,
