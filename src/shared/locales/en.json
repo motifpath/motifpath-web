@@ -1,6 +1,8 @@
 {
   "nav": {
     "student": "My path",
+    "myCourses": "My courses",
+    "findCourse": "Find a course",
     "content": "Content",
     "paths": "Paths",
     "exercises": "Exercises",

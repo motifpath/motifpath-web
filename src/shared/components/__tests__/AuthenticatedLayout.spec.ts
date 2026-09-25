@@ -15,7 +15,7 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
   }),
 }))
 
-const route: { meta: Record<string, unknown> } = { meta: {} }
+const route: { name?: string; meta: Record<string, unknown> } = { meta: {} }
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return { ...actual, useRoute: () => route }
@@ -35,6 +35,7 @@ function mountLayout() {
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {
     route.meta = {}
+    route.name = undefined
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -53,6 +54,21 @@ describe('AuthenticatedLayout', () => {
     const targets = wrapper.findAllComponents(RouterLinkStub).map((link) => link.props('to'))
 
     expect(targets).toContainEqual({ name: 'path' })
+  })
+
+  it.each([
+    ['path', 'My path'],
+    ['node', 'My path'],
+    ['practice', 'My path'],
+    ['my-courses', 'My courses'],
+    ['course-catalog', 'Find a course'],
+  ])('marks the %s route under the %s tab', (routeName, tab) => {
+    route.name = routeName
+    const wrapper = mountLayout()
+
+    const active = wrapper.findAllComponents(RouterLinkStub).filter((l) => l.classes().includes('bg-accent-muted'))
+
+    expect(active.map((l) => l.text())).toEqual([tab])
   })
 
   it('renders the routed view', () => {

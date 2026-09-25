@@ -1,6 +1,8 @@
 {
   "nav": {
     "student": "Minha trilha",
+    "myCourses": "Meus cursos",
+    "findCourse": "Encontrar um curso",
     "content": "Conteúdo",
     "paths": "Trilhas",
     "exercises": "Exercícios",

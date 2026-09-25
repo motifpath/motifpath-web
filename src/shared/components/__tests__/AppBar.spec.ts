@@ -59,12 +59,34 @@ describe('AppBar', () => {
     expect(wrapper.classes()).toContain('top-0')
   })
 
-  it("shows a 'My path' link for student context", () => {
+  it('shows the three student tabs (My path, My courses, Find a course)', () => {
     const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'path' } })
 
-    const link = wrapper.findComponent(RouterLinkStub)
-    expect(link.text()).toBe('My path')
-    expect(link.props('to')).toEqual({ name: 'path' })
+    const links = wrapper.findAllComponents(RouterLinkStub)
+    expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course'])
+    expect(links.map((l) => l.props('to'))).toEqual([
+      { name: 'path' },
+      { name: 'my-courses' },
+      { name: 'course-catalog' },
+    ])
+  })
+
+  it('highlights the student tab matching primaryNavTo as active', () => {
+    const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'course-catalog' } })
+
+    const links = wrapper.findAllComponents(RouterLinkStub)
+    expect(links.find((l) => l.text() === 'Find a course')?.classes()).toContain('bg-accent-muted')
+    expect(links.find((l) => l.text() === 'My path')?.classes()).not.toContain('bg-accent-muted')
+  })
+
+  it('shows the three student tabs in the compact drawer', async () => {
+    const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'my-courses' }, compact: true })
+
+    await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
+
+    const drawerLinks = wrapper.get('[data-test="app-bar-drawer"]').findAllComponents(RouterLinkStub)
+    expect(drawerLinks.map((link: { text: () => string }) => link.text())).toEqual(['My path', 'My courses', 'Find a course'])
+    expect(drawerLinks[1]!.classes()).toContain('bg-accent-muted')
   })
 
   it("shows an 'Exercises' link for teacher context with no breadcrumb", () => {
