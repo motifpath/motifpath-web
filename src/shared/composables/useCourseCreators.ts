@@ -8,11 +8,19 @@ type UserRef = components['schemas']['UserRef']
 const SEARCH_DEBOUNCE_MS = 300
 
 /**
- * The teachers behind the courses the caller can see, for the catalog's
- * teacher filter. The list is complete (never paged) and comes back in name
- * order; typing a name narrows it server-side once typing pauses.
+ * Which course list the creators belong to: the learner catalog (published
+ * courses, the same for everyone) or the caller's authoring list.
  */
-export function useCourseCreators() {
+export type CourseCreatorsScope = 'catalog' | 'managed'
+
+const ENDPOINT = { catalog: '/catalog/creators', managed: '/courses/creators' } as const
+
+/**
+ * The teachers behind a course list, for its teacher filter. The list is
+ * complete (never paged) and comes back in name order; typing a name
+ * narrows it server-side once typing pauses.
+ */
+export function useCourseCreators(scope: CourseCreatorsScope = 'catalog') {
   const { coreApi } = useApi()
 
   const creators = ref<UserRef[]>([])
@@ -31,7 +39,7 @@ export function useCourseCreators() {
     error.value = false
 
     const query = appliedQuery ? { q: appliedQuery } : {}
-    const result = await coreApi.GET('/catalog/creators', { params: { query } })
+    const result = await coreApi.GET(ENDPOINT[scope], { params: { query } })
     if (request !== latestRequest) return
 
     if (result.error || !result.data) {

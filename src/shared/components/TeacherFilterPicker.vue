@@ -3,16 +3,23 @@ import { ChevronDown, X } from 'lucide-vue-next'
 import { computed, ref, useId } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import { useCourseCreators } from '@/features/student/composables/useCourseCreators'
+import { type CourseCreatorsScope, useCourseCreators } from '@/shared/composables/useCourseCreators'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type UserRef = components['schemas']['UserRef']
 
-const props = defineProps<{ modelValue: UserRef | null }>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: UserRef | null
+    /** Which course list's teachers to offer. */
+    scope?: CourseCreatorsScope
+  }>(),
+  { scope: 'catalog' },
+)
 const emit = defineEmits<{ 'update:modelValue': [teacher: UserRef | null] }>()
 
 const { t } = useTypedT()
-const { creators, nameQuery, isLoading, error, retry } = useCourseCreators()
+const { creators, nameQuery, isLoading, error, retry } = useCourseCreators(props.scope)
 
 const id = useId()
 const listboxId = `${id}-listbox`

@@ -74,12 +74,6 @@
   },
   "courseCatalogView": {
     "heading": "Find a course",
-    "searchLabel": "Search courses",
-    "searchPlaceholder": "Search by title or summary",
-    "levelFilterLabel": "Level",
-    "skillFilterLabel": "Skill",
-    "conceptFilterLabel": "Concept",
-    "clearFilters": "Clear filters",
     "loadingNoun": "courses",
     "errorMessage": "We couldn't load the course catalog.",
     "emptyHeading": "No courses yet",
@@ -92,16 +86,6 @@
     "enrolledToast": "You are now enrolled in {title}.",
     "moreFromTeacher": "More from this teacher",
     "courseTeacher": "by {name}"
-  },
-  "teacherFilterPicker": {
-    "label": "Teacher",
-    "anyTeacher": "Any teacher",
-    "searchPlaceholder": "Search by name",
-    "clearAriaLabel": "Remove the teacher filter",
-    "loading": "Loading teachers…",
-    "errorMessage": "We couldn't load the teachers.",
-    "retry": "Try again",
-    "noMatches": "No teacher matches that name."
   },
   "myCoursesView": {
     "heading": "My courses and paths",

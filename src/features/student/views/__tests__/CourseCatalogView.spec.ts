@@ -52,7 +52,7 @@ vi.mock('@/shared/composables/useListConcepts', () => ({
   useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 
-vi.mock('@/features/student/composables/useCourseCreators', () => ({
+vi.mock('@/shared/composables/useCourseCreators', () => ({
   useCourseCreators: () => ({ creators: ref([]), nameQuery: ref(''), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 

@@ -1,28 +1,21 @@
 <script setup lang="ts">
-import { Check, Search } from 'lucide-vue-next'
+import { Check } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import TeacherFilterPicker from '@/features/student/components/TeacherFilterPicker.vue'
 import { useCourseCatalog } from '@/features/student/composables/useCourseCatalog'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
+import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
-import { useListConcepts } from '@/shared/composables/useListConcepts'
-import { useListSkills } from '@/shared/composables/useListSkills'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { mostSpecificIds, type TreeNode } from '@/shared/utils/skillConceptTree'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
-type CourseLevel = CourseCatalogEntry['level']
-
-const LEVELS: CourseLevel[] = ['beginner', 'early_intermediate', 'intermediate', 'advanced', 'expert']
 
 const { t } = useTypedT()
 const toast = useToast()
@@ -44,43 +37,8 @@ const {
 const { enrollments } = useMyCourseEnrollments()
 const { enrollInCourse } = useEnrollInCourse()
 
-const { skills, isLoading: skillsLoading } = useListSkills()
-const { concepts, isLoading: conceptsLoading } = useListConcepts()
-const skillNodes = computed<TreeNode[]>(() =>
-  skills.value.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id })),
-)
-const conceptNodes = computed<TreeNode[]>(() =>
-  concepts.value.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id })),
-)
-
-// The picker keeps a node's ancestors selected alongside it; the filter only
-// sends the most specific picks (see mostSpecificIds), but the picker keeps
-// showing the full selection the student made.
-const pickedSkillIds = ref<string[]>([])
-const pickedConceptIds = ref<string[]>([])
-function onSkillsPicked(ids: string[]) {
-  pickedSkillIds.value = ids
-  filters.skillIds = mostSpecificIds(skillNodes.value, ids)
-}
-function onConceptsPicked(ids: string[]) {
-  pickedConceptIds.value = ids
-  filters.conceptIds = mostSpecificIds(conceptNodes.value, ids)
-}
-
-function toggleLevel(level: CourseLevel) {
-  filters.levels = filters.levels.includes(level)
-    ? filters.levels.filter((l) => l !== level)
-    : [...filters.levels, level]
-}
-
 function filterByTeacher(course: CourseCatalogEntry) {
   filters.teacher = course.created_by
-}
-
-function onClearFilters() {
-  pickedSkillIds.value = []
-  pickedConceptIds.value = []
-  clearFilters()
 }
 
 // Courses enrolled into from this screen, on top of the active enrollments
@@ -115,74 +73,16 @@ async function enroll(course: CourseCatalogEntry) {
   <section class="flex flex-col gap-6">
     <h1 class="text-2xl font-semibold text-accent-text">{{ t('courseCatalogView.heading') }}</h1>
 
-    <div class="flex flex-col gap-4 rounded-lg border border-border bg-surface-raised p-4">
-      <label class="relative flex items-center">
-        <span class="sr-only">{{ t('courseCatalogView.searchLabel') }}</span>
-        <Search :size="16" class="pointer-events-none absolute left-3 text-ink-subtle" aria-hidden="true" />
-        <input
-          v-model="searchText"
-          data-test="catalog-search"
-          type="search"
-          :placeholder="t('courseCatalogView.searchPlaceholder')"
-          class="w-full rounded-md border border-border bg-surface-sunken py-2 pl-9 pr-3 text-sm"
-        />
-      </label>
-
-      <div class="flex flex-col gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
-          {{ t('courseCatalogView.levelFilterLabel') }}
-        </span>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="level in LEVELS"
-            :key="level"
-            type="button"
-            :data-test="`level-filter-${level}`"
-            :aria-pressed="filters.levels.includes(level)"
-            class="flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
-            :class="
-              filters.levels.includes(level)
-                ? 'border-accent bg-accent text-accent-fg'
-                : 'border-border bg-surface text-ink-muted'
-            "
-            @click="toggleLevel(level)"
-          >
-            <Check v-if="filters.levels.includes(level)" :size="14" aria-hidden="true" />
-            {{ t(`levels.${level}`) }}
-          </button>
-        </div>
-      </div>
-
-      <div class="grid gap-4 sm:grid-cols-3">
-        <TeacherFilterPicker v-model="filters.teacher" />
-        <SkillConceptTreePicker
-          :label="t('courseCatalogView.skillFilterLabel')"
-          :nodes="skillNodes"
-          :selected-ids="pickedSkillIds"
-          :is-loading="skillsLoading"
-          :creatable="false"
-          @update:selected-ids="onSkillsPicked"
-        />
-        <SkillConceptTreePicker
-          :label="t('courseCatalogView.conceptFilterLabel')"
-          :nodes="conceptNodes"
-          :selected-ids="pickedConceptIds"
-          :is-loading="conceptsLoading"
-          :creatable="false"
-          @update:selected-ids="onConceptsPicked"
-        />
-      </div>
-
-      <div v-if="hasActiveFilters" class="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          class="text-sm font-semibold text-accent-text underline"
-          @click="onClearFilters"
-        >
-          {{ t('courseCatalogView.clearFilters') }}
-        </button>
-      </div>
-    </div>
+    <CourseFilters
+      v-model:search-text="searchText"
+      v-model:levels="filters.levels"
+      v-model:skill-ids="filters.skillIds"
+      v-model:concept-ids="filters.conceptIds"
+      v-model:teacher="filters.teacher"
+      teacher-scope="catalog"
+      :has-active-filters="hasActiveFilters"
+      @clear="clearFilters"
+    />
 
     <StateLoading v-if="isLoading" data-test="loading" :noun="t('courseCatalogView.loadingNoun')" />
 
@@ -199,9 +99,9 @@ async function enroll(course: CourseCatalogEntry) {
           type="button"
           data-test="clear-filters"
           class="text-sm font-semibold text-accent-text underline"
-          @click="onClearFilters"
+          @click="clearFilters"
         >
-          {{ t('courseCatalogView.clearFilters') }}
+          {{ t('courseFilters.clearFilters') }}
         </button>
       </template>
     </StateEmpty>

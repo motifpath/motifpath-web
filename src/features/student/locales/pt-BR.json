@@ -74,12 +74,6 @@
   },
   "courseCatalogView": {
     "heading": "Encontre um curso",
-    "searchLabel": "Buscar cursos",
-    "searchPlaceholder": "Busque por título ou resumo",
-    "levelFilterLabel": "Nível",
-    "skillFilterLabel": "Habilidade",
-    "conceptFilterLabel": "Conceito",
-    "clearFilters": "Limpar filtros",
     "loadingNoun": "os cursos",
     "errorMessage": "Não foi possível carregar o catálogo de cursos.",
     "emptyHeading": "Nenhum curso ainda",
@@ -92,16 +86,6 @@
     "enrolledToast": "Você está inscrito em {title}.",
     "moreFromTeacher": "Mais deste professor",
     "courseTeacher": "por {name}"
-  },
-  "teacherFilterPicker": {
-    "label": "Professor",
-    "anyTeacher": "Qualquer professor",
-    "searchPlaceholder": "Buscar pelo nome",
-    "clearAriaLabel": "Remover o filtro de professor",
-    "loading": "Carregando professores…",
-    "errorMessage": "Não foi possível carregar os professores.",
-    "retry": "Tentar novamente",
-    "noMatches": "Nenhum professor com esse nome."
   },
   "myCoursesView": {
     "heading": "Meus cursos e trilhas",

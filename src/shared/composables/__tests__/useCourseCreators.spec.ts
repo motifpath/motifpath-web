@@ -6,7 +6,7 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
-import { useCourseCreators } from '@/features/student/composables/useCourseCreators'
+import { useCourseCreators } from '@/shared/composables/useCourseCreators'
 
 const bob = { user_id: 'u-bob', display_name: 'Bob Martins' }
 const carol = { user_id: 'u-carol', display_name: 'Carol Dias' }
@@ -79,6 +79,13 @@ describe('useCourseCreators', () => {
     await vi.runAllTimersAsync()
 
     expect(creators.value).toEqual([carol])
+  })
+
+  it("lists the creators of the caller's managed courses in the managed scope", async () => {
+    const { isLoading } = useCourseCreators('managed')
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(GET).toHaveBeenCalledWith('/courses/creators', { params: { query: {} } })
   })
 
   it('reports a failed load and retries it', async () => {

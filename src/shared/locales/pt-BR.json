@@ -5,6 +5,7 @@
     "findCourse": "Encontrar um curso",
     "content": "Conteúdo",
     "paths": "Trilhas",
+    "courses": "Cursos",
     "exercises": "Exercícios",
     "diagrams": "Diagramas"
   },
@@ -136,5 +137,28 @@
     "intermediate": "Intermediário",
     "advanced": "Avançado",
     "expert": "Especialista"
+  },
+  "courseFilters": {
+    "searchLabel": "Buscar cursos",
+    "searchPlaceholder": "Busque por título ou resumo",
+    "levelFilterLabel": "Nível",
+    "skillFilterLabel": "Habilidade",
+    "conceptFilterLabel": "Conceito",
+    "clearFilters": "Limpar filtros"
+  },
+  "teacherFilterPicker": {
+    "label": "Professor",
+    "anyTeacher": "Qualquer professor",
+    "searchPlaceholder": "Buscar pelo nome",
+    "clearAriaLabel": "Remover o filtro de professor",
+    "loading": "Carregando professores…",
+    "errorMessage": "Não foi possível carregar os professores.",
+    "retry": "Tentar novamente",
+    "noMatches": "Nenhum professor com esse nome."
+  },
+  "courseStatus": {
+    "draft": "Rascunho",
+    "published": "Publicado",
+    "retired": "Descontinuado"
   }
 }

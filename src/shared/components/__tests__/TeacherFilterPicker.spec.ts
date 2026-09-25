@@ -16,14 +16,15 @@ const creatorsState = {
   error: ref(false),
   retry: vi.fn(),
 }
-vi.mock('@/features/student/composables/useCourseCreators', () => ({
-  useCourseCreators: () => creatorsState,
+const useCourseCreators = vi.fn((_scope: string) => creatorsState)
+vi.mock('@/shared/composables/useCourseCreators', () => ({
+  useCourseCreators: (scope: string) => useCourseCreators(scope),
 }))
 
-import TeacherFilterPicker from '@/features/student/components/TeacherFilterPicker.vue'
+import TeacherFilterPicker from '@/shared/components/TeacherFilterPicker.vue'
 
-function mountPicker(modelValue: UserRef | null = null) {
-  return mount(TeacherFilterPicker, { props: { modelValue }, attachTo: document.body })
+function mountPicker(modelValue: UserRef | null = null, scope?: 'catalog' | 'managed') {
+  return mount(TeacherFilterPicker, { props: { modelValue, ...(scope ? { scope } : {}) }, attachTo: document.body })
 }
 
 function selections(wrapper: ReturnType<typeof mountPicker>) {
@@ -37,6 +38,13 @@ describe('TeacherFilterPicker', () => {
     creatorsState.isLoading.value = false
     creatorsState.error.value = false
     vi.clearAllMocks()
+  })
+
+  it("lists the catalog's teachers by default, or the managed courses' teachers when asked", () => {
+    mountPicker()
+    mountPicker(null, 'managed')
+
+    expect(useCourseCreators.mock.calls.map(([scope]) => scope)).toEqual(['catalog', 'managed'])
   })
 
   it('is a collapsed combobox until focused', () => {
