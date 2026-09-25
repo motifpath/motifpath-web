@@ -102,5 +102,23 @@
     "errorMessage": "We couldn't load the teachers.",
     "retry": "Try again",
     "noMatches": "No teacher matches that name."
+  },
+  "myCoursesView": {
+    "heading": "My courses and paths",
+    "findAnotherCourse": "Find another course",
+    "loadingNoun": "your courses",
+    "errorMessage": "We couldn't load your courses and paths.",
+    "emptyHeading": "No courses yet",
+    "emptyMessage": "Enroll in a course and it will show up here.",
+    "browseCatalog": "Browse the course catalog",
+    "coursesHeading": "Courses",
+    "pathsHeading": "Other paths",
+    "archivedHeading": "Archived",
+    "stage": "Stage {position}",
+    "statusCompleted": "Completed",
+    "statusAbandoned": "Left",
+    "assignedBy": "Assigned by {name}",
+    "current": "Current",
+    "switch": "Switch to this"
   }
 }

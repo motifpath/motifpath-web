@@ -102,5 +102,23 @@
     "errorMessage": "Não foi possível carregar os professores.",
     "retry": "Tentar novamente",
     "noMatches": "Nenhum professor com esse nome."
+  },
+  "myCoursesView": {
+    "heading": "Meus cursos e trilhas",
+    "findAnotherCourse": "Encontrar outro curso",
+    "loadingNoun": "seus cursos",
+    "errorMessage": "Não foi possível carregar seus cursos e trilhas.",
+    "emptyHeading": "Nenhum curso ainda",
+    "emptyMessage": "Inscreva-se em um curso e ele aparecerá aqui.",
+    "browseCatalog": "Ver o catálogo de cursos",
+    "coursesHeading": "Cursos",
+    "pathsHeading": "Outras trilhas",
+    "archivedHeading": "Arquivadas",
+    "stage": "Etapa {position}",
+    "statusCompleted": "Concluído",
+    "statusAbandoned": "Abandonado",
+    "assignedBy": "Atribuída por {name}",
+    "current": "Atual",
+    "switch": "Mudar para esta"
   }
 }
