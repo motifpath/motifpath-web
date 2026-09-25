@@ -103,6 +103,6 @@
     "statusAbandoned": "Abandonado",
     "assignedBy": "Atribuída por {name}",
     "current": "Atual",
-    "switch": "Mudar para esta"
+    "switch": "Tornar atual"
   }
 }
