@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import { i18n } from '@/i18n'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import { EDITOR_VIEW_H, editorViewWidth, fretX, frettedEditorGeometry, stringY } from '@/shared/utils/frettedFretboardEditor'
@@ -108,6 +109,20 @@ describe('FrettedDiagramEditor', () => {
       props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition({ interval: 'R', noteName: 'A' })], labelMode: 'note' },
     })
     expect(withNote.get('[data-test="editor-position"] text').text()).toBe('A')
+  })
+
+  it("labels intervals in the author's language, on the marker and in the position list", () => {
+    i18n.global.locale.value = 'pt-BR'
+    try {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition({ interval: 'b3', noteName: 'C' })] },
+      })
+
+      expect(wrapper.get('[data-test="editor-position"] text').text()).toBe('3m')
+      expect(wrapper.get('[data-test="position-interval-input"]').text()).toBe('3m')
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
   })
 
   it('hides the marker label when labelMode is "hidden"', () => {

@@ -80,5 +80,34 @@
     "showingCount": "Showing {loaded} of {total}",
     "button": "Load more",
     "failed": "Couldn't load more. Try again."
+  },
+  "intervals": {
+    "root": "R",
+    "flat2": "b2",
+    "natural2": "2",
+    "sharp2": "#2",
+    "flat3": "b3",
+    "natural3": "3",
+    "natural4": "4",
+    "sharp4": "#4",
+    "flat5": "b5",
+    "natural5": "5",
+    "sharp5": "#5",
+    "flat6": "b6",
+    "natural6": "6",
+    "doubleFlat7": "bb7",
+    "flat7": "b7",
+    "natural7": "7",
+    "flat9": "b9",
+    "natural9": "9",
+    "sharp9": "#9",
+    "natural11": "11",
+    "sharp11": "#11",
+    "flat13": "b13",
+    "natural13": "13"
+  },
+  "languages": {
+    "en": "English",
+    "pt_BR": "Portuguese"
   }
 }

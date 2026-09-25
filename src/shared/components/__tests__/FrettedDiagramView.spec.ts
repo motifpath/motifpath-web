@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import { i18n } from '@/i18n'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT } from '@/shared/utils/diagramColors'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import {
@@ -35,6 +36,24 @@ describe('FrettedDiagramView', () => {
     const labels = wrapper.findAll('[data-test="diagram-position-label"]')
     expect(labels).toHaveLength(6)
     expect(labels[0]?.text()).toBe('R')
+  })
+
+  it("labels intervals in the reader's language", () => {
+    i18n.global.locale.value = 'pt-BR'
+    try {
+      const wrapper = mount(FrettedDiagramView, {
+        props: {
+          diagram: makeFrettedDiagram(),
+          instrument: makeFrettedInstrument(),
+          diagramRef: makeDiagramRef({ layers: { intervals: true } }),
+        },
+      })
+
+      const labels = wrapper.findAll('[data-test="diagram-position-label"]').map((l) => l.text())
+      expect(labels).toEqual(['T', '3m', '4J', '5J', '7m', 'T'])
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
   })
 
   it('hides interval labels when layers.intervals is false', () => {

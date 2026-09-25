@@ -10,6 +10,7 @@
 import { computed, ref } from 'vue'
 import { Circle, GripVertical, Palette, Square, Star, X } from 'lucide-vue-next'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 
 import type { LocalPosition, PositionShape } from '@/features/teacher/composables/useDiagramForm'
 import type { components } from '@/api/generated/core-domain'
@@ -116,8 +117,10 @@ function onFretboardClick(event: MouseEvent) {
   if (cell) emit('toggle-cell', cell)
 }
 
+const { intervalLabel } = useIntervalLabel()
+
 function labelFor(position: LocalPosition): string {
-  return props.labelMode === 'note' ? position.noteName : position.interval
+  return props.labelMode === 'note' ? position.noteName : intervalLabel(position.interval)
 }
 
 // Selecting a position row highlights its marker on the fretboard, so a teacher can see which
@@ -299,7 +302,7 @@ function onDrop(index: number) {
           data-test="position-interval-input"
           class="w-16 rounded border border-transparent bg-surface-sunken px-2 py-1 text-center text-sm text-ink-muted"
         >
-          {{ position.interval || '—' }}
+          {{ intervalLabel(position.interval) || '—' }}
         </span>
         <span
           data-test="position-note-name-input"

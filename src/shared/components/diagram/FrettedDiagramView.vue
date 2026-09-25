@@ -11,6 +11,7 @@ import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
+import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -25,6 +26,8 @@ const props = withDefaults(
   }>(),
   { labelMode: 'interval' },
 )
+
+const { intervalLabel } = useIntervalLabel()
 
 const VIEW_W = 720
 const VIEW_H = 300
@@ -229,7 +232,7 @@ function labelClass(position: Marker): string {
         :class="labelClass(position)"
         :style="labelStyle(position)"
       >
-        {{ labelMode === 'note' ? position.noteName : position.interval }}
+        {{ labelMode === 'note' ? position.noteName : intervalLabel(position.interval) }}
       </text>
     </g>
   </svg>
