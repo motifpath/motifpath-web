@@ -179,7 +179,6 @@
     "copyName": "{name} (copy)",
     "copySaved": "Copy saved",
     "templateSaved": "Template saved",
-    "nameInLanguage": "Name ({language})",
     "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving."
   },
   "frettedDiagramEditor": {
@@ -376,5 +375,15 @@
     "templateHint": "Creates a new template every teacher can use. The diagram you started from stays as it is.",
     "cancel": "Cancel",
     "confirm": "Save"
+  },
+  "diagramLanguageTabs": {
+    "label": "Diagram languages",
+    "addLanguage": "Add a language",
+    "removeLanguage": "Remove {language}",
+    "missingText": "{language} is missing text",
+    "removeTitle": "Remove {language}?",
+    "removeBody": "This diagram's name and other text in {language} will be deleted. Its markers and colors stay as they are.",
+    "cancel": "Cancel",
+    "confirmRemove": "Remove"
   }
 }

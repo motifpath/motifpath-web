@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { OFFERED_LANGUAGE_CODES } from '@/i18n'
+import { i18n, OFFERED_LANGUAGE_CODES, toApiLanguageCode } from '@/i18n'
 import { intervalFromRoot, noteAtFret } from '@/shared/utils/musicTheory'
 import type { components } from '@/api/generated/core-domain'
 
@@ -67,18 +67,30 @@ function toDiagramPosition(position: IntervalledPosition, { withId = true } = {}
  * any save round trip), matching the API's own allowance for a
  * client-supplied position_id.
  */
-/** The filled-in names, trimmed; blank ones are left out. */
-function filledNames(names: LocalizedNames): LocalizedNames {
+/** The names in `languages` that are filled in, trimmed; blank ones are left out. */
+function filledNames(names: LocalizedNames, languages: string[]): LocalizedNames {
   return Object.fromEntries(
-    Object.entries(names)
-      .map(([code, value]) => [code, value.trim()] as const)
+    languages
+      .map((code) => [code, (names[code] ?? '').trim()] as const)
       .filter(([, value]) => value !== ''),
   )
+}
+
+/** `codes` in the order the UI offers its languages, any code it doesn't offer last. */
+function inOfferedOrder(codes: string[]): string[] {
+  const rank = (code: string) => {
+    const index = OFFERED_LANGUAGE_CODES.indexOf(code)
+    return index === -1 ? OFFERED_LANGUAGE_CODES.length : index
+  }
+  return [...new Set(codes)].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
 }
 
 export function useDiagramForm() {
   // The diagram's name per language code; a language with no name is absent or blank.
   const names = ref<LocalizedNames>({})
+  // The languages the author chose for the diagram (ADR-034, 2026-09-25 amendment); a new one
+  // starts in the author's UI language. Only these languages' names are ever sent.
+  const languages = ref<string[]>([toApiLanguageCode(i18n.global.locale.value)])
   const instrumentId = ref('')
   const positions = ref<LocalPosition[]>([])
   const skillIds = ref<string[]>([])
@@ -97,13 +109,28 @@ export function useDiagramForm() {
   const savedColor = ref<string | null>(null)
   const canClearColor = computed(() => savedColor.value === null)
 
-  const namedLanguages = computed(() => Object.keys(filledNames(names.value)).sort())
-  const hasName = computed(() => namedLanguages.value.length > 0)
+  const missingNameLanguages = computed(() =>
+    languages.value.filter((code) => (names.value[code] ?? '').trim() === ''),
+  )
+  const hasName = computed(() => languages.value.length > 0 && missingNameLanguages.value.length === 0)
   // A basic diagram is shared with every teacher, so it needs a name in every offered language.
-  const hasEveryName = computed(() => OFFERED_LANGUAGE_CODES.every((code) => namedLanguages.value.includes(code)))
+  const hasEveryName = computed(
+    () => hasName.value && OFFERED_LANGUAGE_CODES.every((code) => languages.value.includes(code)),
+  )
 
   function setName(code: string, value: string) {
     names.value = { ...names.value, [code]: value }
+  }
+
+  function addLanguage(code: string) {
+    languages.value = inOfferedOrder([...languages.value, code])
+  }
+
+  /** Drops a language and its name; a diagram always keeps at least one language. */
+  function removeLanguage(code: string) {
+    if (languages.value.length <= 1 || !languages.value.includes(code)) return
+    languages.value = languages.value.filter((language) => language !== code)
+    names.value = Object.fromEntries(Object.entries(names.value).filter(([language]) => language !== code))
   }
   const hasPositions = computed(() => positions.value.length > 0)
   const hasClassification = computed(() => skillIds.value.length > 0 && conceptIds.value.length > 0)
@@ -177,7 +204,7 @@ export function useDiagramForm() {
   function toCreateDiagramRequest(): CreateDiagramRequest {
     return {
       instrument_id: instrumentId.value,
-      names: filledNames(names.value),
+      names: filledNames(names.value, languages.value),
       kind: 'custom',
       root_note: rootNote.value.trim() === '' ? null : rootNote.value,
       label_display: labelDisplay.value,
@@ -197,7 +224,7 @@ export function useDiagramForm() {
   function toCopyRequest(copyNames: LocalizedNames, kind: DiagramKind): CreateDiagramRequest {
     return {
       ...toCreateDiagramRequest(),
-      names: filledNames(copyNames),
+      names: filledNames(copyNames, Object.keys(copyNames)),
       kind,
       positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position, { withId: false })),
     }
@@ -205,7 +232,7 @@ export function useDiagramForm() {
 
   function toUpdateDiagramRequest(): UpdateDiagramRequest {
     return {
-      names: filledNames(names.value),
+      names: filledNames(names.value, languages.value),
       ...(rootNote.value.trim() === '' ? {} : { root_note: rootNote.value }),
       label_display: labelDisplay.value,
       // An already-set general color can't be cleared through an update, so an unset one is omitted.
@@ -222,6 +249,7 @@ export function useDiagramForm() {
 
   function loadFromDiagram(diagram: Diagram) {
     names.value = { ...diagram.names }
+    languages.value = inOfferedOrder(diagram.languages?.length ? diagram.languages : Object.keys(diagram.names))
     instrumentId.value = diagram.instrument_id
     rootNote.value = diagram.root_note ?? ''
     labelDisplay.value = diagram.label_display ?? 'interval'
@@ -246,9 +274,12 @@ export function useDiagramForm() {
 
   return {
     names,
-    namedLanguages,
+    languages,
+    missingNameLanguages,
     hasEveryName,
     setName,
+    addLanguage,
+    removeLanguage,
     instrumentId,
     positions,
     skillIds,

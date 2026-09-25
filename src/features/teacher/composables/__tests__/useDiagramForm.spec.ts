@@ -384,35 +384,80 @@ describe('useDiagramForm', () => {
     })
   })
 
-  describe('names per language', () => {
-    it('loads every name of a diagram', () => {
+  describe('languages and names', () => {
+    it('starts with the UI language as its only language', () => {
       const form = useDiagramForm()
 
-      form.loadFromDiagram(makeFrettedDiagram({ names: { en: 'Scale', pt_BR: 'Escala' }, languages: ['en', 'pt_BR'] }))
-
-      expect(form.names.value).toEqual({ en: 'Scale', pt_BR: 'Escala' })
-      expect(form.namedLanguages.value).toEqual(['en', 'pt_BR'])
+      expect(form.languages.value).toEqual(['en'])
+      expect(form.missingNameLanguages.value).toEqual(['en'])
     })
 
-    it('sends only the names that are filled in, trimmed', () => {
+    it("loads a diagram's languages, in the offered order, and every name", () => {
       const form = useDiagramForm()
-      form.setName('en', '  Scale  ')
+
+      form.loadFromDiagram(makeFrettedDiagram({ names: { pt_BR: 'Escala', en: 'Scale' }, languages: ['pt_BR', 'en'] }))
+
+      expect(form.languages.value).toEqual(['en', 'pt_BR'])
+      expect(form.names.value).toEqual({ en: 'Scale', pt_BR: 'Escala' })
+    })
+
+    it('adds a language once, in the offered order, still needing its name', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeFrettedDiagram({ names: { pt_BR: 'Escala' }, languages: ['pt_BR'] }))
+
+      form.addLanguage('en')
+      form.addLanguage('en')
+
+      expect(form.languages.value).toEqual(['en', 'pt_BR'])
+      expect(form.missingNameLanguages.value).toEqual(['en'])
+    })
+
+    it("removes a language along with its name, but never the last one", () => {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
+      form.addLanguage('pt_BR')
+      form.setName('pt_BR', 'Escala')
+
+      form.removeLanguage('pt_BR')
+      expect(form.languages.value).toEqual(['en'])
+      expect(form.toCreateDiagramRequest().names).toEqual({ en: 'Scale' })
+
+      form.removeLanguage('en')
+      expect(form.languages.value).toEqual(['en'])
+    })
+
+    it('is named only once every one of its languages has a name', () => {
+      const form = useDiagramForm()
+      form.addLanguage('pt_BR')
+      form.setName('en', 'Scale')
       form.setName('pt_BR', '   ')
 
-      expect(form.toCreateDiagramRequest().names).toEqual({ en: 'Scale' })
-      expect(form.toUpdateDiagramRequest().names).toEqual({ en: 'Scale' })
-      expect(form.namedLanguages.value).toEqual(['en'])
-    })
-
-    it('has a name once any language has one, and every name only once all offered languages do', () => {
-      const form = useDiagramForm()
+      expect(form.missingNameLanguages.value).toEqual(['pt_BR'])
       expect(form.hasName.value).toBe(false)
 
       form.setName('pt_BR', 'Escala')
+      expect(form.missingNameLanguages.value).toEqual([])
       expect(form.hasName.value).toBe(true)
+    })
+
+    it("sends only its own languages' names, trimmed", () => {
+      const form = useDiagramForm()
+      form.setName('en', '  Scale  ')
+      form.setName('pt_BR', 'Escala')
+
+      expect(form.toCreateDiagramRequest().names).toEqual({ en: 'Scale' })
+      expect(form.toUpdateDiagramRequest().names).toEqual({ en: 'Scale' })
+    })
+
+    it('has every name only once all offered languages are chosen and named', () => {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
       expect(form.hasEveryName.value).toBe(false)
 
-      form.setName('en', 'Scale')
+      form.addLanguage('pt_BR')
+      expect(form.hasEveryName.value).toBe(false)
+
+      form.setName('pt_BR', 'Escala')
       expect(form.hasEveryName.value).toBe(true)
     })
   })

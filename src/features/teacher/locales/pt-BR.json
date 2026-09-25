@@ -179,7 +179,6 @@
     "copyName": "{name} (cópia)",
     "copySaved": "Cópia salva",
     "templateSaved": "Modelo salvo",
-    "nameInLanguage": "Nome ({language})",
     "templateNeedsEveryName": "Um modelo é compartilhado com todos os professores, então dê um nome em todos os idiomas antes de salvar."
   },
   "frettedDiagramEditor": {
@@ -376,5 +375,15 @@
     "templateHint": "Cria um novo modelo que todos os professores podem usar. O diagrama de origem continua como está.",
     "cancel": "Cancelar",
     "confirm": "Salvar"
+  },
+  "diagramLanguageTabs": {
+    "label": "Idiomas do diagrama",
+    "addLanguage": "Adicionar um idioma",
+    "removeLanguage": "Remover {language}",
+    "missingText": "Falta texto em {language}",
+    "removeTitle": "Remover {language}?",
+    "removeBody": "O nome e os demais textos deste diagrama em {language} serão apagados. Os marcadores e as cores continuam como estão.",
+    "cancel": "Cancelar",
+    "confirmRemove": "Remover"
   }
 }

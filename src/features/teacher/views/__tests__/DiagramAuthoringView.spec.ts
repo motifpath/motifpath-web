@@ -686,11 +686,18 @@ describe('DiagramAuthoringView', () => {
       expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
     })
 
-    it('edits the name in the current language at the top, and every other language below it', async () => {
+    it("names the diagram one language at a time, from each language's tab", async () => {
       const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
-
       expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('C Major Scale')
-      await wrapper.get('input[data-test="diagram-name-pt_BR"]').setValue('Escala de Dó maior')
+      expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="add-language"]').trigger('click')
+      await wrapper.get('[data-test="add-language-option-pt_BR"]').trigger('click')
+      // Adding a language opens its tab, with an empty name to fill in.
+      expect(wrapper.get('[data-test="language-tab-pt_BR"]').attributes('aria-selected')).toBe('true')
+      expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Escala de Dó maior')
+
       PATCH.mockResolvedValueOnce({ data: { ...scale, kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } }, error: undefined, response: { status: 200 } })
       await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
 
@@ -700,16 +707,21 @@ describe('DiagramAuthoringView', () => {
       )
     })
 
-    it('does not save over a template until it is named in every language, and says so', async () => {
+    it('shows a template in every language, and does not save over it until each one is named', async () => {
       currentUser.profile.role = 'admin'
       currentUser.profile.user_id = 'u-admin'
       const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
 
+      expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test^="remove-language-"]').exists()).toBe(false)
       expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
       expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(true)
 
-      await wrapper.get('input[data-test="diagram-name-pt_BR"]').setValue('Escala de Dó maior')
+      await wrapper.get('[data-test="language-tab-pt_BR"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Escala de Dó maior')
 
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(false)
       expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
       expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(false)
     })
@@ -772,6 +784,62 @@ describe('DiagramAuthoringView', () => {
       await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
 
       expect(POST).toHaveBeenCalledWith('/diagrams', expect.objectContaining({ body: expect.objectContaining({ kind: 'custom' }) }))
+    })
+  })
+
+  describe('editing language', () => {
+    async function mountNew() {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      return wrapper
+    }
+
+    async function addPortuguese(wrapper: ReturnType<typeof mountView>) {
+      await wrapper.get('[data-test="add-language"]').trigger('click')
+      await wrapper.get('[data-test="add-language-option-pt_BR"]').trigger('click')
+    }
+
+    it("starts a new diagram in the author's UI language only", async () => {
+      const wrapper = await mountNew()
+
+      expect(wrapper.findAll('[role="tab"]').map((tab) => tab.attributes('data-test'))).toEqual(['language-tab-en'])
+    })
+
+    it("shows the whole editor in the active tab's language, but keeps the top bar in the UI language", async () => {
+      const wrapper = await mountNew()
+      await addPortuguese(wrapper)
+
+      const body = wrapper.get('[data-test="authoring-body"]')
+      expect(body.text()).toContain('Instrumento')
+      expect(wrapper.get('[data-test="instrument-option"]').text()).toBe('Violão de 6 cordas')
+      expect(wrapper.get('input[data-test="diagram-name"]').attributes('placeholder')).toBe('Nome do diagrama')
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('breadcrumbLabel')).toBe('New diagram')
+      expect(i18n.global.locale.value).toBe('en')
+
+      await wrapper.get('[data-test="language-tab-en"]').trigger('click')
+      expect(body.text()).toContain('Instrument')
+      expect(wrapper.get('[data-test="instrument-option"]').text()).toBe('6-string guitar')
+    })
+
+    it('does not save until every language of the diagram is named, and saves again once one is removed', async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+
+      await addPortuguese(wrapper)
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+
+      await wrapper.get('[data-test="remove-language-pt_BR"]').trigger('click')
+      await wrapper.get('[data-test="remove-language-confirm"]').trigger('click')
+      expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="language-tab-en"]').attributes('aria-selected')).toBe('true')
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
     })
   })
 })
