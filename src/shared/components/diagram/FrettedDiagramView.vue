@@ -12,6 +12,7 @@ import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -28,6 +29,7 @@ const props = withDefaults(
 )
 
 const { intervalLabel } = useIntervalLabel()
+const { localizedName } = useLocalizedName()
 
 const VIEW_W = 720
 const VIEW_H = 300
@@ -130,7 +132,7 @@ function labelClass(position: Marker): string {
   <svg
     :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`"
     role="img"
-    :aria-label="diagram.name"
+    :aria-label="localizedName(diagram.names)"
     class="w-full"
     font-family="monospace"
   >

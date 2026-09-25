@@ -178,7 +178,9 @@
     "saveAsTemplateButton": "Salvar como modelo…",
     "copyName": "{name} (cópia)",
     "copySaved": "Cópia salva",
-    "templateSaved": "Modelo salvo"
+    "templateSaved": "Modelo salvo",
+    "nameInLanguage": "Nome ({language})",
+    "templateNeedsEveryName": "Um modelo é compartilhado com todos os professores, então dê um nome em todos os idiomas antes de salvar."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",

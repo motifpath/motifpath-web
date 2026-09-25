@@ -7,7 +7,7 @@ describe('useDiagramForm', () => {
   it('starts empty with no positions and nothing markable as valid', () => {
     const form = useDiagramForm()
 
-    expect(form.name.value).toBe('')
+    expect(form.names.value).toEqual({})
     expect(form.instrumentId.value).toBe('')
     expect(form.positions.value).toEqual([])
     expect(form.hasName.value).toBe(false)
@@ -114,7 +114,7 @@ describe('useDiagramForm', () => {
     form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
     form.rootNote.value = 'A'
 
-    form.name.value = 'Minor Pentatonic'
+    form.setName('en', 'Minor Pentatonic')
     expect(form.canSave.value).toBe(false)
 
     form.addPosition({ string: 6, fret: 5 })
@@ -129,7 +129,7 @@ describe('useDiagramForm', () => {
 
   it('canSave stays false while any placed position is missing an interval or note name (no root/tuning set yet)', () => {
     const form = useDiagramForm()
-    form.name.value = 'Minor Pentatonic'
+    form.setName('en', 'Minor Pentatonic')
     form.skillIds.value = ['s-1']
     form.conceptIds.value = ['c-1']
     form.addPosition({ string: 6, fret: 5 })
@@ -149,7 +149,7 @@ describe('useDiagramForm', () => {
 
   it('maps form state to a CreateDiagramRequest, including root_note and label_display', () => {
     const form = useDiagramForm()
-    form.name.value = 'Minor Pentatonic — Position 1'
+    form.setName('en', 'Minor Pentatonic — Position 1')
     form.instrumentId.value = 'instrument-guitar'
     form.skillIds.value = ['s-1']
     form.conceptIds.value = ['c-1']
@@ -163,7 +163,7 @@ describe('useDiagramForm', () => {
 
     expect(request).toEqual({
       instrument_id: 'instrument-guitar',
-      name: 'Minor Pentatonic — Position 1',
+      names: { en: 'Minor Pentatonic — Position 1' },
       kind: 'custom',
       root_note: 'A',
       label_display: 'note',
@@ -175,7 +175,7 @@ describe('useDiagramForm', () => {
 
   it('sends a null root_note on create when none has been set', () => {
     const form = useDiagramForm()
-    form.name.value = 'D'
+    form.setName('en', 'D')
     form.instrumentId.value = 'instrument-guitar'
 
     const request = form.toCreateDiagramRequest()
@@ -186,14 +186,14 @@ describe('useDiagramForm', () => {
 
   it('maps form state to an UpdateDiagramRequest, without instrument_id, omitting an unset root_note', () => {
     const form = useDiagramForm()
-    form.name.value = 'Renamed'
+    form.setName('en', 'Renamed')
     form.skillIds.value = ['s-1']
     form.conceptIds.value = ['c-1']
 
     const request = form.toUpdateDiagramRequest()
 
     expect(request).toEqual({
-      name: 'Renamed',
+      names: { en: 'Renamed' },
       label_display: 'interval',
       positions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
@@ -203,7 +203,7 @@ describe('useDiagramForm', () => {
 
   it('includes root_note in an UpdateDiagramRequest once set', () => {
     const form = useDiagramForm()
-    form.name.value = 'Renamed'
+    form.setName('en', 'Renamed')
     form.rootNote.value = 'E'
 
     const request = form.toUpdateDiagramRequest()
@@ -224,7 +224,7 @@ describe('useDiagramForm', () => {
 
     form.loadFromDiagram(diagram)
 
-    expect(form.name.value).toBe(diagram.name)
+    expect(form.names.value).toEqual(diagram.names)
     expect(form.instrumentId.value).toBe(diagram.instrument_id)
     expect(form.rootNote.value).toBe('A')
     expect(form.labelDisplay.value).toBe('note')
@@ -254,8 +254,11 @@ describe('useDiagramForm', () => {
   describe('colors', () => {
     function placedForm() {
       const form = useDiagramForm()
-      form.name.value = 'D'
+      form.setName('en', 'D')
       form.instrumentId.value = 'instrument-guitar'
+      // Tuning and root give each placed position its interval, which a request needs.
+      form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+      form.rootNote.value = 'A'
       form.addPosition({ string: 6, fret: 5 })
       form.addPosition({ string: 6, fret: 8 })
       return form
@@ -292,7 +295,7 @@ describe('useDiagramForm', () => {
       expect(request.positions[1]?.color).toBeUndefined()
 
       const bare = useDiagramForm()
-      bare.name.value = 'D'
+      bare.setName('en', 'D')
       expect(bare.toCreateDiagramRequest().color).toBeNull()
     })
 
@@ -357,9 +360,9 @@ describe('useDiagramForm', () => {
     it('builds a custom copy under the new name, with everything the editor shows', () => {
       const form = loadedForm()
 
-      const request = form.toCopyRequest('My Pentatonic', 'custom')
+      const request = form.toCopyRequest({ en: 'My Pentatonic' }, 'custom')
 
-      expect(request.name).toBe('My Pentatonic')
+      expect(request.names).toEqual({ en: 'My Pentatonic' })
       expect(request.kind).toBe('custom')
       expect(request.instrument_id).toBe('instrument-guitar')
       expect(request.root_note).toBe('A')
@@ -370,14 +373,47 @@ describe('useDiagramForm', () => {
     })
 
     it('builds a basic copy when saving as a template', () => {
-      expect(loadedForm().toCopyRequest('Pentatonic Template', 'basic').kind).toBe('basic')
+      expect(loadedForm().toCopyRequest({ en: 'Pentatonic Template', pt_BR: 'Modelo pentatônico' }, 'basic').kind).toBe('basic')
     })
 
     it("leaves every position id for the server to assign, since the source diagram's ids are already taken", () => {
-      const request = loadedForm().toCopyRequest('My Pentatonic', 'custom')
+      const request = loadedForm().toCopyRequest({ en: 'My Pentatonic' }, 'custom')
 
       expect(request.positions.length).toBeGreaterThan(0)
       expect(request.positions.every((p) => p.position_id === undefined)).toBe(true)
+    })
+  })
+
+  describe('names per language', () => {
+    it('loads every name of a diagram', () => {
+      const form = useDiagramForm()
+
+      form.loadFromDiagram(makeFrettedDiagram({ names: { en: 'Scale', pt_BR: 'Escala' }, languages: ['en', 'pt_BR'] }))
+
+      expect(form.names.value).toEqual({ en: 'Scale', pt_BR: 'Escala' })
+      expect(form.namedLanguages.value).toEqual(['en', 'pt_BR'])
+    })
+
+    it('sends only the names that are filled in, trimmed', () => {
+      const form = useDiagramForm()
+      form.setName('en', '  Scale  ')
+      form.setName('pt_BR', '   ')
+
+      expect(form.toCreateDiagramRequest().names).toEqual({ en: 'Scale' })
+      expect(form.toUpdateDiagramRequest().names).toEqual({ en: 'Scale' })
+      expect(form.namedLanguages.value).toEqual(['en'])
+    })
+
+    it('has a name once any language has one, and every name only once all offered languages do', () => {
+      const form = useDiagramForm()
+      expect(form.hasName.value).toBe(false)
+
+      form.setName('pt_BR', 'Escala')
+      expect(form.hasName.value).toBe(true)
+      expect(form.hasEveryName.value).toBe(false)
+
+      form.setName('en', 'Scale')
+      expect(form.hasEveryName.value).toBe(true)
     })
   })
 })

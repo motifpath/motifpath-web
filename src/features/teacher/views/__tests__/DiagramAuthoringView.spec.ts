@@ -194,7 +194,7 @@ describe('DiagramAuthoringView', () => {
       data: {
         diagram_id: 'd-new',
         instrument_id: 'i-1',
-        name: 'Minor Pentatonic — Position 1',
+        names: { en: 'Minor Pentatonic — Position 1' },
         positions: [{ position_id: 'p-1', interval: 'R', note_name: 'G', string: 1, fret: 3, sequence_index: null }],
         classification: { skills: [], concepts: [] },
         created_at: '2026-09-22T00:00:00Z',
@@ -219,7 +219,7 @@ describe('DiagramAuthoringView', () => {
       expect.objectContaining({
         body: expect.objectContaining({
           instrument_id: 'i-1',
-          name: 'Minor Pentatonic — Position 1',
+          names: { en: 'Minor Pentatonic — Position 1' },
           positions: [expect.objectContaining({ interval: 'R', note_name: 'G', string: 1, fret: 3 })],
         }),
       }),
@@ -232,7 +232,7 @@ describe('DiagramAuthoringView', () => {
       data: {
         diagram_id: 'd-new',
         instrument_id: 'i-1',
-        name: 'Colored',
+        names: { en: 'Colored' },
         root_note: null,
         label_display: 'interval',
         color: '#3B82F6',
@@ -294,7 +294,7 @@ describe('DiagramAuthoringView', () => {
       data: {
         diagram_id: 'd-new',
         instrument_id: 'i-1',
-        name: 'Colored',
+        names: { en: 'Colored' },
         root_note: 'G',
         label_display: 'interval',
         color: '#3B82F6',
@@ -354,7 +354,7 @@ describe('DiagramAuthoringView', () => {
           instrument_id: 'i-1',
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
-          name: 'C Major Scale',
+          names: { en: 'C Major Scale' },
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
           classification: {
             skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
@@ -372,7 +372,7 @@ describe('DiagramAuthoringView', () => {
           instrument_id: 'i-1',
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
-          name: 'C Major Scale (updated)',
+          names: { en: 'C Major Scale (updated)' },
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
           classification: {
             skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
@@ -397,7 +397,7 @@ describe('DiagramAuthoringView', () => {
         '/diagrams/{diagram_id}',
         expect.objectContaining({
           params: { path: { diagram_id: 'd-1' } },
-          body: expect.objectContaining({ name: 'C Major Scale (updated)' }),
+          body: expect.objectContaining({ names: { en: 'C Major Scale (updated)' } }),
         }),
       )
     })
@@ -409,7 +409,7 @@ describe('DiagramAuthoringView', () => {
           instrument_id: 'i-1',
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
-          name: 'C Major Scale',
+          names: { en: 'C Major Scale' },
           root_note: 'C',
           label_display: 'note',
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'star', string: 2, fret: 1, sequence_index: null }],
@@ -440,7 +440,7 @@ describe('DiagramAuthoringView', () => {
           instrument_id: 'i-1',
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
-          name: 'C Major Scale',
+          names: { en: 'C Major Scale' },
           root_note: 'C',
           label_display: 'interval',
           color: '#3B82F6',
@@ -479,7 +479,7 @@ describe('DiagramAuthoringView', () => {
           instrument_id: 'i-1',
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
-          name: 'C Major Scale',
+          names: { en: 'C Major Scale' },
           root_note: 'C',
           label_display: 'interval',
           color: '#3B82F6',
@@ -508,7 +508,7 @@ describe('DiagramAuthoringView', () => {
     const scale = {
       diagram_id: 'd-1',
       instrument_id: 'i-1',
-      name: 'C Major Scale',
+      names: { en: 'C Major Scale' },
       root_note: 'C',
       label_display: 'interval',
       color: null,
@@ -584,7 +584,7 @@ describe('DiagramAuthoringView', () => {
         data: {
           ...scale,
           diagram_id: 'd-copy',
-          name: 'My C Major',
+          names: { en: 'My C Major' },
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
@@ -594,8 +594,8 @@ describe('DiagramAuthoringView', () => {
       })
 
       await wrapper.get('[data-test="save-as"]').trigger('click')
-      expect((wrapper.get('[data-test="save-as-name"]').element as HTMLInputElement).value).toBe('C Major Scale (copy)')
-      await wrapper.get('[data-test="save-as-name"]').setValue('My C Major')
+      expect((wrapper.get('[data-test="save-as-name-en"]').element as HTMLInputElement).value).toBe('C Major Scale (copy)')
+      await wrapper.get('[data-test="save-as-name-en"]').setValue('My C Major')
       await wrapper.get('[data-test="save-as-form"]').trigger('submit')
       await new Promise((r) => setTimeout(r, 0))
 
@@ -603,14 +603,14 @@ describe('DiagramAuthoringView', () => {
         '/diagrams',
         expect.objectContaining({
           body: expect.objectContaining({
-            name: 'My C Major',
+            names: { en: 'My C Major' },
             kind: 'custom',
             positions: [expect.not.objectContaining({ position_id: expect.anything() })],
           }),
         }),
       )
       expect(router.replace).toHaveBeenCalledWith({ name: 'teacher-diagram-edit', params: { id: 'd-copy' } })
-      expect(wrapper.find('[data-test="save-as-name"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="save-as-name-en"]').exists()).toBe(false)
       expect(appBarShowsSave(wrapper)).toBe(true)
       expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
       expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('My C Major')
@@ -622,7 +622,7 @@ describe('DiagramAuthoringView', () => {
         data: {
           ...scale,
           diagram_id: 'd-copy',
-          name: 'My C Major',
+          names: { en: 'My C Major' },
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
@@ -655,20 +655,21 @@ describe('DiagramAuthoringView', () => {
       currentUser.profile.user_id = 'u-admin'
       const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
       POST.mockResolvedValueOnce({
-        data: { ...scale, diagram_id: 'd-tpl', name: 'C Major Template', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
+        data: { ...scale, diagram_id: 'd-tpl', names: { en: 'C Major Template', pt_BR: 'Modelo de Dó maior' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
         error: undefined,
         response: { status: 201 },
       })
 
       await wrapper.get('[data-test="save-as-template"]').trigger('click')
       expect(wrapper.text()).toContain('Save as template')
-      await wrapper.get('[data-test="save-as-name"]').setValue('C Major Template')
+      await wrapper.get('[data-test="save-as-name-en"]').setValue('C Major Template')
+      await wrapper.get('[data-test="save-as-name-pt_BR"]').setValue('Modelo de Dó maior')
       await wrapper.get('[data-test="save-as-form"]').trigger('submit')
       await new Promise((r) => setTimeout(r, 0))
 
       expect(POST).toHaveBeenCalledWith(
         '/diagrams',
-        expect.objectContaining({ body: expect.objectContaining({ name: 'C Major Template', kind: 'basic' }) }),
+        expect.objectContaining({ body: expect.objectContaining({ names: { en: 'C Major Template', pt_BR: 'Modelo de Dó maior' }, kind: 'basic' }) }),
       )
     })
 
@@ -680,9 +681,37 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('[data-test="save-as-form"]').trigger('submit')
       await new Promise((r) => setTimeout(r, 0))
 
-      expect(wrapper.find('[data-test="save-as-name"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="save-as-name-en"]').exists()).toBe(true)
       expect(router.replace).not.toHaveBeenCalled()
       expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
+    })
+
+    it('edits the name in the current language at the top, and every other language below it', async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+
+      expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('C Major Scale')
+      await wrapper.get('input[data-test="diagram-name-pt_BR"]').setValue('Escala de Dó maior')
+      PATCH.mockResolvedValueOnce({ data: { ...scale, kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } }, error: undefined, response: { status: 200 } })
+      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+
+      expect(PATCH).toHaveBeenCalledWith(
+        '/diagrams/{diagram_id}',
+        expect.objectContaining({ body: expect.objectContaining({ names: { en: 'C Major Scale', pt_BR: 'Escala de Dó maior' } }) }),
+      )
+    })
+
+    it('does not save over a template until it is named in every language, and says so', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
+
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+      expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(true)
+
+      await wrapper.get('input[data-test="diagram-name-pt_BR"]').setValue('Escala de Dó maior')
+
+      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+      expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(false)
     })
 
     it('does not offer Save as, or a teacher Save as template, for a diagram that has never been saved', () => {
@@ -697,7 +726,7 @@ describe('DiagramAuthoringView', () => {
       currentUser.profile.user_id = 'u-admin'
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
       POST.mockResolvedValueOnce({
-        data: { ...scale, diagram_id: 'd-tpl', name: 'G Major Template', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
+        data: { ...scale, diagram_id: 'd-tpl', names: { en: 'G Major Template', pt_BR: 'Modelo de Sol maior' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
         error: undefined,
         response: { status: 201 },
       })
@@ -712,13 +741,14 @@ describe('DiagramAuthoringView', () => {
       const appBar = wrapper.findComponent({ name: 'AppBar' })
       expect(appBar.find('[data-test="save-as"]').exists()).toBe(false)
       await appBar.get('[data-test="save-as-template"]').trigger('click')
-      expect((wrapper.get('[data-test="save-as-name"]').element as HTMLInputElement).value).toBe('G Major Template')
+      expect((wrapper.get('[data-test="save-as-name-en"]').element as HTMLInputElement).value).toBe('G Major Template')
+      await wrapper.get('[data-test="save-as-name-pt_BR"]').setValue('Modelo de Sol maior')
       await wrapper.get('[data-test="save-as-form"]').trigger('submit')
       await new Promise((r) => setTimeout(r, 0))
 
       expect(POST).toHaveBeenCalledWith(
         '/diagrams',
-        expect.objectContaining({ body: expect.objectContaining({ name: 'G Major Template', kind: 'basic' }) }),
+        expect.objectContaining({ body: expect.objectContaining({ names: { en: 'G Major Template', pt_BR: 'Modelo de Sol maior' }, kind: 'basic' }) }),
       )
       expect(router.replace).toHaveBeenCalledWith({ name: 'teacher-diagram-edit', params: { id: 'd-tpl' } })
       expect(appBarShowsSave(wrapper)).toBe(true)

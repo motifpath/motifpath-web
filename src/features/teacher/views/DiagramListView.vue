@@ -6,6 +6,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import { type DiagramFilters, useListDiagrams } from '@/features/teacher/composables/useListDiagrams'
 import AppBar from '@/shared/components/AppBar.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -19,6 +20,7 @@ const canAuthor = computed(
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
+const { localizedName } = useLocalizedName()
 
 // all: every diagram the caller may see (for a teacher, the templates plus their own);
 // templates: basic diagrams only; mine: the ones the caller created.
@@ -105,7 +107,7 @@ function selectScope(selected: Scope) {
               data-test="diagram-row"
               class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
             >
-              <span class="font-semibold text-ink">{{ diagram.name }}</span>
+              <span class="font-semibold text-ink">{{ localizedName(diagram.names) }}</span>
               <span
                 v-if="diagram.kind === 'basic'"
                 data-test="template-badge"

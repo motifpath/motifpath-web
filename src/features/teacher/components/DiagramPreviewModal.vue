@@ -5,6 +5,7 @@
  * full width instead of a permanently-visible miniature.
  */
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
@@ -28,6 +29,7 @@ const props = withDefaults(
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useTypedT()
+const { localizedName } = useLocalizedName()
 </script>
 
 <template>
@@ -37,7 +39,7 @@ const { t } = useTypedT()
     @close="emit('close')"
   >
     <div class="flex items-center justify-between border-b border-border px-5 py-[18px]">
-      <span class="text-base font-bold text-ink">{{ diagram.name || t('diagramPreviewModal.title') }}</span>
+      <span class="text-base font-bold text-ink">{{ localizedName(diagram.names) || t('diagramPreviewModal.title') }}</span>
       <ModalCloseButton @close="emit('close')" />
     </div>
 

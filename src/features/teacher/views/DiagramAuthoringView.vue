@@ -24,6 +24,8 @@ import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useToast } from '@/shared/composables/useToast'
 import { canEditDiagram } from '@/shared/utils/diagramOwnership'
 import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
+import { languageLabelKey } from '@/shared/utils/languageLabels'
+import { i18n, OFFERED_LANGUAGE_CODES, fromApiLanguageCode, toApiLanguageCode } from '@/i18n'
 import type { components } from '@/api/generated/core-domain'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -100,11 +102,34 @@ const canSaveAsTemplate = computed(() => isAdmin.value)
 // Outlined counterpart of the bar's filled Save pill: clearly a live button, but secondary.
 const secondarySaveClass =
   'rounded-full border border-accent px-[14px] py-[7px] text-[13px] font-bold text-accent-text disabled:cursor-not-allowed disabled:opacity-50'
-// A copy of a saved diagram is suggested as "<name> (copy)"; a new diagram keeps its own name.
-const saveAsInitialName = computed(() =>
-  savedDiagramId.value
-    ? t('diagramAuthoringView.copyName', { name: form.name.value })
-    : form.name.value,
+// The name typed in the big title field is the one in the current UI language; every other
+// offered language gets its own smaller field below it.
+const currentLanguage = computed(() => toApiLanguageCode(i18n.global.locale.value))
+const otherLanguages = computed(() => OFFERED_LANGUAGE_CODES.filter((code) => code !== currentLanguage.value))
+
+function languageLabel(code: string): string {
+  const key = languageLabelKey(code)
+  return key === null ? code : t(key)
+}
+
+// A basic diagram is shared with every teacher, so it can only be saved named in every language.
+const isBasic = computed(() => savedOwnership.value?.kind === 'basic')
+const namesMissing = computed(() => isBasic.value && !form.hasEveryName.value)
+
+// Save as keeps the diagram's own languages; Save as template needs every language.
+const saveAsLanguages = computed(() =>
+  saveAsKind.value === 'basic' ? OFFERED_LANGUAGE_CODES : form.namedLanguages.value,
+)
+// A copy of a saved diagram is suggested as "<name> (copy)" in each language's own words; a
+// new diagram keeps its own names.
+const saveAsInitialNames = computed(() =>
+  Object.fromEntries(
+    saveAsLanguages.value.map((code) => {
+      const name = (form.names.value[code] ?? '').trim()
+      if (!savedDiagramId.value || name === '') return [code, name]
+      return [code, i18n.global.t('diagramAuthoringView.copyName', { name }, { locale: fromApiLanguageCode(code) })]
+    }),
+  ),
 )
 const readOnlyReason = computed(() => {
   if (canSaveInPlace.value || !savedOwnership.value) return ''
@@ -148,7 +173,8 @@ const previewDiagram = computed<Diagram | null>(() => {
   return {
     diagram_id: savedDiagramId.value,
     instrument_id: form.instrumentId.value,
-    name: form.name.value,
+    names: request.names,
+    languages: Object.keys(request.names).sort(),
     kind: savedOwnership.value?.kind ?? 'custom',
     created_by: savedOwnership.value?.created_by ?? {
       user_id: currentUser.profile?.user_id ?? '',
@@ -212,12 +238,12 @@ function openSaveAs(kind: DiagramKind) {
  * untouched, then carries on editing the new one. The form is reloaded from the
  * server's copy so the positions carry the ids the server assigned to it.
  */
-async function saveAs(name: string) {
+async function saveAs(names: Record<string, string>) {
   if (!saveAsKind.value) return
   savingAs.value = true
   const isTemplate = saveAsKind.value === 'basic'
   try {
-    const created = await createDiagram(form.toCopyRequest(name, saveAsKind.value))
+    const created = await createDiagram(form.toCopyRequest(names, saveAsKind.value))
     form.loadFromDiagram(created)
     form.markSaved(created)
     adoptSaved(created)
@@ -242,11 +268,11 @@ async function saveAs(name: string) {
       :primary-nav-to="{ name: 'teacher-diagrams' }"
       :breadcrumb-label="
         isEditMode
-          ? form.name.value || t('diagramAuthoringView.editDiagramBreadcrumb')
+          ? localizedName(form.names.value) || t('diagramAuthoringView.editDiagramBreadcrumb')
           : t('diagramAuthoringView.newDiagramBreadcrumb')
       "
       :show-save="canSaveInPlace"
-      :save-disabled="!form.canSave.value || saving"
+      :save-disabled="!form.canSave.value || namesMissing || saving"
       :just-saved="justSaved"
       :on-save="save"
     >
@@ -308,13 +334,31 @@ async function saveAs(name: string) {
       >
         <div class="flex flex-col gap-1.5">
           <input
-            v-model="form.name.value"
+            :value="form.names.value[currentLanguage] ?? ''"
             type="text"
             data-test="diagram-name"
             :placeholder="t('diagramAuthoringView.namePlaceholder')"
             class="border-none bg-transparent font-bold text-ink outline-none"
             :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
+            @input="form.setName(currentLanguage, ($event.target as HTMLInputElement).value)"
           />
+          <label
+            v-for="code in otherLanguages"
+            :key="code"
+            class="flex items-center gap-2 text-sm text-ink-muted"
+          >
+            <span class="w-28 shrink-0">{{ t('diagramAuthoringView.nameInLanguage', { language: languageLabel(code) }) }}</span>
+            <input
+              :value="form.names.value[code] ?? ''"
+              type="text"
+              :data-test="`diagram-name-${code}`"
+              class="min-w-0 flex-1 rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-ink"
+              @input="form.setName(code, ($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <p v-if="namesMissing" data-test="names-missing-hint" class="text-sm text-ink-subtle">
+            {{ t('diagramAuthoringView.templateNeedsEveryName') }}
+          </p>
         </div>
 
         <p
@@ -516,7 +560,8 @@ async function saveAs(name: string) {
 
       <SaveDiagramAsModal
         :open="saveAsKind !== null"
-        :initial-name="saveAsInitialName"
+        :languages="saveAsLanguages"
+        :initial-names="saveAsInitialNames"
         :as-template="saveAsKind === 'basic'"
         :saving="savingAs"
         @confirm="saveAs"

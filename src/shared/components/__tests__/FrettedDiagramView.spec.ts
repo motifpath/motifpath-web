@@ -190,7 +190,7 @@ describe('FrettedDiagramView', () => {
     })
 
     expect(wrapper.get('svg').attributes('role')).toBe('img')
-    expect(wrapper.get('svg').attributes('aria-label')).toBe(makeFrettedDiagram().name)
+    expect(wrapper.get('svg').attributes('aria-label')).toBe(makeFrettedDiagram().names.en)
   })
 
   describe('persisted colors', () => {

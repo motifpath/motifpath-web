@@ -178,7 +178,9 @@
     "saveAsTemplateButton": "Save as template…",
     "copyName": "{name} (copy)",
     "copySaved": "Copy saved",
-    "templateSaved": "Template saved"
+    "templateSaved": "Template saved",
+    "nameInLanguage": "Name ({language})",
+    "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
