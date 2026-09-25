@@ -368,5 +368,19 @@
     "removeBody": "This diagram's name and other text in {language} will be deleted. Its markers and colors stay as they are.",
     "cancel": "Cancel",
     "confirmRemove": "Remove"
+  },
+  "courseListView": {
+    "heading": "Courses",
+    "permissionDenied": "Only teachers and admins can manage courses.",
+    "allStatuses": "All",
+    "statusTabsLabel": "Course status",
+    "loadingNoun": "courses",
+    "errorMessage": "We couldn't load your courses.",
+    "emptyHeading": "No courses yet",
+    "emptyMessage": "Courses you create will appear here.",
+    "noMatchesHeading": "No matching courses",
+    "noMatchesMessage": "Try fewer filters or a different search.",
+    "unpublishedChanges": "Unpublished changes",
+    "courseTeacher": "by {name}"
   }
 }

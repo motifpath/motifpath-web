@@ -197,6 +197,21 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/teacher/courses',
+    // Pass-through parent so the teacher locale loads on entry, as for the
+    // other teacher sections.
+    component: RouterView,
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'teacher-courses',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/CourseListView.vue'),
+      },
+    ],
+  },
+  {
     path: '/teacher/diagrams',
     // Same pass-through hoisting as /teacher/content and /teacher/paths above.
     component: RouterView,

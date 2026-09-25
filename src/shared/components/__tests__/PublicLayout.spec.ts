@@ -79,6 +79,7 @@ describe('PublicLayout', () => {
       'Find a course',
       'Content',
       'Paths',
+      'Courses',
       'Exercises',
       'Diagrams',
     ])
@@ -93,6 +94,7 @@ describe('PublicLayout', () => {
       'Find a course',
       'Content',
       'Paths',
+      'Courses',
       'Exercises',
       'Diagrams',
     ])

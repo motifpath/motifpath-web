@@ -42,7 +42,12 @@ const hasCrumb = computed(() => !isStudent.value && !!props.breadcrumbLabel)
 // a breadcrumb drills down from.
 const navItems = computed(() => (isStudent.value ? STUDENT_SECTIONS : TEACHER_SECTIONS))
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string }).name)
-const fallbackSection = computed(() => (isStudent.value ? STUDENT_SECTIONS[0]! : TEACHER_SECTIONS[2]!))
+const fallbackSection = computed(
+  () =>
+    (isStudent.value ? STUDENT_SECTIONS : TEACHER_SECTIONS).find((section) =>
+      isStudent.value ? section.name === 'path' : section.name === 'teacher-exercises',
+    )!,
+)
 const activeSection = computed(() => {
   const match = navItems.value.find((item) => item.name === primaryNavToName.value)
   if (!match && import.meta.env.DEV) {

@@ -368,5 +368,19 @@
     "removeBody": "O nome e os demais textos deste diagrama em {language} serão apagados. Os marcadores e as cores continuam como estão.",
     "cancel": "Cancelar",
     "confirmRemove": "Remover"
+  },
+  "courseListView": {
+    "heading": "Cursos",
+    "permissionDenied": "Apenas professores e administradores podem gerenciar cursos.",
+    "allStatuses": "Todos",
+    "statusTabsLabel": "Status do curso",
+    "loadingNoun": "cursos",
+    "errorMessage": "Não foi possível carregar seus cursos.",
+    "emptyHeading": "Nenhum curso ainda",
+    "emptyMessage": "Os cursos que você criar aparecerão aqui.",
+    "noMatchesHeading": "Nenhum curso encontrado",
+    "noMatchesMessage": "Tente menos filtros ou outra busca.",
+    "unpublishedChanges": "Alterações não publicadas",
+    "courseTeacher": "por {name}"
   }
 }
