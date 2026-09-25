@@ -22,6 +22,7 @@ vi.mock('@clerk/vue', () => ({
     signOut: computed(() => clerk.signOut),
   }),
   useUser: () => ({ user: computed(() => clerkUser.value) }),
+  useClerk: () => computed(() => null),
 }))
 
 const { default: AccountMenu } = await import('@/shared/components/AccountMenu.vue')
