@@ -1008,6 +1008,17 @@ describe('DiagramAuthoringView', () => {
       await overlayPentatonic(wrapper)
 
       expect(wrapper.get('[data-test="instrument-option"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="instrument-locked-hint"]').text()).toContain('overlaid')
+    })
+
+    it('suggests the diagram\'s own name, not a copy name, when saving merged layers as a new diagram', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+      await merge(wrapper, false)
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+
+      expect(wrapper.get<HTMLInputElement>('[data-test="save-as-name-en"]').element.value).toBe('C Major Scale')
     })
 
     it("can't merge while a position of this diagram still has no interval", async () => {

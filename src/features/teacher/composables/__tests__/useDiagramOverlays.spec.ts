@@ -135,4 +135,14 @@ describe('useDiagramOverlays', () => {
 
     expect(overlays.canMerge.value).toBe(false)
   })
+
+  it('says whether it merged, leaving the form alone when it could not', () => {
+    const { form, overlays } = setup()
+
+    expect(overlays.merge({ regionPerLayer: false })).toBe(false)
+    expect(form.positions.value).toHaveLength(2)
+
+    overlays.add(overlay)
+    expect(overlays.merge({ regionPerLayer: false })).toBe(true)
+  })
 })

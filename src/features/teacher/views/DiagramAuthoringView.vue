@@ -160,12 +160,12 @@ const saveAsLanguages = computed(() =>
   saveAsKind.value === 'basic' ? OFFERED_LANGUAGE_CODES : form.languages.value,
 )
 // A copy of a saved diagram is suggested as "<name> (copy)" in each language's own words; a
-// new diagram keeps its own names.
+// new diagram, or merged layers (a new diagram in their own right), keep their own names.
 const saveAsInitialNames = computed(() =>
   Object.fromEntries(
     saveAsLanguages.value.map((code) => {
       const name = (form.names.value[code] ?? '').trim()
-      if (!savedDiagramId.value || name === '') return [code, name]
+      if (!savedDiagramId.value || mergedIntoSaved.value || name === '') return [code, name]
       return [code, i18n.global.t('diagramAuthoringView.copyName', { name }, { locale: fromApiLanguageCode(code) })]
     }),
   ),
@@ -244,9 +244,8 @@ function onOverlayPicked(diagram: Diagram) {
 }
 
 function onMergeConfirmed(regionPerLayer: boolean) {
-  merge({ regionPerLayer })
   confirmingMerge.value = false
-  if (savedDiagramId.value !== '') mergedIntoSaved.value = true
+  if (merge({ regionPerLayer }) && savedDiagramId.value !== '') mergedIntoSaved.value = true
 }
 
 const saving = ref(false)
@@ -458,8 +457,16 @@ async function saveAs(names: Record<string, string>) {
               {{ localizedNameInEditor(instrument.names) }}
             </button>
           </div>
-          <span v-if="isEditMode || form.hasPositions.value || hasOverlays" class="text-sm text-ink-subtle">
-            {{ te('diagramAuthoringView.instrumentLockedHint') }}
+          <span
+            v-if="isEditMode || form.hasPositions.value || hasOverlays"
+            data-test="instrument-locked-hint"
+            class="text-sm text-ink-subtle"
+          >
+            {{
+              isEditMode || form.hasPositions.value
+                ? te('diagramAuthoringView.instrumentLockedHint')
+                : te('diagramAuthoringView.instrumentLockedByOverlaysHint')
+            }}
           </span>
         </div>
 

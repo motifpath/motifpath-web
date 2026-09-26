@@ -60,10 +60,12 @@ export function useDiagramOverlays(form: DiagramForm) {
   // A position without an interval yet (no root note chosen) couldn't be carried into the merge.
   const canMerge = computed(() => hasOverlays.value && form.hasCompletePositions.value)
 
-  function merge({ regionPerLayer }: { regionPerLayer: boolean }) {
-    if (!canMerge.value) return
+  /** Merges the overlays into the form; false, leaving everything as it was, when it can't. */
+  function merge({ regionPerLayer }: { regionPerLayer: boolean }): boolean {
+    if (!canMerge.value) return false
     form.loadFlattened(flatten(regionPerLayer))
     overlays.value = []
+    return true
   }
 
   return { overlays, overlayLayers, hasOverlays, overlayIds, add, remove, preview, canMerge, merge }

@@ -152,6 +152,7 @@
     "instrumentLoading": "Carregando instrumentos…",
     "instrumentPlaceholder": "Escolha um instrumento",
     "instrumentLockedHint": "O instrumento não pode ser alterado depois que uma posição é colocada — remova todas as posições primeiro se precisar trocar.",
+    "instrumentLockedByOverlaysHint": "O instrumento não pode ser trocado enquanto houver diagramas sobrepostos — remova-os antes se precisar trocar.",
     "rootNoteLabel": "Nota fundamental",
     "rootNotePlaceholder": "Escolha a nota fundamental",
     "rootNoteHint": "Usada para preencher automaticamente o intervalo e o nome da nota de cada posição — não é salva no diagrama.",

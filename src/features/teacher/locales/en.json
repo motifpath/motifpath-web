@@ -152,6 +152,7 @@
     "instrumentLoading": "Loading instruments…",
     "instrumentPlaceholder": "Choose an instrument",
     "instrumentLockedHint": "The instrument can't be changed once a position has been placed — remove every position first if you need to switch.",
+    "instrumentLockedByOverlaysHint": "The instrument can't be changed while diagrams are overlaid — remove them first if you need to switch.",
     "rootNoteLabel": "Root note",
     "rootNotePlaceholder": "Choose a root note",
     "rootNoteHint": "Used to auto-fill each position's interval and note name — not saved on the diagram itself.",
