@@ -786,10 +786,20 @@ export interface paths {
         /**
          * List learning paths for authoring
          * @description Returns learning paths from the library, for browsing and picking one
-         *     to edit or assign to a student.
-         *     Results are paginated (ADR-031): ordered by title, then id and
-         *     returned in a {items, total, limit, offset} envelope. An offset
-         *     past the end returns an empty items array, not an error.
+         *     to edit, to assign to a student, or to place at a course
+         *     checkpoint.
+         *     Results are paginated: returned in a {items, total, limit, offset}
+         *     envelope. An offset past the end returns an empty items array, not
+         *     an error. sort decides the order: by title, then id (the default),
+         *     or by most recently updated first, then id.
+         *
+         *     Every filter below is optional and they combine with AND; levels,
+         *     skill_ids and concept_ids are any-of within themselves. levels
+         *     matches a path's own authored level; a path with no level recorded
+         *     never matches it. A path matches skill_ids when any of its content
+         *     nodes is classified with any of the given skills, and, if
+         *     concept_ids is also given, also with any of the given concepts.
+         *
          *     Teachers and admins may list learning paths; students may not
          *     browse paths directly — their view is through
          *     GET /students/me/path.
@@ -876,7 +886,8 @@ export interface paths {
          *     offset} envelope; an offset past the end returns an empty items
          *     array. Every filter below is optional and they combine with AND;
          *     levels, skill_ids and concept_ids are any-of within themselves.
-         *     created_by is a free discovery filter for every caller.
+         *     created_by is a free discovery filter for every caller. language
+         *     matches the course's language in its latest published version.
          *
          *     skill_ids and concept_ids each accept several ids (repeat the
          *     parameter). A course matches when any of its latest published
@@ -947,6 +958,7 @@ export interface paths {
          *     offset} envelope; an offset past the end returns an empty items
          *     array. Every filter below is optional and they combine with AND;
          *     levels, skill_ids and concept_ids are any-of within themselves.
+         *     language matches the live draft's language.
          *
          *     A teacher is always limited to the courses they created; passing
          *     a created_by other than their own user_id is refused with 403.
@@ -1091,8 +1103,8 @@ export interface paths {
         put?: never;
         /**
          * Publish a course's current draft
-         * @description Snapshots the course's current title, summary, level, and
-         *     checkpoints, field for field, into a new immutable CourseVersion,
+         * @description Snapshots the course's current title, summary, level, language,
+         *     and checkpoints, field for field, into a new immutable CourseVersion,
          *     and advances the course's latest_published_version to it. The
          *     course's status becomes published if this is its first
          *     publication. Every already-enrolled student is unaffected — they
@@ -1123,9 +1135,34 @@ export interface paths {
          *     CourseEnrollment already created against the course, and the
          *     StudentPaths under it, continue to resolve normally. A retired
          *     course's templates remain undeletable if referenced by any
-         *     published CourseVersion. Admin-only.
+         *     published CourseVersion. POST /courses/{course_id}/reactivate
+         *     brings it back. Admin-only.
          */
         post: operations["retireCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/courses/{course_id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reactivate a retired course
+         * @description Returns a retired course to published: it is back in the catalog
+         *     and open to new enrollment, with its latest published version.
+         *     No new version is created, and existing enrollments are
+         *     unaffected. Only a retired course can be reactivated; any other
+         *     course is refused. Admin-only.
+         */
+        post: operations["reactivateCourse"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1503,6 +1540,12 @@ export interface components {
              *     language-agnostic, never left unclassified.
              */
             language_codes: string[];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+             */
+            thumbnail_url?: string;
         };
         /**
          * @description The three mandatory classification dimensions for a content node.
@@ -1606,6 +1649,12 @@ export interface components {
             created_at: string;
             /** @description The version_number of the most recently published ContentNodeVersion, or null if this node has never been published. A node with no published version cannot be copied into a StudentPathItem. */
             latest_published_version?: number | null;
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards. Absent when it has none.
+             */
+            thumbnail_url?: string;
         };
         /**
          * @description An immutable, permanent snapshot of a content node's
@@ -1640,6 +1689,13 @@ export interface components {
              * @description Timestamp at which this version was published.
              */
             published_at: string;
+            /** @description The instrument_ids at the moment of publishing; empty means every instrument. */
+            instrument_ids_snapshot: string[];
+            /**
+             * Format: uri
+             * @description The thumbnail_url at the moment of publishing; absent when there was none.
+             */
+            thumbnail_url_snapshot?: string;
         };
         /**
          * @description Payload for updating an existing content node's title and
@@ -1673,6 +1729,12 @@ export interface components {
              *     be empty.
              */
             language_codes: string[];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+             */
+            thumbnail_url?: string;
         };
         /**
          * @description An observable, practicable skill a content node can teach. Skills
@@ -2313,6 +2375,11 @@ export interface components {
         CreateLearningPathRequest: {
             /** @description Human-readable name for this learning path, displayed to teachers and admins. */
             title: string;
+            /**
+             * @description The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
             /** @description Ordered list of content nodes that make up this path. At least one item is required. */
             items: {
                 /**
@@ -2323,6 +2390,12 @@ export interface components {
                 /** @description Optional label grouping this item with its immediate neighbors under a named section in the resulting path view. Consecutive items that share the same label render together under that heading in the teacher, admin, and student path views; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area — never a time period or schedule. */
                 section_label?: string;
             }[];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+             */
+            thumbnail_url?: string;
         };
         /** @description A single content node within a learning path at a given position. */
         LearningPathItem: {
@@ -2353,6 +2426,11 @@ export interface components {
             teacher: components["schemas"]["UserRef"];
             /** @description Human-readable name for this learning path. */
             title: string;
+            /**
+             * @description The level a learner should be at to follow this path. Absent for a path created before levels were recorded, until it is next saved.
+             * @enum {string}
+             */
+            level?: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
             /** @description Ordered content nodes, sorted by position ascending. */
             items: components["schemas"]["LearningPathItem"][];
             /**
@@ -2360,6 +2438,17 @@ export interface components {
              * @description Timestamp at which this learning path was created.
              */
             created_at: string;
+            /**
+             * Format: date-time
+             * @description Timestamp at which this learning path was last created or replaced.
+             */
+            updated_at: string;
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards. Absent when it has none.
+             */
+            thumbnail_url?: string;
         };
         /**
          * @description Payload for replacing an existing learning path's title and items
@@ -2370,6 +2459,11 @@ export interface components {
         ReplaceLearningPathRequest: {
             /** @description Human-readable name for this learning path, displayed to teachers and admins. */
             title: string;
+            /**
+             * @description The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
             /** @description Ordered list of content nodes that make up this path. At least one item is required. */
             items: {
                 /**
@@ -2380,6 +2474,12 @@ export interface components {
                 /** @description Optional label grouping this item with its immediate neighbors under a named section in the resulting path view. */
                 section_label?: string;
             }[];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+             */
+            thumbnail_url?: string;
         };
         /** @description Payload for assigning a learning path to a student. */
         AssignLearningPathRequest: {
@@ -2505,6 +2605,8 @@ export interface components {
              * @enum {string}
              */
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The language the course is written in, as a Language.code other than "any". A course is not localized: its title, summary and checkpoint titles are all in this language. */
+            language: string;
             checkpoints: {
                 /**
                  * Format: uuid
@@ -2514,6 +2616,12 @@ export interface components {
                 /** @description Optional override shown for this checkpoint instead of the learning path's own title (e.g. "Stage 1: Open chords"). */
                 title?: string;
             }[];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+             */
+            thumbnail_url?: string;
         };
         /** @description Payload for replacing a course's draft wholesale. */
         ReplaceCourseRequest: {
@@ -2526,6 +2634,8 @@ export interface components {
              * @enum {string}
              */
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The language the course is written in, as a Language.code other than "any". A course is not localized: its title, summary and checkpoint titles are all in this language. */
+            language: string;
             checkpoints: {
                 /**
                  * Format: uuid
@@ -2535,6 +2645,12 @@ export interface components {
                 /** @description Optional override shown for this checkpoint instead of the learning path's own title. */
                 title?: string;
             }[];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards, as an absolute http or https URL (typically one returned by POST /media/upload-url with purpose thumbnail). Omitted means no thumbnail; on a replace or update, omitting it removes the current one.
+             */
+            thumbnail_url?: string;
         };
         /** @description One stage of a course's journey, pointing at a learning path template. */
         CourseCheckpoint: {
@@ -2571,6 +2687,8 @@ export interface components {
              * @enum {string}
              */
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The language the course is written in, as a Language.code. */
+            language: string;
             created_by: components["schemas"]["UserRef"];
             /**
              * @description Always published in GET /catalog/courses; any status in the authoring list, GET /courses.
@@ -2584,6 +2702,12 @@ export interface components {
             published_at: string | null;
             /** @description True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the authoring list, GET /courses; GET /catalog/courses never returns it. */
             has_unpublished_changes?: boolean;
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description The course's thumbnail: the latest published version's in GET /catalog/courses, the live draft's in GET /courses. Absent when it has none.
+             */
+            thumbnail_url?: string;
         };
         /**
          * @description A course: an ordered, author-editable journey of learning-path
@@ -2607,6 +2731,8 @@ export interface components {
              * @enum {string}
              */
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The language the course is written in, as a Language.code. */
+            language: string;
             /**
              * @description draft — never published. published — has at least one CourseVersion. retired — removed from the catalog for new enrollment only; existing enrollments are unaffected.
              * @enum {string}
@@ -2624,6 +2750,12 @@ export interface components {
             has_unpublished_changes: boolean;
             /** @description The course's checkpoints, sorted by position ascending. */
             checkpoints: components["schemas"]["CourseCheckpoint"][];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards. Absent when it has none.
+             */
+            thumbnail_url?: string;
         };
         /** @description One content node's title within a checkpoint's outline. */
         CourseOutlineItem: {
@@ -2662,6 +2794,8 @@ export interface components {
              * @enum {string}
              */
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The language the course is written in, as a Language.code. */
+            language: string;
             /**
              * @description The course's authoring status. A student's result is always published.
              * @enum {string}
@@ -2674,10 +2808,16 @@ export interface components {
             published_at?: string | null;
             /** @description The course's checkpoints, sorted by position ascending. */
             checkpoints: components["schemas"]["CourseOutlineCheckpoint"][];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards. Absent when it has none.
+             */
+            thumbnail_url?: string;
         };
         /**
          * @description An immutable, permanent snapshot of a course's title, summary,
-         *     level, and checkpoints at the moment it was published. Students
+         *     level, language, and checkpoints at the moment it was published. Students
          *     and the catalog only ever read the latest CourseVersion, never
          *     the live draft.
          */
@@ -2698,6 +2838,8 @@ export interface components {
              * @enum {string}
              */
             level_snapshot: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The course's language at the moment of publishing, as a Language.code. */
+            language_snapshot: string;
             /**
              * Format: date-time
              * @description Timestamp at which this version was published.
@@ -2705,6 +2847,13 @@ export interface components {
             published_at: string;
             /** @description When false, this version can no longer be self-enrolled into, without retiring the course or requiring a newer version. Already-enrolled students are unaffected. */
             available_for_new_enrollments: boolean;
+            /** @description The instrument_ids at the moment of publishing; empty means every instrument. */
+            instrument_ids_snapshot: string[];
+            /**
+             * Format: uri
+             * @description The thumbnail_url at the moment of publishing; absent when there was none.
+             */
+            thumbnail_url_snapshot?: string;
         };
         /** @description Payload for self-enrolling in a course. */
         CreateCourseEnrollmentRequest: {
@@ -2733,6 +2882,11 @@ export interface components {
             course_id: string;
             /** @description The course's title, as of the pinned version. */
             course_title: string;
+            /**
+             * Format: uri
+             * @description The course's thumbnail, as of the pinned version. Absent when that version had none.
+             */
+            course_thumbnail_url?: string;
             /** @description The CourseVersion this enrollment is pinned to. */
             course_version_number: number;
             /**
@@ -3605,14 +3759,16 @@ export interface components {
              * @description What the uploaded object is for. exercise_asset requires
              *     exercise_id and stores the object under that exercise's prefix.
              *     library_asset stores the object under the shared, predefined
-             *     image-picker library's prefix.
+             *     image-picker library's prefix. thumbnail stores an image shown for
+             *     a course, learning path or content node in lists and cards; its
+             *     content_type must be image.
              * @enum {string}
              */
-            purpose: "exercise_asset" | "library_asset";
+            purpose: "exercise_asset" | "library_asset" | "thumbnail";
             /**
              * Format: uuid
              * @description The exercise this upload belongs to. Required when purpose is
-             *     exercise_asset; must be absent when purpose is library_asset.
+             *     exercise_asset; must be absent otherwise.
              */
             exercise_id?: string;
             /**
@@ -3679,6 +3835,13 @@ export interface components {
         LocalizedNames: {
             [key: string]: string;
         };
+        /**
+         * @description The instruments this item is for, by Instrument.instrument_id. An
+         *     empty list means it suits every instrument (for example, music
+         *     theory). Every id must reference an existing instrument, and none
+         *     may repeat.
+         */
+        InstrumentIds: string[];
         /**
          * @description A marker label in one or more languages, keyed by Language.code
          *     (never "any"); each value fits inside a marker.
@@ -3897,6 +4060,7 @@ export type SchemaMediaUploadUrl = components['schemas']['MediaUploadUrl'];
 export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
 export type SchemaLocalizedNames = components['schemas']['LocalizedNames'];
+export type SchemaInstrumentIds = components['schemas']['InstrumentIds'];
 export type SchemaLocalizedMarkerLabel = components['schemas']['LocalizedMarkerLabel'];
 export type SchemaLocalizedNote = components['schemas']['LocalizedNote'];
 export type SchemaLocalizedCaption = components['schemas']['LocalizedCaption'];
@@ -3992,6 +4156,8 @@ export interface operations {
                 concept_id?: string;
                 /** @description When given, only content nodes at this difficulty level are returned. */
                 difficulty_level?: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+                /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
+                instrument_id?: string;
             };
             header?: never;
             path?: never;
@@ -6040,6 +6206,18 @@ export interface operations {
                 limit?: components["parameters"]["Limit"];
                 /** @description Number of matching items to skip before this page (ADR-031). */
                 offset?: components["parameters"]["Offset"];
+                /** @description Restricts the results to learning paths created by this user. */
+                created_by?: string;
+                /** @description Restricts the results to learning paths at any of these levels. */
+                levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
+                /** @description Restricts the results to learning paths with a content node classified with at least one of these skills. */
+                skill_ids?: string[];
+                /** @description Restricts the results to learning paths with a content node classified with at least one of these concepts. */
+                concept_ids?: string[];
+                /** @description title orders by title, then id. updated orders by updated_at, most recent first, then id. */
+                sort?: "title" | "updated";
+                /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
+                instrument_id?: string;
             };
             header?: never;
             path?: never;
@@ -6056,7 +6234,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedLearningPaths"];
                 };
             };
-            /** @description limit or offset is out of range. */
+            /** @description limit or offset is out of range, or a filter or sort value is not one this endpoint accepts. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6340,6 +6518,13 @@ export interface operations {
                 skill_ids?: string[];
                 /** @description Restricts the results to courses classified with at least one of these concepts. */
                 concept_ids?: string[];
+                /**
+                 * @description Restricts the results to courses written in this language
+                 *     (a Language.code other than "any").
+                 */
+                language?: string;
+                /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
+                instrument_id?: string;
             };
             header?: never;
             path?: never;
@@ -6427,6 +6612,13 @@ export interface operations {
                 concept_ids?: string[];
                 /** @description Restricts the results to courses in this status. */
                 status?: "draft" | "published" | "retired";
+                /**
+                 * @description Restricts the results to courses written in this language
+                 *     (a Language.code other than "any").
+                 */
+                language?: string;
+                /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
+                instrument_id?: string;
             };
             header?: never;
             path?: never;
@@ -6817,6 +7009,65 @@ export interface operations {
                 };
             };
             /** @description Only admins may retire a course. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No course exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    reactivateCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the course to reactivate. */
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reactivated course. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /** @description The course is not retired. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins may reactivate a course. */
             403: {
                 headers: {
                     [name: string]: unknown;
