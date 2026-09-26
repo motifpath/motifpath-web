@@ -66,7 +66,7 @@ function makeId(): string {
 export const REGION_CAPTION_MAX_LENGTH = 60
 
 /** A served or merged position as the editor holds it; one without an id gets a new one. */
-function toLocalPosition(p: DiagramPosition): LocalPosition {
+export function toLocalPosition(p: DiagramPosition): LocalPosition {
   return {
     id: p.position_id ?? makeId(),
     string: p.string ?? 0,
