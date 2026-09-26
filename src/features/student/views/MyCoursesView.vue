@@ -15,6 +15,7 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
+import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -140,9 +141,12 @@ async function switchTo(target: CurrentPathTarget) {
             data-test="my-course-item"
             class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-raised p-4"
           >
-            <div class="flex flex-col gap-1">
-              <span class="font-semibold text-ink">{{ enrollment.course_title }}</span>
-              <span class="text-sm text-ink-muted">{{ enrollmentMeta(enrollment) }}</span>
+            <div class="flex min-w-0 items-center gap-3">
+              <ThumbnailImage :url="enrollment.course_thumbnail_url" />
+              <div class="flex flex-col gap-1">
+                <span class="font-semibold text-ink">{{ enrollment.course_title }}</span>
+                <span class="text-sm text-ink-muted">{{ enrollmentMeta(enrollment) }}</span>
+              </div>
             </div>
             <span
               v-if="enrollment.course_enrollment_id === currentEnrollmentId"
@@ -173,11 +177,14 @@ async function switchTo(target: CurrentPathTarget) {
             data-test="my-course-item"
             class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-raised p-4"
           >
-            <div class="flex flex-col gap-1">
-              <span class="font-semibold text-ink">{{ path.title }}</span>
-              <span class="text-sm text-ink-muted">
-                {{ t('myCoursesView.assignedBy', { name: path.assigned_by.display_name }) }}
-              </span>
+            <div class="flex min-w-0 items-center gap-3">
+              <ThumbnailImage />
+              <div class="flex flex-col gap-1">
+                <span class="font-semibold text-ink">{{ path.title }}</span>
+                <span class="text-sm text-ink-muted">
+                  {{ t('myCoursesView.assignedBy', { name: path.assigned_by.display_name }) }}
+                </span>
+              </div>
             </div>
             <span
               v-if="path.student_path_id === currentStandalonePathId"

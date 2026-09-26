@@ -290,7 +290,9 @@
     "loadingNoun": "content",
     "errorMessage": "We couldn't load the content nodes.",
     "emptyHeading": "No content yet",
-    "emptyMessage": "Create your first video or article to start building the content library."
+    "emptyMessage": "Create your first video or article to start building the content library.",
+    "noMatchesMessage": "No content is for this instrument.",
+    "showEveryInstrument": "Show every instrument"
   },
   "pathBuilderView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
@@ -319,7 +321,9 @@
     "emptyHeading": "No paths yet",
     "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
     "nodeCountSingular": "{count} node",
-    "nodeCountPlural": "{count} nodes"
+    "nodeCountPlural": "{count} nodes",
+    "noMatchesMessage": "No learning path is for this instrument.",
+    "showEveryInstrument": "Show every instrument"
   },
   "challengeModal": {
     "buildTitle": "Build challenge",
@@ -387,7 +391,8 @@
     "noMatchesHeading": "No matching courses",
     "noMatchesMessage": "Try fewer filters or a different search.",
     "unpublishedChanges": "Unpublished changes",
-    "courseTeacher": "by {name}"
+    "courseTeacher": "by {name}",
+    "newCourse": "New course"
   },
   "thumbnailField": {
     "upload": "Upload image",

@@ -4,10 +4,13 @@ import { computed } from 'vue'
 
 import { useListLearningPaths } from '@/features/teacher/composables/useListLearningPaths'
 import AppBar from '@/shared/components/AppBar.vue'
+import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
+import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
+import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -19,8 +22,18 @@ const canAuthor = computed(
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
-const { learningPaths, total, isLoading, isLoadingMore, error, loadMoreError, retry, loadMore } =
-  useListLearningPaths()
+const {
+  learningPaths,
+  instrumentId,
+  total,
+  isLoading,
+  isLoadingMore,
+  error,
+  loadMoreError,
+  retry,
+  loadMore,
+} = useListLearningPaths()
+const { instrumentsLabel } = useInstrumentNames()
 </script>
 
 <template>
@@ -46,9 +59,22 @@ const { learningPaths, total, isLoading, isLoadingMore, error, loadMoreError, re
         </RouterLink>
       </div>
 
+      <InstrumentFilterSelect v-model="instrumentId" class="w-fit" />
+
       <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathListView.loadingNoun')" />
 
       <StateError v-else-if="error" data-test="error" :message="t('pathListView.errorMessage')" @retry="retry" />
+
+      <div
+        v-else-if="learningPaths.length === 0 && instrumentId"
+        data-test="no-matches"
+        class="flex flex-col items-start gap-2 text-sm text-ink-muted"
+      >
+        {{ t('pathListView.noMatchesMessage') }}
+        <button type="button" class="font-semibold text-accent-text underline" @click="instrumentId = null">
+          {{ t('pathListView.showEveryInstrument') }}
+        </button>
+      </div>
 
       <StateEmpty
         v-else-if="learningPaths.length === 0"
@@ -69,9 +95,15 @@ const { learningPaths, total, isLoading, isLoadingMore, error, loadMoreError, re
             <RouterLink
               :to="{ name: 'teacher-path-edit', params: { id: learningPath.learning_path_id } }"
               data-test="learning-path-row"
-              class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
+              class="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3"
             >
-              <span class="font-semibold text-ink">{{ learningPath.title }}</span>
+              <div class="flex min-w-0 items-center gap-3">
+                <ThumbnailImage :url="learningPath.thumbnail_url" />
+                <div class="flex min-w-0 flex-col gap-0.5">
+                  <span class="font-semibold text-ink">{{ learningPath.title }}</span>
+                  <span class="text-sm text-ink-subtle">{{ instrumentsLabel(learningPath.instrument_ids) }}</span>
+                </div>
+              </div>
               <span class="text-sm text-ink-subtle">{{
                 learningPath.items.length === 1
                   ? t('pathListView.nodeCountSingular', { count: learningPath.items.length })

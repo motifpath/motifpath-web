@@ -189,6 +189,20 @@ describe('MyCoursesView', () => {
     expect(card(wrapper, 'Blues basics').text()).toContain('Left')
   })
 
+  it("shows the thumbnail of the course version each enrollment is on, and a placeholder for standalone paths", () => {
+    enrollments.enrollments.value = [
+      enrollment({ course_thumbnail_url: 'https://cdn.test/thumbnails/v2.png' }),
+      enrollment({ course_enrollment_id: 'e-2', course_title: 'Jazz voicings' }),
+    ]
+    standalone.paths.value = [standalonePath({ title: 'Warm-ups' })]
+
+    const wrapper = mountView()
+
+    expect(card(wrapper, 'Fingerstyle journey').get('img').attributes('src')).toBe('https://cdn.test/thumbnails/v2.png')
+    expect(card(wrapper, 'Jazz voicings').find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
+    expect(card(wrapper, 'Warm-ups').find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
+  })
+
   it('offers to switch only to active enrollments', () => {
     enrollments.enrollments.value = [
       enrollment(),

@@ -22,6 +22,8 @@ const managed = {
     skillIds: [] as string[],
     conceptIds: [] as string[],
     teacher: null as UserRef | null,
+    instrumentId: null as string | null,
+    language: null as string | null,
   }),
   searchText: ref(''),
   hasActiveFilters: ref(false),
@@ -49,6 +51,14 @@ vi.mock('@/shared/composables/useCourseCreators', () => ({
 vi.mock('@/shared/composables/useListSkills', () => ({
   useListSkills: () => ({
     skills: ref([]),
+    isLoading: ref(false),
+    error: ref(false),
+    retry: vi.fn(),
+  }),
+}))
+vi.mock('@/shared/composables/useListInstruments', () => ({
+  useListInstruments: () => ({
+    instruments: ref([{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]),
     isLoading: ref(false),
     error: ref(false),
     retry: vi.fn(),
@@ -111,7 +121,14 @@ describe('CourseListView', () => {
     managed.error.value = false
     managed.status.value = null
     managed.hasActiveFilters.value = false
-    Object.assign(managed.filters, { levels: [], skillIds: [], conceptIds: [], teacher: null })
+    Object.assign(managed.filters, {
+      levels: [],
+      skillIds: [],
+      conceptIds: [],
+      teacher: null,
+      instrumentId: null,
+      language: null,
+    })
     currentUser.profile.role = 'teacher'
     creatorScopes.length = 0
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -173,6 +190,51 @@ describe('CourseListView', () => {
     expect(rows[0]!.find('[data-test="unpublished-changes"]').exists()).toBe(false)
     expect(rows[1]!.find('[data-test="unpublished-changes"]').exists()).toBe(true)
     expect(rows[2]!.get('[data-test="course-status"]').text()).toBe('Draft')
+  })
+
+  it("opens a course's builder from its row", () => {
+    managed.courses.value = [course(), course({ course_id: 'c-2', title: 'Rhythm Basics' })]
+    managed.total.value = 2
+
+    const rows = mountView().findAll('[data-test="course-row"]')
+
+    expect(rows.map((row) => row.getComponent(RouterLinkStub).props('to'))).toEqual([
+      { name: 'teacher-course-edit', params: { id: 'c-1' } },
+      { name: 'teacher-course-edit', params: { id: 'c-2' } },
+    ])
+  })
+
+  it('offers a new course', () => {
+    const link = mountView()
+      .findAllComponents(RouterLinkStub)
+      .find((l) => l.attributes('data-test') === 'new-course')
+
+    expect(link?.props('to')).toEqual({ name: 'teacher-course-new' })
+  })
+
+  it("shows each course's thumbnail, or a placeholder, and its language", () => {
+    managed.courses.value = [
+      course({ thumbnail_url: 'https://cdn.test/thumbnails/c-1.png' }),
+      course({ course_id: 'c-2', language: 'pt_BR' }),
+    ]
+    managed.total.value = 2
+
+    const rows = mountView().findAll('[data-test="course-row"]')
+
+    expect(rows[0]!.get('img').attributes('src')).toBe('https://cdn.test/thumbnails/c-1.png')
+    expect(rows[1]!.find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
+    expect(rows[0]!.get('[data-test="course-language"]').text()).toContain('EN')
+    expect(rows[1]!.get('[data-test="course-language"]').text()).toContain('PT')
+  })
+
+  it('binds the language and instrument filters to the list', async () => {
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="language-filter"]').setValue('pt_BR')
+    await wrapper.get('[data-test="instrument-filter"]').setValue('i-guitar')
+
+    expect(managed.filters.language).toBe('pt_BR')
+    expect(managed.filters.instrumentId).toBe('i-guitar')
   })
 
   it('switches the status tab, and back to every status', async () => {

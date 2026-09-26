@@ -1,4 +1,4 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
@@ -34,6 +34,8 @@ function mockMatchMedia(compact: boolean): void {
   }))
 }
 
+const instruments = [{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]
+
 import ContentListView from '@/features/teacher/views/ContentListView.vue'
 
 function mountView() {
@@ -48,6 +50,13 @@ function mountView() {
 describe('ContentListView', () => {
   beforeEach(() => {
     GET.mockReset()
+    GET.mockImplementation((requestPath: string) =>
+      Promise.resolve(
+        requestPath === '/instruments'
+          ? { data: instruments, error: undefined, response: { status: 200 } }
+          : { data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } },
+      ),
+    )
     currentUser.profile.role = 'teacher'
     mockMatchMedia(false)
   })
@@ -96,13 +105,13 @@ describe('ContentListView', () => {
       data: {
         items: [
           {
-            content_node_id: 'cn-1',
+            content_node_id: 'cn-1', instrument_ids: [],
             title: 'Alternate picking basics',
             content_type: 'video',
             classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' },
           },
           {
-            content_node_id: 'cn-2',
+            content_node_id: 'cn-2', instrument_ids: [],
             title: 'Chord theory primer',
             content_type: 'article',
             classification: { skill: 's', concept: 'c', difficulty_level: 'advanced', review_state: 'confirmed' },
@@ -135,7 +144,7 @@ describe('ContentListView', () => {
 
   it('loads the next page when the teacher asks for more', async () => {
     GET.mockResolvedValueOnce({
-      data: { items: [{ content_node_id: 'cn-1', title: 'Alternate picking basics', content_type: 'video' }], total: 2, limit: 20, offset: 0 },
+      data: { items: [{ content_node_id: 'cn-1', instrument_ids: [], title: 'Alternate picking basics', content_type: 'video' }], total: 2, limit: 20, offset: 0 },
       error: undefined,
       response: { status: 200 },
     })
@@ -144,7 +153,7 @@ describe('ContentListView', () => {
     expect(wrapper.text()).toContain('Showing 1 of 2')
 
     GET.mockResolvedValueOnce({
-      data: { items: [{ content_node_id: 'cn-2', title: 'Chord theory primer', content_type: 'article' }], total: 2, limit: 20, offset: 1 },
+      data: { items: [{ content_node_id: 'cn-2', instrument_ids: [], title: 'Chord theory primer', content_type: 'article' }], total: 2, limit: 20, offset: 1 },
       error: undefined,
       response: { status: 200 },
     })
@@ -154,5 +163,40 @@ describe('ContentListView', () => {
     expect(GET).toHaveBeenLastCalledWith('/content-nodes', { params: { query: { limit: 20, offset: 1 } } })
     expect(wrapper.findAll('[data-test="content-node-row"]')).toHaveLength(2)
     expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
+  })
+  it("shows each item's thumbnail, or a placeholder, and its instruments", async () => {
+    GET.mockResolvedValueOnce({
+      data: {
+        items: [
+          { content_node_id: 'cn-1', title: 'Alternate picking basics', content_type: 'video', instrument_ids: ['i-guitar'], thumbnail_url: 'https://cdn.test/thumbnails/cn-1.png', classification: { skills: [], concepts: [], difficulty_level: 'beginner', review_state: 'pending' } },
+          { content_node_id: 'cn-2', title: 'Chord theory primer', content_type: 'article', instrument_ids: [], classification: { skills: [], concepts: [], difficulty_level: 'advanced', review_state: 'confirmed' } },
+        ],
+        total: 2,
+        limit: 20,
+        offset: 0,
+      },
+      error: undefined,
+      response: { status: 200 },
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    const rows = wrapper.findAll('[data-test="content-node-row"]')
+    expect(rows[0]!.get('img').attributes('src')).toMatch(/^https:\/\/cdn.test\/thumbnails\//)
+    expect(rows[0]!.text()).toContain('Guitar')
+    expect(rows[1]!.find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
+    expect(rows[1]!.text()).toContain('Every instrument')
+  })
+
+  it('filters by instrument, and says when nothing matches', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-test="instrument-filter"]').setValue('i-guitar')
+    await flushPromises()
+
+    expect(GET).toHaveBeenLastCalledWith('/content-nodes', { params: { query: { limit: 20, offset: 0, instrument_id: 'i-guitar' } } })
+    expect(wrapper.find('[data-test="no-matches"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="empty"]').exists()).toBe(false)
   })
 })

@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 
+import { i18n, toApiLanguageCode } from '@/i18n'
 import { useApiPagedList } from '@/shared/composables/useApiPagedList'
 import { useCourseListFilters } from '@/shared/composables/useCourseListFilters'
 import type { components } from '@/api/generated/core-domain'
@@ -8,11 +9,15 @@ type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 
 /**
  * The learner course catalog: one page of published courses at a time,
- * filtered server-side. Changing any filter restarts from the first page;
- * the free-text search waits for typing to pause before it does.
+ * filtered server-side. It starts at courses in the learner's own language,
+ * which they can clear to see every course. Changing any filter restarts
+ * from the first page; the free-text search waits for typing to pause
+ * before it does.
  */
 export function useCourseCatalog() {
-  const { filters, searchText, query, hasActiveFilters, clearFilters } = useCourseListFilters()
+  const { filters, searchText, query, hasActiveFilters, clearFilters } = useCourseListFilters({
+    language: toApiLanguageCode(i18n.global.locale.value),
+  })
 
   const {
     items: courses,

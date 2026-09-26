@@ -290,7 +290,9 @@
     "loadingNoun": "conteúdo",
     "errorMessage": "Não foi possível carregar os nós de conteúdo.",
     "emptyHeading": "Ainda não há conteúdo",
-    "emptyMessage": "Crie seu primeiro vídeo ou artigo para começar a construir a biblioteca de conteúdo."
+    "emptyMessage": "Crie seu primeiro vídeo ou artigo para começar a construir a biblioteca de conteúdo.",
+    "noMatchesMessage": "Nenhum conteúdo é para este instrumento.",
+    "showEveryInstrument": "Mostrar todos os instrumentos"
   },
   "pathBuilderView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
@@ -319,7 +321,9 @@
     "emptyHeading": "Ainda não há trilhas",
     "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
     "nodeCountSingular": "{count} nó",
-    "nodeCountPlural": "{count} nós"
+    "nodeCountPlural": "{count} nós",
+    "noMatchesMessage": "Nenhuma trilha de aprendizagem é para este instrumento.",
+    "showEveryInstrument": "Mostrar todos os instrumentos"
   },
   "challengeModal": {
     "buildTitle": "Montar desafio",
@@ -387,7 +391,8 @@
     "noMatchesHeading": "Nenhum curso encontrado",
     "noMatchesMessage": "Tente menos filtros ou outra busca.",
     "unpublishedChanges": "Alterações não publicadas",
-    "courseTeacher": "por {name}"
+    "courseTeacher": "por {name}",
+    "newCourse": "Novo curso"
   },
   "thumbnailField": {
     "upload": "Enviar imagem",

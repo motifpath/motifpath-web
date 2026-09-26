@@ -13,8 +13,7 @@ import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
-import { useListInstruments } from '@/shared/composables/useListInstruments'
-import { useLocalizedName } from '@/shared/composables/useLocalizedName'
+import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { formatDate } from '@/shared/utils/formatDate'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -27,7 +26,7 @@ const emit = defineEmits<{ select: [path: LearningPath]; close: [] }>()
 const SORTS: LearningPathSort[] = ['title', 'updated']
 
 const { t, locale } = useTypedT()
-const { localizedName } = useLocalizedName()
+const { instrumentsLabel } = useInstrumentNames()
 const currentUser = useCurrentUserStore()
 
 const {
@@ -56,16 +55,6 @@ const onlyMine = computed({
       checked && profile ? { user_id: profile.user_id, display_name: profile.display_name } : null
   },
 })
-
-const { instruments } = useListInstruments()
-const instrumentNames = computed(
-  () => new Map(instruments.value.map((instrument) => [instrument.instrument_id, localizedName(instrument.names)])),
-)
-
-function instrumentsLabel(path: LearningPath): string {
-  if (path.instrument_ids.length === 0) return t('instrumentPicker.every')
-  return path.instrument_ids.map((id) => instrumentNames.value.get(id) ?? '…').join(', ')
-}
 
 function onOnlyMineChange(event: Event) {
   if (event.target instanceof HTMLInputElement) onlyMine.value = event.target.checked
@@ -151,7 +140,7 @@ function onOnlyMineChange(event: Event) {
               <span class="text-xs text-ink-subtle">
                 {{ path.teacher.display_name }} ·
                 {{ path.level ? t(`levels.${path.level}`) : t('learningPathPickerModal.noLevel') }} ·
-                {{ instrumentsLabel(path) }}
+                {{ instrumentsLabel(path.instrument_ids) }}
               </span>
               <span class="text-xs text-ink-subtle">
                 {{ t('learningPathPickerModal.updated', { date: formatDate(path.updated_at, locale) }) }}
