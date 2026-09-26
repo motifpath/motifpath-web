@@ -508,5 +508,13 @@
     "leaveTitle": "Leave without saving?",
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
     "leaveConfirm": "Leave"
+  },
+  "overlayDiagramPickerModal": {
+    "title": "Overlay a diagram",
+    "hint": "It's drawn on top of this one, read-only. Merge the layers to edit and save them as one diagram.",
+    "loadingNoun": "diagrams",
+    "loadErrorMessage": "We couldn't load the diagrams.",
+    "emptyHeading": "Nothing to overlay",
+    "emptyMessage": "There's no other diagram for this instrument yet."
   }
 }
