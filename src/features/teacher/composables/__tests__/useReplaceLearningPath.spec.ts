@@ -5,7 +5,10 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { PUT }, eventApi: {} }),
 }))
 
+import type { components } from '@/api/generated/core-domain'
 import { useReplaceLearningPath } from '@/features/teacher/composables/useReplaceLearningPath'
+
+type ReplaceLearningPathRequest = components['schemas']['ReplaceLearningPathRequest']
 
 describe('useReplaceLearningPath', () => {
   it('puts the request and returns the replaced learning path', async () => {
@@ -13,7 +16,7 @@ describe('useReplaceLearningPath', () => {
     PUT.mockResolvedValueOnce({ data: path, error: undefined, response: { status: 200 } })
 
     const { replaceLearningPath } = useReplaceLearningPath()
-    const request = { title: 'Beginner guitar', items: [{ content_node_id: 'cn-1' }] }
+    const request: ReplaceLearningPathRequest = { title: 'Beginner guitar', level: 'beginner', instrument_ids: [], items: [{ content_node_id: 'cn-1' }] }
 
     const result = await replaceLearningPath('lp-1', request)
 
@@ -30,7 +33,7 @@ describe('useReplaceLearningPath', () => {
     const { replaceLearningPath } = useReplaceLearningPath()
 
     await expect(
-      replaceLearningPath('lp-1', { title: 't', items: [{ content_node_id: 'cn-1' }] }),
+      replaceLearningPath('lp-1', { title: 't', level: 'beginner', instrument_ids: [], items: [{ content_node_id: 'cn-1' }] }),
     ).rejects.toThrow('Boom')
   })
 })

@@ -302,7 +302,11 @@
     "addContentNodeLabel": "Add content node",
     "pathUpdated": "Learning path updated.",
     "pathCreated": "Learning path created.",
-    "saveFailed": "Failed to save the learning path"
+    "saveFailed": "Failed to save the learning path",
+    "levelLabel": "Level",
+    "levelRequired": "Choose a level to save this path.",
+    "instrumentsLabel": "Instruments",
+    "thumbnailLabel": "Thumbnail"
   },
   "pathListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",

@@ -5,7 +5,10 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { POST }, eventApi: {} }),
 }))
 
+import type { components } from '@/api/generated/core-domain'
 import { useCreateLearningPath } from '@/features/teacher/composables/useCreateLearningPath'
+
+type CreateLearningPathRequest = components['schemas']['CreateLearningPathRequest']
 
 describe('useCreateLearningPath', () => {
   it('posts the request and returns the created learning path', async () => {
@@ -13,7 +16,7 @@ describe('useCreateLearningPath', () => {
     POST.mockResolvedValueOnce({ data: path, error: undefined, response: { status: 201 } })
 
     const { createLearningPath } = useCreateLearningPath()
-    const request = { title: 'Beginner guitar', items: [{ content_node_id: 'cn-1' }] }
+    const request: CreateLearningPathRequest = { title: 'Beginner guitar', level: 'beginner', instrument_ids: [], items: [{ content_node_id: 'cn-1' }] }
 
     const result = await createLearningPath(request)
 
@@ -26,7 +29,7 @@ describe('useCreateLearningPath', () => {
 
     const { createLearningPath } = useCreateLearningPath()
 
-    await expect(createLearningPath({ title: 't', items: [{ content_node_id: 'cn-1' }] })).rejects.toThrow('Boom')
+    await expect(createLearningPath({ title: 't', level: 'beginner', instrument_ids: [], items: [{ content_node_id: 'cn-1' }] })).rejects.toThrow('Boom')
   })
 
   it('throws a fallback message when the server gives no error message', async () => {
@@ -34,7 +37,7 @@ describe('useCreateLearningPath', () => {
 
     const { createLearningPath } = useCreateLearningPath()
 
-    await expect(createLearningPath({ title: 't', items: [{ content_node_id: 'cn-1' }] })).rejects.toThrow(
+    await expect(createLearningPath({ title: 't', level: 'beginner', instrument_ids: [], items: [{ content_node_id: 'cn-1' }] })).rejects.toThrow(
       'Failed to create the learning path',
     )
   })

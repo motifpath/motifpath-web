@@ -302,7 +302,11 @@
     "addContentNodeLabel": "Adicionar nó de conteúdo",
     "pathUpdated": "Trilha de aprendizagem atualizada.",
     "pathCreated": "Trilha de aprendizagem criada.",
-    "saveFailed": "Falha ao salvar a trilha de aprendizagem"
+    "saveFailed": "Falha ao salvar a trilha de aprendizagem",
+    "levelLabel": "Nível",
+    "levelRequired": "Escolha um nível para salvar esta trilha.",
+    "instrumentsLabel": "Instrumentos",
+    "thumbnailLabel": "Miniatura"
   },
   "pathListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
