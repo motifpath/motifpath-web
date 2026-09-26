@@ -898,6 +898,22 @@ describe('DiagramAuthoringView', () => {
       ])
     })
 
+    it('shows an added region on the authoring fretboard, captioned in the active tab\'s language', async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await wrapper.get('[data-test="region-add"]').trigger('click')
+      await wrapper.get('[data-test="region-description"]').setValue('Box 1')
+
+      const editor = wrapper.findComponent(FrettedDiagramEditor)
+      expect(editor.findAll('[data-test="editor-region"]')).toHaveLength(1)
+      expect(editor.get('[data-test="editor-region-caption"]').text()).toBe('Box 1')
+
+      await addPortuguese(wrapper)
+      await wrapper.get('[data-test="region-description"]').setValue('Caixa 1')
+      expect(wrapper.findComponent(FrettedDiagramEditor).get('[data-test="editor-region-caption"]').text()).toBe('Caixa 1')
+    })
+
     it('does not save while a region runs backwards', async () => {
       const wrapper = await mountNew()
       await wrapper.get('[data-test="instrument-option"]').trigger('click')

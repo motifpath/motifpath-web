@@ -19,6 +19,9 @@ export const EDITOR_MARGIN_RIGHT = 30
 export const EDITOR_MARGIN_TOP = 34
 export const EDITOR_MARGIN_BOTTOM = 40
 export const EDITOR_BOARD_H = EDITOR_VIEW_H - EDITOR_MARGIN_TOP - EDITOR_MARGIN_BOTTOM
+// Extra room above the board for highlighted-region captions, taken only when there are regions
+// (the same allowance the read-only viewer makes).
+export const EDITOR_CAPTION_SPACE = 20
 
 // Fixed pixel width per fret (not derived from a fixed total board width) —
 // matches the density the original 0-15 fixed layout had, so the common
@@ -102,4 +105,39 @@ export function nearestFrettedCell(
   if (stringNumber < 1 || stringNumber > geometry.stringCount) return null
 
   return { string: stringNumber, fret }
+}
+
+export interface EditorRegionSpan {
+  fretStart: number
+  fretEnd: number
+  /** Both null means the band covers every string. */
+  stringStart: number | null
+  stringEnd: number | null
+}
+
+/** Whether a region can be drawn on this board: frets in order and in range, and either no
+ *  string limits or limits in order within the instrument's strings. */
+export function isDrawableRegion(region: EditorRegionSpan, geometry: FrettedEditorGeometry): boolean {
+  if (region.fretStart > region.fretEnd) return false
+  if (region.fretStart < geometry.minFret || region.fretEnd > geometry.maxFret) return false
+  if (region.stringStart === null && region.stringEnd === null) return true
+  if (region.stringStart === null || region.stringEnd === null) return false
+  return region.stringStart >= 1 && region.stringStart <= region.stringEnd && region.stringEnd <= geometry.stringCount
+}
+
+/**
+ * A region's band, in board coordinates: whole fret spaces from the wire before `fretStart`
+ * (the open-string area for fret 0) to `fretEnd`'s wire, and from half a string gap above its
+ * first string to half a gap below its last.
+ */
+export function editorRegionBox(
+  region: EditorRegionSpan,
+  geometry: FrettedEditorGeometry,
+): { x: number; y: number; width: number; height: number } {
+  const gap = rowGap(geometry)
+  const left = region.fretStart === 0 ? fretX(0, geometry) - EDITOR_PX_PER_FRET : fretX(region.fretStart - 1, geometry)
+  const right = fretX(region.fretEnd, geometry)
+  const top = stringY(region.stringStart ?? 1, geometry) - gap / 2
+  const bottom = stringY(region.stringEnd ?? geometry.stringCount, geometry) + gap / 2
+  return { x: left, y: top, width: right - left, height: bottom - top }
 }

@@ -497,6 +497,7 @@ async function saveAs(names: Record<string, string>) {
           <FrettedDiagramEditor
             :instrument="selectedInstrument"
             :positions="form.positions.value"
+            :regions="form.regions.value"
             :label-mode="form.labelDisplay.value"
             :color="form.color.value"
             :language="activeLanguage"
