@@ -71,8 +71,11 @@ function y(stringNumber: number): number {
   return boardTop.value + (stringNumber - 1) * rowGap.value
 }
 
+// The window reaches one fret space left of the lowest fret, so an open-string marker (fret 0)
+// has room left of the nut. That space's left edge is the board's edge, not a fret, so no fret
+// line is drawn or numbered below 0.
 const frets = computed(() => {
-  const start = Math.ceil(layout.value.minFret)
+  const start = Math.max(Math.ceil(layout.value.minFret), 0)
   const end = Math.floor(layout.value.maxFret)
   const result: number[] = []
   for (let fret = start; fret <= end; fret++) result.push(fret)
@@ -295,6 +298,7 @@ function noteAlignClass(position: Marker): string {
           stroke-width="2"
         />
         <text
+          data-test="fret-number"
           :x="x(fret)"
           :y="boardTop + BOARD_H + 24"
           text-anchor="middle"

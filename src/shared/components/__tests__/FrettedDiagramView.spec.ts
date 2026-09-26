@@ -180,6 +180,26 @@ describe('FrettedDiagramView', () => {
     expect(wrapper.findAll('[data-test="diagram-position-label"]')[0]?.text()).toBe('A')
   })
 
+  it('numbers no fret below 0, even with open strings, and still draws open-string markers left of the nut', () => {
+    const diagram = makeFrettedDiagram({
+      positions: [
+        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
+        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+      ],
+      regions: [],
+    })
+    const wrapper = mount(FrettedDiagramView, {
+      props: { diagram, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
+    })
+
+    const fretNumbers = wrapper.findAll('[data-test="fret-number"]').map((n) => Number(n.text()))
+    expect(fretNumbers[0]).toBe(0)
+    expect(Math.min(...fretNumbers)).toBe(0)
+    const nutX = Number(wrapper.findAll('[data-test="fret-number"]')[0]!.attributes('x'))
+    const openMarker = wrapper.findAll('[data-test="diagram-position"]')[0]!
+    expect(Number(openMarker.attributes('cx'))).toBeLessThan(nutX)
+  })
+
   it('renders an accessible label on the root svg element', () => {
     const wrapper = mount(FrettedDiagramView, {
       props: {
