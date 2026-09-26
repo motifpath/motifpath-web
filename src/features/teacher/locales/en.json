@@ -210,6 +210,7 @@
     "removeAriaLabel": "Remove this region",
     "descriptionAriaLabel": "Region caption",
     "descriptionPlaceholder": "Caption, e.g. Shape 1",
+    "captionTooLong": "Shorten this caption to {max} characters at most.",
     "invalid": "Check the range: it runs backwards or past the last string."
   },
   "challengeConfigPanel": {
@@ -399,6 +400,7 @@
     "missingText": "{language} is missing: {items}",
     "missingName": "the name",
     "missingRegionCaption": "the caption of region {n}",
+    "regionCaptionTooLong": "a shorter caption for region {n} ({max} characters at most)",
     "missingMarkerLabel": "the label of position {n}",
     "missingMarkerNote": "the note on position {n}",
     "removeTitle": "Remove {language}?",

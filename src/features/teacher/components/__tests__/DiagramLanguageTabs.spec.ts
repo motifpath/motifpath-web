@@ -67,6 +67,14 @@ describe('DiagramLanguageTabs', () => {
     expect(tab(wrapper, 'en').attributes('title')).toBeUndefined()
   })
 
+  it('says on hover which region caption is too long', () => {
+    const wrapper = mountTabs({ missing: { pt_BR: [{ kind: 'regionCaptionTooLong', region: 2 }] } })
+
+    expect(tab(wrapper, 'pt_BR').attributes('title')).toBe(
+      'Portuguese is missing: a shorter caption for region 2 (60 characters at most)',
+    )
+  })
+
   it('holds nothing but tabs in its tab list, so assistive tech reads it as one', () => {
     const wrapper = mountTabs()
 

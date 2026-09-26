@@ -210,6 +210,7 @@
     "removeAriaLabel": "Remover esta região",
     "descriptionAriaLabel": "Legenda da região",
     "descriptionPlaceholder": "Legenda, ex.: Desenho 1",
+    "captionTooLong": "Encurte esta legenda para no máximo {max} caracteres.",
     "invalid": "Verifique o intervalo: ele está invertido ou passa da última corda."
   },
   "challengeConfigPanel": {
@@ -399,6 +400,7 @@
     "missingText": "Falta em {language}: {items}",
     "missingName": "o nome",
     "missingRegionCaption": "a legenda da região {n}",
+    "regionCaptionTooLong": "uma legenda mais curta para a região {n} (no máximo {max} caracteres)",
     "missingMarkerLabel": "o rótulo da posição {n}",
     "missingMarkerNote": "a nota da posição {n}",
     "removeTitle": "Remover {language}?",
