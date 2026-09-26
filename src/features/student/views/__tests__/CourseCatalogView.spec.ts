@@ -69,6 +69,8 @@ function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry
     title: 'Fingerstyle journey',
     summary: 'From first arpeggios to full arrangements.',
     level: 'beginner',
+    language: 'en',
+    instrument_ids: [],
     created_by: { user_id: 'teacher-1', display_name: 'Bob Martins' },
     status: 'published',
     published_at: '2026-09-01T00:00:00Z',

@@ -208,7 +208,7 @@ describe('PathBuilderView', () => {
     })
 
     it('shows no level for a path created before levels, and blocks save until one is chosen', async () => {
-      const { level: _level, ...legacyPath } = learningPathFixture
+      const legacyPath = { ...learningPathFixture, level: undefined }
       routeGET({ '/learning-paths/{learning_path_id}': { data: legacyPath, error: undefined, response: { status: 200 } } })
       const wrapper = mountView()
       await flushPromises()

@@ -87,8 +87,15 @@ const contentNodeFixture = {
     review_state: 'pending',
   },
   languages: [],
+  instrument_ids: ['i-guitar'],
+  thumbnail_url: 'https://cdn.test/thumbnails/cn.png',
   created_at: '2026-01-01T00:00:00Z',
 }
+
+const instruments = [
+  { instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] },
+  { instrument_id: 'i-bass', names: { en: 'Bass' }, languages: ['en'] },
+]
 
 /**
  * GET is called for several different resources once a content node id is
@@ -100,6 +107,9 @@ const contentNodeFixture = {
 function routeGET(overrides: Record<string, unknown>) {
   GET.mockImplementation((path: string) => {
     if (path in overrides) return Promise.resolve(overrides[path])
+    if (path === '/instruments') {
+      return Promise.resolve({ data: instruments, error: undefined, response: { status: 200 } })
+    }
     if (
       path === '/content-nodes/{content_node_id}/challenges' ||
       path === '/skills' ||
@@ -152,6 +162,7 @@ describe('ContentAuthoringView', () => {
             review_state: 'pending',
           },
           languages: [],
+          instrument_ids: [],
           created_at: '2026-01-01T00:00:00Z',
         },
         error: undefined,
@@ -176,8 +187,29 @@ describe('ContentAuthoringView', () => {
           media_url: VIDEO_URL,
           classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
+          instrument_ids: [],
         },
       })
+    })
+
+    it('starts at every instrument and sends the instruments picked', async () => {
+      routeGET({
+        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
+      POST.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 201 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="instrument-every"]').attributes('aria-pressed')).toBe('true')
+
+      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
+      await classify(wrapper)
+      await wrapper.get('[data-test="instrument-option-i-guitar"]').trigger('click')
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(POST.mock.calls[0]?.[1].body.instrument_ids).toEqual(['i-guitar'])
     })
 
     async function classify(wrapper: ReturnType<typeof mountView>) {
@@ -267,6 +299,7 @@ describe('ContentAuthoringView', () => {
           rich_content: ARTICLE_BODY,
           classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
+          instrument_ids: [],
         },
       })
     })
@@ -294,6 +327,7 @@ describe('ContentAuthoringView', () => {
             review_state: 'pending',
           },
           languages: [],
+          instrument_ids: [],
           created_at: '2026-01-01T00:00:00Z',
         },
         error: undefined,
@@ -325,6 +359,7 @@ describe('ContentAuthoringView', () => {
           media_url: VIDEO_URL,
           classification: { skill_ids: ['s-2', 's-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
+          instrument_ids: [],
         },
       })
     })
@@ -402,8 +437,26 @@ describe('ContentAuthoringView', () => {
           media_url: VIDEO_URL,
           classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
+          instrument_ids: ['i-guitar'],
+          thumbnail_url: 'https://cdn.test/thumbnails/cn.png',
         },
       })
+    })
+
+    it('shows the node\'s instruments and thumbnail, and sends no thumbnail once removed', async () => {
+      routeGET({ '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } } })
+      PUT.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="instrument-option-i-guitar"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('img[src="https://cdn.test/thumbnails/cn.png"]').exists()).toBe(true)
+
+      await wrapper.get('[data-test="thumbnail-remove"]').trigger('click')
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(PUT.mock.calls[0]?.[1].body).not.toHaveProperty('thumbnail_url')
     })
 
     it('pre-fills a video node\'s media URL', async () => {
@@ -434,6 +487,8 @@ describe('ContentAuthoringView', () => {
           rich_content: ARTICLE_BODY,
           classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
+          instrument_ids: ['i-guitar'],
+          thumbnail_url: 'https://cdn.test/thumbnails/cn.png',
         },
       })
     })

@@ -279,7 +279,9 @@
     "challengeExercisesError": "Não foi possível carregar os exercícios deste desafio.",
     "challengeExercisesLoading": "Carregando exercícios…",
     "challengesError": "Não foi possível carregar os desafios deste nó.",
-    "challengesLoading": "Carregando desafios…"
+    "challengesLoading": "Carregando desafios…",
+    "instrumentsLabel": "Instrumentos",
+    "thumbnailLabel": "Miniatura"
   },
   "contentListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",

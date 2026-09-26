@@ -30,6 +30,9 @@ export function useContentNodeForm() {
   const reviewState = ref<ReviewState | null>(null)
   const mediaUrl = ref('')
   const richContent = ref<PromptDocument>(EMPTY_BODY)
+  // Empty means the content suits every instrument.
+  const instrumentIds = ref<string[]>([])
+  const thumbnailUrl = ref<string | undefined>(undefined)
 
   const hasBody = computed(() =>
     contentType.value === 'video'
@@ -60,6 +63,14 @@ export function useContentNodeForm() {
     }
   }
 
+  // A thumbnail left out of an update removes it, so none is sent once cleared.
+  function metadata() {
+    return {
+      instrument_ids: [...instrumentIds.value],
+      ...(thumbnailUrl.value ? { thumbnail_url: thumbnailUrl.value } : {}),
+    }
+  }
+
   function toCreateContentNodeRequest(): CreateContentNodeRequest {
     return {
       title: title.value,
@@ -67,6 +78,7 @@ export function useContentNodeForm() {
       ...body(),
       classification: classification(),
       language_codes: ['any'],
+      ...metadata(),
     }
   }
 
@@ -76,6 +88,7 @@ export function useContentNodeForm() {
       ...body(),
       classification: classification(),
       language_codes: ['any'],
+      ...metadata(),
     }
   }
 
@@ -88,6 +101,8 @@ export function useContentNodeForm() {
     reviewState.value = contentNode.classification.review_state
     mediaUrl.value = contentNode.media_url ?? ''
     richContent.value = contentNode.rich_content ?? EMPTY_BODY
+    instrumentIds.value = [...contentNode.instrument_ids]
+    thumbnailUrl.value = contentNode.thumbnail_url
   }
 
   return {
@@ -99,6 +114,8 @@ export function useContentNodeForm() {
     reviewState,
     mediaUrl,
     richContent,
+    instrumentIds,
+    thumbnailUrl,
     hasBody,
     mediaUrlInvalid,
     toCreateContentNodeRequest,

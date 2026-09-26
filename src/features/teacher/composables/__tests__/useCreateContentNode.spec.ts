@@ -15,7 +15,7 @@ describe('useCreateContentNode', () => {
     POST.mockResolvedValueOnce({ data: contentNode, error: undefined, response: { status: 201 } })
 
     const { createContentNode } = useCreateContentNode()
-    const request = { title: 'Alternate picking basics', content_type: 'video' as const, classification, language_codes: ['any'] }
+    const request = { title: 'Alternate picking basics', content_type: 'video' as const, classification, language_codes: ['any'], instrument_ids: [] }
 
     const result = await createContentNode(request)
 
@@ -29,7 +29,7 @@ describe('useCreateContentNode', () => {
     const { createContentNode } = useCreateContentNode()
 
     await expect(
-      createContentNode({ title: 't', content_type: 'video', classification, language_codes: ['any'] }),
+      createContentNode({ title: 't', content_type: 'video', classification, language_codes: ['any'], instrument_ids: [] }),
     ).rejects.toThrow('Boom')
   })
 
@@ -43,7 +43,7 @@ describe('useCreateContentNode', () => {
     const { createContentNode } = useCreateContentNode()
 
     await expect(
-      createContentNode({ title: '', content_type: 'video', classification, language_codes: ['any'] }),
+      createContentNode({ title: '', content_type: 'video', classification, language_codes: ['any'], instrument_ids: [] }),
     ).rejects.toThrow('Request failed validation:\n• /title: must not be empty')
   })
 
@@ -53,7 +53,7 @@ describe('useCreateContentNode', () => {
     const { createContentNode } = useCreateContentNode()
 
     await expect(
-      createContentNode({ title: 't', content_type: 'video', classification, language_codes: ['any'] }),
+      createContentNode({ title: 't', content_type: 'video', classification, language_codes: ['any'], instrument_ids: [] }),
     ).rejects.toThrow('Failed to create the content node')
   })
 })

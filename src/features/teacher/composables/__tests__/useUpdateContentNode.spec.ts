@@ -15,7 +15,7 @@ describe('useUpdateContentNode', () => {
     PUT.mockResolvedValueOnce({ data: contentNode, error: undefined, response: { status: 200 } })
 
     const { updateContentNode } = useUpdateContentNode()
-    const request = { title: 't', classification, language_codes: ['any'] }
+    const request = { title: 't', classification, language_codes: ['any'], instrument_ids: [] }
 
     const result = await updateContentNode('cn-1', request)
 
@@ -32,7 +32,7 @@ describe('useUpdateContentNode', () => {
     const { updateContentNode } = useUpdateContentNode()
 
     await expect(
-      updateContentNode('cn-1', { title: 't', classification, language_codes: ['any'] }),
+      updateContentNode('cn-1', { title: 't', classification, language_codes: ['any'], instrument_ids: [] }),
     ).rejects.toThrow('Boom')
   })
 
@@ -42,7 +42,7 @@ describe('useUpdateContentNode', () => {
     const { updateContentNode } = useUpdateContentNode()
 
     await expect(
-      updateContentNode('cn-1', { title: 't', classification, language_codes: ['any'] }),
+      updateContentNode('cn-1', { title: 't', classification, language_codes: ['any'], instrument_ids: [] }),
     ).rejects.toThrow('Failed to update the content node')
   })
 })
