@@ -37,6 +37,13 @@ export interface LocalPosition extends FrettedCell {
 }
 
 /** A highlighted band of frets, optionally limited to some strings, captioned per language. */
+/** One piece of text a language still lacks; `region` and `position` count from 1, in list order. */
+export type MissingText =
+  | { kind: 'name' }
+  | { kind: 'regionCaption'; region: number }
+  | { kind: 'markerLabel'; position: number }
+  | { kind: 'markerNote'; position: number }
+
 export interface LocalRegion {
   id: string
   fretStart: number
@@ -169,15 +176,36 @@ export function useDiagramForm() {
     ...regions.value.map((region) => region.description),
     ...positions.value.flatMap((position) => [position.customLabel, position.note].filter(hasAnyText)),
   ])
-  const requiredTexts = computed<LocalizedNames[]>(() => [names.value, ...annotationTexts.value])
 
   /** Whether every label, note and region caption is written in each of `codes` — what a copy
    *  named in those languages needs, since text can't be invented for a language it lacks. */
   function hasTextIn(codes: readonly string[]): boolean {
     return annotationTexts.value.every((text) => codes.every((code) => (text[code] ?? '').trim() !== ''))
   }
+  // What each of the diagram's languages still lacks, so the author can be told exactly what to fill in.
+  const missingText = computed<Record<string, MissingText[]>>(() => {
+    const lacks = (text: LocalizedNames, code: string) => (text[code] ?? '').trim() === ''
+    return Object.fromEntries(
+      languages.value.map((code) => {
+        const missing: MissingText[] = []
+        if (lacks(names.value, code)) missing.push({ kind: 'name' })
+        regions.value.forEach((region, index) => {
+          if (lacks(region.description, code)) missing.push({ kind: 'regionCaption', region: index + 1 })
+        })
+        positions.value.forEach((position, index) => {
+          if (hasAnyText(position.customLabel) && lacks(position.customLabel, code)) {
+            missing.push({ kind: 'markerLabel', position: index + 1 })
+          }
+          if (hasAnyText(position.note) && lacks(position.note, code)) {
+            missing.push({ kind: 'markerNote', position: index + 1 })
+          }
+        })
+        return [code, missing]
+      }),
+    )
+  })
   const missingTextLanguages = computed(() =>
-    languages.value.filter((code) => requiredTexts.value.some((text) => (text[code] ?? '').trim() === '')),
+    languages.value.filter((code) => (missingText.value[code] ?? []).length > 0),
   )
   const hasCompleteText = computed(() => languages.value.length > 0 && missingTextLanguages.value.length === 0)
   const hasName = computed(() => languages.value.length > 0 && missingNameLanguages.value.length === 0)
@@ -451,6 +479,7 @@ export function useDiagramForm() {
     names,
     languages,
     missingNameLanguages,
+    missingText,
     missingTextLanguages,
     hasCompleteText,
     hasTextIn,

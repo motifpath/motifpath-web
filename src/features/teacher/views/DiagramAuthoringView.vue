@@ -358,7 +358,7 @@ async function saveAs(names: Record<string, string>) {
         <DiagramLanguageTabs
           :languages="form.languages.value"
           :active="activeLanguage"
-          :incomplete="form.missingTextLanguages.value"
+          :missing="form.missingText.value"
           :locked="editsTemplate"
           @select="selectedLanguage = $event"
           @add="addLanguage"

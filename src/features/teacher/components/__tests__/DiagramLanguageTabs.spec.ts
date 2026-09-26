@@ -2,17 +2,18 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
+import type { MissingText } from '@/features/teacher/composables/useDiagramForm'
 
 interface Props {
   languages: string[]
   active: string
-  incomplete: string[]
+  missing: Record<string, MissingText[]>
   locked: boolean
 }
 
 function mountTabs(props: Partial<Props> = {}) {
   return mount(DiagramLanguageTabs, {
-    props: { languages: ['en', 'pt_BR'], active: 'en', incomplete: [], locked: false, ...props },
+    props: { languages: ['en', 'pt_BR'], active: 'en', missing: {}, locked: false, ...props },
   })
 }
 
@@ -40,12 +41,30 @@ describe('DiagramLanguageTabs', () => {
   })
 
   it('flags a language that is still missing text, for screen readers too', () => {
-    const wrapper = mountTabs({ incomplete: ['pt_BR'] })
+    const wrapper = mountTabs({ missing: { en: [], pt_BR: [{ kind: 'name' }] } })
 
     expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="language-tab-missing-en"]').exists()).toBe(false)
-    expect(tab(wrapper, 'pt_BR').attributes('aria-label')).toBe('Portuguese is missing text')
+    expect(tab(wrapper, 'pt_BR').attributes('aria-label')).toBe('Portuguese is missing: the name')
     expect(tab(wrapper, 'en').attributes('aria-label')).toBe('English')
+  })
+
+  it('says on hover exactly what a language is missing', () => {
+    const wrapper = mountTabs({
+      missing: {
+        pt_BR: [
+          { kind: 'name' },
+          { kind: 'regionCaption', region: 1 },
+          { kind: 'markerLabel', position: 2 },
+          { kind: 'markerNote', position: 3 },
+        ],
+      },
+    })
+
+    expect(tab(wrapper, 'pt_BR').attributes('title')).toBe(
+      'Portuguese is missing: the name, the caption of region 1, the label of position 2, the note on position 3',
+    )
+    expect(tab(wrapper, 'en').attributes('title')).toBeUndefined()
   })
 
   it('holds nothing but tabs in its tab list, so assistive tech reads it as one', () => {

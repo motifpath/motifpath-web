@@ -609,6 +609,34 @@ describe('useDiagramForm', () => {
       expect(form.missingTextLanguages.value).toEqual([])
     })
 
+    it('says exactly what each language is missing: the name, a region caption, a started label or note', () => {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
+      form.addLanguage('pt_BR')
+      form.addPosition({ string: 6, fret: 5 })
+      form.addPosition({ string: 4, fret: 7 })
+      const secondPosition = form.positions.value[1]!.id
+      form.setPositionCustomLabel(secondPosition, 'en', 'Av')
+      form.setPositionNote(secondPosition, 'pt_BR', 'Evite')
+      form.addRegion()
+      form.addRegion()
+      form.setRegionDescription(form.regions.value[0]!.id, 'en', 'Box 1')
+
+      expect(form.missingText.value).toEqual({
+        en: [
+          { kind: 'regionCaption', region: 2 },
+          { kind: 'markerNote', position: 2 },
+        ],
+        pt_BR: [
+          { kind: 'name' },
+          { kind: 'regionCaption', region: 1 },
+          { kind: 'regionCaption', region: 2 },
+          { kind: 'markerLabel', position: 2 },
+        ],
+      })
+      expect(form.missingTextLanguages.value).toEqual(['en', 'pt_BR'])
+    })
+
     it('reports a backwards or out-of-range region as invalid', () => {
       const form = useDiagramForm()
       form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
