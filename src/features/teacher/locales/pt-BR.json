@@ -180,7 +180,13 @@
     "copySaved": "Cópia salva",
     "templateSaved": "Modelo salvo",
     "templateNeedsEveryName": "Um modelo é compartilhado com todos os professores, então dê um nome em todos os idiomas antes de salvar.",
-    "templateNeedsEveryText": "Preencha os rótulos, notas e legendas de região em todos os idiomas antes de salvar como modelo."
+    "templateNeedsEveryText": "Preencha os rótulos, notas e legendas de região em todos os idiomas antes de salvar como modelo.",
+    "addOverlayButton": "Sobrepor diagrama…",
+    "mergeLayersButton": "Mesclar camadas",
+    "removeOverlayAriaLabel": "Remover a sobreposição {name}",
+    "mergeBeforeSaving": "Mescle as camadas antes de salvar. Diagramas sobrepostos são só exibidos, nunca salvos com este.",
+    "mergeNeedsRoot": "Escolha antes uma nota fundamental, para que toda posição deste diagrama tenha um intervalo a mesclar.",
+    "mergedNotice": "As camadas mescladas são salvas como um novo diagrama, então os diagramas de origem ficam como estavam. Use Salvar como."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
@@ -516,5 +522,12 @@
     "loadErrorMessage": "Não foi possível carregar os diagramas.",
     "emptyHeading": "Nada para sobrepor",
     "emptyMessage": "Ainda não há outro diagrama para este instrumento."
+  },
+  "mergeLayersModal": {
+    "title": "Mesclar as camadas",
+    "message": "Os diagramas sobrepostos viram posições e regiões comuns deste, que você poderá editar. Onde duas camadas marcam o mesmo ponto, fica a de cima. Os diagramas que você sobrepôs não mudam.",
+    "regionPerLayer": "Adicionar uma região destacada para cada diagrama, com o nome dele como legenda",
+    "cancel": "Cancelar",
+    "confirm": "Mesclar"
   }
 }

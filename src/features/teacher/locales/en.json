@@ -180,7 +180,13 @@
     "copySaved": "Copy saved",
     "templateSaved": "Template saved",
     "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving.",
-    "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template."
+    "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template.",
+    "addOverlayButton": "Overlay diagram…",
+    "mergeLayersButton": "Merge layers",
+    "removeOverlayAriaLabel": "Remove the overlay {name}",
+    "mergeBeforeSaving": "Merge the layers before saving. Overlaid diagrams are only shown, never saved with this one.",
+    "mergeNeedsRoot": "Choose a root note first, so every position of this diagram has an interval to merge.",
+    "mergedNotice": "The merged layers are saved as a new diagram, so the diagrams you started from stay as they were. Use Save as."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
@@ -516,5 +522,12 @@
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "Nothing to overlay",
     "emptyMessage": "There's no other diagram for this instrument yet."
+  },
+  "mergeLayersModal": {
+    "title": "Merge the layers",
+    "message": "The overlaid diagrams become ordinary positions and regions of this one, which you can then edit. Where two layers mark the same spot, the top one is kept. The diagrams you overlaid don't change.",
+    "regionPerLayer": "Add a highlighted region for each diagram, captioned with its name",
+    "cancel": "Cancel",
+    "confirm": "Merge"
   }
 }
