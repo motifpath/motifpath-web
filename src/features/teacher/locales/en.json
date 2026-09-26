@@ -437,7 +437,8 @@
     "retireMessage": "The course leaves the catalog, so no one new can enroll. Existing enrollments are unaffected.",
     "reactivateTitle": "Reactivate this course?",
     "reactivateMessage": "The course returns to the catalog with its latest published version. Unpublished changes stay unpublished.",
-    "adminPublishesNote": "An admin publishes courses. Learners won't see this course or your changes until then."
+    "adminPublishesNote": "An admin publishes courses. Learners won't see this course or your changes until then.",
+    "retireNeedsSave": "Save your changes before retiring the course."
   },
   "publishedCourseModal": {
     "title": "What learners see",

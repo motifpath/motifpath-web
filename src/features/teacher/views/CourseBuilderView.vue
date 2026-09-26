@@ -360,6 +360,7 @@ const bodyReady = computed(() => !isLoading.value && !loadError.value)
         :is-admin="isAdmin"
         :publish-disabled="publishDisabled || !canSave"
         :busy="busy"
+        :has-unsaved-changes="form.isDirty.value"
         :class="isCompact ? 'w-full' : 'w-72 shrink-0'"
         @publish="onPublish"
         @retire="onRetire"

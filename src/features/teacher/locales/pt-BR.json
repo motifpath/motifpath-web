@@ -437,7 +437,8 @@
     "retireMessage": "O curso sai do catálogo, e ninguém novo pode se inscrever. As inscrições existentes não são afetadas.",
     "reactivateTitle": "Reativar este curso?",
     "reactivateMessage": "O curso volta ao catálogo com sua última versão publicada. As alterações não publicadas continuam não publicadas.",
-    "adminPublishesNote": "Um administrador publica os cursos. Os alunos não verão este curso nem suas alterações até lá."
+    "adminPublishesNote": "Um administrador publica os cursos. Os alunos não verão este curso nem suas alterações até lá.",
+    "retireNeedsSave": "Salve suas alterações antes de descontinuar o curso."
   },
   "publishedCourseModal": {
     "title": "O que os alunos veem",

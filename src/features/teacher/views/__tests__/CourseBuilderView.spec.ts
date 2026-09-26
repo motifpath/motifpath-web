@@ -380,6 +380,18 @@ describe('CourseBuilderView', () => {
         expect(wrapper.get('[data-test="course-status"]').text()).toBe('Retired')
       })
 
+      it('keeps Retire disabled while the form has unsaved changes, which retiring would lose', async () => {
+        routeGET(ok(course({ status: 'published', latest_published_version: 2 })))
+        wrapper = mountView()
+        await flushPromises()
+        expect(wrapper.get('[data-test="retire-course"]').attributes('disabled')).toBeUndefined()
+
+        await wrapper.get('[data-test="course-summary"]').setValue('An unsaved summary.')
+
+        expect(wrapper.get('[data-test="retire-course"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.text()).toContain('Save your changes before retiring the course.')
+      })
+
       it('reactivates a retired course, which becomes editable again', async () => {
         routeGET(ok(course({ status: 'retired', latest_published_version: 2 })))
         POST.mockResolvedValueOnce(ok(course({ status: 'published', latest_published_version: 2 })))

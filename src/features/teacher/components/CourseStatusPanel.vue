@@ -8,15 +8,23 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 type Course = components['schemas']['Course']
 type CourseAction = 'publish' | 'retire' | 'reactivate'
 
-const props = defineProps<{
-  course: Course
-  /** Only an admin publishes, retires and reactivates courses. */
-  isAdmin: boolean
-  /** Whether there is nothing new to publish, or the form can't be saved first. */
-  publishDisabled: boolean
-  /** Whether an action is running. */
-  busy: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    course: Course
+    /** Only an admin publishes, retires and reactivates courses. */
+    isAdmin: boolean
+    /** Whether there is nothing new to publish, or the form can't be saved first. */
+    publishDisabled: boolean
+    /** Whether an action is running. */
+    busy: boolean
+    /**
+     * Whether the form holds edits not yet saved. A retired course can't be
+     * edited, so retiring waits until they are saved.
+     */
+    hasUnsavedChanges?: boolean
+  }>(),
+  { hasUnsavedChanges: false },
+)
 const emit = defineEmits<{ publish: []; retire: []; reactivate: []; showOutline: [] }>()
 
 const { t } = useTypedT()
@@ -129,7 +137,7 @@ const dialog = computed(() => {
         v-if="course.status === 'published'"
         type="button"
         data-test="retire-course"
-        :disabled="busy"
+        :disabled="busy || hasUnsavedChanges"
         class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-60"
         @click="ask('retire')"
       >
@@ -146,7 +154,14 @@ const dialog = computed(() => {
         {{ t('courseStatusPanel.reactivate') }}
       </button>
     </div>
-    <p v-else data-test="admin-publishes-note" class="text-sm text-ink-subtle">
+    <p
+      v-if="isAdmin && course.status === 'published' && hasUnsavedChanges"
+      data-test="retire-needs-save"
+      class="text-sm text-ink-subtle"
+    >
+      {{ t('courseStatusPanel.retireNeedsSave') }}
+    </p>
+    <p v-if="!isAdmin" data-test="admin-publishes-note" class="text-sm text-ink-subtle">
       {{ t('courseStatusPanel.adminPublishesNote') }}
     </p>
 
