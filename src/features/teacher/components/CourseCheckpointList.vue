@@ -16,11 +16,17 @@ const emit = defineEmits<{
 
 const { t } = useTypedT()
 
+// A row is only draggable while its handle is held, so text in its title
+// input can still be selected and dragged normally.
+const armedIndex = ref<number | null>(null)
 const draggedIndex = ref<number | null>(null)
 const dropTargetIndex = ref<number | null>(null)
 
 function onDragStart(index: number, event: DragEvent) {
-  if (props.disabled) return
+  if (props.disabled || armedIndex.value !== index) {
+    event.preventDefault()
+    return
+  }
   draggedIndex.value = index
   event.dataTransfer?.setData('text/plain', String(index))
 }
@@ -39,6 +45,7 @@ function onDrop(index: number) {
 }
 
 function onDragEnd() {
+  armedIndex.value = null
   draggedIndex.value = null
   dropTargetIndex.value = null
 }
@@ -60,7 +67,7 @@ function onOverrideInput(index: number, event: Event) {
         v-for="(checkpoint, index) in checkpoints"
         :key="checkpoint.key"
         data-test="checkpoint-row"
-        :draggable="disabled ? 'false' : 'true'"
+        :draggable="!disabled && armedIndex === index ? 'true' : 'false'"
         class="flex flex-wrap items-center gap-3 rounded-md border bg-surface-sunken px-3 py-2.5"
         :class="[
           dropTargetIndex === index && draggedIndex !== index ? 'border-accent' : 'border-border',
@@ -71,12 +78,16 @@ function onOverrideInput(index: number, event: Event) {
         @drop.prevent="onDrop(index)"
         @dragend="onDragEnd"
       >
-        <GripVertical
+        <span
           v-if="!disabled"
-          :size="16"
+          data-test="checkpoint-drag-handle"
+          :title="t('courseCheckpointList.dragHandleAriaLabel')"
           class="shrink-0 cursor-grab text-ink-subtle"
-          :aria-label="t('courseCheckpointList.dragHandleAriaLabel')"
-        />
+          @pointerdown="armedIndex = index"
+          @pointerup="armedIndex = null"
+        >
+          <GripVertical :size="16" aria-hidden="true" />
+        </span>
         <span
           data-test="checkpoint-position"
           class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-muted"

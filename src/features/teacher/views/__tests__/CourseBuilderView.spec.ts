@@ -247,6 +247,19 @@ describe('CourseBuilderView', () => {
       expect(wrapper.findAll<HTMLInputElement>('[data-test="checkpoint-override"]')[1]!.element.value).toBe('Stage 2')
     })
 
+    it("keeps showing a retitled checkpoint's path title after saving", async () => {
+      PUT.mockResolvedValueOnce(ok(course()))
+      wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="course-summary"]').setValue('A new summary.')
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      const titles = wrapper.findAll('[data-test="checkpoint-path-title"]').map((w) => w.text())
+      expect(titles).toEqual(['Open chords', 'Travis picking'])
+    })
+
     it('saves the whole form over the course', async () => {
       PUT.mockResolvedValueOnce(ok(course()))
       wrapper = mountView()

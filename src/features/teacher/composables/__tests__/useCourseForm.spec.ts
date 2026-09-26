@@ -179,6 +179,17 @@ describe('useCourseForm', () => {
     })
   })
 
+  it('keeps the path titles it already knows when reloaded', () => {
+    const form = useCourseForm()
+    form.loadFromCourse(course)
+    form.setPathTitle('lp-2', 'Travis picking')
+
+    form.loadFromCourse(course)
+
+    expect(form.checkpoints.value.map((c) => c.pathTitle)).toEqual(['Open chords', 'Travis picking'])
+    expect(form.checkpointsMissingPathTitle.value).toEqual([])
+  })
+
   describe('isDirty', () => {
     it('is clean when new, and dirty once anything is entered', () => {
       const form = useCourseForm()

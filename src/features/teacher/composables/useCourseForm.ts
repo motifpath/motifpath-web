@@ -132,13 +132,19 @@ export function useCourseForm() {
     instrumentIds.value = [...course.instrument_ids]
     thumbnailUrl.value = course.thumbnail_url
     // Without an override, the effective title is the path's own; with one,
-    // the path's title has to be looked up.
+    // the path's title is whatever was already known, or has to be looked up.
+    const knownTitles = new Map<string, string>()
+    for (const checkpoint of checkpoints.value) {
+      if (checkpoint.pathTitle !== null) knownTitles.set(checkpoint.learningPathId, checkpoint.pathTitle)
+    }
     checkpoints.value = [...course.checkpoints]
       .sort((a, b) => a.position - b.position)
       .map((checkpoint) => ({
         key: newKey(),
         learningPathId: checkpoint.learning_path_id,
-        pathTitle: checkpoint.title ? null : checkpoint.effective_title,
+        pathTitle: checkpoint.title
+          ? (knownTitles.get(checkpoint.learning_path_id) ?? null)
+          : checkpoint.effective_title,
         override: checkpoint.title ?? '',
       }))
     markSaved()

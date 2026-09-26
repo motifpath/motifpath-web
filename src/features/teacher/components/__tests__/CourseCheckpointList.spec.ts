@@ -69,10 +69,13 @@ describe('CourseCheckpointList', () => {
     ])
   })
 
-  it('moves a checkpoint dropped onto another row', async () => {
+  it('moves a checkpoint dragged by its handle onto another row', async () => {
     const wrapper = mountList()
     const rows = wrapper.findAll('[data-test="checkpoint-row"]')
 
+    expect(rows[0]!.attributes('draggable')).toBe('false')
+    await rows[0]!.get('[data-test="checkpoint-drag-handle"]').trigger('pointerdown')
+    expect(rows[0]!.attributes('draggable')).toBe('true')
     await rows[0]!.trigger('dragstart')
     await rows[2]!.trigger('dragover')
     await rows[2]!.trigger('drop')
@@ -84,8 +87,19 @@ describe('CourseCheckpointList', () => {
     const wrapper = mountList()
     const rows = wrapper.findAll('[data-test="checkpoint-row"]')
 
+    await rows[1]!.get('[data-test="checkpoint-drag-handle"]').trigger('pointerdown')
     await rows[1]!.trigger('dragstart')
     await rows[1]!.trigger('drop')
+
+    expect(wrapper.emitted('move')).toBeUndefined()
+  })
+
+  it('never drags a row from anywhere but its handle, so its title can be selected', async () => {
+    const wrapper = mountList()
+    const rows = wrapper.findAll('[data-test="checkpoint-row"]')
+
+    await rows[0]!.trigger('dragstart')
+    await rows[2]!.trigger('drop')
 
     expect(wrapper.emitted('move')).toBeUndefined()
   })
