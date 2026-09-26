@@ -279,7 +279,9 @@
     "challengeExercisesError": "Não foi possível carregar os exercícios deste desafio.",
     "challengeExercisesLoading": "Carregando exercícios…",
     "challengesError": "Não foi possível carregar os desafios deste nó.",
-    "challengesLoading": "Carregando desafios…"
+    "challengesLoading": "Carregando desafios…",
+    "instrumentsLabel": "Instrumentos",
+    "thumbnailLabel": "Miniatura"
   },
   "contentListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
@@ -288,7 +290,9 @@
     "loadingNoun": "conteúdo",
     "errorMessage": "Não foi possível carregar os nós de conteúdo.",
     "emptyHeading": "Ainda não há conteúdo",
-    "emptyMessage": "Crie seu primeiro vídeo ou artigo para começar a construir a biblioteca de conteúdo."
+    "emptyMessage": "Crie seu primeiro vídeo ou artigo para começar a construir a biblioteca de conteúdo.",
+    "noMatchesMessage": "Nenhum conteúdo é para este instrumento.",
+    "showEveryInstrument": "Mostrar todos os instrumentos"
   },
   "pathBuilderView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
@@ -302,7 +306,11 @@
     "addContentNodeLabel": "Adicionar nó de conteúdo",
     "pathUpdated": "Trilha de aprendizagem atualizada.",
     "pathCreated": "Trilha de aprendizagem criada.",
-    "saveFailed": "Falha ao salvar a trilha de aprendizagem"
+    "saveFailed": "Falha ao salvar a trilha de aprendizagem",
+    "levelLabel": "Nível",
+    "levelRequired": "Escolha um nível para salvar esta trilha.",
+    "instrumentsLabel": "Instrumentos",
+    "thumbnailLabel": "Miniatura"
   },
   "pathListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
@@ -313,7 +321,9 @@
     "emptyHeading": "Ainda não há trilhas",
     "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
     "nodeCountSingular": "{count} nó",
-    "nodeCountPlural": "{count} nós"
+    "nodeCountPlural": "{count} nós",
+    "noMatchesMessage": "Nenhuma trilha de aprendizagem é para este instrumento.",
+    "showEveryInstrument": "Mostrar todos os instrumentos"
   },
   "challengeModal": {
     "buildTitle": "Montar desafio",
@@ -381,6 +391,93 @@
     "noMatchesHeading": "Nenhum curso encontrado",
     "noMatchesMessage": "Tente menos filtros ou outra busca.",
     "unpublishedChanges": "Alterações não publicadas",
-    "courseTeacher": "por {name}"
+    "courseTeacher": "por {name}",
+    "newCourse": "Novo curso"
+  },
+  "thumbnailField": {
+    "upload": "Enviar imagem",
+    "replace": "Trocar imagem",
+    "uploading": "Enviando…",
+    "remove": "Remover",
+    "uploadFailed": "Não foi possível enviar a imagem."
+  },
+  "courseCheckpointList": {
+    "empty": "Nenhuma etapa ainda. Adicione uma trilha de aprendizagem para começar o curso.",
+    "dragHandleAriaLabel": "Arraste para reordenar",
+    "overrideAriaLabel": "Título da etapa {position}",
+    "moveUpAriaLabel": "Mover etapa para cima",
+    "moveDownAriaLabel": "Mover etapa para baixo",
+    "removeAriaLabel": "Remover etapa"
+  },
+  "learningPathPickerModal": {
+    "title": "Adicionar etapa",
+    "searchPlaceholder": "Buscar trilhas pelo título",
+    "onlyMine": "Só as minhas trilhas",
+    "sortLabel": "Ordenar",
+    "sort": {
+      "title": "Título",
+      "updated": "Atualizadas recentemente"
+    },
+    "loadingNoun": "trilhas de aprendizagem",
+    "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
+    "emptyMessage": "Nenhuma trilha corresponde a estes filtros.",
+    "noLevel": "Sem nível",
+    "updated": "Atualizada em {date}"
+  },
+  "courseStatusPanel": {
+    "statusLabel": "Status",
+    "publishedVersion": "Publicado · v{version}",
+    "showOutline": "Ver o que os alunos veem",
+    "publish": "Publicar",
+    "retire": "Descontinuar",
+    "reactivate": "Reativar",
+    "publishTitle": "Publicar este curso?",
+    "publishMessage": "Suas alterações são salvas antes. Quem se inscrever a partir de agora recebe esta versão; quem já está inscrito mantém a sua.",
+    "retireTitle": "Descontinuar este curso?",
+    "retireMessage": "O curso sai do catálogo, e ninguém novo pode se inscrever. As inscrições existentes não são afetadas.",
+    "reactivateTitle": "Reativar este curso?",
+    "reactivateMessage": "O curso volta ao catálogo com sua última versão publicada. As alterações não publicadas continuam não publicadas.",
+    "adminPublishesNote": "Um administrador publica os cursos. Os alunos não verão este curso nem suas alterações até lá.",
+    "retireNeedsSave": "Salve suas alterações antes de descontinuar o curso."
+  },
+  "publishedCourseModal": {
+    "title": "O que os alunos veem",
+    "loadingNoun": "curso publicado",
+    "errorMessage": "Não foi possível carregar o curso publicado."
+  },
+  "courseBuilderView": {
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar cursos.",
+    "loadingNoun": "curso",
+    "notFound": "Este curso não existe ou foi removido.",
+    "backToCourses": "Voltar aos cursos",
+    "loadErrorMessage": "Não foi possível carregar este curso.",
+    "newBreadcrumb": "Novo curso",
+    "editBreadcrumb": "Editar curso",
+    "retiredNotice": "Este curso foi descontinuado e não pode ser alterado. Um administrador pode reativá-lo.",
+    "retiredNoticeAdmin": "Este curso foi descontinuado e não pode ser alterado. Reative-o para editá-lo novamente.",
+    "titleLabel": "Título do curso",
+    "titlePlaceholder": "Curso sem título",
+    "titleHint": "Os alunos veem este título no catálogo de cursos.",
+    "summaryLabel": "Resumo",
+    "summaryPlaceholder": "O que os alunos vão ganhar com este curso?",
+    "levelLabel": "Nível",
+    "languageLabel": "Idioma",
+    "languageHint": "O idioma em que o curso é escrito. Os alunos podem filtrar o catálogo por ele.",
+    "instrumentsLabel": "Instrumentos",
+    "thumbnailLabel": "Miniatura",
+    "checkpointsLabel": "Etapas",
+    "addCheckpoint": "Adicionar etapa",
+    "saveFailed": "Não foi possível salvar o curso.",
+    "courseCreated": "Curso criado",
+    "courseSaved": "Curso salvo",
+    "published": "Publicado como versão {version}",
+    "publishFailed": "Não foi possível publicar o curso.",
+    "retired": "Curso descontinuado",
+    "retireFailed": "Não foi possível descontinuar o curso.",
+    "reactivated": "Curso reativado",
+    "reactivateFailed": "Não foi possível reativar o curso.",
+    "leaveTitle": "Sair sem salvar?",
+    "leaveMessage": "Suas alterações neste curso não foram salvas e serão perdidas.",
+    "leaveConfirm": "Sair"
   }
 }

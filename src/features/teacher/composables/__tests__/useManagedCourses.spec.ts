@@ -75,6 +75,18 @@ describe('useManagedCourses', () => {
     })
   })
 
+  it('sends the language and instrument filters', async () => {
+    const { filters, isLoading } = useManagedCourses()
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    filters.language = 'pt_BR'
+    filters.instrumentId = 'i-guitar'
+    await nextTick()
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, language: 'pt_BR', instrument_id: 'i-guitar' })
+  })
+
   it('waits for typing to pause before searching by text', async () => {
     vi.useFakeTimers()
     const { searchText } = useManagedCourses()

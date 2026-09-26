@@ -20,6 +20,8 @@ const catalog = {
     skillIds: [] as string[],
     conceptIds: [] as string[],
     teacher: null as { user_id: string; display_name: string } | null,
+    instrumentId: null as string | null,
+    language: null as string | null,
   }),
   searchText: ref(''),
   hasActiveFilters: ref(false),
@@ -52,6 +54,18 @@ vi.mock('@/shared/composables/useListConcepts', () => ({
   useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 
+vi.mock('@/shared/composables/useListInstruments', () => ({
+  useListInstruments: () => ({
+    instruments: ref([
+      { instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] },
+      { instrument_id: 'i-bass', names: { en: 'Bass' }, languages: ['en'] },
+    ]),
+    isLoading: ref(false),
+    error: ref(false),
+    retry: vi.fn(),
+  }),
+}))
+
 vi.mock('@/shared/composables/useCourseCreators', () => ({
   useCourseCreators: () => ({ creators: ref([]), nameQuery: ref(''), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
@@ -69,6 +83,8 @@ function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry
     title: 'Fingerstyle journey',
     summary: 'From first arpeggios to full arrangements.',
     level: 'beginner',
+    language: 'en',
+    instrument_ids: [],
     created_by: { user_id: 'teacher-1', display_name: 'Bob Martins' },
     status: 'published',
     published_at: '2026-09-01T00:00:00Z',
@@ -103,7 +119,14 @@ describe('CourseCatalogView', () => {
     catalog.error.value = false
     catalog.hasActiveFilters.value = false
     catalog.searchText.value = ''
-    Object.assign(catalog.filters, { levels: [], skillIds: [], conceptIds: [], teacher: null })
+    Object.assign(catalog.filters, {
+      levels: [],
+      skillIds: [],
+      conceptIds: [],
+      teacher: null,
+      instrumentId: null,
+      language: null,
+    })
     enrollments.enrollments.value = []
     vi.clearAllMocks()
   })
@@ -149,6 +172,35 @@ describe('CourseCatalogView', () => {
     expect(cards[0]!.text()).toContain('From first arpeggios to full arrangements.')
     expect(cards[0]!.text()).toContain('Beginner')
     expect(cards[1]!.text()).toContain('Advanced')
+  })
+
+  it("shows each course's thumbnail, or a placeholder, its language and its instruments", () => {
+    catalog.courses.value = [
+      course({ thumbnail_url: 'https://cdn.test/thumbnails/c-1.png', instrument_ids: ['i-guitar', 'i-bass'] }),
+      course({ course_id: 'c-2', language: 'pt_BR' }),
+    ]
+    catalog.total.value = 2
+
+    const cards = mountView().findAll('[data-test="course-card"]')
+
+    expect(cards[0]!.get('img').attributes('src')).toBe('https://cdn.test/thumbnails/c-1.png')
+    expect(cards[1]!.find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
+    expect(cards[0]!.get('[data-test="course-language"]').text()).toContain('EN')
+    expect(cards[1]!.get('[data-test="course-language"]').text()).toContain('PT')
+    expect(cards[0]!.get('[data-test="course-instruments"]').text()).toBe('Guitar, Bass')
+    expect(cards[1]!.get('[data-test="course-instruments"]').text()).toBe('Every instrument')
+  })
+
+  it('binds the language and instrument filters to the catalog', async () => {
+    catalog.filters.language = 'en'
+    const wrapper = mountView()
+
+    expect(wrapper.get<HTMLSelectElement>('[data-test="language-filter"]').element.value).toBe('en')
+    await wrapper.get('[data-test="language-filter"]').setValue('')
+    await wrapper.get('[data-test="instrument-filter"]').setValue('i-guitar')
+
+    expect(catalog.filters.language).toBeNull()
+    expect(catalog.filters.instrumentId).toBe('i-guitar')
   })
 
   it('binds the search box to the catalog search text', async () => {

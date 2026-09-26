@@ -12,13 +12,17 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
+import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
+import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { languageBadge } from '@/shared/utils/languageLabels'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 
 const { t } = useTypedT()
 const toast = useToast()
+const { instrumentsLabel } = useInstrumentNames()
 
 const {
   courses,
@@ -79,6 +83,10 @@ async function enroll(course: CourseCatalogEntry) {
       v-model:skill-ids="filters.skillIds"
       v-model:concept-ids="filters.conceptIds"
       v-model:teacher="filters.teacher"
+      v-model:instrument-id="filters.instrumentId"
+      v-model:language="filters.language"
+      instrument-filter
+      language-filter
       teacher-scope="catalog"
       :has-active-filters="hasActiveFilters"
       @clear="clearFilters"
@@ -121,16 +129,25 @@ async function enroll(course: CourseCatalogEntry) {
           data-test="course-card"
           class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
         >
-          <div class="flex flex-wrap items-start justify-between gap-2">
-            <h2 class="text-lg font-semibold text-ink">{{ course.title }}</h2>
-            <span class="rounded-full bg-surface-sunken px-2.5 py-0.5 text-xs font-semibold text-ink-muted">
-              {{ t(`levels.${course.level}`) }}
-            </span>
+          <div class="flex items-start gap-3">
+            <ThumbnailImage :url="course.thumbnail_url" size-class="h-16 w-24 rounded-md" />
+            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-2">
+              <h2 class="text-lg font-semibold text-ink">{{ course.title }}</h2>
+              <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-ink-muted">
+                <span data-test="course-language" class="rounded-full bg-surface-sunken px-2.5 py-0.5">
+                  {{ languageBadge(course.language).flag }} {{ languageBadge(course.language).shortCode }}
+                </span>
+                <span class="rounded-full bg-surface-sunken px-2.5 py-0.5">
+                  {{ t(`levels.${course.level}`) }}
+                </span>
+              </div>
+            </div>
           </div>
           <p data-test="course-teacher" class="text-sm text-ink-subtle">
             {{ t('courseCatalogView.courseTeacher', { name: course.created_by.display_name }) }}
           </p>
           <p class="text-sm text-ink-muted">{{ course.summary }}</p>
+          <p data-test="course-instruments" class="text-sm text-ink-subtle">{{ instrumentsLabel(course.instrument_ids) }}</p>
           <div class="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"

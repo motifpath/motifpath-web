@@ -8,6 +8,7 @@ import ClassificationFields from '@/features/teacher/components/ClassificationFi
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
 import ExpandedContentModal from '@/features/teacher/components/ExpandedContentModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
+import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEditor.vue'
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
@@ -22,6 +23,7 @@ import { useSaveChallenge } from '@/features/teacher/composables/useSaveChalleng
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import AppBar from '@/shared/components/AppBar.vue'
+import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
@@ -78,6 +80,7 @@ watch(
 )
 
 const saving = ref(false)
+const thumbnailUploading = ref(false)
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
 onUnmounted(() => clearTimeout(justSavedTimeout))
@@ -92,7 +95,7 @@ const hasClassification = computed(
 )
 
 async function save() {
-  if (!hasClassification.value || !form.hasBody.value) return
+  if (!hasClassification.value || !form.hasBody.value || thumbnailUploading.value) return
 
   saving.value = true
   const isUpdate = !!savedContentNodeId.value
@@ -348,7 +351,7 @@ async function onSaveChallenge({
       :primary-nav-to="{ name: 'teacher-content' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"
       :show-save="canAuthor"
-      :save-disabled="saving || !hasClassification || !form.hasBody.value"
+      :save-disabled="saving || thumbnailUploading || !hasClassification || !form.hasBody.value"
       :just-saved="justSaved"
       :on-save="save"
     />
@@ -433,6 +436,16 @@ async function onSaveChallenge({
           @create-skill="onCreateSkill"
           @create-concept="onCreateConcept"
         />
+      </div>
+
+      <div class="flex flex-col gap-2 border-t border-border pt-4">
+        <span class="text-sm font-semibold">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
+        <InstrumentPicker v-model="form.instrumentIds.value" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="text-sm font-semibold">{{ t('contentAuthoringView.thumbnailLabel') }}</span>
+        <ThumbnailField v-model="form.thumbnailUrl.value" @uploading="thumbnailUploading = $event" />
       </div>
 
       <div v-if="savedContentNodeId && form.contentType.value === 'video'" class="flex flex-col gap-2 border-t border-border pt-4">

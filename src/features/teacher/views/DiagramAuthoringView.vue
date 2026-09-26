@@ -13,7 +13,7 @@ import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.v
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
-import { useListInstruments } from '@/features/teacher/composables/useListInstruments'
+import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
 import AppBar from '@/shared/components/AppBar.vue'

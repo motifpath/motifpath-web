@@ -3,6 +3,7 @@ import { describeApiError } from '@/shared/utils/apiError'
 import type { components } from '@/api/generated/core-domain'
 
 type MediaContentType = components['schemas']['CreateMediaUploadUrlRequest']['content_type']
+type MediaUploadPurpose = components['schemas']['CreateMediaUploadUrlRequest']['purpose']
 
 // The backend presigns the upload URL against one fixed, representative MIME
 // type per category (motifpath-core's s3_media_storage.go mimeType()), not
@@ -21,13 +22,19 @@ const PRESIGNED_MIME_TYPE: Record<MediaContentType, string> = {
  * saved, and there is no endpoint to attach media to an exercise after
  * creation), so there's no exercise_id to send. The resulting URL is just
  * stored as image_url on the exercise or option once the exercise is saved.
+ * `uploadThumbnail` stores a course, path or content node's picture instead,
+ * under its own purpose, which only accepts images.
  */
 export function useMediaUpload() {
   const { coreApi } = useApi()
 
-  async function upload(file: File, contentType: MediaContentType): Promise<string> {
+  async function uploadAs(
+    purpose: MediaUploadPurpose,
+    file: File,
+    contentType: MediaContentType,
+  ): Promise<string> {
     const { data, error } = await coreApi.POST('/media/upload-url', {
-      body: { purpose: 'library_asset', content_type: contentType, file_name: file.name },
+      body: { purpose, content_type: contentType, file_name: file.name },
     })
     if (!data) {
       throw new Error(describeApiError(error, 'Failed to request an upload URL'))
@@ -45,5 +52,13 @@ export function useMediaUpload() {
     return data.object_url
   }
 
-  return { upload }
+  function upload(file: File, contentType: MediaContentType): Promise<string> {
+    return uploadAs('library_asset', file, contentType)
+  }
+
+  function uploadThumbnail(file: File): Promise<string> {
+    return uploadAs('thumbnail', file, 'image')
+  }
+
+  return { upload, uploadThumbnail }
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Plus } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import {
@@ -11,8 +12,10 @@ import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
+import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { languageBadge } from '@/shared/utils/languageLabels'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const STATUS_TABS: (CourseStatus | null)[] = [null, 'draft', 'published', 'retired']
@@ -63,7 +66,17 @@ function statusLabel(tab: CourseStatus | null): string {
     </div>
 
     <div v-else class="flex flex-1 flex-col gap-6 px-[48px] pb-[80px] pt-10">
-      <h1 class="text-xl font-bold text-ink">{{ t('courseListView.heading') }}</h1>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-xl font-bold text-ink">{{ t('courseListView.heading') }}</h1>
+        <RouterLink
+          :to="{ name: 'teacher-course-new' }"
+          data-test="new-course"
+          class="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[0.8125rem] font-semibold text-accent-fg"
+        >
+          <Plus :size="14" aria-hidden="true" />
+          {{ t('courseListView.newCourse') }}
+        </RouterLink>
+      </div>
 
       <div
         role="tablist"
@@ -91,6 +104,10 @@ function statusLabel(tab: CourseStatus | null): string {
         v-model:skill-ids="filters.skillIds"
         v-model:concept-ids="filters.conceptIds"
         v-model:teacher="filters.teacher"
+        v-model:instrument-id="filters.instrumentId"
+        v-model:language="filters.language"
+        instrument-filter
+        language-filter
         :teacher-scope="isAdmin ? 'managed' : null"
         :has-active-filters="hasActiveFilters"
         @clear="clearFilters"
@@ -132,35 +149,47 @@ function statusLabel(tab: CourseStatus | null): string {
 
       <template v-else>
         <ul class="flex flex-col gap-2">
-          <li
-            v-for="course in courses"
-            :key="course.course_id"
-            data-test="course-row"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3"
-          >
-            <div class="flex flex-col gap-0.5">
-              <span class="font-semibold text-ink">{{ course.title }}</span>
-              <span v-if="isAdmin" data-test="course-teacher" class="text-sm text-ink-subtle">
-                {{ t('courseListView.courseTeacher', { name: course.created_by.display_name }) }}
-              </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span class="rounded-full bg-surface-sunken px-2.5 py-0.5 text-ink-muted">
-                {{ t(`levels.${course.level}`) }}
-              </span>
-              <span
-                data-test="course-status"
-                class="rounded-full bg-accent-muted px-2.5 py-0.5 text-accent-text"
-                >{{ t(`courseStatus.${course.status ?? 'draft'}`) }}</span
-              >
-              <span
-                v-if="course.has_unpublished_changes"
-                data-test="unpublished-changes"
-                class="rounded-full border border-border px-2.5 py-0.5 text-ink-muted"
-              >
-                {{ t('courseListView.unpublishedChanges') }}
-              </span>
-            </div>
+          <li v-for="course in courses" :key="course.course_id" data-test="course-row">
+            <RouterLink
+              :to="{ name: 'teacher-course-edit', params: { id: course.course_id } }"
+              class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3 hover:border-accent focus-visible:border-accent"
+            >
+              <div class="flex min-w-0 items-center gap-3">
+                <ThumbnailImage :url="course.thumbnail_url" />
+                <div class="flex min-w-0 flex-col gap-0.5">
+                  <span class="font-semibold text-ink">{{ course.title }}</span>
+                  <span v-if="isAdmin" data-test="course-teacher" class="text-sm text-ink-subtle">
+                    {{
+                      t('courseListView.courseTeacher', { name: course.created_by.display_name })
+                    }}
+                  </span>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span
+                  data-test="course-language"
+                  class="rounded-full bg-surface-sunken px-2.5 py-0.5 text-ink-muted"
+                >
+                  {{ languageBadge(course.language).flag }}
+                  {{ languageBadge(course.language).shortCode }}
+                </span>
+                <span class="rounded-full bg-surface-sunken px-2.5 py-0.5 text-ink-muted">
+                  {{ t(`levels.${course.level}`) }}
+                </span>
+                <span
+                  data-test="course-status"
+                  class="rounded-full bg-accent-muted px-2.5 py-0.5 text-accent-text"
+                  >{{ t(`courseStatus.${course.status ?? 'draft'}`) }}</span
+                >
+                <span
+                  v-if="course.has_unpublished_changes"
+                  data-test="unpublished-changes"
+                  class="rounded-full border border-border px-2.5 py-0.5 text-ink-muted"
+                >
+                  {{ t('courseListView.unpublishedChanges') }}
+                </span>
+              </div>
+            </RouterLink>
           </li>
         </ul>
         <LoadMoreButton

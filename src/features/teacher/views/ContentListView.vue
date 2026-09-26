@@ -4,10 +4,13 @@ import { computed } from 'vue'
 
 import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
 import AppBar from '@/shared/components/AppBar.vue'
+import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
+import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
+import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -19,8 +22,18 @@ const canAuthor = computed(
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
-const { contentNodes, total, isLoading, isLoadingMore, error, loadMoreError, retry, loadMore } =
-  useListContentNodes()
+const {
+  contentNodes,
+  instrumentId,
+  total,
+  isLoading,
+  isLoadingMore,
+  error,
+  loadMoreError,
+  retry,
+  loadMore,
+} = useListContentNodes()
+const { instrumentsLabel } = useInstrumentNames()
 </script>
 
 <template>
@@ -46,9 +59,22 @@ const { contentNodes, total, isLoading, isLoadingMore, error, loadMoreError, ret
         </RouterLink>
       </div>
 
+      <InstrumentFilterSelect v-model="instrumentId" class="w-fit" />
+
       <StateLoading v-if="isLoading" data-test="loading" :noun="t('contentListView.loadingNoun')" />
 
       <StateError v-else-if="error" data-test="error" :message="t('contentListView.errorMessage')" @retry="retry" />
+
+      <div
+        v-else-if="contentNodes.length === 0 && instrumentId"
+        data-test="no-matches"
+        class="flex flex-col items-start gap-2 text-sm text-ink-muted"
+      >
+        {{ t('contentListView.noMatchesMessage') }}
+        <button type="button" class="font-semibold text-accent-text underline" @click="instrumentId = null">
+          {{ t('contentListView.showEveryInstrument') }}
+        </button>
+      </div>
 
       <StateEmpty
         v-else-if="contentNodes.length === 0"
@@ -69,9 +95,15 @@ const { contentNodes, total, isLoading, isLoadingMore, error, loadMoreError, ret
             <RouterLink
               :to="{ name: 'teacher-content-edit', params: { id: contentNode.content_node_id } }"
               data-test="content-node-row"
-              class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
+              class="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3"
             >
-              <span class="font-semibold text-ink">{{ contentNode.title }}</span>
+              <div class="flex min-w-0 items-center gap-3">
+                <ThumbnailImage :url="contentNode.thumbnail_url" />
+                <div class="flex min-w-0 flex-col gap-0.5">
+                  <span class="font-semibold text-ink">{{ contentNode.title }}</span>
+                  <span class="text-sm text-ink-subtle">{{ instrumentsLabel(contentNode.instrument_ids) }}</span>
+                </div>
+              </div>
               <span class="text-sm text-ink-subtle">{{ t(`common.contentTypes.${contentNode.content_type}`) }}</span>
             </RouterLink>
           </li>

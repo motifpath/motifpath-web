@@ -19,6 +19,7 @@ function makeContentNode(overrides: Partial<ContentNode>): ContentNode {
       review_state: 'pending',
     },
     languages: [],
+    instrument_ids: [],
     created_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }

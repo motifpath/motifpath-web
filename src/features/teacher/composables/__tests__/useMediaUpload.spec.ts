@@ -89,4 +89,30 @@ describe('useMediaUpload', () => {
 
     await expect(upload(new File(['x'], 'x.png'), 'image')).rejects.toThrow()
   })
+  it('uploads a thumbnail under the thumbnail purpose, as an image', async () => {
+    POST.mockResolvedValueOnce({
+      data: {
+        upload_url: 'https://storage.example.com/put?sig=2',
+        object_url: 'https://cdn.example.com/thumbnails/abc.png',
+        expires_at: '2026-01-01T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    fetchMock.mockResolvedValueOnce({ ok: true })
+
+    const { uploadThumbnail } = useMediaUpload()
+    const file = new File(['data'], 'cover.jpg', { type: 'image/jpeg' })
+
+    const objectUrl = await uploadThumbnail(file)
+
+    expect(POST).toHaveBeenCalledWith('/media/upload-url', {
+      body: { purpose: 'thumbnail', content_type: 'image', file_name: 'cover.jpg' },
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://storage.example.com/put?sig=2',
+      expect.objectContaining({ method: 'PUT', body: file, headers: { 'Content-Type': 'image/png' } }),
+    )
+    expect(objectUrl).toBe('https://cdn.example.com/thumbnails/abc.png')
+  })
 })

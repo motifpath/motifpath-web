@@ -96,7 +96,19 @@ describe('useContentNodeForm', () => {
           difficulty_level: 'intermediate',
         },
         language_codes: ['any'],
+        instrument_ids: [],
       })
+    })
+
+    it('sends the instruments and thumbnail chosen', () => {
+      const form = useContentNodeForm()
+      form.instrumentIds.value = ['i-guitar']
+      form.thumbnailUrl.value = 'https://cdn.test/thumbnails/cn.png'
+
+      const request = form.toCreateContentNodeRequest()
+
+      expect(request.instrument_ids).toEqual(['i-guitar'])
+      expect(request.thumbnail_url).toBe('https://cdn.test/thumbnails/cn.png')
     })
 
     it('sends rich_content and no media_url for an article, even if a video URL was typed earlier', () => {
@@ -145,8 +157,21 @@ describe('useContentNodeForm', () => {
           difficulty_level: 'intermediate',
         },
         language_codes: ['any'],
+        instrument_ids: [],
       })
       expect(request).not.toHaveProperty('content_type')
+    })
+
+    it('sends the instruments, and no thumbnail once it has been removed', () => {
+      const form = useContentNodeForm()
+      form.instrumentIds.value = ['i-bass']
+      form.thumbnailUrl.value = 'https://cdn.test/thumbnails/cn.png'
+      form.thumbnailUrl.value = undefined
+
+      const request = form.toUpdateContentNodeRequest()
+
+      expect(request.instrument_ids).toEqual(['i-bass'])
+      expect(request).not.toHaveProperty('thumbnail_url')
     })
   })
 
@@ -166,6 +191,7 @@ describe('useContentNodeForm', () => {
           review_state: 'confirmed',
         },
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -175,6 +201,28 @@ describe('useContentNodeForm', () => {
       expect(form.conceptIds.value).toEqual(['c-1'])
       expect(form.difficultyLevel.value).toBe('advanced')
       expect(form.reviewState.value).toBe('confirmed')
+      expect(form.instrumentIds.value).toEqual([])
+      expect(form.thumbnailUrl.value).toBeUndefined()
+    })
+
+    it('hydrates instruments and thumbnail', () => {
+      const form = useContentNodeForm()
+
+      form.loadFromContentNode({
+        content_node_id: 'cn-1',
+        teacher: { user_id: 't-1', display_name: 'Teacher One' },
+        title: 'Alternate picking basics',
+        content_type: 'video',
+        media_url: 'https://cdn.example.com/lesson.mp4',
+        classification: { skills: [], concepts: [], difficulty_level: 'beginner', review_state: 'pending' },
+        languages: [],
+        instrument_ids: ['i-guitar'],
+        thumbnail_url: 'https://cdn.test/thumbnails/cn.png',
+        created_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.instrumentIds.value).toEqual(['i-guitar'])
+      expect(form.thumbnailUrl.value).toBe('https://cdn.test/thumbnails/cn.png')
     })
 
     it('hydrates a video node\'s media URL and leaves the article body empty', () => {
@@ -193,6 +241,7 @@ describe('useContentNodeForm', () => {
           review_state: 'pending',
         },
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -217,6 +266,7 @@ describe('useContentNodeForm', () => {
           review_state: 'pending',
         },
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -239,6 +289,7 @@ describe('useContentNodeForm', () => {
           review_state: 'pending',
         },
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 

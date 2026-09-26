@@ -5,16 +5,20 @@ import { useRoute } from 'vue-router'
 
 import ContentNodePickerModal from '@/features/teacher/components/ContentNodePickerModal.vue'
 import SectionedPathList, { type PathBuilderItem } from '@/features/teacher/components/SectionedPathList.vue'
+import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import { useCreateLearningPath } from '@/features/teacher/composables/useCreateLearningPath'
 import { useLearningPath } from '@/features/teacher/composables/useLearningPath'
 import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
 import { useReplaceLearningPath } from '@/features/teacher/composables/useReplaceLearningPath'
 import AppBar from '@/shared/components/AppBar.vue'
+import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
+import LevelPicker from '@/shared/components/LevelPicker.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import type { DifficultyLevel } from '@/shared/utils/levels'
 import { useCurrentUserStore } from '@/stores/currentUser'
 import type { components } from '@/api/generated/core-domain'
 
@@ -47,11 +51,19 @@ const { createLearningPath } = useCreateLearningPath()
 const { replaceLearningPath } = useReplaceLearningPath()
 
 const title = ref('')
+// A path saved before levels existed has none, and can't be saved again until one is chosen.
+const level = ref<DifficultyLevel | null>(null)
+const instrumentIds = ref<string[]>([])
+const thumbnailUrl = ref<string | undefined>(undefined)
+const thumbnailUploading = ref(false)
 const items = ref<PathBuilderItem[]>([])
 const savedLearningPathId = ref('')
 
 function loadFromLearningPath(learningPath: LearningPath) {
   title.value = learningPath.title
+  level.value = learningPath.level ?? null
+  instrumentIds.value = [...learningPath.instrument_ids]
+  thumbnailUrl.value = learningPath.thumbnail_url
   items.value = learningPath.items.map((item) => ({
     content_node_id: item.content_node_id,
     title: item.title,
@@ -110,11 +122,19 @@ onUnmounted(() => clearTimeout(justSavedTimeout))
 
 const toast = useToast()
 
+const canSave = computed(
+  () => !saving.value && !thumbnailUploading.value && items.value.length > 0 && level.value !== null,
+)
+
 async function save() {
+  if (level.value === null) return
   saving.value = true
   const isUpdate = !!savedLearningPathId.value
   const request = {
     title: title.value,
+    level: level.value,
+    instrument_ids: [...instrumentIds.value],
+    ...(thumbnailUrl.value ? { thumbnail_url: thumbnailUrl.value } : {}),
     items: items.value.map((item) => ({
       content_node_id: item.content_node_id,
       section_label: item.section_label,
@@ -147,7 +167,7 @@ async function save() {
       :primary-nav-to="{ name: 'teacher-paths' }"
       :breadcrumb-label="isEditMode ? title || t('pathBuilderView.editBreadcrumb') : t('pathBuilderView.newBreadcrumb')"
       :show-save="canAuthor"
-      :save-disabled="saving || items.length === 0"
+      :save-disabled="!canSave"
       :just-saved="justSaved"
       :on-save="save"
     />
@@ -181,6 +201,24 @@ async function save() {
           :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
         />
         <span class="text-sm text-ink-subtle">{{ t('pathBuilderView.titleHint') }}</span>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="text-sm font-semibold">{{ t('pathBuilderView.levelLabel') }}</span>
+        <LevelPicker v-model="level" :label="t('pathBuilderView.levelLabel')" class="w-fit" />
+        <span v-if="level === null" data-test="level-required" class="text-sm text-ink-subtle">
+          {{ t('pathBuilderView.levelRequired') }}
+        </span>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="text-sm font-semibold">{{ t('pathBuilderView.instrumentsLabel') }}</span>
+        <InstrumentPicker v-model="instrumentIds" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="text-sm font-semibold">{{ t('pathBuilderView.thumbnailLabel') }}</span>
+        <ThumbnailField v-model="thumbnailUrl" @uploading="thumbnailUploading = $event" />
       </div>
 
       <div class="flex flex-col gap-3 border-t border-border pt-4">

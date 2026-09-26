@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -70,5 +71,20 @@ describe('useListContentNodes', () => {
 
     expect(error.value).toBe(false)
     expect(result.value).toEqual([{ content_node_id: 'x-1' }])
+  })
+  it('narrows to one instrument, and back to every instrument', async () => {
+    GET.mockResolvedValue(ok([]))
+    const { instrumentId, isLoading } = useListContentNodes()
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    instrumentId.value = 'i-guitar'
+    await nextTick()
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+    expect(GET).toHaveBeenLastCalledWith('/content-nodes', { params: { query: { limit: 20, offset: 0, instrument_id: 'i-guitar' } } })
+
+    instrumentId.value = null
+    await nextTick()
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+    expect(GET).toHaveBeenLastCalledWith('/content-nodes', { params: { query: { limit: 20, offset: 0 } } })
   })
 })

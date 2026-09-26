@@ -17,6 +17,7 @@ export function makeVideoNode(id: string, overrides: Partial<ContentNode> = {}):
     },
     media_url: 'https://cdn.example.test/lesson.mp4',
     languages: [{ code: 'any', name: 'Language-agnostic' }],
+    instrument_ids: [],
     created_at: '2026-09-21T12:00:00Z',
     ...overrides,
   }
