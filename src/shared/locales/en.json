@@ -144,7 +144,9 @@
     "levelFilterLabel": "Level",
     "skillFilterLabel": "Skill",
     "conceptFilterLabel": "Concept",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "languageFilterLabel": "Language",
+    "anyLanguage": "Any language"
   },
   "teacherFilterPicker": {
     "label": "Teacher",
@@ -167,5 +169,8 @@
     "filterLabel": "Instrument",
     "loading": "Loading instruments…",
     "loadError": "Couldn't load the instruments."
+  },
+  "confirmDialog": {
+    "cancel": "Cancel"
   }
 }

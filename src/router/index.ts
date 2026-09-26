@@ -209,6 +209,18 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
         component: () => import('@/features/teacher/views/CourseListView.vue'),
       },
+      {
+        path: 'new',
+        name: 'teacher-course-new',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/CourseBuilderView.vue'),
+      },
+      {
+        path: ':id/edit',
+        name: 'teacher-course-edit',
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        component: () => import('@/features/teacher/views/CourseBuilderView.vue'),
+      },
     ],
   },
   {

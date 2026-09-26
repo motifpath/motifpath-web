@@ -3,24 +3,19 @@ import { Check, Search } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
+import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import TeacherFilterPicker from '@/shared/components/TeacherFilterPicker.vue'
 import type { CourseCreatorsScope } from '@/shared/composables/useCourseCreators'
 import { useListConcepts } from '@/shared/composables/useListConcepts'
 import { useListSkills } from '@/shared/composables/useListSkills'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { DIFFICULTY_LEVELS } from '@/shared/utils/levels'
 import { mostSpecificIds, type TreeNode } from '@/shared/utils/skillConceptTree'
 
 type CourseLevel = components['schemas']['CourseCatalogEntry']['level']
 type UserRef = components['schemas']['UserRef']
-
-const LEVELS: CourseLevel[] = [
-  'beginner',
-  'early_intermediate',
-  'intermediate',
-  'advanced',
-  'expert',
-]
 
 const props = withDefaults(
   defineProps<{
@@ -28,8 +23,14 @@ const props = withDefaults(
     hasActiveFilters: boolean
     /** Which course list's teachers the teacher filter offers; omit to hide it. */
     teacherScope?: CourseCreatorsScope | null
+    /** Whether to offer the instrument filter. */
+    instrumentFilter?: boolean
+    /** Whether to offer the language filter. */
+    languageFilter?: boolean
+    /** The search box's placeholder; defaults to searching courses. */
+    searchPlaceholder?: string
   }>(),
-  { teacherScope: null },
+  { teacherScope: null, instrumentFilter: false, languageFilter: false, searchPlaceholder: undefined },
 )
 const emit = defineEmits<{ clear: [] }>()
 
@@ -38,6 +39,8 @@ const levels = defineModel<CourseLevel[]>('levels', { required: true })
 const skillIds = defineModel<string[]>('skillIds', { required: true })
 const conceptIds = defineModel<string[]>('conceptIds', { required: true })
 const teacher = defineModel<UserRef | null>('teacher', { default: null })
+const instrumentId = defineModel<string | null>('instrumentId', { default: null })
+const language = defineModel<string | null>('language', { default: null })
 
 const { t } = useTypedT()
 
@@ -93,7 +96,7 @@ const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 's
         v-model="searchText"
         data-test="catalog-search"
         type="search"
-        :placeholder="t('courseFilters.searchPlaceholder')"
+        :placeholder="searchPlaceholder ?? t('courseFilters.searchPlaceholder')"
         class="w-full rounded-md border border-border bg-surface-sunken py-2 pl-9 pr-3 text-sm"
       />
     </label>
@@ -104,7 +107,7 @@ const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 's
       </span>
       <div class="flex flex-wrap gap-2">
         <button
-          v-for="level in LEVELS"
+          v-for="level in DIFFICULTY_LEVELS"
           :key="level"
           type="button"
           :data-test="`level-filter-${level}`"
@@ -121,6 +124,21 @@ const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 's
           {{ t(`levels.${level}`) }}
         </button>
       </div>
+    </div>
+
+    <div v-if="instrumentFilter || languageFilter || $slots.default" class="flex flex-wrap items-end gap-4">
+      <InstrumentFilterSelect v-if="instrumentFilter" v-model="instrumentId" />
+      <label v-if="languageFilter" class="flex flex-col gap-1.5">
+        <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+          {{ t('courseFilters.languageFilterLabel') }}
+        </span>
+        <LanguageSelect
+          v-model="language"
+          data-test="language-filter"
+          :empty-label="t('courseFilters.anyLanguage')"
+        />
+      </label>
+      <slot />
     </div>
 
     <div class="grid gap-4" :class="pickerColumns">

@@ -395,5 +395,83 @@
     "uploading": "Uploading…",
     "remove": "Remove",
     "uploadFailed": "Couldn't upload the image."
+  },
+  "courseCheckpointList": {
+    "empty": "No checkpoints yet. Add a learning path to start the course.",
+    "dragHandleAriaLabel": "Drag to reorder",
+    "overrideAriaLabel": "Title for checkpoint {position}",
+    "moveUpAriaLabel": "Move checkpoint up",
+    "moveDownAriaLabel": "Move checkpoint down",
+    "removeAriaLabel": "Remove checkpoint"
+  },
+  "learningPathPickerModal": {
+    "title": "Add a checkpoint",
+    "searchPlaceholder": "Search paths by title",
+    "onlyMine": "Only my paths",
+    "sortLabel": "Sort",
+    "sort": {
+      "title": "Title",
+      "updated": "Recently updated"
+    },
+    "loadingNoun": "learning paths",
+    "errorMessage": "Couldn't load the learning paths.",
+    "emptyMessage": "No learning path matches these filters.",
+    "noLevel": "No level",
+    "updated": "Updated {date}"
+  },
+  "courseStatusPanel": {
+    "statusLabel": "Status",
+    "publishedVersion": "Published · v{version}",
+    "showOutline": "See what learners see",
+    "publish": "Publish",
+    "retire": "Retire",
+    "reactivate": "Reactivate",
+    "publishTitle": "Publish this course?",
+    "publishMessage": "Your changes are saved first. Learners who enroll from now on get this version; people already enrolled keep theirs.",
+    "retireTitle": "Retire this course?",
+    "retireMessage": "The course leaves the catalog, so no one new can enroll. Existing enrollments are unaffected.",
+    "reactivateTitle": "Reactivate this course?",
+    "reactivateMessage": "The course returns to the catalog with its latest published version. Unpublished changes stay unpublished.",
+    "adminPublishesNote": "An admin publishes courses. Learners won't see this course or your changes until then."
+  },
+  "publishedCourseModal": {
+    "title": "What learners see",
+    "loadingNoun": "published course",
+    "errorMessage": "Couldn't load the published course."
+  },
+  "courseBuilderView": {
+    "permissionDenied": "This page is for teachers and admins only — your account can't build courses.",
+    "loadingNoun": "course",
+    "notFound": "This course doesn't exist, or it was removed.",
+    "backToCourses": "Back to courses",
+    "loadErrorMessage": "Couldn't load this course.",
+    "newBreadcrumb": "New course",
+    "editBreadcrumb": "Edit course",
+    "retiredNotice": "This course is retired, so it can't be changed. An admin can reactivate it.",
+    "retiredNoticeAdmin": "This course is retired, so it can't be changed. Reactivate it to edit it again.",
+    "titleLabel": "Course title",
+    "titlePlaceholder": "Untitled course",
+    "titleHint": "Learners see this title in the course catalog.",
+    "summaryLabel": "Summary",
+    "summaryPlaceholder": "What will learners get from this course?",
+    "levelLabel": "Level",
+    "languageLabel": "Language",
+    "languageHint": "The language the course is written in. Learners can filter the catalog by it.",
+    "instrumentsLabel": "Instruments",
+    "thumbnailLabel": "Thumbnail",
+    "checkpointsLabel": "Checkpoints",
+    "addCheckpoint": "Add checkpoint",
+    "saveFailed": "Couldn't save the course.",
+    "courseCreated": "Course created",
+    "courseSaved": "Course saved",
+    "published": "Published as version {version}",
+    "publishFailed": "Couldn't publish the course.",
+    "retired": "Course retired",
+    "retireFailed": "Couldn't retire the course.",
+    "reactivated": "Course reactivated",
+    "reactivateFailed": "Couldn't reactivate the course.",
+    "leaveTitle": "Leave without saving?",
+    "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
+    "leaveConfirm": "Leave"
   }
 }

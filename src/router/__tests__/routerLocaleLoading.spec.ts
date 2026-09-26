@@ -95,6 +95,8 @@ describe('router locale loading', () => {
       ['/teacher/paths', 'teacher-paths'],
       ['/teacher/paths/new', 'teacher-path-new'],
       ['/teacher/paths/lp-1/edit', 'teacher-path-edit'],
+      ['/teacher/courses/new', 'teacher-course-new'],
+      ['/teacher/courses/c-1/edit', 'teacher-course-edit'],
     ])('loads the teacher locale on a direct navigation to %s', async (path, routeName) => {
       await router.push(path)
 

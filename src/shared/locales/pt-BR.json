@@ -144,7 +144,9 @@
     "levelFilterLabel": "Nível",
     "skillFilterLabel": "Habilidade",
     "conceptFilterLabel": "Conceito",
-    "clearFilters": "Limpar filtros"
+    "clearFilters": "Limpar filtros",
+    "languageFilterLabel": "Idioma",
+    "anyLanguage": "Qualquer idioma"
   },
   "teacherFilterPicker": {
     "label": "Professor",
@@ -167,5 +169,8 @@
     "filterLabel": "Instrumento",
     "loading": "Carregando instrumentos…",
     "loadError": "Não foi possível carregar os instrumentos."
+  },
+  "confirmDialog": {
+    "cancel": "Cancelar"
   }
 }
