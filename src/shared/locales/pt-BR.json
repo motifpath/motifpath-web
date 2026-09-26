@@ -160,5 +160,12 @@
     "draft": "Rascunho",
     "published": "Publicado",
     "retired": "Descontinuado"
+  },
+  "instrumentPicker": {
+    "every": "Todos os instrumentos",
+    "any": "Qualquer instrumento",
+    "filterLabel": "Instrumento",
+    "loading": "Carregando instrumentos…",
+    "loadError": "Não foi possível carregar os instrumentos."
   }
 }

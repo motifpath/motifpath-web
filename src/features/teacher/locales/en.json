@@ -382,5 +382,12 @@
     "noMatchesMessage": "Try fewer filters or a different search.",
     "unpublishedChanges": "Unpublished changes",
     "courseTeacher": "by {name}"
+  },
+  "thumbnailField": {
+    "upload": "Upload image",
+    "replace": "Replace image",
+    "uploading": "Uploading…",
+    "remove": "Remove",
+    "uploadFailed": "Couldn't upload the image."
   }
 }

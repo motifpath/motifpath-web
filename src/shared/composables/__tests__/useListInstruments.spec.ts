@@ -5,7 +5,7 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
-import { useListInstruments } from '@/features/teacher/composables/useListInstruments'
+import { useListInstruments } from '@/shared/composables/useListInstruments'
 
 describe('useListInstruments', () => {
   it('loads instruments on creation', async () => {

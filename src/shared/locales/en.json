@@ -160,5 +160,12 @@
     "draft": "Draft",
     "published": "Published",
     "retired": "Retired"
+  },
+  "instrumentPicker": {
+    "every": "Every instrument",
+    "any": "Any instrument",
+    "filterLabel": "Instrument",
+    "loading": "Loading instruments…",
+    "loadError": "Couldn't load the instruments."
   }
 }

@@ -382,5 +382,12 @@
     "noMatchesMessage": "Tente menos filtros ou outra busca.",
     "unpublishedChanges": "Alterações não publicadas",
     "courseTeacher": "por {name}"
+  },
+  "thumbnailField": {
+    "upload": "Enviar imagem",
+    "replace": "Trocar imagem",
+    "uploading": "Enviando…",
+    "remove": "Remover",
+    "uploadFailed": "Não foi possível enviar a imagem."
   }
 }
