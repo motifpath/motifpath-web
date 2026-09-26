@@ -807,6 +807,233 @@ describe('DiagramAuthoringView', () => {
     })
   })
 
+  describe('overlays', () => {
+    const scale = {
+      diagram_id: 'd-1',
+      instrument_id: 'i-1',
+      names: { en: 'C Major Scale' },
+      kind: 'custom' as const,
+      created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+      root_note: 'C',
+      label_display: 'interval' as const,
+      color: null,
+      positions: [{ position_id: 'p-1', interval: 'R' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1, sequence_index: 0 }],
+      regions: [],
+      classification: {
+        skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
+        concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+      },
+      created_at: '2026-09-22T00:00:00Z',
+    }
+    const pentatonic = {
+      ...scale,
+      diagram_id: 'd-penta',
+      names: { en: 'A Minor Pentatonic' },
+      kind: 'basic' as const,
+      root_note: 'A',
+      color: '#22C55E',
+      positions: [
+        { position_id: 'o-1', interval: 'R' as const, note_name: 'A', shape: 'dot' as const, string: 3, fret: 2, sequence_index: 0 },
+        { position_id: 'o-2', interval: 'b3' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1, sequence_index: 1 },
+      ],
+      classification: { skills: [{ skill_id: 's-2', name: 'Pentatonics', parent_id: null }], concepts: [] },
+    }
+    const flush = () => new Promise((r) => setTimeout(r, 0))
+
+    async function openOwnDiagram() {
+      route.params = { id: 'd-1' }
+      GET.mockResolvedValueOnce({ data: scale, error: undefined, response: { status: 200 } })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flush()
+      return wrapper
+    }
+
+    async function overlayPentatonic(wrapper: ReturnType<typeof mountView>) {
+      GET.mockResolvedValueOnce({
+        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
+        error: undefined,
+        response: { status: 200 },
+      })
+      await wrapper.get('[data-test="add-overlay"]').trigger('click')
+      await flush()
+      const option = wrapper
+        .findAll('[data-test="overlay-option"]')
+        .find((row) => row.text().includes('A Minor Pentatonic'))
+      await option!.trigger('click')
+    }
+
+    async function merge(wrapper: ReturnType<typeof mountView>, regionPerLayer = true) {
+      await wrapper.get('[data-test="merge-layers"]').trigger('click')
+      if (!regionPerLayer) await wrapper.get('[data-test="merge-region-per-layer"]').setValue(false)
+      await wrapper.get('[data-test="merge-confirm"]').trigger('click')
+    }
+
+    const appBar = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'AppBar' })
+    const editor = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent(FrettedDiagramEditor)
+
+    it('overlays a diagram of the same instrument, other than this one, on the fretboard and in the preview', async () => {
+      const wrapper = await openOwnDiagram()
+
+      await overlayPentatonic(wrapper)
+
+      expect(GET).toHaveBeenCalledWith('/diagrams', {
+        params: { query: expect.objectContaining({ instrument_id: 'i-1' }) },
+      })
+      expect(wrapper.find('[data-test="overlay-option"]').exists()).toBe(false)
+      expect(wrapper.findAll('[data-test="overlay-item"]').map((item) => item.text())).toEqual(['A Minor Pentatonic'])
+      expect(editor(wrapper).props('overlays')).toHaveLength(1)
+      expect(editor(wrapper).props('positions')).toHaveLength(1)
+      const preview = wrapper.findComponent({ name: 'FrettedDiagramView' }).props('diagram')
+      expect(preview.positions.map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
+    })
+
+    it("offers only diagrams that aren't the one being edited", async () => {
+      const wrapper = await openOwnDiagram()
+      GET.mockResolvedValueOnce({
+        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      await wrapper.get('[data-test="add-overlay"]').trigger('click')
+      await flush()
+
+      expect(wrapper.findAll('[data-test="overlay-option-name"]').map((n) => n.text())).toEqual(['A Minor Pentatonic'])
+    })
+
+    it('blocks every save until the layers are merged', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+
+      expect(appBar(wrapper).props('saveDisabled')).toBe(true)
+      expect(wrapper.get('[data-test="save-as"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="save-as-template"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="merge-before-saving"]').exists()).toBe(true)
+    })
+
+    it('removes an overlay', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+
+      await wrapper.get('[data-test="remove-overlay"]').trigger('click')
+
+      expect(wrapper.find('[data-test="overlay-item"]').exists()).toBe(false)
+      expect(editor(wrapper).props('overlays')).toEqual([])
+      expect(appBar(wrapper).props('saveDisabled')).toBe(false)
+    })
+
+    it('merges the layers into editable positions, with a region per layer, and then saves only as a new diagram', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+
+      await merge(wrapper)
+
+      expect(wrapper.find('[data-test="overlay-item"]').exists()).toBe(false)
+      expect(editor(wrapper).props('overlays')).toEqual([])
+      expect(editor(wrapper).props('positions').map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
+      expect(editor(wrapper).props('regions')).toHaveLength(2)
+      expect(appBar(wrapper).props('showSave')).toBe(false)
+      expect(wrapper.get('[data-test="save-as"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(true)
+    })
+
+    it('merges without regions when the author declines them', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+
+      await merge(wrapper, false)
+
+      expect(editor(wrapper).props('regions')).toEqual([])
+    })
+
+    it('saves the merged diagram as a new one, leaving the source untouched, then lets it be saved in place', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+      await merge(wrapper, false)
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-merged', names: { en: 'C Major + Pentatonic' } },
+        error: undefined,
+        response: { status: 201 },
+      })
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      await wrapper.get('[data-test="save-as-name-en"]').setValue('C Major + Pentatonic')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await flush()
+
+      expect(PATCH).not.toHaveBeenCalled()
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            positions: [
+              expect.objectContaining({ string: 3, fret: 2, interval: 'R', color: '#22C55E' }),
+              expect.objectContaining({ string: 2, fret: 1, interval: 'b3', color: '#22C55E' }),
+            ],
+            classification: { skill_ids: ['s-1', 's-2'], concept_ids: ['c-1'] },
+          }),
+        }),
+      )
+      expect(appBar(wrapper).props('showSave')).toBe(true)
+      expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(false)
+    })
+
+    it('lets a new, unsaved diagram be merged and then created with the plain Save', async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flush()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Mine')
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await editor(wrapper).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await overlayPentatonic(wrapper)
+
+      await merge(wrapper, false)
+
+      expect(appBar(wrapper).props('showSave')).toBe(true)
+      expect(appBar(wrapper).props('saveDisabled')).toBe(false)
+      expect(editor(wrapper).props('positions')).toHaveLength(3)
+    })
+
+    it('locks the instrument of a new diagram once something is overlaid on it', async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flush()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+      await overlayPentatonic(wrapper)
+
+      expect(wrapper.get('[data-test="instrument-option"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="instrument-locked-hint"]').text()).toContain('overlaid')
+    })
+
+    it('suggests the diagram\'s own name, not a copy name, when saving merged layers as a new diagram', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+      await merge(wrapper, false)
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+
+      expect(wrapper.get<HTMLInputElement>('[data-test="save-as-name-en"]').element.value).toBe('C Major Scale')
+    })
+
+    it("can't merge while a position of this diagram still has no interval", async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flush()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await editor(wrapper).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await overlayPentatonic(wrapper)
+
+      expect(wrapper.get('[data-test="merge-layers"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="merge-needs-root"]').exists()).toBe(true)
+    })
+  })
+
   describe('editing language', () => {
     async function mountNew() {
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })

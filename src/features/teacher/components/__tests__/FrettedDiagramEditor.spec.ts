@@ -15,6 +15,7 @@ import {
   stringY,
 } from '@/shared/utils/frettedFretboardEditor'
 import type { LocalPosition, LocalRegion } from '@/features/teacher/composables/useDiagramForm'
+import type { StackLayer } from '@/shared/utils/flattenDiagramStack'
 
 /** Makes clientX/clientY map 1:1 onto the SVG's own viewBox coordinates, since jsdom otherwise reports a zero-size bounding rect. */
 function mockOneToOneBoundingRect(el: Element, width: number, height: number = EDITOR_VIEW_H) {
@@ -451,6 +452,75 @@ describe('FrettedDiagramEditor', () => {
       await svg.trigger('click', { clientX: fretX(5, geometry), clientY: stringY(3, geometry) + 0.4 * rowGap + EDITOR_CAPTION_SPACE })
 
       expect(wrapper.emitted('toggle-cell')).toEqual([[{ string: 3, fret: 5 }]])
+    })
+  })
+
+  describe('overlays', () => {
+    function makeOverlay(overrides: Partial<StackLayer> = {}): StackLayer {
+      return {
+        names: { en: 'A minor pentatonic' },
+        color: null,
+        positions: [
+          { position_id: 'o1', string: 3, fret: 2, interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 0 },
+          { position_id: 'o2', string: 2, fret: 5, interval: 'b3', note_name: 'C', shape: 'square', sequence_index: 1 },
+        ],
+        regions: [],
+        skillIds: [],
+        conceptIds: [],
+        ...overrides,
+      }
+    }
+
+    function mountWithOverlays(overlays: StackLayer[], props: Record<string, unknown> = {}) {
+      return mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition()], overlays, ...props },
+      })
+    }
+
+    it("draws every overlay's positions on top of the diagram's own, without listing them for editing", () => {
+      const wrapper = mountWithOverlays([makeOverlay(), makeOverlay({ positions: [makeOverlay().positions[0]!] })])
+
+      const overlayMarkers = wrapper.findAll('[data-test="editor-overlay-position"]')
+      expect(overlayMarkers).toHaveLength(3)
+      const markers = wrapper.findAll('[data-test="editor-position"], [data-test="editor-overlay-position"]')
+      expect(markers[0]?.attributes('data-test')).toBe('editor-position')
+      expect(wrapper.findAll('[data-test="position-controls"]')).toHaveLength(1)
+    })
+
+    it("can't be clicked, so a click still reaches the board underneath", () => {
+      const wrapper = mountWithOverlays([makeOverlay()])
+
+      for (const marker of wrapper.findAll('[data-test="editor-overlay-position"]')) {
+        expect(marker.classes()).toContain('pointer-events-none')
+      }
+    })
+
+    it("colours an overlay marker with its own colour, then its layer's, never the diagram's general colour", () => {
+      const [first, second] = makeOverlay().positions
+      const wrapper = mountWithOverlays(
+        [
+          makeOverlay({ color: '#22C55E', positions: [{ ...first!, color: '#EF4444' }, second!] }),
+          makeOverlay({ color: null, positions: [{ ...first!, fret: 9 }] }),
+        ],
+        { color: '#3B82F6' },
+      )
+
+      const shapes = wrapper.findAll('[data-test="editor-overlay-position"]').map((m) => m.find('circle, rect, polygon'))
+      expect(shapes[0]?.attributes('style')).toContain('fill: #EF4444')
+      expect(shapes[1]?.attributes('style')).toContain('fill: #22C55E')
+      expect(shapes[2]?.attributes('style')).toBeUndefined()
+      expect(shapes[2]?.classes()).toContain('fill-accent')
+    })
+
+    it("labels an overlay marker with its custom label in the editor's language, else its own interval", () => {
+      const [first, second] = makeOverlay().positions
+      const wrapper = mountWithOverlays(
+        [makeOverlay({ positions: [{ ...first!, custom_label: { en: 'Hi', pt_BR: 'Oi' } }, second!] })],
+        { language: 'pt_BR' },
+      )
+
+      const labels = wrapper.findAll('[data-test="editor-overlay-position"] text').map((t) => t.text())
+      expect(labels).toEqual(['Oi', 'b3'])
     })
   })
 })

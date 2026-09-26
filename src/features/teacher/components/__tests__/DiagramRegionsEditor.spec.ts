@@ -111,4 +111,16 @@ describe('DiagramRegionsEditor', () => {
     expect(mountEditor().find('[data-test="region-invalid"]').exists()).toBe(false)
     expect(mountEditor({ invalidIds: ['r1'] }).find('[data-test="region-invalid"]').exists()).toBe(true)
   })
+
+  it('asks to shorten a caption that is too long in the editing language only', () => {
+    const regions = [makeRegion({ description: { en: 'x'.repeat(61), pt_BR: 'Caixa 1' } })]
+
+    const english = mountEditor({ regions, language: 'en' })
+    expect(english.get('[data-test="region-caption-too-long"]').text()).toBe(
+      'Shorten this caption to 60 characters at most.',
+    )
+    expect(mountEditor({ regions, language: 'pt_BR' }).find('[data-test="region-caption-too-long"]').exists()).toBe(
+      false,
+    )
+  })
 })

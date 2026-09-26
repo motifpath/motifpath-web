@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 
 import { i18n, OFFERED_LANGUAGE_CODES, toApiLanguageCode } from '@/i18n'
 import { intervalFromRoot, noteAtFret } from '@/shared/utils/musicTheory'
+import type { FlattenedStack } from '@/shared/utils/flattenDiagramStack'
 import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
@@ -41,6 +42,7 @@ export interface LocalPosition extends FrettedCell {
 export type MissingText =
   | { kind: 'name' }
   | { kind: 'regionCaption'; region: number }
+  | { kind: 'regionCaptionTooLong'; region: number }
   | { kind: 'markerLabel'; position: number }
   | { kind: 'markerNote'; position: number }
 
@@ -58,6 +60,38 @@ export interface LocalRegion {
 
 function makeId(): string {
   return crypto.randomUUID()
+}
+
+/** The longest region caption the server accepts, in characters. */
+export const REGION_CAPTION_MAX_LENGTH = 60
+
+/** A served or merged position as the editor holds it; one without an id gets a new one. */
+export function toLocalPosition(p: DiagramPosition): LocalPosition {
+  return {
+    id: p.position_id ?? makeId(),
+    string: p.string ?? 0,
+    fret: p.fret ?? 0,
+    interval: p.interval,
+    noteName: p.note_name,
+    shape: p.shape ?? 'dot',
+    color: p.color ?? null,
+    sequenceIndex: p.sequence_index ?? null,
+    customLabel: { ...(p.custom_label ?? {}) },
+    note: { ...(p.note ?? {}) },
+  }
+}
+
+/** A served or merged region as the editor holds it; one without an id gets a new one. */
+function toLocalRegion(r: DiagramRegion): LocalRegion {
+  return {
+    id: r.region_id ?? makeId(),
+    fretStart: r.fret_start ?? 0,
+    fretEnd: r.fret_end ?? 0,
+    stringStart: r.string_start ?? null,
+    stringEnd: r.string_end ?? null,
+    description: { ...r.description },
+    color: r.color ?? null,
+  }
 }
 
 function sameCell(position: FrettedCell, cell: FrettedCell): boolean {
@@ -191,6 +225,9 @@ export function useDiagramForm() {
         if (lacks(names.value, code)) missing.push({ kind: 'name' })
         regions.value.forEach((region, index) => {
           if (lacks(region.description, code)) missing.push({ kind: 'regionCaption', region: index + 1 })
+          else if ((region.description[code] ?? '').trim().length > REGION_CAPTION_MAX_LENGTH) {
+            missing.push({ kind: 'regionCaptionTooLong', region: index + 1 })
+          }
         })
         positions.value.forEach((position, index) => {
           if (hasAnyText(position.customLabel) && lacks(position.customLabel, code)) {
@@ -448,31 +485,26 @@ export function useDiagramForm() {
     savedColor.value = diagram.color ?? null
     positions.value = [...diagram.positions]
       .sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0))
-      .map((p) => ({
-        id: p.position_id ?? makeId(),
-        string: p.string ?? 0,
-        fret: p.fret ?? 0,
-        interval: p.interval,
-        noteName: p.note_name,
-        shape: p.shape ?? 'dot',
-        color: p.color ?? null,
-        sequenceIndex: p.sequence_index ?? null,
-        customLabel: { ...(p.custom_label ?? {}) },
-        note: { ...(p.note ?? {}) },
-      }))
+      .map(toLocalPosition)
     reindexSequence()
     // A diagram served by an older API has no regions field at all.
-    regions.value = (diagram.regions ?? []).map((r) => ({
-      id: r.region_id ?? makeId(),
-      fretStart: r.fret_start ?? 0,
-      fretEnd: r.fret_end ?? 0,
-      stringStart: r.string_start ?? null,
-      stringEnd: r.string_end ?? null,
-      description: { ...r.description },
-      color: r.color ?? null,
-    }))
+    regions.value = (diagram.regions ?? []).map(toLocalRegion)
     skillIds.value = diagram.classification.skills.map((s) => s.skill_id)
     conceptIds.value = diagram.classification.concepts.map((c) => c.concept_id)
+  }
+
+  /**
+   * Takes over the result of merging a stack of diagrams: its positions, regions and
+   * classification replace the form's own, each with a new id. The diagram-level fields
+   * (names, languages, instrument, root note, label display, color) stay as they are, and
+   * the positions keep the intervals they were merged with rather than being recomputed.
+   */
+  function loadFlattened(flattened: FlattenedStack) {
+    positions.value = flattened.positions.map((p) => toLocalPosition({ ...p, position_id: undefined }))
+    reindexSequence()
+    regions.value = flattened.regions.map((r) => toLocalRegion({ ...r, region_id: undefined }))
+    skillIds.value = [...flattened.skillIds]
+    conceptIds.value = [...flattened.conceptIds]
   }
 
   return {
@@ -522,6 +554,7 @@ export function useDiagramForm() {
     toCopyRequest,
     toUpdateDiagramRequest,
     loadFromDiagram,
+    loadFlattened,
     markSaved,
   }
 }

@@ -152,6 +152,7 @@
     "instrumentLoading": "Loading instruments…",
     "instrumentPlaceholder": "Choose an instrument",
     "instrumentLockedHint": "The instrument can't be changed once a position has been placed — remove every position first if you need to switch.",
+    "instrumentLockedByOverlaysHint": "The instrument can't be changed while diagrams are overlaid — remove them first if you need to switch.",
     "rootNoteLabel": "Root note",
     "rootNotePlaceholder": "Choose a root note",
     "rootNoteHint": "Used to auto-fill each position's interval and note name — not saved on the diagram itself.",
@@ -180,7 +181,13 @@
     "copySaved": "Copy saved",
     "templateSaved": "Template saved",
     "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving.",
-    "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template."
+    "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template.",
+    "addOverlayButton": "Overlay diagram…",
+    "mergeLayersButton": "Merge layers",
+    "removeOverlayAriaLabel": "Remove the overlay {name}",
+    "mergeBeforeSaving": "Merge the layers before saving. Overlaid diagrams are only shown, never saved with this one.",
+    "mergeNeedsRoot": "Choose a root note first, so every position of this diagram has an interval to merge.",
+    "mergedNotice": "The merged layers are saved as a new diagram, so the diagrams you started from stay as they were. Use Save as."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
@@ -210,6 +217,7 @@
     "removeAriaLabel": "Remove this region",
     "descriptionAriaLabel": "Region caption",
     "descriptionPlaceholder": "Caption, e.g. Shape 1",
+    "captionTooLong": "Shorten this caption to {max} characters at most.",
     "invalid": "Check the range: it runs backwards or past the last string."
   },
   "challengeConfigPanel": {
@@ -399,6 +407,7 @@
     "missingText": "{language} is missing: {items}",
     "missingName": "the name",
     "missingRegionCaption": "the caption of region {n}",
+    "regionCaptionTooLong": "a shorter caption for region {n} ({max} characters at most)",
     "missingMarkerLabel": "the label of position {n}",
     "missingMarkerNote": "the note on position {n}",
     "removeTitle": "Remove {language}?",
@@ -506,5 +515,20 @@
     "leaveTitle": "Leave without saving?",
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
     "leaveConfirm": "Leave"
+  },
+  "overlayDiagramPickerModal": {
+    "title": "Overlay a diagram",
+    "hint": "It's drawn on top of this one, read-only. Merge the layers to edit and save them as one diagram.",
+    "loadingNoun": "diagrams",
+    "loadErrorMessage": "We couldn't load the diagrams.",
+    "emptyHeading": "Nothing to overlay",
+    "emptyMessage": "There's no other diagram for this instrument yet."
+  },
+  "mergeLayersModal": {
+    "title": "Merge the layers",
+    "message": "The overlaid diagrams become ordinary positions and regions of this one, which you can then edit. Where two layers mark the same spot, the top one is kept. The diagrams you overlaid don't change.",
+    "regionPerLayer": "Add a highlighted region for each diagram, captioned with its name",
+    "cancel": "Cancel",
+    "confirm": "Merge"
   }
 }
