@@ -5,18 +5,26 @@ import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEd
 import { i18n } from '@/i18n'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
-import { EDITOR_VIEW_H, editorViewWidth, fretX, frettedEditorGeometry, stringY } from '@/shared/utils/frettedFretboardEditor'
-import type { LocalPosition } from '@/features/teacher/composables/useDiagramForm'
+import {
+  EDITOR_CAPTION_SPACE,
+  EDITOR_PX_PER_FRET,
+  EDITOR_VIEW_H,
+  editorViewWidth,
+  fretX,
+  frettedEditorGeometry,
+  stringY,
+} from '@/shared/utils/frettedFretboardEditor'
+import type { LocalPosition, LocalRegion } from '@/features/teacher/composables/useDiagramForm'
 
 /** Makes clientX/clientY map 1:1 onto the SVG's own viewBox coordinates, since jsdom otherwise reports a zero-size bounding rect. */
-function mockOneToOneBoundingRect(el: Element, width: number) {
+function mockOneToOneBoundingRect(el: Element, width: number, height: number = EDITOR_VIEW_H) {
   vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
     width,
-    height: EDITOR_VIEW_H,
+    height,
     left: 0,
     top: 0,
     right: width,
-    bottom: EDITOR_VIEW_H,
+    bottom: height,
     x: 0,
     y: 0,
     toJSON: () => ({}),
@@ -24,7 +32,11 @@ function mockOneToOneBoundingRect(el: Element, width: number) {
 }
 
 function makeLocalPosition(overrides: Partial<LocalPosition> = {}): LocalPosition {
-  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', color: null, sequenceIndex: null, ...overrides }
+  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', color: null, sequenceIndex: null, customLabel: {}, note: {}, ...overrides }
+}
+
+function makeLocalRegion(overrides: Partial<LocalRegion> = {}): LocalRegion {
+  return { id: 'region-1', fretStart: 5, fretEnd: 8, stringStart: null, stringEnd: null, description: { en: 'Box 1' }, color: null, ...overrides }
 }
 
 describe('FrettedDiagramEditor', () => {
@@ -305,6 +317,140 @@ describe('FrettedDiagramEditor', () => {
       })
 
       expect(wrapper.get('[data-test="position-color-indicator"]').attributes('data-color')).toBe('#EF4444')
+    })
+  })
+
+  describe('custom labels and notes', () => {
+    const annotated = () =>
+      makeLocalPosition({ customLabel: { en: 'Av', pt_BR: 'Ev' }, note: { en: 'Avoid it', pt_BR: 'Evite' } })
+
+    it("shows each position's custom label and note in the editor's language", () => {
+      const inLanguage = (language: string) =>
+        mount(FrettedDiagramEditor, { props: { instrument: makeFrettedInstrument(), positions: [annotated()], language } })
+
+      const en = inLanguage('en')
+      expect((en.get('[data-test="position-custom-label"]').element as HTMLInputElement).value).toBe('Av')
+      expect((en.get('[data-test="position-note"]').element as HTMLInputElement).value).toBe('Avoid it')
+      const pt = inLanguage('pt_BR')
+      expect((pt.get('[data-test="position-custom-label"]').element as HTMLInputElement).value).toBe('Ev')
+      expect((pt.get('[data-test="position-note"]').element as HTMLInputElement).value).toBe('Evite')
+    })
+
+    it('emits a typed custom label and note for the position', async () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition()], language: 'en' },
+      })
+
+      await wrapper.get('[data-test="position-custom-label"]').setValue('Av')
+      await wrapper.get('[data-test="position-note"]').setValue('Avoid it')
+
+      expect(wrapper.emitted('set-custom-label')).toEqual([['pos-1', 'Av']])
+      expect(wrapper.emitted('set-note')).toEqual([['pos-1', 'Avoid it']])
+    })
+
+    it('limits a custom label to two characters and a note to 280', () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition()], language: 'en' },
+      })
+
+      expect(wrapper.get('[data-test="position-custom-label"]').attributes('maxlength')).toBe('2')
+      expect(wrapper.get('[data-test="position-note"]').attributes('maxlength')).toBe('280')
+    })
+
+    it("shows a position's custom label on its fretboard marker instead of the interval", () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [annotated(), makeLocalPosition({ id: 'pos-2', fret: 8 })], language: 'pt_BR' },
+      })
+
+      expect(wrapper.findAll('[data-test="editor-position"] text').map((t) => t.text())).toEqual(['Ev', 'R'])
+    })
+  })
+
+  describe('highlighted regions', () => {
+    const instrument = makeFrettedInstrument()
+    const geometry = frettedEditorGeometry(instrument.string_count ?? 6)
+    const rowGap = stringY(2, geometry) - stringY(1, geometry)
+    const mountWith = (regions: LocalRegion[], language = 'en') =>
+      mount(FrettedDiagramEditor, { props: { instrument, positions: [], regions, language } })
+
+    it("draws a band over a region's fret spaces, limited to its strings", () => {
+      const wrapper = mountWith([makeLocalRegion({ fretStart: 5, fretEnd: 8, stringStart: 2, stringEnd: 4 })])
+
+      const band = wrapper.get('[data-test="editor-region"]')
+      expect(Number(band.attributes('x'))).toBeCloseTo(fretX(4, geometry))
+      expect(Number(band.attributes('width'))).toBeCloseTo(fretX(8, geometry) - fretX(4, geometry))
+      expect(Number(band.attributes('y'))).toBeCloseTo(stringY(2, geometry) - rowGap / 2)
+      expect(Number(band.attributes('height'))).toBeCloseTo(3 * rowGap)
+    })
+
+    it('covers every string when a region has no string limits', () => {
+      const wrapper = mountWith([makeLocalRegion()])
+
+      const band = wrapper.get('[data-test="editor-region"]')
+      expect(Number(band.attributes('y'))).toBeCloseTo(stringY(1, geometry) - rowGap / 2)
+      expect(Number(band.attributes('height'))).toBeCloseTo(6 * rowGap)
+    })
+
+    it('starts a region from fret 0 at the open-string area, left of the nut', () => {
+      const wrapper = mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 2 })])
+
+      const band = wrapper.get('[data-test="editor-region"]')
+      expect(Number(band.attributes('x'))).toBeCloseTo(fretX(0, geometry) - EDITOR_PX_PER_FRET)
+    })
+
+    it("tints a band with the region's color, or the accent color when it has none", () => {
+      const wrapper = mountWith([makeLocalRegion({ color: '#EF4444' }), makeLocalRegion({ id: 'region-2', fretStart: 10, fretEnd: 12 })])
+
+      const [colored, plain] = wrapper.findAll('[data-test="editor-region"]')
+      expect(colored!.attributes('style')).toContain('fill: #EF4444')
+      expect(plain!.classes()).toContain('fill-accent')
+    })
+
+    it("captions each band in the editor's language", () => {
+      const region = makeLocalRegion({ description: { en: 'Box 1', pt_BR: 'Caixa 1' } })
+
+      expect(mountWith([region], 'en').get('[data-test="editor-region-caption"]').text()).toBe('Box 1')
+      expect(mountWith([region], 'pt_BR').get('[data-test="editor-region-caption"]').text()).toBe('Caixa 1')
+    })
+
+    it("doesn't draw a region that runs backwards or past the last string", () => {
+      const wrapper = mountWith([
+        makeLocalRegion({ id: 'backwards', fretStart: 8, fretEnd: 5 }),
+        makeLocalRegion({ id: 'past-last-string', stringStart: 5, stringEnd: 7 }),
+        makeLocalRegion({ id: 'valid' }),
+      ])
+
+      expect(wrapper.findAll('[data-test="editor-region"]')).toHaveLength(1)
+    })
+
+    it('draws bands behind the strings and markers, so placed positions stay visible', () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument, positions: [makeLocalPosition()], regions: [makeLocalRegion()] },
+      })
+
+      const html = wrapper.get('svg').html()
+      const band = html.indexOf('data-test="editor-region"')
+      expect(band).toBeGreaterThanOrEqual(0)
+      expect(band).toBeLessThan(html.indexOf('data-test="editor-position"'))
+      expect(band).toBeLessThan(html.indexOf('<line '))
+    })
+
+    it('makes room above the board for captions only when there are regions', () => {
+      const height = (regions: LocalRegion[]) => Number(mountWith(regions).get('svg').attributes('viewBox')!.split(' ')[3])
+
+      expect(height([])).toBe(EDITOR_VIEW_H)
+      expect(height([makeLocalRegion()])).toBe(EDITOR_VIEW_H + EDITOR_CAPTION_SPACE)
+    })
+
+    it('still places a clicked position on the right cell when the board is shifted down for captions', async () => {
+      const wrapper = mountWith([makeLocalRegion()])
+      const svg = wrapper.get('svg')
+      mockOneToOneBoundingRect(svg.element, editorViewWidth(geometry), EDITOR_VIEW_H + EDITOR_CAPTION_SPACE)
+
+      // 40% of a string gap below string 3: ignoring the caption offset would tip it onto string 4.
+      await svg.trigger('click', { clientX: fretX(5, geometry), clientY: stringY(3, geometry) + 0.4 * rowGap + EDITOR_CAPTION_SPACE })
+
+      expect(wrapper.emitted('toggle-cell')).toEqual([[{ string: 3, fret: 5 }]])
     })
   })
 })

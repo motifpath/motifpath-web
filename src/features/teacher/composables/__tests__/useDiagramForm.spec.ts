@@ -169,6 +169,7 @@ describe('useDiagramForm', () => {
       label_display: 'note',
       color: null,
       positions: [{ position_id: form.positions.value[0].id, string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'star', sequence_index: 0 }],
+      regions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
     })
   })
@@ -196,6 +197,7 @@ describe('useDiagramForm', () => {
       names: { en: 'Renamed' },
       label_display: 'interval',
       positions: [],
+      regions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
     })
     expect(request.root_note).toBeUndefined()
@@ -459,6 +461,279 @@ describe('useDiagramForm', () => {
 
       form.setName('pt_BR', 'Escala')
       expect(form.hasEveryName.value).toBe(true)
+    })
+  })
+
+  describe('marker labels and notes', () => {
+    function bilingualForm() {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
+      form.addLanguage('pt_BR')
+      form.setName('pt_BR', 'Escala')
+      form.addPosition({ string: 6, fret: 5 })
+      form.addPosition({ string: 6, fret: 8 })
+      return form
+    }
+
+    it('starts every position with no custom label or note', () => {
+      const form = bilingualForm()
+
+      expect(form.positions.value[0]).toMatchObject({ customLabel: {}, note: {} })
+    })
+
+    it("sets a position's custom label and note per language, and sends them trimmed", () => {
+      const form = bilingualForm()
+      const id = form.positions.value[1]!.id
+      form.positions.value.forEach((p) => Object.assign(p, { interval: 'R', noteName: 'A' }))
+
+      form.setPositionCustomLabel(id, 'en', ' Av ')
+      form.setPositionCustomLabel(id, 'pt_BR', 'Ev')
+      form.setPositionNote(id, 'en', 'Avoid it')
+      form.setPositionNote(id, 'pt_BR', 'Evite')
+
+      const [plain, annotated] = form.toCreateDiagramRequest().positions
+      expect(annotated).toMatchObject({ custom_label: { en: 'Av', pt_BR: 'Ev' }, note: { en: 'Avoid it', pt_BR: 'Evite' } })
+      expect(plain).not.toHaveProperty('custom_label')
+      expect(plain).not.toHaveProperty('note')
+      expect(form.toUpdateDiagramRequest().positions?.[1]).toMatchObject({ custom_label: { en: 'Av', pt_BR: 'Ev' } })
+    })
+
+    it('flags a language missing a label or note that another language has, and blocks saving until it is filled', () => {
+      const form = bilingualForm()
+      const id = form.positions.value[0]!.id
+      form.setPositionNote(id, 'en', 'Start here')
+
+      expect(form.missingTextLanguages.value).toEqual(['pt_BR'])
+      expect(form.hasCompleteText.value).toBe(false)
+
+      form.setPositionNote(id, 'pt_BR', 'Comece aqui')
+      expect(form.missingTextLanguages.value).toEqual([])
+      expect(form.hasCompleteText.value).toBe(true)
+    })
+
+    it('treats a label or note cleared in every language as none at all', () => {
+      const form = bilingualForm()
+      const id = form.positions.value[0]!.id
+      form.setPositionCustomLabel(id, 'en', 'Av')
+      form.setPositionCustomLabel(id, 'en', '  ')
+
+      expect(form.missingTextLanguages.value).toEqual([])
+    })
+
+    it("still reports a language that's missing only its name", () => {
+      const form = bilingualForm()
+      form.setName('pt_BR', '')
+
+      expect(form.missingTextLanguages.value).toEqual(['pt_BR'])
+    })
+
+    it("drops a removed language's labels and notes", () => {
+      const form = bilingualForm()
+      const id = form.positions.value[0]!.id
+      form.setPositionNote(id, 'en', 'Start here')
+      form.setPositionNote(id, 'pt_BR', 'Comece aqui')
+
+      form.removeLanguage('pt_BR')
+
+      expect(form.positions.value[0]!.note).toEqual({ en: 'Start here' })
+    })
+
+    it("loads each position's custom label and note from an existing Diagram", () => {
+      const base = makeFrettedDiagram()
+      const form = useDiagramForm()
+
+      form.loadFromDiagram(
+        makeFrettedDiagram({
+          positions: base.positions.map((p, i) => (i === 1 ? { ...p, custom_label: { en: 'Av' }, note: { en: 'Avoid it' } } : p)),
+        }),
+      )
+
+      expect(form.positions.value[1]).toMatchObject({ customLabel: { en: 'Av' }, note: { en: 'Avoid it' } })
+      expect(form.positions.value[0]).toMatchObject({ customLabel: {}, note: {} })
+    })
+  })
+
+  describe('text in other languages', () => {
+    it("reports whether its labels, notes and region captions are written in every given language, names aside", () => {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
+      expect(form.hasTextIn(['en', 'pt_BR'])).toBe(true)
+
+      form.addPosition({ string: 6, fret: 5 })
+      form.setPositionNote(form.positions.value[0]!.id, 'en', 'Start here')
+      expect(form.hasTextIn(['en'])).toBe(true)
+      expect(form.hasTextIn(['en', 'pt_BR'])).toBe(false)
+
+      form.setPositionNote(form.positions.value[0]!.id, 'pt_BR', 'Comece aqui')
+      form.addRegion()
+      expect(form.hasTextIn(['en', 'pt_BR'])).toBe(false)
+    })
+  })
+
+  describe('regions', () => {
+    it('adds a region spanning the placed positions, or the first frets when there are none', () => {
+      const form = useDiagramForm()
+      form.addRegion()
+      expect(form.regions.value[0]).toMatchObject({ fretStart: 0, fretEnd: 3, stringStart: null, stringEnd: null, description: {}, color: null })
+
+      form.addPosition({ string: 6, fret: 5 })
+      form.addPosition({ string: 4, fret: 8 })
+      form.addRegion()
+      expect(form.regions.value[1]).toMatchObject({ fretStart: 5, fretEnd: 8 })
+      expect(form.regions.value[0]!.id).not.toBe(form.regions.value[1]!.id)
+    })
+
+    it('edits and removes a region', () => {
+      const form = useDiagramForm()
+      form.addRegion()
+      const id = form.regions.value[0]!.id
+
+      form.setRegionFrets(id, 7, 10)
+      form.setRegionStrings(id, 1, 3)
+      form.setRegionDescription(id, 'en', 'Box 2')
+      form.setRegionColor(id, '#22C55E')
+      expect(form.regions.value[0]).toMatchObject({ fretStart: 7, fretEnd: 10, stringStart: 1, stringEnd: 3, description: { en: 'Box 2' }, color: '#22C55E' })
+
+      form.removeRegion(id)
+      expect(form.regions.value).toEqual([])
+    })
+
+    it('needs every region captioned in every language before it can save', () => {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
+      form.addRegion()
+      const id = form.regions.value[0]!.id
+
+      expect(form.missingTextLanguages.value).toEqual(['en'])
+      form.setRegionDescription(id, 'en', 'Box 1')
+      expect(form.missingTextLanguages.value).toEqual([])
+    })
+
+    it('says exactly what each language is missing: the name, a region caption, a started label or note', () => {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
+      form.addLanguage('pt_BR')
+      form.addPosition({ string: 6, fret: 5 })
+      form.addPosition({ string: 4, fret: 7 })
+      const secondPosition = form.positions.value[1]!.id
+      form.setPositionCustomLabel(secondPosition, 'en', 'Av')
+      form.setPositionNote(secondPosition, 'pt_BR', 'Evite')
+      form.addRegion()
+      form.addRegion()
+      form.setRegionDescription(form.regions.value[0]!.id, 'en', 'Box 1')
+
+      expect(form.missingText.value).toEqual({
+        en: [
+          { kind: 'regionCaption', region: 2 },
+          { kind: 'markerNote', position: 2 },
+        ],
+        pt_BR: [
+          { kind: 'name' },
+          { kind: 'regionCaption', region: 1 },
+          { kind: 'regionCaption', region: 2 },
+          { kind: 'markerLabel', position: 2 },
+        ],
+      })
+      expect(form.missingTextLanguages.value).toEqual(['en', 'pt_BR'])
+    })
+
+    it('reports a backwards or out-of-range region as invalid', () => {
+      const form = useDiagramForm()
+      form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+      form.addRegion()
+      const id = form.regions.value[0]!.id
+      expect(form.invalidRegionIds.value).toEqual([])
+
+      form.setRegionFrets(id, 8, 5)
+      expect(form.invalidRegionIds.value).toEqual([id])
+
+      form.setRegionFrets(id, 5, 8)
+      form.setRegionStrings(id, 3, 1)
+      expect(form.invalidRegionIds.value).toEqual([id])
+
+      form.setRegionStrings(id, 1, 7)
+      expect(form.invalidRegionIds.value).toEqual([id])
+
+      form.setRegionStrings(id, null, null)
+      expect(form.invalidRegionIds.value).toEqual([])
+    })
+
+    it('blocks saving while any text is missing or any region is invalid', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeFrettedDiagram({ names: { en: 'Scale' }, languages: ['en'] }))
+      form.skillIds.value = ['s']
+      form.conceptIds.value = ['c']
+      expect(form.canSave.value).toBe(true)
+
+      form.addRegion()
+      expect(form.canSave.value).toBe(false)
+      const id = form.regions.value[0]!.id
+      form.setRegionDescription(id, 'en', 'Box')
+      expect(form.canSave.value).toBe(true)
+
+      form.setRegionFrets(id, 9, 2)
+      expect(form.canSave.value).toBe(false)
+    })
+
+    it('sends regions with their ids and only their own languages, on create and update', () => {
+      const form = useDiagramForm()
+      form.setName('en', 'Scale')
+      form.addRegion()
+      const id = form.regions.value[0]!.id
+      form.setRegionFrets(id, 5, 8)
+      form.setRegionDescription(id, 'en', ' Box 1 ')
+      form.setRegionDescription(id, 'pt_BR', 'Caixa 1')
+
+      const expected = { region_id: id, fret_start: 5, fret_end: 8, description: { en: 'Box 1' }, color: null }
+      expect(form.toCreateDiagramRequest().regions).toEqual([expected])
+      expect(form.toUpdateDiagramRequest().regions).toEqual([expected])
+    })
+
+    it('sends string bounds only when the region is limited to some strings', () => {
+      const form = useDiagramForm()
+      form.addRegion()
+      const id = form.regions.value[0]!.id
+      form.setRegionStrings(id, 1, 3)
+
+      expect(form.toCreateDiagramRequest().regions?.[0]).toMatchObject({ string_start: 1, string_end: 3 })
+    })
+
+    it('sends an empty region list on update once every region is removed, so the server removes them too', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeFrettedDiagram({ regions: [{ region_id: 'r1', fret_start: 5, fret_end: 8, description: { en: 'Box' }, color: null }] }))
+
+      form.removeRegion('r1')
+
+      expect(form.toUpdateDiagramRequest().regions).toEqual([])
+    })
+
+    it('loads regions from an existing Diagram, and a copy leaves their ids for the server to assign', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(
+        makeFrettedDiagram({
+          regions: [{ region_id: 'r1', fret_start: 7, fret_end: 10, string_start: 1, string_end: 3, description: { en: 'Box 2', pt_BR: 'Caixa 2' }, color: '#22C55E' }],
+        }),
+      )
+
+      expect(form.regions.value).toEqual([
+        { id: 'r1', fretStart: 7, fretEnd: 10, stringStart: 1, stringEnd: 3, description: { en: 'Box 2', pt_BR: 'Caixa 2' }, color: '#22C55E' },
+      ])
+      const copy = form.toCopyRequest({ en: 'Copy', pt_BR: 'Cópia' }, 'custom')
+      expect(copy.regions?.[0]).not.toHaveProperty('region_id')
+      expect(copy.regions?.[0]).toMatchObject({ fret_start: 7, description: { en: 'Box 2', pt_BR: 'Caixa 2' } })
+    })
+
+    it("drops a removed language's region captions", () => {
+      const form = useDiagramForm()
+      form.addLanguage('pt_BR')
+      form.addRegion()
+      const id = form.regions.value[0]!.id
+      form.setRegionDescription(id, 'en', 'Box')
+      form.setRegionDescription(id, 'pt_BR', 'Caixa')
+
+      form.removeLanguage('pt_BR')
+
+      expect(form.regions.value[0]!.description).toEqual({ en: 'Box' })
     })
   })
 })

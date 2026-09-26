@@ -11,21 +11,26 @@ import { computed, ref } from 'vue'
 import { Circle, GripVertical, Palette, Square, Star, X } from 'lucide-vue-next'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
+import { useScopedLocale } from '@/shared/composables/useScopedLocale'
+import { toApiLanguageCode } from '@/i18n'
 
-import type { LocalPosition, PositionShape } from '@/features/teacher/composables/useDiagramForm'
+import type { LocalPosition, LocalRegion, PositionShape } from '@/features/teacher/composables/useDiagramForm'
 import type { components } from '@/api/generated/core-domain'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import { readableTextColor, resolveMarkerColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
   EDITOR_BOARD_H,
+  EDITOR_CAPTION_SPACE,
   EDITOR_MARGIN_LEFT,
   EDITOR_MARGIN_TOP,
   EDITOR_VIEW_H,
   editorBoardWidth,
+  editorRegionBox,
   editorViewWidth,
   fretX,
   frettedEditorGeometry,
+  isDrawableRegion,
   nearestFrettedCell,
   positionX,
   stringY,
@@ -40,8 +45,13 @@ const props = withDefaults(
     labelMode?: 'interval' | 'note' | 'hidden'
     /** The diagram's general marker color (#RRGGBB); a position's own color wins over it. */
     color?: string | null
+    /** The language code whose custom labels and notes are shown and edited; defaults to the
+     *  language the editor is displayed in. */
+    language?: string
+    /** Highlighted regions drawn behind the markers, so the author sees them where they place positions. */
+    regions?: LocalRegion[]
   }>(),
-  { labelMode: 'interval' },
+  { labelMode: 'interval', regions: () => [] },
 )
 
 const emit = defineEmits<{
@@ -49,8 +59,13 @@ const emit = defineEmits<{
   reorder: [fromIndex: number, toIndex: number]
   'set-shape': [id: string, shape: PositionShape]
   'set-color': [id: string, color: string | null]
+  'set-custom-label': [id: string, value: string]
+  'set-note': [id: string, value: string]
   remove: [id: string]
 }>()
+
+const scopedLocale = useScopedLocale()
+const editingLanguage = computed(() => props.language ?? toApiLanguageCode(scopedLocale.value))
 
 const SHAPES: PositionShape[] = ['dot', 'square', 'star']
 const SHAPE_ICONS = { dot: Circle, square: Square, star: Star } as const
@@ -72,6 +87,20 @@ function labelStyle(position: LocalPosition): { fill: string } | undefined {
 const geometry = computed(() => frettedEditorGeometry(props.instrument.string_count ?? 0))
 const viewWidth = computed(() => editorViewWidth(geometry.value))
 const boardWidth = computed(() => editorBoardWidth(geometry.value))
+
+// Regions that can't be drawn yet (backwards, or past the last string) are left off the board;
+// the regions editor below already flags them.
+const drawableRegions = computed(() => props.regions.filter((region) => isDrawableRegion(region, geometry.value)))
+// The board shifts down to make room for region captions above it.
+const boardOffsetY = computed(() => (drawableRegions.value.length > 0 ? EDITOR_CAPTION_SPACE : 0))
+const viewHeight = computed(() => EDITOR_VIEW_H + boardOffsetY.value)
+
+function regionBox(region: LocalRegion) {
+  return editorRegionBox(region, geometry.value)
+}
+function regionStyle(region: LocalRegion): { fill: string } | undefined {
+  return region.color ? { fill: region.color } : undefined
+}
 
 const frets = computed(() => {
   const result: number[] = []
@@ -112,15 +141,22 @@ function onFretboardClick(event: MouseEvent) {
   if (rect.width === 0 || rect.height === 0) return
 
   const px = ((event.clientX - rect.left) / rect.width) * viewWidth.value
-  const py = ((event.clientY - rect.top) / rect.height) * EDITOR_VIEW_H
+  const py = ((event.clientY - rect.top) / rect.height) * viewHeight.value - boardOffsetY.value
   const cell = nearestFrettedCell(px, py, geometry.value)
   if (cell) emit('toggle-cell', cell)
 }
 
 const { intervalLabel } = useIntervalLabel()
 
+/** A marker's label: its custom label in the editing language wins over the interval or note name. */
 function labelFor(position: LocalPosition): string {
+  const custom = (position.customLabel[editingLanguage.value] ?? '').trim()
+  if (custom !== '') return custom
   return props.labelMode === 'note' ? position.noteName : intervalLabel(position.interval)
+}
+
+function inputValue(event: Event): string {
+  return event.target instanceof HTMLInputElement ? event.target.value : ''
 }
 
 // Selecting a position row highlights its marker on the fretboard, so a teacher can see which
@@ -154,7 +190,7 @@ function onDrop(index: number) {
            EDITOR_PX_PER_FRET density (44 + 43*24 + 30, see frettedFretboardEditor.ts, guarded by
            a test there) — so on a narrower viewport it scrolls instead of squeezing frets thin. -->
       <svg
-        :viewBox="`0 0 ${viewWidth} ${EDITOR_VIEW_H}`"
+        :viewBox="`0 0 ${viewWidth} ${viewHeight}`"
         role="img"
         :aria-label="t('frettedDiagramEditor.fretboardAriaLabel')"
         class="w-full min-w-[1106px] cursor-pointer"
@@ -169,104 +205,127 @@ function onDrop(index: number) {
           </linearGradient>
         </defs>
 
-        <rect
-          :x="EDITOR_MARGIN_LEFT"
-          :y="EDITOR_MARGIN_TOP - 10"
-          :width="boardWidth"
-          :height="EDITOR_BOARD_H + 20"
-          rx="6"
-          fill="url(#editor-fretboard-wood)"
-        />
-
-        <circle
-          v-for="(dot, index) in inlayDots"
-          :key="`inlay-${dot.fret}-${index}`"
-          data-test="fret-inlay"
-          :cx="markerX(dot.fret)"
-          :cy="dot.cy"
-          r="4"
-          class="fill-ink-subtle"
-          opacity="0.4"
-        />
-
-        <line
-          v-for="stringNumber in geometry.stringCount"
-          :key="`string-${stringNumber}`"
-          :x1="EDITOR_MARGIN_LEFT"
-          :y1="y(stringNumber)"
-          :x2="EDITOR_MARGIN_LEFT + boardWidth"
-          :y2="y(stringNumber)"
-          class="stroke-border"
-          stroke-width="1.2"
-        />
-
-        <g v-for="fret in frets" :key="`fret-${fret}`">
-          <line
-            :x1="x(fret)"
-            :y1="EDITOR_MARGIN_TOP - 6"
-            :x2="x(fret)"
-            :y2="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 6"
-            class="stroke-ink-subtle"
-            stroke-width="2"
-          />
-          <text
-            :x="x(fret)"
-            :y="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 24"
-            text-anchor="middle"
-            font-size="12"
-            class="fill-ink-muted"
-          >
-            {{ fret }}
-          </text>
-        </g>
-
-        <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
-          <circle
-            v-if="position.id === selectedPositionId"
-            data-test="marker-highlight"
-            :cx="markerX(position.fret)"
-            :cy="y(position.string)"
-            r="18"
-            fill="none"
-            class="stroke-accent"
-            stroke-width="3"
-          />
-          <circle
-            v-if="position.shape === 'dot'"
-            :cx="markerX(position.fret)"
-            :cy="y(position.string)"
-            r="13.5"
-            :class="markerFill(position) ? '' : 'fill-accent'"
-            :style="markerStyle(position)"
-          />
+        <g :transform="`translate(0 ${boardOffsetY})`">
           <rect
-            v-else-if="position.shape === 'square'"
-            :x="markerX(position.fret) - 12"
-            :y="y(position.string) - 12"
-            width="24"
-            height="24"
-            rx="3"
-            :class="markerFill(position) ? '' : 'fill-accent'"
-            :style="markerStyle(position)"
+            :x="EDITOR_MARGIN_LEFT"
+            :y="EDITOR_MARGIN_TOP - 10"
+            :width="boardWidth"
+            :height="EDITOR_BOARD_H + 20"
+            rx="6"
+            fill="url(#editor-fretboard-wood)"
           />
-          <polygon
-            v-else
-            :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
-            :class="markerFill(position) ? '' : 'fill-accent'"
-            :style="markerStyle(position)"
+
+          <circle
+            v-for="(dot, index) in inlayDots"
+            :key="`inlay-${dot.fret}-${index}`"
+            data-test="fret-inlay"
+            :cx="markerX(dot.fret)"
+            :cy="dot.cy"
+            r="4"
+            class="fill-ink-subtle"
+            opacity="0.4"
           />
-          <text
-            v-if="labelMode !== 'hidden'"
-            :x="markerX(position.fret)"
-            :y="y(position.string) + 4.5"
-            text-anchor="middle"
-            font-size="11.5"
-            font-weight="600"
-            :class="markerFill(position) ? '' : 'fill-accent-fg'"
-            :style="labelStyle(position)"
-          >
-            {{ labelFor(position) }}
-          </text>
+
+          <g v-for="region in drawableRegions" :key="`region-${region.id}`">
+            <rect
+              data-test="editor-region"
+              v-bind="regionBox(region)"
+              rx="4"
+              fill-opacity="0.25"
+              :class="region.color ? '' : 'fill-accent'"
+              :style="regionStyle(region)"
+            />
+            <text
+              data-test="editor-region-caption"
+              :x="regionBox(region).x + 4"
+              :y="regionBox(region).y - 5"
+              font-size="12"
+              font-weight="600"
+              class="fill-ink-muted"
+            >
+              {{ region.description[editingLanguage] ?? '' }}
+            </text>
+          </g>
+
+          <line
+            v-for="stringNumber in geometry.stringCount"
+            :key="`string-${stringNumber}`"
+            :x1="EDITOR_MARGIN_LEFT"
+            :y1="y(stringNumber)"
+            :x2="EDITOR_MARGIN_LEFT + boardWidth"
+            :y2="y(stringNumber)"
+            class="stroke-border"
+            stroke-width="1.2"
+          />
+
+          <g v-for="fret in frets" :key="`fret-${fret}`">
+            <line
+              :x1="x(fret)"
+              :y1="EDITOR_MARGIN_TOP - 6"
+              :x2="x(fret)"
+              :y2="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 6"
+              class="stroke-ink-subtle"
+              stroke-width="2"
+            />
+            <text
+              :x="x(fret)"
+              :y="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 24"
+              text-anchor="middle"
+              font-size="12"
+              class="fill-ink-muted"
+            >
+              {{ fret }}
+            </text>
+          </g>
+
+          <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
+            <circle
+              v-if="position.id === selectedPositionId"
+              data-test="marker-highlight"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              r="18"
+              fill="none"
+              class="stroke-accent"
+              stroke-width="3"
+            />
+            <circle
+              v-if="position.shape === 'dot'"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              r="13.5"
+              :class="markerFill(position) ? '' : 'fill-accent'"
+              :style="markerStyle(position)"
+            />
+            <rect
+              v-else-if="position.shape === 'square'"
+              :x="markerX(position.fret) - 12"
+              :y="y(position.string) - 12"
+              width="24"
+              height="24"
+              rx="3"
+              :class="markerFill(position) ? '' : 'fill-accent'"
+              :style="markerStyle(position)"
+            />
+            <polygon
+              v-else
+              :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
+              :class="markerFill(position) ? '' : 'fill-accent'"
+              :style="markerStyle(position)"
+            />
+            <text
+              v-if="labelMode !== 'hidden'"
+              :x="markerX(position.fret)"
+              :y="y(position.string) + 4.5"
+              text-anchor="middle"
+              font-size="11.5"
+              font-weight="600"
+              :class="markerFill(position) ? '' : 'fill-accent-fg'"
+              :style="labelStyle(position)"
+            >
+              {{ labelFor(position) }}
+            </text>
+          </g>
         </g>
       </svg>
     </div>
@@ -334,6 +393,28 @@ function onDrop(index: number) {
           >
             <Palette :size="13" aria-hidden="true" />
           </ColorPaletteMenu>
+        </div>
+        <div class="flex w-full gap-2" @click.stop @keydown.stop>
+          <input
+            :value="position.customLabel[editingLanguage] ?? ''"
+            type="text"
+            maxlength="2"
+            data-test="position-custom-label"
+            :aria-label="t('frettedDiagramEditor.customLabelAriaLabel')"
+            :placeholder="t('frettedDiagramEditor.customLabelPlaceholder')"
+            class="w-16 rounded border border-border bg-surface px-2 py-1 text-center text-sm text-ink"
+            @input="emit('set-custom-label', position.id, inputValue($event))"
+          />
+          <input
+            :value="position.note[editingLanguage] ?? ''"
+            type="text"
+            maxlength="280"
+            data-test="position-note"
+            :aria-label="t('frettedDiagramEditor.noteAriaLabel')"
+            :placeholder="t('frettedDiagramEditor.notePlaceholder')"
+            class="min-w-0 flex-1 rounded border border-border bg-surface px-2 py-1 text-sm text-ink"
+            @input="emit('set-note', position.id, inputValue($event))"
+          />
         </div>
         <button
           type="button"

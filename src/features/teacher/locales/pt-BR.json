@@ -179,7 +179,8 @@
     "copyName": "{name} (cópia)",
     "copySaved": "Cópia salva",
     "templateSaved": "Modelo salvo",
-    "templateNeedsEveryName": "Um modelo é compartilhado com todos os professores, então dê um nome em todos os idiomas antes de salvar."
+    "templateNeedsEveryName": "Um modelo é compartilhado com todos os professores, então dê um nome em todos os idiomas antes de salvar.",
+    "templateNeedsEveryText": "Preencha os rótulos, notas e legendas de região em todos os idiomas antes de salvar como modelo."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
@@ -187,7 +188,29 @@
     "reorderHint": "Arraste uma posição para reordenar sua sequência",
     "shapeAriaLabel": "Mostrar esta posição como {shape}",
     "removePositionAriaLabel": "Remover esta posição",
-    "positionColor": "Cor do marcador"
+    "positionColor": "Cor do marcador",
+    "customLabelAriaLabel": "Rótulo exibido dentro deste marcador (até 2 caracteres)",
+    "customLabelPlaceholder": "Rótulo",
+    "noteAriaLabel": "Nota sobre esta posição",
+    "notePlaceholder": "Nota para os alunos (opcional)"
+  },
+  "diagramRegionsEditor": {
+    "title": "Regiões destacadas",
+    "hint": "Faixas atrás dos marcadores, por exemplo para mostrar onde fica cada desenho.",
+    "add": "Adicionar região",
+    "fretsLabel": "Casas",
+    "rangeTo": "a",
+    "fretStartAriaLabel": "Primeira casa da região",
+    "fretEndAriaLabel": "Última casa da região",
+    "allStrings": "Todas as cordas",
+    "stringsLabel": "Cordas",
+    "stringStartAriaLabel": "Primeira corda da região",
+    "stringEndAriaLabel": "Última corda da região",
+    "colorTitle": "Cor da região",
+    "removeAriaLabel": "Remover esta região",
+    "descriptionAriaLabel": "Legenda da região",
+    "descriptionPlaceholder": "Legenda, ex.: Desenho 1",
+    "invalid": "Verifique o intervalo: ele está invertido ou passa da última corda."
   },
   "challengeConfigPanel": {
     "subjectLabel": "Assunto",
@@ -373,7 +396,11 @@
     "label": "Idiomas do diagrama",
     "addLanguage": "Adicionar um idioma",
     "removeLanguage": "Remover {language}",
-    "missingText": "Falta texto em {language}",
+    "missingText": "Falta em {language}: {items}",
+    "missingName": "o nome",
+    "missingRegionCaption": "a legenda da região {n}",
+    "missingMarkerLabel": "o rótulo da posição {n}",
+    "missingMarkerNote": "a nota da posição {n}",
     "removeTitle": "Remover {language}?",
     "removeBody": "O nome e os demais textos deste diagrama em {language} serão apagados. Os marcadores e as cores continuam como estão.",
     "cancel": "Cancelar",

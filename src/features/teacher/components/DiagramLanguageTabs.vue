@@ -8,6 +8,7 @@
 import { computed, ref } from 'vue'
 import { AlertCircle, Plus, X } from 'lucide-vue-next'
 
+import type { MissingText } from '@/features/teacher/composables/useDiagramForm'
 import { OFFERED_LANGUAGE_CODES } from '@/i18n'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -17,8 +18,8 @@ const props = defineProps<{
   /** The diagram's Language.codes, in display order. */
   languages: string[]
   active: string
-  /** Languages still missing text, flagged on their tabs. */
-  incomplete: string[]
+  /** What each language still lacks; a language with anything missing is flagged on its tab. */
+  missing: Record<string, MissingText[]>
   /** No adding or removing languages, e.g. for a basic template, which needs them all. */
   locked: boolean
 }>()
@@ -31,11 +32,35 @@ function languageLabel(code: string): string {
   return key === null ? code : t(key)
 }
 
+function isIncomplete(code: string): boolean {
+  return (props.missing[code] ?? []).length > 0
+}
+
+function describeMissing(item: MissingText): string {
+  switch (item.kind) {
+    case 'name':
+      return t('diagramLanguageTabs.missingName')
+    case 'regionCaption':
+      return t('diagramLanguageTabs.missingRegionCaption', { n: item.region })
+    case 'markerLabel':
+      return t('diagramLanguageTabs.missingMarkerLabel', { n: item.position })
+    case 'markerNote':
+      return t('diagramLanguageTabs.missingMarkerNote', { n: item.position })
+  }
+}
+
+/** Names what a language still lacks, shown on hover; undefined when it lacks nothing. */
+function missingSummary(code: string): string | undefined {
+  if (!isIncomplete(code)) return undefined
+  return t('diagramLanguageTabs.missingText', {
+    language: languageLabel(code),
+    items: (props.missing[code] ?? []).map(describeMissing).join(', '),
+  })
+}
+
 // The tab's accessible name replaces its content, so a missing-text warning has to be part of it.
 function tabLabel(code: string): string {
-  return props.incomplete.includes(code)
-    ? t('diagramLanguageTabs.missingText', { language: languageLabel(code) })
-    : languageLabel(code)
+  return missingSummary(code) ?? languageLabel(code)
 }
 
 const addable = computed(() =>
@@ -75,6 +100,7 @@ function confirmRemoval() {
         :data-test="`language-tab-${code}`"
         :aria-selected="code === active"
         :aria-label="tabLabel(code)"
+        :title="missingSummary(code)"
         class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold"
         :class="code === active ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
         @click="emit('select', code)"
@@ -82,7 +108,7 @@ function confirmRemoval() {
         <span aria-hidden="true" class="text-base leading-none">{{ languageBadge(code).flag }}</span>
         <span aria-hidden="true">{{ languageBadge(code).shortCode }}</span>
         <AlertCircle
-          v-if="incomplete.includes(code)"
+          v-if="isIncomplete(code)"
           :data-test="`language-tab-missing-${code}`"
           :size="14"
           class="text-warning"
