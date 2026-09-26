@@ -6,7 +6,7 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
-import OverlayDiagramPickerModal from '@/features/teacher/components/OverlayDiagramPickerModal.vue'
+import OverlayDiagramPicker from '@/features/teacher/components/OverlayDiagramPicker.vue'
 import { makeFrettedDiagram } from '@/shared/testUtils/diagram'
 
 function page(items: unknown[], total = items.length) {
@@ -20,7 +20,7 @@ const major = makeFrettedDiagram({ diagram_id: 'd-major', names: { en: 'C major 
 const base = makeFrettedDiagram({ diagram_id: 'd-base', names: { en: 'The one being edited' } })
 
 function mountPicker(props: { excludeIds?: string[] } = {}) {
-  return mount(OverlayDiagramPickerModal, {
+  return mount(OverlayDiagramPicker, {
     props: { instrumentId: 'instrument-guitar', excludeIds: [], ...props },
   })
 }
@@ -31,7 +31,7 @@ function rowTexts(wrapper: Picker): string[] {
   return wrapper.findAll('[data-test="overlay-option-name"]').map((name) => name.text())
 }
 
-describe('OverlayDiagramPickerModal', () => {
+describe('OverlayDiagramPicker', () => {
   beforeEach(() => {
     GET.mockReset()
   })
@@ -114,15 +114,5 @@ describe('OverlayDiagramPickerModal', () => {
     await flush()
 
     expect(rowTexts(wrapper)).toHaveLength(2)
-  })
-
-  it('closes', async () => {
-    GET.mockResolvedValueOnce(page([]))
-    const wrapper = mountPicker()
-    await flush()
-
-    await wrapper.get('[data-test="close-modal"]').trigger('click')
-
-    expect(wrapper.emitted('close')).toHaveLength(1)
   })
 })

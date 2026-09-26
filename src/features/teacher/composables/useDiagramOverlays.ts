@@ -1,4 +1,4 @@
-import { computed, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 
 import type { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import {
@@ -13,17 +13,18 @@ type Diagram = components['schemas']['Diagram']
 type DiagramForm = ReturnType<typeof useDiagramForm>
 
 /**
- * Diagrams overlaid read-only on the one being authored, and merging them into it.
- * Overlays are authoring state only: they are never saved as a stack. Merging
- * flattens the diagram and every overlay (in the order added) into the form's own
- * positions and regions, after which the overlays are gone.
+ * Diagrams overlaid on the one being authored, while the teacher decides whether to
+ * merge them into it. Overlays are never saved as a stack: merging flattens the
+ * diagram and every overlay (in the order added) into the form's own positions and
+ * regions, and discarding drops them. Either way the overlays are then gone.
  */
 export function useDiagramOverlays(form: DiagramForm) {
   const overlays = shallowRef<Diagram[]>([])
+  // Whether merging adds a highlighted region per diagram; on unless the teacher declines it.
+  const regionPerLayer = ref(true)
 
   const hasOverlays = computed(() => overlays.value.length > 0)
   const overlayIds = computed(() => overlays.value.map((d) => d.diagram_id))
-  const overlayLayers = computed<StackLayer[]>(() => overlays.value.map(stackLayerFromDiagram))
 
   function add(diagram: Diagram) {
     if (overlayIds.value.includes(diagram.diagram_id)) return
@@ -48,25 +49,35 @@ export function useDiagramOverlays(form: DiagramForm) {
   }
 
   function flatten(regionPerLayer: boolean): FlattenedStack {
-    return flattenDiagramStack([baseLayer(), ...overlayLayers.value], {
+    return flattenDiagramStack([baseLayer(), ...overlays.value.map(stackLayerFromDiagram)], {
       languages: form.languages.value,
       regionPerLayer,
     })
   }
 
-  /** What merging would produce, before any region per layer; null without overlays. */
-  const preview = computed<FlattenedStack | null>(() => (hasOverlays.value ? flatten(false) : null))
+  /** Exactly what merging would produce; null without overlays. */
+  const preview = computed<FlattenedStack | null>(() => (hasOverlays.value ? flatten(regionPerLayer.value) : null))
+
+  function reset() {
+    overlays.value = []
+    regionPerLayer.value = true
+  }
+
+  /** Drops the overlays, leaving the form as it was. */
+  function discard() {
+    reset()
+  }
 
   // A position without an interval yet (no root note chosen) couldn't be carried into the merge.
   const canMerge = computed(() => hasOverlays.value && form.hasCompletePositions.value)
 
   /** Merges the overlays into the form; false, leaving everything as it was, when it can't. */
-  function merge({ regionPerLayer }: { regionPerLayer: boolean }): boolean {
+  function merge(): boolean {
     if (!canMerge.value) return false
-    form.loadFlattened(flatten(regionPerLayer))
-    overlays.value = []
+    form.loadFlattened(flatten(regionPerLayer.value))
+    reset()
     return true
   }
 
-  return { overlays, overlayLayers, hasOverlays, overlayIds, add, remove, preview, canMerge, merge }
+  return { overlays, hasOverlays, overlayIds, regionPerLayer, add, remove, preview, canMerge, merge, discard }
 }

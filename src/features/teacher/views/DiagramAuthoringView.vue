@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
-import { Layers, Palette, X } from 'lucide-vue-next'
+import { Layers, Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -8,8 +8,7 @@ import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewMod
 import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
 import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
-import MergeLayersModal from '@/features/teacher/components/MergeLayersModal.vue'
-import OverlayDiagramPickerModal from '@/features/teacher/components/OverlayDiagramPickerModal.vue'
+import OverlayDiagramsModal from '@/features/teacher/components/OverlayDiagramsModal.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
@@ -68,14 +67,14 @@ const frettedInstruments = computed(() => instruments.value.filter((i) => i.fami
 const form = useDiagramForm()
 const {
   overlays,
-  overlayLayers,
-  hasOverlays,
   overlayIds,
+  regionPerLayer,
   add: addOverlay,
   remove: removeOverlay,
   preview: stackPreview,
   canMerge,
   merge,
+  discard: discardOverlays,
 } = useDiagramOverlays(form)
 
 // The editor below the language tabs is shown in the active tab's language, as a reader of
@@ -206,11 +205,9 @@ const colorHint = computed(() =>
     : `${te('diagramAuthoringView.colorHint')} ${te('diagramAuthoringView.colorCannotClearHint')}`,
 )
 
-const previewDiagram = computed<Diagram | null>(() => {
-  if (!selectedInstrument.value || (form.positions.value.length === 0 && !hasOverlays.value)) return null
+/** The diagram as the form holds it, with the given positions and regions, for a viewer to draw. */
+function diagramForPreview(positions: Diagram['positions'], regions: Diagram['regions']): Diagram {
   const request = form.toCreateDiagramRequest()
-  // With overlays present, the preview shows what merging them would produce.
-  const stack = stackPreview.value
   return {
     diagram_id: savedDiagramId.value,
     instrument_id: form.instrumentId.value,
@@ -224,28 +221,40 @@ const previewDiagram = computed<Diagram | null>(() => {
     root_note: request.root_note ?? null,
     label_display: form.labelDisplay.value,
     color: form.color.value,
-    positions: stack?.positions ?? request.positions,
-    regions: stack?.regions ?? request.regions ?? [],
+    positions,
+    regions,
     classification: { skills: [], concepts: [] },
     created_at: '',
   }
+}
+
+const previewDiagram = computed<Diagram | null>(() => {
+  if (!selectedInstrument.value || form.positions.value.length === 0) return null
+  const request = form.toCreateDiagramRequest()
+  return diagramForPreview(request.positions, request.regions ?? [])
+})
+
+// What merging the overlays would produce, for the overlay modal's preview.
+const overlayPreviewDiagram = computed<Diagram | null>(() => {
+  const stack = stackPreview.value
+  return stack ? diagramForPreview(stack.positions, stack.regions) : null
 })
 
 const previewDiagramRef: DiagramRef = { diagram_id: '', layers: { intervals: true } }
 
-const pickingOverlay = ref(false)
-const confirmingMerge = ref(false)
+const overlaying = ref(false)
 // Neither the diagram being edited nor one already overlaid is offered again.
 const overlayExcludeIds = computed(() => [savedDiagramId.value, ...overlayIds.value].filter((id) => id !== ''))
 
-function onOverlayPicked(diagram: Diagram) {
-  addOverlay(diagram)
-  pickingOverlay.value = false
+function onMergeOverlays() {
+  if (!merge()) return
+  overlaying.value = false
+  if (savedDiagramId.value !== '') mergedIntoSaved.value = true
 }
 
-function onMergeConfirmed(regionPerLayer: boolean) {
-  confirmingMerge.value = false
-  if (merge({ regionPerLayer }) && savedDiagramId.value !== '') mergedIntoSaved.value = true
+function onDiscardOverlays() {
+  discardOverlays()
+  overlaying.value = false
 }
 
 const saving = ref(false)
@@ -330,7 +339,7 @@ async function saveAs(names: Record<string, string>) {
           : t('diagramAuthoringView.newDiagramBreadcrumb')
       "
       :show-save="canSaveInPlace"
-      :save-disabled="!form.canSave.value || namesMissing || saving || hasOverlays"
+      :save-disabled="!form.canSave.value || namesMissing || saving"
       :just-saved="justSaved"
       :on-save="save"
     >
@@ -339,7 +348,7 @@ async function saveAs(names: Record<string, string>) {
           v-if="canSaveAs"
           type="button"
           data-test="save-as"
-          :disabled="!form.canSave.value || savingAs || hasOverlays"
+          :disabled="!form.canSave.value || savingAs"
           :class="secondarySaveClass"
           @click="openSaveAs('custom')"
         >
@@ -349,7 +358,7 @@ async function saveAs(names: Record<string, string>) {
           v-if="canSaveAsTemplate"
           type="button"
           data-test="save-as-template"
-          :disabled="!form.canSave.value || savingAs || !templateTextComplete || hasOverlays"
+          :disabled="!form.canSave.value || savingAs || !templateTextComplete"
           :title="templateTextComplete ? undefined : t('diagramAuthoringView.templateNeedsEveryText')"
           :class="secondarySaveClass"
           @click="openSaveAs('basic')"
@@ -445,7 +454,7 @@ async function saveAs(names: Record<string, string>) {
               :key="instrument.instrument_id"
               type="button"
               data-test="instrument-option"
-              :disabled="isEditMode || form.hasPositions.value || hasOverlays"
+              :disabled="isEditMode || form.hasPositions.value"
               class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               :class="
                 form.instrumentId.value === instrument.instrument_id
@@ -457,16 +466,8 @@ async function saveAs(names: Record<string, string>) {
               {{ localizedNameInEditor(instrument.names) }}
             </button>
           </div>
-          <span
-            v-if="isEditMode || form.hasPositions.value || hasOverlays"
-            data-test="instrument-locked-hint"
-            class="text-sm text-ink-subtle"
-          >
-            {{
-              isEditMode || form.hasPositions.value
-                ? te('diagramAuthoringView.instrumentLockedHint')
-                : te('diagramAuthoringView.instrumentLockedByOverlaysHint')
-            }}
+          <span v-if="isEditMode || form.hasPositions.value" class="text-sm text-ink-subtle">
+            {{ te('diagramAuthoringView.instrumentLockedHint') }}
           </span>
         </div>
 
@@ -493,6 +494,15 @@ async function saveAs(names: Record<string, string>) {
               te('diagramAuthoringView.positionsLabel')
             }}</label>
             <div class="flex items-center gap-2">
+              <button
+                type="button"
+                data-test="add-overlay"
+                class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted"
+                @click="overlaying = true"
+              >
+                <Layers :size="14" aria-hidden="true" />
+                {{ te('diagramAuthoringView.addOverlayButton') }}
+              </button>
               <ColorPaletteMenu
                 test-id="diagram-color"
                 :title="te('diagramAuthoringView.colorLabel')"
@@ -550,7 +560,6 @@ async function saveAs(names: Record<string, string>) {
             :instrument="selectedInstrument"
             :positions="form.positions.value"
             :regions="form.regions.value"
-            :overlays="overlayLayers"
             :label-mode="form.labelDisplay.value"
             :color="form.color.value"
             :language="activeLanguage"
@@ -562,59 +571,6 @@ async function saveAs(names: Record<string, string>) {
             @set-note="(id, value) => form.setPositionNote(id, activeLanguage, value)"
             @remove="form.removePosition"
           />
-
-          <div data-test="overlays" class="flex flex-col gap-2">
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                data-test="add-overlay"
-                class="flex w-fit items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink-muted"
-                @click="pickingOverlay = true"
-              >
-                <Layers :size="14" aria-hidden="true" />
-                {{ te('diagramAuthoringView.addOverlayButton') }}
-              </button>
-              <button
-                v-if="hasOverlays"
-                type="button"
-                data-test="merge-layers"
-                :disabled="!canMerge"
-                class="w-fit rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-50"
-                @click="confirmingMerge = true"
-              >
-                {{ te('diagramAuthoringView.mergeLayersButton') }}
-              </button>
-            </div>
-            <ul v-if="hasOverlays" class="flex flex-wrap gap-2">
-              <li
-                v-for="overlay in overlays"
-                :key="overlay.diagram_id"
-                data-test="overlay-item"
-                class="flex items-center gap-2 rounded-full border border-border bg-surface-raised py-1 pl-3 pr-1 text-sm text-ink"
-              >
-                <span
-                  class="h-3 w-3 rounded-full"
-                  :class="overlay.color ? '' : 'bg-accent'"
-                  :style="overlay.color ? { backgroundColor: overlay.color } : undefined"
-                  aria-hidden="true"
-                />{{ localizedNameInEditor(overlay.names) }}<button
-                  type="button"
-                  data-test="remove-overlay"
-                  :aria-label="te('diagramAuthoringView.removeOverlayAriaLabel', { name: localizedNameInEditor(overlay.names) })"
-                  class="flex h-6 w-6 items-center justify-center rounded-full text-ink-subtle"
-                  @click="removeOverlay(overlay.diagram_id)"
-                >
-                  <X :size="13" aria-hidden="true" />
-                </button>
-              </li>
-            </ul>
-            <p v-if="hasOverlays" data-test="merge-before-saving" class="text-sm text-ink-subtle">
-              {{ te('diagramAuthoringView.mergeBeforeSaving') }}
-            </p>
-            <p v-if="hasOverlays && !canMerge" data-test="merge-needs-root" class="text-sm text-ink-subtle">
-              {{ te('diagramAuthoringView.mergeNeedsRoot') }}
-            </p>
-          </div>
         </div>
 
         <DiagramRegionsEditor
@@ -706,15 +662,20 @@ async function saveAs(names: Record<string, string>) {
       />
       </LocaleScope>
 
-      <OverlayDiagramPickerModal
-        v-if="pickingOverlay"
-        :instrument-id="form.instrumentId.value"
+      <OverlayDiagramsModal
+        v-if="overlaying && selectedInstrument"
+        v-model:region-per-layer="regionPerLayer"
+        :instrument="selectedInstrument"
         :exclude-ids="overlayExcludeIds"
-        @select="onOverlayPicked"
-        @close="pickingOverlay = false"
+        :overlays="overlays"
+        :preview="overlayPreviewDiagram"
+        :can-merge="canMerge"
+        :label-mode="form.labelDisplay.value"
+        @add="addOverlay"
+        @remove="removeOverlay"
+        @merge="onMergeOverlays"
+        @discard="onDiscardOverlays"
       />
-
-      <MergeLayersModal :open="confirmingMerge" @confirm="onMergeConfirmed" @cancel="confirmingMerge = false" />
 
       <SaveDiagramAsModal
         :open="saveAsKind !== null"

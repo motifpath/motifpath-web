@@ -68,6 +68,7 @@ describe('useDiagramOverlays', () => {
   it("previews the stack as merged, without changing the diagram's own positions", () => {
     const { form, overlays } = setup()
     overlays.add(overlay)
+    overlays.regionPerLayer.value = false
 
     const preview = overlays.preview.value
 
@@ -76,6 +77,32 @@ describe('useDiagramOverlays', () => {
       [4, 5, 'b7'],
       [3, 2, 'R'],
     ])
+    expect(form.positions.value).toHaveLength(2)
+  })
+
+  it('adds a region per diagram by default, in the preview and the merge alike', () => {
+    const { overlays } = setup()
+    overlays.add(overlay)
+
+    expect(overlays.regionPerLayer.value).toBe(true)
+    expect(overlays.preview.value?.regions.map((r) => [r.fret_start, r.fret_end, r.description.en])).toEqual([
+      [3, 5, 'C major'],
+      [2, 5, 'A minor pentatonic'],
+    ])
+
+    overlays.regionPerLayer.value = false
+    expect(overlays.preview.value?.regions).toEqual([])
+  })
+
+  it('discards the overlays, leaving the form untouched and the region option back on', () => {
+    const { form, overlays } = setup()
+    overlays.add(overlay)
+    overlays.regionPerLayer.value = false
+
+    overlays.discard()
+
+    expect(overlays.hasOverlays.value).toBe(false)
+    expect(overlays.regionPerLayer.value).toBe(true)
     expect(form.positions.value).toHaveLength(2)
   })
 
@@ -89,7 +116,8 @@ describe('useDiagramOverlays', () => {
     const { form, overlays } = setup()
     overlays.add(overlay)
 
-    overlays.merge({ regionPerLayer: false })
+    overlays.regionPerLayer.value = false
+    overlays.merge()
 
     expect(overlays.hasOverlays.value).toBe(false)
     expect(form.positions.value.map((p) => [p.string, p.fret, p.interval, p.color])).toEqual([
@@ -103,11 +131,11 @@ describe('useDiagramOverlays', () => {
     expect(form.rootNote.value).toBe('C')
   })
 
-  it('adds one region per layer when asked, captioned in the diagram languages', () => {
+  it('merges with one region per layer when asked, captioned in the diagram languages', () => {
     const { form, overlays } = setup()
     overlays.add(overlay)
 
-    overlays.merge({ regionPerLayer: true })
+    overlays.merge()
 
     expect(form.regions.value.map((r) => [r.fretStart, r.fretEnd, r.description])).toEqual([
       [3, 5, { en: 'C major', pt_BR: 'Dó maior' }],
@@ -139,10 +167,11 @@ describe('useDiagramOverlays', () => {
   it('says whether it merged, leaving the form alone when it could not', () => {
     const { form, overlays } = setup()
 
-    expect(overlays.merge({ regionPerLayer: false })).toBe(false)
+    expect(overlays.merge()).toBe(false)
     expect(form.positions.value).toHaveLength(2)
 
     overlays.add(overlay)
-    expect(overlays.merge({ regionPerLayer: false })).toBe(true)
+    expect(overlays.merge()).toBe(true)
+    expect(overlays.regionPerLayer.value).toBe(true)
   })
 })

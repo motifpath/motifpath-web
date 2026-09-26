@@ -864,15 +864,15 @@ describe('DiagramAuthoringView', () => {
     }
 
     async function merge(wrapper: ReturnType<typeof mountView>, regionPerLayer = true) {
-      await wrapper.get('[data-test="merge-layers"]').trigger('click')
       if (!regionPerLayer) await wrapper.get('[data-test="merge-region-per-layer"]').setValue(false)
-      await wrapper.get('[data-test="merge-confirm"]').trigger('click')
+      await wrapper.get('[data-test="merge-overlays"]').trigger('click')
     }
 
     const appBar = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'AppBar' })
     const editor = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent(FrettedDiagramEditor)
+    const modal = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'OverlayDiagramsModal' })
 
-    it('overlays a diagram of the same instrument, other than this one, on the fretboard and in the preview', async () => {
+    it('overlays a diagram of the same instrument in a modal with the full merged preview, leaving the editor as it is', async () => {
       const wrapper = await openOwnDiagram()
 
       await overlayPentatonic(wrapper)
@@ -880,12 +880,26 @@ describe('DiagramAuthoringView', () => {
       expect(GET).toHaveBeenCalledWith('/diagrams', {
         params: { query: expect.objectContaining({ instrument_id: 'i-1' }) },
       })
-      expect(wrapper.find('[data-test="overlay-option"]').exists()).toBe(false)
-      expect(wrapper.findAll('[data-test="overlay-item"]').map((item) => item.text())).toEqual(['A Minor Pentatonic'])
-      expect(editor(wrapper).props('overlays')).toHaveLength(1)
-      expect(editor(wrapper).props('positions')).toHaveLength(1)
-      const preview = wrapper.findComponent({ name: 'FrettedDiagramView' }).props('diagram')
+      expect(modal(wrapper).findAll('[data-test="overlay-item"]').map((item) => item.text())).toEqual(['A Minor Pentatonic'])
+      const preview = modal(wrapper).getComponent({ name: 'FrettedDiagramView' }).props('diagram')
       expect(preview.positions.map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
+      expect(editor(wrapper).props('positions')).toHaveLength(1)
+      expect(appBar(wrapper).props('saveDisabled')).toBe(false)
+    })
+
+    it('previews a highlighted region per diagram, named after it, unless the author turns that off', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+      const previewRegions = () =>
+        modal(wrapper)
+          .getComponent({ name: 'FrettedDiagramView' })
+          .props('diagram')
+          .regions.map((r: { description: { en: string } }) => r.description.en)
+
+      expect(previewRegions()).toEqual(['C Major Scale', 'A Minor Pentatonic'])
+
+      await wrapper.get('[data-test="merge-region-per-layer"]').setValue(false)
+      expect(previewRegions()).toEqual([])
     })
 
     it("offers only diagrams that aren't the one being edited", async () => {
@@ -902,27 +916,33 @@ describe('DiagramAuthoringView', () => {
       expect(wrapper.findAll('[data-test="overlay-option-name"]').map((n) => n.text())).toEqual(['A Minor Pentatonic'])
     })
 
-    it('blocks every save until the layers are merged', async () => {
-      currentUser.profile.role = 'admin'
-      currentUser.profile.user_id = 'u-admin'
+    it('discards the overlays, leaving the diagram and its saving untouched', async () => {
       const wrapper = await openOwnDiagram()
       await overlayPentatonic(wrapper)
 
-      expect(appBar(wrapper).props('saveDisabled')).toBe(true)
-      expect(wrapper.get('[data-test="save-as"]').attributes('disabled')).toBeDefined()
-      expect(wrapper.get('[data-test="save-as-template"]').attributes('disabled')).toBeDefined()
-      expect(wrapper.find('[data-test="merge-before-saving"]').exists()).toBe(true)
+      await wrapper.get('[data-test="discard-overlays"]').trigger('click')
+
+      expect(modal(wrapper).exists()).toBe(false)
+      expect(editor(wrapper).props('positions')).toHaveLength(1)
+      expect(appBar(wrapper).props('showSave')).toBe(true)
+      expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(false)
     })
 
-    it('removes an overlay', async () => {
+    it('starts afresh the next time, with nothing overlaid', async () => {
       const wrapper = await openOwnDiagram()
       await overlayPentatonic(wrapper)
+      await wrapper.get('[data-test="discard-overlays"]').trigger('click')
+      GET.mockResolvedValueOnce({
+        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
+        error: undefined,
+        response: { status: 200 },
+      })
 
-      await wrapper.get('[data-test="remove-overlay"]').trigger('click')
+      await wrapper.get('[data-test="add-overlay"]').trigger('click')
+      await flush()
 
-      expect(wrapper.find('[data-test="overlay-item"]').exists()).toBe(false)
-      expect(editor(wrapper).props('overlays')).toEqual([])
-      expect(appBar(wrapper).props('saveDisabled')).toBe(false)
+      expect(modal(wrapper).find('[data-test="overlay-item"]').exists()).toBe(false)
+      expect(modal(wrapper).find('[data-test="overlay-option"]').exists()).toBe(true)
     })
 
     it('merges the layers into editable positions, with a region per layer, and then saves only as a new diagram', async () => {
@@ -931,8 +951,7 @@ describe('DiagramAuthoringView', () => {
 
       await merge(wrapper)
 
-      expect(wrapper.find('[data-test="overlay-item"]').exists()).toBe(false)
-      expect(editor(wrapper).props('overlays')).toEqual([])
+      expect(modal(wrapper).exists()).toBe(false)
       expect(editor(wrapper).props('positions').map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
       expect(editor(wrapper).props('regions')).toHaveLength(2)
       expect(appBar(wrapper).props('showSave')).toBe(false)
@@ -960,6 +979,7 @@ describe('DiagramAuthoringView', () => {
       })
 
       await wrapper.get('[data-test="save-as"]').trigger('click')
+      expect(wrapper.get<HTMLInputElement>('[data-test="save-as-name-en"]').element.value).toBe('C Major Scale')
       await wrapper.get('[data-test="save-as-name-en"]').setValue('C Major + Pentatonic')
       await wrapper.get('[data-test="save-as-form"]').trigger('submit')
       await flush()
@@ -999,28 +1019,6 @@ describe('DiagramAuthoringView', () => {
       expect(editor(wrapper).props('positions')).toHaveLength(3)
     })
 
-    it('locks the instrument of a new diagram once something is overlaid on it', async () => {
-      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
-      const wrapper = mountView()
-      await flush()
-      await wrapper.get('[data-test="instrument-option"]').trigger('click')
-
-      await overlayPentatonic(wrapper)
-
-      expect(wrapper.get('[data-test="instrument-option"]').attributes('disabled')).toBeDefined()
-      expect(wrapper.get('[data-test="instrument-locked-hint"]').text()).toContain('overlaid')
-    })
-
-    it('suggests the diagram\'s own name, not a copy name, when saving merged layers as a new diagram', async () => {
-      const wrapper = await openOwnDiagram()
-      await overlayPentatonic(wrapper)
-      await merge(wrapper, false)
-
-      await wrapper.get('[data-test="save-as"]').trigger('click')
-
-      expect(wrapper.get<HTMLInputElement>('[data-test="save-as-name-en"]').element.value).toBe('C Major Scale')
-    })
-
     it("can't merge while a position of this diagram still has no interval", async () => {
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
       const wrapper = mountView()
@@ -1029,7 +1027,7 @@ describe('DiagramAuthoringView', () => {
       await editor(wrapper).vm.$emit('toggle-cell', { string: 1, fret: 3 })
       await overlayPentatonic(wrapper)
 
-      expect(wrapper.get('[data-test="merge-layers"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.get('[data-test="merge-overlays"]').attributes('disabled')).toBeDefined()
       expect(wrapper.find('[data-test="merge-needs-root"]').exists()).toBe(true)
     })
   })

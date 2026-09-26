@@ -14,8 +14,7 @@ import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useScopedLocale } from '@/shared/composables/useScopedLocale'
 import { toApiLanguageCode } from '@/i18n'
 
-import { toLocalPosition, type LocalPosition, type LocalRegion, type PositionShape } from '@/features/teacher/composables/useDiagramForm'
-import type { StackLayer } from '@/shared/utils/flattenDiagramStack'
+import type { LocalPosition, LocalRegion, PositionShape } from '@/features/teacher/composables/useDiagramForm'
 import type { components } from '@/api/generated/core-domain'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import { readableTextColor, resolveMarkerColor } from '@/shared/utils/diagramColors'
@@ -51,10 +50,8 @@ const props = withDefaults(
     language?: string
     /** Highlighted regions drawn behind the markers, so the author sees them where they place positions. */
     regions?: LocalRegion[]
-    /** Other diagrams drawn read-only on top of this one, in the order they were added. */
-    overlays?: StackLayer[]
   }>(),
-  { labelMode: 'interval', regions: () => [], overlays: () => [] },
+  { labelMode: 'interval', regions: () => [] },
 )
 
 const emit = defineEmits<{
@@ -75,42 +72,15 @@ const SHAPE_ICONS = { dot: Circle, square: Square, star: Star } as const
 
 const { t } = useTypedT()
 
-/** One marker on the board: the diagram's own position, or an overlay's drawn read-only on top. */
-interface BoardMarker {
-  key: string
-  position: LocalPosition
-  /** The color a marker falls back to without its own: the diagram's, or its overlay's. */
-  fallbackColor: string | null
-  overlay: boolean
+function markerFill(position: LocalPosition): string | null {
+  return resolveMarkerColor(position.color, props.color)
 }
-
-// The diagram's own markers first, then each overlay's in the order added, so later ones paint on top.
-const markers = computed<BoardMarker[]>(() => [
-  ...props.positions.map((position) => ({
-    key: position.id,
-    position,
-    fallbackColor: props.color ?? null,
-    overlay: false,
-  })),
-  ...props.overlays.flatMap((layer, layerIndex) =>
-    layer.positions.map((p, index) => ({
-      key: `overlay-${layerIndex}-${index}`,
-      position: toLocalPosition(p),
-      fallbackColor: layer.color,
-      overlay: true,
-    })),
-  ),
-])
-
-function markerFill(marker: BoardMarker): string | null {
-  return resolveMarkerColor(marker.position.color, marker.fallbackColor)
-}
-function markerStyle(marker: BoardMarker): { fill: string } | undefined {
-  const fill = markerFill(marker)
+function markerStyle(position: LocalPosition): { fill: string } | undefined {
+  const fill = markerFill(position)
   return fill ? { fill } : undefined
 }
-function labelStyle(marker: BoardMarker): { fill: string } | undefined {
-  const fill = markerFill(marker)
+function labelStyle(position: LocalPosition): { fill: string } | undefined {
+  const fill = markerFill(position)
   return fill ? { fill: readableTextColor(fill) } : undefined
 }
 
@@ -308,58 +278,52 @@ function onDrop(index: number) {
             </text>
           </g>
 
-          <g
-            v-for="marker in markers"
-            :key="marker.key"
-            :data-test="marker.overlay ? 'editor-overlay-position' : 'editor-position'"
-            :class="marker.overlay ? 'pointer-events-none' : ''"
-            :opacity="marker.overlay ? 0.8 : undefined"
-          >
+          <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
             <circle
-              v-if="!marker.overlay && marker.position.id === selectedPositionId"
+              v-if="position.id === selectedPositionId"
               data-test="marker-highlight"
-              :cx="markerX(marker.position.fret)"
-              :cy="y(marker.position.string)"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
               r="18"
               fill="none"
               class="stroke-accent"
               stroke-width="3"
             />
             <circle
-              v-if="marker.position.shape === 'dot'"
-              :cx="markerX(marker.position.fret)"
-              :cy="y(marker.position.string)"
+              v-if="position.shape === 'dot'"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
               r="13.5"
-              :class="markerFill(marker) ? '' : 'fill-accent'"
-              :style="markerStyle(marker)"
+              :class="markerFill(position) ? '' : 'fill-accent'"
+              :style="markerStyle(position)"
             />
             <rect
-              v-else-if="marker.position.shape === 'square'"
-              :x="markerX(marker.position.fret) - 12"
-              :y="y(marker.position.string) - 12"
+              v-else-if="position.shape === 'square'"
+              :x="markerX(position.fret) - 12"
+              :y="y(position.string) - 12"
               width="24"
               height="24"
               rx="3"
-              :class="markerFill(marker) ? '' : 'fill-accent'"
-              :style="markerStyle(marker)"
+              :class="markerFill(position) ? '' : 'fill-accent'"
+              :style="markerStyle(position)"
             />
             <polygon
               v-else
-              :points="starPolygonPoints(markerX(marker.position.fret), y(marker.position.string), 15, 6.5)"
-              :class="markerFill(marker) ? '' : 'fill-accent'"
-              :style="markerStyle(marker)"
+              :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
+              :class="markerFill(position) ? '' : 'fill-accent'"
+              :style="markerStyle(position)"
             />
             <text
               v-if="labelMode !== 'hidden'"
-              :x="markerX(marker.position.fret)"
-              :y="y(marker.position.string) + 4.5"
+              :x="markerX(position.fret)"
+              :y="y(position.string) + 4.5"
               text-anchor="middle"
               font-size="11.5"
               font-weight="600"
-              :class="markerFill(marker) ? '' : 'fill-accent-fg'"
-              :style="labelStyle(marker)"
+              :class="markerFill(position) ? '' : 'fill-accent-fg'"
+              :style="labelStyle(position)"
             >
-              {{ labelFor(marker.position) }}
+              {{ labelFor(position) }}
             </text>
           </g>
         </g>
