@@ -123,15 +123,18 @@ export function isDrawableRegion(region: EditorRegionSpan, geometry: FrettedEdit
 
 /**
  * A region's band, in board coordinates: whole fret spaces from the wire before `fretStart`
- * (the open-string area for fret 0) to `fretEnd`'s wire, and from half a string gap above its
- * first string to half a gap below its last.
+ * (the nut for fret 0 — the open-string area isn't fretboard, so it stays bare) to `fretEnd`'s
+ * wire, and from half a string gap above its first string to half a gap below its last. A band
+ * of only the open strings has no fret space, so it covers the open-string area instead of
+ * vanishing.
  */
 export function editorRegionBox(
   region: EditorRegionSpan,
   geometry: FrettedEditorGeometry,
 ): { x: number; y: number; width: number; height: number } {
   const gap = rowGap(geometry)
-  const left = region.fretStart === 0 ? fretX(0, geometry) - EDITOR_PX_PER_FRET : fretX(region.fretStart - 1, geometry)
+  const openOnly = region.fretEnd === 0
+  const left = openOnly ? fretX(0, geometry) - EDITOR_PX_PER_FRET : fretX(Math.max(region.fretStart - 1, 0), geometry)
   const right = fretX(region.fretEnd, geometry)
   const top = stringY(region.stringStart ?? 1, geometry) - gap / 2
   const bottom = stringY(region.stringEnd ?? geometry.stringCount, geometry) + gap / 2

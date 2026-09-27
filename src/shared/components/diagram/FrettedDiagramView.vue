@@ -161,12 +161,13 @@ function markerLabel(position: Marker): string {
   return props.labelMode === 'note' ? position.noteName : intervalLabel(position.interval)
 }
 
-/** A band covers whole fret spaces: from the wire before fret_start (the open-string area
- *  for fret 0) to fret_end's wire, and from half a string gap above its first string to
- *  half a gap below its last. */
+/** A band covers whole fret spaces: from the wire before fret_start (the nut for fret 0 — the
+ *  open-string area isn't fretboard, so it stays bare) to fret_end's wire, and from half a
+ *  string gap above its first string to half a gap below its last. A band of only the open
+ *  strings has no fret space, so it covers the open-string area instead of vanishing. */
 function regionFretEdges(region: Region): { left: number; right: number } {
-  const left = region.fretStart === 0 ? x(0) - colGap.value : x(region.fretStart - 1)
-  return { left, right: x(region.fretEnd) }
+  if (region.fretEnd === 0) return { left: x(0) - colGap.value, right: x(0) }
+  return { left: x(Math.max(region.fretStart - 1, 0)), right: x(region.fretEnd) }
 }
 
 function regionBox(region: Region): { x: number; y: number; width: number; height: number } {

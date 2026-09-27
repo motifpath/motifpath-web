@@ -391,11 +391,20 @@ describe('FrettedDiagramEditor', () => {
       expect(Number(band.attributes('height'))).toBeCloseTo(6 * rowGap)
     })
 
-    it('starts a region from fret 0 at the open-string area, left of the nut', () => {
+    it('starts a region from fret 0 at the nut, leaving the open-string area bare', () => {
       const wrapper = mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 2 })])
 
       const band = wrapper.get('[data-test="editor-region"]')
+      expect(Number(band.attributes('x'))).toBeCloseTo(fretX(0, geometry))
+      expect(Number(band.attributes('width'))).toBeCloseTo(fretX(2, geometry) - fretX(0, geometry))
+    })
+
+    it('draws a region covering only the open strings over the open-string area, so it still shows', () => {
+      const wrapper = mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 0 })])
+
+      const band = wrapper.get('[data-test="editor-region"]')
       expect(Number(band.attributes('x'))).toBeCloseTo(fretX(0, geometry) - EDITOR_PX_PER_FRET)
+      expect(Number(band.attributes('width'))).toBeCloseTo(EDITOR_PX_PER_FRET)
     })
 
     it("tints a band with the region's color, or the accent color when it has none", () => {

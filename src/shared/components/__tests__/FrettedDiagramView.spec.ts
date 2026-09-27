@@ -462,6 +462,44 @@ describe('FrettedDiagramView', () => {
       expect(cy(4)).toBeGreaterThan(y2!)
     })
 
+    describe('a region from fret 0', () => {
+      function mountFromOpen(fretEnd: number) {
+        return mount(FrettedDiagramView, {
+          props: {
+            diagram: makeFrettedDiagram({
+              positions: [
+                { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
+                { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+              ],
+              regions: [{ region_id: 'r1', fret_start: 0, fret_end: fretEnd, description: { en: 'Open' }, color: null }],
+            }),
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef(),
+          },
+        })
+      }
+      const fretLineX = (wrapper: ReturnType<typeof mountFromOpen>, fret: number) =>
+        Number(wrapper.findAll('[data-test="fret-number"]').find((n) => n.text() === String(fret))!.attributes('x'))
+
+      it('starts at the nut, leaving the open-string area bare', () => {
+        const wrapper = mountFromOpen(3)
+        const band = wrapper.get('[data-test="diagram-region"]')
+
+        expect(Number(band.attributes('x'))).toBeCloseTo(fretLineX(wrapper, 0))
+        expect(Number(band.attributes('x')) + Number(band.attributes('width'))).toBeCloseTo(fretLineX(wrapper, 3))
+      })
+
+      it('covers the open-string area when it spans only the open strings, so it still shows', () => {
+        const wrapper = mountFromOpen(0)
+        const band = wrapper.get('[data-test="diagram-region"]')
+        const openMarkerX = Number(wrapper.findAll('[data-test="diagram-position"]')[0]!.attributes('cx'))
+
+        expect(Number(band.attributes('width'))).toBeGreaterThan(0)
+        expect(Number(band.attributes('x'))).toBeLessThan(openMarkerX)
+        expect(Number(band.attributes('x')) + Number(band.attributes('width'))).toBeCloseTo(fretLineX(wrapper, 0))
+      })
+    })
+
     it("tints a band with the region's color, else the default token", () => {
       const [box1, box2] = mountWithRegions().findAll('[data-test="diagram-region"]')
 
