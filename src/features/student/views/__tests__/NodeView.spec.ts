@@ -40,6 +40,11 @@ const lesson = {
 }
 vi.mock('@/features/student/composables/useLessonNode', () => ({ useLessonNode: () => lesson }))
 
+const waitForCompletion = vi.fn()
+vi.mock('@/features/student/composables/useLessonCompletionSync', () => ({
+  useLessonCompletionSync: () => ({ waitForCompletion }),
+}))
+
 // A real device's width and height are independent — a phone rotated to
 // landscape is wide but short. Tests drive this directly rather than via
 // window.matchMedia, since useMediaQuery's own reactivity to the query is
@@ -109,6 +114,7 @@ describe('NodeView', () => {
   beforeEach(() => {
     push.mockReset()
     replace.mockReset()
+    waitForCompletion.mockReset().mockResolvedValue({ kind: 'recorded' })
     lesson.completedCourseEnrollmentId.value = null
     complete.mockReset().mockResolvedValue(undefined)
     useLessonTracking.mockClear()
@@ -351,6 +357,50 @@ describe('NodeView', () => {
         expect(order).toEqual(['complete', 'push'])
       })
 
+      it('waits for the completion to be recorded before going back to the path', async () => {
+        const order: string[] = []
+        complete.mockImplementation(async () => {
+          order.push('complete')
+        })
+        waitForCompletion.mockImplementation(async (nodeId: string) => {
+          order.push(`wait:${nodeId}`)
+          return { kind: 'recorded' }
+        })
+        push.mockImplementation(async () => {
+          order.push('push')
+        })
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await settle(wrapper)
+
+        expect(order).toEqual(['complete', 'wait:node-abc', 'push'])
+      })
+
+      it('still goes back to the path when the completion is slow to be recorded', async () => {
+        waitForCompletion.mockResolvedValue({ kind: 'timed-out' })
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await settle(wrapper)
+
+        expect(push).toHaveBeenCalledWith({ name: 'path' })
+      })
+
+      it('goes straight to the course-completed screen when this lesson finished the course', async () => {
+        waitForCompletion.mockResolvedValue({ kind: 'course-completed', enrollmentId: 'ce-1' })
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await settle(wrapper)
+
+        expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
+        expect(push).not.toHaveBeenCalled()
+      })
+
       it('acts only once when the button is pressed twice in quick succession', async () => {
         const wrapper = await mountView()
         await endVideo(wrapper)
@@ -389,6 +439,16 @@ describe('NodeView', () => {
 
         expect(complete).toHaveBeenCalledTimes(1)
         expect(push).toHaveBeenCalledWith({ name: 'practice', params: { nodeId: 'node-abc' } })
+      })
+
+      it('goes to practice without waiting for the completion to be recorded', async () => {
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="practice-link"]').trigger('click')
+        await settle(wrapper)
+
+        expect(waitForCompletion).not.toHaveBeenCalled()
       })
     })
 

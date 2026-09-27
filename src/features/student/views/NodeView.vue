@@ -4,6 +4,7 @@ import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import CuePanel from '@/features/student/components/CuePanel.vue'
 import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
+import { useLessonCompletionSync } from '@/features/student/composables/useLessonCompletionSync'
 import { useLessonNode } from '@/features/student/composables/useLessonNode'
 import { useLessonTracking } from '@/features/student/composables/useLessonTracking'
 import { activeCue } from '@/features/student/utils/activeCue'
@@ -95,15 +96,27 @@ function retryPlayback(): void {
   playerKey.value += 1
 }
 
+const { waitForCompletion } = useLessonCompletionSync()
+
 // Reports completion before leaving, so the event has been accepted by the
 // time the next screen loads its progress. Pressing again while it is in
 // flight does nothing.
-async function finish(to: RouteLocationRaw): Promise<void> {
+//
+// Going back to the path also waits for the completion to be recorded, so the
+// path shows this step done — and a lesson that finished the course goes
+// straight to the course-completed screen. Going to practice doesn't wait: a
+// read that discovered the course completion would skip the practice.
+async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Promise<void> {
   if (finishing.value) return
   finishing.value = true
   try {
     await complete()
-    await router.push(to)
+    const outcome = awaitProgress ? await waitForCompletion(nodeId.value) : null
+    if (outcome?.kind === 'course-completed') {
+      await router.replace({ name: 'course-completed', params: { enrollmentId: outcome.enrollmentId } })
+    } else {
+      await router.push(to)
+    }
   } finally {
     finishing.value = false
   }
@@ -244,7 +257,7 @@ async function finish(to: RouteLocationRaw): Promise<void> {
           v-else
           data-test="complete"
           :disabled="finishing"
-          @click="finish({ name: 'path' })"
+          @click="finish({ name: 'path' }, { awaitProgress: true })"
         >
           {{ t('nodeView.markComplete') }}
         </PrimaryButton>
