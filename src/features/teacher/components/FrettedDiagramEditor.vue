@@ -21,7 +21,6 @@ import { readableTextColor, resolveMarkerColor } from '@/shared/utils/diagramCol
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
   EDITOR_BOARD_H,
-  EDITOR_CAPTION_SPACE,
   EDITOR_MARGIN_LEFT,
   EDITOR_MARGIN_TOP,
   EDITOR_VIEW_H,
@@ -35,6 +34,12 @@ import {
   positionX,
   stringY,
 } from '@/shared/utils/frettedFretboardEditor'
+import {
+  CAPTION_BAR_HEIGHT,
+  CAPTION_FONT_SIZE,
+  CAPTION_LANE_HEIGHT,
+  layoutRegionCaptions,
+} from '@/shared/utils/regionCaptionLayout'
 
 type Instrument = components['schemas']['Instrument']
 
@@ -91,12 +96,36 @@ const boardWidth = computed(() => editorBoardWidth(geometry.value))
 // Regions that can't be drawn yet (backwards, or past the last string) are left off the board;
 // the regions editor below already flags them.
 const drawableRegions = computed(() => props.regions.filter((region) => isDrawableRegion(region, geometry.value)))
-// The board shifts down to make room for region captions above it.
-const boardOffsetY = computed(() => (drawableRegions.value.length > 0 ? EDITOR_CAPTION_SPACE : 0))
-const viewHeight = computed(() => EDITOR_VIEW_H + boardOffsetY.value)
 
 function regionBox(region: LocalRegion) {
   return editorRegionBox(region, geometry.value)
+}
+function regionCaption(region: LocalRegion): string {
+  return region.description[editingLanguage.value] ?? ''
+}
+
+// Captions stack on as many lines above the board as their overlaps need, and the board shifts
+// down to make room for them.
+const captionLayout = computed(() =>
+  layoutRegionCaptions(
+    drawableRegions.value.map((region) => {
+      const box = regionBox(region)
+      return { left: box.x, right: box.x + box.width, text: regionCaption(region) }
+    }),
+    viewWidth.value,
+  ),
+)
+const boardOffsetY = computed(() => captionLayout.value.laneCount * CAPTION_LANE_HEIGHT)
+const viewHeight = computed(() => EDITOR_VIEW_H + boardOffsetY.value)
+
+/** A caption's line (in board coordinates, above the top string's band edge) and the bar under
+ *  it spanning its band's frets, which ties it to its band even when several share a fret. */
+function captionPlacement(index: number): { textX: number; textY: number; barY: number } {
+  const placement = captionLayout.value.placements[index] ?? { lane: 0, textX: 0 }
+  const rowGap = stringY(2, geometry.value) - stringY(1, geometry.value)
+  const linesBottom = stringY(1, geometry.value) - rowGap / 2 - 2
+  const barY = linesBottom - CAPTION_BAR_HEIGHT - placement.lane * CAPTION_LANE_HEIGHT
+  return { textX: placement.textX, textY: barY - 3, barY }
 }
 function regionStyle(region: LocalRegion): { fill: string } | undefined {
   return region.color ? { fill: region.color } : undefined
@@ -226,7 +255,7 @@ function onDrop(index: number) {
             opacity="0.4"
           />
 
-          <g v-for="region in drawableRegions" :key="`region-${region.id}`">
+          <g v-for="(region, index) in drawableRegions" :key="`region-${region.id}`">
             <rect
               data-test="editor-region"
               v-bind="regionBox(region)"
@@ -235,15 +264,26 @@ function onDrop(index: number) {
               :class="region.color ? '' : 'fill-accent'"
               :style="regionStyle(region)"
             />
+            <rect
+              data-test="editor-region-caption-bar"
+              :x="regionBox(region).x"
+              :y="captionPlacement(index).barY"
+              :width="regionBox(region).width"
+              :height="CAPTION_BAR_HEIGHT"
+              rx="1.5"
+              fill-opacity="0.8"
+              :class="region.color ? '' : 'fill-accent'"
+              :style="regionStyle(region)"
+            />
             <text
               data-test="editor-region-caption"
-              :x="regionBox(region).x + 4"
-              :y="regionBox(region).y - 5"
-              font-size="12"
+              :x="captionPlacement(index).textX"
+              :y="captionPlacement(index).textY"
+              :font-size="CAPTION_FONT_SIZE"
               font-weight="600"
               class="fill-ink-muted"
             >
-              {{ region.description[editingLanguage] ?? '' }}
+              {{ regionCaption(region) }}
             </text>
           </g>
 

@@ -19,10 +19,6 @@ export const EDITOR_MARGIN_RIGHT = 30
 export const EDITOR_MARGIN_TOP = 34
 export const EDITOR_MARGIN_BOTTOM = 40
 export const EDITOR_BOARD_H = EDITOR_VIEW_H - EDITOR_MARGIN_TOP - EDITOR_MARGIN_BOTTOM
-// Extra room above the board for highlighted-region captions, taken only when there are regions
-// (the same allowance the read-only viewer makes).
-export const EDITOR_CAPTION_SPACE = 20
-
 // Fixed pixel width per fret (not derived from a fixed total board width) —
 // matches the density the original 0-15 fixed layout had, so the common
 // (<=15 fret) case looks the same as before; a wider range just extends the
