@@ -10,3 +10,16 @@ type StudentPathView = components['schemas']['StudentPathView']
 export function completedCourseEnrollmentId(view: StudentPathView | null): string | null {
   return view?.course_completed ? (view.course_enrollment_id ?? null) : null
 }
+
+/**
+ * True when a standalone path has every step completed. Unlike a course, a
+ * finished standalone path stays the student's current path and the API sends
+ * no one-time signal for it, so completion is read from the steps themselves.
+ */
+export function isStandalonePathComplete(view: StudentPathView): boolean {
+  return (
+    !view.course_enrollment_id &&
+    view.items.length > 0 &&
+    view.items.every((item) => item.status === 'completed')
+  )
+}

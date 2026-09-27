@@ -58,6 +58,25 @@ describe('PathView', () => {
     expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
   })
 
+  it('congratulates the student on a finished standalone path and points to what is next', () => {
+    set({ data: ref(view([step(1, undefined, 'completed'), step(2, undefined, 'completed')], { title: 'Blues Foundations' })) })
+
+    const wrapper = mountView()
+    const card = wrapper.get('[data-test="path-complete"]')
+
+    expect(card.text()).toContain('Blues Foundations')
+    const targets = wrapper.findAllComponents(RouterLinkStub).map((link) => link.props('to'))
+    expect(targets).toContainEqual({ name: 'course-catalog' })
+    expect(targets).toContainEqual({ name: 'my-courses' })
+    expect(wrapper.find('[data-test="path"]').exists()).toBe(true)
+  })
+
+  it('shows no path-complete card while steps are left', () => {
+    set({ data: ref(view([step(1, undefined, 'completed'), step(2, undefined, 'in_progress')])) })
+
+    expect(mountView().find('[data-test="path-complete"]').exists()).toBe(false)
+  })
+
   it('stays on the path while the course is still in progress', () => {
     replace.mockReset()
     set({ data: ref(view([step(1, undefined, 'in_progress')], { course_enrollment_id: 'ce-1', course_checkpoint_position: 1 })) })

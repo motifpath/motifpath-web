@@ -9,7 +9,11 @@
     "loadingNoun": "sua trilha",
     "emptyHeading": "Tudo pronto",
     "emptyMessage": "Estamos preparando sua trilha personalizada. Avisaremos quando estiver pronta.",
-    "errorMessage": "Não foi possível carregar sua trilha."
+    "errorMessage": "Não foi possível carregar sua trilha.",
+    "completeHeading": "Trilha concluída!",
+    "completeMessage": "Você concluiu {title}. Escolha o próximo passo: encontre um curso ou mude para outra trilha em Meus cursos.",
+    "findCourse": "Encontrar um curso",
+    "myCourses": "Meus cursos"
   },
   "pathStep": {
     "status": {

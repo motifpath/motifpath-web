@@ -9,7 +9,11 @@
     "loadingNoun": "your path",
     "emptyHeading": "You're all set",
     "emptyMessage": "We're building your personalized path. We'll let you know when it's ready.",
-    "errorMessage": "We couldn't load your path."
+    "errorMessage": "We couldn't load your path.",
+    "completeHeading": "Path complete!",
+    "completeMessage": "You finished {title}. Pick your next step: find a course, or switch to another path in My courses.",
+    "findCourse": "Find a course",
+    "myCourses": "My courses"
   },
   "pathStep": {
     "status": {
