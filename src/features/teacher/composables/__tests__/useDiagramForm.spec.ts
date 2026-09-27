@@ -736,4 +736,116 @@ describe('useDiagramForm', () => {
       expect(form.regions.value[0]!.description).toEqual({ en: 'Box' })
     })
   })
+
+  describe('merging a stack', () => {
+    it("replaces the positions, regions and classification with the merged ones, keeping the diagram's own fields", () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeFrettedDiagram({ root_note: 'C', color: '#3B82F6', label_display: 'note' }))
+      const namesBefore = { ...form.names.value }
+
+      form.loadFlattened({
+        positions: [
+          {
+            interval: 'R',
+            note_name: 'A',
+            shape: 'star',
+            color: '#EF4444',
+            sequence_index: 0,
+            string: 3,
+            fret: 2,
+            custom_label: { en: 'Hi' },
+            note: { en: 'Target' },
+          },
+          { interval: '5', note_name: 'E', shape: 'dot', sequence_index: 1, string: 2, fret: 5 },
+        ],
+        regions: [{ fret_start: 1, fret_end: 3, description: { en: 'Shape 1' }, color: null }],
+        skillIds: ['s1'],
+        conceptIds: ['c1', 'c2'],
+      })
+
+      expect(form.positions.value).toEqual([
+        {
+          id: expect.any(String),
+          string: 3,
+          fret: 2,
+          interval: 'R',
+          noteName: 'A',
+          shape: 'star',
+          color: '#EF4444',
+          sequenceIndex: 0,
+          customLabel: { en: 'Hi' },
+          note: { en: 'Target' },
+        },
+        {
+          id: expect.any(String),
+          string: 2,
+          fret: 5,
+          interval: '5',
+          noteName: 'E',
+          shape: 'dot',
+          color: null,
+          sequenceIndex: 1,
+          customLabel: {},
+          note: {},
+        },
+      ])
+      expect(form.regions.value).toEqual([
+        { id: expect.any(String), fretStart: 1, fretEnd: 3, stringStart: null, stringEnd: null, description: { en: 'Shape 1' }, color: null },
+      ])
+      expect(form.skillIds.value).toEqual(['s1'])
+      expect(form.conceptIds.value).toEqual(['c1', 'c2'])
+      expect(form.names.value).toEqual(namesBefore)
+      expect(form.instrumentId.value).toBe('instrument-guitar')
+      expect(form.rootNote.value).toBe('C')
+      expect(form.color.value).toBe('#3B82F6')
+      expect(form.labelDisplay.value).toBe('note')
+    })
+
+    it('gives every merged position and region its own id', () => {
+      const form = useDiagramForm()
+
+      form.loadFlattened({
+        positions: [
+          { interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 0, string: 6, fret: 5 },
+          { interval: '5', note_name: 'E', shape: 'dot', sequence_index: 1, string: 5, fret: 7 },
+        ],
+        regions: [
+          { fret_start: 5, fret_end: 8, description: { en: 'Shape 1' }, color: null },
+          { fret_start: 7, fret_end: 10, description: { en: 'Shape 2' }, color: null },
+        ],
+        skillIds: [],
+        conceptIds: [],
+      })
+
+      const ids = [...form.positions.value.map((p) => p.id), ...form.regions.value.map((r) => r.id)]
+      expect(new Set(ids).size).toBe(4)
+    })
+  })
+
+  describe('region caption length', () => {
+    it('reports a region caption over 60 characters in the language it is written in, and blocks saving', () => {
+      const form = useDiagramForm()
+      form.addLanguage('pt_BR')
+      form.setName('en', 'Shapes')
+      form.setName('pt_BR', 'Desenhos')
+      form.addRegion()
+      const id = form.regions.value[0]!.id
+
+      form.setRegionDescription(id, 'en', 'x'.repeat(61))
+      form.setRegionDescription(id, 'pt_BR', 'y'.repeat(60))
+
+      expect(form.missingText.value.en).toEqual([{ kind: 'regionCaptionTooLong', region: 1 }])
+      expect(form.missingText.value.pt_BR).toEqual([])
+      expect(form.hasCompleteText.value).toBe(false)
+    })
+
+    it('measures the caption as it will be sent, trimmed', () => {
+      const form = useDiagramForm()
+      form.addRegion()
+
+      form.setRegionDescription(form.regions.value[0]!.id, 'en', ` ${'x'.repeat(60)} `)
+
+      expect(form.missingText.value.en).toEqual([{ kind: 'name' }])
+    })
+  })
 })

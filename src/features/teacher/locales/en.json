@@ -161,7 +161,6 @@
     "labelModeHidden": "Hidden",
     "classificationLabel": "Classification",
     "classificationHint": "A diagram needs at least one skill and one concept to be reusable across the library.",
-    "previewLabel": "Preview",
     "previewEmpty": "Place a position to see a preview.",
     "viewPreviewButton": "View full preview",
     "diagramUpdated": "Diagram updated.",
@@ -180,7 +179,9 @@
     "copySaved": "Copy saved",
     "templateSaved": "Template saved",
     "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving.",
-    "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template."
+    "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template.",
+    "addOverlayButton": "Overlay diagram…",
+    "mergedNotice": "The merged layers are saved as a new diagram, so the diagrams you started from stay as they were. Use Save as."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
@@ -210,6 +211,7 @@
     "removeAriaLabel": "Remove this region",
     "descriptionAriaLabel": "Region caption",
     "descriptionPlaceholder": "Caption, e.g. Shape 1",
+    "captionTooLong": "Shorten this caption to {max} characters at most.",
     "invalid": "Check the range: it runs backwards or past the last string."
   },
   "challengeConfigPanel": {
@@ -399,6 +401,7 @@
     "missingText": "{language} is missing: {items}",
     "missingName": "the name",
     "missingRegionCaption": "the caption of region {n}",
+    "regionCaptionTooLong": "a shorter caption for region {n} ({max} characters at most)",
     "missingMarkerLabel": "the label of position {n}",
     "missingMarkerNote": "the note on position {n}",
     "removeTitle": "Remove {language}?",
@@ -506,5 +509,22 @@
     "leaveTitle": "Leave without saving?",
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
     "leaveConfirm": "Leave"
+  },
+  "overlayDiagramPicker": {
+    "loadingNoun": "diagrams",
+    "loadErrorMessage": "We couldn't load the diagrams.",
+    "emptyHeading": "Nothing to overlay",
+    "emptyMessage": "There's no other diagram for this instrument yet."
+  },
+  "overlayDiagramsModal": {
+    "title": "Overlay diagrams",
+    "hint": "See how other diagrams on this instrument combine with this one. Merge to bring them into the editor as positions and regions you can change, or discard to leave this diagram as it is.",
+    "addAnother": "Add another diagram",
+    "backToPreview": "Back to the preview",
+    "removeOverlayAriaLabel": "Remove {name}",
+    "regionPerLayer": "Add a highlighted region for each diagram, captioned with its name",
+    "mergeNeedsRoot": "Choose a root note first, so every position of this diagram has an interval to merge.",
+    "discard": "Discard",
+    "merge": "Merge into the editor"
   }
 }

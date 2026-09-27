@@ -8,7 +8,7 @@
  */
 import { Palette, Plus, X } from 'lucide-vue-next'
 
-import type { LocalRegion } from '@/features/teacher/composables/useDiagramForm'
+import { REGION_CAPTION_MAX_LENGTH, type LocalRegion } from '@/features/teacher/composables/useDiagramForm'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -42,6 +42,11 @@ function typedNumber(event: Event): number | null {
 
 function typedText(event: Event): string {
   return event.target instanceof HTMLInputElement ? event.target.value : ''
+}
+
+// A merged caption can arrive longer than the input would let anyone type.
+function captionTooLong(region: LocalRegion): boolean {
+  return (region.description[props.language] ?? '').trim().length > REGION_CAPTION_MAX_LENGTH
 }
 
 function onFretStart(region: LocalRegion, event: Event) {
@@ -193,13 +198,17 @@ const numberInputClass =
       <input
         :value="region.description[language] ?? ''"
         type="text"
-        maxlength="60"
+        :maxlength="REGION_CAPTION_MAX_LENGTH"
         data-test="region-description"
         :aria-label="t('diagramRegionsEditor.descriptionAriaLabel')"
         :placeholder="t('diagramRegionsEditor.descriptionPlaceholder')"
-        class="rounded border border-border bg-surface px-2 py-1 text-sm text-ink"
+        class="rounded border bg-surface px-2 py-1 text-sm text-ink"
+        :class="captionTooLong(region) ? 'border-danger' : 'border-border'"
         @input="emit('set-description', region.id, typedText($event))"
       />
+      <p v-if="captionTooLong(region)" data-test="region-caption-too-long" class="text-xs text-danger">
+        {{ t('diagramRegionsEditor.captionTooLong', { max: REGION_CAPTION_MAX_LENGTH }) }}
+      </p>
       <p v-if="invalidIds.includes(region.id)" data-test="region-invalid" class="text-xs text-danger">
         {{ t('diagramRegionsEditor.invalid') }}
       </p>

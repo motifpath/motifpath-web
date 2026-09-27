@@ -180,6 +180,58 @@ describe('FrettedDiagramView', () => {
     expect(wrapper.findAll('[data-test="diagram-position-label"]')[0]?.text()).toBe('A')
   })
 
+  it('numbers no fret below 0, even with open strings, and draws open-string markers on the nut', () => {
+    const diagram = makeFrettedDiagram({
+      positions: [
+        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
+        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+      ],
+      regions: [],
+    })
+    const wrapper = mount(FrettedDiagramView, {
+      props: { diagram, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
+    })
+
+    const fretNumbers = wrapper.findAll('[data-test="fret-number"]').map((n) => Number(n.text()))
+    expect(fretNumbers[0]).toBe(0)
+    expect(Math.min(...fretNumbers)).toBe(0)
+    const nutX = Number(wrapper.findAll('[data-test="fret-number"]')[0]!.attributes('x'))
+    const openMarker = wrapper.findAll('[data-test="diagram-position"]')[0]!
+    expect(Number(openMarker.attributes('cx'))).toBeCloseTo(nutX)
+    // Strings start at the nut too: nothing is drawn left of it.
+    for (const string of wrapper.findAll('[data-test="diagram-string"]')) {
+      expect(Number(string.attributes('x1'))).toBeCloseTo(nutX)
+    }
+  })
+
+  it('starts the wood at the nut, leaving the open-string area bare', () => {
+    const openDiagram = makeFrettedDiagram({
+      positions: [
+        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
+        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+      ],
+      regions: [],
+    })
+    const open = mount(FrettedDiagramView, {
+      props: { diagram: openDiagram, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
+    })
+    const nutX = Number(open.findAll('[data-test="fret-number"]')[0]!.attributes('x'))
+    const wood = open.get('[data-test="fretboard-wood"]')
+    const woodEnd = Number(wood.attributes('x')) + Number(wood.attributes('width'))
+
+    expect(Number(wood.attributes('x'))).toBe(nutX)
+    // Still reaches the right end of the board.
+    const lastFretX = Number(open.findAll('[data-test="fret-number"]').at(-1)!.attributes('x'))
+    expect(woodEnd).toBeGreaterThanOrEqual(lastFretX)
+
+    // Up the neck, with no open strings, the wood covers the whole window.
+    const closed = mount(FrettedDiagramView, {
+      props: { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
+    })
+    const firstFretX = Number(closed.findAll('[data-test="fret-number"]')[0]!.attributes('x'))
+    expect(Number(closed.get('[data-test="fretboard-wood"]').attributes('x'))).toBe(firstFretX)
+  })
+
   it('renders an accessible label on the root svg element', () => {
     const wrapper = mount(FrettedDiagramView, {
       props: {
@@ -414,12 +466,125 @@ describe('FrettedDiagramView', () => {
       expect(cy(4)).toBeGreaterThan(y2!)
     })
 
+    describe('a region from fret 0', () => {
+      function mountFromOpen(fretEnd: number) {
+        return mount(FrettedDiagramView, {
+          props: {
+            diagram: makeFrettedDiagram({
+              positions: [
+                { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
+                { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+              ],
+              regions: [{ region_id: 'r1', fret_start: 0, fret_end: fretEnd, description: { en: 'Open' }, color: null }],
+            }),
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef(),
+          },
+        })
+      }
+      const fretLineX = (wrapper: ReturnType<typeof mountFromOpen>, fret: number) =>
+        Number(wrapper.findAll('[data-test="fret-number"]').find((n) => n.text() === String(fret))!.attributes('x'))
+
+      it('starts at the nut, leaving the open-string area bare', () => {
+        const wrapper = mountFromOpen(3)
+        const band = wrapper.get('[data-test="diagram-region"]')
+
+        expect(Number(band.attributes('x'))).toBeCloseTo(fretLineX(wrapper, 0))
+        expect(Number(band.attributes('x')) + Number(band.attributes('width'))).toBeCloseTo(fretLineX(wrapper, 3))
+      })
+
+      it('surrounds the nut when it spans only the open strings, covering their markers', () => {
+        const wrapper = mountFromOpen(0)
+        const band = wrapper.get('[data-test="diagram-region"]')
+        const openMarkerX = Number(wrapper.findAll('[data-test="diagram-position"]')[0]!.attributes('cx'))
+        const left = Number(band.attributes('x'))
+        const right = left + Number(band.attributes('width'))
+
+        expect(left).toBeLessThan(openMarkerX - 13.5)
+        expect(right).toBeGreaterThan(openMarkerX + 13.5)
+        expect(right).toBeLessThanOrEqual(fretLineX(wrapper, 1))
+      })
+    })
+
     it("tints a band with the region's color, else the default token", () => {
       const [box1, box2] = mountWithRegions().findAll('[data-test="diagram-region"]')
 
       expect(box2?.attributes('style')).toContain('fill: #22C55E')
       expect(box1?.attributes('style') ?? '').not.toContain('fill:')
       expect(box1?.classes()).toContain('fill-accent')
+    })
+
+    describe('captions that would collide', () => {
+      function mountOverlapping() {
+        return mount(FrettedDiagramView, {
+          props: {
+            diagram: makeFrettedDiagram({
+              regions: [
+                { region_id: 'r1', fret_start: 5, fret_end: 10, description: { en: 'A Minor Pentatonic — Positions 1 and 2' }, color: '#3B82F6' },
+                { region_id: 'r2', fret_start: 5, fret_end: 8, description: { en: 'Shape 1' }, color: null },
+                { region_id: 'r3', fret_start: 7, fret_end: 10, description: { en: 'Shape 2' }, color: '#22C55E' },
+              ],
+            }),
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef(),
+          },
+        })
+      }
+      const captionYs = (wrapper: ReturnType<typeof mountOverlapping>) =>
+        wrapper.findAll('[data-test="diagram-region-caption"]').map((c) => Number(c.attributes('y')))
+      const viewHeight = (wrapper: ReturnType<typeof mountOverlapping>) =>
+        Number(wrapper.get('svg').attributes('viewBox')!.split(' ')[3])
+
+      it('stacks overlapping captions on separate lines', () => {
+        expect(new Set(captionYs(mountOverlapping())).size).toBe(3)
+      })
+
+      it('keeps captions of bands that fit side by side on one line', () => {
+        const apart = mount(FrettedDiagramView, {
+          props: {
+            diagram: makeFrettedDiagram({
+              regions: [
+                { region_id: 'r1', fret_start: 5, fret_end: 6, description: { en: 'A' }, color: null },
+                { region_id: 'r2', fret_start: 8, fret_end: 9, description: { en: 'B' }, color: null },
+              ],
+            }),
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef(),
+          },
+        })
+        expect(new Set(captionYs(apart)).size).toBe(1)
+      })
+
+      it('grows the space above the board by one line per extra caption line', () => {
+        // Box 1 and Box 2 overlap, so two lines; the three pentatonic bands need three.
+        expect(viewHeight(mountOverlapping())).toBeGreaterThan(viewHeight(mountWithRegions()))
+      })
+
+      it("underlines each caption with a bar across its band's frets, in the band's color", () => {
+        const wrapper = mountOverlapping()
+        const bands = wrapper.findAll('[data-test="diagram-region"]')
+        const bars = wrapper.findAll('[data-test="diagram-region-caption-bar"]')
+
+        expect(bars).toHaveLength(3)
+        bars.forEach((bar, index) => {
+          expect(bar.attributes('x')).toBe(bands[index]!.attributes('x'))
+          expect(bar.attributes('width')).toBe(bands[index]!.attributes('width'))
+        })
+        expect(bars[0]!.attributes('style')).toContain('fill: #3B82F6')
+        expect(bars[1]!.classes()).toContain('fill-accent')
+      })
+
+      it('keeps every caption and bar above the board', () => {
+        const wrapper = mountOverlapping()
+        const boardTop = Number(wrapper.get('[data-test="fretboard-wood"]').attributes('y'))
+        const bars = wrapper.findAll('[data-test="diagram-region-caption-bar"]')
+
+        captionYs(wrapper).forEach((y) => expect(y).toBeLessThan(boardTop))
+        bars.forEach((bar) => {
+          expect(Number(bar.attributes('y')) + Number(bar.attributes('height'))).toBeLessThanOrEqual(boardTop)
+          expect(Number(bar.attributes('y'))).toBeGreaterThan(0)
+        })
+      })
     })
   })
 })

@@ -40,7 +40,8 @@ export interface FrettedDiagramLayout {
   /** Highlighted bands, in drawing order (later ones on top). */
   regions: FrettedRegion[]
   stringCount: number
-  /** One fret below the lowest visible position or region (or the diagram's nut, whichever wins the minimum span). */
+  /** One fret below the lowest visible position or region, but never below the nut (0): open-string markers sit on
+   *  the nut, so nothing is drawn left of it. */
   minFret: number
   /** One fret above the highest visible position or region (or the diagram's nut, whichever wins the minimum span). */
   maxFret: number
@@ -94,7 +95,7 @@ export function computeFrettedDiagramLayout(
     ...positions.map((position) => position.fret),
     ...regions.flatMap((region) => [region.fretStart, region.fretEnd]),
   ]
-  const lowFret = frets.length > 0 ? Math.min(...frets) - 1 : 0
+  const lowFret = frets.length > 0 ? Math.max(Math.min(...frets) - 1, 0) : 0
   const highFret = frets.length > 0 ? Math.max(...frets) + 1 : MIN_FRET_SPAN
   const span = Math.max(highFret - lowFret, MIN_FRET_SPAN)
 

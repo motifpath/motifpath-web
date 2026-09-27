@@ -11,6 +11,12 @@ import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
+import {
+  CAPTION_BAR_HEIGHT,
+  CAPTION_FONT_SIZE,
+  CAPTION_LANE_HEIGHT,
+  layoutRegionCaptions,
+} from '@/shared/utils/regionCaptionLayout'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 
@@ -36,17 +42,14 @@ const MARGIN_LEFT = 44
 const MARGIN_RIGHT = 30
 const MARGIN_TOP = 34
 const MARGIN_BOTTOM = 40
-// Extra room above the board for region captions, taken only when there are regions.
-const CAPTION_SPACE = 20
+// Half the width of a band covering only the open strings: it surrounds the markers on the nut.
+const OPEN_BAND_HALF_WIDTH = 18
 const BOARD_W = VIEW_W - MARGIN_LEFT - MARGIN_RIGHT
 const BOARD_H = 300 - MARGIN_TOP - MARGIN_BOTTOM
 
 const layout = computed(() =>
   computeFrettedDiagramLayout(props.diagram, props.instrument, props.diagramRef),
 )
-
-const boardTop = computed(() => MARGIN_TOP + (layout.value.regions.length > 0 ? CAPTION_SPACE : 0))
-const viewH = computed(() => boardTop.value + BOARD_H + MARGIN_BOTTOM)
 
 const fretSpan = computed(() => layout.value.maxFret - layout.value.minFret)
 const colGap = computed(() => BOARD_W / fretSpan.value)
@@ -56,14 +59,30 @@ function x(fret: number): number {
   return MARGIN_LEFT + (fret - layout.value.minFret) * colGap.value
 }
 
+// Region captions stack on as many lines above the board as their overlaps need (horizontal
+// geometry only, so this doesn't depend on where the board ends up vertically).
+const captionLayout = computed(() =>
+  layoutRegionCaptions(
+    layout.value.regions.map((region) => {
+      const { left, right } = regionFretEdges(region)
+      return { left, right, text: localizedName(region.description) }
+    }),
+    VIEW_W,
+  ),
+)
+
+const boardTop = computed(() => MARGIN_TOP + captionLayout.value.laneCount * CAPTION_LANE_HEIGHT)
+const viewH = computed(() => boardTop.value + BOARD_H + MARGIN_BOTTOM)
+
 /**
  * X position for a position marker — the middle of the fret space behind
- * the fret wire, matching standard fretboard-diagram convention (mirrors
+ * the fret wire, or on the nut for an open string, matching standard
+ * fretboard-diagram convention (mirrors
  * `frettedFretboardEditor.ts`'s `positionX`, which the editor uses; this
  * viewer keeps its own local geometry rather than sharing that module).
  */
 function markerX(fret: number): number {
-  if (fret === 0) return x(0) - colGap.value / 2
+  if (fret === 0) return x(0)
   return (x(fret - 1) + x(fret)) / 2
 }
 
@@ -71,8 +90,12 @@ function y(stringNumber: number): number {
   return boardTop.value + (stringNumber - 1) * rowGap.value
 }
 
+// The wood and strings start at the window's left edge, which is never below the nut.
+const boardLeft = computed(() => x(layout.value.minFret))
+
+// The window never reaches below the nut, so no fret line is drawn or numbered below 0.
 const frets = computed(() => {
-  const start = Math.ceil(layout.value.minFret)
+  const start = Math.max(Math.ceil(layout.value.minFret), 0)
   const end = Math.floor(layout.value.maxFret)
   const result: number[] = []
   for (let fret = start; fret <= end; fret++) result.push(fret)
@@ -138,12 +161,17 @@ function markerLabel(position: Marker): string {
   return props.labelMode === 'note' ? position.noteName : intervalLabel(position.interval)
 }
 
-/** A band covers whole fret spaces: from the wire before fret_start (the open-string area
- *  for fret 0) to fret_end's wire, and from half a string gap above its first string to
- *  half a gap below its last. */
+/** A band covers whole fret spaces: from the wire before fret_start (the nut for fret 0) to
+ *  fret_end's wire, and from half a string gap above its first string to half a gap below its
+ *  last. A band of only the open strings has no fret space, so it surrounds the nut, where
+ *  their markers sit. */
+function regionFretEdges(region: Region): { left: number; right: number } {
+  if (region.fretEnd === 0) return { left: x(0) - OPEN_BAND_HALF_WIDTH, right: x(0) + OPEN_BAND_HALF_WIDTH }
+  return { left: x(Math.max(region.fretStart - 1, 0)), right: x(region.fretEnd) }
+}
+
 function regionBox(region: Region): { x: number; y: number; width: number; height: number } {
-  const left = region.fretStart === 0 ? x(0) - colGap.value : x(region.fretStart - 1)
-  const right = x(region.fretEnd)
+  const { left, right } = regionFretEdges(region)
   const top = y(region.stringStart) - rowGap.value / 2
   const bottom = y(region.stringEnd) + rowGap.value / 2
   return { x: left, y: top, width: right - left, height: bottom - top }
@@ -151,6 +179,15 @@ function regionBox(region: Region): { x: number; y: number; width: number; heigh
 
 function regionStyle(region: Region): { fill: string } | undefined {
   return region.color ? { fill: region.color } : undefined
+}
+
+/** A caption's line and the bar under it spanning its band's frets, which ties it to its band
+ *  even when several captions share a fret. */
+function captionPlacement(index: number): { textX: number; textY: number; barY: number } {
+  const placement = captionLayout.value.placements[index] ?? { lane: 0, textX: 0 }
+  const linesBottom = y(1) - rowGap.value / 2 - 2
+  const barY = linesBottom - CAPTION_BAR_HEIGHT - placement.lane * CAPTION_LANE_HEIGHT
+  return { textX: placement.textX, textY: barY - 3, barY }
 }
 
 // Notes: shown while a marker is hovered or focused, and kept open by a tap (touch has no
@@ -234,9 +271,10 @@ function noteAlignClass(position: Marker): string {
       </defs>
 
       <rect
-        :x="MARGIN_LEFT"
+        data-test="fretboard-wood"
+        :x="boardLeft"
         :y="boardTop - rowGap / 2"
-        :width="BOARD_W"
+        :width="MARGIN_LEFT + BOARD_W - boardLeft"
         :height="BOARD_H + rowGap"
         rx="6"
         :fill="`url(#fretboard-wood-${diagram.diagram_id})`"
@@ -253,7 +291,7 @@ function noteAlignClass(position: Marker): string {
         opacity="0.4"
       />
 
-      <g v-for="region in layout.regions" :key="`region-${region.regionId}`">
+      <g v-for="(region, index) in layout.regions" :key="`region-${region.regionId}`">
         <rect
           data-test="diagram-region"
           v-bind="regionBox(region)"
@@ -262,11 +300,22 @@ function noteAlignClass(position: Marker): string {
           :class="region.color ? '' : 'fill-accent'"
           :style="regionStyle(region)"
         />
+        <rect
+          data-test="diagram-region-caption-bar"
+          :x="regionBox(region).x"
+          :y="captionPlacement(index).barY"
+          :width="regionBox(region).width"
+          :height="CAPTION_BAR_HEIGHT"
+          rx="1.5"
+          fill-opacity="0.8"
+          :class="region.color ? '' : 'fill-accent'"
+          :style="regionStyle(region)"
+        />
         <text
           data-test="diagram-region-caption"
-          :x="regionBox(region).x + 4"
-          :y="regionBox(region).y - 5"
-          font-size="12"
+          :x="captionPlacement(index).textX"
+          :y="captionPlacement(index).textY"
+          :font-size="CAPTION_FONT_SIZE"
           font-weight="600"
           class="fill-ink-muted"
         >
@@ -277,7 +326,8 @@ function noteAlignClass(position: Marker): string {
       <line
         v-for="stringNumber in layout.stringCount"
         :key="`string-${stringNumber}`"
-        :x1="MARGIN_LEFT"
+        data-test="diagram-string"
+        :x1="boardLeft"
         :y1="y(stringNumber)"
         :x2="MARGIN_LEFT + BOARD_W"
         :y2="y(stringNumber)"
@@ -295,6 +345,7 @@ function noteAlignClass(position: Marker): string {
           stroke-width="2"
         />
         <text
+          data-test="fret-number"
           :x="x(fret)"
           :y="boardTop + BOARD_H + 24"
           text-anchor="middle"

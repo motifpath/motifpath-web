@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
-import { Palette } from 'lucide-vue-next'
+import { Layers, Maximize2, Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -8,12 +8,14 @@ import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewMod
 import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
 import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import OverlayDiagramsModal from '@/features/teacher/components/OverlayDiagramsModal.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
+import { useDiagramOverlays } from '@/features/teacher/composables/useDiagramOverlays'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
@@ -21,7 +23,6 @@ import AppBar from '@/shared/components/AppBar.vue'
 import LocaleScope from '@/shared/components/LocaleScope.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
-import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useToast } from '@/shared/composables/useToast'
@@ -63,6 +64,17 @@ const { instruments } = useListInstruments()
 const frettedInstruments = computed(() => instruments.value.filter((i) => i.family === 'fretted'))
 
 const form = useDiagramForm()
+const {
+  overlays,
+  overlayIds,
+  regionPerLayer,
+  add: addOverlay,
+  remove: removeOverlay,
+  preview: stackPreview,
+  canMerge,
+  merge,
+  discard: discardOverlays,
+} = useDiagramOverlays(form)
 
 // The editor below the language tabs is shown in the active tab's language, as a reader of
 // that language will see the diagram; the top bar stays in the
@@ -106,9 +118,13 @@ watch(
 )
 
 const isAdmin = computed(() => currentUser.profile?.role === 'admin')
+// Layers merged into a diagram loaded from the server are saved as a new diagram, never over it,
+// so no diagram that was overlaid or merged into changes. Cleared once that new diagram is saved.
+const mergedIntoSaved = ref(false)
 const canSaveInPlace = computed(
   () =>
     canAuthor.value &&
+    !mergedIntoSaved.value &&
     (savedOwnership.value === null || canEditDiagram(savedOwnership.value, currentUser.profile)),
 )
 // Only a saved diagram has something to copy; a new one is saved with the plain Save.
@@ -142,18 +158,18 @@ const saveAsLanguages = computed(() =>
   saveAsKind.value === 'basic' ? OFFERED_LANGUAGE_CODES : form.languages.value,
 )
 // A copy of a saved diagram is suggested as "<name> (copy)" in each language's own words; a
-// new diagram keeps its own names.
+// new diagram, or merged layers (a new diagram in their own right), keep their own names.
 const saveAsInitialNames = computed(() =>
   Object.fromEntries(
     saveAsLanguages.value.map((code) => {
       const name = (form.names.value[code] ?? '').trim()
-      if (!savedDiagramId.value || name === '') return [code, name]
+      if (!savedDiagramId.value || mergedIntoSaved.value || name === '') return [code, name]
       return [code, i18n.global.t('diagramAuthoringView.copyName', { name }, { locale: fromApiLanguageCode(code) })]
     }),
   ),
 )
 const readOnlyReason = computed(() => {
-  if (canSaveInPlace.value || !savedOwnership.value) return ''
+  if (canSaveInPlace.value || mergedIntoSaved.value || !savedOwnership.value) return ''
   return savedOwnership.value.kind === 'basic'
     ? te('diagramAuthoringView.readOnlyTemplate')
     : te('diagramAuthoringView.readOnlyOtherTeacher')
@@ -188,8 +204,8 @@ const colorHint = computed(() =>
     : `${te('diagramAuthoringView.colorHint')} ${te('diagramAuthoringView.colorCannotClearHint')}`,
 )
 
-const previewDiagram = computed<Diagram | null>(() => {
-  if (!selectedInstrument.value || form.positions.value.length === 0) return null
+/** The diagram as the form holds it, with the given positions and regions, for a viewer to draw. */
+function diagramForPreview(positions: Diagram['positions'], regions: Diagram['regions']): Diagram {
   const request = form.toCreateDiagramRequest()
   return {
     diagram_id: savedDiagramId.value,
@@ -204,14 +220,41 @@ const previewDiagram = computed<Diagram | null>(() => {
     root_note: request.root_note ?? null,
     label_display: form.labelDisplay.value,
     color: form.color.value,
-    positions: request.positions,
-    regions: request.regions ?? [],
+    positions,
+    regions,
     classification: { skills: [], concepts: [] },
     created_at: '',
   }
+}
+
+const previewDiagram = computed<Diagram | null>(() => {
+  if (!selectedInstrument.value || form.positions.value.length === 0) return null
+  const request = form.toCreateDiagramRequest()
+  return diagramForPreview(request.positions, request.regions ?? [])
+})
+
+// What merging the overlays would produce, for the overlay modal's preview.
+const overlayPreviewDiagram = computed<Diagram | null>(() => {
+  const stack = stackPreview.value
+  return stack ? diagramForPreview(stack.positions, stack.regions) : null
 })
 
 const previewDiagramRef: DiagramRef = { diagram_id: '', layers: { intervals: true } }
+
+const overlaying = ref(false)
+// Neither the diagram being edited nor one already overlaid is offered again.
+const overlayExcludeIds = computed(() => [savedDiagramId.value, ...overlayIds.value].filter((id) => id !== ''))
+
+function onMergeOverlays() {
+  if (!merge()) return
+  overlaying.value = false
+  if (savedDiagramId.value !== '') mergedIntoSaved.value = true
+}
+
+function onDiscardOverlays() {
+  discardOverlays()
+  overlaying.value = false
+}
 
 const saving = ref(false)
 const justSaved = ref(false)
@@ -269,6 +312,7 @@ async function saveAs(names: Record<string, string>) {
     form.loadFromDiagram(created)
     form.markSaved(created)
     adoptSaved(created)
+    mergedIntoSaved.value = false
     saveAsKind.value = null
     await router.replace({ name: 'teacher-diagram-edit', params: { id: created.diagram_id } })
     toast.success(
@@ -383,6 +427,14 @@ async function saveAs(names: Record<string, string>) {
         </div>
 
         <p
+          v-if="mergedIntoSaved"
+          data-test="merged-notice"
+          class="rounded-md border border-border bg-surface-sunken px-4 py-3 text-sm text-ink-muted"
+        >
+          {{ te('diagramAuthoringView.mergedNotice') }}
+        </p>
+
+        <p
           v-if="readOnlyReason"
           data-test="read-only-notice"
           class="rounded-md border border-border bg-surface-sunken px-4 py-3 text-sm text-ink-muted"
@@ -436,64 +488,6 @@ async function saveAs(names: Record<string, string>) {
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <label class="text-sm font-semibold">{{
-              te('diagramAuthoringView.positionsLabel')
-            }}</label>
-            <div class="flex items-center gap-2">
-              <ColorPaletteMenu
-                test-id="diagram-color"
-                :title="te('diagramAuthoringView.colorLabel')"
-                :model-value="form.color.value"
-                :allow-clear="form.canClearColor.value"
-                :hint="colorHint"
-                @select="(color) => (form.color.value = color)"
-              >
-                <Palette :size="16" aria-hidden="true" />
-              </ColorPaletteMenu>
-              <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
-                <button
-                  type="button"
-                  data-test="label-mode-interval"
-                  class="rounded-md px-3 py-1 text-xs font-semibold"
-                  :class="
-                    form.labelDisplay.value === 'interval'
-                      ? 'bg-accent text-accent-fg'
-                      : 'text-ink-muted'
-                  "
-                  @click="form.labelDisplay.value = 'interval'"
-                >
-                  {{ te('diagramAuthoringView.labelModeInterval') }}
-                </button>
-                <button
-                  type="button"
-                  data-test="label-mode-note"
-                  class="rounded-md px-3 py-1 text-xs font-semibold"
-                  :class="
-                    form.labelDisplay.value === 'note'
-                      ? 'bg-accent text-accent-fg'
-                      : 'text-ink-muted'
-                  "
-                  @click="form.labelDisplay.value = 'note'"
-                >
-                  {{ te('diagramAuthoringView.labelModeNote') }}
-                </button>
-                <button
-                  type="button"
-                  data-test="label-mode-hidden"
-                  class="rounded-md px-3 py-1 text-xs font-semibold"
-                  :class="
-                    form.labelDisplay.value === 'hidden'
-                      ? 'bg-accent text-accent-fg'
-                      : 'text-ink-muted'
-                  "
-                  @click="form.labelDisplay.value = 'hidden'"
-                >
-                  {{ te('diagramAuthoringView.labelModeHidden') }}
-                </button>
-              </div>
-            </div>
-          </div>
           <FrettedDiagramEditor
             :instrument="selectedInstrument"
             :positions="form.positions.value"
@@ -508,22 +502,101 @@ async function saveAs(names: Record<string, string>) {
             @set-custom-label="(id, value) => form.setPositionCustomLabel(id, activeLanguage, value)"
             @set-note="(id, value) => form.setPositionNote(id, activeLanguage, value)"
             @remove="form.removePosition"
-          />
+          >
+            <template #toolbar>
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-semibold">{{
+                  te('diagramAuthoringView.positionsLabel')
+                }}</label>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-test="add-overlay"
+                    class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted"
+                    @click="overlaying = true"
+                  >
+                    <Layers :size="14" aria-hidden="true" />
+                    {{ te('diagramAuthoringView.addOverlayButton') }}
+                  </button>
+                  <button
+                    type="button"
+                    data-test="open-preview-modal"
+                    class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="!previewDiagram"
+                    :title="previewDiagram ? undefined : te('diagramAuthoringView.previewEmpty')"
+                    @click="showPreviewModal = true"
+                  >
+                    <Maximize2 :size="14" aria-hidden="true" />
+                    {{ te('diagramAuthoringView.viewPreviewButton') }}
+                  </button>
+                  <ColorPaletteMenu
+                    test-id="diagram-color"
+                    :title="te('diagramAuthoringView.colorLabel')"
+                    :model-value="form.color.value"
+                    :allow-clear="form.canClearColor.value"
+                    :hint="colorHint"
+                    @select="(color) => (form.color.value = color)"
+                  >
+                    <Palette :size="16" aria-hidden="true" />
+                  </ColorPaletteMenu>
+                  <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
+                    <button
+                      type="button"
+                      data-test="label-mode-interval"
+                      class="rounded-md px-3 py-1 text-xs font-semibold"
+                      :class="
+                        form.labelDisplay.value === 'interval'
+                          ? 'bg-accent text-accent-fg'
+                          : 'text-ink-muted'
+                      "
+                      @click="form.labelDisplay.value = 'interval'"
+                    >
+                      {{ te('diagramAuthoringView.labelModeInterval') }}
+                    </button>
+                    <button
+                      type="button"
+                      data-test="label-mode-note"
+                      class="rounded-md px-3 py-1 text-xs font-semibold"
+                      :class="
+                        form.labelDisplay.value === 'note'
+                          ? 'bg-accent text-accent-fg'
+                          : 'text-ink-muted'
+                      "
+                      @click="form.labelDisplay.value = 'note'"
+                    >
+                      {{ te('diagramAuthoringView.labelModeNote') }}
+                    </button>
+                    <button
+                      type="button"
+                      data-test="label-mode-hidden"
+                      class="rounded-md px-3 py-1 text-xs font-semibold"
+                      :class="
+                        form.labelDisplay.value === 'hidden'
+                          ? 'bg-accent text-accent-fg'
+                          : 'text-ink-muted'
+                      "
+                      @click="form.labelDisplay.value = 'hidden'"
+                    >
+                      {{ te('diagramAuthoringView.labelModeHidden') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <DiagramRegionsEditor
+              :regions="form.regions.value"
+              :string-count="selectedInstrument.string_count ?? 0"
+              :language="activeLanguage"
+              :invalid-ids="form.invalidRegionIds.value"
+              @add="form.addRegion"
+              @set-frets="form.setRegionFrets"
+              @set-strings="form.setRegionStrings"
+              @set-description="(id, value) => form.setRegionDescription(id, activeLanguage, value)"
+              @set-color="form.setRegionColor"
+              @remove="form.removeRegion"
+            />
+          </FrettedDiagramEditor>
         </div>
-
-        <DiagramRegionsEditor
-          v-if="selectedInstrument"
-          :regions="form.regions.value"
-          :string-count="selectedInstrument.string_count ?? 0"
-          :language="activeLanguage"
-          :invalid-ids="form.invalidRegionIds.value"
-          @add="form.addRegion"
-          @set-frets="form.setRegionFrets"
-          @set-strings="form.setRegionStrings"
-          @set-description="(id, value) => form.setRegionDescription(id, activeLanguage, value)"
-          @set-color="form.setRegionColor"
-          @remove="form.removeRegion"
-        />
 
         <div class="flex flex-col gap-4 border-t border-border pt-2">
           <div>
@@ -557,38 +630,6 @@ async function saveAs(names: Record<string, string>) {
       </main>
 
       <LocaleScope :locale="editingLocale">
-      <aside
-        class="flex flex-col gap-5 bg-surface-raised"
-        :class="
-          isCompact
-            ? 'w-full border-t border-border px-4 py-5'
-            : 'w-[360px] flex-shrink-0 border-l border-border px-[28px] py-[32px]'
-        "
-      >
-        <div class="flex flex-col gap-2.5">
-          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">
-            {{ te('diagramAuthoringView.previewLabel') }}
-          </span>
-          <template v-if="previewDiagram && selectedInstrument">
-            <FrettedDiagramView
-              :diagram="previewDiagram"
-              :instrument="selectedInstrument"
-              :diagram-ref="previewDiagramRef"
-              :label-mode="form.labelDisplay.value"
-            />
-            <button
-              type="button"
-              data-test="open-preview-modal"
-              class="w-fit rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink-muted"
-              @click="showPreviewModal = true"
-            >
-              {{ te('diagramAuthoringView.viewPreviewButton') }}
-            </button>
-          </template>
-          <p v-else class="text-sm text-ink-subtle">{{ te('diagramAuthoringView.previewEmpty') }}</p>
-        </div>
-      </aside>
-
       <DiagramPreviewModal
         v-if="previewDiagram && selectedInstrument"
         :open="showPreviewModal"
@@ -599,6 +640,21 @@ async function saveAs(names: Record<string, string>) {
         @close="showPreviewModal = false"
       />
       </LocaleScope>
+
+      <OverlayDiagramsModal
+        v-if="overlaying && selectedInstrument"
+        v-model:region-per-layer="regionPerLayer"
+        :instrument="selectedInstrument"
+        :exclude-ids="overlayExcludeIds"
+        :overlays="overlays"
+        :preview="overlayPreviewDiagram"
+        :can-merge="canMerge"
+        :label-mode="form.labelDisplay.value"
+        @add="addOverlay"
+        @remove="removeOverlay"
+        @merge="onMergeOverlays"
+        @discard="onDiscardOverlays"
+      />
 
       <SaveDiagramAsModal
         :open="saveAsKind !== null"

@@ -80,10 +80,8 @@ describe('positionX', () => {
     expect(positionX(5, geometry)).not.toBeCloseTo(fretX(5, geometry))
   })
 
-  it('places an open-string (fret 0) position to the left of the nut', () => {
-    const halfGap = fretX(1, geometry) - fretX(0, geometry)
-
-    expect(positionX(0, geometry)).toBeCloseTo(fretX(0, geometry) - halfGap / 2)
+  it('places an open-string (fret 0) position on the nut', () => {
+    expect(positionX(0, geometry)).toBeCloseTo(fretX(0, geometry))
   })
 })
 
@@ -112,10 +110,17 @@ describe('nearestFrettedCell', () => {
     expect(cell).toEqual({ string: 3, fret: 6 })
   })
 
-  it('treats the open-string zone left of the nut as fret 0', () => {
-    const cell = nearestFrettedCell(positionX(0, geometry), stringY(3, geometry), geometry)
+  it('treats a click on the nut, where open-string markers sit, as fret 0', () => {
+    for (const offset of [-10, 0, 6]) {
+      const cell = nearestFrettedCell(fretX(0, geometry) + offset, stringY(3, geometry), geometry)
+      expect(cell).toEqual({ string: 3, fret: 0 })
+    }
+  })
 
-    expect(cell).toEqual({ string: 3, fret: 0 })
+  it("still gives fret 1 the whole of its marker, just past the nut", () => {
+    const markerLeftEdge = positionX(1, geometry) - 13.5
+
+    expect(nearestFrettedCell(markerLeftEdge, stringY(3, geometry), geometry)).toEqual({ string: 3, fret: 1 })
   })
 
   it('returns null for a click left of the open-string zone', () => {

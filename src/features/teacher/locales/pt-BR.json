@@ -161,7 +161,6 @@
     "labelModeHidden": "Oculto",
     "classificationLabel": "Classificação",
     "classificationHint": "Um diagrama precisa de pelo menos uma habilidade e um conceito para ser reutilizável na biblioteca.",
-    "previewLabel": "Pré-visualização",
     "previewEmpty": "Posicione uma marcação para ver a pré-visualização.",
     "viewPreviewButton": "Ver pré-visualização completa",
     "diagramUpdated": "Diagrama atualizado.",
@@ -180,7 +179,9 @@
     "copySaved": "Cópia salva",
     "templateSaved": "Modelo salvo",
     "templateNeedsEveryName": "Um modelo é compartilhado com todos os professores, então dê um nome em todos os idiomas antes de salvar.",
-    "templateNeedsEveryText": "Preencha os rótulos, notas e legendas de região em todos os idiomas antes de salvar como modelo."
+    "templateNeedsEveryText": "Preencha os rótulos, notas e legendas de região em todos os idiomas antes de salvar como modelo.",
+    "addOverlayButton": "Sobrepor diagrama…",
+    "mergedNotice": "As camadas mescladas são salvas como um novo diagrama, então os diagramas de origem ficam como estavam. Use Salvar como."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
@@ -210,6 +211,7 @@
     "removeAriaLabel": "Remover esta região",
     "descriptionAriaLabel": "Legenda da região",
     "descriptionPlaceholder": "Legenda, ex.: Desenho 1",
+    "captionTooLong": "Encurte esta legenda para no máximo {max} caracteres.",
     "invalid": "Verifique o intervalo: ele está invertido ou passa da última corda."
   },
   "challengeConfigPanel": {
@@ -399,6 +401,7 @@
     "missingText": "Falta em {language}: {items}",
     "missingName": "o nome",
     "missingRegionCaption": "a legenda da região {n}",
+    "regionCaptionTooLong": "uma legenda mais curta para a região {n} (no máximo {max} caracteres)",
     "missingMarkerLabel": "o rótulo da posição {n}",
     "missingMarkerNote": "a nota da posição {n}",
     "removeTitle": "Remover {language}?",
@@ -506,5 +509,22 @@
     "leaveTitle": "Sair sem salvar?",
     "leaveMessage": "Suas alterações neste curso não foram salvas e serão perdidas.",
     "leaveConfirm": "Sair"
+  },
+  "overlayDiagramPicker": {
+    "loadingNoun": "diagramas",
+    "loadErrorMessage": "Não foi possível carregar os diagramas.",
+    "emptyHeading": "Nada para sobrepor",
+    "emptyMessage": "Ainda não há outro diagrama para este instrumento."
+  },
+  "overlayDiagramsModal": {
+    "title": "Sobrepor diagramas",
+    "hint": "Veja como outros diagramas deste instrumento se combinam com este. Mescle para trazê-los ao editor como posições e regiões que você pode alterar, ou descarte para deixar este diagrama como está.",
+    "addAnother": "Adicionar outro diagrama",
+    "backToPreview": "Voltar à pré-visualização",
+    "removeOverlayAriaLabel": "Remover {name}",
+    "regionPerLayer": "Adicionar uma região destacada para cada diagrama, com o nome dele como legenda",
+    "mergeNeedsRoot": "Escolha antes uma nota fundamental, para que toda posição deste diagrama tenha um intervalo a mesclar.",
+    "discard": "Descartar",
+    "merge": "Mesclar no editor"
   }
 }

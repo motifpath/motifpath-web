@@ -5,9 +5,8 @@ import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEd
 import { i18n } from '@/i18n'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
+import { CAPTION_LANE_HEIGHT } from '@/shared/utils/regionCaptionLayout'
 import {
-  EDITOR_CAPTION_SPACE,
-  EDITOR_PX_PER_FRET,
   EDITOR_VIEW_H,
   editorViewWidth,
   fretX,
@@ -227,7 +226,30 @@ describe('FrettedDiagramEditor', () => {
       props: { instrument: makeFrettedInstrument(), positions: [] },
     })
 
-    expect(wrapper.get('[data-test="fretboard-scroll"]').classes()).toContain('sticky')
+    const floating = wrapper.get('[data-test="fretboard-sticky"]')
+    expect(floating.classes()).toContain('sticky')
+    expect(floating.find('[data-test="fretboard-scroll"]').exists()).toBe(true)
+  })
+
+  it('floats the toolbar it is given together with the fretboard', () => {
+    const wrapper = mount(FrettedDiagramEditor, {
+      props: { instrument: makeFrettedInstrument(), positions: [] },
+      slots: { toolbar: '<button data-test="board-tool">Tool</button>' },
+    })
+
+    expect(wrapper.get('[data-test="fretboard-sticky"]').find('[data-test="board-tool"]').exists()).toBe(true)
+  })
+
+  it('keeps the fretboard floating over content given below the position list, such as the regions editor', () => {
+    const wrapper = mount(FrettedDiagramEditor, {
+      props: { instrument: makeFrettedInstrument(), positions: [] },
+      slots: { default: '<div data-test="below-positions">Regions</div>' },
+    })
+
+    // A sticky element only floats while its parent is on screen, so the slotted content has to
+    // live inside that same parent.
+    const stickyScope = wrapper.get('[data-test="fretboard-sticky"]').element.parentElement!
+    expect(stickyScope.contains(wrapper.get('[data-test="below-positions"]').element)).toBe(true)
   })
 
   it('shows each position\'s sequence order (list position), not a free-typed number', () => {
@@ -391,11 +413,23 @@ describe('FrettedDiagramEditor', () => {
       expect(Number(band.attributes('height'))).toBeCloseTo(6 * rowGap)
     })
 
-    it('starts a region from fret 0 at the open-string area, left of the nut', () => {
+    it('starts a region from fret 0 at the nut, leaving the open-string area bare', () => {
       const wrapper = mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 2 })])
 
       const band = wrapper.get('[data-test="editor-region"]')
-      expect(Number(band.attributes('x'))).toBeCloseTo(fretX(0, geometry) - EDITOR_PX_PER_FRET)
+      expect(Number(band.attributes('x'))).toBeCloseTo(fretX(0, geometry))
+      expect(Number(band.attributes('width'))).toBeCloseTo(fretX(2, geometry) - fretX(0, geometry))
+    })
+
+    it('draws a region covering only the open strings around the nut, where their markers sit', () => {
+      const wrapper = mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 0 })])
+
+      const band = wrapper.get('[data-test="editor-region"]')
+      const left = Number(band.attributes('x'))
+      const right = left + Number(band.attributes('width'))
+      expect(left).toBeLessThan(fretX(0, geometry) - 13.5)
+      expect(right).toBeGreaterThan(fretX(0, geometry) + 13.5)
+      expect(right).toBeLessThanOrEqual(fretX(1, geometry))
     })
 
     it("tints a band with the region's color, or the accent color when it has none", () => {
@@ -439,16 +473,54 @@ describe('FrettedDiagramEditor', () => {
       const height = (regions: LocalRegion[]) => Number(mountWith(regions).get('svg').attributes('viewBox')!.split(' ')[3])
 
       expect(height([])).toBe(EDITOR_VIEW_H)
-      expect(height([makeLocalRegion()])).toBe(EDITOR_VIEW_H + EDITOR_CAPTION_SPACE)
+      expect(height([makeLocalRegion()])).toBe(EDITOR_VIEW_H + CAPTION_LANE_HEIGHT)
+    })
+
+    describe('captions that would collide', () => {
+      const overlapping = () => [
+        makeLocalRegion({ id: 'whole', fretStart: 5, fretEnd: 10, description: { en: 'A Minor Pentatonic — Positions 1 and 2' }, color: '#3B82F6' }),
+        makeLocalRegion({ id: 'shape-1', fretStart: 5, fretEnd: 8, description: { en: 'Shape 1' } }),
+        makeLocalRegion({ id: 'far', fretStart: 15, fretEnd: 17, description: { en: 'Far away' } }),
+      ]
+      const captionYs = (wrapper: ReturnType<typeof mountWith>) =>
+        wrapper.findAll('[data-test="editor-region-caption"]').map((c) => Number(c.attributes('y')))
+
+      it('stacks overlapping captions on separate lines, and lets a clear one share a line', () => {
+        const [whole, shape1, far] = captionYs(mountWith(overlapping()))
+
+        expect(whole).not.toBe(shape1)
+        expect([whole, shape1]).toContain(far)
+      })
+
+      it('grows the space above the board by one line per caption line', () => {
+        const height = Number(mountWith(overlapping()).get('svg').attributes('viewBox')!.split(' ')[3])
+
+        expect(height).toBe(EDITOR_VIEW_H + 2 * CAPTION_LANE_HEIGHT)
+      })
+
+      it("underlines each caption with a bar across its band's frets, in the band's color", () => {
+        const wrapper = mountWith(overlapping())
+        const bands = wrapper.findAll('[data-test="editor-region"]')
+        const bars = wrapper.findAll('[data-test="editor-region-caption-bar"]')
+
+        expect(bars).toHaveLength(3)
+        bars.forEach((bar, index) => {
+          expect(bar.attributes('x')).toBe(bands[index]!.attributes('x'))
+          expect(bar.attributes('width')).toBe(bands[index]!.attributes('width'))
+          expect(Number(bar.attributes('y'))).toBeLessThan(Number(bands[index]!.attributes('y')))
+        })
+        expect(bars[0]!.attributes('style')).toContain('fill: #3B82F6')
+        expect(bars[1]!.classes()).toContain('fill-accent')
+      })
     })
 
     it('still places a clicked position on the right cell when the board is shifted down for captions', async () => {
       const wrapper = mountWith([makeLocalRegion()])
       const svg = wrapper.get('svg')
-      mockOneToOneBoundingRect(svg.element, editorViewWidth(geometry), EDITOR_VIEW_H + EDITOR_CAPTION_SPACE)
+      mockOneToOneBoundingRect(svg.element, editorViewWidth(geometry), EDITOR_VIEW_H + CAPTION_LANE_HEIGHT)
 
       // 40% of a string gap below string 3: ignoring the caption offset would tip it onto string 4.
-      await svg.trigger('click', { clientX: fretX(5, geometry), clientY: stringY(3, geometry) + 0.4 * rowGap + EDITOR_CAPTION_SPACE })
+      await svg.trigger('click', { clientX: fretX(5, geometry), clientY: stringY(3, geometry) + 0.4 * rowGap + CAPTION_LANE_HEIGHT })
 
       expect(wrapper.emitted('toggle-cell')).toEqual([[{ string: 3, fret: 5 }]])
     })

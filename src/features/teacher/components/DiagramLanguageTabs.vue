@@ -8,7 +8,7 @@
 import { computed, ref } from 'vue'
 import { AlertCircle, Plus, X } from 'lucide-vue-next'
 
-import type { MissingText } from '@/features/teacher/composables/useDiagramForm'
+import { REGION_CAPTION_MAX_LENGTH, type MissingText } from '@/features/teacher/composables/useDiagramForm'
 import { OFFERED_LANGUAGE_CODES } from '@/i18n'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -42,6 +42,8 @@ function describeMissing(item: MissingText): string {
       return t('diagramLanguageTabs.missingName')
     case 'regionCaption':
       return t('diagramLanguageTabs.missingRegionCaption', { n: item.region })
+    case 'regionCaptionTooLong':
+      return t('diagramLanguageTabs.regionCaptionTooLong', { n: item.region, max: REGION_CAPTION_MAX_LENGTH })
     case 'markerLabel':
       return t('diagramLanguageTabs.missingMarkerLabel', { n: item.position })
     case 'markerNote':
