@@ -9,14 +9,16 @@ export interface PathStepView {
   title: string
   status: StudentPathItem['status']
   contentNodeId: string
-  /** True for the single step at `current_position` — the one to work on next. */
+  /** True for the single step at `current_position` — the one to work on next — unless it is already completed. */
   isCurrent: boolean
 }
 
 /**
  * Flattens a `StudentPathView`'s items into per-step view data. `isCurrent` is
- * derived solely from `current_position` (the backend's single source of truth
- * for "what's next"), never by re-scanning per-item `status`.
+ * derived from `current_position` (the backend's single source of truth for
+ * "what's next"), never by re-scanning per-item `status` — except that a
+ * completed step is never current: once every step is done the API still
+ * points `current_position` at the last one, and there is nothing left to do.
  */
 export function stepViews(view: StudentPathView): PathStepView[] {
   return view.items.map((item) => ({
@@ -24,7 +26,7 @@ export function stepViews(view: StudentPathView): PathStepView[] {
     title: item.title,
     status: item.status,
     contentNodeId: item.content_node_id,
-    isCurrent: item.position === view.current_position,
+    isCurrent: item.position === view.current_position && item.status !== 'completed',
   }))
 }
 

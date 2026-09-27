@@ -7,6 +7,12 @@ import {
 } from '@/features/student/testing/studentPathItem'
 
 describe('stepViews', () => {
+  it('marks no step as current once every step is completed, even though the API then points current_position at the last step', () => {
+    const path = view([item(1, undefined, 'completed'), item(2, undefined, 'completed')], { current_position: 2 })
+
+    expect(stepViews(path).map((s) => s.isCurrent)).toEqual([false, false])
+  })
+
   it('marks the step at current_position as the current one', () => {
     const path = view([
       item(1, undefined, 'completed'),
