@@ -181,6 +181,14 @@ describe('PracticeView', () => {
     expect(state.back).toHaveBeenCalled()
   })
 
+  it('finishes back on My path, where a finished path or course is celebrated', () => {
+    set({ status: ref('result'), score: ref({ correct: 3, total: 4 }) })
+
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="finish"]').getComponent(RouterLinkStub).props('to')).toEqual({ name: 'path' })
+  })
+
   it('opens and closes the help modal via the "?" toggle and the modal itself', async () => {
     set({ status: ref('in-progress'), exercises: ref([textExercise]) })
     const wrapper = mountView()

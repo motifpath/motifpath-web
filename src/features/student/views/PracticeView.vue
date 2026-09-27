@@ -118,7 +118,9 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
       >
         {{ session.scorePercent.value }}%
       </p>
-      <PrimaryButton as="RouterLink" data-test="finish" :to="{ name: 'node', params: { nodeId: props.nodeId } }">
+      <!-- The lesson was completed before practice began, so finishing leads to
+           My path, where a finished path or course is celebrated. -->
+      <PrimaryButton as="RouterLink" data-test="finish" :to="{ name: 'path' }">
         {{ t('practiceView.finish') }}
       </PrimaryButton>
       <button type="button" data-test="result-back" class="text-xs text-ink-subtle underline" @click="session.back()">
