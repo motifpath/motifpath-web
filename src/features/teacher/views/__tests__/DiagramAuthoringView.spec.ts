@@ -360,6 +360,18 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).exists()).toBe(false)
   })
 
+  it('floats the fretboard toolbar with the fretboard', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    const floating = wrapper.get('[data-test="fretboard-sticky"]')
+    for (const tool of ['add-overlay', 'open-preview-modal', 'diagram-color-indicator', 'label-mode-interval', 'label-mode-note', 'label-mode-hidden']) {
+      expect(floating.find(`[data-test="${tool}"]`).exists(), tool).toBe(true)
+    }
+  })
+
   it('keeps the regions editor under the floating fretboard, like the position list', async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     const wrapper = mountView()

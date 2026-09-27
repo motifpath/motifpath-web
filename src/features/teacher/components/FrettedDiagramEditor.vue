@@ -210,164 +210,168 @@ function onDrop(index: number) {
 
 <template>
   <div class="flex flex-col gap-3.5">
-    <!-- sticky + top-16 keeps the board in view under the AppBar (h-16, z-20) while the
-         position list (and any slotted content) below scrolls — otherwise a long list pushes the fretboard itself
-         off-screen while editing. -->
-    <div class="sticky top-16 z-10 overflow-x-auto rounded-md bg-surface-raised" data-test="fretboard-scroll">
-      <!-- w-full lets the board fill however much space it's given (the "leverage full width"
-           requirement); min-w-[1106px] is a legibility floor — the default 0-24 fret range at
-           EDITOR_PX_PER_FRET density (44 + 43*24 + 30, see frettedFretboardEditor.ts, guarded by
-           a test there) — so on a narrower viewport it scrolls instead of squeezing frets thin. -->
-      <svg
-        :viewBox="`0 0 ${viewWidth} ${viewHeight}`"
-        role="img"
-        :aria-label="t('frettedDiagramEditor.fretboardAriaLabel')"
-        class="w-full min-w-[1106px] cursor-pointer"
-        font-family="monospace"
-        @click="onFretboardClick"
-      >
-        <defs>
-          <linearGradient id="editor-fretboard-wood" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.55" />
-            <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="1" />
-            <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.7" />
-          </linearGradient>
-        </defs>
+    <!-- sticky + top-16 keeps the board and its toolbar in view under the AppBar (h-16, z-20)
+         while the position list and any slotted content below scroll — otherwise a long list
+         pushes the fretboard itself off-screen while editing. The opaque background hides what
+         scrolls underneath. -->
+    <div class="sticky top-16 z-10 flex flex-col gap-2 bg-surface py-2" data-test="fretboard-sticky">
+      <slot name="toolbar" />
+      <div class="overflow-x-auto rounded-md bg-surface-raised" data-test="fretboard-scroll">
+        <!-- w-full lets the board fill however much space it's given (the "leverage full width"
+             requirement); min-w-[1106px] is a legibility floor — the default 0-24 fret range at
+             EDITOR_PX_PER_FRET density (44 + 43*24 + 30, see frettedFretboardEditor.ts, guarded by
+             a test there) — so on a narrower viewport it scrolls instead of squeezing frets thin. -->
+        <svg
+          :viewBox="`0 0 ${viewWidth} ${viewHeight}`"
+          role="img"
+          :aria-label="t('frettedDiagramEditor.fretboardAriaLabel')"
+          class="w-full min-w-[1106px] cursor-pointer"
+          font-family="monospace"
+          @click="onFretboardClick"
+        >
+          <defs>
+            <linearGradient id="editor-fretboard-wood" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.55" />
+              <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="1" />
+              <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.7" />
+            </linearGradient>
+          </defs>
 
-        <g :transform="`translate(0 ${boardOffsetY})`">
-          <rect
-            :x="EDITOR_MARGIN_LEFT"
-            :y="EDITOR_MARGIN_TOP - 10"
-            :width="boardWidth"
-            :height="EDITOR_BOARD_H + 20"
-            rx="6"
-            fill="url(#editor-fretboard-wood)"
-          />
-
-          <circle
-            v-for="(dot, index) in inlayDots"
-            :key="`inlay-${dot.fret}-${index}`"
-            data-test="fret-inlay"
-            :cx="markerX(dot.fret)"
-            :cy="dot.cy"
-            r="4"
-            class="fill-ink-subtle"
-            opacity="0.4"
-          />
-
-          <g v-for="(region, index) in drawableRegions" :key="`region-${region.id}`">
+          <g :transform="`translate(0 ${boardOffsetY})`">
             <rect
-              data-test="editor-region"
-              v-bind="regionBox(region)"
-              rx="4"
-              fill-opacity="0.25"
-              :class="region.color ? '' : 'fill-accent'"
-              :style="regionStyle(region)"
+              :x="EDITOR_MARGIN_LEFT"
+              :y="EDITOR_MARGIN_TOP - 10"
+              :width="boardWidth"
+              :height="EDITOR_BOARD_H + 20"
+              rx="6"
+              fill="url(#editor-fretboard-wood)"
             />
-            <rect
-              data-test="editor-region-caption-bar"
-              :x="regionBox(region).x"
-              :y="captionPlacement(index).barY"
-              :width="regionBox(region).width"
-              :height="CAPTION_BAR_HEIGHT"
-              rx="1.5"
-              fill-opacity="0.8"
-              :class="region.color ? '' : 'fill-accent'"
-              :style="regionStyle(region)"
+
+            <circle
+              v-for="(dot, index) in inlayDots"
+              :key="`inlay-${dot.fret}-${index}`"
+              data-test="fret-inlay"
+              :cx="markerX(dot.fret)"
+              :cy="dot.cy"
+              r="4"
+              class="fill-ink-subtle"
+              opacity="0.4"
             />
-            <text
-              data-test="editor-region-caption"
-              :x="captionPlacement(index).textX"
-              :y="captionPlacement(index).textY"
-              :font-size="CAPTION_FONT_SIZE"
-              font-weight="600"
-              class="fill-ink-muted"
-            >
-              {{ regionCaption(region) }}
-            </text>
-          </g>
 
-          <line
-            v-for="stringNumber in geometry.stringCount"
-            :key="`string-${stringNumber}`"
-            :x1="EDITOR_MARGIN_LEFT"
-            :y1="y(stringNumber)"
-            :x2="EDITOR_MARGIN_LEFT + boardWidth"
-            :y2="y(stringNumber)"
-            class="stroke-border"
-            stroke-width="1.2"
-          />
+            <g v-for="(region, index) in drawableRegions" :key="`region-${region.id}`">
+              <rect
+                data-test="editor-region"
+                v-bind="regionBox(region)"
+                rx="4"
+                fill-opacity="0.25"
+                :class="region.color ? '' : 'fill-accent'"
+                :style="regionStyle(region)"
+              />
+              <rect
+                data-test="editor-region-caption-bar"
+                :x="regionBox(region).x"
+                :y="captionPlacement(index).barY"
+                :width="regionBox(region).width"
+                :height="CAPTION_BAR_HEIGHT"
+                rx="1.5"
+                fill-opacity="0.8"
+                :class="region.color ? '' : 'fill-accent'"
+                :style="regionStyle(region)"
+              />
+              <text
+                data-test="editor-region-caption"
+                :x="captionPlacement(index).textX"
+                :y="captionPlacement(index).textY"
+                :font-size="CAPTION_FONT_SIZE"
+                font-weight="600"
+                class="fill-ink-muted"
+              >
+                {{ regionCaption(region) }}
+              </text>
+            </g>
 
-          <g v-for="fret in frets" :key="`fret-${fret}`">
             <line
-              :x1="x(fret)"
-              :y1="EDITOR_MARGIN_TOP - 6"
-              :x2="x(fret)"
-              :y2="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 6"
-              class="stroke-ink-subtle"
-              stroke-width="2"
+              v-for="stringNumber in geometry.stringCount"
+              :key="`string-${stringNumber}`"
+              :x1="EDITOR_MARGIN_LEFT"
+              :y1="y(stringNumber)"
+              :x2="EDITOR_MARGIN_LEFT + boardWidth"
+              :y2="y(stringNumber)"
+              class="stroke-border"
+              stroke-width="1.2"
             />
-            <text
-              :x="x(fret)"
-              :y="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 24"
-              text-anchor="middle"
-              font-size="12"
-              class="fill-ink-muted"
-            >
-              {{ fret }}
-            </text>
-          </g>
 
-          <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
-            <circle
-              v-if="position.id === selectedPositionId"
-              data-test="marker-highlight"
-              :cx="markerX(position.fret)"
-              :cy="y(position.string)"
-              r="18"
-              fill="none"
-              class="stroke-accent"
-              stroke-width="3"
-            />
-            <circle
-              v-if="position.shape === 'dot'"
-              :cx="markerX(position.fret)"
-              :cy="y(position.string)"
-              r="13.5"
-              :class="markerFill(position) ? '' : 'fill-accent'"
-              :style="markerStyle(position)"
-            />
-            <rect
-              v-else-if="position.shape === 'square'"
-              :x="markerX(position.fret) - 12"
-              :y="y(position.string) - 12"
-              width="24"
-              height="24"
-              rx="3"
-              :class="markerFill(position) ? '' : 'fill-accent'"
-              :style="markerStyle(position)"
-            />
-            <polygon
-              v-else
-              :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
-              :class="markerFill(position) ? '' : 'fill-accent'"
-              :style="markerStyle(position)"
-            />
-            <text
-              v-if="labelMode !== 'hidden'"
-              :x="markerX(position.fret)"
-              :y="y(position.string) + 4.5"
-              text-anchor="middle"
-              font-size="11.5"
-              font-weight="600"
-              :class="markerFill(position) ? '' : 'fill-accent-fg'"
-              :style="labelStyle(position)"
-            >
-              {{ labelFor(position) }}
-            </text>
+            <g v-for="fret in frets" :key="`fret-${fret}`">
+              <line
+                :x1="x(fret)"
+                :y1="EDITOR_MARGIN_TOP - 6"
+                :x2="x(fret)"
+                :y2="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 6"
+                class="stroke-ink-subtle"
+                stroke-width="2"
+              />
+              <text
+                :x="x(fret)"
+                :y="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 24"
+                text-anchor="middle"
+                font-size="12"
+                class="fill-ink-muted"
+              >
+                {{ fret }}
+              </text>
+            </g>
+
+            <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
+              <circle
+                v-if="position.id === selectedPositionId"
+                data-test="marker-highlight"
+                :cx="markerX(position.fret)"
+                :cy="y(position.string)"
+                r="18"
+                fill="none"
+                class="stroke-accent"
+                stroke-width="3"
+              />
+              <circle
+                v-if="position.shape === 'dot'"
+                :cx="markerX(position.fret)"
+                :cy="y(position.string)"
+                r="13.5"
+                :class="markerFill(position) ? '' : 'fill-accent'"
+                :style="markerStyle(position)"
+              />
+              <rect
+                v-else-if="position.shape === 'square'"
+                :x="markerX(position.fret) - 12"
+                :y="y(position.string) - 12"
+                width="24"
+                height="24"
+                rx="3"
+                :class="markerFill(position) ? '' : 'fill-accent'"
+                :style="markerStyle(position)"
+              />
+              <polygon
+                v-else
+                :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
+                :class="markerFill(position) ? '' : 'fill-accent'"
+                :style="markerStyle(position)"
+              />
+              <text
+                v-if="labelMode !== 'hidden'"
+                :x="markerX(position.fret)"
+                :y="y(position.string) + 4.5"
+                text-anchor="middle"
+                font-size="11.5"
+                font-weight="600"
+                :class="markerFill(position) ? '' : 'fill-accent-fg'"
+                :style="labelStyle(position)"
+              >
+                {{ labelFor(position) }}
+              </text>
+            </g>
           </g>
-        </g>
-      </svg>
+        </svg>
+      </div>
     </div>
 
     <p class="text-xs text-ink-subtle">{{ t('frettedDiagramEditor.reorderHint') }}</p>

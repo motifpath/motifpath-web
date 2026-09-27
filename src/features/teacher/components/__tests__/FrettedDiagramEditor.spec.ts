@@ -226,7 +226,18 @@ describe('FrettedDiagramEditor', () => {
       props: { instrument: makeFrettedInstrument(), positions: [] },
     })
 
-    expect(wrapper.get('[data-test="fretboard-scroll"]').classes()).toContain('sticky')
+    const floating = wrapper.get('[data-test="fretboard-sticky"]')
+    expect(floating.classes()).toContain('sticky')
+    expect(floating.find('[data-test="fretboard-scroll"]').exists()).toBe(true)
+  })
+
+  it('floats the toolbar it is given together with the fretboard', () => {
+    const wrapper = mount(FrettedDiagramEditor, {
+      props: { instrument: makeFrettedInstrument(), positions: [] },
+      slots: { toolbar: '<button data-test="board-tool">Tool</button>' },
+    })
+
+    expect(wrapper.get('[data-test="fretboard-sticky"]').find('[data-test="board-tool"]').exists()).toBe(true)
   })
 
   it('keeps the fretboard floating over content given below the position list, such as the regions editor', () => {
@@ -237,7 +248,7 @@ describe('FrettedDiagramEditor', () => {
 
     // A sticky element only floats while its parent is on screen, so the slotted content has to
     // live inside that same parent.
-    const stickyScope = wrapper.get('[data-test="fretboard-scroll"]').element.parentElement!
+    const stickyScope = wrapper.get('[data-test="fretboard-sticky"]').element.parentElement!
     expect(stickyScope.contains(wrapper.get('[data-test="below-positions"]').element)).toBe(true)
   })
 

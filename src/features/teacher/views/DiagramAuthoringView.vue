@@ -488,84 +488,6 @@ async function saveAs(names: Record<string, string>) {
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <label class="text-sm font-semibold">{{
-              te('diagramAuthoringView.positionsLabel')
-            }}</label>
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                data-test="add-overlay"
-                class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted"
-                @click="overlaying = true"
-              >
-                <Layers :size="14" aria-hidden="true" />
-                {{ te('diagramAuthoringView.addOverlayButton') }}
-              </button>
-              <button
-                type="button"
-                data-test="open-preview-modal"
-                class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
-                :disabled="!previewDiagram"
-                :title="previewDiagram ? undefined : te('diagramAuthoringView.previewEmpty')"
-                @click="showPreviewModal = true"
-              >
-                <Maximize2 :size="14" aria-hidden="true" />
-                {{ te('diagramAuthoringView.viewPreviewButton') }}
-              </button>
-              <ColorPaletteMenu
-                test-id="diagram-color"
-                :title="te('diagramAuthoringView.colorLabel')"
-                :model-value="form.color.value"
-                :allow-clear="form.canClearColor.value"
-                :hint="colorHint"
-                @select="(color) => (form.color.value = color)"
-              >
-                <Palette :size="16" aria-hidden="true" />
-              </ColorPaletteMenu>
-              <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
-                <button
-                  type="button"
-                  data-test="label-mode-interval"
-                  class="rounded-md px-3 py-1 text-xs font-semibold"
-                  :class="
-                    form.labelDisplay.value === 'interval'
-                      ? 'bg-accent text-accent-fg'
-                      : 'text-ink-muted'
-                  "
-                  @click="form.labelDisplay.value = 'interval'"
-                >
-                  {{ te('diagramAuthoringView.labelModeInterval') }}
-                </button>
-                <button
-                  type="button"
-                  data-test="label-mode-note"
-                  class="rounded-md px-3 py-1 text-xs font-semibold"
-                  :class="
-                    form.labelDisplay.value === 'note'
-                      ? 'bg-accent text-accent-fg'
-                      : 'text-ink-muted'
-                  "
-                  @click="form.labelDisplay.value = 'note'"
-                >
-                  {{ te('diagramAuthoringView.labelModeNote') }}
-                </button>
-                <button
-                  type="button"
-                  data-test="label-mode-hidden"
-                  class="rounded-md px-3 py-1 text-xs font-semibold"
-                  :class="
-                    form.labelDisplay.value === 'hidden'
-                      ? 'bg-accent text-accent-fg'
-                      : 'text-ink-muted'
-                  "
-                  @click="form.labelDisplay.value = 'hidden'"
-                >
-                  {{ te('diagramAuthoringView.labelModeHidden') }}
-                </button>
-              </div>
-            </div>
-          </div>
           <FrettedDiagramEditor
             :instrument="selectedInstrument"
             :positions="form.positions.value"
@@ -581,6 +503,86 @@ async function saveAs(names: Record<string, string>) {
             @set-note="(id, value) => form.setPositionNote(id, activeLanguage, value)"
             @remove="form.removePosition"
           >
+            <template #toolbar>
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-semibold">{{
+                  te('diagramAuthoringView.positionsLabel')
+                }}</label>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-test="add-overlay"
+                    class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted"
+                    @click="overlaying = true"
+                  >
+                    <Layers :size="14" aria-hidden="true" />
+                    {{ te('diagramAuthoringView.addOverlayButton') }}
+                  </button>
+                  <button
+                    type="button"
+                    data-test="open-preview-modal"
+                    class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="!previewDiagram"
+                    :title="previewDiagram ? undefined : te('diagramAuthoringView.previewEmpty')"
+                    @click="showPreviewModal = true"
+                  >
+                    <Maximize2 :size="14" aria-hidden="true" />
+                    {{ te('diagramAuthoringView.viewPreviewButton') }}
+                  </button>
+                  <ColorPaletteMenu
+                    test-id="diagram-color"
+                    :title="te('diagramAuthoringView.colorLabel')"
+                    :model-value="form.color.value"
+                    :allow-clear="form.canClearColor.value"
+                    :hint="colorHint"
+                    @select="(color) => (form.color.value = color)"
+                  >
+                    <Palette :size="16" aria-hidden="true" />
+                  </ColorPaletteMenu>
+                  <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
+                    <button
+                      type="button"
+                      data-test="label-mode-interval"
+                      class="rounded-md px-3 py-1 text-xs font-semibold"
+                      :class="
+                        form.labelDisplay.value === 'interval'
+                          ? 'bg-accent text-accent-fg'
+                          : 'text-ink-muted'
+                      "
+                      @click="form.labelDisplay.value = 'interval'"
+                    >
+                      {{ te('diagramAuthoringView.labelModeInterval') }}
+                    </button>
+                    <button
+                      type="button"
+                      data-test="label-mode-note"
+                      class="rounded-md px-3 py-1 text-xs font-semibold"
+                      :class="
+                        form.labelDisplay.value === 'note'
+                          ? 'bg-accent text-accent-fg'
+                          : 'text-ink-muted'
+                      "
+                      @click="form.labelDisplay.value = 'note'"
+                    >
+                      {{ te('diagramAuthoringView.labelModeNote') }}
+                    </button>
+                    <button
+                      type="button"
+                      data-test="label-mode-hidden"
+                      class="rounded-md px-3 py-1 text-xs font-semibold"
+                      :class="
+                        form.labelDisplay.value === 'hidden'
+                          ? 'bg-accent text-accent-fg'
+                          : 'text-ink-muted'
+                      "
+                      @click="form.labelDisplay.value = 'hidden'"
+                    >
+                      {{ te('diagramAuthoringView.labelModeHidden') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
             <DiagramRegionsEditor
               :regions="form.regions.value"
               :string-count="selectedInstrument.string_count ?? 0"
