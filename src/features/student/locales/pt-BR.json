@@ -104,5 +104,15 @@
     "assignedBy": "Atribuída por {name}",
     "current": "Atual",
     "switch": "Tornar atual"
+  },
+  "courseCompletedView": {
+    "loadingNoun": "seu curso",
+    "errorMessage": "Não foi possível carregar seu curso.",
+    "notFoundHeading": "Nada para comemorar aqui ainda",
+    "notFoundMessage": "Este não é um curso que você concluiu.",
+    "heading": "Curso concluído!",
+    "message": "Você concluiu {title}. Excelente trabalho — mantenha o ritmo com seu próximo curso.",
+    "findNextCourse": "Encontrar o próximo curso",
+    "myCourses": "Meus cursos"
   }
 }

@@ -16,12 +16,17 @@ const { isCompact } = useIsCompact()
 // strip in the middle of the screen.
 const route = useRoute()
 // Which student tab a route sits under: the catalog and "my courses" are
-// their own sections; everything else (the path and the lesson/practice
-// screens reached from it) belongs to My path.
-const STUDENT_SECTIONS = new Set(['my-courses', 'course-catalog'])
+// their own sections (a finished course's screen sits under My courses);
+// everything else (the path and the lesson/practice screens reached from it)
+// belongs to My path.
+const STUDENT_SECTIONS = new Map([
+  ['my-courses', 'my-courses'],
+  ['course-completed', 'my-courses'],
+  ['course-catalog', 'course-catalog'],
+])
 const primaryNavTo = computed(() => {
   const name = typeof route.name === 'string' ? route.name : ''
-  return { name: STUDENT_SECTIONS.has(name) ? name : 'path' }
+  return { name: STUDENT_SECTIONS.get(name) ?? 'path' }
 })
 
 const contentWidthClass = computed(() =>

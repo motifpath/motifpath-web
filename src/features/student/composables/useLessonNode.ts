@@ -1,5 +1,6 @@
 import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
+import { completedCourseEnrollmentId as completedEnrollmentOf } from '@/features/student/utils/courseCompletion'
 import { useApi } from '@/shared/composables/useApi'
 import type { components } from '@/api/generated/core-domain'
 
@@ -34,6 +35,7 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
   const node = ref<ContentNode | null>(null)
   const cues = ref<ExpandedContent[]>([])
   const hasChallenge = ref(false)
+  const completedCourseEnrollmentId = ref<string | null>(null)
 
   // Bumped on every load() call; a call only applies its result if it is
   // still the most recent one by the time it resolves, so an overlapping
@@ -47,6 +49,7 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
     node.value = null
     cues.value = []
     hasChallenge.value = false
+    completedCourseEnrollmentId.value = null
   }
 
   async function load(): Promise<void> {
@@ -67,6 +70,7 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
         state.value = pathResult.response?.status === 404 ? 'not-found' : 'error'
         return
       }
+      completedCourseEnrollmentId.value = completedEnrollmentOf(pathResult.data)
 
       const item = pathResult.data.items.find((candidate) => candidate.content_node_id === id)
       if (!item) {
@@ -122,5 +126,5 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
   )
   void load()
 
-  return { state, status, node, cues, hasChallenge, retry: load }
+  return { state, status, node, cues, hasChallenge, completedCourseEnrollmentId, retry: load }
 }

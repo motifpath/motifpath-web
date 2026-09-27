@@ -65,6 +65,7 @@ describe('AuthenticatedLayout', () => {
     ['node', 'My path'],
     ['practice', 'My path'],
     ['my-courses', 'My courses'],
+    ['course-completed', 'My courses'],
     ['course-catalog', 'Find a course'],
   ])('marks the %s route under the %s tab', (routeName, tab) => {
     route.name = routeName

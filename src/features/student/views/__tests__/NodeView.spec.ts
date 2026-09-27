@@ -19,12 +19,13 @@ vi.mock('vidstack/player/ui', () => ({}))
 vi.mock('vidstack/player/styles/base.css', () => ({}))
 
 const push = vi.fn()
+const replace = vi.fn()
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return {
     ...actual,
     useRoute: () => ({ params: { nodeId: 'node-abc' } }),
-    useRouter: () => ({ push }),
+    useRouter: () => ({ push, replace }),
   }
 })
 
@@ -34,6 +35,7 @@ const lesson = {
   node: ref<ContentNode | null>(null),
   cues: ref<ExpandedContent[]>([]),
   hasChallenge: ref(false),
+  completedCourseEnrollmentId: ref<string | null>(null),
   retry: vi.fn(),
 }
 vi.mock('@/features/student/composables/useLessonNode', () => ({ useLessonNode: () => lesson }))
@@ -106,11 +108,21 @@ async function endVideo(wrapper: Wrapper) {
 describe('NodeView', () => {
   beforeEach(() => {
     push.mockReset()
+    replace.mockReset()
+    lesson.completedCourseEnrollmentId.value = null
     complete.mockReset().mockResolvedValue(undefined)
     useLessonTracking.mockClear()
     lesson.retry.mockReset()
     isShortViewport.value = false
     setLesson({})
+  })
+
+  it('takes the student to the course-completed screen when loading the lesson finds their course just completed', async () => {
+    lesson.completedCourseEnrollmentId.value = 'ce-1'
+
+    await mountView()
+
+    expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
   })
 
   it('reports the lesson it shows to the tracker', async () => {

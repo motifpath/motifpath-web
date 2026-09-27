@@ -104,5 +104,15 @@
     "assignedBy": "Assigned by {name}",
     "current": "Current",
     "switch": "Switch to this"
+  },
+  "courseCompletedView": {
+    "loadingNoun": "your course",
+    "errorMessage": "We couldn't load your course.",
+    "notFoundHeading": "Nothing to celebrate here yet",
+    "notFoundMessage": "This course isn't one you've finished.",
+    "heading": "Course complete!",
+    "message": "You finished {title}. Great work — keep the momentum going with your next course.",
+    "findNextCourse": "Find your next course",
+    "myCourses": "My courses"
   }
 }

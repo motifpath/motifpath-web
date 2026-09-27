@@ -1,6 +1,7 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
+import type * as VueRouter from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import {
@@ -21,6 +22,12 @@ vi.mock('@/features/student/composables/useStudentPath', () => ({
   useStudentPath: () => state,
 }))
 
+const replace = vi.fn()
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return { ...actual, useRouter: () => ({ replace }) }
+})
+
 import PathView from '@/features/student/views/PathView.vue'
 
 function mountView() {
@@ -34,6 +41,32 @@ function set(next: Partial<typeof state>) {
 }
 
 describe('PathView', () => {
+  it('takes the student to the course-completed screen when this path just completed their course', () => {
+    replace.mockReset()
+    set({
+      data: ref(
+        view([step(1, undefined, 'completed')], {
+          course_completed: true,
+          course_enrollment_id: 'ce-1',
+          course_checkpoint_position: 2,
+        }),
+      ),
+    })
+
+    mountView()
+
+    expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
+  })
+
+  it('stays on the path while the course is still in progress', () => {
+    replace.mockReset()
+    set({ data: ref(view([step(1, undefined, 'in_progress')], { course_enrollment_id: 'ce-1', course_checkpoint_position: 1 })) })
+
+    mountView()
+
+    expect(replace).not.toHaveBeenCalled()
+  })
+
   it('shows a loading state while the path request is in flight', () => {
     set({ isLoading: ref(true) })
 

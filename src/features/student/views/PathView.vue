@@ -2,13 +2,17 @@
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import PathContent from '@/features/student/components/PathContent.vue'
+import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 
 const { data, error, isLoading, retry } = useStudentPath()
 const { t } = useTypedT()
+
+useCourseCompletionRedirect(() => completedCourseEnrollmentId(data.value))
 </script>
 
 <template>

@@ -50,9 +50,10 @@ vi.mock('@/shared/composables/useToast', () => ({
 }))
 
 const push = vi.fn()
+const replace = vi.fn()
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
-  return { ...actual, useRouter: () => ({ push }) }
+  return { ...actual, useRouter: () => ({ push, replace }) }
 })
 
 import MyCoursesView from '@/features/student/views/MyCoursesView.vue'
@@ -127,6 +128,22 @@ describe('MyCoursesView', () => {
     current.error.value = null
     current.isLoading.value = false
     vi.clearAllMocks()
+  })
+
+  it('takes the student to the course-completed screen when this read finds their course just completed', () => {
+    current.data.value = currentPath({ course_enrollment_id: 'e-1', course_completed: true })
+
+    mountView()
+
+    expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'e-1' } })
+  })
+
+  it('stays on My courses while the current course is in progress', () => {
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+
+    mountView()
+
+    expect(replace).not.toHaveBeenCalled()
   })
 
   it('shows a loading state while anything is still loading', () => {

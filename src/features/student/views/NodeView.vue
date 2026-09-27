@@ -3,6 +3,7 @@ import { computed, defineAsyncComponent, h, ref, watch } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import CuePanel from '@/features/student/components/CuePanel.vue'
+import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
 import { useLessonNode } from '@/features/student/composables/useLessonNode'
 import { useLessonTracking } from '@/features/student/composables/useLessonTracking'
 import { activeCue } from '@/features/student/utils/activeCue'
@@ -34,6 +35,7 @@ const nodeId = computed(() => {
 })
 
 const lesson = useLessonNode(nodeId)
+useCourseCompletionRedirect(lesson.completedCourseEnrollmentId)
 const { complete } = useLessonTracking(lesson)
 
 // The player is a sizeable dependency that only this screen needs, so it is
