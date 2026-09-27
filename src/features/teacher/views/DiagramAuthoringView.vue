@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
-import { Layers, Palette } from 'lucide-vue-next'
+import { Layers, Maximize2, Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -23,7 +23,6 @@ import AppBar from '@/shared/components/AppBar.vue'
 import LocaleScope from '@/shared/components/LocaleScope.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
-import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useToast } from '@/shared/composables/useToast'
@@ -503,6 +502,17 @@ async function saveAs(names: Record<string, string>) {
                 <Layers :size="14" aria-hidden="true" />
                 {{ te('diagramAuthoringView.addOverlayButton') }}
               </button>
+              <button
+                type="button"
+                data-test="open-preview-modal"
+                class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="!previewDiagram"
+                :title="previewDiagram ? undefined : te('diagramAuthoringView.previewEmpty')"
+                @click="showPreviewModal = true"
+              >
+                <Maximize2 :size="14" aria-hidden="true" />
+                {{ te('diagramAuthoringView.viewPreviewButton') }}
+              </button>
               <ColorPaletteMenu
                 test-id="diagram-color"
                 :title="te('diagramAuthoringView.colorLabel')"
@@ -570,22 +580,21 @@ async function saveAs(names: Record<string, string>) {
             @set-custom-label="(id, value) => form.setPositionCustomLabel(id, activeLanguage, value)"
             @set-note="(id, value) => form.setPositionNote(id, activeLanguage, value)"
             @remove="form.removePosition"
-          />
+          >
+            <DiagramRegionsEditor
+              :regions="form.regions.value"
+              :string-count="selectedInstrument.string_count ?? 0"
+              :language="activeLanguage"
+              :invalid-ids="form.invalidRegionIds.value"
+              @add="form.addRegion"
+              @set-frets="form.setRegionFrets"
+              @set-strings="form.setRegionStrings"
+              @set-description="(id, value) => form.setRegionDescription(id, activeLanguage, value)"
+              @set-color="form.setRegionColor"
+              @remove="form.removeRegion"
+            />
+          </FrettedDiagramEditor>
         </div>
-
-        <DiagramRegionsEditor
-          v-if="selectedInstrument"
-          :regions="form.regions.value"
-          :string-count="selectedInstrument.string_count ?? 0"
-          :language="activeLanguage"
-          :invalid-ids="form.invalidRegionIds.value"
-          @add="form.addRegion"
-          @set-frets="form.setRegionFrets"
-          @set-strings="form.setRegionStrings"
-          @set-description="(id, value) => form.setRegionDescription(id, activeLanguage, value)"
-          @set-color="form.setRegionColor"
-          @remove="form.removeRegion"
-        />
 
         <div class="flex flex-col gap-4 border-t border-border pt-2">
           <div>
@@ -619,38 +628,6 @@ async function saveAs(names: Record<string, string>) {
       </main>
 
       <LocaleScope :locale="editingLocale">
-      <aside
-        class="flex flex-col gap-5 bg-surface-raised"
-        :class="
-          isCompact
-            ? 'w-full border-t border-border px-4 py-5'
-            : 'w-[360px] flex-shrink-0 border-l border-border px-[28px] py-[32px]'
-        "
-      >
-        <div class="flex flex-col gap-2.5">
-          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">
-            {{ te('diagramAuthoringView.previewLabel') }}
-          </span>
-          <template v-if="previewDiagram && selectedInstrument">
-            <FrettedDiagramView
-              :diagram="previewDiagram"
-              :instrument="selectedInstrument"
-              :diagram-ref="previewDiagramRef"
-              :label-mode="form.labelDisplay.value"
-            />
-            <button
-              type="button"
-              data-test="open-preview-modal"
-              class="w-fit rounded-md border border-border px-3 py-1.5 text-sm font-semibold text-ink-muted"
-              @click="showPreviewModal = true"
-            >
-              {{ te('diagramAuthoringView.viewPreviewButton') }}
-            </button>
-          </template>
-          <p v-else class="text-sm text-ink-subtle">{{ te('diagramAuthoringView.previewEmpty') }}</p>
-        </div>
-      </aside>
-
       <DiagramPreviewModal
         v-if="previewDiagram && selectedInstrument"
         :open="showPreviewModal"

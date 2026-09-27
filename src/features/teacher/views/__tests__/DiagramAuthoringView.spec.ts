@@ -78,6 +78,7 @@ function mountView() {
 import { i18n } from '@/i18n'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import DiagramAuthoringView from '@/features/teacher/views/DiagramAuthoringView.vue'
 import type { components } from '@/api/generated/core-domain'
@@ -342,6 +343,32 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
   })
 
+  it('offers the full preview from the fretboard toolbar instead of a small side preview', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    const button = () => wrapper.get('[data-test="open-preview-modal"]')
+    // Next to "Overlay diagram…", and disabled until there's something to preview.
+    expect(button().element.parentElement).toBe(wrapper.get('[data-test="add-overlay"]').element.parentElement)
+    expect(button().attributes('disabled')).toBeDefined()
+
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+
+    expect(button().attributes('disabled')).toBeUndefined()
+    expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).exists()).toBe(false)
+  })
+
+  it('keeps the regions editor under the floating fretboard, like the position list', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    expect(wrapper.getComponent(FrettedDiagramEditor).findComponent(DiagramRegionsEditor).exists()).toBe(true)
+  })
+
   describe('in edit mode', () => {
     beforeEach(() => {
       route.params = { id: 'd-1' }
@@ -469,6 +496,7 @@ describe('DiagramAuthoringView', () => {
       const editor = wrapper.findComponent(FrettedDiagramEditor)
       expect(editor.props('color')).toBe('#3B82F6')
       expect(editor.props('positions').map((p: { color: string | null }) => p.color)).toEqual(['#EF4444', null])
+      await wrapper.get('[data-test="open-preview-modal"]').trigger('click')
       expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).props('diagram').color).toBe('#3B82F6')
     })
 
@@ -1111,7 +1139,7 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('[data-test="region-description"]').setValue('Caixa 1')
       expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(false)
       expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
-      expect(wrapper.findAll('[data-test="diagram-region"]').length).toBeGreaterThan(0)
+      expect(wrapper.findAll('[data-test="editor-region"]').length).toBeGreaterThan(0)
 
       POST.mockResolvedValueOnce({ data: undefined, error: { message: 'stop here' }, response: { status: 400 } })
       await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()

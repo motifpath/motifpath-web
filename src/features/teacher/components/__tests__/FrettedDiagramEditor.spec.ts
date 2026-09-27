@@ -229,6 +229,18 @@ describe('FrettedDiagramEditor', () => {
     expect(wrapper.get('[data-test="fretboard-scroll"]').classes()).toContain('sticky')
   })
 
+  it('keeps the fretboard floating over content given below the position list, such as the regions editor', () => {
+    const wrapper = mount(FrettedDiagramEditor, {
+      props: { instrument: makeFrettedInstrument(), positions: [] },
+      slots: { default: '<div data-test="below-positions">Regions</div>' },
+    })
+
+    // A sticky element only floats while its parent is on screen, so the slotted content has to
+    // live inside that same parent.
+    const stickyScope = wrapper.get('[data-test="fretboard-scroll"]').element.parentElement!
+    expect(stickyScope.contains(wrapper.get('[data-test="below-positions"]').element)).toBe(true)
+  })
+
   it('shows each position\'s sequence order (list position), not a free-typed number', () => {
     const wrapper = mount(FrettedDiagramEditor, {
       props: {

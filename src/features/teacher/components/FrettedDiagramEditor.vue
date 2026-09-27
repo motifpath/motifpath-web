@@ -211,7 +211,7 @@ function onDrop(index: number) {
 <template>
   <div class="flex flex-col gap-3.5">
     <!-- sticky + top-16 keeps the board in view under the AppBar (h-16, z-20) while the
-         position list below scrolls — otherwise a long list pushes the fretboard itself
+         position list (and any slotted content) below scrolls — otherwise a long list pushes the fretboard itself
          off-screen while editing. -->
     <div class="sticky top-16 z-10 overflow-x-auto rounded-md bg-surface-raised" data-test="fretboard-scroll">
       <!-- w-full lets the board fill however much space it's given (the "leverage full width"
@@ -467,5 +467,8 @@ function onDrop(index: number) {
         </button>
       </div>
     </div>
+    <!-- Content that belongs under the board, such as the regions editor, goes here: a sticky
+         element only floats while its parent is on screen, so it must share this parent. -->
+    <slot />
   </div>
 </template>

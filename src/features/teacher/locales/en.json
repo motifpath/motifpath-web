@@ -161,7 +161,6 @@
     "labelModeHidden": "Hidden",
     "classificationLabel": "Classification",
     "classificationHint": "A diagram needs at least one skill and one concept to be reusable across the library.",
-    "previewLabel": "Preview",
     "previewEmpty": "Place a position to see a preview.",
     "viewPreviewButton": "View full preview",
     "diagramUpdated": "Diagram updated.",

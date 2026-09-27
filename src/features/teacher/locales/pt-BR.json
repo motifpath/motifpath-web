@@ -161,7 +161,6 @@
     "labelModeHidden": "Oculto",
     "classificationLabel": "Classificação",
     "classificationHint": "Um diagrama precisa de pelo menos uma habilidade e um conceito para ser reutilizável na biblioteca.",
-    "previewLabel": "Pré-visualização",
     "previewEmpty": "Posicione uma marcação para ver a pré-visualização.",
     "viewPreviewButton": "Ver pré-visualização completa",
     "diagramUpdated": "Diagrama atualizado.",
