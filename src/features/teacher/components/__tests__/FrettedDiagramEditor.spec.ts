@@ -7,7 +7,6 @@ import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import { CAPTION_LANE_HEIGHT } from '@/shared/utils/regionCaptionLayout'
 import {
-  EDITOR_PX_PER_FRET,
   EDITOR_VIEW_H,
   editorViewWidth,
   fretX,
@@ -399,12 +398,15 @@ describe('FrettedDiagramEditor', () => {
       expect(Number(band.attributes('width'))).toBeCloseTo(fretX(2, geometry) - fretX(0, geometry))
     })
 
-    it('draws a region covering only the open strings over the open-string area, so it still shows', () => {
+    it('draws a region covering only the open strings around the nut, where their markers sit', () => {
       const wrapper = mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 0 })])
 
       const band = wrapper.get('[data-test="editor-region"]')
-      expect(Number(band.attributes('x'))).toBeCloseTo(fretX(0, geometry) - EDITOR_PX_PER_FRET)
-      expect(Number(band.attributes('width'))).toBeCloseTo(EDITOR_PX_PER_FRET)
+      const left = Number(band.attributes('x'))
+      const right = left + Number(band.attributes('width'))
+      expect(left).toBeLessThan(fretX(0, geometry) - 13.5)
+      expect(right).toBeGreaterThan(fretX(0, geometry) + 13.5)
+      expect(right).toBeLessThanOrEqual(fretX(1, geometry))
     })
 
     it("tints a band with the region's color, or the accent color when it has none", () => {

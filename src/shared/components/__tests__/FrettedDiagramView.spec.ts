@@ -180,7 +180,7 @@ describe('FrettedDiagramView', () => {
     expect(wrapper.findAll('[data-test="diagram-position-label"]')[0]?.text()).toBe('A')
   })
 
-  it('numbers no fret below 0, even with open strings, and still draws open-string markers left of the nut', () => {
+  it('numbers no fret below 0, even with open strings, and draws open-string markers on the nut', () => {
     const diagram = makeFrettedDiagram({
       positions: [
         { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
@@ -197,7 +197,11 @@ describe('FrettedDiagramView', () => {
     expect(Math.min(...fretNumbers)).toBe(0)
     const nutX = Number(wrapper.findAll('[data-test="fret-number"]')[0]!.attributes('x'))
     const openMarker = wrapper.findAll('[data-test="diagram-position"]')[0]!
-    expect(Number(openMarker.attributes('cx'))).toBeLessThan(nutX)
+    expect(Number(openMarker.attributes('cx'))).toBeCloseTo(nutX)
+    // Strings start at the nut too: nothing is drawn left of it.
+    for (const string of wrapper.findAll('[data-test="diagram-string"]')) {
+      expect(Number(string.attributes('x1'))).toBeCloseTo(nutX)
+    }
   })
 
   it('starts the wood at the nut, leaving the open-string area bare', () => {
@@ -489,14 +493,16 @@ describe('FrettedDiagramView', () => {
         expect(Number(band.attributes('x')) + Number(band.attributes('width'))).toBeCloseTo(fretLineX(wrapper, 3))
       })
 
-      it('covers the open-string area when it spans only the open strings, so it still shows', () => {
+      it('surrounds the nut when it spans only the open strings, covering their markers', () => {
         const wrapper = mountFromOpen(0)
         const band = wrapper.get('[data-test="diagram-region"]')
         const openMarkerX = Number(wrapper.findAll('[data-test="diagram-position"]')[0]!.attributes('cx'))
+        const left = Number(band.attributes('x'))
+        const right = left + Number(band.attributes('width'))
 
-        expect(Number(band.attributes('width'))).toBeGreaterThan(0)
-        expect(Number(band.attributes('x'))).toBeLessThan(openMarkerX)
-        expect(Number(band.attributes('x')) + Number(band.attributes('width'))).toBeCloseTo(fretLineX(wrapper, 0))
+        expect(left).toBeLessThan(openMarkerX - 13.5)
+        expect(right).toBeGreaterThan(openMarkerX + 13.5)
+        expect(right).toBeLessThanOrEqual(fretLineX(wrapper, 1))
       })
     })
 

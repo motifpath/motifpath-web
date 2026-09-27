@@ -42,6 +42,8 @@ const MARGIN_LEFT = 44
 const MARGIN_RIGHT = 30
 const MARGIN_TOP = 34
 const MARGIN_BOTTOM = 40
+// Half the width of a band covering only the open strings: it surrounds the markers on the nut.
+const OPEN_BAND_HALF_WIDTH = 18
 const BOARD_W = VIEW_W - MARGIN_LEFT - MARGIN_RIGHT
 const BOARD_H = 300 - MARGIN_TOP - MARGIN_BOTTOM
 
@@ -74,12 +76,13 @@ const viewH = computed(() => boardTop.value + BOARD_H + MARGIN_BOTTOM)
 
 /**
  * X position for a position marker — the middle of the fret space behind
- * the fret wire, matching standard fretboard-diagram convention (mirrors
+ * the fret wire, or on the nut for an open string, matching standard
+ * fretboard-diagram convention (mirrors
  * `frettedFretboardEditor.ts`'s `positionX`, which the editor uses; this
  * viewer keeps its own local geometry rather than sharing that module).
  */
 function markerX(fret: number): number {
-  if (fret === 0) return x(0) - colGap.value / 2
+  if (fret === 0) return x(0)
   return (x(fret - 1) + x(fret)) / 2
 }
 
@@ -87,13 +90,10 @@ function y(stringNumber: number): number {
   return boardTop.value + (stringNumber - 1) * rowGap.value
 }
 
-// The wood is the fretboard itself, so it starts at the nut: the open-string space left of it
-// (when the window reaches there) stays bare.
-const woodLeft = computed(() => x(Math.max(layout.value.minFret, 0)))
+// The wood and strings start at the window's left edge, which is never below the nut.
+const boardLeft = computed(() => x(layout.value.minFret))
 
-// The window reaches one fret space left of the lowest fret, so an open-string marker (fret 0)
-// has room left of the nut. That space's left edge is the board's edge, not a fret, so no fret
-// line is drawn or numbered below 0.
+// The window never reaches below the nut, so no fret line is drawn or numbered below 0.
 const frets = computed(() => {
   const start = Math.max(Math.ceil(layout.value.minFret), 0)
   const end = Math.floor(layout.value.maxFret)
@@ -161,12 +161,12 @@ function markerLabel(position: Marker): string {
   return props.labelMode === 'note' ? position.noteName : intervalLabel(position.interval)
 }
 
-/** A band covers whole fret spaces: from the wire before fret_start (the nut for fret 0 — the
- *  open-string area isn't fretboard, so it stays bare) to fret_end's wire, and from half a
- *  string gap above its first string to half a gap below its last. A band of only the open
- *  strings has no fret space, so it covers the open-string area instead of vanishing. */
+/** A band covers whole fret spaces: from the wire before fret_start (the nut for fret 0) to
+ *  fret_end's wire, and from half a string gap above its first string to half a gap below its
+ *  last. A band of only the open strings has no fret space, so it surrounds the nut, where
+ *  their markers sit. */
 function regionFretEdges(region: Region): { left: number; right: number } {
-  if (region.fretEnd === 0) return { left: x(0) - colGap.value, right: x(0) }
+  if (region.fretEnd === 0) return { left: x(0) - OPEN_BAND_HALF_WIDTH, right: x(0) + OPEN_BAND_HALF_WIDTH }
   return { left: x(Math.max(region.fretStart - 1, 0)), right: x(region.fretEnd) }
 }
 
@@ -272,9 +272,9 @@ function noteAlignClass(position: Marker): string {
 
       <rect
         data-test="fretboard-wood"
-        :x="woodLeft"
+        :x="boardLeft"
         :y="boardTop - rowGap / 2"
-        :width="MARGIN_LEFT + BOARD_W - woodLeft"
+        :width="MARGIN_LEFT + BOARD_W - boardLeft"
         :height="BOARD_H + rowGap"
         rx="6"
         :fill="`url(#fretboard-wood-${diagram.diagram_id})`"
@@ -326,7 +326,8 @@ function noteAlignClass(position: Marker): string {
       <line
         v-for="stringNumber in layout.stringCount"
         :key="`string-${stringNumber}`"
-        :x1="MARGIN_LEFT"
+        data-test="diagram-string"
+        :x1="boardLeft"
         :y1="y(stringNumber)"
         :x2="MARGIN_LEFT + BOARD_W"
         :y2="y(stringNumber)"

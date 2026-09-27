@@ -25,6 +25,13 @@ export const EDITOR_BOARD_H = EDITOR_VIEW_H - EDITOR_MARGIN_TOP - EDITOR_MARGIN_
 // board rather than shrinking every column.
 export const EDITOR_PX_PER_FRET = 43
 
+// Open-string markers sit on the nut. A click this far right of it still means the open string
+// (fret 1's marker starts further right), and this far left of it too.
+const NUT_CLICK_RIGHT = 7
+const NUT_CLICK_LEFT = EDITOR_PX_PER_FRET / 2
+// Half the width of a band covering only the open strings: it surrounds the markers on the nut.
+const OPEN_BAND_HALF_WIDTH = 18
+
 export const DEFAULT_MIN_FRET = 0
 export const DEFAULT_MAX_FRET = 24
 
@@ -65,11 +72,10 @@ export function fretX(fret: number, geometry: FrettedEditorGeometry): number {
  * X position for a *position marker* at `fret` — the middle of the fret
  * space behind the fret wire (between the `fret - 1` and `fret` wires),
  * matching standard fretboard-diagram convention. An open-string position
- * (`fret === 0`) sits half a fret space to the left of the nut, since there
- * is no wire behind it to sit between.
+ * (`fret === 0`) sits on the nut, since there is no fretboard behind it.
  */
 export function positionX(fret: number, geometry: FrettedEditorGeometry): number {
-  if (fret === 0) return fretX(0, geometry) - EDITOR_PX_PER_FRET / 2
+  if (fret === 0) return fretX(0, geometry)
   return (fretX(fret - 1, geometry) + fretX(fret, geometry)) / 2
 }
 
@@ -82,8 +88,8 @@ export function stringY(stringNumber: number, geometry: FrettedEditorGeometry): 
  * Inverts a click point (already in the SVG's own viewBox coordinate space,
  * not raw screen pixels) to whichever string/fret *cell* it visually falls
  * in. For fret, that's the space a marker actually gets drawn in via
- * `positionX` — the half-fret-space region centered on it — not the wire
- * numerically nearest the click. Returns null when the click falls outside
+ * `positionX` — the fret space it's centered in, or the nut for an open
+ * string — not the wire numerically nearest the click. Returns null when the click falls outside
  * the fretboard's playable bounds (before the open-string zone, past the
  * highest fret, above string 1, or below the last string) — an editor
  * component should ignore the click rather than place a position off-board.
@@ -93,8 +99,9 @@ export function nearestFrettedCell(
   py: number,
   geometry: FrettedEditorGeometry,
 ): { string: number; fret: number } | null {
-  const relativeX = px - EDITOR_MARGIN_LEFT
-  const fret = geometry.minFret + Math.ceil(relativeX / EDITOR_PX_PER_FRET)
+  const relativeX = px - fretX(geometry.minFret, geometry)
+  const nearNut = geometry.minFret === 0 && relativeX >= -NUT_CLICK_LEFT && relativeX <= NUT_CLICK_RIGHT
+  const fret = nearNut ? 0 : geometry.minFret + Math.ceil(relativeX / EDITOR_PX_PER_FRET)
   const stringNumber = Math.round((py - EDITOR_MARGIN_TOP) / rowGap(geometry)) + 1
 
   if (fret < geometry.minFret || fret > geometry.maxFret) return null
@@ -123,10 +130,9 @@ export function isDrawableRegion(region: EditorRegionSpan, geometry: FrettedEdit
 
 /**
  * A region's band, in board coordinates: whole fret spaces from the wire before `fretStart`
- * (the nut for fret 0 — the open-string area isn't fretboard, so it stays bare) to `fretEnd`'s
- * wire, and from half a string gap above its first string to half a gap below its last. A band
- * of only the open strings has no fret space, so it covers the open-string area instead of
- * vanishing.
+ * (the nut for fret 0) to `fretEnd`'s wire, and from half a string gap above its first string
+ * to half a gap below its last. A band of only the open strings has no fret space, so it
+ * surrounds the nut, where their markers sit.
  */
 export function editorRegionBox(
   region: EditorRegionSpan,
@@ -134,8 +140,8 @@ export function editorRegionBox(
 ): { x: number; y: number; width: number; height: number } {
   const gap = rowGap(geometry)
   const openOnly = region.fretEnd === 0
-  const left = openOnly ? fretX(0, geometry) - EDITOR_PX_PER_FRET : fretX(Math.max(region.fretStart - 1, 0), geometry)
-  const right = fretX(region.fretEnd, geometry)
+  const left = openOnly ? fretX(0, geometry) - OPEN_BAND_HALF_WIDTH : fretX(Math.max(region.fretStart - 1, 0), geometry)
+  const right = openOnly ? fretX(0, geometry) + OPEN_BAND_HALF_WIDTH : fretX(region.fretEnd, geometry)
   const top = stringY(region.stringStart ?? 1, geometry) - gap / 2
   const bottom = stringY(region.stringEnd ?? geometry.stringCount, geometry) + gap / 2
   return { x: left, y: top, width: right - left, height: bottom - top }
