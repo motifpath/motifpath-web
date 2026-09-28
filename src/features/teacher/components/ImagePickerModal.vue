@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useTypedT } from '@/shared/composables/useTypedT'
 
+import FileDropField from '@/features/teacher/components/FileDropField.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 
@@ -8,12 +9,6 @@ withDefaults(defineProps<{ open: boolean; kind?: 'image' | 'audio' }>(), { kind:
 const emit = defineEmits<{ select: [file: File]; close: [] }>()
 
 const { t } = useTypedT()
-
-function onFileChange(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  emit('select', file)
-}
 </script>
 
 <template>
@@ -29,17 +24,6 @@ function onFileChange(event: Event) {
       <ModalCloseButton @close="emit('close')" />
     </div>
 
-    <label
-      class="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface-sunken text-sm text-ink-muted"
-    >
-      <span>{{ t('imagePickerModal.dropHint') }}</span>
-      <span class="text-xs text-ink-subtle">{{ t('imagePickerModal.uploadHint') }}</span>
-      <input
-        type="file"
-        :accept="kind === 'audio' ? 'audio/*' : 'image/*'"
-        class="hidden"
-        @change="onFileChange"
-      />
-    </label>
+    <FileDropField :kind="kind" @select="emit('select', $event)" />
   </ModalOverlay>
 </template>
