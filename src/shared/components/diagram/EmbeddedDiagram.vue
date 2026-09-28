@@ -10,8 +10,11 @@
  * `root_override` and `playback` aren't applied yet: the diagram is drawn as
  * authored.
  */
+import { watch } from 'vue'
+
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
+import type { EmbeddedDiagramStatus } from '@/shared/composables/useEmbeddedDiagram'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
 
@@ -30,10 +33,15 @@ const props = withDefaults(
   { selectablePositionIds: () => [], selectedPositionIds: () => [], multiple: false, inert: false },
 )
 
-const emit = defineEmits<{ select: [positionId: string] }>()
+const emit = defineEmits<{
+  select: [positionId: string]
+  /** Whether the diagram is still loading, shown, or can't be shown to a student. */
+  status: [status: EmbeddedDiagramStatus]
+}>()
 
 const { t } = useTypedT()
 const { status, diagram, instrument, diagramRef, labelMode } = useEmbeddedDiagram(() => props.embed)
+watch(status, (next) => emit('status', next), { immediate: true })
 </script>
 
 <template>

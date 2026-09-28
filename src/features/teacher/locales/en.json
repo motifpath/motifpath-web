@@ -532,6 +532,21 @@
     "emptyHeading": "No diagrams yet",
     "emptyMessage": "Create a diagram in the Diagrams library first."
   },
+  "diagramEmbedPicker": {
+    "loadingNoun": "diagram",
+    "loadErrorMessage": "We couldn't load this diagram.",
+    "chooseAnother": "Choose another diagram",
+    "changeDiagram": "Change diagram",
+    "showLabels": "Show interval labels",
+    "intervalsLegend": "Intervals to show",
+    "noIntervals": "Check at least one interval, or the diagram shows nothing.",
+    "unavailable": "Students can't see this diagram yet — only fretted instruments (guitar, bass) can be shown in lessons for now.",
+    "insertTitle": "Insert a diagram",
+    "editTitle": "Edit diagram",
+    "cancel": "Cancel",
+    "insert": "Insert",
+    "apply": "Apply"
+  },
   "overlayDiagramsModal": {
     "title": "Overlay diagrams",
     "hint": "See how other diagrams on this instrument combine with this one. Merge to bring them into the editor as positions and regions you can change, or discard to leave this diagram as it is.",

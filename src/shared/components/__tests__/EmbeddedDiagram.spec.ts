@@ -67,6 +67,19 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.findComponent(FrettedDiagramView).props('labelMode')).toBe('hidden')
   })
 
+  it('reports whether the diagram can be shown, for an author previewing it', async () => {
+    serve(makeFrettedDiagram())
+    const shown = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+    expect(shown.emitted('status')).toEqual([['loading'], ['ready']])
+
+    clearEmbeddedDiagramCache()
+    serve(null)
+    const missing = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+    expect(missing.emitted('status')?.at(-1)).toEqual(['unavailable'])
+  })
+
   it('has no caption when none is given', async () => {
     serve(makeFrettedDiagram())
 

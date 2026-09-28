@@ -532,6 +532,21 @@
     "emptyHeading": "Nenhum diagrama ainda",
     "emptyMessage": "Crie um diagrama na biblioteca de Diagramas primeiro."
   },
+  "diagramEmbedPicker": {
+    "loadingNoun": "diagrama",
+    "loadErrorMessage": "Não foi possível carregar este diagrama.",
+    "chooseAnother": "Escolher outro diagrama",
+    "changeDiagram": "Trocar diagrama",
+    "showLabels": "Mostrar rótulos dos intervalos",
+    "intervalsLegend": "Intervalos a mostrar",
+    "noIntervals": "Marque pelo menos um intervalo, senão o diagrama não mostra nada.",
+    "unavailable": "Os alunos ainda não conseguem ver este diagrama — por enquanto, só instrumentos de trastes (violão, baixo) aparecem nas aulas.",
+    "insertTitle": "Inserir um diagrama",
+    "editTitle": "Editar diagrama",
+    "cancel": "Cancelar",
+    "insert": "Inserir",
+    "apply": "Aplicar"
+  },
   "overlayDiagramsModal": {
     "title": "Sobrepor diagramas",
     "hint": "Veja como outros diagramas deste instrumento se combinam com este. Mescle para trazê-los ao editor como posições e regiões que você pode alterar, ou descarte para deixar este diagrama como está.",
