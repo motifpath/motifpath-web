@@ -15,11 +15,17 @@ type DiagramRef = components['schemas']['DiagramRef']
  * diagram is chosen (loaded), and keeps every setting the picker doesn't edit
  * (styling, root override, playback…). Choosing a different diagram starts a
  * fresh ref, since those settings were authored for the old one.
+ *
+ * With `answers`, the ref is an exercise stimulus: the teacher also picks
+ * which of the shown intervals are correct (at least one), written as
+ * correct_intervals. Without it, a ref never carries answers.
  */
-export function useDiagramEmbedDraft(initial: DiagramRef | null) {
+export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answers?: boolean } = {}) {
+  const answers = options.answers ?? false
   const diagram = ref<Diagram | null>(null)
   const showLabels = ref(true)
   const selectedIntervals = ref<IntervalCode[]>([])
+  const correctIntervals = ref<IntervalCode[]>([])
   let base: DiagramRef | null = null
 
   const availableIntervals = computed<IntervalCode[]>(() => {
@@ -35,6 +41,8 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null) {
     selectedIntervals.value = subset
       ? availableIntervals.value.filter((code) => subset.includes(code))
       : [...availableIntervals.value]
+    const correct = base?.correct_intervals ?? []
+    correctIntervals.value = selectedIntervals.value.filter((code) => correct.includes(code))
   }
 
   function toggleLabels() {
@@ -46,24 +54,60 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null) {
     if (selected.has(code)) selected.delete(code)
     else selected.add(code)
     selectedIntervals.value = availableIntervals.value.filter((c) => selected.has(c))
+    correctIntervals.value = correctIntervals.value.filter((c) => selected.has(c))
   }
 
-  const canApply = computed(() => diagram.value !== null && selectedIntervals.value.length > 0)
+  function toggleCorrect(code: IntervalCode) {
+    const correct = new Set(correctIntervals.value)
+    if (correct.has(code)) correct.delete(code)
+    else correct.add(code)
+    correctIntervals.value = selectedIntervals.value.filter((c) => correct.has(c))
+  }
 
-  /** The ref to embed, or null while there's nothing that could be shown. */
+  const canShow = computed(() => diagram.value !== null && selectedIntervals.value.length > 0)
+  const canApply = computed(() => canShow.value && (!answers || correctIntervals.value.length > 0))
+
+  /** The ref to embed, or null while there's nothing that could be shown (or, for a stimulus, no answer yet). */
   function toRef(): DiagramRef | null {
-    if (!diagram.value || !canApply.value) return null
+    return canApply.value ? buildRef() : null
+  }
+
+  /** The ref as it would draw, answers or not — for a live preview. */
+  function toPreviewRef(): DiagramRef | null {
+    return canShow.value ? buildRef() : null
+  }
+
+  function buildRef(): DiagramRef | null {
+    if (!diagram.value) return null
     const everyInterval = selectedIntervals.value.length === availableIntervals.value.length
+    // Answers are only ever this draft's own: never kept from a reopened ref.
+    const kept: Partial<DiagramRef> = { ...base }
+    delete kept.correct_intervals
     return {
-      ...base,
+      ...kept,
       diagram_id: diagram.value.diagram_id,
       layers: {
         ...base?.layers,
         intervals: showLabels.value,
         subset: everyInterval ? null : [...selectedIntervals.value],
       },
+      ...(answers ? { correct_intervals: [...correctIntervals.value] } : {}),
     }
   }
 
-  return { diagram, showLabels, selectedIntervals, availableIntervals, canApply, select, toggleLabels, toggleInterval, toRef }
+  return {
+    diagram,
+    showLabels,
+    selectedIntervals,
+    correctIntervals,
+    availableIntervals,
+    canShow,
+    canApply,
+    select,
+    toggleLabels,
+    toggleInterval,
+    toggleCorrect,
+    toRef,
+    toPreviewRef,
+  }
 }

@@ -34,8 +34,8 @@ function serve(list: Diagram[]) {
   })
 }
 
-function mountPicker(initial: DiagramRef | null = null) {
-  return mount(DiagramEmbedPicker, { props: { initial } })
+function mountPicker(initial: DiagramRef | null = null, answers = false) {
+  return mount(DiagramEmbedPicker, { props: { initial, answers } })
 }
 
 type Picker = ReturnType<typeof mountPicker>
@@ -171,5 +171,52 @@ describe('DiagramEmbedPicker', () => {
     await flushPromises()
 
     expect(wrapper.findAll('[data-test="diagram-option"]')).toHaveLength(1)
+  })
+
+  describe('as an exercise stimulus', () => {
+    function correctBoxes(wrapper: Picker) {
+      return wrapper.findAll('[data-test="embed-picker-correct"]')
+    }
+
+    it('asks which of the shown intervals are correct, and reports nothing until one is', async () => {
+      serve([penta])
+      const wrapper = mountPicker(null, true)
+      await flushPromises()
+      await choose(wrapper)
+
+      expect(correctBoxes(wrapper).map((box) => box.text())).toEqual(['R', 'b3', '4', '5', 'b7'])
+      expect(wrapper.find('[data-test="embed-picker-no-correct"]').exists()).toBe(true)
+      expect(lastChange(wrapper)).toBeNull()
+
+      await correctBoxes(wrapper)[0]!.get('input').setValue(true)
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="embed-picker-no-correct"]').exists()).toBe(false)
+      expect(lastChange(wrapper)).toEqual({
+        diagram_id: 'd-penta',
+        layers: { intervals: true, subset: null },
+        correct_intervals: ['R'],
+      })
+    })
+
+    it('offers only the intervals still shown as answers', async () => {
+      serve([penta])
+      const wrapper = mountPicker(null, true)
+      await flushPromises()
+      await choose(wrapper)
+
+      await intervalBoxes(wrapper)[1]!.get('input').setValue(false)
+
+      expect(correctBoxes(wrapper).map((box) => box.text())).toEqual(['R', '4', '5', 'b7'])
+    })
+
+    it('never asks for answers otherwise', async () => {
+      serve([penta])
+      const wrapper = mountPicker()
+      await flushPromises()
+      await choose(wrapper)
+
+      expect(correctBoxes(wrapper)).toHaveLength(0)
+    })
   })
 })

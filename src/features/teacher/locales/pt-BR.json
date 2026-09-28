@@ -561,7 +561,9 @@
     "editTitle": "Editar diagrama",
     "cancel": "Cancelar",
     "insert": "Inserir",
-    "apply": "Aplicar"
+    "apply": "Aplicar",
+    "correctLegend": "Respostas corretas — os alunos tocam todas as posições com estes intervalos",
+    "noCorrect": "Marque pelo menos uma resposta correta."
   },
   "overlayDiagramsModal": {
     "title": "Sobrepor diagramas",

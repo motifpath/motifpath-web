@@ -561,7 +561,9 @@
     "editTitle": "Edit diagram",
     "cancel": "Cancel",
     "insert": "Insert",
-    "apply": "Apply"
+    "apply": "Apply",
+    "correctLegend": "Correct answers — students tap every position with these intervals",
+    "noCorrect": "Check at least one correct answer."
   },
   "overlayDiagramsModal": {
     "title": "Overlay diagrams",

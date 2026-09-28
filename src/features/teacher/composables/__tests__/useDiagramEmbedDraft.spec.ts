@@ -117,4 +117,55 @@ describe('useDiagramEmbedDraft', () => {
 
     expect(draft.selectedIntervals.value).toEqual(['R'])
   })
+
+  describe('choosing answers, for an exercise stimulus', () => {
+    it('offers the shown intervals as answers and writes the correct ones', () => {
+      const draft = useDiagramEmbedDraft(null, { answers: true })
+      draft.select(penta)
+      draft.toggleInterval('4')
+      draft.toggleCorrect('R')
+      draft.toggleCorrect('b7')
+
+      expect(draft.correctIntervals.value).toEqual(['R', 'b7'])
+      expect(draft.toRef()).toEqual({
+        diagram_id: penta.diagram_id,
+        layers: { intervals: true, subset: ['R', 'b3', '5', 'b7'] },
+        correct_intervals: ['R', 'b7'],
+      })
+    })
+
+    it('cannot apply without a correct answer', () => {
+      const draft = useDiagramEmbedDraft(null, { answers: true })
+      draft.select(penta)
+
+      expect(draft.canApply.value).toBe(false)
+      expect(draft.toRef()).toBeNull()
+    })
+
+    it('drops an answer whose interval is no longer shown', () => {
+      const draft = useDiagramEmbedDraft(null, { answers: true })
+      draft.select(penta)
+      draft.toggleCorrect('b3')
+      draft.toggleCorrect('R')
+      draft.toggleInterval('b3')
+
+      expect(draft.correctIntervals.value).toEqual(['R'])
+    })
+
+    it('reopens a stimulus with its correct answers', () => {
+      const initial: DiagramRef = { diagram_id: penta.diagram_id, layers: { intervals: false }, correct_intervals: ['5'] }
+      const draft = useDiagramEmbedDraft(initial, { answers: true })
+      draft.select(penta)
+
+      expect(draft.correctIntervals.value).toEqual(['5'])
+    })
+
+    it('writes no answers outside answer mode, even from a reopened ref', () => {
+      const initial: DiagramRef = { diagram_id: penta.diagram_id, layers: { intervals: true }, correct_intervals: ['5'] }
+      const draft = useDiagramEmbedDraft(initial)
+      draft.select(penta)
+
+      expect(draft.toRef()).not.toHaveProperty('correct_intervals')
+    })
+  })
 })

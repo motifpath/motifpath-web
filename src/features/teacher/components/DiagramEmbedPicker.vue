@@ -26,16 +26,21 @@ import type { components } from '@/api/generated/core-domain'
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
 
-const props = defineProps<{
-  /** The ref already embedded, reopened for editing; null to embed a new one. */
-  initial: DiagramRef | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    /** The ref already embedded, reopened for editing; null to embed a new one. */
+    initial: DiagramRef | null
+    /** An exercise stimulus: also ask which shown intervals are the correct answers. */
+    answers?: boolean
+  }>(),
+  { answers: false },
+)
 const emit = defineEmits<{ change: [diagramRef: DiagramRef | null] }>()
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
 
-const draft = useDiagramEmbedDraft(props.initial)
+const draft = useDiagramEmbedDraft(props.initial, { answers: props.answers })
 const step = ref<'list' | 'initial' | 'configure'>(props.initial ? 'initial' : 'list')
 // Only a settled preview counts: toggling an interval redraws the preview,
 // and its brief reload mustn't flicker what's reported.
@@ -62,8 +67,9 @@ function onPreviewStatus(status: EmbeddedDiagramStatus) {
   if (status !== 'loading') previewStatus.value = status
 }
 
-const draftRef = computed(() => (step.value === 'configure' ? draft.toRef() : null))
-const reported = computed(() => (previewStatus.value === 'ready' ? draftRef.value : null))
+const inConfigure = computed(() => step.value === 'configure')
+const previewRef = computed(() => (inConfigure.value ? draft.toPreviewRef() : null))
+const reported = computed(() => (inConfigure.value && previewStatus.value === 'ready' ? draft.toRef() : null))
 
 watch(
   () => JSON.stringify(reported.value),
@@ -144,11 +150,33 @@ function intervalLabel(code: IntervalCode): string {
         </div>
       </fieldset>
 
-      <p v-if="!draftRef" data-test="embed-picker-no-intervals" class="text-sm text-danger">
+      <fieldset v-if="answers && draft.selectedIntervals.value.length > 0" class="flex flex-col gap-1.5">
+        <legend class="text-xs text-ink-subtle">{{ t('diagramEmbedPicker.correctLegend') }}</legend>
+        <div class="flex flex-wrap gap-x-3 gap-y-1.5">
+          <label
+            v-for="code in draft.selectedIntervals.value"
+            :key="code"
+            data-test="embed-picker-correct"
+            class="flex items-center gap-1.5 text-sm"
+          >
+            <input
+              type="checkbox"
+              :checked="draft.correctIntervals.value.includes(code)"
+              @change="draft.toggleCorrect(code)"
+            />
+            {{ intervalLabel(code) }}
+          </label>
+        </div>
+        <p v-if="draft.correctIntervals.value.length === 0" data-test="embed-picker-no-correct" class="text-sm text-danger">
+          {{ t('diagramEmbedPicker.noCorrect') }}
+        </p>
+      </fieldset>
+
+      <p v-if="!previewRef" data-test="embed-picker-no-intervals" class="text-sm text-danger">
         {{ t('diagramEmbedPicker.noIntervals') }}
       </p>
       <div v-else data-test="embed-picker-preview" class="rounded-md border border-border bg-surface p-3">
-        <EmbeddedDiagram :embed="{ kind: 'single', ref: draftRef }" @status="onPreviewStatus">
+        <EmbeddedDiagram :embed="{ kind: 'single', ref: previewRef }" @status="onPreviewStatus">
           <template #unavailable>
             <p data-test="embed-picker-unavailable" class="text-sm text-ink-muted">
               {{ t('diagramEmbedPicker.unavailable') }}
