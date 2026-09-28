@@ -1,7 +1,14 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+
+const GET = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { GET }, eventApi: {} }),
+}))
 
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
+import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import { makeDiagramRef, makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
@@ -258,5 +265,73 @@ describe('PromptRenderer', () => {
     const img = wrapper.get('img')
     expect(img.attributes('src')).toBe('https://cdn.example.com/circle-of-fifths.png')
     expect(img.attributes('alt')).toBe('Circle of fifths diagram')
+  })
+
+  describe('an inline diagram', () => {
+    // The embedded diagram loads itself; its own spec covers that.
+    const stubs = { EmbeddedDiagram: true }
+
+    it('shows the diagram its node refers to, between the text around it', () => {
+      const wrapper = mount(PromptRenderer, {
+        props: {
+          document: doc([
+            { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] },
+            { type: 'diagram', attrs: { diagram_ref: makeDiagramRef() } },
+            { type: 'paragraph', content: [{ type: 'text', text: 'After' }] },
+          ]),
+        },
+        global: { stubs },
+      })
+
+      const diagram = wrapper.getComponent(EmbeddedDiagram)
+      expect(diagram.props('embed')).toEqual({ kind: 'single', ref: makeDiagramRef() })
+      expect(diagram.props('caption')).toBeUndefined()
+      const html = wrapper.html()
+      expect(html.indexOf('Before')).toBeLessThan(html.indexOf('embedded-diagram-stub'))
+      expect(html.indexOf('embedded-diagram-stub')).toBeLessThan(html.indexOf('After'))
+    })
+
+    it('shows a stack of diagrams', () => {
+      const stack = [makeDiagramRef(), makeDiagramRef({ diagram_id: 'diagram-2' })]
+      const wrapper = mount(PromptRenderer, {
+        props: { document: doc([{ type: 'diagram', attrs: { diagram_stack_ref: { stack } } }]) },
+        global: { stubs },
+      })
+
+      expect(wrapper.getComponent(EmbeddedDiagram).props('embed')).toEqual({ kind: 'stack', stack })
+    })
+
+    it('shows nothing for a diagram node without a usable reference', () => {
+      const wrapper = mount(PromptRenderer, {
+        props: { document: doc([{ type: 'diagram', attrs: { diagram_ref: { diagram_id: 'd-1' } } }, { type: 'diagram' }]) },
+        global: { stubs },
+      })
+
+      expect(wrapper.findComponent(EmbeddedDiagram).exists()).toBe(false)
+      expect(wrapper.text()).toBe('')
+    })
+
+    it('shows the diagram of a changed document, not the one it replaced', async () => {
+      const box1 = makeFrettedDiagram()
+      const box2 = makeFrettedDiagram({ diagram_id: 'diagram-2', positions: box1.positions.slice(0, 2) })
+      GET.mockImplementation((path: string, init?: { params?: { path?: { diagram_id?: string } } }) => {
+        const data = path === '/instruments' ? [makeFrettedInstrument()] : [box1, box2].find(
+          (d) => d.diagram_id === init?.params?.path?.diagram_id,
+        )
+        return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+      })
+      // Mounted for real, so what the student sees is the loaded diagram itself.
+      const wrapper = mount(PromptRenderer, {
+        props: { document: doc([{ type: 'diagram', attrs: { diagram_ref: makeDiagramRef() } }]) },
+      })
+      await flushPromises()
+      expect(wrapper.findAll('[data-test="diagram-position"]')).toHaveLength(box1.positions.length)
+
+      const next = makeDiagramRef({ diagram_id: 'diagram-2' })
+      await wrapper.setProps({ document: doc([{ type: 'diagram', attrs: { diagram_ref: next } }]) })
+      await flushPromises()
+
+      expect(wrapper.findAll('[data-test="diagram-position"]')).toHaveLength(2)
+    })
   })
 })
