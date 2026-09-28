@@ -9,6 +9,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/** Absent, null, or a list of interval names: anything else would break the subset filtering. */
+function isSubset(value: unknown): boolean {
+  return value === undefined || value === null || (Array.isArray(value) && value.every((v) => typeof v === 'string'))
+}
+
 function isDiagramRef(value: unknown): value is DiagramRef {
   if (!isRecord(value)) return false
   const { diagram_id: diagramId, layers } = value
@@ -16,7 +21,8 @@ function isDiagramRef(value: unknown): value is DiagramRef {
     typeof diagramId === 'string' &&
     diagramId !== '' &&
     isRecord(layers) &&
-    typeof layers.intervals === 'boolean'
+    typeof layers.intervals === 'boolean' &&
+    isSubset(layers.subset)
   )
 }
 

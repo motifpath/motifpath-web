@@ -17,6 +17,11 @@ describe('parseDiagramEmbed', () => {
     })
   })
 
+  it('accepts a null subset', () => {
+    const allShown = { diagram_id: 'd-1', layers: { intervals: true, subset: null } }
+    expect(parseDiagramEmbed({ diagram_ref: allShown })).toEqual({ kind: 'single', ref: allShown })
+  })
+
   it('prefers diagram_ref when both are present', () => {
     expect(parseDiagramEmbed({ diagram_ref: ref, diagram_stack_ref: { stack: [ref, other] } })).toEqual({
       kind: 'single',
@@ -33,6 +38,8 @@ describe('parseDiagramEmbed', () => {
     ['a ref without layers', { diagram_ref: { diagram_id: 'd-1' } }],
     ['a ref whose intervals flag is not a boolean', { diagram_ref: { diagram_id: 'd-1', layers: { intervals: 'yes' } } }],
     ['a ref that is not an object', { diagram_ref: 'd-1' }],
+    ['a ref whose subset is not a list', { diagram_ref: { diagram_id: 'd-1', layers: { intervals: true, subset: 5 } } }],
+    ['a ref whose subset holds a non-interval', { diagram_ref: { diagram_id: 'd-1', layers: { intervals: true, subset: ['R', 3] } } }],
     ['a stack of one', { diagram_stack_ref: { stack: [ref] } }],
     ['a stack that is not an array', { diagram_stack_ref: { stack: ref } }],
     ['a stack with a malformed entry', { diagram_stack_ref: { stack: [ref, { diagram_id: 'd-2' }] } }],
