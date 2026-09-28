@@ -173,5 +173,8 @@
   },
   "confirmDialog": {
     "cancel": "Cancelar"
+  },
+  "diagramThumbnail": {
+    "noPreview": "Sem prévia"
   }
 }
