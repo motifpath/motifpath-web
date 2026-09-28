@@ -1074,17 +1074,50 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
       expect(body).not.toHaveProperty('options')
     })
 
-    it('says so when the stimulus diagram cannot be loaded', async () => {
-      GET.mockImplementation((path: string) =>
-        path === '/diagrams/{diagram_id}'
-          ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
-          : Promise.resolve({ data: [], error: undefined, response: { status: 200 } }),
-      )
+    it('offers to try again when the stimulus diagram fails to load, keeping it in the exercise', async () => {
+      let failing = true
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') {
+          return failing
+            ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+            : Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
+        }
+        if (path === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument()], error: undefined, response: { status: 200 } })
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      const wrapper = mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.find('[data-test="stimulus-diagram-error"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-diagram-unavailable"]').exists()).toBe(false)
+
+      failing = false
+      await wrapper.get('[data-test="stimulus-diagram-error"] [data-test="retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(true)
+    })
+
+    it('says a diagram on an instrument students cannot see yet cannot be used', async () => {
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') {
+          return Promise.resolve({ data: { ...penta, instrument_id: 'instrument-piano' }, error: undefined, response: { status: 200 } })
+        }
+        if (path === '/instruments') {
+          return Promise.resolve({
+            data: [makeFrettedInstrument({ instrument_id: 'instrument-piano', family: 'keyboard' })],
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
       const wrapper = mountWithStubbedPickers()
       await pickDiagramStimulus(wrapper)
 
       expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(false)
       expect(wrapper.find('[data-test="stimulus-diagram-unavailable"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-diagram-error"]').exists()).toBe(false)
     })
 
     it('switches back to an image stimulus by picking an image', async () => {

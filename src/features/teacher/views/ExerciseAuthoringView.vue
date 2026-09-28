@@ -404,6 +404,12 @@ async function save() {
               :diagram-ref="form.stimulusDiagram.value"
               @update:diagram-ref="form.setStimulusDiagram"
             />
+            <StateError
+              v-else-if="stimulus.status.value === 'error'"
+              data-test="stimulus-diagram-error"
+              :message="t('diagramEmbedPicker.loadErrorMessage')"
+              @retry="stimulus.retry"
+            />
             <p v-else data-test="stimulus-diagram-unavailable" class="text-sm text-ink-muted">
               {{ t('diagramEmbedPicker.unavailable') }}
             </p>

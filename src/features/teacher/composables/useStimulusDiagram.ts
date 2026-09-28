@@ -8,13 +8,14 @@ import type { components } from '@/api/generated/core-domain'
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 
-export type StimulusDiagramStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
+export type StimulusDiagramStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unavailable'
 
 /**
  * Loads an exercise stimulus's diagram and its instrument, for editing its
- * answers in the form: `unavailable` when either fails to load, or the
- * instrument isn't fretted (no fretboard to mark answers on yet). Loads again
- * only when the diagram itself changes, not on every edit of how it shows.
+ * answers in the form: `error` when either fails to load (`retry` tries
+ * again), `unavailable` when the instrument isn't fretted (no fretboard to
+ * mark answers on yet). Loads again only when the diagram itself changes,
+ * not on every edit of how it shows.
  */
 export function useStimulusDiagram(diagramId: MaybeRefOrGetter<string | null>) {
   const { coreApi } = useApi()
@@ -44,8 +45,12 @@ export function useStimulusDiagram(diagramId: MaybeRefOrGetter<string | null>) {
     // A newer diagram replaced this one while it loaded.
     if (attempt !== latest) return
 
-    const found = loaded && instruments.data?.find((i) => i.instrument_id === loaded.instrument_id)
-    if (!loaded || !found || found.family !== 'fretted') {
+    if (!loaded || !instruments.data) {
+      status.value = 'error'
+      return
+    }
+    const found = instruments.data.find((i) => i.instrument_id === loaded.instrument_id)
+    if (!found || found.family !== 'fretted') {
       status.value = 'unavailable'
       return
     }
@@ -56,5 +61,9 @@ export function useStimulusDiagram(diagramId: MaybeRefOrGetter<string | null>) {
 
   watch(() => toValue(diagramId), (id) => void load(id), { immediate: true })
 
-  return { status, diagram, instrument }
+  function retry() {
+    void load(toValue(diagramId))
+  }
+
+  return { status, diagram, instrument, retry }
 }
