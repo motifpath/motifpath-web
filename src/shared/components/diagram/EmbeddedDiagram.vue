@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
- * A prebuilt diagram embedded in what a student studies — a video cue or an
- * inline `diagram` node. It loads the diagram itself, holds its space while
- * loading, and shows nothing at all (its caption included) when the diagram
- * can't be shown, since a student can do nothing about it.
+ * A prebuilt diagram embedded in what a student studies — a video cue, an
+ * inline `diagram` node, or an exercise's stimulus or option thumbnail. It
+ * loads the diagram itself, holds its space while loading, and shows nothing
+ * at all (its caption included) when the diagram can't be shown, since a
+ * student can do nothing about it — unless the caller fills the `unavailable`
+ * slot.
  *
  * `root_override` and `playback` aren't applied yet: the diagram is drawn as
  * authored.
@@ -13,7 +15,21 @@ import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
 
-const props = defineProps<{ embed: DiagramEmbed; caption?: string }>()
+const props = withDefaults(
+  defineProps<{
+    embed: DiagramEmbed
+    caption?: string
+    /** Answer choices, passed through to the viewer. */
+    selectablePositionIds?: string[]
+    selectedPositionIds?: string[]
+    multiple?: boolean
+    /** A picture only, such as an option thumbnail whose card handles the click. */
+    inert?: boolean
+  }>(),
+  { selectablePositionIds: () => [], selectedPositionIds: () => [], multiple: false, inert: false },
+)
+
+const emit = defineEmits<{ select: [positionId: string] }>()
 
 const { t } = useTypedT()
 const { status, diagram, instrument, diagramRef, labelMode } = useEmbeddedDiagram(() => props.embed)
@@ -31,13 +47,20 @@ const { status, diagram, instrument, diagramRef, labelMode } = useEmbeddedDiagra
     v-else-if="status === 'ready' && diagram && instrument && diagramRef"
     data-test="embedded-diagram"
     class="flex flex-col gap-2"
+    :class="{ 'pointer-events-none': props.inert }"
+    :aria-hidden="props.inert ? 'true' : undefined"
   >
     <FrettedDiagramView
       :diagram="diagram"
       :instrument="instrument"
       :diagram-ref="diagramRef"
       :label-mode="labelMode"
+      :selectable-position-ids="props.selectablePositionIds"
+      :selected-position-ids="props.selectedPositionIds"
+      :multiple="props.multiple"
+      @select="emit('select', $event)"
     />
     <figcaption v-if="props.caption" class="text-sm text-ink-muted">{{ props.caption }}</figcaption>
   </figure>
+  <slot v-else-if="status === 'unavailable'" name="unavailable" />
 </template>

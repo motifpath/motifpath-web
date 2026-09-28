@@ -85,4 +85,43 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.find('figure').exists()).toBe(false)
     expect(wrapper.text()).toBe('')
   })
+
+  it('passes answer choices to the view and re-emits a pick', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, {
+      props: { embed: single, selectablePositionIds: ['p0', 'p5'], selectedPositionIds: ['p5'], multiple: true },
+    })
+    await flushPromises()
+
+    const view = wrapper.findComponent(FrettedDiagramView)
+    expect(view.props('selectablePositionIds')).toEqual(['p0', 'p5'])
+    expect(view.props('selectedPositionIds')).toEqual(['p5'])
+    expect(view.props('multiple')).toBe(true)
+
+    view.vm.$emit('select', 'p0')
+    expect(wrapper.emitted('select')).toEqual([['p0']])
+  })
+
+  it('draws an inert diagram that takes no pointer input and is hidden from screen readers', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single, inert: true } })
+    await flushPromises()
+
+    const figure = wrapper.get('[data-test="embedded-diagram"]')
+    expect(figure.classes()).toContain('pointer-events-none')
+    expect(figure.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('shows its unavailable slot when the diagram cannot be shown, and not while loading', async () => {
+    serve(null)
+    const slots = { unavailable: '<p data-test="fallback">No diagram</p>' }
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single }, slots })
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(true)
+  })
 })
