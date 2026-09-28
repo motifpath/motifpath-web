@@ -103,15 +103,23 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.emitted('select')).toEqual([['p0']])
   })
 
-  it('draws an inert diagram that takes no pointer input and is hidden from screen readers', async () => {
-    serve(makeFrettedDiagram())
+  it('draws an inert diagram: no pointer or keyboard input, hidden from screen readers, even where a marker has a note', async () => {
+    const base = makeFrettedDiagram()
+    serve(makeFrettedDiagram({ positions: base.positions.map((p, i) => (i === 1 ? { ...p, note: { en: 'N', pt_BR: 'N' } } : p)) }))
 
     const wrapper = mount(EmbeddedDiagram, { props: { embed: single, inert: true } })
     await flushPromises()
 
-    const figure = wrapper.get('[data-test="embedded-diagram"]')
-    expect(figure.classes()).toContain('pointer-events-none')
-    expect(figure.attributes('aria-hidden')).toBe('true')
+    expect(wrapper.get('[data-test="embedded-diagram"]').attributes()).toHaveProperty('inert')
+  })
+
+  it('is not inert by default', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="embedded-diagram"]').attributes()).not.toHaveProperty('inert')
   })
 
   it('shows its unavailable slot when the diagram cannot be shown, and not while loading', async () => {

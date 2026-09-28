@@ -682,5 +682,27 @@ describe('FrettedDiagramView', () => {
 
       expect(wrapper.get('[data-test="diagram-note"]').isVisible()).toBe(true)
     })
+
+    it('exposes its choices to assistive technology: a radiogroup for one pick, never a presentational image', () => {
+      const single = mountChoices().get('svg')
+      const multiple = mountChoices({ multiple: true }).get('svg')
+
+      expect(single.attributes('role')).toBe('radiogroup')
+      expect(multiple.attributes('role')).toBe('group')
+    })
+
+    it("still shows a noted marker's note on hover after a plain choice took focus", async () => {
+      const base = makeFrettedDiagram()
+      const diagram = makeFrettedDiagram({
+        positions: base.positions.map((p) => (p.position_id === 'p1' ? { ...p, note: { en: 'Blue note', pt_BR: 'Nota blue' } } : p)),
+      })
+      const wrapper = mountChoices({}, diagram)
+      const choices = wrapper.findAll('[data-test="diagram-choice"]')
+
+      await choices[0]!.trigger('focus')
+      await choices[1]!.trigger('mouseenter')
+
+      expect(wrapper.get('[data-test="diagram-note"]').isVisible()).toBe(true)
+    })
   })
 })

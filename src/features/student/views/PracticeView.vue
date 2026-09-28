@@ -76,6 +76,7 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         :open="helpOpen"
         :exercise-type="session.currentExercise.value.exercise_type"
         :allow-multiple="allowMultiple"
+        :diagram-stimulus="Boolean(session.currentExercise.value.diagram_ref)"
         @close="helpOpen = false"
       />
 

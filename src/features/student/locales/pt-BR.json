@@ -68,6 +68,8 @@
     "interaction": {
       "imageRecognitionMultiple": "Toque em todas as áreas da imagem que respondem ao enunciado.",
       "imageRecognitionSingle": "Toque na área da imagem que responde ao enunciado.",
+      "diagramRecognitionMultiple": "Toque em todos os marcadores do diagrama que respondem ao enunciado.",
+      "diagramRecognitionSingle": "Toque no marcador do diagrama que responde ao enunciado.",
       "imageChoiceMultiple": "Toque em todas as imagens que se aplicam.",
       "imageChoiceSingle": "Toque na imagem que responde ao enunciado.",
       "defaultMultiple": "Toque em todas as opções que se aplicam.",

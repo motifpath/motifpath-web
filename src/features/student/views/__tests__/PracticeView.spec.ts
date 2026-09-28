@@ -52,6 +52,7 @@ vi.mock('@/features/student/composables/usePracticeSession', () => ({
 
 import PracticeView from '@/features/student/views/PracticeView.vue'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
+import PracticeHelpModal from '@/features/student/components/PracticeHelpModal.vue'
 
 function mountView() {
   return mount(PracticeView, {
@@ -132,6 +133,21 @@ describe('PracticeView', () => {
     const wrapper = mountView()
 
     expect(wrapper.getComponent(ExerciseView).props('diagramRef')).toEqual(diagramRef)
+  })
+
+  it('tells the help modal whether the stimulus is a diagram', () => {
+    const diagramExercise: Exercise = {
+      ...textExercise,
+      exercise_id: 'ex-diagram',
+      exercise_type: 'image_recognition',
+      diagram_ref: { diagram_id: 'd1', layers: { intervals: false }, correct_intervals: ['R'] },
+      options: [{ option_id: 'o-p0', is_correct: true, diagram_id: 'd1', diagram_position_id: 'p0' }],
+    }
+    set({ status: ref('in-progress'), exercises: ref([diagramExercise]) })
+    expect(mountView().getComponent(PracticeHelpModal).props('diagramStimulus')).toBe(true)
+
+    set({ status: ref('in-progress'), exercises: ref([textExercise]) })
+    expect(mountView().getComponent(PracticeHelpModal).props('diagramStimulus')).toBe(false)
   })
 
   it('tells ExerciseView to allow multiple selections only when the exercise has more than one correct option', () => {

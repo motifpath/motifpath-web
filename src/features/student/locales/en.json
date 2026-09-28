@@ -68,6 +68,8 @@
     "interaction": {
       "imageRecognitionMultiple": "Tap every area on the image that answers the prompt.",
       "imageRecognitionSingle": "Tap the area on the image that answers the prompt.",
+      "diagramRecognitionMultiple": "Tap every marker on the diagram that answers the prompt.",
+      "diagramRecognitionSingle": "Tap the marker on the diagram that answers the prompt.",
       "imageChoiceMultiple": "Tap every image that applies.",
       "imageChoiceSingle": "Tap the image that answers the prompt.",
       "defaultMultiple": "Tap every option that applies.",

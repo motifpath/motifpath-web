@@ -208,11 +208,31 @@ function captionPlacement(index: number): { textX: number; textY: number; barY: 
 // hover) until something else is tapped or Escape is pressed.
 const notedPositions = computed(() => layout.value.positions.filter((position) => position.note))
 const hasNotes = computed(() => notedPositions.value.length > 0)
+// An image role would make every marker presentational, hiding answer choices and notes alike.
+const svgRole = computed(() => {
+  if (props.selectablePositionIds.length > 0) return props.multiple ? 'group' : 'radiogroup'
+  return hasNotes.value ? 'group' : 'img'
+})
 const noteIdPrefix = useId()
 const hoveredNote = ref<string | null>(null)
 const focusedNote = ref<string | null>(null)
 const pinnedNote = ref<string | null>(null)
 const shownNote = computed(() => pinnedNote.value ?? focusedNote.value ?? hoveredNote.value)
+// Which marker shows a focus ring: any interactive one. Kept apart from focusedNote so a focused
+// choice without a note never hides a hovered note.
+const focusedMarker = ref<string | null>(null)
+
+function onMarkerFocus(position: Marker) {
+  if (!isInteractive(position)) return
+  focusedMarker.value = position.positionId
+  if (position.note) focusedNote.value = position.positionId
+}
+
+function onMarkerBlur(position: Marker) {
+  if (!isInteractive(position)) return
+  focusedMarker.value = null
+  if (position.note) focusedNote.value = null
+}
 
 function noteId(position: Marker): string {
   return `${noteIdPrefix}-note-${position.positionId}`
@@ -309,7 +329,7 @@ function noteAlignClass(position: Marker): string {
   <div class="relative">
     <svg
       :viewBox="`0 0 ${VIEW_W} ${viewH}`"
-      :role="hasNotes ? 'group' : 'img'"
+      :role="svgRole"
       :aria-label="localizedName(diagram.names)"
       class="w-full"
       font-family="monospace"
@@ -415,8 +435,8 @@ function noteAlignClass(position: Marker): string {
         :class="isInteractive(position) ? 'cursor-pointer outline-none' : ''"
         @mouseenter="position.note && (hoveredNote = position.positionId)"
         @mouseleave="position.note && (hoveredNote = null)"
-        @focus="isInteractive(position) && (focusedNote = position.positionId)"
-        @blur="isInteractive(position) && (focusedNote = null)"
+        @focus="onMarkerFocus(position)"
+        @blur="onMarkerBlur(position)"
         @click="activate(position)"
         @keydown.escape="closeNotes"
         @keydown.enter.prevent="activate(position)"
@@ -480,7 +500,7 @@ function noteAlignClass(position: Marker): string {
           stroke-width="1.5"
         />
         <circle
-          v-if="isInteractive(position) && (focusedNote === position.positionId)"
+          v-if="isInteractive(position) && (focusedMarker === position.positionId)"
           :cx="markerX(position.fret)"
           :cy="y(position.string)"
           :r="isChoice(position) ? 22 : 18"

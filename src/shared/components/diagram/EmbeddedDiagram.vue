@@ -23,7 +23,8 @@ const props = withDefaults(
     selectablePositionIds?: string[]
     selectedPositionIds?: string[]
     multiple?: boolean
-    /** A picture only, such as an option thumbnail whose card handles the click. */
+    /** A picture only, such as an option thumbnail whose card handles the click: no pointer or
+     *  keyboard input reaches it, and screen readers skip it. */
     inert?: boolean
   }>(),
   { selectablePositionIds: () => [], selectedPositionIds: () => [], multiple: false, inert: false },
@@ -47,8 +48,7 @@ const { status, diagram, instrument, diagramRef, labelMode } = useEmbeddedDiagra
     v-else-if="status === 'ready' && diagram && instrument && diagramRef"
     data-test="embedded-diagram"
     class="flex flex-col gap-2"
-    :class="{ 'pointer-events-none': props.inert }"
-    :aria-hidden="props.inert ? 'true' : undefined"
+    :inert="props.inert || undefined"
   >
     <FrettedDiagramView
       :diagram="diagram"
