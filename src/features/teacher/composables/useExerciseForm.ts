@@ -103,8 +103,8 @@ export function useExerciseForm() {
   // here until setStimulusImageSize reports a real measurement.
   const pendingRegionOptions = ref<Option[] | null>(null)
   // An image_recognition stimulus can be a prebuilt diagram instead of an
-  // image: its answers are its correct_intervals, and the server derives the
-  // options from its positions. A stack can't be authored here, so a loaded
+  // image: its answers are its correct_position_ids, and the server derives the
+  // options from its fretboard cells. A stack can't be authored here, so a loaded
   // one is kept as it is until a single diagram replaces it.
   // Which kind of stimulus the teacher is authoring; switching keeps the
   // other kind's work, so switching back finds it again.
@@ -135,7 +135,11 @@ export function useExerciseForm() {
         return audioOptions.value.some((o) => o.correct)
       case 'image_recognition':
         if (stimulusSource.value === 'image') return regions.value.some((r) => r.correct)
-        if (stimulusDiagram.value) return (stimulusDiagram.value.correct_intervals?.length ?? 0) > 0
+        if (stimulusDiagram.value) {
+          // A stimulus saved before correct positions existed still names its answers by interval.
+          const { correct_position_ids: positions, correct_intervals: intervals } = stimulusDiagram.value
+          return (positions?.length ?? intervals?.length ?? 0) > 0
+        }
         return stimulusStack.value !== null
       default:
         return false

@@ -935,7 +935,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
   })
 
   describe('diagrams', () => {
-    const rootsOnly = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_intervals: ['R'] }
+    const rootsOnly = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_position_ids: ['p0'] }
     const chord = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
 
     function mountWithStubbedPickers() {

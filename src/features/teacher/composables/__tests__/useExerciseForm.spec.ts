@@ -462,7 +462,7 @@ describe('useExerciseForm', () => {
   })
 
   describe('diagrams', () => {
-    const rootsOnly: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_intervals: ['R'] }
+    const rootsOnly: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_position_ids: ['p0'] }
     const chord: DiagramRef = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
 
     it('sends a diagram stimulus instead of an image and options, with its answers', () => {
@@ -487,7 +487,7 @@ describe('useExerciseForm', () => {
       const form = useExerciseForm()
       form.exerciseType.value = 'image_recognition'
 
-      form.setStimulusDiagram({ ...rootsOnly, correct_intervals: [] })
+      form.setStimulusDiagram({ ...rootsOnly, correct_position_ids: [] })
 
       expect(form.hasCorrectOption.value).toBe(false)
     })
