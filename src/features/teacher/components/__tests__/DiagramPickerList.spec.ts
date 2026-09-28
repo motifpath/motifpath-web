@@ -184,6 +184,25 @@ describe('DiagramPickerList', () => {
       expect(diagramQueries().at(-1)).toEqual(expect.objectContaining({ name: 'penta' }))
     })
 
+    it('keeps the current results on screen while a filter reloads, so nothing jumps', async () => {
+      let call = 0
+      GET.mockImplementation((path: string) => {
+        if (path === '/instruments') return ok([makeFrettedInstrument()])
+        if (path === '/diagrams/creators') return ok([])
+        call += 1
+        return call === 1 ? page([pentatonic]) : new Promise(() => {})
+      })
+      const wrapper = mountPicker()
+      await flushPromises()
+
+      await wrapper.get('[data-test="diagram-root-filter"]').setValue('F#')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="diagram-picker-loading"]').exists()).toBe(false)
+      expect(rowTexts(wrapper)).toEqual(['A minor pentatonic'])
+      expect(wrapper.get('[data-test="diagram-picker-results"]').attributes('aria-busy')).toBe('true')
+    })
+
     it('filters by root note', async () => {
       serve(() => page([pentatonic]))
       const wrapper = mountPicker()

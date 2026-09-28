@@ -113,7 +113,7 @@ const KIND_CHIPS = [
     </div>
 
     <StateLoading
-      v-if="isLoading"
+      v-if="isLoading && diagrams.length === 0"
       data-test="diagram-picker-loading"
       :noun="t('diagramPickerList.loadingNoun')"
     />
@@ -126,7 +126,7 @@ const KIND_CHIPS = [
     />
 
     <p
-      v-else-if="offered.length === 0 && !hasMore && hasActiveFilters"
+      v-else-if="!isLoading && offered.length === 0 && !hasMore && hasActiveFilters"
       data-test="diagram-picker-no-matches"
       class="py-6 text-center text-sm text-ink-muted"
     >
@@ -134,14 +134,20 @@ const KIND_CHIPS = [
     </p>
 
     <StateEmpty
-      v-else-if="offered.length === 0 && !hasMore"
+      v-else-if="!isLoading && offered.length === 0 && !hasMore"
       data-test="diagram-picker-empty"
       :heading="emptyHeading ?? t('diagramPickerList.emptyHeading')"
       :message="emptyMessage ?? t('diagramPickerList.emptyMessage')"
     />
 
     <template v-else>
-      <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <!-- A filter change keeps the current results until the new ones arrive, dimmed, so nothing jumps. -->
+      <ul
+        data-test="diagram-picker-results"
+        :aria-busy="isLoading"
+        class="grid grid-cols-1 gap-2 transition-opacity sm:grid-cols-2"
+        :class="{ 'opacity-50': isLoading }"
+      >
         <li v-for="diagram in offered" :key="diagram.diagram_id">
           <button
             type="button"

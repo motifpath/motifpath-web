@@ -46,7 +46,7 @@ function apply() {
   <Teleport to="body">
     <ModalOverlay
       :open="open"
-      panel-class="flex max-h-[90vh] w-[640px] max-w-[92vw] flex-col gap-4 overflow-y-auto rounded-xl bg-surface-raised p-5 shadow-level2"
+      panel-class="flex h-[85vh] w-[720px] max-w-[92vw] flex-col gap-4 rounded-xl bg-surface-raised p-5 shadow-level2"
       @close="emit('close')"
     >
       <div class="flex items-center justify-between">
@@ -56,7 +56,10 @@ function apply() {
         <ModalCloseButton @close="emit('close')" />
       </div>
 
-      <DiagramEmbedPicker :initial="initial" @change="chosen = $event" />
+      <!-- A fixed-height panel with only this part scrolling, so filtering or configuring never resizes the modal. -->
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <DiagramEmbedPicker :initial="initial" @change="chosen = $event" />
+      </div>
 
       <div class="flex justify-end gap-2 border-t border-border pt-4">
         <button
