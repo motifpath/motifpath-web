@@ -559,17 +559,27 @@
     "loadErrorMessage": "We couldn't load this diagram.",
     "chooseAnother": "Choose another diagram",
     "changeDiagram": "Change diagram",
-    "showLabels": "Show interval labels",
-    "intervalsLegend": "Intervals to show",
-    "noIntervals": "Check at least one interval, or the diagram shows nothing.",
+    "intervalsLegend": "Positions",
     "unavailable": "Students can't see this diagram yet — only fretted instruments (guitar, bass) can be shown in lessons for now.",
     "insertTitle": "Insert a diagram",
     "editTitle": "Edit diagram",
     "cancel": "Cancel",
     "insert": "Insert",
     "apply": "Apply",
-    "correctLegend": "Correct answers — students tap every position with these intervals",
-    "noCorrect": "Check at least one correct answer."
+    "noCorrect": "Mark at least one correct position.",
+    "labelLegend": "Labels",
+    "labelModes": {
+      "interval": "Intervals",
+      "note": "Notes",
+      "custom": "Custom labels",
+      "none": "None"
+    },
+    "clickToHide": "Click a position in the preview, or an interval above, to hide or show it.",
+    "clickToMarkCorrect": "Click positions in the preview to mark the correct answers — hidden ones count too.",
+    "toolLegend": "Clicking a position",
+    "toolCorrect": "Marks it correct",
+    "toolVisibility": "Hides or shows it",
+    "nothingShown": "Show at least one position, or the diagram shows nothing."
   },
   "overlayDiagramsModal": {
     "title": "Overlay diagrams",

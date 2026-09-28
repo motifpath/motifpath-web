@@ -7,7 +7,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
-import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import type { components } from '@/api/generated/core-domain'
@@ -44,8 +44,14 @@ function lastChange(wrapper: Picker): DiagramRef | null | undefined {
   return wrapper.emitted('change')?.at(-1)?.[0] as DiagramRef | null | undefined
 }
 
-function intervalBoxes(wrapper: Picker) {
+function intervalChips(wrapper: Picker) {
   return wrapper.findAll('[data-test="embed-picker-interval"]')
+}
+
+/** Clicks a marker in the preview, the way an author hides a position or marks it correct. */
+async function clickPosition(wrapper: Picker, positionId: string) {
+  wrapper.getComponent(FrettedDiagramView).vm.$emit('select', positionId)
+  await flushPromises()
 }
 
 async function choose(wrapper: Picker, index = 0) {
@@ -69,46 +75,63 @@ describe('DiagramEmbedPicker', () => {
     expect(wrapper.find('[data-test="embed-picker-config"]').exists()).toBe(false)
   })
 
-  it('previews a chosen diagram with labels and every interval shown, and reports the ref', async () => {
+  it('previews a chosen diagram as authored, every position clickable, and reports the ref', async () => {
     serve([penta])
     const wrapper = mountPicker()
     await flushPromises()
     await choose(wrapper)
 
     expect(wrapper.get('[data-test="embed-picker-name"]').text()).toBe('A minor pentatonic')
-    expect((wrapper.get('[data-test="embed-picker-labels"]').element as HTMLInputElement).checked).toBe(true)
-    expect(intervalBoxes(wrapper).map((box) => box.text())).toEqual(['R', 'b3', '4', '5', 'b7'])
-    expect(wrapper.findComponent(EmbeddedDiagram).props('embed')).toEqual({
-      kind: 'single',
-      ref: { diagram_id: 'd-penta', layers: { intervals: true, subset: null } },
+    expect((wrapper.get('[data-test="embed-picker-label"]').element as HTMLSelectElement).value).toBe('custom')
+    expect(intervalChips(wrapper).map((chip) => chip.text())).toEqual(['R', 'b3', '4', '5', 'b7'])
+    const preview = wrapper.getComponent(FrettedDiagramView)
+    expect(preview.props()).toEqual(
+      expect.objectContaining({ revealHidden: true, multiple: true, selectablePositionIds: ['p0', 'p1', 'p2', 'p3', 'p4', 'p5'] }),
+    )
+    expect(lastChange(wrapper)).toEqual({
+      diagram_id: 'd-penta',
+      layers: { label: 'custom', intervals: true, hidden_position_ids: null, subset: null },
     })
-    expect(lastChange(wrapper)).toEqual({ diagram_id: 'd-penta', layers: { intervals: true, subset: null } })
   })
 
-  it('narrows the shown intervals and hides labels', async () => {
+  it('chooses the label mode', async () => {
     serve([penta])
     const wrapper = mountPicker()
     await flushPromises()
     await choose(wrapper)
 
-    await intervalBoxes(wrapper)[1]!.get('input').setValue(false)
-    await wrapper.get('[data-test="embed-picker-labels"]').setValue(false)
-    await flushPromises()
+    await wrapper.get('[data-test="embed-picker-label"]').setValue('note')
 
-    expect(lastChange(wrapper)).toEqual({ diagram_id: 'd-penta', layers: { intervals: false, subset: ['R', '4', '5', 'b7'] } })
+    expect(lastChange(wrapper)?.layers.label).toBe('note')
+    expect(wrapper.getComponent(FrettedDiagramView).props('diagramRef').layers.label).toBe('note')
   })
 
-  it('reports nothing, and says why, with every interval unchecked', async () => {
+  it('hides a position by clicking it, and a whole interval from its chip', async () => {
     serve([penta])
     const wrapper = mountPicker()
     await flushPromises()
     await choose(wrapper)
 
-    for (const box of intervalBoxes(wrapper)) await box.get('input').setValue(false)
+    await clickPosition(wrapper, 'p2')
+    await intervalChips(wrapper)[0]!.trigger('click')
+
+    expect(lastChange(wrapper)?.layers.hidden_position_ids).toEqual(['p0', 'p2', 'p5'])
+    expect(intervalChips(wrapper)[0]!.attributes('aria-pressed')).toBe('false')
+    expect(intervalChips(wrapper)[2]!.attributes('aria-pressed')).toBe('false')
+    expect(intervalChips(wrapper)[1]!.attributes('aria-pressed')).toBe('true')
+  })
+
+  it('reports nothing, and says why, with every position hidden', async () => {
+    serve([penta])
+    const wrapper = mountPicker()
     await flushPromises()
+    await choose(wrapper)
+
+    for (const chip of intervalChips(wrapper)) await chip.trigger('click')
 
     expect(lastChange(wrapper)).toBeNull()
-    expect(wrapper.find('[data-test="embed-picker-no-intervals"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="embed-picker-nothing-shown"]').exists()).toBe(true)
+    expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
   })
 
   it('reports nothing for a diagram students can’t be shown yet, and says so', async () => {
@@ -134,17 +157,18 @@ describe('DiagramEmbedPicker', () => {
     expect(lastChange(wrapper)).toBeNull()
   })
 
-  it('reopens an embedded diagram with its own settings', async () => {
+  it('reopens an embedded diagram with its own settings, reading an older ref’s switch and subset', async () => {
     serve([])
     const wrapper = mountPicker({ diagram_id: 'd-penta', layers: { intervals: false, subset: ['R'] } })
     await flushPromises()
 
     expect(wrapper.find('[data-test="diagram-option"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="embed-picker-name"]').text()).toBe('A minor pentatonic')
-    expect((wrapper.get('[data-test="embed-picker-labels"]').element as HTMLInputElement).checked).toBe(false)
-    const checked = intervalBoxes(wrapper).map((box) => (box.get('input').element as HTMLInputElement).checked)
-    expect(checked).toEqual([true, false, false, false, false])
-    expect(lastChange(wrapper)).toEqual({ diagram_id: 'd-penta', layers: { intervals: false, subset: ['R'] } })
+    expect((wrapper.get('[data-test="embed-picker-label"]').element as HTMLSelectElement).value).toBe('none')
+    expect(lastChange(wrapper)).toEqual({
+      diagram_id: 'd-penta',
+      layers: { label: 'none', intervals: false, hidden_position_ids: ['p1', 'p2', 'p3', 'p4'], subset: null },
+    })
   })
 
   it('offers a retry, or another diagram, when the embedded one fails to load', async () => {
@@ -174,40 +198,39 @@ describe('DiagramEmbedPicker', () => {
   })
 
   describe('as an exercise stimulus', () => {
-    function correctBoxes(wrapper: Picker) {
-      return wrapper.findAll('[data-test="embed-picker-correct"]')
-    }
-
-    it('asks which of the shown intervals are correct, and reports nothing until one is', async () => {
+    async function chooseStimulus() {
       serve([penta])
       const wrapper = mountPicker(null, true)
       await flushPromises()
       await choose(wrapper)
+      return wrapper
+    }
 
-      expect(correctBoxes(wrapper).map((box) => box.text())).toEqual(['R', 'b3', '4', '5', 'b7'])
+    it('starts on marking correct positions, and reports nothing until one is', async () => {
+      const wrapper = await chooseStimulus()
+
+      expect(wrapper.get('[data-test="embed-picker-tool-correct"]').attributes('aria-pressed')).toBe('true')
       expect(wrapper.find('[data-test="embed-picker-no-correct"]').exists()).toBe(true)
       expect(lastChange(wrapper)).toBeNull()
 
-      await correctBoxes(wrapper)[0]!.get('input').setValue(true)
-      await flushPromises()
+      await clickPosition(wrapper, 'p0')
 
       expect(wrapper.find('[data-test="embed-picker-no-correct"]').exists()).toBe(false)
-      expect(lastChange(wrapper)).toEqual({
-        diagram_id: 'd-penta',
-        layers: { intervals: true, subset: null },
-        correct_intervals: ['R'],
-      })
+      expect(wrapper.getComponent(FrettedDiagramView).props('selectedPositionIds')).toEqual(['p0'])
+      expect(lastChange(wrapper)?.correct_position_ids).toEqual(['p0'])
     })
 
-    it('offers only the intervals still shown as answers', async () => {
-      serve([penta])
-      const wrapper = mountPicker(null, true)
-      await flushPromises()
-      await choose(wrapper)
+    it('switches to hiding positions, and a hidden position stays correct', async () => {
+      const wrapper = await chooseStimulus()
+      await clickPosition(wrapper, 'p0')
 
-      await intervalBoxes(wrapper)[1]!.get('input').setValue(false)
+      await wrapper.get('[data-test="embed-picker-tool-visibility"]').trigger('click')
+      await clickPosition(wrapper, 'p0')
 
-      expect(correctBoxes(wrapper).map((box) => box.text())).toEqual(['R', '4', '5', 'b7'])
+      expect(lastChange(wrapper)).toEqual(
+        expect.objectContaining({ correct_position_ids: ['p0'], layers: expect.objectContaining({ hidden_position_ids: ['p0'] }) }),
+      )
+      expect(wrapper.getComponent(FrettedDiagramView).props('selectedPositionIds')).toEqual([])
     })
 
     it('never asks for answers otherwise', async () => {
@@ -216,7 +239,7 @@ describe('DiagramEmbedPicker', () => {
       await flushPromises()
       await choose(wrapper)
 
-      expect(correctBoxes(wrapper)).toHaveLength(0)
+      expect(wrapper.find('[data-test="embed-picker-tool-correct"]').exists()).toBe(false)
     })
   })
 })

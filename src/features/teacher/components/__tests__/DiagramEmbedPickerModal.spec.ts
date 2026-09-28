@@ -16,7 +16,7 @@ type DiagramRef = components['schemas']['DiagramRef']
 
 const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
 const penta = makeFrettedDiagram({ diagram_id: 'd-penta' })
-const chosen: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null } }
+const chosen: DiagramRef = { diagram_id: 'd-penta', layers: { label: 'custom', intervals: true, hidden_position_ids: null, subset: null } }
 
 function mountModal(props: { open?: boolean; initial?: DiagramRef | null; editing?: boolean } = {}) {
   return mount(DiagramEmbedPickerModal, {
