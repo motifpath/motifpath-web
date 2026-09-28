@@ -449,5 +449,44 @@ describe('ExerciseView', () => {
       await cards[0]!.trigger('click')
       expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['c1']]])
     })
+
+    describe('image_choice with diagram thumbnails', () => {
+      const diagramChoices: Option[] = [
+        { option_id: 'c1', is_correct: true, diagram_ref: makeDiagramRef({ diagram_id: 'd-e-major' }) },
+        { option_id: 'c2', is_correct: false, diagram_ref: makeDiagramRef({ diagram_id: 'd-c-major' }) },
+      ]
+
+      function mountChoices(options: Option[]) {
+        return mount(ExerciseView, {
+          props: { exerciseType: 'image_choice', prompt: plainTextPrompt('p'), options },
+          global: { stubs },
+        })
+      }
+
+      it('gives each option a full row, since a fretboard is too wide to read at half width', () => {
+        const grid = mountChoices(diagramChoices).get('[data-test="exercise-choice-grid"]')
+
+        expect(grid.classes()).toContain('grid-cols-1')
+        expect(grid.classes()).not.toContain('grid-cols-2')
+      })
+
+      it('keeps two image options per row', () => {
+        const grid = mountChoices(imageOptions).get('[data-test="exercise-choice-grid"]')
+
+        expect(grid.classes()).toContain('grid-cols-2')
+      })
+
+      it("lets a diagram thumbnail take its natural height instead of an image's fixed one", () => {
+        const media = mountChoices(diagramChoices).get('[data-test="exercise-option-media"]')
+
+        expect(media.classes()).not.toContain('h-32')
+      })
+
+      it('shows no empty label strip under an option without a label', () => {
+        const cards = mountChoices(diagramChoices).findAll('[data-test="exercise-option"]')
+
+        expect(cards[0]!.find('[data-test="exercise-option-label"]').exists()).toBe(false)
+      })
+    })
   })
 })

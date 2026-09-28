@@ -102,6 +102,8 @@ function selectPosition(positionId: string): void {
 const isTextResponse = computed(() => props.exerciseType === 'text_response')
 const isAudioRecognition = computed(() => props.exerciseType === 'audio_recognition')
 const isImageChoice = computed(() => props.exerciseType === 'image_choice')
+// A fretboard is too wide to read at half width, so diagram options get a row each.
+const hasDiagramChoices = computed(() => props.options.some((option) => option.diagram_ref))
 const isAudioSelection = computed(() => props.exerciseType === 'audio_selection')
 const isLandscape = computed(() => props.direction === 'row')
 
@@ -245,7 +247,12 @@ function selectAndPlay(option: Option): void {
         </div>
       </template>
 
-      <div v-else-if="isImageChoice" class="grid grid-cols-2 gap-2">
+      <div
+        v-else-if="isImageChoice"
+        data-test="exercise-choice-grid"
+        class="grid gap-2"
+        :class="hasDiagramChoices ? 'grid-cols-1' : 'grid-cols-2'"
+      >
         <div
           v-for="option in options"
           :key="option.option_id"
@@ -255,16 +262,20 @@ function selectAndPlay(option: Option): void {
           :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
           @click="select(option.option_id)"
         >
-          <div class="flex h-32 w-full items-center justify-center overflow-hidden border-b border-border bg-surface-sunken">
-            <EmbeddedDiagram
-              v-if="option.diagram_ref"
-              :embed="{ kind: 'single', ref: option.diagram_ref }"
-              inert
-              class="w-full px-1"
-            />
+          <div
+            data-test="exercise-option-media"
+            class="flex w-full items-center justify-center overflow-hidden bg-surface-sunken"
+            :class="[option.diagram_ref ? 'px-2 py-1' : 'h-32', { 'border-b border-border': option.label }]"
+          >
+            <EmbeddedDiagram v-if="option.diagram_ref" :embed="{ kind: 'single', ref: option.diagram_ref }" inert class="w-full" />
             <img v-else :src="option.image_url" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
           </div>
-          <div class="px-2 py-1.5" :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'">
+          <div
+            v-if="option.label"
+            data-test="exercise-option-label"
+            class="px-2 py-1.5"
+            :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'"
+          >
             <span class="text-xs text-ink">{{ option.label }}</span>
           </div>
         </div>
