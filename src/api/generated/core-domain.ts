@@ -2342,11 +2342,36 @@ export interface components {
             root_override?: string | null;
             /** @description Which optional layers are shown, decorating the diagram's base positions. */
             layers: {
-                /** @description Whether to show each visible position's interval label. */
-                intervals: boolean;
                 /**
-                 * @description Interval names to show; positions with any other interval
-                 *     are hidden. Null shows every position.
+                 * @description What each drawn marker shows: its interval, its note name,
+                 *     its custom label (custom — falling back, for a position
+                 *     without one, to what the diagram's own label_display shows),
+                 *     or nothing (none). Null or absent keeps the older rule:
+                 *     intervals false means none, anything else the diagram's own
+                 *     label_display.
+                 * @enum {string|null}
+                 */
+                label?: "interval" | "note" | "custom" | "none" | null;
+                /**
+                 * @deprecated
+                 * @description Deprecated in favour of label, and read only when label is
+                 *     absent: false shows no marker text.
+                 */
+                intervals?: boolean;
+                /**
+                 * @description Positions of the diagram this usage doesn't draw. Ids that
+                 *     aren't positions of the diagram are ignored. A hidden
+                 *     position of an image_recognition stimulus is still an answer
+                 *     cell, and can still be a correct one (see
+                 *     correct_position_ids). Null hides none.
+                 */
+                hidden_position_ids?: string[] | null;
+                /**
+                 * @deprecated
+                 * @description Deprecated in favour of hidden_position_ids, and still
+                 *     honoured: interval names to draw; positions with any other
+                 *     interval are hidden. Null draws every position. A position
+                 *     is drawn only if it passes both.
                  */
                 subset?: string[] | null;
                 /**
@@ -2381,12 +2406,23 @@ export interface components {
                 step_ms: number;
             } | null;
             /**
-             * @description Which interval value(s) among this diagram's currently-visible
-             *     positions (after layers.subset filtering) are correct answers.
-             *     Meaningful, and required, only when this diagram_ref is an
-             *     Exercise's image_recognition stimulus (see Exercise.diagram_ref)
-             *     — ignored when used inline via a PromptNode, attached via
-             *     ExpandedContent, or as an image_choice Option's own diagram_ref.
+             * @description The positions of this diagram that are correct answers, drawn
+             *     or hidden — at least one, each a position of the diagram.
+             *     Meaningful, and required (unless the deprecated
+             *     correct_intervals is given instead), only when this diagram_ref
+             *     is an Exercise's image_recognition stimulus (see
+             *     Exercise.diagram_ref) — ignored when used inline via a
+             *     PromptNode, attached via ExpandedContent, or as an image_choice
+             *     Option's own diagram_ref.
+             */
+            correct_position_ids?: string[] | null;
+            /**
+             * @deprecated
+             * @description Deprecated in favour of correct_position_ids. When a stimulus
+             *     gives this without correct_position_ids, the server converts it
+             *     once, at save, to the drawn positions (after
+             *     layers.hidden_position_ids and layers.subset) whose interval is
+             *     listed, and stores correct_position_ids instead.
              */
             correct_intervals?: string[] | null;
         };
@@ -3418,10 +3454,11 @@ export interface components {
             /**
              * @description A single prebuilt diagram as this exercise's stimulus, replacing
              *     image_url. Only meaningful when exercise_type is
-             *     image_recognition. Its correct_intervals must be set — the
-             *     diagram's own positions (after layers.subset filtering) become
-             *     this exercise's options automatically; options must be omitted
-             *     when this is given. Mutually exclusive with image_url and
+             *     image_recognition. Its correct_position_ids must be set (or the
+             *     deprecated correct_intervals) — for a fretted diagram, every
+             *     fretboard cell of its answer window becomes one of this
+             *     exercise's options automatically (see Option.fret_cell);
+             *     options must be omitted when this is given. Mutually exclusive with image_url and
              *     diagram_stack_ref.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
@@ -3629,8 +3666,8 @@ export interface components {
             /**
              * @description The exercise's selectable answer choices. When diagram_ref or
              *     diagram_stack_ref is present, these are derived automatically
-             *     from the diagram's positions (see Option.diagram_position_id)
-             *     rather than authored directly.
+             *     from the diagram (see Option.fret_cell and
+             *     Option.diagram_position_id) rather than authored directly.
              */
             options: components["schemas"]["Option"][];
             /**
@@ -3733,8 +3770,9 @@ export interface components {
              * @description A prebuilt diagram rendered as this option's own thumbnail,
              *     replacing image_url — e.g. "which of these four diagrams shows
              *     C major?" where each option is a different diagram. Only
-             *     meaningful for image_choice options; correct_intervals is
-             *     ignored here since correctness is this Option's own is_correct.
+             *     meaningful for image_choice options; correct_position_ids and
+             *     correct_intervals are ignored here since correctness is this
+             *     Option's own is_correct.
              *     Mutually exclusive with image_url.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
@@ -3758,10 +3796,33 @@ export interface components {
             /**
              * Format: uuid
              * @description Which position (DiagramPosition.position_id) within diagram_id
-             *     this option represents. Server-derived and read-only, present
-             *     under the same condition as diagram_id.
+             *     occupies this option's cell. Server-derived and read-only;
+             *     absent on a cell no position of the diagram occupies.
              */
             diagram_position_id?: string;
+            /**
+             * @description The fretboard cell this option is, for an image_recognition
+             *     exercise whose stimulus is a single fretted diagram_ref.
+             *     Server-derived and read-only. The server derives one option per
+             *     cell of the answer window:
+             *
+             *     Over ALL the diagram's positions (hidden ones included) and its
+             *     regions, low = max(lowest fret − 1, 0) and high = low +
+             *     max(highest fret + 1 − low, 3); with none, low = 0 and high = 3.
+             *     The cells are every string 1..string_count at every fret
+             *     low+1..high, plus fret 0 (the open string) on every string when
+             *     low is 0.
+             *
+             *     A cell is correct exactly when the position occupying it (see
+             *     diagram_position_id) is one of the stimulus's
+             *     correct_position_ids; every other cell is a wrong answer.
+             */
+            readonly fret_cell?: {
+                /** @description String number, 1 being the highest-pitched string. */
+                string: number;
+                /** @description Fret number; 0 is the open string. */
+                fret: number;
+            };
         };
         /**
          * @description A rectangular or circular region on the parent exercise's image_url,
