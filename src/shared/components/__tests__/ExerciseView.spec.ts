@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
+import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
@@ -354,5 +355,139 @@ describe('ExerciseView', () => {
     const rows = wrapper.findAll('[data-test="exercise-option"]')
     expect(rows[0]?.attributes('data-selected')).toBe('true')
     expect(rows[1]?.attributes('data-selected')).toBe('true')
+  })
+
+  describe('diagram exercises', () => {
+    // The diagram loads itself; these tests only check what ExerciseView hands it and does with its picks.
+    const EmbeddedDiagramStub = {
+      name: 'EmbeddedDiagram',
+      props: {
+        embed: Object,
+        selectablePositionIds: Array,
+        selectedPositionIds: Array,
+        multiple: Boolean,
+        inert: Boolean,
+        // Stands in for the real component's own status: whether it would fall back to its slot.
+        unavailable: Boolean,
+      },
+      emits: ['select'],
+      template: '<div data-test="embedded-diagram-stub"><slot v-if="unavailable" name="unavailable" /></div>',
+    }
+    const stubs = { EmbeddedDiagram: EmbeddedDiagramStub }
+
+    const stimulusRef = makeDiagramRef({ diagram_id: 'd1', correct_intervals: ['R'] })
+    const derivedOptions: Option[] = [
+      { option_id: 'o-p0', is_correct: true, diagram_id: 'd1', diagram_position_id: 'p0' },
+      { option_id: 'o-p1', is_correct: false, diagram_id: 'd1', diagram_position_id: 'p1' },
+      { option_id: 'o-p5', is_correct: true, diagram_id: 'd1', diagram_position_id: 'p5' },
+    ]
+
+    function mountStimulus(props: Record<string, unknown> = {}) {
+      return mount(ExerciseView, {
+        props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: derivedOptions, diagramRef: stimulusRef, ...props },
+        global: { stubs },
+      })
+    }
+
+    it("draws an image_recognition diagram stimulus with its positions as the choices, instead of an image's regions", () => {
+      const wrapper = mountStimulus({ allowMultiple: true })
+
+      const diagram = wrapper.getComponent(EmbeddedDiagramStub)
+      expect(diagram.props('embed')).toEqual({ kind: 'single', ref: stimulusRef })
+      expect(diagram.props('selectablePositionIds')).toEqual(['p0', 'p1', 'p5'])
+      expect(diagram.props('multiple')).toBe(true)
+      expect(diagram.props('inert')).toBeFalsy()
+      expect(wrapper.find('[data-test="exercise-region"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="no-stimulus-image"]').exists()).toBe(false)
+    })
+
+    it('selects the option a picked position stands for', async () => {
+      const wrapper = mountStimulus({ allowMultiple: true })
+      const diagram = wrapper.getComponent(EmbeddedDiagramStub)
+
+      diagram.vm.$emit('select', 'p5')
+      await wrapper.vm.$nextTick()
+      diagram.vm.$emit('select', 'p0')
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['o-p5']], [['o-p5', 'o-p0']]])
+    })
+
+    it('shows the selected options as selected positions', () => {
+      const wrapper = mountStimulus({ selectedOptionIds: ['o-p1'] })
+
+      expect(wrapper.getComponent(EmbeddedDiagramStub).props('selectedPositionIds')).toEqual(['p1'])
+    })
+
+    it("shows the no-stimulus placeholder when the diagram can't be shown", () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: derivedOptions, diagramRef: stimulusRef },
+        global: { stubs: { EmbeddedDiagram: { ...EmbeddedDiagramStub, props: { ...EmbeddedDiagramStub.props, unavailable: { type: Boolean, default: true } } } } },
+      })
+
+      expect(wrapper.find('[data-test="embedded-diagram-stub"] [data-test="no-stimulus-image"]').exists()).toBe(true)
+    })
+
+    it('shows an inert diagram thumbnail for an image_choice option that has one, and the card still selects', async () => {
+      const thumbRef = makeDiagramRef({ diagram_id: 'd-e-major' })
+      const options: Option[] = [
+        { option_id: 'c1', is_correct: true, diagram_ref: thumbRef },
+        { option_id: 'c2', label: 'Open C chord', image_url: 'https://x/c.png', is_correct: false },
+      ]
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'image_choice', prompt: plainTextPrompt('p'), options },
+        global: { stubs },
+      })
+
+      const cards = wrapper.findAll('[data-test="exercise-option"]')
+      const thumb = cards[0]!.getComponent(EmbeddedDiagramStub)
+      expect(thumb.props('embed')).toEqual({ kind: 'single', ref: thumbRef })
+      expect(thumb.props('inert')).toBe(true)
+      expect(cards[0]!.find('img').exists()).toBe(false)
+      expect(cards[1]!.find('img').attributes('src')).toBe('https://x/c.png')
+
+      await cards[0]!.trigger('click')
+      expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['c1']]])
+    })
+
+    describe('image_choice with diagram thumbnails', () => {
+      const diagramChoices: Option[] = [
+        { option_id: 'c1', is_correct: true, diagram_ref: makeDiagramRef({ diagram_id: 'd-e-major' }) },
+        { option_id: 'c2', is_correct: false, diagram_ref: makeDiagramRef({ diagram_id: 'd-c-major' }) },
+      ]
+
+      function mountChoices(options: Option[]) {
+        return mount(ExerciseView, {
+          props: { exerciseType: 'image_choice', prompt: plainTextPrompt('p'), options },
+          global: { stubs },
+        })
+      }
+
+      it('gives each option a full row on a phone, where a fretboard is too narrow at half width, and two per row from sm up', () => {
+        const grid = mountChoices(diagramChoices).get('[data-test="exercise-choice-grid"]')
+
+        expect(grid.classes()).toContain('grid-cols-1')
+        expect(grid.classes()).toContain('sm:grid-cols-2')
+        expect(grid.classes()).not.toContain('grid-cols-2')
+      })
+
+      it('keeps two image options per row', () => {
+        const grid = mountChoices(imageOptions).get('[data-test="exercise-choice-grid"]')
+
+        expect(grid.classes()).toContain('grid-cols-2')
+      })
+
+      it("lets a diagram thumbnail take its natural height instead of an image's fixed one", () => {
+        const media = mountChoices(diagramChoices).get('[data-test="exercise-option-media"]')
+
+        expect(media.classes()).not.toContain('h-32')
+      })
+
+      it('shows no empty label strip under an option without a label', () => {
+        const cards = mountChoices(diagramChoices).findAll('[data-test="exercise-option"]')
+
+        expect(cards[0]!.find('[data-test="exercise-option-label"]').exists()).toBe(false)
+      })
+    })
   })
 })

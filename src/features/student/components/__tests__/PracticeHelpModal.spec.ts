@@ -59,6 +59,19 @@ describe('PracticeHelpModal', () => {
     expect(wrapper.text().toLowerCase()).not.toContain('marked')
   })
 
+  it('describes a diagram image_recognition as tapping markers on the diagram, not areas on an image', () => {
+    const single = mount(PracticeHelpModal, {
+      props: { open: true, exerciseType: 'image_recognition', allowMultiple: false, diagramStimulus: true },
+    })
+    const multiple = mount(PracticeHelpModal, {
+      props: { open: true, exerciseType: 'image_recognition', allowMultiple: true, diagramStimulus: true },
+    })
+
+    expect(single.text()).toContain('Tap the marker on the diagram that answers the prompt.')
+    expect(multiple.text()).toContain('Tap every marker on the diagram that answers the prompt.')
+    expect(single.text().toLowerCase()).not.toContain('area')
+  })
+
   it('describes image_choice as tapping an image', () => {
     const wrapper = mount(PracticeHelpModal, {
       props: { open: true, exerciseType: 'image_choice', allowMultiple: false },

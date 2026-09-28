@@ -587,4 +587,122 @@ describe('FrettedDiagramView', () => {
       })
     })
   })
+
+  describe('answer choices', () => {
+    function mountChoices(props: Record<string, unknown> = {}, diagram = makeFrettedDiagram()) {
+      return mount(FrettedDiagramView, {
+        props: {
+          diagram,
+          instrument: makeFrettedInstrument(),
+          diagramRef: makeDiagramRef({ layers: { intervals: false } }),
+          selectablePositionIds: ['p0', 'p1', 'p5'],
+          ...props,
+        },
+        attachTo: document.body,
+      })
+    }
+
+    it('makes no marker a choice unless asked to', () => {
+      const wrapper = mount(FrettedDiagramView, {
+        props: { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
+      })
+
+      expect(wrapper.findAll('[data-test="diagram-choice"]')).toHaveLength(0)
+    })
+
+    it('makes only the selectable markers focusable radio choices', () => {
+      const choices = mountChoices().findAll('[data-test="diagram-choice"]')
+
+      expect(choices).toHaveLength(3)
+      expect(choices.map((c) => c.attributes('role'))).toEqual(['radio', 'radio', 'radio'])
+      expect(choices.map((c) => c.attributes('tabindex'))).toEqual(['0', '0', '0'])
+      expect(choices.map((c) => c.attributes('aria-checked'))).toEqual(['false', 'false', 'false'])
+    })
+
+    it('uses checkbox choices when several may be picked', () => {
+      const choices = mountChoices({ multiple: true }).findAll('[data-test="diagram-choice"]')
+
+      expect(choices.map((c) => c.attributes('role'))).toEqual(['checkbox', 'checkbox', 'checkbox'])
+    })
+
+    it("names a choice by where it sits, never by its interval, which could give the answer away", () => {
+      const first = mountChoices().get('[data-test="diagram-choice"]')
+
+      expect(first.attributes('aria-label')).toBe('String 6, fret 5')
+    })
+
+    it('emits select with the position id on click, Enter and Space', async () => {
+      const wrapper = mountChoices()
+      const choices = wrapper.findAll('[data-test="diagram-choice"]')
+
+      await choices[0]!.trigger('click')
+      await choices[1]!.trigger('keydown', { key: 'Enter' })
+      await choices[2]!.trigger('keydown', { key: ' ' })
+
+      expect(wrapper.emitted('select')).toEqual([['p0'], ['p1'], ['p5']])
+    })
+
+    it('marks selected choices as checked, with a check badge', () => {
+      const wrapper = mountChoices({ selectedPositionIds: ['p5'] })
+      const choices = wrapper.findAll('[data-test="diagram-choice"]')
+
+      expect(choices.map((c) => c.attributes('aria-checked'))).toEqual(['false', 'false', 'true'])
+      expect(wrapper.findAll('[data-test="diagram-choice-selected"]')).toHaveLength(1)
+      expect(choices[2]!.find('[data-test="diagram-choice-selected"]').exists()).toBe(true)
+    })
+
+    it('gives each choice a larger invisible tap target than its marker', () => {
+      const target = mountChoices().get('[data-test="diagram-choice"] [data-test="diagram-choice-target"]')
+
+      expect(Number(target.attributes('r'))).toBeGreaterThan(13.5)
+    })
+
+    it('selects a noted choice on click instead of pinning its note', async () => {
+      const base = makeFrettedDiagram()
+      const diagram = makeFrettedDiagram({
+        positions: base.positions.map((p) => (p.position_id === 'p1' ? { ...p, note: { en: 'Blue note', pt_BR: 'Nota blue' } } : p)),
+      })
+      const wrapper = mountChoices({}, diagram)
+      const noted = wrapper.findAll('[data-test="diagram-choice"]')[1]!
+
+      await noted.trigger('click')
+
+      expect(wrapper.emitted('select')).toEqual([['p1']])
+      expect(wrapper.get('[data-test="diagram-note"]').isVisible()).toBe(false)
+    })
+
+    it('still shows a noted choice\'s note on hover', async () => {
+      const base = makeFrettedDiagram()
+      const diagram = makeFrettedDiagram({
+        positions: base.positions.map((p) => (p.position_id === 'p1' ? { ...p, note: { en: 'Blue note', pt_BR: 'Nota blue' } } : p)),
+      })
+      const wrapper = mountChoices({}, diagram)
+
+      await wrapper.findAll('[data-test="diagram-choice"]')[1]!.trigger('mouseenter')
+
+      expect(wrapper.get('[data-test="diagram-note"]').isVisible()).toBe(true)
+    })
+
+    it('exposes its choices to assistive technology: a radiogroup for one pick, never a presentational image', () => {
+      const single = mountChoices().get('svg')
+      const multiple = mountChoices({ multiple: true }).get('svg')
+
+      expect(single.attributes('role')).toBe('radiogroup')
+      expect(multiple.attributes('role')).toBe('group')
+    })
+
+    it("still shows a noted marker's note on hover after a plain choice took focus", async () => {
+      const base = makeFrettedDiagram()
+      const diagram = makeFrettedDiagram({
+        positions: base.positions.map((p) => (p.position_id === 'p1' ? { ...p, note: { en: 'Blue note', pt_BR: 'Nota blue' } } : p)),
+      })
+      const wrapper = mountChoices({}, diagram)
+      const choices = wrapper.findAll('[data-test="diagram-choice"]')
+
+      await choices[0]!.trigger('focus')
+      await choices[1]!.trigger('mouseenter')
+
+      expect(wrapper.get('[data-test="diagram-note"]').isVisible()).toBe(true)
+    })
+  })
 })

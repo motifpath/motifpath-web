@@ -4,6 +4,10 @@
  * (guitar, bass) as an SVG fretboard, per a `DiagramRef`'s `layers`/`styling`
  * config. `root_override` transposition and `playback` are not applied here
  * — this draws the diagram's own authored positions as-is.
+ *
+ * Given `selectablePositionIds`, those markers become an exercise's answer
+ * choices: clicking one (or Enter/Space) emits `select` instead of pinning its
+ * note, and `selectedPositionIds` marks the picked ones.
  */
 import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 
@@ -19,6 +23,7 @@ import {
 } from '@/shared/utils/regionCaptionLayout'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -30,9 +35,18 @@ const props = withDefaults(
     instrument: Instrument
     diagramRef: DiagramRef
     labelMode?: 'interval' | 'note' | 'hidden'
+    /** The markers a student can pick as an answer; none by default. */
+    selectablePositionIds?: string[]
+    selectedPositionIds?: string[]
+    /** Whether several choices may be picked (checkboxes) rather than one (radios). */
+    multiple?: boolean
   }>(),
-  { labelMode: 'interval' },
+  { labelMode: 'interval', selectablePositionIds: () => [], selectedPositionIds: () => [], multiple: false },
 )
+
+const emit = defineEmits<{ select: [positionId: string] }>()
+
+const { t } = useTypedT()
 
 const { intervalLabel } = useIntervalLabel()
 const { localizedName } = useLocalizedName()
@@ -194,11 +208,31 @@ function captionPlacement(index: number): { textX: number; textY: number; barY: 
 // hover) until something else is tapped or Escape is pressed.
 const notedPositions = computed(() => layout.value.positions.filter((position) => position.note))
 const hasNotes = computed(() => notedPositions.value.length > 0)
+// An image role would make every marker presentational, hiding answer choices and notes alike.
+const svgRole = computed(() => {
+  if (props.selectablePositionIds.length > 0) return props.multiple ? 'group' : 'radiogroup'
+  return hasNotes.value ? 'group' : 'img'
+})
 const noteIdPrefix = useId()
 const hoveredNote = ref<string | null>(null)
 const focusedNote = ref<string | null>(null)
 const pinnedNote = ref<string | null>(null)
 const shownNote = computed(() => pinnedNote.value ?? focusedNote.value ?? hoveredNote.value)
+// Which marker shows a focus ring: any interactive one. Kept apart from focusedNote so a focused
+// choice without a note never hides a hovered note.
+const focusedMarker = ref<string | null>(null)
+
+function onMarkerFocus(position: Marker) {
+  if (!isInteractive(position)) return
+  focusedMarker.value = position.positionId
+  if (position.note) focusedNote.value = position.positionId
+}
+
+function onMarkerBlur(position: Marker) {
+  if (!isInteractive(position)) return
+  focusedMarker.value = null
+  if (position.note) focusedNote.value = null
+}
 
 function noteId(position: Marker): string {
   return `${noteIdPrefix}-note-${position.positionId}`
@@ -206,6 +240,16 @@ function noteId(position: Marker): string {
 
 function togglePinnedNote(position: Marker) {
   pinnedNote.value = pinnedNote.value === position.positionId ? null : position.positionId
+}
+
+/** A click, Enter or Space: picks an answer choice, or else pins a marker's note. */
+function activate(position: Marker) {
+  if (isChoice(position)) emit('select', position.positionId)
+  else if (position.note) togglePinnedNote(position)
+}
+
+function isInteractive(position: Marker): boolean {
+  return isChoice(position) || Boolean(position.note)
 }
 
 function closeNotes() {
@@ -221,8 +265,31 @@ function onDocumentPointerDown(event: Event) {
 onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown))
 onUnmounted(() => document.removeEventListener('pointerdown', onDocumentPointerDown))
 
-/** Accessibility and pointer wiring for a marker that carries a note; none for one without. */
-function noteMarkerAttrs(position: Marker): Record<string, string | number | boolean> {
+function isChoice(position: Marker): boolean {
+  return props.selectablePositionIds.includes(position.positionId)
+}
+
+function isSelectedChoice(position: Marker): boolean {
+  return isChoice(position) && props.selectedPositionIds.includes(position.positionId)
+}
+
+/** Accessibility wiring for an answer choice. Named by where it sits, never by its interval or
+ *  note name, which could give the answer away. */
+function choiceAttrs(position: Marker): Record<string, string | number | boolean> {
+  return {
+    'data-test': 'diagram-choice',
+    tabindex: 0,
+    role: props.multiple ? 'checkbox' : 'radio',
+    'aria-checked': isSelectedChoice(position),
+    'aria-label': t('exerciseView.diagramChoice', { string: position.string, fret: position.fret }),
+    ...(position.note ? { 'data-note-marker': '', 'aria-describedby': noteId(position) } : {}),
+  }
+}
+
+/** Accessibility and pointer wiring for a marker: an answer choice, one that carries a note, or
+ *  none for a plain marker. */
+function markerAttrs(position: Marker): Record<string, string | number | boolean> {
+  if (isChoice(position)) return choiceAttrs(position)
   if (!position.note) return {}
   return {
     'data-test': 'diagram-noted-marker',
@@ -233,6 +300,11 @@ function noteMarkerAttrs(position: Marker): Record<string, string | number | boo
     'aria-describedby': noteId(position),
     'aria-expanded': shownNote.value === position.positionId,
   }
+}
+
+/** A check mark centred on (cx, cy), sized for the selected-choice badge. */
+function checkPoints(cx: number, cy: number): string {
+  return `${cx - 3.5},${cy} ${cx - 1},${cy + 2.5} ${cx + 3.5},${cy - 2.5}`
 }
 
 /** Where a note's popover anchors, as percentages of the diagram, so it tracks the marker at
@@ -257,7 +329,7 @@ function noteAlignClass(position: Marker): string {
   <div class="relative">
     <svg
       :viewBox="`0 0 ${VIEW_W} ${viewH}`"
-      :role="hasNotes ? 'group' : 'img'"
+      :role="svgRole"
       :aria-label="localizedName(diagram.names)"
       class="w-full"
       font-family="monospace"
@@ -359,17 +431,25 @@ function noteAlignClass(position: Marker): string {
       <g
         v-for="position in layout.positions"
         :key="position.positionId"
-        v-bind="noteMarkerAttrs(position)"
-        :class="position.note ? 'cursor-pointer outline-none' : ''"
+        v-bind="markerAttrs(position)"
+        :class="isInteractive(position) ? 'cursor-pointer outline-none' : ''"
         @mouseenter="position.note && (hoveredNote = position.positionId)"
         @mouseleave="position.note && (hoveredNote = null)"
-        @focus="position.note && (focusedNote = position.positionId)"
-        @blur="position.note && (focusedNote = null)"
-        @click="position.note && togglePinnedNote(position)"
+        @focus="onMarkerFocus(position)"
+        @blur="onMarkerBlur(position)"
+        @click="activate(position)"
         @keydown.escape="closeNotes"
-        @keydown.enter.prevent="position.note && togglePinnedNote(position)"
-        @keydown.space.prevent="position.note && togglePinnedNote(position)"
+        @keydown.enter.prevent="activate(position)"
+        @keydown.space.prevent="activate(position)"
       >
+        <circle
+          v-if="isChoice(position)"
+          data-test="diagram-choice-target"
+          :cx="markerX(position.fret)"
+          :cy="y(position.string)"
+          r="21"
+          fill="transparent"
+        />
         <circle
           v-if="position.shape === 'dot'"
           data-test="diagram-position"
@@ -420,14 +500,40 @@ function noteAlignClass(position: Marker): string {
           stroke-width="1.5"
         />
         <circle
-          v-if="position.note && (focusedNote === position.positionId)"
+          v-if="isInteractive(position) && (focusedMarker === position.positionId)"
           :cx="markerX(position.fret)"
           :cy="y(position.string)"
-          r="18"
+          :r="isChoice(position) ? 22 : 18"
           fill="none"
           class="stroke-accent"
           stroke-width="2"
+          :stroke-dasharray="isChoice(position) ? '4 3' : undefined"
         />
+        <g v-if="isSelectedChoice(position)" data-test="diagram-choice-selected">
+          <circle
+            :cx="markerX(position.fret)"
+            :cy="y(position.string)"
+            r="18"
+            fill="none"
+            class="stroke-accent"
+            stroke-width="3.5"
+          />
+          <circle
+            :cx="markerX(position.fret) - 12"
+            :cy="y(position.string) - 12"
+            r="7.5"
+            class="fill-accent stroke-surface"
+            stroke-width="1.5"
+          />
+          <polyline
+            :points="checkPoints(markerX(position.fret) - 12, y(position.string) - 12)"
+            fill="none"
+            class="stroke-accent-fg"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </g>
       </g>
     </svg>
 

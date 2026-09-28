@@ -85,4 +85,51 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.find('figure').exists()).toBe(false)
     expect(wrapper.text()).toBe('')
   })
+
+  it('passes answer choices to the view and re-emits a pick', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, {
+      props: { embed: single, selectablePositionIds: ['p0', 'p5'], selectedPositionIds: ['p5'], multiple: true },
+    })
+    await flushPromises()
+
+    const view = wrapper.findComponent(FrettedDiagramView)
+    expect(view.props('selectablePositionIds')).toEqual(['p0', 'p5'])
+    expect(view.props('selectedPositionIds')).toEqual(['p5'])
+    expect(view.props('multiple')).toBe(true)
+
+    view.vm.$emit('select', 'p0')
+    expect(wrapper.emitted('select')).toEqual([['p0']])
+  })
+
+  it('draws an inert diagram: no pointer or keyboard input, hidden from screen readers, even where a marker has a note', async () => {
+    const base = makeFrettedDiagram()
+    serve(makeFrettedDiagram({ positions: base.positions.map((p, i) => (i === 1 ? { ...p, note: { en: 'N', pt_BR: 'N' } } : p)) }))
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single, inert: true } })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="embedded-diagram"]').attributes()).toHaveProperty('inert')
+  })
+
+  it('is not inert by default', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="embedded-diagram"]').attributes()).not.toHaveProperty('inert')
+  })
+
+  it('shows its unavailable slot when the diagram cannot be shown, and not while loading', async () => {
+    serve(null)
+    const slots = { unavailable: '<p data-test="fallback">No diagram</p>' }
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single }, slots })
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(false)
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="fallback"]').exists()).toBe(true)
+  })
 })

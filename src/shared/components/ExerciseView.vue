@@ -3,6 +3,7 @@ import { Volume2 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
+import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import Icon from '@/shared/components/Icon.vue'
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
 import type { components } from '@/api/generated/core-domain'
@@ -10,6 +11,7 @@ import type { components } from '@/api/generated/core-domain'
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 type PromptDocument = components['schemas']['PromptDocument']
+type DiagramRef = components['schemas']['DiagramRef']
 
 const props = withDefaults(
   defineProps<{
@@ -23,6 +25,12 @@ const props = withDefaults(
     options: Option[]
     /** The exercise's own stimulus, present when exerciseType is image_recognition. */
     imageUrl?: string
+    /**
+     * A prebuilt diagram as the image_recognition stimulus, in place of
+     * imageUrl: its positions are the choices, each option naming its own
+     * through diagram_position_id.
+     */
+    diagramRef?: DiagramRef
     /** The exercise's own stimulus, present when exerciseType is audio_recognition. */
     audioUrl?: string
     /**
@@ -70,9 +78,32 @@ function indicatorClasses(optionId: string): string[] {
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
+
+// A diagram stimulus's choices are its positions; each maps back to the option standing for it.
+const optionIdByPositionId = computed(
+  () =>
+    new Map(
+      props.options.flatMap((option) =>
+        option.diagram_position_id ? [[option.diagram_position_id, option.option_id] as const] : [],
+      ),
+    ),
+)
+const choicePositionIds = computed(() => [...optionIdByPositionId.value.keys()])
+const selectedPositionIds = computed(() =>
+  props.options.flatMap((option) =>
+    option.diagram_position_id && isSelected(option.option_id) ? [option.diagram_position_id] : [],
+  ),
+)
+
+function selectPosition(positionId: string): void {
+  const optionId = optionIdByPositionId.value.get(positionId)
+  if (optionId) select(optionId)
+}
 const isTextResponse = computed(() => props.exerciseType === 'text_response')
 const isAudioRecognition = computed(() => props.exerciseType === 'audio_recognition')
 const isImageChoice = computed(() => props.exerciseType === 'image_choice')
+// A fretboard is too small to read at half a phone's width, so diagram options get a row each there.
+const hasDiagramChoices = computed(() => props.options.some((option) => option.diagram_ref))
 const isAudioSelection = computed(() => props.exerciseType === 'audio_selection')
 const isLandscape = computed(() => props.direction === 'row')
 
@@ -120,7 +151,27 @@ function selectAndPlay(option: Option): void {
     </div>
 
     <div class="min-w-0" :class="isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'">
-      <div v-if="isImageRecognition" class="relative overflow-hidden rounded-[10px] border border-border bg-surface-sunken">
+      <div
+        v-if="isImageRecognition && diagramRef"
+        data-test="exercise-stimulus-diagram"
+        class="overflow-hidden rounded-[10px] border border-border bg-surface-sunken p-2"
+      >
+        <EmbeddedDiagram
+          :embed="{ kind: 'single', ref: diagramRef }"
+          :selectable-position-ids="choicePositionIds"
+          :selected-position-ids="selectedPositionIds"
+          :multiple="allowMultiple"
+          @select="selectPosition"
+        >
+          <template #unavailable>
+            <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
+              {{ t('exerciseView.noStimulusImage') }}
+            </div>
+          </template>
+        </EmbeddedDiagram>
+      </div>
+
+      <div v-else-if="isImageRecognition" class="relative overflow-hidden rounded-[10px] border border-border bg-surface-sunken">
         <img
           v-if="imageUrl"
           data-test="exercise-stimulus-image"
@@ -196,7 +247,12 @@ function selectAndPlay(option: Option): void {
         </div>
       </template>
 
-      <div v-else-if="isImageChoice" class="grid grid-cols-2 gap-2">
+      <div
+        v-else-if="isImageChoice"
+        data-test="exercise-choice-grid"
+        class="grid gap-2"
+        :class="hasDiagramChoices ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'"
+      >
         <div
           v-for="option in options"
           :key="option.option_id"
@@ -206,10 +262,20 @@ function selectAndPlay(option: Option): void {
           :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
           @click="select(option.option_id)"
         >
-          <div class="flex h-32 w-full items-center justify-center overflow-hidden border-b border-border bg-surface-sunken">
-            <img :src="option.image_url" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
+          <div
+            data-test="exercise-option-media"
+            class="flex w-full items-center justify-center overflow-hidden bg-surface-sunken"
+            :class="[option.diagram_ref ? 'px-2 py-1' : 'h-32', { 'border-b border-border': option.label }]"
+          >
+            <EmbeddedDiagram v-if="option.diagram_ref" :embed="{ kind: 'single', ref: option.diagram_ref }" inert class="w-full" />
+            <img v-else :src="option.image_url" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
           </div>
-          <div class="px-2 py-1.5" :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'">
+          <div
+            v-if="option.label"
+            data-test="exercise-option-label"
+            class="px-2 py-1.5"
+            :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'"
+          >
             <span class="text-xs text-ink">{{ option.label }}</span>
           </div>
         </div>

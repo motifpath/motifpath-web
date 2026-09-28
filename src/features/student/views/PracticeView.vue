@@ -76,6 +76,7 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         :open="helpOpen"
         :exercise-type="session.currentExercise.value.exercise_type"
         :allow-multiple="allowMultiple"
+        :diagram-stimulus="Boolean(session.currentExercise.value.diagram_ref)"
         @close="helpOpen = false"
       />
 
@@ -84,6 +85,7 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         :prompt="session.currentExercise.value.prompt"
         :options="session.currentExercise.value.options"
         :image-url="session.currentExercise.value.image_url"
+        :diagram-ref="session.currentExercise.value.diagram_ref"
         :audio-url="session.currentExercise.value.audio_url"
         :allow-multiple="allowMultiple"
         :selected-option-ids="session.currentAnswer.value?.optionIds ?? []"

@@ -8,11 +8,16 @@ import type { components } from '@/api/generated/core-domain'
 
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 
-const props = defineProps<{
-  open: boolean
-  exerciseType: ExerciseType
-  allowMultiple: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    exerciseType: ExerciseType
+    allowMultiple: boolean
+    /** Whether an image_recognition stimulus is a prebuilt diagram, answered by tapping its markers. */
+    diagramStimulus?: boolean
+  }>(),
+  { diagramStimulus: false },
+)
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useTypedT()
@@ -20,6 +25,11 @@ const { t } = useTypedT()
 const interactionText = computed(() => {
   switch (props.exerciseType) {
     case 'image_recognition':
+      if (props.diagramStimulus) {
+        return props.allowMultiple
+          ? t('practiceHelpModal.interaction.diagramRecognitionMultiple')
+          : t('practiceHelpModal.interaction.diagramRecognitionSingle')
+      }
       return props.allowMultiple
         ? t('practiceHelpModal.interaction.imageRecognitionMultiple')
         : t('practiceHelpModal.interaction.imageRecognitionSingle')

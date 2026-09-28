@@ -47,7 +47,8 @@
   },
   "exerciseView": {
     "noStimulusImage": "Sem imagem de estímulo",
-    "noStimulusAudio": "Sem áudio de estímulo"
+    "noStimulusAudio": "Sem áudio de estímulo",
+    "diagramChoice": "Corda {string}, casa {fret}"
   },
   "modalCloseButton": {
     "ariaLabel": "Fechar"

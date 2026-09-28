@@ -47,7 +47,8 @@
   },
   "exerciseView": {
     "noStimulusImage": "No stimulus image",
-    "noStimulusAudio": "No stimulus audio"
+    "noStimulusAudio": "No stimulus audio",
+    "diagramChoice": "String {string}, fret {fret}"
   },
   "modalCloseButton": {
     "ariaLabel": "Close"
