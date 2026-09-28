@@ -969,6 +969,32 @@ describe('ContentAuthoringView', () => {
         )
       })
 
+      it('keeps a diagram pop-up’s diagram when its timing is nudged on the timeline', async () => {
+        const diagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null } }
+        const diagramStackRef = { stack: [diagramRef, { ...diagramRef, diagram_id: 'd-other' }] }
+        const single = { ...popupFixture, content_type: 'diagram', media_url: undefined, diagram_ref: diagramRef }
+        const stacked = { ...single, expanded_content_id: 'ec-2', diagram_ref: undefined, diagram_stack_ref: diagramStackRef }
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/content-nodes/{content_node_id}/expanded-content': okResponse({ items: [single, stacked], total: 2 }),
+        })
+        PUT.mockResolvedValue(okResponse(single))
+        const wrapper = mountView()
+        await flushPromises()
+
+        const increments = wrapper.findAll('[data-test="trigger-increment"]')
+        await increments[0]!.trigger('click')
+        await increments[1]!.trigger('click')
+        await flushPromises()
+
+        expect(PUT.mock.calls[0]?.[1].body).toMatchObject({ content_type: 'diagram', diagram_ref: diagramRef, trigger_at_seconds: 11 })
+        expect(PUT.mock.calls[1]?.[1].body).toMatchObject({
+          content_type: 'diagram',
+          diagram_stack_ref: diagramStackRef,
+          trigger_at_seconds: 11,
+        })
+      })
+
       it('shows the paragraph pop-up editor and paragraph timing for an article content node', async () => {
         routeGET({
           '/content-nodes/{content_node_id}': okResponse({ ...contentNodeFixture, content_type: 'article' }),
