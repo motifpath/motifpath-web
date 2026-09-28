@@ -463,10 +463,11 @@ describe('ExerciseView', () => {
         })
       }
 
-      it('gives each option a full row, since a fretboard is too wide to read at half width', () => {
+      it('gives each option a full row on a phone, where a fretboard is too narrow at half width, and two per row from sm up', () => {
         const grid = mountChoices(diagramChoices).get('[data-test="exercise-choice-grid"]')
 
         expect(grid.classes()).toContain('grid-cols-1')
+        expect(grid.classes()).toContain('sm:grid-cols-2')
         expect(grid.classes()).not.toContain('grid-cols-2')
       })
 

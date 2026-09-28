@@ -102,7 +102,7 @@ function selectPosition(positionId: string): void {
 const isTextResponse = computed(() => props.exerciseType === 'text_response')
 const isAudioRecognition = computed(() => props.exerciseType === 'audio_recognition')
 const isImageChoice = computed(() => props.exerciseType === 'image_choice')
-// A fretboard is too wide to read at half width, so diagram options get a row each.
+// A fretboard is too small to read at half a phone's width, so diagram options get a row each there.
 const hasDiagramChoices = computed(() => props.options.some((option) => option.diagram_ref))
 const isAudioSelection = computed(() => props.exerciseType === 'audio_selection')
 const isLandscape = computed(() => props.direction === 'row')
@@ -251,7 +251,7 @@ function selectAndPlay(option: Option): void {
         v-else-if="isImageChoice"
         data-test="exercise-choice-grid"
         class="grid gap-2"
-        :class="hasDiagramChoices ? 'grid-cols-1' : 'grid-cols-2'"
+        :class="hasDiagramChoices ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'"
       >
         <div
           v-for="option in options"
