@@ -684,6 +684,7 @@ async function onImagePicked(event: Event) {
     <DiagramEmbedPickerModal
       :open="diagramPickerOpen"
       :initial="diagramPickerInitial"
+      :editing="editingDiagramPos !== null"
       @apply="applyDiagram"
       @close="diagramPickerOpen = false"
     />

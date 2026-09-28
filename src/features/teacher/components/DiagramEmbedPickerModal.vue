@@ -16,8 +16,11 @@ type DiagramRef = components['schemas']['DiagramRef']
 
 const props = defineProps<{
   open: boolean
-  /** The embedded ref being edited, or null to insert a new diagram. */
+  /** The embedded ref to reopen, or null to start from the list. */
   initial: DiagramRef | null
+  /** Whether this replaces an embedded diagram rather than inserting a new one — true even
+   *  when there's no ref to reopen, such as a stack. */
+  editing: boolean
 }>()
 const emit = defineEmits<{
   apply: [diagramRef: DiagramRef]
@@ -48,7 +51,7 @@ function apply() {
     >
       <div class="flex items-center justify-between">
         <span data-test="embed-picker-title" class="text-base font-bold">
-          {{ initial ? t('diagramEmbedPicker.editTitle') : t('diagramEmbedPicker.insertTitle') }}
+          {{ editing ? t('diagramEmbedPicker.editTitle') : t('diagramEmbedPicker.insertTitle') }}
         </span>
         <ModalCloseButton @close="emit('close')" />
       </div>
@@ -71,7 +74,7 @@ function apply() {
           class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
           @click="apply"
         >
-          {{ initial ? t('diagramEmbedPicker.apply') : t('diagramEmbedPicker.insert') }}
+          {{ editing ? t('diagramEmbedPicker.apply') : t('diagramEmbedPicker.insert') }}
         </button>
       </div>
     </ModalOverlay>

@@ -18,9 +18,9 @@ const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: {
 const penta = makeFrettedDiagram({ diagram_id: 'd-penta' })
 const chosen: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null } }
 
-function mountModal(props: { open?: boolean; initial?: DiagramRef | null } = {}) {
+function mountModal(props: { open?: boolean; initial?: DiagramRef | null; editing?: boolean } = {}) {
   return mount(DiagramEmbedPickerModal, {
-    props: { open: true, initial: null, ...props },
+    props: { open: true, initial: null, editing: false, ...props },
     global: { stubs: { teleport: true } },
   })
 }
@@ -62,7 +62,15 @@ describe('DiagramEmbedPickerModal', () => {
   })
 
   it('titles itself for editing an embedded diagram', async () => {
-    const wrapper = mountModal({ initial: chosen })
+    const wrapper = mountModal({ initial: chosen, editing: true })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="embed-picker-title"]').text()).toBe('Edit diagram')
+    expect(wrapper.get('[data-test="embed-picker-apply"]').text()).toBe('Apply')
+  })
+
+  it('titles itself for editing even when the embedded diagram can’t be reopened, like a stack', async () => {
+    const wrapper = mountModal({ initial: null, editing: true })
     await flushPromises()
 
     expect(wrapper.get('[data-test="embed-picker-title"]').text()).toBe('Edit diagram')

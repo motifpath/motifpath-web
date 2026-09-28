@@ -375,6 +375,7 @@ describe('PromptEditor', () => {
       const modal = wrapper.getComponent(DiagramEmbedPickerModal)
       expect(modal.props('open')).toBe(true)
       expect(modal.props('initial')).toBeNull()
+      expect(modal.props('editing')).toBe(false)
     })
 
     it('inserts the picked diagram as a diagram node carrying its ref', async () => {
@@ -426,6 +427,7 @@ describe('PromptEditor', () => {
       await wrapper.get('[data-test="prompt-diagram-edit"]').trigger('click')
       const modal = wrapper.getComponent(DiagramEmbedPickerModal)
       expect(modal.props('initial')).toBeNull()
+      expect(modal.props('editing')).toBe(true)
 
       modal.vm.$emit('apply', other)
       await nextTick()
@@ -433,6 +435,13 @@ describe('PromptEditor', () => {
       const node = diagramNodes(lastEmittedDocument(wrapper))[0]!
       expect(node.attrs?.diagramRef).toEqual(other)
       expect(node.attrs?.diagramStackRef ?? null).toBeNull()
+    })
+
+    it('keeps a diagram node it can’t read findable, with a placeholder', async () => {
+      const wrapper = await mountEditor(withDiagram({}))
+
+      expect(wrapper.find('[data-test="prompt-diagram-unavailable"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="prompt-diagram-edit"]').exists()).toBe(true)
     })
 
     it('removes a diagram node on its remove button', async () => {
