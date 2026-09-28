@@ -100,7 +100,6 @@
     "noCorrectOptionWarning": "Marque pelo menos uma opção como correta — um exercício que não pode ser corrigido não pode ser praticado.",
     "imageSelected": "Imagem selecionada",
     "noImageSelected": "Nenhuma imagem selecionada",
-    "chooseImage": "Escolher imagem",
     "audioStimulusLabel": "Estímulo de áudio — o que o aluno escuta",
     "chooseStimulusImage": "Escolher imagem de estímulo",
     "changeStimulusImage": "Alterar imagem de estímulo",
@@ -123,9 +122,8 @@
     "saveFailed": "Falha ao salvar o exercício",
     "createSkillFailed": "Falha ao criar a habilidade",
     "createConceptFailed": "Falha ao criar o conceito",
-    "stimulusSourceLabel": "Estímulo",
-    "stimulusSourceImage": "Imagem",
-    "stimulusSourceDiagram": "Diagrama"
+    "diagramSelected": "Diagrama selecionado",
+    "chooseImageOrDiagram": "Escolha uma imagem ou um diagrama"
   },
   "exerciseListView": {
     "heading": "Exercícios",

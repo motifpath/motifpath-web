@@ -7,7 +7,8 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
-import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
+import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
+import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
@@ -135,8 +136,16 @@ function onStimulusPicked(file: File) {
 
   stimulusFile.value = { file, kind }
   target.value = URL.createObjectURL(file)
+  if (kind === 'image') form.stimulusSource.value = 'image'
   stimulusPickerOpen.value = false
 }
+
+function onStimulusDiagram(diagramRef: DiagramRef) {
+  form.setStimulusDiagram(diagramRef)
+  stimulusPickerOpen.value = false
+}
+
+const showsDiagramStimulus = computed(() => form.stimulusSource.value === 'diagram' && form.stimulusDiagram.value !== null)
 
 function onOptionFile(id: string, file: File) {
   optionFiles[id] = file
@@ -356,39 +365,27 @@ async function save() {
         </div>
 
         <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-3">
-          <div class="flex w-fit gap-1 rounded-md bg-surface-sunken p-[3px]" role="group" :aria-label="t('exerciseAuthoringView.stimulusSourceLabel')">
-            <button
-              v-for="source in (['image', 'diagram'] as const)"
-              :key="source"
-              type="button"
-              :data-test="`stimulus-source-${source}`"
-              :aria-pressed="form.stimulusSource.value === source"
-              class="rounded-sm px-3 py-1 text-xs font-semibold"
-              :class="form.stimulusSource.value === source ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-              @click="form.stimulusSource.value = source"
-            >
-              {{ source === 'image' ? t('exerciseAuthoringView.stimulusSourceImage') : t('exerciseAuthoringView.stimulusSourceDiagram') }}
-            </button>
-          </div>
-          <DiagramEmbedPicker
-            v-if="form.stimulusSource.value === 'diagram'"
-            :initial="form.stimulusDiagram.value"
-            answers
-            @change="form.setStimulusDiagram"
-          />
           <button
-            v-else
             type="button"
             data-test="choose-stimulus"
             class="flex w-fit items-center gap-2.5 rounded-md border border-border bg-surface-raised py-2 pl-2.5 pr-2"
             @click="stimulusPickerOpen = true"
           >
             <span class="text-left">
-              <span class="block text-[0.8125rem] font-semibold text-ink">{{ stimulusImageLabel }}</span>
-              <span class="block text-xs text-ink-subtle">{{ t('exerciseAuthoringView.chooseImage') }}</span>
+              <span class="block text-[0.8125rem] font-semibold text-ink">{{
+                showsDiagramStimulus ? t('exerciseAuthoringView.diagramSelected') : stimulusImageLabel
+              }}</span>
+              <span class="block text-xs text-ink-subtle">{{ t('exerciseAuthoringView.chooseImageOrDiagram') }}</span>
             </span>
             <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
           </button>
+          <div
+            v-if="showsDiagramStimulus && form.stimulusDiagram.value"
+            data-test="stimulus-diagram-preview"
+            class="rounded-md border border-border bg-surface-sunken p-2"
+          >
+            <EmbeddedDiagram :embed="{ kind: 'single', ref: form.stimulusDiagram.value }" />
+          </div>
         </div>
 
         <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
@@ -546,7 +543,20 @@ async function save() {
       </aside>
     </div>
 
-    <ImagePickerModal :open="stimulusPickerOpen" :kind="stimulusKind" @select="onStimulusPicked" @close="stimulusPickerOpen = false" />
+    <ImagePickerModal
+      :open="stimulusPickerOpen && stimulusKind === 'audio'"
+      kind="audio"
+      @select="onStimulusPicked"
+      @close="stimulusPickerOpen = false"
+    />
+    <MediaPickerModal
+      :open="stimulusPickerOpen && stimulusKind === 'image'"
+      :initial-diagram="showsDiagramStimulus ? form.stimulusDiagram.value : null"
+      answers
+      @image="onStimulusPicked"
+      @diagram="onStimulusDiagram"
+      @close="stimulusPickerOpen = false"
+    />
     <ExercisePreviewModal
       :open="previewOpen"
       :prompt="form.prompt.value"
