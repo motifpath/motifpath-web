@@ -710,10 +710,11 @@ export interface paths {
          *     themselves, never another teacher's custom diagrams. An admin sees
          *     every diagram.
          *
-         *     The created_by filter is role-scoped. A teacher may pass only their
-         *     own user_id; passing any other created_by is refused with 403. An
-         *     admin may pass any created_by, or omit it for every creator's
-         *     diagrams.
+         *     Filters only ever narrow what the caller can see. created_by may
+         *     name any user: a teacher who passes another teacher's user_id gets
+         *     none of that teacher's custom diagrams, but does get the basic
+         *     diagrams that user created. GET /diagrams/creators lists the
+         *     creators to offer.
          *
          *     Results are paginated in a {items, total, limit, offset} envelope,
          *     ordered by the name the caller sees — the diagram's name in the
@@ -739,6 +740,39 @@ export interface paths {
          *     link to them.
          */
         post: operations["createDiagram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the diagrams the caller can see
+         * @description Returns every distinct user who created at least one diagram the
+         *     caller can see in GET /diagrams, so a picker can offer a complete
+         *     creator filter (its created_by parameter) without paging. A teacher
+         *     gets the creators of basic diagrams, plus themselves once they have
+         *     a custom diagram of their own — never another teacher who has only
+         *     custom diagrams. An admin gets the creator of every diagram. A
+         *     student is refused with 403, since students never browse the
+         *     library.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the number of diagrams. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         */
+        get: operations["listDiagramCreators"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2700,7 +2734,7 @@ export interface components {
              * @description Timestamp the latest published version was published at, or null if the course has never been published.
              */
             published_at: string | null;
-            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the authoring list, GET /courses; GET /catalog/courses never returns it. */
+            /** @description True when the live draft differs from the latest published version in anything a version records (title, summary, level, language, instruments, thumbnail or checkpoints), or nothing has been published yet. Present only in the authoring list, GET /courses; GET /catalog/courses never returns it. */
             has_unpublished_changes?: boolean;
             instrument_ids: components["schemas"]["InstrumentIds"];
             /**
@@ -2746,7 +2780,7 @@ export interface components {
             created_at: string;
             /** @description The version_number of the most recently published CourseVersion, or null if the course has never been published. */
             latest_published_version?: number | null;
-            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). */
+            /** @description True when the live draft differs from the latest published version in anything a version records (title, summary, level, language, instruments, thumbnail or checkpoints), or nothing has been published yet. */
             has_unpublished_changes: boolean;
             /** @description The course's checkpoints, sorted by position ascending. */
             checkpoints: components["schemas"]["CourseCheckpoint"][];
@@ -5966,10 +6000,23 @@ export interface operations {
                  */
                 kind?: "basic" | "custom";
                 /**
-                 * @description Restricts the results to diagrams created by this user. A
-                 *     teacher may pass only their own user_id.
+                 * @description Restricts the results to diagrams created by this user, among
+                 *     those the caller can see.
                  */
                 created_by?: string;
+                /**
+                 * @description Restricts the results to diagrams with a name containing this
+                 *     text, in any of the diagram's languages, ignoring case and
+                 *     accents ("escala" matches "Escala Maior", "jonico" matches
+                 *     "Jônico").
+                 */
+                name?: string;
+                /**
+                 * @description Restricts the results to diagrams recorded with exactly this
+                 *     root note (e.g. "A", "F#", "Bb"), as spelled by their author. A
+                 *     diagram with no recorded root never matches.
+                 */
+                root_note?: string;
                 /** @description When given, only diagrams authored against this instrument are returned. */
                 instrument_id?: string;
                 /** @description When given, only diagrams with this exact skill id among their linked skills are returned. */
@@ -5992,7 +6039,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedDiagrams"];
                 };
             };
-            /** @description limit, offset, kind or language is out of range. */
+            /** @description limit, offset, kind, language, name or root_note is out of range. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6010,10 +6057,7 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /**
-             * @description The caller is a student, or a teacher passed a created_by other
-             *     than their own user_id.
-             */
+            /** @description The caller is a student. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6077,6 +6121,56 @@ export interface operations {
              *     diagram. Only teachers and admins may create a diagram, and only
              *     an admin may create a basic one.
              */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listDiagramCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the diagrams the caller can see, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description q is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student. */
             403: {
                 headers: {
                     [name: string]: unknown;
