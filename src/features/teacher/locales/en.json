@@ -526,11 +526,11 @@
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
     "leaveConfirm": "Leave"
   },
-  "overlayDiagramPicker": {
+  "diagramPickerList": {
     "loadingNoun": "diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
-    "emptyHeading": "Nothing to overlay",
-    "emptyMessage": "There's no other diagram for this instrument yet."
+    "emptyHeading": "No diagrams yet",
+    "emptyMessage": "Create a diagram in the Diagrams library first."
   },
   "overlayDiagramsModal": {
     "title": "Overlay diagrams",
@@ -541,6 +541,8 @@
     "regionPerLayer": "Add a highlighted region for each diagram, captioned with its name",
     "mergeNeedsRoot": "Choose a root note first, so every position of this diagram has an interval to merge.",
     "discard": "Discard",
-    "merge": "Merge into the editor"
+    "merge": "Merge into the editor",
+    "pickerEmptyHeading": "Nothing to overlay",
+    "pickerEmptyMessage": "There's no other diagram for this instrument yet."
   }
 }

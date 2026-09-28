@@ -526,11 +526,11 @@
     "leaveMessage": "Suas alterações neste curso não foram salvas e serão perdidas.",
     "leaveConfirm": "Sair"
   },
-  "overlayDiagramPicker": {
+  "diagramPickerList": {
     "loadingNoun": "diagramas",
     "loadErrorMessage": "Não foi possível carregar os diagramas.",
-    "emptyHeading": "Nada para sobrepor",
-    "emptyMessage": "Ainda não há outro diagrama para este instrumento."
+    "emptyHeading": "Nenhum diagrama ainda",
+    "emptyMessage": "Crie um diagrama na biblioteca de Diagramas primeiro."
   },
   "overlayDiagramsModal": {
     "title": "Sobrepor diagramas",
@@ -541,6 +541,8 @@
     "regionPerLayer": "Adicionar uma região destacada para cada diagrama, com o nome dele como legenda",
     "mergeNeedsRoot": "Escolha antes uma nota fundamental, para que toda posição deste diagrama tenha um intervalo a mesclar.",
     "discard": "Descartar",
-    "merge": "Mesclar no editor"
+    "merge": "Mesclar no editor",
+    "pickerEmptyHeading": "Nada para sobrepor",
+    "pickerEmptyMessage": "Ainda não há outro diagrama para este instrumento."
   }
 }

@@ -6,7 +6,7 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
-import OverlayDiagramPicker from '@/features/teacher/components/OverlayDiagramPicker.vue'
+import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.vue'
 import { makeFrettedDiagram } from '@/shared/testUtils/diagram'
 
 function page(items: unknown[], total = items.length) {
@@ -19,8 +19,10 @@ const pentatonic = makeFrettedDiagram({ diagram_id: 'd-penta', names: { en: 'A m
 const major = makeFrettedDiagram({ diagram_id: 'd-major', names: { en: 'C major scale' }, kind: 'basic' })
 const base = makeFrettedDiagram({ diagram_id: 'd-base', names: { en: 'The one being edited' } })
 
-function mountPicker(props: { excludeIds?: string[] } = {}) {
-  return mount(OverlayDiagramPicker, {
+function mountPicker(
+  props: { instrumentId?: string; excludeIds?: string[]; emptyHeading?: string; emptyMessage?: string } = {},
+) {
+  return mount(DiagramPickerList, {
     props: { instrumentId: 'instrument-guitar', excludeIds: [], ...props },
   })
 }
@@ -28,10 +30,10 @@ function mountPicker(props: { excludeIds?: string[] } = {}) {
 type Picker = ReturnType<typeof mountPicker>
 
 function rowTexts(wrapper: Picker): string[] {
-  return wrapper.findAll('[data-test="overlay-option-name"]').map((name) => name.text())
+  return wrapper.findAll('[data-test="diagram-option-name"]').map((name) => name.text())
 }
 
-describe('OverlayDiagramPicker', () => {
+describe('DiagramPickerList', () => {
   beforeEach(() => {
     GET.mockReset()
   })
@@ -45,7 +47,7 @@ describe('OverlayDiagramPicker', () => {
       params: { query: expect.objectContaining({ instrument_id: 'instrument-guitar' }) },
     })
     expect(rowTexts(wrapper)).toEqual(['A minor pentatonic', 'C major scale'])
-    const badges = wrapper.findAll('[data-test="overlay-option"]').map((row) => row.find('[data-test="template-badge"]').exists())
+    const badges = wrapper.findAll('[data-test="diagram-option"]').map((row) => row.find('[data-test="template-badge"]').exists())
     expect(badges).toEqual([false, true])
   })
 
@@ -62,7 +64,7 @@ describe('OverlayDiagramPicker', () => {
     const wrapper = mountPicker()
     await flush()
 
-    await wrapper.get('[data-test="overlay-option"]').trigger('click')
+    await wrapper.get('[data-test="diagram-option"]').trigger('click')
 
     expect(wrapper.emitted('select')).toEqual([[pentatonic]])
   })
@@ -71,7 +73,7 @@ describe('OverlayDiagramPicker', () => {
     GET.mockReturnValueOnce(new Promise(() => {}))
     const wrapper = mountPicker()
 
-    expect(wrapper.find('[data-test="overlay-picker-loading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="diagram-picker-loading"]').exists()).toBe(true)
   })
 
   it('shows an error with a retry that loads again', async () => {
@@ -80,19 +82,38 @@ describe('OverlayDiagramPicker', () => {
     await flush()
 
     GET.mockResolvedValueOnce(page([pentatonic]))
-    await wrapper.get('[data-test="overlay-picker-error"] [data-test="retry"]').trigger('click')
+    await wrapper.get('[data-test="diagram-picker-error"] [data-test="retry"]').trigger('click')
     await flush()
 
     expect(GET).toHaveBeenCalledTimes(2)
     expect(rowTexts(wrapper)).toEqual(['A minor pentatonic'])
   })
 
-  it('says when there is nothing to overlay', async () => {
+  it('says when there is nothing to offer', async () => {
     GET.mockResolvedValueOnce(page([base]))
     const wrapper = mountPicker({ excludeIds: ['d-base'] })
     await flush()
 
-    expect(wrapper.find('[data-test="overlay-picker-empty"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="diagram-picker-empty"]').text()).toContain('No diagrams yet')
+  })
+
+  it('says it in the caller’s own words when given', async () => {
+    GET.mockResolvedValueOnce(page([]))
+    const wrapper = mountPicker({ emptyHeading: 'Nothing to overlay', emptyMessage: 'No other diagram.' })
+    await flush()
+
+    const empty = wrapper.get('[data-test="diagram-picker-empty"]').text()
+    expect(empty).toContain('Nothing to overlay')
+    expect(empty).toContain('No other diagram.')
+  })
+
+  it('lists diagrams of every instrument when none is given', async () => {
+    GET.mockResolvedValueOnce(page([pentatonic]))
+    mount(DiagramPickerList)
+    await flush()
+
+    const query = GET.mock.calls[0]![1].params.query
+    expect(query).not.toHaveProperty('instrument_id')
   })
 
   it('still offers more when the loaded page holds only diagrams it leaves out', async () => {
@@ -100,7 +121,7 @@ describe('OverlayDiagramPicker', () => {
     const wrapper = mountPicker({ excludeIds: ['d-base'] })
     await flush()
 
-    expect(wrapper.find('[data-test="overlay-picker-empty"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="diagram-picker-empty"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="load-more"]').exists()).toBe(true)
   })
 

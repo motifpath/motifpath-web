@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * Lists the diagrams that can be overlaid on the one being authored: any diagram
- * the caller can see on the same instrument, apart from the one being edited and
- * those already overlaid. Mount it only while it's shown, so each showing fetches
- * a fresh list. Only picks; the caller adds the overlay.
+ * Lists the diagrams the caller can see — on one instrument when given, less
+ * any it excludes — for the caller to pick one. Mount it only while it's
+ * shown, so each showing fetches a fresh list. Only picks; the caller decides
+ * what the pick does.
  */
 import { computed } from 'vue'
 
@@ -18,11 +18,16 @@ import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
 
-const props = defineProps<{
-  instrumentId: string
-  /** Diagrams not to offer: the one being edited and those already overlaid. */
-  excludeIds: string[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    instrumentId?: string
+    /** Diagrams not to offer. */
+    excludeIds?: string[]
+    emptyHeading?: string
+    emptyMessage?: string
+  }>(),
+  { instrumentId: undefined, excludeIds: () => [], emptyHeading: undefined, emptyMessage: undefined },
+)
 const emit = defineEmits<{ select: [diagram: Diagram] }>()
 
 const { t } = useTypedT()
@@ -38,22 +43,22 @@ const offered = computed(() => diagrams.value.filter((d) => !props.excludeIds.in
   <div class="flex flex-col gap-3">
     <StateLoading
       v-if="isLoading"
-      data-test="overlay-picker-loading"
-      :noun="t('overlayDiagramPicker.loadingNoun')"
+      data-test="diagram-picker-loading"
+      :noun="t('diagramPickerList.loadingNoun')"
     />
 
     <StateError
       v-else-if="error"
-      data-test="overlay-picker-error"
-      :message="t('overlayDiagramPicker.loadErrorMessage')"
+      data-test="diagram-picker-error"
+      :message="t('diagramPickerList.loadErrorMessage')"
       @retry="reload"
     />
 
     <StateEmpty
       v-else-if="offered.length === 0 && !hasMore"
-      data-test="overlay-picker-empty"
-      :heading="t('overlayDiagramPicker.emptyHeading')"
-      :message="t('overlayDiagramPicker.emptyMessage')"
+      data-test="diagram-picker-empty"
+      :heading="emptyHeading ?? t('diagramPickerList.emptyHeading')"
+      :message="emptyMessage ?? t('diagramPickerList.emptyMessage')"
     />
 
     <template v-else>
@@ -61,11 +66,11 @@ const offered = computed(() => diagrams.value.filter((d) => !props.excludeIds.in
         <li v-for="diagram in offered" :key="diagram.diagram_id">
           <button
             type="button"
-            data-test="overlay-option"
+            data-test="diagram-option"
             class="flex w-full items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-left"
             @click="emit('select', diagram)"
           >
-            <span data-test="overlay-option-name" class="font-semibold text-ink">{{
+            <span data-test="diagram-option-name" class="font-semibold text-ink">{{
               localizedName(diagram.names)
             }}</span>
             <span

@@ -898,7 +898,7 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()
       const option = wrapper
-        .findAll('[data-test="overlay-option"]')
+        .findAll('[data-test="diagram-option"]')
         .find((row) => row.text().includes('A Minor Pentatonic'))
       await option!.trigger('click')
     }
@@ -953,7 +953,7 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()
 
-      expect(wrapper.findAll('[data-test="overlay-option-name"]').map((n) => n.text())).toEqual(['A Minor Pentatonic'])
+      expect(wrapper.findAll('[data-test="diagram-option-name"]').map((n) => n.text())).toEqual(['A Minor Pentatonic'])
     })
 
     it('discards the overlays, leaving the diagram and its saving untouched', async () => {
@@ -982,7 +982,7 @@ describe('DiagramAuthoringView', () => {
       await flush()
 
       expect(modal(wrapper).find('[data-test="overlay-item"]').exists()).toBe(false)
-      expect(modal(wrapper).find('[data-test="overlay-option"]').exists()).toBe(true)
+      expect(modal(wrapper).find('[data-test="diagram-option"]').exists()).toBe(true)
     })
 
     it('merges the layers into editable positions, with a region per layer, and then saves only as a new diagram', async () => {
