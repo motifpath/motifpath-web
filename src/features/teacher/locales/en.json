@@ -71,7 +71,11 @@
     "toggleCellBorder": "Add/remove cell border",
     "deleteTable": "Delete table",
     "linkUrlPrompt": "Link URL",
-    "imageUploadFailed": "Failed to upload the image"
+    "imageUploadFailed": "Failed to upload the image",
+    "insertDiagram": "Insert a diagram",
+    "editDiagram": "Edit diagram",
+    "removeDiagram": "Remove diagram",
+    "diagramUnavailable": "This diagram can't be shown. Edit it to choose another, or remove it."
   },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marked correct",

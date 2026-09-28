@@ -71,7 +71,11 @@
     "toggleCellBorder": "Adicionar/remover borda da célula",
     "deleteTable": "Excluir tabela",
     "linkUrlPrompt": "URL do link",
-    "imageUploadFailed": "Falha ao enviar a imagem"
+    "imageUploadFailed": "Falha ao enviar a imagem",
+    "insertDiagram": "Inserir um diagrama",
+    "editDiagram": "Editar diagrama",
+    "removeDiagram": "Remover diagrama",
+    "diagramUnavailable": "Este diagrama não pode ser exibido. Edite-o para escolher outro, ou remova-o."
   },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marcada como correta",

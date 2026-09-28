@@ -6,7 +6,12 @@ const upload = vi.fn()
 vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
   useMediaUpload: () => ({ upload }),
 }))
+// An inline diagram's preview loads through the API; these tests only need it to stay loading.
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { GET: () => new Promise(() => {}) }, eventApi: {} }),
+}))
 
+import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { coloredTextPrompt, plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -14,6 +19,7 @@ import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
+type DiagramRef = components['schemas']['DiagramRef']
 
 function lastEmittedDocument(wrapper: ReturnType<typeof mount>): PromptDocument {
   const events = wrapper.emitted<[PromptDocument]>('update:modelValue')
@@ -54,6 +60,7 @@ describe('PromptEditor', () => {
       'link',
       'table',
       'image',
+      'diagram',
       'font-color',
       'background-color',
     ]
@@ -331,5 +338,110 @@ describe('PromptEditor', () => {
       expect.objectContaining({ kind: 'error', message: 'Upload failed with status 500' }),
     )
     expect(wrapper.emitted('update:modelValue')).toBeFalsy()
+  })
+
+  describe('inline diagrams', () => {
+    const penta: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null } }
+    const rootsOnly: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: false, subset: ['R'] } }
+    const other: DiagramRef = { diagram_id: 'd-other', layers: { intervals: true, subset: null } }
+
+    function withDiagram(attrs: Record<string, unknown>): PromptDocument {
+      return {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] },
+          { type: 'diagram', attrs },
+          { type: 'paragraph', content: [{ type: 'text', text: 'After' }] },
+        ],
+      }
+    }
+
+    async function mountEditor(modelValue: PromptDocument) {
+      const wrapper = mount(PromptEditor, { props: { modelValue }, global: { stubs: { teleport: true } } })
+      await nextTick()
+      await nextTick()
+      return wrapper
+    }
+
+    function diagramNodes(doc: PromptDocument) {
+      return doc.content.filter((node) => node.type === 'diagram')
+    }
+
+    it('opens the diagram picker to insert a new diagram', async () => {
+      const wrapper = await mountEditor(plainTextPrompt('Hi'))
+
+      await wrapper.get('[data-test="prompt-toolbar-diagram"]').trigger('click')
+
+      const modal = wrapper.getComponent(DiagramEmbedPickerModal)
+      expect(modal.props('open')).toBe(true)
+      expect(modal.props('initial')).toBeNull()
+    })
+
+    it('inserts the picked diagram as a diagram node carrying its ref', async () => {
+      const wrapper = await mountEditor(plainTextPrompt('Hi'))
+      await wrapper.get('[data-test="prompt-toolbar-diagram"]').trigger('click')
+
+      wrapper.getComponent(DiagramEmbedPickerModal).vm.$emit('apply', penta)
+      await nextTick()
+
+      const nodes = diagramNodes(lastEmittedDocument(wrapper))
+      expect(nodes).toHaveLength(1)
+      expect(nodes[0]!.attrs?.diagramRef).toEqual(penta)
+      expect(wrapper.getComponent(DiagramEmbedPickerModal).props('open')).toBe(false)
+    })
+
+    it('keeps an existing diagram node, with its attrs, through an edit elsewhere', async () => {
+      const wrapper = await mountEditor(withDiagram({ diagramRef: penta }))
+
+      expect(wrapper.find('[data-test="prompt-diagram-node"]').exists()).toBe(true)
+      await wrapper.get('[data-test="prompt-toolbar-bold"]').trigger('click')
+      await wrapper.get('.ProseMirror').trigger('keydown', { key: 'a', ctrlKey: true })
+      await wrapper.get('[data-test="prompt-toolbar-h1"]').trigger('click')
+      await nextTick()
+
+      const nodes = diagramNodes(lastEmittedDocument(wrapper))
+      expect(nodes).toHaveLength(1)
+      expect(nodes[0]!.attrs?.diagramRef).toEqual(penta)
+    })
+
+    it('reopens the picker on a diagram node’s edit button and updates it in place', async () => {
+      const wrapper = await mountEditor(withDiagram({ diagramRef: penta }))
+
+      await wrapper.get('[data-test="prompt-diagram-edit"]').trigger('click')
+      const modal = wrapper.getComponent(DiagramEmbedPickerModal)
+      expect(modal.props('initial')).toEqual(penta)
+
+      modal.vm.$emit('apply', rootsOnly)
+      await nextTick()
+
+      const doc = lastEmittedDocument(wrapper)
+      expect(diagramNodes(doc)).toHaveLength(1)
+      expect(diagramNodes(doc)[0]!.attrs?.diagramRef).toEqual(rootsOnly)
+      expect(doc.content.map((n) => n.type)).toEqual(['paragraph', 'diagram', 'paragraph'])
+    })
+
+    it('replaces a stacked diagram with the single one picked, since only one can be picked', async () => {
+      const wrapper = await mountEditor(withDiagram({ diagramStackRef: { stack: [penta, other] } }))
+
+      await wrapper.get('[data-test="prompt-diagram-edit"]').trigger('click')
+      const modal = wrapper.getComponent(DiagramEmbedPickerModal)
+      expect(modal.props('initial')).toBeNull()
+
+      modal.vm.$emit('apply', other)
+      await nextTick()
+
+      const node = diagramNodes(lastEmittedDocument(wrapper))[0]!
+      expect(node.attrs?.diagramRef).toEqual(other)
+      expect(node.attrs?.diagramStackRef ?? null).toBeNull()
+    })
+
+    it('removes a diagram node on its remove button', async () => {
+      const wrapper = await mountEditor(withDiagram({ diagramRef: penta }))
+
+      await wrapper.get('[data-test="prompt-diagram-remove"]').trigger('click')
+      await nextTick()
+
+      expect(diagramNodes(lastEmittedDocument(wrapper))).toHaveLength(0)
+    })
   })
 })
