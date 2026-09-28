@@ -19,12 +19,13 @@ vi.mock('vidstack/player/ui', () => ({}))
 vi.mock('vidstack/player/styles/base.css', () => ({}))
 
 const push = vi.fn()
+const replace = vi.fn()
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return {
     ...actual,
     useRoute: () => ({ params: { nodeId: 'node-abc' } }),
-    useRouter: () => ({ push }),
+    useRouter: () => ({ push, replace }),
   }
 })
 
@@ -34,9 +35,15 @@ const lesson = {
   node: ref<ContentNode | null>(null),
   cues: ref<ExpandedContent[]>([]),
   hasChallenge: ref(false),
+  completedCourseEnrollmentId: ref<string | null>(null),
   retry: vi.fn(),
 }
 vi.mock('@/features/student/composables/useLessonNode', () => ({ useLessonNode: () => lesson }))
+
+const waitForCompletion = vi.fn()
+vi.mock('@/features/student/composables/useLessonCompletionSync', () => ({
+  useLessonCompletionSync: () => ({ waitForCompletion }),
+}))
 
 // A real device's width and height are independent — a phone rotated to
 // landscape is wide but short. Tests drive this directly rather than via
@@ -106,11 +113,22 @@ async function endVideo(wrapper: Wrapper) {
 describe('NodeView', () => {
   beforeEach(() => {
     push.mockReset()
+    replace.mockReset()
+    waitForCompletion.mockReset().mockResolvedValue({ kind: 'recorded' })
+    lesson.completedCourseEnrollmentId.value = null
     complete.mockReset().mockResolvedValue(undefined)
     useLessonTracking.mockClear()
     lesson.retry.mockReset()
     isShortViewport.value = false
     setLesson({})
+  })
+
+  it('takes the student to the course-completed screen when loading the lesson finds their course just completed', async () => {
+    lesson.completedCourseEnrollmentId.value = 'ce-1'
+
+    await mountView()
+
+    expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
   })
 
   it('reports the lesson it shows to the tracker', async () => {
@@ -339,6 +357,80 @@ describe('NodeView', () => {
         expect(order).toEqual(['complete', 'push'])
       })
 
+      it('waits for the completion to be recorded before going back to the path', async () => {
+        const order: string[] = []
+        complete.mockImplementation(async () => {
+          order.push('complete')
+        })
+        waitForCompletion.mockImplementation(async (nodeId: string) => {
+          order.push(`wait:${nodeId}`)
+          return { kind: 'recorded' }
+        })
+        push.mockImplementation(async () => {
+          order.push('push')
+        })
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await settle(wrapper)
+
+        expect(order).toEqual(['complete', 'wait:node-abc', 'push'])
+      })
+
+      it('leaves the student where they went if they leave the lesson during the wait', async () => {
+        let settleWait: (outcome: unknown) => void = () => {}
+        waitForCompletion.mockImplementation(() => new Promise((resolve) => (settleWait = resolve)))
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await flushPromises()
+
+        wrapper.unmount()
+        settleWait({ kind: 'recorded' })
+        await flushPromises()
+
+        expect(push).not.toHaveBeenCalled()
+      })
+
+      it('still shows the course-completed screen if the student left during the wait that discovered it', async () => {
+        let settleWait: (outcome: unknown) => void = () => {}
+        waitForCompletion.mockImplementation(() => new Promise((resolve) => (settleWait = resolve)))
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await flushPromises()
+
+        wrapper.unmount()
+        settleWait({ kind: 'course-completed', enrollmentId: 'ce-1' })
+        await flushPromises()
+
+        expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
+      })
+
+      it('still goes back to the path when the completion is slow to be recorded', async () => {
+        waitForCompletion.mockResolvedValue({ kind: 'timed-out' })
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await settle(wrapper)
+
+        expect(push).toHaveBeenCalledWith({ name: 'path' })
+      })
+
+      it('goes straight to the course-completed screen when this lesson finished the course', async () => {
+        waitForCompletion.mockResolvedValue({ kind: 'course-completed', enrollmentId: 'ce-1' })
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await settle(wrapper)
+
+        expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
+        expect(push).not.toHaveBeenCalled()
+      })
+
       it('acts only once when the button is pressed twice in quick succession', async () => {
         const wrapper = await mountView()
         await endVideo(wrapper)
@@ -377,6 +469,16 @@ describe('NodeView', () => {
 
         expect(complete).toHaveBeenCalledTimes(1)
         expect(push).toHaveBeenCalledWith({ name: 'practice', params: { nodeId: 'node-abc' } })
+      })
+
+      it('goes to practice without waiting for the completion to be recorded', async () => {
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+
+        await wrapper.get('[data-test="practice-link"]').trigger('click')
+        await settle(wrapper)
+
+        expect(waitForCompletion).not.toHaveBeenCalled()
       })
     })
 

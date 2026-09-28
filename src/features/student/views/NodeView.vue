@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, h, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import CuePanel from '@/features/student/components/CuePanel.vue'
+import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
+import { useLessonCompletionSync } from '@/features/student/composables/useLessonCompletionSync'
 import { useLessonNode } from '@/features/student/composables/useLessonNode'
 import { useLessonTracking } from '@/features/student/composables/useLessonTracking'
 import { activeCue } from '@/features/student/utils/activeCue'
@@ -34,6 +36,7 @@ const nodeId = computed(() => {
 })
 
 const lesson = useLessonNode(nodeId)
+useCourseCompletionRedirect(lesson.completedCourseEnrollmentId)
 const { complete } = useLessonTracking(lesson)
 
 // The player is a sizeable dependency that only this screen needs, so it is
@@ -93,15 +96,38 @@ function retryPlayback(): void {
   playerKey.value += 1
 }
 
+const { waitForCompletion } = useLessonCompletionSync()
+
+// Set once the student has navigated away, so a finish still in flight doesn't
+// pull them back from wherever they went.
+let left = false
+onBeforeUnmount(() => {
+  left = true
+})
+
 // Reports completion before leaving, so the event has been accepted by the
 // time the next screen loads its progress. Pressing again while it is in
 // flight does nothing.
-async function finish(to: RouteLocationRaw): Promise<void> {
+//
+// Going back to the path also waits for the completion to be recorded, so the
+// path shows this step done — and a lesson that finished the course goes
+// straight to the course-completed screen. Going to practice doesn't wait: a
+// read that discovered the course completion would skip the practice.
+//
+// A student who left during the wait stays where they went — except on the
+// course-completed screen: the read that discovered the completion was the
+// only one that will ever report it.
+async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Promise<void> {
   if (finishing.value) return
   finishing.value = true
   try {
     await complete()
-    await router.push(to)
+    const outcome = awaitProgress ? await waitForCompletion(nodeId.value) : null
+    if (outcome?.kind === 'course-completed') {
+      await router.replace({ name: 'course-completed', params: { enrollmentId: outcome.enrollmentId } })
+    } else if (!left) {
+      await router.push(to)
+    }
   } finally {
     finishing.value = false
   }
@@ -242,7 +268,7 @@ async function finish(to: RouteLocationRaw): Promise<void> {
           v-else
           data-test="complete"
           :disabled="finishing"
-          @click="finish({ name: 'path' })"
+          @click="finish({ name: 'path' }, { awaitProgress: true })"
         >
           {{ t('nodeView.markComplete') }}
         </PrimaryButton>

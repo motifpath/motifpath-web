@@ -10,7 +10,9 @@ import {
   type CurrentPathTarget,
   useSetCurrentPath,
 } from '@/features/student/composables/useSetCurrentPath'
+import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -33,6 +35,7 @@ const standaloneState = useMyStandalonePaths()
 // The current path only decides which entry is marked current; having none
 // yet ('no-path') is an ordinary state, not a failure.
 const currentState = useStudentPath()
+useCourseCompletionRedirect(() => completedCourseEnrollmentId(currentState.data.value))
 const { setCurrentPath } = useSetCurrentPath()
 
 const isLoading = computed(

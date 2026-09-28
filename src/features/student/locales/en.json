@@ -9,7 +9,11 @@
     "loadingNoun": "your path",
     "emptyHeading": "You're all set",
     "emptyMessage": "We're building your personalized path. We'll let you know when it's ready.",
-    "errorMessage": "We couldn't load your path."
+    "errorMessage": "We couldn't load your path.",
+    "completeHeading": "Path complete!",
+    "completeMessage": "You finished {title}. Pick your next step: find a course, or switch to another path in My courses.",
+    "findCourse": "Find a course",
+    "myCourses": "My courses"
   },
   "pathStep": {
     "status": {
@@ -104,5 +108,15 @@
     "assignedBy": "Assigned by {name}",
     "current": "Current",
     "switch": "Switch to this"
+  },
+  "courseCompletedView": {
+    "loadingNoun": "your course",
+    "errorMessage": "We couldn't load your course.",
+    "notFoundHeading": "Nothing to celebrate here yet",
+    "notFoundMessage": "This course isn't one you've finished.",
+    "heading": "Course complete!",
+    "message": "You finished {title}. Great work — keep the momentum going with your next course.",
+    "findNextCourse": "Find your next course",
+    "myCourses": "My courses"
   }
 }

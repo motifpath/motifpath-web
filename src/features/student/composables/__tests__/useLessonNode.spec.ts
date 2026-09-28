@@ -100,6 +100,30 @@ describe('useLessonNode', () => {
     },
   )
 
+  it('reports the enrollment a just-completed course belongs to', async () => {
+    respondWith({
+      ...healthy,
+      [PATH]: ok(
+        makeStudentPathView(
+          [makeStudentPathItem(1, undefined, 'completed'), makeStudentPathItem(2, undefined, 'completed')],
+          { course_completed: true, course_enrollment_id: 'ce-1', course_checkpoint_position: 2 },
+        ),
+      ),
+    })
+
+    const lesson = await load()
+
+    expect(lesson.completedCourseEnrollmentId.value).toBe('ce-1')
+  })
+
+  it('reports no completed course while the course is still in progress', async () => {
+    respondWith(healthy)
+
+    const lesson = await load()
+
+    expect(lesson.completedCourseEnrollmentId.value).toBeNull()
+  })
+
   it('knows a step has a challenge when the node lists one', async () => {
     respondWith({ ...healthy, [CHALLENGES]: ok([{ challenge_id: 'c-1' }]) })
 
