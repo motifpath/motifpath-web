@@ -24,9 +24,12 @@
  *   stay mounted.
  * - The aside's width is student-controlled (drag or arrow keys on the
  *   handle) and remembered per browser, only while in landscape — including
- *   a phone rotated to landscape, not just a desktop-sized screen — since in
- *   portrait the aside stacks full-width below the video, where a pixel
- *   width would fight the layout.
+ *   a phone rotated to landscape, not just a desktop-sized screen. In
+ *   portrait the aside stacks full-width below the video, so the remembered
+ *   width is kept but not applied there: a pixel width would squeeze a
+ *   diagram or picture into a sliver of the screen.
+ * - In fullscreen the video is letterboxed and vertically centred, so the
+ *   aside's content is centred too, rather than left hanging at the top.
  */
 import 'vidstack/player'
 import 'vidstack/player/ui'
@@ -90,7 +93,7 @@ function clamp(value: number): number {
 const asideWidthPx = ref<number | null>(null)
 const asideEl = ref<HTMLElement | null>(null)
 const asideStyle = computed(() =>
-  asideWidthPx.value === null ? undefined : { width: `${asideWidthPx.value}px` },
+  asideWidthPx.value === null || !canResizeAside.value ? undefined : { width: `${asideWidthPx.value}px` },
 )
 
 onMounted(() => {
@@ -185,7 +188,7 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
     :src="src"
     playsinline
     data-test="lesson-player"
-    class="flex aspect-auto flex-col overflow-hidden rounded-lg bg-brand-ground landscape:flex-row"
+    class="group/player flex aspect-auto flex-col overflow-hidden rounded-lg bg-brand-ground landscape:flex-row"
     @time-update="onTimeUpdate"
     @ended="emit('ended')"
     @error="emit('error')"
@@ -258,7 +261,7 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
       ref="asideEl"
       data-test="player-aside"
       :style="asideStyle"
-      class="relative w-full shrink-0 self-stretch overflow-y-auto p-3 landscape:w-80 landscape:xl:w-1/3"
+      class="relative flex w-full shrink-0 flex-col self-stretch overflow-y-auto p-3 landscape:w-80 landscape:xl:w-1/3"
     >
       <button
         v-if="canResizeAside && asideWidthPx !== null"
@@ -271,7 +274,10 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
         <Icon name="reset" :size="16" />
       </button>
 
-      <slot name="aside" />
+      <!-- Auto margins centre it without clipping the top of content taller than the panel. -->
+      <div data-test="player-aside-content" class="group-data-[fullscreen]/player:my-auto">
+        <slot name="aside" />
+      </div>
     </div>
   </media-player>
 </template>

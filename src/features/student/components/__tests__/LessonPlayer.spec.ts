@@ -189,6 +189,19 @@ describe('LessonPlayer', () => {
 
       expect(wrapper.get('[data-test="player-aside"]').classes()).toContain('self-stretch')
     })
+
+    it('centres the aside content vertically in fullscreen, level with the letterboxed video', () => {
+      const wrapper = mountPlayer(true)
+
+      // The library marks the player with data-fullscreen; the content keys its centring off that.
+      expect(wrapper.get('media-player').classes()).toContain('group/player')
+      const content = wrapper.get('[data-test="player-aside-content"]')
+      expect(content.text()).toBe('a cue')
+      expect(content.classes()).toContain('group-data-[fullscreen]/player:my-auto')
+      expect(wrapper.get('[data-test="player-aside"]').classes()).toEqual(
+        expect.arrayContaining(['flex', 'flex-col']),
+      )
+    })
   })
 
   describe('recovering from a video that failed to load', () => {
@@ -310,6 +323,43 @@ describe('LessonPlayer', () => {
       expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain(
         'width: 450px',
       )
+    })
+
+    it('spans the full width in portrait even with a width remembered from landscape', async () => {
+      localStorage.setItem(ASIDE_WIDTH_KEY, '450')
+      canResizeAside.value = false
+
+      const wrapper = mountPlayer(true)
+      await nextTick()
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toBeUndefined()
+      expect(wrapper.find('[data-test="aside-reset-button"]').exists()).toBe(false)
+    })
+
+    it('takes the remembered width back when the device is rotated from portrait to landscape', async () => {
+      localStorage.setItem(ASIDE_WIDTH_KEY, '450')
+      canResizeAside.value = false
+      const wrapper = mountPlayer(true)
+      await nextTick()
+
+      canResizeAside.value = true
+      await nextTick()
+
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toContain('width: 450px')
+    })
+
+    it('keeps the remembered width when rotated to portrait and back', async () => {
+      const wrapper = mountPlayer(true)
+      await fireDrag(wrapper, 500, 400)
+      const dragged = wrapper.get('[data-test="player-aside"]').attributes('style')
+
+      canResizeAside.value = false
+      await nextTick()
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toBeUndefined()
+
+      canResizeAside.value = true
+      await nextTick()
+      expect(wrapper.get('[data-test="player-aside"]').attributes('style')).toBe(dragged)
     })
 
     it('ignores a corrupted stored width and falls back to the default size', async () => {

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { h } from 'vue'
+import { createCommentVNode, h } from 'vue'
 import type { FunctionalComponent, VNode } from 'vue'
 
+import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import { parseDiagramEmbed } from '@/shared/utils/diagramEmbed'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
@@ -169,6 +171,11 @@ function renderNode(node: PromptNode): VNode {
         alt: attrString(node.attrs, 'alt') ?? '',
         class: 'my-1 max-w-full rounded-md border border-border',
       })
+    case 'diagram': {
+      // A diagram node has no text of its own, so a malformed one leaves nothing behind.
+      const embed = parseDiagramEmbed(node.attrs?.diagramRef, node.attrs?.diagramStackRef)
+      return embed ? h(EmbeddedDiagram, { embed, class: 'my-1' }) : createCommentVNode('diagram')
+    }
     default:
       // An unrecognized node type (schema drift between backend and
       // frontend deploys, or a node type the editor ships before this
