@@ -378,6 +378,36 @@ describe('NodeView', () => {
         expect(order).toEqual(['complete', 'wait:node-abc', 'push'])
       })
 
+      it('leaves the student where they went if they leave the lesson during the wait', async () => {
+        let settleWait: (outcome: unknown) => void = () => {}
+        waitForCompletion.mockImplementation(() => new Promise((resolve) => (settleWait = resolve)))
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await flushPromises()
+
+        wrapper.unmount()
+        settleWait({ kind: 'recorded' })
+        await flushPromises()
+
+        expect(push).not.toHaveBeenCalled()
+      })
+
+      it('still shows the course-completed screen if the student left during the wait that discovered it', async () => {
+        let settleWait: (outcome: unknown) => void = () => {}
+        waitForCompletion.mockImplementation(() => new Promise((resolve) => (settleWait = resolve)))
+        const wrapper = await mountView()
+        await endVideo(wrapper)
+        await wrapper.get('[data-test="complete"]').trigger('click')
+        await flushPromises()
+
+        wrapper.unmount()
+        settleWait({ kind: 'course-completed', enrollmentId: 'ce-1' })
+        await flushPromises()
+
+        expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
+      })
+
       it('still goes back to the path when the completion is slow to be recorded', async () => {
         waitForCompletion.mockResolvedValue({ kind: 'timed-out' })
         const wrapper = await mountView()

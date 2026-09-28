@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, h, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import CuePanel from '@/features/student/components/CuePanel.vue'
@@ -98,6 +98,13 @@ function retryPlayback(): void {
 
 const { waitForCompletion } = useLessonCompletionSync()
 
+// Set once the student has navigated away, so a finish still in flight doesn't
+// pull them back from wherever they went.
+let left = false
+onBeforeUnmount(() => {
+  left = true
+})
+
 // Reports completion before leaving, so the event has been accepted by the
 // time the next screen loads its progress. Pressing again while it is in
 // flight does nothing.
@@ -106,6 +113,10 @@ const { waitForCompletion } = useLessonCompletionSync()
 // path shows this step done — and a lesson that finished the course goes
 // straight to the course-completed screen. Going to practice doesn't wait: a
 // read that discovered the course completion would skip the practice.
+//
+// A student who left during the wait stays where they went — except on the
+// course-completed screen: the read that discovered the completion was the
+// only one that will ever report it.
 async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Promise<void> {
   if (finishing.value) return
   finishing.value = true
@@ -114,7 +125,7 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
     const outcome = awaitProgress ? await waitForCompletion(nodeId.value) : null
     if (outcome?.kind === 'course-completed') {
       await router.replace({ name: 'course-completed', params: { enrollmentId: outcome.enrollmentId } })
-    } else {
+    } else if (!left) {
       await router.push(to)
     }
   } finally {
