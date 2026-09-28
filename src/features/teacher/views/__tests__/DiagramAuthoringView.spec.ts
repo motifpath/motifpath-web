@@ -978,12 +978,9 @@ describe('DiagramAuthoringView', () => {
       const wrapper = await openOwnDiagram()
       await overlayPentatonic(wrapper)
       await wrapper.get('[data-test="discard-overlays"]').trigger('click')
-      GET.mockResolvedValueOnce({
-        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
-        error: undefined,
-        response: { status: 200 },
-      })
 
+      // serveOverlayLibrary() still answers by path; a one-off mock here would
+      // go to whichever request came first, instruments included.
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()
 
