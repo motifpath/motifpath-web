@@ -11,6 +11,7 @@ import type { components } from '@/api/generated/core-domain'
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 type Option = components['schemas']['Option']
 type PromptDocument = components['schemas']['PromptDocument']
+type DiagramRef = components['schemas']['DiagramRef']
 
 const props = defineProps<{
   open: boolean
@@ -18,6 +19,8 @@ const props = defineProps<{
   exerciseType: ExerciseType
   options: Option[]
   imageUrl?: string
+  /** A prebuilt diagram as the image_recognition stimulus, in place of imageUrl. */
+  diagramRef?: DiagramRef
   audioUrl?: string
 }>()
 const emit = defineEmits<{ close: [] }>()
@@ -76,6 +79,7 @@ const { t } = useTypedT()
           :exercise-type="exerciseType"
           :options="options"
           :image-url="imageUrl"
+          :diagram-ref="diagramRef"
           :audio-url="audioUrl"
           :allow-multiple="allowMultiple"
           :direction="direction"

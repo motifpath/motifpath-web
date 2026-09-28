@@ -68,6 +68,9 @@ function mountView() {
   })
 }
 
+import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
+import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
+import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
@@ -928,6 +931,132 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
 
       expect(wrapper.find('[data-test="load-error"]').exists()).toBe(false)
       expect(wrapper.get<HTMLInputElement>('input[placeholder="Untitled exercise"]').element.value).toBe('t')
+    })
+  })
+
+  describe('diagrams', () => {
+    const rootsOnly = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_intervals: ['R'] }
+    const chord = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
+
+    function mountWithStubbedPickers() {
+      return mount(ExerciseAuthoringView, {
+        global: {
+          plugins: [createPinia()],
+          stubs: { RouterLink: RouterLinkStub, DiagramEmbedPicker: true, DiagramEmbedPickerModal: true, EmbeddedDiagram: true },
+        },
+      })
+    }
+
+    it('offers a diagram as the stimulus, picked with its correct answers, in place of the image and its regions', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+      await wrapper.get('[data-test="stimulus-source-diagram"]').trigger('click')
+
+      const picker = wrapper.getComponent(DiagramEmbedPicker)
+      expect(picker.props()).toEqual(expect.objectContaining({ initial: null, answers: true }))
+      expect(wrapper.find('[data-test="choose-stimulus"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="region-canvas"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
+    })
+
+    it('saves a diagram stimulus with its answers and no options', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Tap every root')
+      await wrapper.get('[data-test="stimulus-source-diagram"]').trigger('click')
+      wrapper.getComponent(DiagramEmbedPicker).vm.$emit('change', rootsOnly)
+      await selectClassification(wrapper)
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      const body = POST.mock.calls[0]![1].body
+      expect(body.diagram_ref).toEqual(rootsOnly)
+      expect(body).not.toHaveProperty('options')
+      expect(body).not.toHaveProperty('image_url')
+    })
+
+    it('previews the diagram stimulus as a student sees it', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="stimulus-source-diagram"]').trigger('click')
+      wrapper.getComponent(DiagramEmbedPicker).vm.$emit('change', rootsOnly)
+
+      await wrapper.get('[data-test="open-preview"]').trigger('click')
+
+      expect(wrapper.getComponent(ExercisePreviewModal).props('diagramRef')).toEqual(rootsOnly)
+    })
+
+    it('reopens a saved diagram exercise on its diagram and keeps it when saved again', async () => {
+      route.params = { id: 'e-1' }
+      GET.mockImplementation((path: string) => {
+        if (path === '/exercises/{exercise_id}') {
+          return Promise.resolve({
+            data: {
+              exercise_id: 'e-1',
+              title: 'Tap every root',
+              prompt: plainTextPrompt('p'),
+              exercise_type: 'image_recognition',
+              diagram_ref: rootsOnly,
+              skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+              concepts: [{ concept_id: 'c-1', name: 'roots', parent_id: null }],
+              options: [{ option_id: 'o-1', is_correct: true, diagram_position_id: 'p0' }],
+              challenge_ids: [],
+              content_node_ids: [],
+              created_at: '2026-01-01T00:00:00Z',
+            },
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      PUT.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 200 } })
+      const wrapper = mountWithStubbedPickers()
+      await flushPromises()
+
+      expect(wrapper.getComponent(DiagramEmbedPicker).props('initial')).toEqual(rootsOnly)
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      const body = PUT.mock.calls[0]![1].body
+      expect(body.diagram_ref).toEqual(rootsOnly)
+      expect(body).not.toHaveProperty('options')
+    })
+
+    it('switches back to an image stimulus', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="stimulus-source-diagram"]').trigger('click')
+
+      await wrapper.get('[data-test="stimulus-source-image"]').trigger('click')
+
+      expect(wrapper.findComponent(DiagramEmbedPicker).exists()).toBe(false)
+      expect(wrapper.find('[data-test="choose-stimulus"]').exists()).toBe(true)
+    })
+
+    it('saves an image_choice option as a diagram, dropping a pending image upload for it', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Which is E major?')
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      const editor = wrapper.getComponent(ImageChoiceOptionsEditor)
+      const id = editor.props('options')[0]!.id
+      editor.vm.$emit('set-file', id, new File(['x'], 'a.png', { type: 'image/png' }))
+      editor.vm.$emit('set-preview', id, 'blob:a.png')
+
+      editor.vm.$emit('set-diagram', id, chord)
+      await wrapper.get('[data-test="option-correct"]').trigger('click')
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(upload).not.toHaveBeenCalled()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:a.png')
+      expect(POST.mock.calls[0]![1].body.options).toEqual([{ option_id: id, is_correct: true, diagram_ref: chord }])
     })
   })
 })

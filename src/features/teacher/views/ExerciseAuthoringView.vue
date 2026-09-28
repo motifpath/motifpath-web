@@ -7,6 +7,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
+import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
@@ -24,6 +25,9 @@ import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import type { components } from '@/api/generated/core-domain'
+
+type DiagramRef = components['schemas']['DiagramRef']
 
 const currentUser = useCurrentUserStore()
 // Admins carry every permission a teacher has (canManageContent on the
@@ -138,6 +142,14 @@ function onOptionFile(id: string, file: File) {
   optionFiles[id] = file
 }
 
+// A diagram replaces the option's image, so an image picked for it but not
+// yet uploaded is dropped rather than uploaded for nothing.
+function onOptionDiagram(id: string, diagramRef: DiagramRef) {
+  delete optionFiles[id]
+  revokeIfBlob(form.imageOptions.value.find((o) => o.id === id)?.imageUrl)
+  form.setImageOptionDiagram(id, diagramRef)
+}
+
 function onRemoveImageOption(id: string) {
   delete optionFiles[id]
   revokeIfBlob(form.imageOptions.value.find((o) => o.id === id)?.imageUrl)
@@ -169,7 +181,8 @@ const optionMediaConfig: Partial<
 }
 
 async function uploadPendingMedia() {
-  const pendingStimulus = stimulusFile.value
+  // A diagram stimulus replaces the image, so a picked image isn't uploaded.
+  const pendingStimulus = form.hasDiagramStimulus.value ? null : stimulusFile.value
   const stimulusUpload = pendingStimulus
     ? (async () => {
         const target = pendingStimulus.kind === 'audio' ? form.audioUrl : form.imageUrl
@@ -342,8 +355,29 @@ async function save() {
           </span>
         </div>
 
-        <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-2">
+        <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-3">
+          <div class="flex w-fit gap-1 rounded-md bg-surface-sunken p-[3px]" role="group" :aria-label="t('exerciseAuthoringView.stimulusSourceLabel')">
+            <button
+              v-for="source in (['image', 'diagram'] as const)"
+              :key="source"
+              type="button"
+              :data-test="`stimulus-source-${source}`"
+              :aria-pressed="form.stimulusSource.value === source"
+              class="rounded-sm px-3 py-1 text-xs font-semibold"
+              :class="form.stimulusSource.value === source ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+              @click="form.stimulusSource.value = source"
+            >
+              {{ source === 'image' ? t('exerciseAuthoringView.stimulusSourceImage') : t('exerciseAuthoringView.stimulusSourceDiagram') }}
+            </button>
+          </div>
+          <DiagramEmbedPicker
+            v-if="form.stimulusSource.value === 'diagram'"
+            :initial="form.stimulusDiagram.value"
+            answers
+            @change="form.setStimulusDiagram"
+          />
           <button
+            v-else
             type="button"
             data-test="choose-stimulus"
             class="flex w-fit items-center gap-2.5 rounded-md border border-border bg-surface-raised py-2 pl-2.5 pr-2"
@@ -371,7 +405,7 @@ async function save() {
         </div>
 
         <ImageRegionEditor
-          v-if="form.exerciseType.value === 'image_recognition'"
+          v-if="form.exerciseType.value === 'image_recognition' && form.stimulusSource.value === 'image'"
           v-model:new-region-shape="form.newRegionShape.value"
           :image-url="form.imageUrl.value"
           :regions="form.regions.value"
@@ -398,6 +432,7 @@ async function save() {
           :compact="isCompact"
           @set-preview="form.setImageOptionURL"
           @set-file="onOptionFile"
+          @set-diagram="onOptionDiagram"
           @toggle="form.toggleImageOption"
           @remove="onRemoveImageOption"
           @add="form.addImageOption"
@@ -518,6 +553,7 @@ async function save() {
       :exercise-type="form.exerciseType.value"
       :options="previewOptions"
       :image-url="form.imageUrl.value"
+      :diagram-ref="form.hasDiagramStimulus.value ? (form.stimulusDiagram.value ?? undefined) : undefined"
       :audio-url="form.audioUrl.value"
       @close="previewOpen = false"
     />

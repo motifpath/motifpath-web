@@ -122,7 +122,10 @@
     "exerciseCreated": "Exercício criado.",
     "saveFailed": "Falha ao salvar o exercício",
     "createSkillFailed": "Falha ao criar a habilidade",
-    "createConceptFailed": "Falha ao criar o conceito"
+    "createConceptFailed": "Falha ao criar o conceito",
+    "stimulusSourceLabel": "Estímulo",
+    "stimulusSourceImage": "Imagem",
+    "stimulusSourceDiagram": "Diagrama"
   },
   "exerciseListView": {
     "heading": "Exercícios",
