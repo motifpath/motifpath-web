@@ -11,10 +11,12 @@ type UserRef = components['schemas']['UserRef']
 const props = withDefaults(
   defineProps<{
     modelValue: UserRef | null
-    /** Which course list's teachers to offer. */
+    /** Which list's creators to offer. */
     scope?: CourseCreatorsScope
+    /** The field's label; "Teacher" by default. */
+    label?: string
   }>(),
-  { scope: 'catalog' },
+  { scope: 'catalog', label: undefined },
 )
 const emit = defineEmits<{ 'update:modelValue': [teacher: UserRef | null] }>()
 
@@ -86,7 +88,7 @@ function onKeydown(event: KeyboardEvent) {
 <template>
   <div class="flex flex-col gap-2">
     <label :for="id" class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
-      {{ t('teacherFilterPicker.label') }}
+      {{ label ?? t('teacherFilterPicker.label') }}
     </label>
     <div class="relative">
       <input
@@ -128,7 +130,7 @@ function onKeydown(event: KeyboardEvent) {
         v-if="isOpen"
         :id="listboxId"
         role="listbox"
-        :aria-label="t('teacherFilterPicker.label')"
+        :aria-label="label ?? t('teacherFilterPicker.label')"
         class="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-surface-raised py-1 shadow-lg"
       >
         <li v-if="isLoading && creators.length === 0" class="px-3 py-2 text-sm text-ink-muted">

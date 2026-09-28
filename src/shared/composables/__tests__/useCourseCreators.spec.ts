@@ -101,6 +101,13 @@ describe('useCourseCreators', () => {
     expect(GET).toHaveBeenCalledWith('/courses/creators', { params: { query: {} } })
   })
 
+  it('lists the creators of the diagrams the caller can see in the diagrams scope', async () => {
+    const { isLoading } = useCourseCreators('diagrams')
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(GET).toHaveBeenCalledWith('/diagrams/creators', { params: { query: {} } })
+  })
+
   it('reports a failed load and retries it', async () => {
     GET.mockResolvedValueOnce({
       data: undefined,
