@@ -53,6 +53,16 @@ describe('diagramStimulusOptions', () => {
     expect(options.find((o) => o.fret_cell?.string === 1 && o.fret_cell.fret === 5)?.diagram_position_id).toBeUndefined()
   })
 
+  it('keeps a hidden correct position in the window, even when hiding it narrows what is drawn', () => {
+    const options = diagramStimulusOptions(
+      makeFrettedDiagram(),
+      guitar,
+      makeDiagramRef({ correct_position_ids: ['p0'], layers: { hidden_position_ids: ['p0', 'p2', 'p4'] } }),
+    )
+
+    expect(options.filter((o) => o.is_correct).map((o) => o.fret_cell)).toEqual([{ string: 6, fret: 5 }])
+  })
+
   it('widens the window to cover the diagram regions too', () => {
     const withRegion = makeFrettedDiagram({
       regions: [{ region_id: 'r0', fret_start: 5, fret_end: 12, description: { en: 'box' } }],

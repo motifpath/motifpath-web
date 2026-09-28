@@ -761,6 +761,38 @@ describe('FrettedDiagramView', () => {
       expect(wrapper.emitted('select')).toEqual([['p0']])
     })
 
+    describe('the fret window', () => {
+      const spread = makeFrettedDiagram({
+        positions: [
+          { position_id: 'low', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
+          { position_id: 'high', string: 1, fret: 12, interval: '5', note_name: 'E', shape: 'dot' },
+        ],
+      })
+      const fretNumbers = (extra: Record<string, unknown>) =>
+        mount(FrettedDiagramView, {
+          props: {
+            diagram: spread,
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef({ layers: { hidden_position_ids: ['low'] } }),
+            ...extra,
+          },
+        })
+          .findAll('[data-test="fret-number"]')
+          .map((n) => n.text())
+
+      it('zooms in on the drawn positions when some are hidden', () => {
+        expect(fretNumbers({})).not.toContain('5')
+      })
+
+      it('keeps hidden positions in view for an author who reveals them', () => {
+        expect(fretNumbers({ revealHidden: true })).toContain('5')
+      })
+
+      it('keeps hidden positions in view when cells are the answers, since a hidden one can be correct', () => {
+        expect(fretNumbers({ answerCells: [{ optionId: 'o-6-5', string: 6, fret: 5 }] })).toContain('5')
+      })
+    })
+
     describe('answer cells', () => {
       const cells = [
         { optionId: 'o-6-5', string: 6, fret: 5 },

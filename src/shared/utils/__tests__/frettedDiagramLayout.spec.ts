@@ -60,7 +60,7 @@ describe('computeFrettedDiagramLayout', () => {
     expect(layout.positions.every((p) => p.interval === 'R')).toBe(true)
   })
 
-  it('draws no position when none matches layers.subset, keeping the window of the whole diagram', () => {
+  it('returns an empty position list when no position matches layers.subset', () => {
     const diagram = makeFrettedDiagram()
     const instrument = makeFrettedInstrument()
     const diagramRef = makeDiagramRef({ layers: { intervals: true, subset: ['6'] } })
@@ -68,8 +68,8 @@ describe('computeFrettedDiagramLayout', () => {
     const layout = computeFrettedDiagramLayout(diagram, instrument, diagramRef)
 
     expect(layout.positions).toHaveLength(0)
-    expect(layout.minFret).toBe(4)
-    expect(layout.maxFret).toBe(9)
+    expect(layout.minFret).toBe(0)
+    expect(layout.maxFret).toBe(3)
   })
 
   it('starts the window at the nut when a position is on an open string, since its marker sits on the nut', () => {
@@ -202,18 +202,30 @@ describe('computeFrettedDiagramLayout', () => {
       expect(layout.hiddenPositions.map((p) => p.positionId)).toEqual(['p0', 'p3'])
     })
 
-    it('keeps the fret window over every position, hidden or filtered, so a hidden answer stays in view', () => {
-      const diagram = makeFrettedDiagram({
-        positions: [
-          { position_id: 'low', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
-          { position_id: 'high', string: 1, fret: 12, interval: '5', note_name: 'E', shape: 'dot' },
-        ],
-      })
+    const spread = makeFrettedDiagram({
+      positions: [
+        { position_id: 'low', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
+        { position_id: 'high', string: 1, fret: 12, interval: '5', note_name: 'E', shape: 'dot' },
+      ],
+    })
 
+    it('fits the fret window to the drawn positions, so hiding some of a diagram zooms in on the rest', () => {
       const layout = computeFrettedDiagramLayout(
-        diagram,
+        spread,
+        makeFrettedInstrument(),
+        makeDiagramRef({ layers: { intervals: true, hidden_position_ids: ['low'] } }),
+      )
+
+      expect(layout.minFret).toBe(11)
+      expect(layout.maxFret).toBe(14)
+    })
+
+    it('fits the window to every position, hidden or filtered, when asked, so a hidden answer stays in view', () => {
+      const layout = computeFrettedDiagramLayout(
+        spread,
         makeFrettedInstrument(),
         makeDiagramRef({ layers: { intervals: true, subset: ['R'], hidden_position_ids: ['low'] } }),
+        { includeHidden: true },
       )
 
       expect(layout.positions).toEqual([])

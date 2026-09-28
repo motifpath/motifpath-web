@@ -12,12 +12,15 @@ type Option = components['schemas']['Option']
  * of the fretboard, correct where a correct position sits. The server derives the
  * stored options the same way on save; these ids are only for the preview.
  *
- * The window is the viewer's own (over every position and region, hidden or
- * not), so the cells are exactly the ones drawn. Open strings are cells only
+ * The window spans every position and region, hidden or not, since a hidden
+ * position can be a correct answer — the one the viewer draws when it has
+ * cells to show. Open strings are cells only
  * when it reaches the nut.
  */
 export function diagramStimulusOptions(diagram: Diagram, instrument: Instrument, diagramRef: DiagramRef): Option[] {
-  const { minFret, maxFret, stringCount } = computeFrettedDiagramLayout(diagram, instrument, diagramRef)
+  const { minFret, maxFret, stringCount } = computeFrettedDiagramLayout(diagram, instrument, diagramRef, {
+    includeHidden: true,
+  })
   const correct = new Set(diagramRef.correct_position_ids ?? [])
   const occupant = new Map<string, string>()
   for (const position of diagram.positions) {

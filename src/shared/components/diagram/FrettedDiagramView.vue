@@ -91,7 +91,11 @@ const BOARD_W = VIEW_W - MARGIN_LEFT - MARGIN_RIGHT
 const BOARD_H = 300 - MARGIN_TOP - MARGIN_BOTTOM
 
 const layout = computed(() =>
-  computeFrettedDiagramLayout(props.diagram, props.instrument, props.diagramRef),
+  // Hidden positions stay in view while an author can see them, or while the cells are the
+  // answers (a hidden position can be a correct one); otherwise the window fits what's drawn.
+  computeFrettedDiagramLayout(props.diagram, props.instrument, props.diagramRef, {
+    includeHidden: props.revealHidden || props.answerCells.length > 0,
+  }),
 )
 
 const fretSpan = computed(() => layout.value.maxFret - layout.value.minFret)

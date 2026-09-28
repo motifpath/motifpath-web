@@ -44,11 +44,11 @@ export interface FrettedDiagramLayout {
   /** Highlighted bands, in drawing order (later ones on top). */
   regions: FrettedRegion[]
   stringCount: number
-  /** One fret below the lowest position or region — drawn or hidden, so a hidden exercise answer
-   *  stays in view — but never below the nut (0): open-string markers sit on the nut, so nothing
-   *  is drawn left of it. The same window the server derives an exercise's answer cells from. */
+  /** One fret below the lowest drawn position or region (or, with `includeHidden`, the lowest
+   *  of all of them), but never below the nut (0): open-string markers sit on the nut, so nothing
+   *  is drawn left of it. */
   minFret: number
-  /** One fret above the highest position or region (or the diagram's nut, whichever wins the minimum span). */
+  /** One fret above the highest such position or region (or the diagram's nut, whichever wins the minimum span). */
   maxFret: number
 }
 
@@ -68,6 +68,7 @@ export function computeFrettedDiagramLayout(
   diagram: Diagram,
   instrument: Instrument,
   diagramRef: DiagramRef,
+  options: { includeHidden?: boolean } = {},
 ): FrettedDiagramLayout {
   const subset = diagramRef.layers.subset
   const hidden = diagramRef.layers.hidden_position_ids ?? []
@@ -100,7 +101,7 @@ export function computeFrettedDiagramLayout(
   }))
 
   const frets = [
-    ...allPositions.map((position) => position.fret),
+    ...(options.includeHidden ? allPositions : positions).map((position) => position.fret),
     ...regions.flatMap((region) => [region.fretStart, region.fretEnd]),
   ]
   const lowFret = frets.length > 0 ? Math.max(Math.min(...frets) - 1, 0) : 0
