@@ -2,6 +2,28 @@ import { describe, expect, it } from 'vitest'
 
 import { useExerciseForm } from '@/features/teacher/composables/useExerciseForm'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import type { components } from '@/api/generated/core-domain'
+
+type Exercise = components['schemas']['Exercise']
+type DiagramRef = components['schemas']['DiagramRef']
+
+function exercise(overrides: Partial<Exercise>): Exercise {
+  return {
+    exercise_id: 'e-1',
+    title: 't',
+    prompt: plainTextPrompt('p'),
+    exercise_type: 'image_recognition',
+    options: [],
+    skills: [],
+    concepts: [],
+    challenge_ids: [],
+    content_node_ids: [],
+    remediation_targets: [],
+    languages: [],
+    created_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
 
 describe('useExerciseForm', () => {
   it('starts with no correct option for any type', () => {
@@ -436,6 +458,123 @@ describe('useExerciseForm', () => {
         language_codes: ['any'],
       })
       expect(request).not.toHaveProperty('exercise_type')
+    })
+  })
+
+  describe('diagrams', () => {
+    const rootsOnly: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_intervals: ['R'] }
+    const chord: DiagramRef = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
+
+    it('sends a diagram stimulus instead of an image and options, with its answers', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.imageUrl.value = 'https://cdn.example.com/old.png'
+      form.addRegion(10, 10, 'circle')
+
+      form.setStimulusDiagram(rootsOnly)
+
+      expect(form.hasCorrectOption.value).toBe(true)
+      const request = form.toCreateExerciseRequest()
+      expect(request.diagram_ref).toEqual(rootsOnly)
+      expect(request).not.toHaveProperty('image_url')
+      expect(request).not.toHaveProperty('options')
+      const update = form.toUpdateExerciseRequest()
+      expect(update.diagram_ref).toEqual(rootsOnly)
+      expect(update).not.toHaveProperty('options')
+    })
+
+    it('has no correct answer for a diagram stimulus without correct intervals', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+
+      form.setStimulusDiagram({ ...rootsOnly, correct_intervals: [] })
+
+      expect(form.hasCorrectOption.value).toBe(false)
+    })
+
+    it('has no correct answer while the diagram stimulus is still being picked', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.addRegion(10, 10, 'circle')
+      form.toggleRegion(form.regions.value[0]!.id)
+
+      form.stimulusSource.value = 'diagram'
+
+      expect(form.hasCorrectOption.value).toBe(false)
+    })
+
+    it('goes back to an image stimulus and its regions, keeping the picked diagram for a switch back', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.imageUrl.value = 'https://cdn.example.com/a.png'
+      form.setStimulusDiagram(rootsOnly)
+
+      form.stimulusSource.value = 'image'
+
+      expect(form.stimulusDiagram.value).toEqual(rootsOnly)
+
+      const request = form.toCreateExerciseRequest()
+      expect(request).not.toHaveProperty('diagram_ref')
+      expect(request.image_url).toBe('https://cdn.example.com/a.png')
+      expect(request.options).toEqual([])
+    })
+
+    it('keeps a loaded exercise’s diagram stimulus when it is saved again', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(exercise({ diagram_ref: rootsOnly, options: [{ option_id: 'o-1', is_correct: true, diagram_position_id: 'p0' }] }))
+
+      expect(form.stimulusSource.value).toBe('diagram')
+      expect(form.stimulusDiagram.value).toEqual(rootsOnly)
+      expect(form.toUpdateExerciseRequest().diagram_ref).toEqual(rootsOnly)
+      expect(form.toUpdateExerciseRequest()).not.toHaveProperty('options')
+    })
+
+    it('loads an image stimulus as an image', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(exercise({ image_url: 'https://cdn.example.com/a.png' }))
+
+      expect(form.stimulusSource.value).toBe('image')
+    })
+
+    it('keeps a loaded stacked stimulus untouched unless a diagram replaces it', () => {
+      const stack = { stack: [rootsOnly, chord] }
+      const form = useExerciseForm()
+      form.loadFromExercise(exercise({ diagram_stack_ref: stack }))
+
+      expect(form.hasCorrectOption.value).toBe(true)
+      expect(form.toUpdateExerciseRequest().diagram_stack_ref).toEqual(stack)
+      expect(form.toUpdateExerciseRequest()).not.toHaveProperty('options')
+
+      form.setStimulusDiagram(rootsOnly)
+
+      expect(form.toUpdateExerciseRequest()).not.toHaveProperty('diagram_stack_ref')
+      expect(form.toUpdateExerciseRequest().diagram_ref).toEqual(rootsOnly)
+    })
+
+    it('lets an image_choice option be a diagram instead of an image, one or the other', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_choice'
+      form.addImageOption()
+      const id = form.imageOptions.value[0]!.id
+      form.setImageOptionURL(id, 'https://cdn.example.com/a.png')
+
+      form.setImageOptionDiagram(id, chord)
+
+      expect(form.toCreateExerciseRequest().options).toEqual([{ option_id: id, is_correct: false, diagram_ref: chord }])
+
+      form.setImageOptionURL(id, 'https://cdn.example.com/b.png')
+
+      expect(form.toCreateExerciseRequest().options).toEqual([{ option_id: id, is_correct: false, image_url: 'https://cdn.example.com/b.png' }])
+    })
+
+    it('hydrates image_choice options that are diagrams', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(
+        exercise({ exercise_type: 'image_choice', options: [{ option_id: 'o-1', is_correct: true, diagram_ref: chord }] }),
+      )
+
+      expect(form.imageOptions.value).toEqual([{ id: 'o-1', imageUrl: '', diagramRef: chord, correct: true }])
+      expect(form.toUpdateExerciseRequest().options).toEqual([{ option_id: 'o-1', is_correct: true, diagram_ref: chord }])
     })
   })
 })

@@ -8,6 +8,8 @@ type Exercise = components['schemas']['Exercise']
 type Option = components['schemas']['Option']
 type RegionShape = components['schemas']['OptionRegion']['shape']
 type PromptDocument = components['schemas']['PromptDocument']
+type DiagramRef = components['schemas']['DiagramRef']
+type DiagramStackRef = components['schemas']['DiagramStackRef']
 export type ExerciseType = CreateExerciseRequest['exercise_type']
 
 const EMPTY_PROMPT: PromptDocument = { type: 'doc', content: [] }
@@ -21,6 +23,8 @@ export interface TextOption {
 export interface ImageOption {
   id: string
   imageUrl: string
+  /** A prebuilt diagram shown instead of an image; one or the other. */
+  diagramRef?: DiagramRef
   correct: boolean
 }
 
@@ -98,6 +102,27 @@ export function useExerciseForm() {
   // actually loaded in the browser — so a loaded exercise's regions wait
   // here until setStimulusImageSize reports a real measurement.
   const pendingRegionOptions = ref<Option[] | null>(null)
+  // An image_recognition stimulus can be a prebuilt diagram instead of an
+  // image: its answers are its correct_intervals, and the server derives the
+  // options from its positions. A stack can't be authored here, so a loaded
+  // one is kept as it is until a single diagram replaces it.
+  // Which kind of stimulus the teacher is authoring; switching keeps the
+  // other kind's work, so switching back finds it again.
+  const stimulusSource = ref<'image' | 'diagram'>('image')
+  const stimulusDiagram = ref<DiagramRef | null>(null)
+  const stimulusStack = ref<DiagramStackRef | null>(null)
+  const hasDiagramStimulus = computed(
+    () => exerciseType.value === 'image_recognition' && stimulusSource.value === 'diagram',
+  )
+
+  /** The diagram the picker currently reports; null while it has none a student could answer. */
+  function setStimulusDiagram(diagramRef: DiagramRef | null) {
+    stimulusDiagram.value = diagramRef
+    if (diagramRef) {
+      stimulusStack.value = null
+      stimulusSource.value = 'diagram'
+    }
+  }
 
   const hasCorrectOption = computed(() => {
     switch (exerciseType.value) {
@@ -109,7 +134,9 @@ export function useExerciseForm() {
       case 'audio_selection':
         return audioOptions.value.some((o) => o.correct)
       case 'image_recognition':
-        return regions.value.some((r) => r.correct)
+        if (stimulusSource.value === 'image') return regions.value.some((r) => r.correct)
+        if (stimulusDiagram.value) return (stimulusDiagram.value.correct_intervals?.length ?? 0) > 0
+        return stimulusStack.value !== null
       default:
         return false
     }
@@ -132,7 +159,15 @@ export function useExerciseForm() {
   }
   function setImageOptionURL(id: string, url: string) {
     const option = imageOptions.value.find((o) => o.id === id)
-    if (option) option.imageUrl = url
+    if (!option) return
+    option.imageUrl = url
+    option.diagramRef = undefined
+  }
+  function setImageOptionDiagram(id: string, diagramRef: DiagramRef) {
+    const option = imageOptions.value.find((o) => o.id === id)
+    if (!option) return
+    option.diagramRef = diagramRef
+    option.imageUrl = ''
   }
   const toggleImageOption = imageOptionHelpers.toggle
   const removeImageOption = imageOptionHelpers.remove
@@ -206,7 +241,7 @@ export function useExerciseForm() {
         return imageOptions.value.map((o) => ({
           option_id: o.id,
           is_correct: o.correct,
-          image_url: o.imageUrl,
+          ...(o.diagramRef ? { diagram_ref: o.diagramRef } : { image_url: o.imageUrl }),
         }))
       case 'audio_selection':
         return audioOptions.value.map((o) => ({
@@ -245,9 +280,20 @@ export function useExerciseForm() {
       concept_ids: [...conceptIds.value],
       language_codes: ['any'],
     }
-    if (exerciseType.value === 'image_recognition' && imageUrl.value) fields.image_url = imageUrl.value
+    if (hasDiagramStimulus.value) {
+      if (stimulusDiagram.value) fields.diagram_ref = stimulusDiagram.value
+      else if (stimulusStack.value) fields.diagram_stack_ref = stimulusStack.value
+    } else if (exerciseType.value === 'image_recognition' && imageUrl.value) {
+      fields.image_url = imageUrl.value
+    }
     if (exerciseType.value === 'audio_recognition' && audioUrl.value) fields.audio_url = audioUrl.value
     return fields
+  }
+
+  // A diagram stimulus's options are derived by the server from its
+  // positions, so the request must not carry any.
+  function optionsField(): { options?: Option[] } {
+    return hasDiagramStimulus.value ? {} : { options: optionsForRequest() }
   }
 
   function toCreateExerciseRequest(): CreateExerciseRequest {
@@ -255,7 +301,7 @@ export function useExerciseForm() {
       title: title.value,
       prompt: prompt.value,
       exercise_type: exerciseType.value,
-      options: optionsForRequest(),
+      ...optionsField(),
       ...sharedRequestFields(),
     }
   }
@@ -264,7 +310,7 @@ export function useExerciseForm() {
     return {
       title: title.value,
       prompt: prompt.value,
-      options: optionsForRequest(),
+      ...optionsField(),
       ...sharedRequestFields(),
     }
   }
@@ -277,6 +323,9 @@ export function useExerciseForm() {
     conceptIds.value = exercise.concepts.map((c) => c.concept_id)
     imageUrl.value = exercise.image_url ?? ''
     audioUrl.value = exercise.audio_url ?? ''
+    stimulusDiagram.value = exercise.diagram_ref ?? null
+    stimulusStack.value = exercise.diagram_stack_ref ?? null
+    stimulusSource.value = stimulusDiagram.value || stimulusStack.value ? 'diagram' : 'image'
     textOptions.value = []
     imageOptions.value = []
     audioOptions.value = []
@@ -292,6 +341,7 @@ export function useExerciseForm() {
         imageOptions.value = exercise.options.map((o) => ({
           id: o.option_id,
           imageUrl: o.image_url ?? '',
+          ...(o.diagram_ref ? { diagramRef: o.diagram_ref } : {}),
           correct: o.is_correct,
         }))
         break
@@ -304,7 +354,8 @@ export function useExerciseForm() {
         }))
         break
       case 'image_recognition':
-        pendingRegionOptions.value = exercise.options
+        // A diagram stimulus's options are derived, not hand-drawn regions.
+        if (!exercise.diagram_ref && !exercise.diagram_stack_ref) pendingRegionOptions.value = exercise.options
         break
     }
   }
@@ -316,6 +367,11 @@ export function useExerciseForm() {
     skillIds,
     conceptIds,
     imageUrl,
+    stimulusSource,
+    stimulusDiagram,
+    stimulusStack,
+    hasDiagramStimulus,
+    setStimulusDiagram,
     audioUrl,
     textOptions,
     imageOptions,
@@ -329,6 +385,7 @@ export function useExerciseForm() {
     removeTextOption,
     addImageOption,
     setImageOptionURL,
+    setImageOptionDiagram,
     toggleImageOption,
     removeImageOption,
     addAudioOption,
