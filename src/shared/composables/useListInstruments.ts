@@ -11,7 +11,7 @@ type InstrumentsResult = { data?: Instrument[]; error?: unknown }
 // again. Nothing is kept once it settles, so a later list is never stale.
 let inFlight: Promise<InstrumentsResult> | null = null
 
-function fetchInstruments(coreApi: CoreApi): Promise<InstrumentsResult> {
+export function fetchInstruments(coreApi: CoreApi): Promise<InstrumentsResult> {
   if (!inFlight) {
     inFlight = coreApi.GET('/instruments', {}).finally(() => {
       inFlight = null
