@@ -44,7 +44,16 @@ function mountModal(props: Partial<Props> = {}) {
 describe('OverlayDiagramsModal', () => {
   beforeEach(() => {
     GET.mockReset()
-    GET.mockResolvedValue({ data: { items: [pentatonic, major], total: 2, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
+    // The picker also loads instruments (for its thumbnails) and the library's creators.
+    GET.mockImplementation((path: string) => {
+      const data =
+        path === '/diagrams'
+          ? { items: [pentatonic, major], total: 2, limit: 20, offset: 0 }
+          : path === '/instruments'
+            ? [makeFrettedInstrument()]
+            : []
+      return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+    })
   })
 
   it('starts on the list of diagrams to overlay when nothing is overlaid yet, and adds the one picked', async () => {

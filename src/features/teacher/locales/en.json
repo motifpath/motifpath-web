@@ -535,7 +535,18 @@
     "loadingNoun": "diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "No diagrams yet",
-    "emptyMessage": "Create a diagram in the Diagrams library first."
+    "emptyMessage": "Create a diagram in the Diagrams library first.",
+    "searchLabel": "Search diagrams by name",
+    "searchPlaceholder": "Search by name",
+    "rootLabel": "Root",
+    "anyRoot": "Any",
+    "kindLabel": "Type",
+    "kindAll": "All",
+    "kindTemplates": "Templates",
+    "kindCustom": "Custom",
+    "authorLabel": "Author",
+    "clearFilters": "Clear filters",
+    "noMatches": "No diagrams match these filters."
   },
   "diagramEmbedPicker": {
     "loadingNoun": "diagram",

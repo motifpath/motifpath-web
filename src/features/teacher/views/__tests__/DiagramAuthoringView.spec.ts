@@ -889,12 +889,22 @@ describe('DiagramAuthoringView', () => {
       return wrapper
     }
 
-    async function overlayPentatonic(wrapper: ReturnType<typeof mountView>) {
-      GET.mockResolvedValueOnce({
-        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
-        error: undefined,
-        response: { status: 200 },
+    // The overlay picker lists the library; it also loads instruments (for its
+    // thumbnails) and the library's creators.
+    function serveOverlayLibrary() {
+      GET.mockImplementation((path: string) => {
+        const data =
+          path === '/diagrams'
+            ? { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 }
+            : path === '/instruments'
+              ? [guitar]
+              : []
+        return Promise.resolve({ data, error: undefined, response: { status: 200 } })
       })
+    }
+
+    async function overlayPentatonic(wrapper: ReturnType<typeof mountView>) {
+      serveOverlayLibrary()
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()
       const option = wrapper
@@ -944,11 +954,7 @@ describe('DiagramAuthoringView', () => {
 
     it("offers only diagrams that aren't the one being edited", async () => {
       const wrapper = await openOwnDiagram()
-      GET.mockResolvedValueOnce({
-        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
-        error: undefined,
-        response: { status: 200 },
-      })
+      serveOverlayLibrary()
 
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()

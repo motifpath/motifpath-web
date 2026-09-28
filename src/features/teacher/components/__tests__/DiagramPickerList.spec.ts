@@ -1,5 +1,5 @@
-import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -7,24 +7,48 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.vue'
-import { makeFrettedDiagram } from '@/shared/testUtils/diagram'
+import DiagramThumbnail from '@/shared/components/diagram/DiagramThumbnail.vue'
+import TeacherFilterPicker from '@/shared/components/TeacherFilterPicker.vue'
+import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import type { components } from '@/api/generated/core-domain'
 
-function page(items: unknown[], total = items.length) {
-  return { data: { items, total, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } }
+type Diagram = components['schemas']['Diagram']
+
+const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
+const fail = () => Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+
+function page(items: Diagram[], total = items.length) {
+  return ok({ items, total, limit: 20, offset: 0 })
 }
 
-const flush = () => new Promise((r) => setTimeout(r, 0))
-
-const pentatonic = makeFrettedDiagram({ diagram_id: 'd-penta', names: { en: 'A minor pentatonic' } })
+const pentatonic = makeFrettedDiagram({
+  diagram_id: 'd-penta',
+  names: { en: 'A minor pentatonic' },
+  created_by: { user_id: 'u-bob', display_name: 'Bob Ferreira' },
+})
 const major = makeFrettedDiagram({ diagram_id: 'd-major', names: { en: 'C major scale' }, kind: 'basic' })
 const base = makeFrettedDiagram({ diagram_id: 'd-base', names: { en: 'The one being edited' } })
+
+/** Answers /diagrams from `pages` in turn (the last one repeats); instruments and creators always succeed. */
+function serve(...pages: (() => Promise<unknown>)[]) {
+  let call = 0
+  GET.mockImplementation((path: string) => {
+    if (path === '/instruments') return ok([makeFrettedInstrument()])
+    if (path === '/diagrams/creators') return ok([{ user_id: 'u-bob', display_name: 'Bob Ferreira' }])
+    const next = pages[Math.min(call, pages.length - 1)]!
+    call += 1
+    return next()
+  })
+}
+
+function diagramQueries() {
+  return GET.mock.calls.filter(([path]) => path === '/diagrams').map(([, options]) => options.params.query)
+}
 
 function mountPicker(
   props: { instrumentId?: string; excludeIds?: string[]; emptyHeading?: string; emptyMessage?: string } = {},
 ) {
-  return mount(DiagramPickerList, {
-    props: { instrumentId: 'instrument-guitar', excludeIds: [], ...props },
-  })
+  return mount(DiagramPickerList, { props: { instrumentId: 'instrument-guitar', excludeIds: [], ...props } })
 }
 
 type Picker = ReturnType<typeof mountPicker>
@@ -37,32 +61,44 @@ describe('DiagramPickerList', () => {
   beforeEach(() => {
     GET.mockReset()
   })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
-  it('lists only diagrams of the same instrument, marking templates', async () => {
-    GET.mockResolvedValueOnce(page([pentatonic, major]))
+  it('lists diagrams of the given instrument, marking templates', async () => {
+    serve(() => page([pentatonic, major]))
     const wrapper = mountPicker()
-    await flush()
+    await flushPromises()
 
-    expect(GET).toHaveBeenCalledWith('/diagrams', {
-      params: { query: expect.objectContaining({ instrument_id: 'instrument-guitar' }) },
-    })
+    expect(diagramQueries()[0]).toEqual(expect.objectContaining({ instrument_id: 'instrument-guitar' }))
     expect(rowTexts(wrapper)).toEqual(['A minor pentatonic', 'C major scale'])
     const badges = wrapper.findAll('[data-test="diagram-option"]').map((row) => row.find('[data-test="template-badge"]').exists())
     expect(badges).toEqual([false, true])
   })
 
-  it('leaves out the diagram being edited and those already overlaid', async () => {
-    GET.mockResolvedValueOnce(page([base, pentatonic, major]))
+  it('shows each diagram whole, and who made it', async () => {
+    serve(() => page([pentatonic]))
+    const wrapper = mountPicker()
+    await flushPromises()
+
+    const option = wrapper.get('[data-test="diagram-option"]')
+    expect(option.getComponent(DiagramThumbnail).props('diagram')).toEqual(pentatonic)
+    expect(option.getComponent(DiagramThumbnail).props('instruments')).toEqual([makeFrettedInstrument()])
+    expect(option.get('[data-test="diagram-option-author"]').text()).toBe('Bob Ferreira')
+  })
+
+  it('leaves out the diagrams it is told to', async () => {
+    serve(() => page([base, pentatonic, major]))
     const wrapper = mountPicker({ excludeIds: ['d-base', 'd-major'] })
-    await flush()
+    await flushPromises()
 
     expect(rowTexts(wrapper)).toEqual(['A minor pentatonic'])
   })
 
   it('picks a diagram', async () => {
-    GET.mockResolvedValueOnce(page([pentatonic]))
+    serve(() => page([pentatonic]))
     const wrapper = mountPicker()
-    await flush()
+    await flushPromises()
 
     await wrapper.get('[data-test="diagram-option"]').trigger('click')
 
@@ -70,37 +106,35 @@ describe('DiagramPickerList', () => {
   })
 
   it('shows a loading state while fetching', () => {
-    GET.mockReturnValueOnce(new Promise(() => {}))
+    GET.mockImplementation((path: string) => (path === '/diagrams' ? new Promise(() => {}) : ok([])))
     const wrapper = mountPicker()
 
     expect(wrapper.find('[data-test="diagram-picker-loading"]').exists()).toBe(true)
   })
 
   it('shows an error with a retry that loads again', async () => {
-    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+    serve(fail, () => page([pentatonic]))
     const wrapper = mountPicker()
-    await flush()
+    await flushPromises()
 
-    GET.mockResolvedValueOnce(page([pentatonic]))
     await wrapper.get('[data-test="diagram-picker-error"] [data-test="retry"]').trigger('click')
-    await flush()
+    await flushPromises()
 
-    expect(GET).toHaveBeenCalledTimes(2)
     expect(rowTexts(wrapper)).toEqual(['A minor pentatonic'])
   })
 
   it('says when there is nothing to offer', async () => {
-    GET.mockResolvedValueOnce(page([base]))
+    serve(() => page([base]))
     const wrapper = mountPicker({ excludeIds: ['d-base'] })
-    await flush()
+    await flushPromises()
 
     expect(wrapper.get('[data-test="diagram-picker-empty"]').text()).toContain('No diagrams yet')
   })
 
   it('says it in the caller’s own words when given', async () => {
-    GET.mockResolvedValueOnce(page([]))
+    serve(() => page([]))
     const wrapper = mountPicker({ emptyHeading: 'Nothing to overlay', emptyMessage: 'No other diagram.' })
-    await flush()
+    await flushPromises()
 
     const empty = wrapper.get('[data-test="diagram-picker-empty"]').text()
     expect(empty).toContain('Nothing to overlay')
@@ -108,32 +142,106 @@ describe('DiagramPickerList', () => {
   })
 
   it('lists diagrams of every instrument when none is given', async () => {
-    GET.mockResolvedValueOnce(page([pentatonic]))
+    serve(() => page([pentatonic]))
     mount(DiagramPickerList)
-    await flush()
+    await flushPromises()
 
-    const query = GET.mock.calls[0]![1].params.query
-    expect(query).not.toHaveProperty('instrument_id')
+    expect(diagramQueries()[0]).not.toHaveProperty('instrument_id')
   })
 
   it('still offers more when the loaded page holds only diagrams it leaves out', async () => {
-    GET.mockResolvedValueOnce(page([base], 2))
+    serve(() => page([base], 2))
     const wrapper = mountPicker({ excludeIds: ['d-base'] })
-    await flush()
+    await flushPromises()
 
     expect(wrapper.find('[data-test="diagram-picker-empty"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="load-more"]').exists()).toBe(true)
   })
 
   it('loads more diagrams on request', async () => {
-    GET.mockResolvedValueOnce(page([pentatonic], 2))
+    serve(() => page([pentatonic], 2), () => page([major], 2))
     const wrapper = mountPicker()
-    await flush()
+    await flushPromises()
 
-    GET.mockResolvedValueOnce(page([major], 2))
     await wrapper.get('[data-test="load-more"]').trigger('click')
-    await flush()
+    await flushPromises()
 
     expect(rowTexts(wrapper)).toHaveLength(2)
+  })
+
+  describe('filters', () => {
+    it('searches by name once typing pauses', async () => {
+      vi.useFakeTimers()
+      serve(() => page([pentatonic]))
+      const wrapper = mountPicker()
+      await flushPromises()
+
+      await wrapper.get('[data-test="diagram-search"]').setValue('  penta ')
+      expect(diagramQueries()).toHaveLength(1)
+      await vi.advanceTimersByTimeAsync(300)
+      await flushPromises()
+
+      expect(diagramQueries().at(-1)).toEqual(expect.objectContaining({ name: 'penta' }))
+    })
+
+    it('filters by root note', async () => {
+      serve(() => page([pentatonic]))
+      const wrapper = mountPicker()
+      await flushPromises()
+
+      await wrapper.get('[data-test="diagram-root-filter"]').setValue('F#')
+      await flushPromises()
+
+      expect(diagramQueries().at(-1)).toEqual(expect.objectContaining({ root_note: 'F#' }))
+    })
+
+    it('narrows to templates or custom diagrams, and back to all', async () => {
+      serve(() => page([pentatonic]))
+      const wrapper = mountPicker()
+      await flushPromises()
+
+      await wrapper.get('[data-test="diagram-kind-basic"]').trigger('click')
+      await flushPromises()
+      expect(diagramQueries().at(-1)).toEqual(expect.objectContaining({ kind: 'basic' }))
+
+      await wrapper.get('[data-test="diagram-kind-custom"]').trigger('click')
+      await flushPromises()
+      expect(diagramQueries().at(-1)).toEqual(expect.objectContaining({ kind: 'custom' }))
+
+      await wrapper.get('[data-test="diagram-kind-all"]').trigger('click')
+      await flushPromises()
+      expect(diagramQueries().at(-1)).not.toHaveProperty('kind')
+    })
+
+    it('filters by author, offering the diagram library’s creators', async () => {
+      serve(() => page([pentatonic]))
+      const wrapper = mountPicker()
+      await flushPromises()
+
+      const author = wrapper.getComponent(TeacherFilterPicker)
+      expect(author.props('scope')).toBe('diagrams')
+      expect(author.props('label')).toBe('Author')
+      author.vm.$emit('update:modelValue', { user_id: 'u-bob', display_name: 'Bob Ferreira' })
+      await flushPromises()
+
+      expect(diagramQueries().at(-1)).toEqual(expect.objectContaining({ created_by: 'u-bob' }))
+    })
+
+    it('says nothing matches, and clears the filters on request', async () => {
+      serve(() => page([pentatonic]), () => page([]), () => page([pentatonic]))
+      const wrapper = mountPicker()
+      await flushPromises()
+
+      await wrapper.get('[data-test="diagram-root-filter"]').setValue('Db')
+      await flushPromises()
+      expect(wrapper.find('[data-test="diagram-picker-no-matches"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="diagram-picker-empty"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="diagram-filters-clear"]').trigger('click')
+      await flushPromises()
+
+      expect(diagramQueries().at(-1)).not.toHaveProperty('root_note')
+      expect(rowTexts(wrapper)).toEqual(['A minor pentatonic'])
+    })
   })
 })
