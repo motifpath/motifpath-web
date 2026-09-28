@@ -1012,6 +1012,22 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
       expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(false)
     })
 
+    it('starts the editor afresh when the same diagram is picked again, agreeing with the form', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+      await wrapper.get('[data-test="stimulus-diagram-editor"] [data-test="embed-picker-tool-correct"]').trigger('click')
+      wrapper.getComponent(DiagramStimulusEditor).findComponent({ name: 'FrettedDiagramView' }).vm.$emit('select', 'p0')
+      await flushPromises()
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', picked)
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-no-correct"]').exists()).toBe(true)
+    })
+
     it('saves a diagram stimulus with the answers set in the form, and no options', async () => {
       POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
       const wrapper = mountWithStubbedPickers()

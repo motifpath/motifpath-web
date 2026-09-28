@@ -142,7 +142,12 @@ function onStimulusPicked(file: File) {
   stimulusPickerOpen.value = false
 }
 
+// Bumped on every pick, so the stimulus editor starts afresh even when the same diagram is
+// picked again — its own state would otherwise outlive the form's reset answers.
+const stimulusPick = ref(0)
+
 function onStimulusDiagram(diagramRef: DiagramRef) {
+  stimulusPick.value++
   form.setStimulusDiagram(diagramRef)
   stimulusPickerOpen.value = false
 }
@@ -398,7 +403,7 @@ async function save() {
             <StateLoading v-if="stimulus.status.value === 'loading'" :noun="t('diagramEmbedPicker.loadingNoun')" />
             <DiagramStimulusEditor
               v-else-if="stimulus.diagram.value && stimulus.instrument.value"
-              :key="stimulus.diagram.value.diagram_id"
+              :key="`${stimulus.diagram.value.diagram_id}-${stimulusPick}`"
               :diagram="stimulus.diagram.value"
               :instrument="stimulus.instrument.value"
               :diagram-ref="form.stimulusDiagram.value"
