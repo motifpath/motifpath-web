@@ -403,7 +403,8 @@
     "cancel": "Cancel",
     "save": "Save pop-up",
     "timingInvalidSeconds": "Use whole seconds, starting at 0.",
-    "timingInvalidParagraph": "Use whole numbers: the paragraph starts at 1 and the duration is at least 1 ms."
+    "timingInvalidParagraph": "Use whole numbers: the paragraph starts at 1 and the duration is at least 1 ms.",
+    "diagramStackNote": "This pop-up shows {count} stacked diagrams. It keeps them unless you choose a single diagram below to replace them."
   },
   "saveDiagramAsModal": {
     "copyTitle": "Save a copy",

@@ -403,7 +403,8 @@
     "cancel": "Cancelar",
     "save": "Salvar pop-up",
     "timingInvalidSeconds": "Use segundos inteiros, a partir de 0.",
-    "timingInvalidParagraph": "Use números inteiros: o parágrafo começa em 1 e a duração é de pelo menos 1 ms."
+    "timingInvalidParagraph": "Use números inteiros: o parágrafo começa em 1 e a duração é de pelo menos 1 ms.",
+    "diagramStackNote": "Este pop-up mostra {count} diagramas sobrepostos. Eles são mantidos, a menos que você escolha abaixo um único diagrama para substituí-los."
   },
   "saveDiagramAsModal": {
     "copyTitle": "Salvar uma cópia",

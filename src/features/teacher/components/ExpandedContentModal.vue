@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
+import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
@@ -11,10 +12,11 @@ import type { components } from '@/api/generated/core-domain'
 type ExpandedContent = components['schemas']['ExpandedContent']
 type CreateExpandedContentRequest = components['schemas']['CreateExpandedContentRequest']
 type PromptDocument = components['schemas']['PromptDocument']
+type DiagramRef = components['schemas']['DiagramRef']
 type ContentKind = CreateExpandedContentRequest['content_type']
 
 const EMPTY_BODY: PromptDocument = { type: 'doc', content: [] }
-const CONTENT_KINDS: ContentKind[] = ['image', 'gif', 'rich_text']
+const CONTENT_KINDS: ContentKind[] = ['image', 'gif', 'rich_text', 'diagram']
 
 const props = defineProps<{
   open: boolean
@@ -39,6 +41,8 @@ const durationMs = ref<string | number>('')
 const mediaUrl = ref('')
 const caption = ref('')
 const richContent = ref<PromptDocument>(EMPTY_BODY)
+// What the picker currently reports; null until it has a diagram a student can see.
+const pickedDiagram = ref<DiagramRef | null>(null)
 
 // Every open starts from the pop-up being edited (or a blank one), so edits
 // closed without saving never leak into the next open.
@@ -55,11 +59,18 @@ watch(
     mediaUrl.value = item?.media_url ?? ''
     caption.value = item?.caption ?? ''
     richContent.value = item?.rich_content ?? EMPTY_BODY
+    pickedDiagram.value = null
   },
   { immediate: true },
 )
 
 const isRichText = computed(() => kind.value === 'rich_text')
+const isDiagram = computed(() => kind.value === 'diagram')
+
+// The picker only picks single diagrams, so a stacked pop-up keeps its stack
+// until a diagram is picked to replace it.
+const existingStack = computed(() => props.item?.diagram_stack_ref ?? null)
+const keptStack = computed(() => (pickedDiagram.value ? null : existingStack.value))
 
 // A number input's v-model yields a number once it has a value and '' when empty.
 function wholeNumber(raw: string | number, min: number): number | null {
@@ -98,12 +109,14 @@ const timingInvalid = computed(() => {
 })
 
 const mediaUrlInvalid = computed(
-  () => !isRichText.value && mediaUrl.value.trim() !== '' && !isHttpUrl(mediaUrl.value.trim()),
+  () => !isRichText.value && !isDiagram.value && mediaUrl.value.trim() !== '' && !isHttpUrl(mediaUrl.value.trim()),
 )
 
-const hasBody = computed(() =>
-  isRichText.value ? richContent.value.content.length > 0 : isHttpUrl(mediaUrl.value.trim()),
-)
+const hasBody = computed(() => {
+  if (isRichText.value) return richContent.value.content.length > 0
+  if (isDiagram.value) return pickedDiagram.value !== null || keptStack.value !== null
+  return isHttpUrl(mediaUrl.value.trim())
+})
 
 const canSave = computed(() => !props.saving && timingFilledIn.value && !hideNotAfterTrigger.value && hasBody.value)
 
@@ -125,6 +138,15 @@ function save() {
 
   if (isRichText.value) {
     emit('save', { content_type: 'rich_text', rich_content: richContent.value, ...timingFields, ...captionField })
+    return
+  }
+  if (isDiagram.value) {
+    const diagramField = pickedDiagram.value
+      ? { diagram_ref: pickedDiagram.value }
+      : keptStack.value
+        ? { diagram_stack_ref: keptStack.value }
+        : {}
+    emit('save', { content_type: 'diagram', ...diagramField, ...timingFields, ...captionField })
     return
   }
   emit('save', { content_type: kind.value, media_url: mediaUrl.value.trim(), ...timingFields, ...captionField })
@@ -222,6 +244,12 @@ const inputClass = 'w-full rounded-md border border-border bg-surface-raised px-
       <div v-if="isRichText" class="flex flex-col gap-1">
         <span class="text-xs text-ink-subtle">{{ t('expandedContentModal.richContentLabel') }}</span>
         <PromptEditor v-model="richContent" />
+      </div>
+      <div v-else-if="isDiagram" class="flex flex-col gap-2">
+        <p v-if="existingStack" data-test="popup-diagram-stack-note" class="text-sm text-ink-muted">
+          {{ t('expandedContentModal.diagramStackNote', { count: existingStack.stack.length }) }}
+        </p>
+        <DiagramEmbedPicker :initial="item?.diagram_ref ?? null" @change="pickedDiagram = $event" />
       </div>
       <template v-else>
         <div class="flex flex-col gap-1">
