@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { Guitar, ImagePlus } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { ImagePlus } from 'lucide-vue-next'
+import { computed } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
-import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
+import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
 import OptionsEditorGrid from '@/features/teacher/components/OptionsEditorGrid.vue'
 import { useOptionMediaPicker } from '@/features/teacher/composables/useOptionMediaPicker'
 import type { ImageOption } from '@/features/teacher/composables/useExerciseForm'
@@ -33,13 +32,12 @@ const { pickerTargetId, openPicker, onPicked } = useOptionMediaPicker(
   (id, file) => emit('setFile', id, file),
 )
 
-// The option whose diagram is being picked, or null while the picker is closed.
-const diagramTargetId = ref<string | null>(null)
-const diagramTarget = computed(() => props.options.find((o) => o.id === diagramTargetId.value) ?? null)
+// The option whose image or diagram is being picked, or null while the picker is closed.
+const pickerTarget = computed(() => props.options.find((o) => o.id === pickerTargetId.value) ?? null)
 
 function onDiagramApplied(diagramRef: DiagramRef) {
-  if (diagramTargetId.value) emit('setDiagram', diagramTargetId.value, diagramRef)
-  diagramTargetId.value = null
+  if (pickerTargetId.value) emit('setDiagram', pickerTargetId.value, diagramRef)
+  pickerTargetId.value = null
 }
 
 const { t } = useTypedT()
@@ -66,59 +64,38 @@ const { t } = useTypedT()
           class="absolute inset-0 h-full w-full object-contain"
         />
 
-        <div v-if="!option.imageUrl && !option.diagramRef" class="absolute inset-0 flex">
-          <button
-            type="button"
-            data-test="choose-image"
-            :aria-label="t('imageChoiceOptionsEditor.chooseImageAriaLabel')"
-            class="flex flex-1 flex-col items-center justify-center gap-1 text-ink-muted"
-            @click="openPicker(option.id)"
-          >
+        <button
+          type="button"
+          data-test="choose-media"
+          :aria-label="
+            option.imageUrl || option.diagramRef
+              ? t('imageChoiceOptionsEditor.changeMediaAriaLabel')
+              : t('imageChoiceOptionsEditor.chooseMediaAriaLabel')
+          "
+          class="absolute inset-0 flex items-center justify-center"
+          @click="openPicker(option.id)"
+        >
+          <span v-if="!option.imageUrl && !option.diagramRef" class="flex flex-col items-center gap-1 text-ink-muted">
             <ImagePlus :size="16" aria-hidden="true" />
-            <span class="text-[0.6875rem]">{{ t('imageChoiceOptionsEditor.chooseImage') }}</span>
-          </button>
-          <button
-            type="button"
-            data-test="choose-diagram"
-            :aria-label="t('imageChoiceOptionsEditor.chooseDiagramAriaLabel')"
-            class="flex flex-1 flex-col items-center justify-center gap-1 border-l border-border text-ink-muted"
-            @click="diagramTargetId = option.id"
-          >
-            <Guitar :size="16" aria-hidden="true" />
-            <span class="text-[0.6875rem]">{{ t('imageChoiceOptionsEditor.chooseDiagram') }}</span>
-          </button>
-        </div>
-        <template v-else>
-          <button
-            type="button"
-            data-test="choose-image"
-            :aria-label="t('imageChoiceOptionsEditor.changeImageAriaLabel')"
+            <span class="text-[0.6875rem]">{{ t('imageChoiceOptionsEditor.chooseMedia') }}</span>
+          </span>
+          <span
+            v-else
             class="absolute bottom-1 left-1 flex h-[22px] w-[22px] items-center justify-center rounded bg-surface-raised text-ink-subtle"
-            @click="openPicker(option.id)"
           >
             <ImagePlus :size="12" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            data-test="choose-diagram"
-            :aria-label="t('imageChoiceOptionsEditor.changeDiagramAriaLabel')"
-            class="absolute bottom-1 right-1 flex h-[22px] w-[22px] items-center justify-center rounded bg-surface-raised text-ink-subtle"
-            @click="diagramTargetId = option.id"
-          >
-            <Guitar :size="12" aria-hidden="true" />
-          </button>
-        </template>
+          </span>
+        </button>
       </div>
     </template>
 
     <template #modal>
-      <ImagePickerModal :open="pickerTargetId !== null" @select="onPicked" @close="pickerTargetId = null" />
-      <DiagramEmbedPickerModal
-        :open="diagramTargetId !== null"
-        :initial="diagramTarget?.diagramRef ?? null"
-        :editing="!!diagramTarget?.diagramRef"
-        @apply="onDiagramApplied"
-        @close="diagramTargetId = null"
+      <MediaPickerModal
+        :open="pickerTargetId !== null"
+        :initial-diagram="pickerTarget?.diagramRef ?? null"
+        @image="onPicked"
+        @diagram="onDiagramApplied"
+        @close="pickerTargetId = null"
       />
     </template>
   </OptionsEditorGrid>

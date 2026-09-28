@@ -1,10 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
-import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
+import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
 import type { ImageOption } from '@/features/teacher/composables/useExerciseForm'
 
 const revokeObjectURL = vi.fn()
@@ -48,7 +47,7 @@ describe('ImageChoiceOptionsEditor', () => {
   it('leaves the choose-image button transparent so the picked image shows through, with no text label covering it', () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
 
-    const chooseButton = wrapper.findAll('[data-test="choose-image"]')[0]!
+    const chooseButton = wrapper.findAll('[data-test="choose-media"]')[0]!
     expect(chooseButton.classes()).not.toContain('bg-surface-sunken')
     expect(chooseButton.text()).not.toContain('Change image')
   })
@@ -56,30 +55,30 @@ describe('ImageChoiceOptionsEditor', () => {
   it("shows a 'Choose image' placeholder when no image has been picked yet", () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
 
-    const chooseButton = wrapper.findAll('[data-test="choose-image"]')[1]!
-    expect(chooseButton.text()).toContain('Choose image')
+    const chooseButton = wrapper.findAll('[data-test="choose-media"]')[1]!
+    expect(chooseButton.text()).toContain('Choose image or diagram')
   })
 
   it('opens the image picker for an option, previews it locally, and defers upload', async () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
     const file = new File(['data'], 'new.png', { type: 'image/png' })
 
-    await wrapper.findAll('[data-test="choose-image"]')[1]!.trigger('click')
-    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
+    await wrapper.findAll('[data-test="choose-media"]')[1]!.trigger('click')
+    expect(wrapper.getComponent(MediaPickerModal).props('open')).toBe(true)
 
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+    await wrapper.findComponent(MediaPickerModal).vm.$emit('image', file)
 
     expect(wrapper.emitted('setPreview')).toEqual([['o2', 'blob:new.png']])
     expect(wrapper.emitted('setFile')).toEqual([['o2', file]])
-    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
+    expect(wrapper.getComponent(MediaPickerModal).props('open')).toBe(false)
   })
 
   it('revokes the previous blob preview when an option image is replaced', async () => {
     const blobOptions: ImageOption[] = [{ id: 'o1', imageUrl: 'blob:old-preview.png', correct: false }]
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options: blobOptions } })
 
-    await wrapper.get('[data-test="choose-image"]').trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['data'], 'new.png'))
+    await wrapper.get('[data-test="choose-media"]').trigger('click')
+    await wrapper.findComponent(MediaPickerModal).vm.$emit('image', new File(['data'], 'new.png'))
 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:old-preview.png')
   })
@@ -87,8 +86,8 @@ describe('ImageChoiceOptionsEditor', () => {
   it('does not try to revoke a real (non-blob) CDN URL when an option image is replaced', async () => {
     const wrapper = mount(ImageChoiceOptionsEditor, { props: { options } })
 
-    await wrapper.findAll('[data-test="choose-image"]')[0]!.trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['data'], 'new.png'))
+    await wrapper.findAll('[data-test="choose-media"]')[0]!.trigger('click')
+    await wrapper.findComponent(MediaPickerModal).vm.$emit('image', new File(['data'], 'new.png'))
 
     expect(revokeObjectURL).not.toHaveBeenCalled()
   })
@@ -116,7 +115,7 @@ describe('ImageChoiceOptionsEditor', () => {
 
   describe('diagram options', () => {
     const chord = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
-    const stubs = { global: { stubs: { DiagramEmbedPickerModal: true, EmbeddedDiagram: true } } }
+    const stubs = { global: { stubs: { MediaPickerModal: true, EmbeddedDiagram: true } } }
 
     it('shows an option that is a diagram as that diagram, not an image', () => {
       const wrapper = mount(ImageChoiceOptionsEditor, {
@@ -130,18 +129,18 @@ describe('ImageChoiceOptionsEditor', () => {
       expect(wrapper.find('img').exists()).toBe(false)
     })
 
-    it('picks a diagram for an option in the diagram picker', async () => {
+    it('picks a diagram for an option in the image-or-diagram picker', async () => {
       const wrapper = mount(ImageChoiceOptionsEditor, { props: { options }, ...stubs })
 
-      await wrapper.findAll('[data-test="choose-diagram"]')[1]!.trigger('click')
-      const modal = wrapper.getComponent(DiagramEmbedPickerModal)
-      expect(modal.props()).toEqual(expect.objectContaining({ open: true, initial: null, editing: false }))
+      await wrapper.findAll('[data-test="choose-media"]')[1]!.trigger('click')
+      const modal = wrapper.getComponent(MediaPickerModal)
+      expect(modal.props()).toEqual(expect.objectContaining({ open: true, initialDiagram: null }))
 
-      modal.vm.$emit('apply', chord)
+      modal.vm.$emit('diagram', chord)
       await wrapper.vm.$nextTick()
 
       expect(wrapper.emitted('setDiagram')).toEqual([['o2', chord]])
-      expect(wrapper.getComponent(DiagramEmbedPickerModal).props('open')).toBe(false)
+      expect(wrapper.getComponent(MediaPickerModal).props('open')).toBe(false)
     })
 
     it('reopens an option’s own diagram for editing', async () => {
@@ -150,10 +149,10 @@ describe('ImageChoiceOptionsEditor', () => {
         ...stubs,
       })
 
-      await wrapper.get('[data-test="choose-diagram"]').trigger('click')
+      await wrapper.get('[data-test="choose-media"]').trigger('click')
 
-      expect(wrapper.getComponent(DiagramEmbedPickerModal).props()).toEqual(
-        expect.objectContaining({ open: true, initial: chord, editing: true }),
+      expect(wrapper.getComponent(MediaPickerModal).props()).toEqual(
+        expect.objectContaining({ open: true, initialDiagram: chord }),
       )
     })
   })
