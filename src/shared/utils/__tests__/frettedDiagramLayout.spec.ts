@@ -60,7 +60,7 @@ describe('computeFrettedDiagramLayout', () => {
     expect(layout.positions.every((p) => p.interval === 'R')).toBe(true)
   })
 
-  it('returns an empty position list when no position matches layers.subset', () => {
+  it('draws no position when none matches layers.subset, keeping the window of the whole diagram', () => {
     const diagram = makeFrettedDiagram()
     const instrument = makeFrettedInstrument()
     const diagramRef = makeDiagramRef({ layers: { intervals: true, subset: ['6'] } })
@@ -68,8 +68,8 @@ describe('computeFrettedDiagramLayout', () => {
     const layout = computeFrettedDiagramLayout(diagram, instrument, diagramRef)
 
     expect(layout.positions).toHaveLength(0)
-    expect(layout.minFret).toBe(0)
-    expect(layout.maxFret).toBe(3)
+    expect(layout.minFret).toBe(4)
+    expect(layout.maxFret).toBe(9)
   })
 
   it('starts the window at the nut when a position is on an open string, since its marker sits on the nut', () => {
@@ -187,5 +187,38 @@ describe('computeFrettedDiagramLayout', () => {
     const layout = computeFrettedDiagramLayout(makeFrettedDiagram(), makeFrettedInstrument(), makeDiagramRef())
 
     expect(layout.regions).toEqual([])
+  })
+
+  describe('hidden positions', () => {
+    it('leaves hidden positions out of the drawn ones, listing them apart', () => {
+      const diagram = makeFrettedDiagram()
+      const layout = computeFrettedDiagramLayout(
+        diagram,
+        makeFrettedInstrument(),
+        makeDiagramRef({ layers: { label: 'interval', hidden_position_ids: ['p0', 'p3'] } }),
+      )
+
+      expect(layout.positions.map((p) => p.positionId)).toEqual(['p1', 'p2', 'p4', 'p5'])
+      expect(layout.hiddenPositions.map((p) => p.positionId)).toEqual(['p0', 'p3'])
+    })
+
+    it('keeps the fret window over every position, hidden or filtered, so a hidden answer stays in view', () => {
+      const diagram = makeFrettedDiagram({
+        positions: [
+          { position_id: 'low', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
+          { position_id: 'high', string: 1, fret: 12, interval: '5', note_name: 'E', shape: 'dot' },
+        ],
+      })
+
+      const layout = computeFrettedDiagramLayout(
+        diagram,
+        makeFrettedInstrument(),
+        makeDiagramRef({ layers: { intervals: true, subset: ['R'], hidden_position_ids: ['low'] } }),
+      )
+
+      expect(layout.positions).toEqual([])
+      expect(layout.minFret).toBe(4)
+      expect(layout.maxFret).toBe(13)
+    })
   })
 })

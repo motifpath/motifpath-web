@@ -8,6 +8,14 @@
  * Given `selectablePositionIds`, those markers become an exercise's answer
  * choices: clicking one (or Enter/Space) emits `select` instead of pinning its
  * note, and `selectedPositionIds` marks the picked ones.
+ *
+ * Given `answerCells`, every one of those fretboard cells — marked or empty,
+ * open strings included — is an answer choice instead, emitting
+ * `selectAnswer` with its option id; `selectedAnswerIds` marks the picked ones.
+ *
+ * Markers show the text the ref's label mode picks (`labelMode` is the
+ * diagram's own label display, which that mode can fall back to). Hidden
+ * positions aren't drawn, unless `revealHidden` draws them faded for an author.
  */
 import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 
@@ -24,10 +32,18 @@ import {
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { effectiveLabelMode, markerTextKind } from '@/shared/utils/diagramLabels'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 type DiagramRef = components['schemas']['DiagramRef']
+
+/** One fretboard cell a student can pick, standing for one answer option. */
+export interface AnswerCell {
+  optionId: string
+  string: number
+  fret: number
+}
 
 const props = withDefaults(
   defineProps<{
@@ -40,11 +56,24 @@ const props = withDefaults(
     selectedPositionIds?: string[]
     /** Whether several choices may be picked (checkboxes) rather than one (radios). */
     multiple?: boolean
+    /** Draw the positions the ref hides, faded, instead of leaving them out — for an author. */
+    revealHidden?: boolean
+    /** The fretboard cells a student can pick as answers; none by default. */
+    answerCells?: AnswerCell[]
+    selectedAnswerIds?: string[]
   }>(),
-  { labelMode: 'interval', selectablePositionIds: () => [], selectedPositionIds: () => [], multiple: false },
+  {
+    labelMode: 'interval',
+    selectablePositionIds: () => [],
+    selectedPositionIds: () => [],
+    multiple: false,
+    revealHidden: false,
+    answerCells: () => [],
+    selectedAnswerIds: () => [],
+  },
 )
 
-const emit = defineEmits<{ select: [positionId: string] }>()
+const emit = defineEmits<{ select: [positionId: string]; selectAnswer: [optionId: string] }>()
 
 const { t } = useTypedT()
 
@@ -134,7 +163,16 @@ const inlayDots = computed(() => {
 const rootColor = computed(() => props.diagramRef.styling?.root_color ?? null)
 const intervalColor = computed(() => props.diagramRef.styling?.interval_color ?? null)
 
-type Marker = (typeof layout.value.positions)[number]
+type Marker = (typeof layout.value.positions)[number] & { hidden?: boolean }
+
+// The markers drawn: the ref's visible positions, plus its hidden ones (faded) for an author.
+const markers = computed<Marker[]>(() =>
+  props.revealHidden
+    ? [...layout.value.positions, ...layout.value.hiddenPositions.map((position) => ({ ...position, hidden: true }))]
+    : layout.value.positions,
+)
+
+const labelModeForRef = computed(() => effectiveLabelMode(props.diagramRef, props.labelMode))
 type Region = (typeof layout.value.regions)[number]
 
 /** The color a marker is filled with: the ref's styling override for this embedding wins,
@@ -169,10 +207,18 @@ function labelClass(position: Marker): string {
   return position.isRoot ? 'fill-accent-fg' : 'fill-surface'
 }
 
-/** What a marker shows: its custom label wins over the interval or note name. */
-function markerLabel(position: Marker): string {
-  if (position.customLabel) return localizedName(position.customLabel)
-  return props.labelMode === 'note' ? position.noteName : intervalLabel(position.interval)
+/** The text a marker shows under the ref's label mode, or null for none. */
+function markerLabel(position: Marker): string | null {
+  switch (markerTextKind(labelModeForRef.value, Boolean(position.customLabel), props.labelMode)) {
+    case 'custom':
+      return position.customLabel ? localizedName(position.customLabel) : null
+    case 'note':
+      return position.noteName
+    case 'interval':
+      return intervalLabel(position.interval)
+    default:
+      return null
+  }
 }
 
 /** A band covers whole fret spaces: from the wire before fret_start (the nut for fret 0) to
@@ -210,7 +256,7 @@ const notedPositions = computed(() => layout.value.positions.filter((position) =
 const hasNotes = computed(() => notedPositions.value.length > 0)
 // An image role would make every marker presentational, hiding answer choices and notes alike.
 const svgRole = computed(() => {
-  if (props.selectablePositionIds.length > 0) return props.multiple ? 'group' : 'radiogroup'
+  if (props.selectablePositionIds.length > 0 || props.answerCells.length > 0) return props.multiple ? 'group' : 'radiogroup'
   return hasNotes.value ? 'group' : 'img'
 })
 const noteIdPrefix = useId()
@@ -296,9 +342,23 @@ function markerAttrs(position: Marker): Record<string, string | number | boolean
     'data-note-marker': '',
     tabindex: 0,
     role: 'button',
-    'aria-label': markerLabel(position),
+    'aria-label': markerLabel(position) ?? intervalLabel(position.interval),
     'aria-describedby': noteId(position),
     'aria-expanded': shownNote.value === position.positionId,
+  }
+}
+
+function isSelectedAnswer(cell: AnswerCell): boolean {
+  return props.selectedAnswerIds.includes(cell.optionId)
+}
+
+/** Accessibility wiring for an answer cell, named by where it sits so it never gives the answer away. */
+function cellAttrs(cell: AnswerCell): Record<string, string | number | boolean> {
+  return {
+    tabindex: 0,
+    role: props.multiple ? 'checkbox' : 'radio',
+    'aria-checked': isSelectedAnswer(cell),
+    'aria-label': t('exerciseView.diagramChoice', { string: cell.string, fret: cell.fret }),
   }
 }
 
@@ -429,7 +489,7 @@ function noteAlignClass(position: Marker): string {
       </g>
 
       <g
-        v-for="position in layout.positions"
+        v-for="position in markers"
         :key="position.positionId"
         v-bind="markerAttrs(position)"
         :class="isInteractive(position) ? 'cursor-pointer outline-none' : ''"
@@ -450,6 +510,10 @@ function noteAlignClass(position: Marker): string {
           r="21"
           fill="transparent"
         />
+        <g
+          :opacity="position.hidden ? 0.35 : undefined"
+          :data-test="position.hidden ? 'diagram-position-hidden' : undefined"
+        >
         <circle
           v-if="position.shape === 'dot'"
           data-test="diagram-position"
@@ -478,7 +542,7 @@ function noteAlignClass(position: Marker): string {
           :style="shapeStyle(position)"
         />
         <text
-          v-if="diagramRef.layers.intervals && labelMode !== 'hidden'"
+          v-if="markerLabel(position) !== null"
           data-test="diagram-position-label"
           :x="markerX(position.fret)"
           :y="y(position.string) + 4.5"
@@ -490,6 +554,7 @@ function noteAlignClass(position: Marker): string {
         >
           {{ markerLabel(position) }}
         </text>
+        </g>
         <circle
           v-if="position.note"
           data-test="diagram-note-badge"
@@ -527,6 +592,45 @@ function noteAlignClass(position: Marker): string {
           />
           <polyline
             :points="checkPoints(markerX(position.fret) - 12, y(position.string) - 12)"
+            fill="none"
+            class="stroke-accent-fg"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </g>
+      </g>
+      <g
+        v-for="cell in answerCells"
+        :key="cell.optionId"
+        data-test="diagram-cell"
+        v-bind="cellAttrs(cell)"
+        class="group cursor-pointer outline-none"
+        @click="emit('selectAnswer', cell.optionId)"
+        @keydown.enter.prevent="emit('selectAnswer', cell.optionId)"
+        @keydown.space.prevent="emit('selectAnswer', cell.optionId)"
+      >
+        <circle :cx="markerX(cell.fret)" :cy="y(cell.string)" r="18" fill="transparent" />
+        <circle
+          :cx="markerX(cell.fret)"
+          :cy="y(cell.string)"
+          r="18"
+          fill="none"
+          class="stroke-accent opacity-0 group-hover:opacity-60 group-focus:opacity-100"
+          stroke-width="2"
+          stroke-dasharray="4 3"
+        />
+        <g v-if="isSelectedAnswer(cell)" data-test="diagram-cell-selected">
+          <circle :cx="markerX(cell.fret)" :cy="y(cell.string)" r="18" fill="none" class="stroke-accent" stroke-width="3.5" />
+          <circle
+            :cx="markerX(cell.fret) - 12"
+            :cy="y(cell.string) - 12"
+            r="7.5"
+            class="fill-accent stroke-surface"
+            stroke-width="1.5"
+          />
+          <polyline
+            :points="checkPoints(markerX(cell.fret) - 12, y(cell.string) - 12)"
             fill="none"
             class="stroke-accent-fg"
             stroke-width="2"
