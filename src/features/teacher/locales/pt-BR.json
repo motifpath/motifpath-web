@@ -581,6 +581,11 @@
     "toolVisibility": "Esconde ou mostra",
     "nothingShown": "Mostre pelo menos uma posição, senão o diagrama não mostra nada."
   },
+  "mediaPickerModal": {
+    "title": "Escolha uma imagem ou um diagrama",
+    "image": "Imagem",
+    "diagram": "Diagrama"
+  },
   "overlayDiagramsModal": {
     "title": "Sobrepor diagramas",
     "hint": "Veja como outros diagramas deste instrumento se combinam com este. Mescle para trazê-los ao editor como posições e regiões que você pode alterar, ou descarte para deixar este diagrama como está.",

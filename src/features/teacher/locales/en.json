@@ -581,6 +581,11 @@
     "toolVisibility": "Hides or shows it",
     "nothingShown": "Show at least one position, or the diagram shows nothing."
   },
+  "mediaPickerModal": {
+    "title": "Choose an image or a diagram",
+    "image": "Image",
+    "diagram": "Diagram"
+  },
   "overlayDiagramsModal": {
     "title": "Overlay diagrams",
     "hint": "See how other diagrams on this instrument combine with this one. Merge to bring them into the editor as positions and regions you can change, or discard to leave this diagram as it is.",
