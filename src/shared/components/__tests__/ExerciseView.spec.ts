@@ -365,12 +365,14 @@ describe('ExerciseView', () => {
         embed: Object,
         selectablePositionIds: Array,
         selectedPositionIds: Array,
+        answerCells: Array,
+        selectedAnswerIds: Array,
         multiple: Boolean,
         inert: Boolean,
         // Stands in for the real component's own status: whether it would fall back to its slot.
         unavailable: Boolean,
       },
-      emits: ['select'],
+      emits: ['select', 'selectAnswer'],
       template: '<div data-test="embedded-diagram-stub"><slot v-if="unavailable" name="unavailable" /></div>',
     }
     const stubs = { EmbeddedDiagram: EmbeddedDiagramStub }
@@ -417,6 +419,32 @@ describe('ExerciseView', () => {
       const wrapper = mountStimulus({ selectedOptionIds: ['o-p1'] })
 
       expect(wrapper.getComponent(EmbeddedDiagramStub).props('selectedPositionIds')).toEqual(['p1'])
+    })
+
+    describe('answer cells', () => {
+      const cellOptions: Option[] = [
+        { option_id: 'o-6-5', is_correct: true, diagram_id: 'd1', diagram_position_id: 'p0', fret_cell: { string: 6, fret: 5 } },
+        { option_id: 'o-1-5', is_correct: false, diagram_id: 'd1', fret_cell: { string: 1, fret: 5 } },
+      ]
+
+      it('offers every cell as a choice, not the drawn positions', () => {
+        const diagram = mountStimulus({ options: cellOptions }).getComponent(EmbeddedDiagramStub)
+
+        expect(diagram.props('answerCells')).toEqual([
+          { optionId: 'o-6-5', string: 6, fret: 5 },
+          { optionId: 'o-1-5', string: 1, fret: 5 },
+        ])
+        expect(diagram.props('selectablePositionIds')).toEqual([])
+      })
+
+      it('selects the option a picked cell stands for, and shows it picked', async () => {
+        const wrapper = mountStimulus({ options: cellOptions })
+        wrapper.getComponent(EmbeddedDiagramStub).vm.$emit('selectAnswer', 'o-1-5')
+        await wrapper.vm.$nextTick()
+
+        expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['o-1-5']]])
+        expect(wrapper.getComponent(EmbeddedDiagramStub).props('selectedAnswerIds')).toEqual(['o-1-5'])
+      })
     })
 
     it("shows the no-stimulus placeholder when the diagram can't be shown", () => {

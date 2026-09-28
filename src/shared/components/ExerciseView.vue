@@ -79,13 +79,21 @@ function indicatorClasses(optionId: string): string[] {
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
 
-// A diagram stimulus's choices are its positions; each maps back to the option standing for it.
+// A diagram stimulus's choices are the fretboard cells its options stand for — every cell in
+// view, marked or not. Options from before cells existed stand for positions instead.
+const answerCells = computed(() =>
+  props.options.flatMap((option) =>
+    option.fret_cell ? [{ optionId: option.option_id, string: option.fret_cell.string, fret: option.fret_cell.fret }] : [],
+  ),
+)
 const optionIdByPositionId = computed(
   () =>
     new Map(
-      props.options.flatMap((option) =>
-        option.diagram_position_id ? [[option.diagram_position_id, option.option_id] as const] : [],
-      ),
+      answerCells.value.length > 0
+        ? []
+        : props.options.flatMap((option) =>
+            option.diagram_position_id ? [[option.diagram_position_id, option.option_id] as const] : [],
+          ),
     ),
 )
 const choicePositionIds = computed(() => [...optionIdByPositionId.value.keys()])
@@ -160,8 +168,11 @@ function selectAndPlay(option: Option): void {
           :embed="{ kind: 'single', ref: diagramRef }"
           :selectable-position-ids="choicePositionIds"
           :selected-position-ids="selectedPositionIds"
+          :answer-cells="answerCells"
+          :selected-answer-ids="selected"
           :multiple="allowMultiple"
           @select="selectPosition"
+          @select-answer="select"
         >
           <template #unavailable>
             <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
