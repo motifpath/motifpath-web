@@ -27,21 +27,20 @@ function isDiagramRef(value: unknown): value is DiagramRef {
 }
 
 /**
- * Reads the `diagram_ref` / `diagram_stack_ref` an `ExpandedContent` item or
- * a `diagram` PromptNode's (deliberately loose) `attrs` carries. Anything
- * malformed yields null, so the student sees nothing rather than a broken
- * diagram.
+ * Reads the diagram reference an embed point carries: an `ExpandedContent`
+ * item's `diagram_ref` / `diagram_stack_ref`, or a `diagram` PromptNode's
+ * `diagramRef` / `diagramStackRef` attrs (camelCase, like every other node
+ * attr). Both are unchecked input — a node's attrs are deliberately loose —
+ * so anything malformed yields null, and the student sees nothing rather
+ * than a broken diagram. A present ref wins over a stack.
  */
-export function parseDiagramEmbed(source: Record<string, unknown> | null | undefined): DiagramEmbed | null {
-  if (!source) return null
-
-  if (source.diagram_ref !== undefined && source.diagram_ref !== null) {
-    return isDiagramRef(source.diagram_ref) ? { kind: 'single', ref: source.diagram_ref } : null
+export function parseDiagramEmbed(diagramRef: unknown, diagramStackRef: unknown): DiagramEmbed | null {
+  if (diagramRef !== undefined && diagramRef !== null) {
+    return isDiagramRef(diagramRef) ? { kind: 'single', ref: diagramRef } : null
   }
 
-  const stackRef = source.diagram_stack_ref
-  if (!isRecord(stackRef)) return null
-  const { stack } = stackRef
+  if (!isRecord(diagramStackRef)) return null
+  const { stack } = diagramStackRef
   if (!Array.isArray(stack) || stack.length < 2 || !stack.every(isDiagramRef)) return null
   return { kind: 'stack', stack }
 }

@@ -30,7 +30,9 @@ const richContent = computed(() =>
   props.cue.content_type === 'rich_text' ? (props.cue.rich_content ?? null) : null,
 )
 
-const diagramEmbed = computed(() => (props.cue.content_type === 'diagram' ? parseDiagramEmbed(props.cue) : null))
+const diagramEmbed = computed(() =>
+  props.cue.content_type === 'diagram' ? parseDiagramEmbed(props.cue.diagram_ref, props.cue.diagram_stack_ref) : null,
+)
 </script>
 
 <template>

@@ -173,7 +173,7 @@ function renderNode(node: PromptNode): VNode {
       })
     case 'diagram': {
       // A diagram node has no text of its own, so a malformed one leaves nothing behind.
-      const embed = parseDiagramEmbed(node.attrs)
+      const embed = parseDiagramEmbed(node.attrs?.diagramRef, node.attrs?.diagramStackRef)
       return embed ? h(EmbeddedDiagram, { embed, class: 'my-1' }) : createCommentVNode('diagram')
     }
     default:

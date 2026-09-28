@@ -276,7 +276,7 @@ describe('PromptRenderer', () => {
         props: {
           document: doc([
             { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] },
-            { type: 'diagram', attrs: { diagram_ref: makeDiagramRef() } },
+            { type: 'diagram', attrs: { diagramRef: makeDiagramRef() } },
             { type: 'paragraph', content: [{ type: 'text', text: 'After' }] },
           ]),
         },
@@ -294,16 +294,25 @@ describe('PromptRenderer', () => {
     it('shows a stack of diagrams', () => {
       const stack = [makeDiagramRef(), makeDiagramRef({ diagram_id: 'diagram-2' })]
       const wrapper = mount(PromptRenderer, {
-        props: { document: doc([{ type: 'diagram', attrs: { diagram_stack_ref: { stack } } }]) },
+        props: { document: doc([{ type: 'diagram', attrs: { diagramStackRef: { stack } } }]) },
         global: { stubs },
       })
 
       expect(wrapper.getComponent(EmbeddedDiagram).props('embed')).toEqual({ kind: 'stack', stack })
     })
 
+    it('ignores the snake_case keys a cue uses, since a node carries its diagram in camelCase attrs', () => {
+      const wrapper = mount(PromptRenderer, {
+        props: { document: doc([{ type: 'diagram', attrs: { diagram_ref: makeDiagramRef() } }]) },
+        global: { stubs },
+      })
+
+      expect(wrapper.findComponent(EmbeddedDiagram).exists()).toBe(false)
+    })
+
     it('shows nothing for a diagram node without a usable reference', () => {
       const wrapper = mount(PromptRenderer, {
-        props: { document: doc([{ type: 'diagram', attrs: { diagram_ref: { diagram_id: 'd-1' } } }, { type: 'diagram' }]) },
+        props: { document: doc([{ type: 'diagram', attrs: { diagramRef: { diagram_id: 'd-1' } } }, { type: 'diagram' }]) },
         global: { stubs },
       })
 
@@ -322,13 +331,13 @@ describe('PromptRenderer', () => {
       })
       // Mounted for real, so what the student sees is the loaded diagram itself.
       const wrapper = mount(PromptRenderer, {
-        props: { document: doc([{ type: 'diagram', attrs: { diagram_ref: makeDiagramRef() } }]) },
+        props: { document: doc([{ type: 'diagram', attrs: { diagramRef: makeDiagramRef() } }]) },
       })
       await flushPromises()
       expect(wrapper.findAll('[data-test="diagram-position"]')).toHaveLength(box1.positions.length)
 
       const next = makeDiagramRef({ diagram_id: 'diagram-2' })
-      await wrapper.setProps({ document: doc([{ type: 'diagram', attrs: { diagram_ref: next } }]) })
+      await wrapper.setProps({ document: doc([{ type: 'diagram', attrs: { diagramRef: next } }]) })
       await flushPromises()
 
       expect(wrapper.findAll('[data-test="diagram-position"]')).toHaveLength(2)
