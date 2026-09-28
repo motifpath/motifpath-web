@@ -1,7 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
+import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import type { ImageOption } from '@/features/teacher/composables/useExerciseForm'
 
@@ -110,5 +112,49 @@ describe('ImageChoiceOptionsEditor', () => {
 
     const narrow = mount(ImageChoiceOptionsEditor, { props: { options, compact: true } })
     expect(narrow.classes()).toContain('grid-cols-2')
+  })
+
+  describe('diagram options', () => {
+    const chord = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
+    const stubs = { global: { stubs: { DiagramEmbedPickerModal: true, EmbeddedDiagram: true } } }
+
+    it('shows an option that is a diagram as that diagram, not an image', () => {
+      const wrapper = mount(ImageChoiceOptionsEditor, {
+        props: { options: [{ id: 'o1', imageUrl: '', diagramRef: chord, correct: false }] },
+        ...stubs,
+      })
+
+      expect(wrapper.getComponent(EmbeddedDiagram).props()).toEqual(
+        expect.objectContaining({ embed: { kind: 'single', ref: chord }, inert: true }),
+      )
+      expect(wrapper.find('img').exists()).toBe(false)
+    })
+
+    it('picks a diagram for an option in the diagram picker', async () => {
+      const wrapper = mount(ImageChoiceOptionsEditor, { props: { options }, ...stubs })
+
+      await wrapper.findAll('[data-test="choose-diagram"]')[1]!.trigger('click')
+      const modal = wrapper.getComponent(DiagramEmbedPickerModal)
+      expect(modal.props()).toEqual(expect.objectContaining({ open: true, initial: null, editing: false }))
+
+      modal.vm.$emit('apply', chord)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.emitted('setDiagram')).toEqual([['o2', chord]])
+      expect(wrapper.getComponent(DiagramEmbedPickerModal).props('open')).toBe(false)
+    })
+
+    it('reopens an option’s own diagram for editing', async () => {
+      const wrapper = mount(ImageChoiceOptionsEditor, {
+        props: { options: [{ id: 'o1', imageUrl: '', diagramRef: chord, correct: false }] },
+        ...stubs,
+      })
+
+      await wrapper.get('[data-test="choose-diagram"]').trigger('click')
+
+      expect(wrapper.getComponent(DiagramEmbedPickerModal).props()).toEqual(
+        expect.objectContaining({ open: true, initial: chord, editing: true }),
+      )
+    })
   })
 })

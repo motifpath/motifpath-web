@@ -36,7 +36,10 @@
     "addLabel": "Adicionar opção de imagem",
     "chooseImageAriaLabel": "Escolher imagem",
     "changeImageAriaLabel": "Alterar imagem",
-    "chooseImage": "Escolher imagem"
+    "chooseImage": "Escolher imagem",
+    "chooseDiagram": "Escolher diagrama",
+    "chooseDiagramAriaLabel": "Escolher um diagrama para esta opção",
+    "changeDiagramAriaLabel": "Trocar por um diagrama"
   },
   "imagePickerModal": {
     "chooseAudioFile": "Escolher um arquivo de áudio",
