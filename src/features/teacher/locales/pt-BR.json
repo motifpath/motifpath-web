@@ -572,8 +572,8 @@
       "custom": "Rótulos personalizados",
       "none": "Nenhum"
     },
-    "clickToHide": "Clique numa posição na prévia, ou num intervalo acima, para escondê-la ou mostrá-la.",
-    "clickToMarkCorrect": "Clique nas posições da prévia para marcar as respostas corretas — as escondidas também valem.",
+    "clickToHide": "Clique numa posição do diagrama, ou num intervalo acima, para escondê-la ou mostrá-la.",
+    "clickToMarkCorrect": "Clique nas posições do diagrama para marcar as respostas corretas — as escondidas também valem.",
     "toolLegend": "Clicar numa posição",
     "toolCorrect": "Marca como correta",
     "toolVisibility": "Esconde ou mostra",

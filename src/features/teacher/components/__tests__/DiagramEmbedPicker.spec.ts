@@ -34,8 +34,8 @@ function serve(list: Diagram[]) {
   })
 }
 
-function mountPicker(initial: DiagramRef | null = null, answers = false) {
-  return mount(DiagramEmbedPicker, { props: { initial, answers } })
+function mountPicker(initial: DiagramRef | null = null) {
+  return mount(DiagramEmbedPicker, { props: { initial } })
 }
 
 type Picker = ReturnType<typeof mountPicker>
@@ -48,7 +48,7 @@ function intervalChips(wrapper: Picker) {
   return wrapper.findAll('[data-test="embed-picker-interval"]')
 }
 
-/** Clicks a marker in the preview, the way an author hides a position or marks it correct. */
+/** Clicks a marker in the preview, the way an author hides a position. */
 async function clickPosition(wrapper: Picker, positionId: string) {
   wrapper.getComponent(FrettedDiagramView).vm.$emit('select', positionId)
   await flushPromises()
@@ -197,49 +197,13 @@ describe('DiagramEmbedPicker', () => {
     expect(wrapper.findAll('[data-test="diagram-option"]')).toHaveLength(1)
   })
 
-  describe('as an exercise stimulus', () => {
-    async function chooseStimulus() {
-      serve([penta])
-      const wrapper = mountPicker(null, true)
-      await flushPromises()
-      await choose(wrapper)
-      return wrapper
-    }
+  it('never asks for answers: a stimulus sets them in the exercise form', async () => {
+    serve([penta])
+    const wrapper = mountPicker()
+    await flushPromises()
+    await choose(wrapper)
 
-    it('starts on marking correct positions, and reports nothing until one is', async () => {
-      const wrapper = await chooseStimulus()
-
-      expect(wrapper.get('[data-test="embed-picker-tool-correct"]').attributes('aria-pressed')).toBe('true')
-      expect(wrapper.find('[data-test="embed-picker-no-correct"]').exists()).toBe(true)
-      expect(lastChange(wrapper)).toBeNull()
-
-      await clickPosition(wrapper, 'p0')
-
-      expect(wrapper.find('[data-test="embed-picker-no-correct"]').exists()).toBe(false)
-      expect(wrapper.getComponent(FrettedDiagramView).props('selectedPositionIds')).toEqual(['p0'])
-      expect(lastChange(wrapper)?.correct_position_ids).toEqual(['p0'])
-    })
-
-    it('switches to hiding positions, and a hidden position stays correct', async () => {
-      const wrapper = await chooseStimulus()
-      await clickPosition(wrapper, 'p0')
-
-      await wrapper.get('[data-test="embed-picker-tool-visibility"]').trigger('click')
-      await clickPosition(wrapper, 'p0')
-
-      expect(lastChange(wrapper)).toEqual(
-        expect.objectContaining({ correct_position_ids: ['p0'], layers: expect.objectContaining({ hidden_position_ids: ['p0'] }) }),
-      )
-      expect(wrapper.getComponent(FrettedDiagramView).props('selectedPositionIds')).toEqual([])
-    })
-
-    it('never asks for answers otherwise', async () => {
-      serve([penta])
-      const wrapper = mountPicker()
-      await flushPromises()
-      await choose(wrapper)
-
-      expect(wrapper.find('[data-test="embed-picker-tool-correct"]').exists()).toBe(false)
-    })
+    expect(wrapper.find('[data-test="embed-picker-tool-correct"]').exists()).toBe(false)
+    expect(lastChange(wrapper)?.correct_position_ids).toBeUndefined()
   })
 })

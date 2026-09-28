@@ -4,53 +4,41 @@
  * an exercise stimulus — and how it shows: what its markers read (label
  * mode) and which positions are hidden, one by one in the preview or an
  * interval at a time. The preview draws it as a student will see it, with
- * hidden positions faded so they can be shown again. As a stimulus
- * (`answers`), clicking positions also marks the correct ones.
+ * hidden positions faded so they can be shown again. An exercise stimulus's
+ * answers are marked in the exercise form, not here.
  *
  * Reports the ref to embed on every change, or null while there's nothing a
- * student could be shown (no diagram yet, nothing drawn, no correct answer,
- * or a diagram the student view can't draw). Buttons belong to the caller.
+ * student could be shown (no diagram yet, nothing drawn, or a diagram the
+ * student view can't draw). Buttons belong to the caller.
  */
 import { computed, ref, watch } from 'vue'
 
 import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.vue'
+import DiagramRefControls from '@/features/teacher/components/DiagramRefControls.vue'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
 import { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramEmbedDraft'
-import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import type { DiagramLabelMode } from '@/shared/utils/diagramLabels'
-import { intervalLabelKey } from '@/shared/utils/intervalLabels'
-import type { IntervalCode } from '@/shared/utils/intervalLabels'
 import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
 
-const props = withDefaults(
-  defineProps<{
-    /** The ref already embedded, reopened for editing; null to embed a new one. */
-    initial: DiagramRef | null
-    /** An exercise stimulus: also mark which positions are the correct answers. */
-    answers?: boolean
-  }>(),
-  { answers: false },
-)
+const props = defineProps<{
+  /** The ref already embedded, reopened for editing; null to embed a new one. */
+  initial: DiagramRef | null
+}>()
 const emit = defineEmits<{ change: [diagramRef: DiagramRef | null] }>()
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
 
-const draft = useDiagramEmbedDraft(props.initial, { answers: props.answers })
+const draft = useDiagramEmbedDraft(props.initial)
 const step = ref<'list' | 'initial' | 'configure'>(props.initial ? 'initial' : 'list')
 const { instruments } = useListInstruments()
-// What a click on a preview marker does; a stimulus starts on its answers.
-const tool = ref<'visibility' | 'correct'>(props.answers ? 'correct' : 'visibility')
-
-const LABEL_MODES: DiagramLabelMode[] = ['interval', 'note', 'custom', 'none']
 
 const initialLoad = props.initial ? useDiagram(props.initial.diagram_id) : null
 if (initialLoad) {
@@ -74,33 +62,16 @@ const instrument = computed(() => {
   return found?.family === 'fretted' ? found : null
 })
 const inConfigure = computed(() => step.value === 'configure')
-const previewRef = computed(() => (inConfigure.value ? draft.toPreviewRef() : null))
 const reported = computed(() => (inConfigure.value && instrument.value ? draft.toRef() : null))
-const allPositionIds = computed(() => draft.diagram.value?.positions.map((p) => p.position_id ?? '') ?? [])
-const nothingShown = computed(() => !props.answers && draft.hiddenPositionIds.value.length === allPositionIds.value.length)
-
-function onPositionClick(positionId: string) {
-  if (tool.value === 'correct') draft.togglePositionCorrect(positionId)
-  else draft.togglePosition(positionId)
-}
-
-function onLabelChange(event: Event) {
-  if (!(event.target instanceof HTMLSelectElement)) return
-  const value = event.target.value
-  const mode = LABEL_MODES.find((m) => m === value)
-  if (mode) draft.setLabel(mode)
-}
+const nothingShown = computed(
+  () => (draft.diagram.value?.positions.length ?? 0) === draft.hiddenPositionIds.value.length,
+)
 
 watch(
   () => JSON.stringify(reported.value),
   () => emit('change', reported.value),
   { immediate: true },
 )
-
-function intervalLabel(code: IntervalCode): string {
-  const key = intervalLabelKey(code)
-  return key ? t(key) : code
-}
 </script>
 
 <template>
@@ -141,87 +112,13 @@ function intervalLabel(code: IntervalCode): string {
         </button>
       </div>
 
-      <div class="flex flex-wrap items-end gap-4">
-        <div class="flex flex-col gap-1">
-          <label for="embed-picker-label" class="text-xs text-ink-subtle">{{ t('diagramEmbedPicker.labelLegend') }}</label>
-          <select
-            id="embed-picker-label"
-            data-test="embed-picker-label"
-            :value="draft.label.value"
-            class="rounded-md border border-border bg-surface px-2 py-1.5 text-sm"
-            @change="onLabelChange"
-          >
-            <option v-for="mode in LABEL_MODES" :key="mode" :value="mode">{{ t(`diagramEmbedPicker.labelModes.${mode}`) }}</option>
-          </select>
-        </div>
-        <div v-if="answers" class="flex flex-col gap-1">
-          <span class="text-xs text-ink-subtle">{{ t('diagramEmbedPicker.toolLegend') }}</span>
-          <div class="flex gap-1 rounded-md bg-surface-sunken p-[3px]" role="group" :aria-label="t('diagramEmbedPicker.toolLegend')">
-            <button
-              v-for="option in (['correct', 'visibility'] as const)"
-              :key="option"
-              type="button"
-              :data-test="`embed-picker-tool-${option}`"
-              :aria-pressed="tool === option"
-              class="rounded-sm px-2.5 py-1 text-xs font-semibold"
-              :class="tool === option ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-              @click="tool = option"
-            >
-              {{ option === 'correct' ? t('diagramEmbedPicker.toolCorrect') : t('diagramEmbedPicker.toolVisibility') }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex flex-col gap-1.5">
-        <span class="text-xs text-ink-subtle">{{ t('diagramEmbedPicker.intervalsLegend') }}</span>
-        <div class="flex flex-wrap gap-1.5">
-          <button
-            v-for="code in draft.availableIntervals.value"
-            :key="code"
-            type="button"
-            data-test="embed-picker-interval"
-            :aria-pressed="draft.intervalState(code) === 'shown' ? 'true' : draft.intervalState(code) === 'hidden' ? 'false' : 'mixed'"
-            class="min-w-9 rounded-full border px-2.5 py-0.5 text-xs font-semibold"
-            :class="{
-              'border-accent bg-accent text-accent-fg': draft.intervalState(code) === 'shown',
-              'border-accent text-accent-text': draft.intervalState(code) === 'mixed',
-              'border-border text-ink-subtle line-through': draft.intervalState(code) === 'hidden',
-            }"
-            @click="draft.toggleIntervalVisibility(code)"
-          >
-            {{ intervalLabel(code) }}
-          </button>
-        </div>
-        <p class="text-xs text-ink-subtle">
-          {{ answers && tool === 'correct' ? t('diagramEmbedPicker.clickToMarkCorrect') : t('diagramEmbedPicker.clickToHide') }}
-        </p>
-      </div>
-
-      <p v-if="answers && draft.correctPositionIds.value.length === 0" data-test="embed-picker-no-correct" class="text-sm text-danger">
-        {{ t('diagramEmbedPicker.noCorrect') }}
-      </p>
-      <p v-if="nothingShown" data-test="embed-picker-nothing-shown" class="text-sm text-danger">
-        {{ t('diagramEmbedPicker.nothingShown') }}
-      </p>
-
-      <div data-test="embed-picker-preview" class="rounded-md border border-border bg-surface p-3">
-        <FrettedDiagramView
-          v-if="instrument && previewRef"
-          :diagram="draft.diagram.value"
-          :instrument="instrument"
-          :diagram-ref="previewRef"
-          :label-mode="draft.diagram.value.label_display"
-          reveal-hidden
-          multiple
-          :selectable-position-ids="allPositionIds"
-          :selected-position-ids="answers && tool === 'correct' ? draft.correctPositionIds.value : []"
-          @select="onPositionClick"
-        />
-        <p v-else data-test="embed-picker-unavailable" class="text-sm text-ink-muted">
-          {{ t('diagramEmbedPicker.unavailable') }}
-        </p>
-      </div>
+      <DiagramRefControls :diagram="draft.diagram.value" :instrument="instrument" :draft="draft">
+        <template #warnings>
+          <p v-if="nothingShown" data-test="embed-picker-nothing-shown" class="text-sm text-danger">
+            {{ t('diagramEmbedPicker.nothingShown') }}
+          </p>
+        </template>
+      </DiagramRefControls>
     </div>
   </div>
 </template>

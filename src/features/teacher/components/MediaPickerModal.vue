@@ -1,20 +1,24 @@
 <script setup lang="ts">
 /**
  * One modal to choose what an exercise shows: an uploaded image, or a
- * prebuilt diagram configured in the diagram picker (with its correct
- * answers, for a stimulus). An image is taken as soon as it's picked; a
- * diagram once it's applied. Rendered at the document body, and a
+ * prebuilt diagram. An image is taken as soon as it's picked. A diagram is
+ * configured in the diagram picker and taken once applied — or, with
+ * `chooseOnly` (a stimulus, whose labels, hidden and correct positions are
+ * set in the exercise form), taken as soon as it's picked, drawn as its
+ * author made it with no answer yet. Rendered at the document body, and a
  * fixed-height panel so switching tabs or filtering never resizes it.
  */
 import { ref, watch } from 'vue'
 
 import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
+import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.vue'
 import FileDropField from '@/features/teacher/components/FileDropField.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { components } from '@/api/generated/core-domain'
 
+type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
 
 const props = withDefaults(
@@ -22,10 +26,10 @@ const props = withDefaults(
     open: boolean
     /** The diagram already chosen, reopened on the diagram tab; null starts on the image tab. */
     initialDiagram: DiagramRef | null
-    /** An exercise stimulus: the diagram tab also asks for the correct positions. */
-    answers?: boolean
+    /** The diagram tab only picks a diagram: how it shows is set elsewhere. */
+    chooseOnly?: boolean
   }>(),
-  { answers: false },
+  { chooseOnly: false },
 )
 const emit = defineEmits<{
   image: [file: File]
@@ -46,6 +50,10 @@ watch(
   },
   { immediate: true },
 )
+
+function pick(diagram: Diagram) {
+  emit('diagram', { diagram_id: diagram.diagram_id, layers: { label: 'custom', intervals: true }, correct_position_ids: [] })
+}
 
 function apply() {
   if (chosen.value) emit('diagram', chosen.value)
@@ -83,7 +91,8 @@ function apply() {
 
         <div class="min-h-0 flex-1 overflow-y-auto">
           <FileDropField v-if="tab === 'image'" @select="emit('image', $event)" />
-          <DiagramEmbedPicker v-else :initial="initialDiagram" :answers="answers" @change="chosen = $event" />
+          <DiagramPickerList v-else-if="chooseOnly" @select="pick" />
+          <DiagramEmbedPicker v-else :initial="initialDiagram" @change="chosen = $event" />
         </div>
 
         <div class="flex justify-end gap-2 border-t border-border pt-4">
@@ -96,7 +105,7 @@ function apply() {
             {{ t('diagramEmbedPicker.cancel') }}
           </button>
           <button
-            v-if="tab === 'diagram'"
+            v-if="tab === 'diagram' && !chooseOnly"
             type="button"
             data-test="media-apply"
             :disabled="!chosen"

@@ -8,7 +8,7 @@ import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSele
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
-import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulusEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
@@ -19,12 +19,14 @@ import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
+import { useStimulusDiagram } from '@/features/teacher/composables/useStimulusDiagram'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
+import { diagramStimulusOptions } from '@/shared/utils/diagramAnswerCells'
 import { useCurrentUserStore } from '@/stores/currentUser'
 import type { components } from '@/api/generated/core-domain'
 
@@ -146,6 +148,10 @@ function onStimulusDiagram(diagramRef: DiagramRef) {
 }
 
 const showsDiagramStimulus = computed(() => form.stimulusSource.value === 'diagram' && form.stimulusDiagram.value !== null)
+// The stimulus's labels, hidden and correct positions are edited in the form, on the diagram itself.
+const stimulus = useStimulusDiagram(() =>
+  form.hasDiagramStimulus.value ? (form.stimulusDiagram.value?.diagram_id ?? null) : null,
+)
 
 function onOptionFile(id: string, file: File) {
   optionFiles[id] = file
@@ -225,7 +231,16 @@ async function uploadPendingMedia() {
 const previewOpen = ref(false)
 // Only computed while the preview is actually open, so editing the form
 // doesn't re-run the options mapping on every keystroke for no observer.
-const previewOptions = computed(() => (previewOpen.value ? (form.toCreateExerciseRequest().options ?? []) : []))
+// A diagram stimulus's options are only derived on save, so an unsaved one's are worked out here
+// the same way, for the preview to be answerable.
+const previewOptions = computed(() => {
+  if (!previewOpen.value) return []
+  const { diagram, instrument } = stimulus
+  if (form.hasDiagramStimulus.value && form.stimulusDiagram.value && diagram.value && instrument.value) {
+    return diagramStimulusOptions(diagram.value, instrument.value, form.stimulusDiagram.value)
+  }
+  return form.toCreateExerciseRequest().options ?? []
+})
 const saving = ref(false)
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
@@ -379,13 +394,20 @@ async function save() {
             </span>
             <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
           </button>
-          <div
-            v-if="showsDiagramStimulus && form.stimulusDiagram.value"
-            data-test="stimulus-diagram-preview"
-            class="rounded-md border border-border bg-surface-sunken p-2"
-          >
-            <EmbeddedDiagram :embed="{ kind: 'single', ref: form.stimulusDiagram.value }" />
-          </div>
+          <template v-if="showsDiagramStimulus && form.stimulusDiagram.value">
+            <StateLoading v-if="stimulus.status.value === 'loading'" :noun="t('diagramEmbedPicker.loadingNoun')" />
+            <DiagramStimulusEditor
+              v-else-if="stimulus.diagram.value && stimulus.instrument.value"
+              :key="stimulus.diagram.value.diagram_id"
+              :diagram="stimulus.diagram.value"
+              :instrument="stimulus.instrument.value"
+              :diagram-ref="form.stimulusDiagram.value"
+              @update:diagram-ref="form.setStimulusDiagram"
+            />
+            <p v-else data-test="stimulus-diagram-unavailable" class="text-sm text-ink-muted">
+              {{ t('diagramEmbedPicker.unavailable') }}
+            </p>
+          </template>
         </div>
 
         <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
@@ -552,7 +574,7 @@ async function save() {
     <MediaPickerModal
       :open="stimulusPickerOpen && stimulusKind === 'image'"
       :initial-diagram="showsDiagramStimulus ? form.stimulusDiagram.value : null"
-      answers
+      choose-only
       @image="onStimulusPicked"
       @diagram="onStimulusDiagram"
       @close="stimulusPickerOpen = false"

@@ -572,8 +572,8 @@
       "custom": "Custom labels",
       "none": "None"
     },
-    "clickToHide": "Click a position in the preview, or an interval above, to hide or show it.",
-    "clickToMarkCorrect": "Click positions in the preview to mark the correct answers — hidden ones count too.",
+    "clickToHide": "Click a position on the diagram, or an interval above, to hide or show it.",
+    "clickToMarkCorrect": "Click positions on the diagram to mark the correct answers — hidden ones count too.",
     "toolLegend": "Clicking a position",
     "toolCorrect": "Marks it correct",
     "toolVisibility": "Hides or shows it",

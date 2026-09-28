@@ -115,7 +115,7 @@ export function useExerciseForm() {
     () => exerciseType.value === 'image_recognition' && stimulusSource.value === 'diagram',
   )
 
-  /** The diagram the picker currently reports; null while it has none a student could answer. */
+  /** The diagram stimulus as picked, then as edited in the form; it may have no correct position yet. */
   function setStimulusDiagram(diagramRef: DiagramRef | null) {
     stimulusDiagram.value = diagramRef
     if (diagramRef) {
