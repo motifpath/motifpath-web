@@ -31,7 +31,7 @@ function mockOneToOneBoundingRect(el: Element, width: number, height: number = E
 }
 
 function makeLocalPosition(overrides: Partial<LocalPosition> = {}): LocalPosition {
-  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', color: null, sequenceIndex: null, customLabel: {}, note: {}, ...overrides }
+  return { id: 'pos-1', string: 6, fret: 5, interval: 'R', noteName: 'A', shape: 'dot', color: null, customLabel: {}, note: {}, ...overrides }
 }
 
 function makeLocalRegion(overrides: Partial<LocalRegion> = {}): LocalRegion {
@@ -252,7 +252,7 @@ describe('FrettedDiagramEditor', () => {
     expect(stickyScope.contains(wrapper.get('[data-test="below-positions"]').element)).toBe(true)
   })
 
-  it('shows each position\'s sequence order (list position), not a free-typed number', () => {
+  it('numbers each position by its place in the list, not a free-typed number', () => {
     const wrapper = mount(FrettedDiagramEditor, {
       props: {
         instrument: makeFrettedInstrument(),
@@ -260,7 +260,7 @@ describe('FrettedDiagramEditor', () => {
       },
     })
 
-    const badges = wrapper.findAll('[data-test="position-sequence-badge"]')
+    const badges = wrapper.findAll('[data-test="position-number-badge"]')
     expect(badges.map((b) => b.text())).toEqual(['1', '2'])
   })
 

@@ -22,8 +22,8 @@ describe('diagramStimulusOptions', () => {
   it('includes the open strings when the window reaches the nut', () => {
     const openChord = makeFrettedDiagram({
       positions: [
-        { position_id: 'e0', string: 6, fret: 0, interval: 'R', note_name: 'E', shape: 'dot', sequence_index: 0 },
-        { position_id: 'e1', string: 5, fret: 2, interval: '5', note_name: 'B', shape: 'dot', sequence_index: 1 },
+        { position_id: 'e0', string: 6, fret: 0, interval: 'R', note_name: 'E', shape: 'dot' },
+        { position_id: 'e1', string: 5, fret: 2, interval: '5', note_name: 'B', shape: 'dot' },
       ],
     })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
-import { makeFrettedDiagram } from '@/shared/testUtils/diagram'
+import { makeFrettedDiagram, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
 
 describe('useDiagramForm', () => {
   it('starts empty with no positions and nothing markable as valid', () => {
@@ -16,13 +16,13 @@ describe('useDiagramForm', () => {
     expect(form.canSave.value).toBe(false)
   })
 
-  it('adds a position at the given cell with empty interval/note_name, sequenced by placement order, shaped as a dot', () => {
+  it('adds a position at the given cell with empty interval/note_name, shaped as a dot', () => {
     const form = useDiagramForm()
 
     form.addPosition({ string: 6, fret: 5 })
 
     expect(form.positions.value).toHaveLength(1)
-    expect(form.positions.value[0]).toMatchObject({ string: 6, fret: 5, interval: '', noteName: '', shape: 'dot', sequenceIndex: 0 })
+    expect(form.positions.value[0]).toMatchObject({ string: 6, fret: 5, interval: '', noteName: '', shape: 'dot' })
     expect(form.positions.value[0].id).toBeTruthy()
   })
 
@@ -65,18 +65,16 @@ describe('useDiagramForm', () => {
     expect(form.positions.value).toHaveLength(0)
   })
 
-  it('reorders positions and re-derives every sequence_index from the new array order', () => {
+  it('reorders positions', () => {
     const form = useDiagramForm()
     form.addPosition({ string: 6, fret: 5 })
     form.addPosition({ string: 5, fret: 3 })
     form.addPosition({ string: 4, fret: 2 })
     const [first, second, third] = form.positions.value.map((p) => p.id)
-    expect(form.positions.value.map((p) => p.sequenceIndex)).toEqual([0, 1, 2])
 
     form.reorderPositions(0, 2)
 
     expect(form.positions.value.map((p) => p.id)).toEqual([second, third, first])
-    expect(form.positions.value.map((p) => p.sequenceIndex)).toEqual([0, 1, 2])
   })
 
   it('auto-fills interval and note_name from tuning + root note when a position is placed', () => {
@@ -168,7 +166,11 @@ describe('useDiagramForm', () => {
       root_note: 'A',
       label_display: 'note',
       color: null,
-      positions: [{ position_id: form.positions.value[0].id, string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'star', sequence_index: 0 }],
+      mode: null,
+      tempo_bpm: null,
+      time_signature: { beats: 4, beat_value: 4 },
+      sequence: [],
+      positions: [{ position_id: form.positions.value[0].id, string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'star' }],
       regions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
     })
@@ -196,6 +198,10 @@ describe('useDiagramForm', () => {
     expect(request).toEqual({
       names: { en: 'Renamed' },
       label_display: 'interval',
+      mode: null,
+      tempo_bpm: null,
+      time_signature: { beats: 4, beat_value: 4 },
+      sequence: [],
       positions: [],
       regions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
@@ -238,7 +244,6 @@ describe('useDiagramForm', () => {
       interval: 'R',
       noteName: 'A',
       shape: 'dot',
-      sequenceIndex: 0,
     })
     expect(form.skillIds.value).toEqual(['s-1'])
     expect(form.conceptIds.value).toEqual(['c-1'])
@@ -378,11 +383,30 @@ describe('useDiagramForm', () => {
       expect(loadedForm().toCopyRequest({ en: 'Pentatonic Template', pt_BR: 'Modelo pentatônico' }, 'basic').kind).toBe('basic')
     })
 
-    it("leaves every position id for the server to assign, since the source diagram's ids are already taken", () => {
+    it("gives every copied position a new id of its own, since the source diagram's ids are already taken", () => {
       const request = loadedForm().toCopyRequest({ en: 'My Pentatonic' }, 'custom')
 
-      expect(request.positions.length).toBeGreaterThan(0)
-      expect(request.positions.every((p) => p.position_id === undefined)).toBe(true)
+      const ids = request.positions.map((p) => p.position_id)
+      expect(ids.every((id) => typeof id === 'string' && !['p0', 'p1', 'p2', 'p3', 'p4', 'p5'].includes(id))).toBe(true)
+      expect(new Set(ids).size).toBe(ids.length)
+    })
+
+    it('copies the sequence onto the new position ids, with its tempo, time signature and mode', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeSequencedFrettedDiagram({ time_signature: { beats: 6, beat_value: 8 } }))
+
+      const request = form.toCopyRequest({ en: 'My Pentatonic' }, 'custom')
+
+      const newId = (sourceIndex: number) => request.positions[sourceIndex]?.position_id
+      expect(request.sequence).toEqual([
+        { position_ids: [newId(0)], value: { num: 1, den: 8 }, strum: 'none' },
+        { position_ids: [newId(1)], value: { num: 1, den: 8 }, strum: 'none' },
+        { position_ids: [], value: { num: 1, den: 8 }, strum: 'none' },
+        { position_ids: [newId(0), newId(2), newId(3)], value: { num: 1, den: 4 }, strum: 'down' },
+      ])
+      expect(request.tempo_bpm).toBe(90)
+      expect(request.time_signature).toEqual({ beats: 6, beat_value: 8 })
+      expect(request.mode).toBe('minor')
     })
   })
 
@@ -737,6 +761,89 @@ describe('useDiagramForm', () => {
     })
   })
 
+  describe('playback', () => {
+    it('starts a new diagram with no sequence, no tempo, no mode and 4/4 time', () => {
+      const form = useDiagramForm()
+      form.addPosition({ string: 6, fret: 5 })
+
+      const request = form.toCreateDiagramRequest()
+
+      expect(request.sequence).toEqual([])
+      expect(request.tempo_bpm).toBeNull()
+      expect(request.mode).toBeNull()
+      expect(request.time_signature).toEqual({ beats: 4, beat_value: 4 })
+    })
+
+    it("sends a loaded diagram's sequence, tempo, time signature and mode back unchanged", () => {
+      const diagram = makeSequencedFrettedDiagram({ time_signature: { beats: 3, beat_value: 4 }, mode: 'dorian' })
+      const form = useDiagramForm()
+      form.loadFromDiagram(diagram)
+
+      const request = form.toUpdateDiagramRequest()
+
+      expect(request.sequence).toEqual(diagram.sequence)
+      expect(request.tempo_bpm).toBe(90)
+      expect(request.time_signature).toEqual({ beats: 3, beat_value: 4 })
+      expect(request.mode).toBe('dorian')
+    })
+
+    it('keeps the positions in the order they were served', () => {
+      const diagram = makeFrettedDiagram()
+      const form = useDiagramForm()
+      form.loadFromDiagram({ ...diagram, positions: [...diagram.positions].reverse() })
+
+      expect(form.positions.value.map((p) => p.id)).toEqual(['p5', 'p4', 'p3', 'p2', 'p1', 'p0'])
+    })
+
+    it('removes a deleted position from every step, and drops the steps it leaves empty but keeps rests', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeSequencedFrettedDiagram())
+
+      form.removePosition('p0')
+
+      expect(form.toUpdateDiagramRequest().sequence).toEqual([
+        { position_ids: ['p1'], value: { num: 1, den: 8 }, strum: 'none' },
+        { position_ids: [], value: { num: 1, den: 8 }, strum: 'none' },
+        { position_ids: ['p2', 'p3'], value: { num: 1, den: 4 }, strum: 'down' },
+      ])
+    })
+
+    it('clears the tempo once deleting positions leaves only rests, since only a sequence with notes plays', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(
+        makeSequencedFrettedDiagram({
+          sequence: [
+            { position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' },
+            { position_ids: [], value: { num: 1, den: 4 }, strum: 'none' },
+          ],
+        }),
+      )
+
+      form.toggleCell({ string: 6, fret: 5 })
+
+      const request = form.toUpdateDiagramRequest()
+      expect(request.sequence).toEqual([])
+      expect(request.tempo_bpm).toBeNull()
+    })
+
+    it('starts a merged stack with no sequence, tempo or mode, since its sources can differ in all three', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(makeSequencedFrettedDiagram())
+
+      form.loadFlattened({
+        positions: [{ interval: 'R', note_name: 'A', shape: 'dot', string: 6, fret: 5 }],
+        regions: [],
+        skillIds: [],
+        conceptIds: [],
+      })
+
+      const request = form.toUpdateDiagramRequest()
+      expect(request.sequence).toEqual([])
+      expect(request.tempo_bpm).toBeNull()
+      expect(request.mode).toBeNull()
+    })
+  })
+
   describe('merging a stack', () => {
     it("replaces the positions, regions and classification with the merged ones, keeping the diagram's own fields", () => {
       const form = useDiagramForm()
@@ -750,13 +857,12 @@ describe('useDiagramForm', () => {
             note_name: 'A',
             shape: 'star',
             color: '#EF4444',
-            sequence_index: 0,
             string: 3,
             fret: 2,
             custom_label: { en: 'Hi' },
             note: { en: 'Target' },
           },
-          { interval: '5', note_name: 'E', shape: 'dot', sequence_index: 1, string: 2, fret: 5 },
+          { interval: '5', note_name: 'E', shape: 'dot', string: 2, fret: 5 },
         ],
         regions: [{ fret_start: 1, fret_end: 3, description: { en: 'Shape 1' }, color: null }],
         skillIds: ['s1'],
@@ -772,7 +878,6 @@ describe('useDiagramForm', () => {
           noteName: 'A',
           shape: 'star',
           color: '#EF4444',
-          sequenceIndex: 0,
           customLabel: { en: 'Hi' },
           note: { en: 'Target' },
         },
@@ -784,7 +889,6 @@ describe('useDiagramForm', () => {
           noteName: 'E',
           shape: 'dot',
           color: null,
-          sequenceIndex: 1,
           customLabel: {},
           note: {},
         },
@@ -806,8 +910,8 @@ describe('useDiagramForm', () => {
 
       form.loadFlattened({
         positions: [
-          { interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 0, string: 6, fret: 5 },
-          { interval: '5', note_name: 'E', shape: 'dot', sequence_index: 1, string: 5, fret: 7 },
+          { interval: 'R', note_name: 'A', shape: 'dot', string: 6, fret: 5 },
+          { interval: '5', note_name: 'E', shape: 'dot', string: 5, fret: 7 },
         ],
         regions: [
           { fret_start: 5, fret_end: 8, description: { en: 'Shape 1' }, color: null },

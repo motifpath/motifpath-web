@@ -680,14 +680,37 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Replace an instrument's names
-         * @description Replaces an instrument's names — the only part of an instrument that
-         *     can change after creation. family and the string/key shape are
-         *     fixed, because every diagram's positions depend on them. Only admins
+         * Replace an instrument's names and default voice
+         * @description Replaces an instrument's names and, optionally, its default voice —
+         *     the only parts of an instrument that can change after creation.
+         *     family and the string/key shape (tuning included) are fixed,
+         *     because every diagram's positions depend on them. Only admins
          *     may update an instrument, since instruments are shared by every user
          *     of the platform.
          */
         patch: operations["updateInstrument"];
+        trace?: never;
+    };
+    "/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the voices diagrams can be played with
+         * @description Returns every voice the platform provides — the sampled sounds a
+         *     diagram's sequence can be played with. Any authenticated user may
+         *     list voices, since students need them to play diagrams.
+         */
+        get: operations["listVoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/diagrams": {
@@ -1883,12 +1906,20 @@ export interface components {
              */
             string_count?: number;
             /**
-             * @description Open-string note name per string, lowest string first (e.g.
-             *     ["E", "A", "D", "G", "B", "E"] for standard guitar tuning).
-             *     Present only when family is fretted, with length equal to
-             *     string_count; absent when family is keyboard.
+             * @description Open-string pitch per string, with its octave, lowest string
+             *     first (e.g. ["E2", "A2", "D3", "G3", "B3", "E4"] for standard
+             *     guitar tuning). A fretted position sounds its string's open
+             *     pitch raised by its fret number in semitones (string 1 is the
+             *     last entry). Present only when family is fretted, with length
+             *     equal to string_count; absent when family is keyboard.
              */
-            tuning?: string[];
+            tuning?: components["schemas"]["Pitch"][];
+            /**
+             * @description The Voice (sampled sound) that plays this instrument's diagrams
+             *     unless a usage chooses another. Always a voice of the same
+             *     family as this instrument.
+             */
+            default_voice_id: string;
             /**
              * @description The lowest and highest playable key, by note name. Present only
              *     when family is keyboard; absent when family is fretted.
@@ -1921,10 +1952,17 @@ export interface components {
             /** @description Required when family is fretted; must be absent when family is keyboard. */
             string_count?: number;
             /**
-             * @description Required when family is fretted, with length equal to
-             *     string_count; must be absent when family is keyboard.
+             * @description Open-string pitch per string, with its octave, lowest string
+             *     first (e.g. ["E2", "A2", "D3", "G3", "B3", "E4"]). Required when
+             *     family is fretted, with length equal to string_count; must be
+             *     absent when family is keyboard.
              */
-            tuning?: string[];
+            tuning?: components["schemas"]["Pitch"][];
+            /**
+             * @description The Voice that plays this instrument's diagrams by default. Must
+             *     be an existing voice of the same family.
+             */
+            default_voice_id: string;
             /** @description Required when family is keyboard; must be absent when family is fretted. */
             key_range?: {
                 /** @description Note name of the lowest key (e.g. "A0"). */
@@ -1935,8 +1973,8 @@ export interface components {
         };
         /**
          * @description One marked location in a Diagram — a note the diagram shows, at a
-         *     specific physical location on its instrument. interval, note_name,
-         *     and sequence_index are shared by every instrument family; string/
+         *     specific physical location on its instrument. interval and
+         *     note_name are shared by every instrument family; string/
          *     fret vs. key depend on the parent Diagram's Instrument.family and
          *     are mutually exclusive, mirroring how Option's per-type fields
          *     (region, image_url, audio_url) already work in this spec.
@@ -1997,13 +2035,6 @@ export interface components {
              *     embedding.
              */
             color?: string | null;
-            /**
-             * @description This position's order in an authored playback sequence (e.g. a
-             *     scale run). Null means this position is not part of any defined
-             *     sequence — playback (see DiagramRef) skips it regardless of
-             *     playback config.
-             */
-            sequence_index?: number | null;
             /**
              * @description Which string this position is on (1 = highest-pitched string).
              *     Present only when the parent Diagram's instrument family is
@@ -2189,6 +2220,30 @@ export interface components {
              */
             color: string | null;
             /**
+             * @description The mode of the key this diagram's material belongs to — with
+             *     root_note it names the key (A + minor is A minor). It describes
+             *     the key, not the exact scale: an A minor pentatonic box is
+             *     minor. Null means the diagram has no key (e.g. a chromatic run
+             *     or a lone chord shape). Never null unless root_note is also
+             *     recorded. A key signature is derived from root_note and mode;
+             *     it is never stored.
+             */
+            mode: components["schemas"]["DiagramMode"] | null;
+            /**
+             * @description The default tempo the sequence plays at, in beats per minute,
+             *     where one beat is the time signature's pulse. Null exactly when
+             *     sequence is empty.
+             */
+            tempo_bpm: number | null;
+            time_signature: components["schemas"]["TimeSignature"];
+            /**
+             * @description The diagram's playback, as an ordered list of steps: which
+             *     positions sound, together or in turn, and for how long. A
+             *     position may sound in any number of steps. Empty means the
+             *     diagram has no playback.
+             */
+            sequence: components["schemas"]["SequenceStep"][];
+            /**
              * @description Every marked position in this diagram. All positions share the
              *     same coordinate shape, decided by this diagram's instrument's
              *     family.
@@ -2210,7 +2265,8 @@ export interface components {
          * @description Payload for creating a new diagram. Every position's string/fret vs.
          *     key, and every region's coordinates, must match the referenced
          *     instrument's family — the API rejects a request that mixes shapes or
-         *     supplies the wrong shape for the instrument. Every per-language text
+         *     supplies the wrong shape for the instrument. Every sequence step may
+         *     only name positions of this request. Every per-language text
          *     (positions' custom_label and note, regions' description) must be
          *     keyed by exactly the languages of names.
          */
@@ -2254,6 +2310,25 @@ export interface components {
              */
             color?: string | null;
             /**
+             * @description The mode of the diagram's key. Requires root_note. Null (or
+             *     omitted) records no key.
+             */
+            mode?: components["schemas"]["DiagramMode"] | null;
+            /**
+             * @description The sequence's default tempo in beats per minute. Required when
+             *     sequence is non-empty; must be null or omitted when it is empty.
+             */
+            tempo_bpm?: number | null;
+            /** @description Omitted defaults to 4/4. */
+            time_signature?: components["schemas"]["TimeSignature"];
+            /**
+             * @description The diagram's playback steps, in order. Every position_id a step
+             *     names must be the position_id of one of this request's
+             *     positions, so a position that plays must be given its
+             *     position_id by the client. Omitted means no playback.
+             */
+            sequence?: components["schemas"]["SequenceStep"][];
+            /**
              * @description Every marked position in this diagram, in the coordinate shape
              *     matching the referenced instrument's family. position_id may be
              *     supplied by the client or left for the server to assign.
@@ -2269,7 +2344,12 @@ export interface components {
         };
         /**
          * @description Payload for replacing an existing diagram's names, positions,
-         *     regions, classification, root_note, label_display, or color. Every
+         *     regions, classification, root_note, mode, label_display, color,
+         *     tempo_bpm, time_signature, or sequence. The rules of a diagram are
+         *     checked on the result of the update: every sequence step must still
+         *     name only positions of the diagram (a position that plays can't be
+         *     removed without also resending the sequence), a mode needs a root
+         *     note, and tempo_bpm is set exactly when the sequence is non-empty. Every
          *     per-language text on the diagram — names, positions' custom_label
          *     and note, regions' description — must cover exactly the same
          *     languages once the update is applied. instrument_id is not
@@ -2310,6 +2390,25 @@ export interface components {
              */
             color?: string;
             /**
+             * @description The mode of the diagram's key, replacing the current value. Null
+             *     clears it. Omitted leaves it unchanged.
+             */
+            mode?: components["schemas"]["DiagramMode"] | null;
+            /**
+             * @description The sequence's default tempo, replacing the current value. Null
+             *     clears it, which is only valid when the resulting sequence is
+             *     empty. Omitted leaves it unchanged.
+             */
+            tempo_bpm?: number | null;
+            /** @description The time signature, replacing the current one. Omitted leaves it unchanged. */
+            time_signature?: components["schemas"]["TimeSignature"];
+            /**
+             * @description The diagram's full list of playback steps, replacing the current
+             *     one; an empty list removes the playback. Omitted leaves the
+             *     sequence unchanged.
+             */
+            sequence?: components["schemas"]["SequenceStep"][];
+            /**
              * @description The diagram's full position list, replacing the current set. A
              *     caller that only wants to change one position must resend the
              *     full set.
@@ -2322,6 +2421,110 @@ export interface components {
              */
             regions?: components["schemas"]["DiagramRegion"][];
             classification?: components["schemas"]["DiagramClassificationInput"];
+        };
+        /**
+         * @description A pitch in scientific pitch notation: a note name with its octave,
+         *     where C4 is middle C (e.g. "E2", "F#3", "Bb4").
+         */
+        Pitch: string;
+        /**
+         * @description The mode of a key. With a root note it names the key and determines
+         *     its key signature: the signature of the major key the mode belongs
+         *     to (A minor and D dorian both have C major's signature).
+         * @enum {string}
+         */
+        DiagramMode: "major" | "minor" | "dorian" | "phrygian" | "lydian" | "mixolydian" | "locrian";
+        /**
+         * @description A length as a fraction of a whole note: 1/4 is a quarter note, 3/8 a
+         *     dotted quarter, 1/16 a sixteenth. Tuplets are plain fractions too: n
+         *     notes in the time of m notes of 1/d are each m/(n×d), so an
+         *     eighth-note triplet is 1/12 and a sixteenth-note sextuplet 1/24.
+         */
+        NoteValue: {
+            /** @description Numerator of the fraction. */
+            num: number;
+            /** @description Denominator of the fraction. */
+            den: number;
+        };
+        /**
+         * @description The diagram's meter, as written (4/4, 3/4, 6/8, 7/8, ...). It decides
+         *     the pulse — what one beat of tempo_bpm is. With 6, 9, 12 or 15 beats
+         *     and a beat_value of 4 or more, the meter is compound and the pulse
+         *     is a dotted note, 3/beat_value (6/8 counts two dotted quarters per
+         *     bar). Otherwise the pulse is 1/beat_value (a quarter in 4/4, an
+         *     eighth in 7/8). A bar lasts beats/beat_value of a whole note.
+         */
+        TimeSignature: {
+            /** @description The upper number — beats per bar. */
+            beats: number;
+            /**
+             * @description The lower number — the note value of one written beat.
+             * @enum {integer}
+             */
+            beat_value: 1 | 2 | 4 | 8 | 16 | 32;
+        };
+        /**
+         * @description One step of a diagram's playback. Its positions start together (or
+         *     strummed), sound for the step's value, and the next step starts
+         *     when this one ends. A step with no positions is a rest.
+         */
+        SequenceStep: {
+            /**
+             * @description The positions that sound in this step, each a position of the
+             *     diagram and each at most once per step. Empty makes the step a
+             *     rest.
+             */
+            position_ids: string[];
+            value: components["schemas"]["NoteValue"];
+            /**
+             * @description How a step's positions start: none starts them together; down
+             *     starts the lowest pitch first and up the highest first, a few
+             *     milliseconds apart, as a pick crossing the strings. The first
+             *     note starts on the beat. Has no effect on a step with fewer than
+             *     two positions.
+             * @default none
+             * @enum {string}
+             */
+            strum: "none" | "down" | "up";
+        };
+        /**
+         * @description A sampled sound (timbre) that diagrams can be played with, e.g.
+         *     acoustic guitar or piano. Voices are provided by the platform; there
+         *     is no endpoint to create or change one. A voice plays diagrams of
+         *     instruments of its family only.
+         */
+        Voice: {
+            /** @description Stable identifier for this voice (e.g. "acoustic-guitar"). */
+            voice_id: string;
+            /** @description The voice's name in each language MotifPath offers. */
+            names: components["schemas"]["LocalizedNames"];
+            /** @description The Language.code of every language this voice has a name in — the keys of names, sorted. */
+            languages: string[];
+            /**
+             * @description The instrument family whose diagrams this voice can play.
+             * @enum {string}
+             */
+            family: "fretted" | "keyboard";
+            /**
+             * @description The voice's recordings, in ascending pitch. A note is played from
+             *     the recording nearest in pitch, re-pitched to match.
+             */
+            samples: components["schemas"]["VoiceSample"][];
+            /**
+             * @description The credit the samples' license requires, shown on the
+             *     platform's credits page.
+             */
+            attribution: string;
+        };
+        /** @description One recording of a voice, at one pitch. */
+        VoiceSample: {
+            /** @description The recorded pitch as a MIDI note number (60 is middle C). */
+            pitch: number;
+            /**
+             * Format: uri
+             * @description Where the recording can be downloaded. Immutable — the file at this URL never changes.
+             */
+            url: string;
         };
         /**
          * @description A usage of one Diagram — its render config, never a stored variant
@@ -2392,18 +2595,38 @@ export interface components {
                 interval_color?: string | null;
             } | null;
             /**
-             * @description Sequenced playback config. Only affects positions with a
-             *     non-null sequence_index; null means this usage does not play
-             *     back.
+             * @description How this usage plays the diagram's sequence. Null means this
+             *     usage offers no Play control. A diagram with an empty sequence
+             *     never plays, whatever this says. Positions this usage hides
+             *     still sound when played, but are never drawn. Ignored for an
+             *     entry of a DiagramStackRef — a stack doesn't play.
              */
             playback?: {
                 /**
-                 * @description Order to step through sequence_index values in.
+                 * @description Overrides the diagram's tempo for this usage. Null (or
+                 *     omitted) uses the diagram's own tempo. A student can still
+                 *     change the tempo while playing; that choice is never saved.
+                 */
+                tempo_bpm?: number | null;
+                /**
+                 * @description Overrides the instrument's default voice for this usage.
+                 *     Must be an existing voice of the diagram's instrument
+                 *     family. Null (or omitted) uses the instrument's default
+                 *     voice.
+                 */
+                voice_id?: string | null;
+                /**
+                 * @description as_authored plays the steps in order; reversed plays them
+                 *     last to first, each step keeping its own value and strum.
+                 * @default as_authored
                  * @enum {string}
                  */
                 direction: "as_authored" | "reversed";
-                /** @description Milliseconds between each position during playback. */
-                step_ms: number;
+                /**
+                 * @description Whether playback starts over after the last step.
+                 * @default false
+                 */
+                loop: boolean;
             } | null;
             /**
              * @description The positions of this diagram that are correct answers, drawn
@@ -3958,13 +4181,22 @@ export interface components {
         LocalizedCaption: {
             [key: string]: string;
         };
-        /** @description Payload for replacing an instrument's names. */
+        /**
+         * @description Payload for replacing an instrument's names and, optionally, its
+         *     default voice.
+         */
         UpdateInstrumentRequest: {
             /**
              * @description The instrument's names, replacing the current set — one for
              *     every language MotifPath offers.
              */
             names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description The voice that plays this instrument's diagrams by default,
+             *     replacing the current one. Must be an existing voice of the
+             *     instrument's family. Omitted leaves it unchanged.
+             */
+            default_voice_id?: string;
         };
         /**
          * @description A language MotifPath content or a user's locale preference can be
@@ -4112,6 +4344,13 @@ export type SchemaDiagramClassification = components['schemas']['DiagramClassifi
 export type SchemaDiagram = components['schemas']['Diagram'];
 export type SchemaCreateDiagramRequest = components['schemas']['CreateDiagramRequest'];
 export type SchemaUpdateDiagramRequest = components['schemas']['UpdateDiagramRequest'];
+export type SchemaPitch = components['schemas']['Pitch'];
+export type SchemaDiagramMode = components['schemas']['DiagramMode'];
+export type SchemaNoteValue = components['schemas']['NoteValue'];
+export type SchemaTimeSignature = components['schemas']['TimeSignature'];
+export type SchemaSequenceStep = components['schemas']['SequenceStep'];
+export type SchemaVoice = components['schemas']['Voice'];
+export type SchemaVoiceSample = components['schemas']['VoiceSample'];
 export type SchemaDiagramRef = components['schemas']['DiagramRef'];
 export type SchemaDiagramStackRef = components['schemas']['DiagramStackRef'];
 export type SchemaCreateLearningPathRequest = components['schemas']['CreateLearningPathRequest'];
@@ -5945,7 +6184,9 @@ export interface operations {
              * @description The request body failed schema validation — including
              *     string_count/tuning present with family keyboard, key_range
              *     present with family fretted, the matching field-group missing
-             *     for the given family, or names missing a language, carrying
+             *     for the given family, a tuning entry without its octave, a
+             *     default_voice_id that is not an existing voice of the
+             *     instrument's family, or names missing a language, carrying
              *     "any" or an unknown language code, or holding an empty name.
              */
             400: {
@@ -6002,8 +6243,9 @@ export interface operations {
             };
             /**
              * @description The request body failed validation — including names missing a
-             *     language, carrying "any" or an unknown language code, or a name
-             *     that is empty.
+             *     language, carrying "any" or an unknown language code, a name
+             *     that is empty, or a default_voice_id that is not an existing
+             *     voice of the instrument's family.
              */
             400: {
                 headers: {
@@ -6038,6 +6280,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listVoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every voice, ordered by voice_id. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Voice"][];
+                };
+            };
+            /** @description The request is malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
         };

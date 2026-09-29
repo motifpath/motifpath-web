@@ -75,8 +75,8 @@ describe('computeFrettedDiagramLayout', () => {
   it('starts the window at the nut when a position is on an open string, since its marker sits on the nut', () => {
     const diagram = makeFrettedDiagram({
       positions: [
-        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
-        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot' },
+        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot' },
       ],
       regions: [],
     })

@@ -11,8 +11,8 @@ const base = makeFrettedDiagram({
   root_note: 'C',
   color: '#3B82F6',
   positions: [
-    { position_id: 'b1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 0 },
-    { position_id: 'b2', string: 4, fret: 5, interval: '5', note_name: 'G', shape: 'dot', sequence_index: 1 },
+    { position_id: 'b1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot' },
+    { position_id: 'b2', string: 4, fret: 5, interval: '5', note_name: 'G', shape: 'dot' },
   ],
   regions: [],
   classification: {
@@ -28,8 +28,8 @@ const overlay = makeFrettedDiagram({
   root_note: 'A',
   color: null,
   positions: [
-    { position_id: 'o1', string: 4, fret: 5, interval: 'b7', note_name: 'G', shape: 'square', sequence_index: 0 },
-    { position_id: 'o2', string: 3, fret: 2, interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 1 },
+    { position_id: 'o1', string: 4, fret: 5, interval: 'b7', note_name: 'G', shape: 'square' },
+    { position_id: 'o2', string: 3, fret: 2, interval: 'R', note_name: 'A', shape: 'dot' },
   ],
   regions: [],
   classification: {

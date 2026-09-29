@@ -11,6 +11,9 @@ type UpdateDiagramRequest = components['schemas']['UpdateDiagramRequest']
 type DiagramPosition = components['schemas']['DiagramPosition']
 type DiagramRegion = components['schemas']['DiagramRegion']
 type DiagramKind = Diagram['kind']
+type DiagramMode = components['schemas']['DiagramMode']
+type SequenceStep = components['schemas']['SequenceStep']
+type TimeSignature = components['schemas']['TimeSignature']
 type LocalizedNames = components['schemas']['LocalizedNames']
 type IntervalCode = DiagramPosition['interval']
 
@@ -30,7 +33,6 @@ export interface LocalPosition extends FrettedCell {
   shape: PositionShape
   /** This marker's own #RRGGBB color; null = use the diagram's general color. */
   color: string | null
-  sequenceIndex: number | null
   /** Shown inside the marker instead of its interval/note name, per language code. */
   customLabel: LocalizedNames
   /** Explains the marker to a reader, per language code. */
@@ -75,7 +77,6 @@ function toLocalPosition(p: DiagramPosition): LocalPosition {
     noteName: p.note_name,
     shape: p.shape ?? 'dot',
     color: p.color ?? null,
-    sequenceIndex: p.sequence_index ?? null,
     customLabel: { ...(p.custom_label ?? {}) },
     note: { ...(p.note ?? {}) },
   }
@@ -105,21 +106,16 @@ function hasInterval(position: LocalPosition): position is IntervalledPosition {
   return position.interval !== ''
 }
 
-/** `withId: false` leaves position_id for the server to assign. */
-function toDiagramPosition(
-  position: IntervalledPosition,
-  languages: string[],
-  { withId = true } = {},
-): DiagramPosition {
+/** `id` replaces the position's own id, as a copy needs. */
+function toDiagramPosition(position: IntervalledPosition, languages: string[], id = position.id): DiagramPosition {
   const customLabel = filledNames(position.customLabel, languages)
   const note = filledNames(position.note, languages)
   return {
-    ...(withId ? { position_id: position.id } : {}),
+    position_id: id,
     interval: position.interval,
     note_name: position.noteName,
     shape: position.shape,
     ...(position.color ? { color: position.color } : {}),
-    sequence_index: position.sequenceIndex,
     string: position.string,
     fret: position.fret,
     ...(Object.keys(customLabel).length > 0 ? { custom_label: customLabel } : {}),
@@ -144,6 +140,21 @@ function toDiagramRegion(region: LocalRegion, languages: string[], { withId = tr
 /** Whether any language of `text` is filled in. */
 function hasAnyText(text: LocalizedNames): boolean {
   return Object.values(text).some((value) => value.trim() !== '')
+}
+
+function copySteps(steps: SequenceStep[]): SequenceStep[] {
+  return steps.map((step) => ({ ...step, value: { ...step.value }, position_ids: [...step.position_ids] }))
+}
+
+/** `steps` naming each position by its id in `ids`; a position `ids` doesn't have is left out. */
+function remapSteps(steps: SequenceStep[], ids: Map<string, string>): SequenceStep[] {
+  return steps.map((step) => ({
+    ...step,
+    position_ids: step.position_ids.flatMap((id) => {
+      const mapped = ids.get(id)
+      return mapped ? [mapped] : []
+    }),
+  }))
 }
 
 /** `text` without `code`. */
@@ -200,6 +211,12 @@ export function useDiagramForm() {
   // clearing is only offered while none is saved.
   const savedColor = ref<string | null>(null)
   const canClearColor = computed(() => savedColor.value === null)
+  // Persisted with the diagram: the key's mode (needs a root note), the default tempo, the meter,
+  // and the steps it plays. The tempo is set exactly while some step sounds a position.
+  const mode = ref<DiagramMode | null>(null)
+  const tempoBpm = ref<number | null>(null)
+  const timeSignature = ref<TimeSignature>({ beats: 4, beat_value: 4 })
+  const sequence = ref<SequenceStep[]>([])
 
   const missingNameLanguages = computed(() =>
     languages.value.filter((code) => (names.value[code] ?? '').trim() === ''),
@@ -316,8 +333,11 @@ export function useDiagramForm() {
     return { interval: intervalFromRoot(noteName, rootNote.value), noteName }
   }
 
-  function reindexSequence() {
-    positions.value.forEach((position, index) => (position.sequenceIndex = index))
+  /** A sequence left without any note has nothing to play, so it keeps no tempo or rests either. */
+  function setSequence(steps: SequenceStep[]) {
+    const sounds = steps.some((step) => step.position_ids.length > 0)
+    sequence.value = sounds ? steps : []
+    if (!sounds) tempoBpm.value = null
   }
 
   function addPosition(cell: FrettedCell) {
@@ -328,11 +348,9 @@ export function useDiagramForm() {
       ...computeNotes(cell),
       shape: 'dot',
       color: null,
-      sequenceIndex: null,
       customLabel: {},
       note: {},
     })
-    reindexSequence()
   }
 
   function setPositionShape(id: string, shape: PositionShape) {
@@ -398,9 +416,16 @@ export function useDiagramForm() {
     regions.value = regions.value.filter((r) => r.id !== id)
   }
 
+  /** A step the position was a note of goes with it once empty; a rest was never a note, so it stays. */
   function removePosition(id: string) {
     positions.value = positions.value.filter((p) => p.id !== id)
-    reindexSequence()
+    setSequence(
+      sequence.value.flatMap((step) => {
+        if (!step.position_ids.includes(id)) return [step]
+        const remaining = step.position_ids.filter((positionId) => positionId !== id)
+        return remaining.length > 0 ? [{ ...step, position_ids: remaining }] : []
+      }),
+    )
   }
 
   function reorderPositions(fromIndex: number, toIndex: number) {
@@ -409,7 +434,6 @@ export function useDiagramForm() {
     if (!moved) return
     reordered.splice(toIndex, 0, moved)
     positions.value = reordered
-    reindexSequence()
   }
 
   function recomputeFromRoot() {
@@ -431,6 +455,10 @@ export function useDiagramForm() {
       root_note: rootNote.value.trim() === '' ? null : rootNote.value,
       label_display: labelDisplay.value,
       color: color.value,
+      mode: mode.value,
+      tempo_bpm: tempoBpm.value,
+      time_signature: { ...timeSignature.value },
+      sequence: copySteps(sequence.value),
       positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position, languages.value)),
       regions: regions.value.map((region) => toDiagramRegion(region, languages.value)),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
@@ -440,18 +468,19 @@ export function useDiagramForm() {
   /**
    * A new diagram of `kind`, named `copyName`, copying everything the form
    * currently shows — how "Save as" creates a copy while leaving the source
-   * untouched. Position and region ids are left out for the server to
-   * assign: each is unique across every diagram, so the source's ids can't
-   * be reused.
+   * untouched. Ids are unique across every diagram, so the source's can't be
+   * reused: positions get new ones (the copied sequence names them), and
+   * region ids are left for the server to assign.
    */
   function toCopyRequest(copyNames: LocalizedNames, kind: DiagramKind): CreateDiagramRequest {
+    const copied = positions.value.filter(hasInterval)
+    const newIds = new Map(copied.map((position) => [position.id, makeId()]))
     return {
       ...toCreateDiagramRequest(),
       names: filledNames(copyNames, Object.keys(copyNames)),
       kind,
-      positions: positions.value
-        .filter(hasInterval)
-        .map((position) => toDiagramPosition(position, languages.value, { withId: false })),
+      sequence: remapSteps(sequence.value, newIds),
+      positions: copied.map((position) => toDiagramPosition(position, languages.value, newIds.get(position.id))),
       regions: regions.value.map((region) => toDiagramRegion(region, languages.value, { withId: false })),
     }
   }
@@ -463,6 +492,11 @@ export function useDiagramForm() {
       label_display: labelDisplay.value,
       // An already-set general color can't be cleared through an update, so an unset one is omitted.
       ...(color.value ? { color: color.value } : {}),
+      mode: mode.value,
+      tempo_bpm: tempoBpm.value,
+      time_signature: { ...timeSignature.value },
+      // The full list, so an empty one removes every saved step.
+      sequence: copySteps(sequence.value),
       positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position, languages.value)),
       // The full list, so an empty one removes every saved region.
       regions: regions.value.map((region) => toDiagramRegion(region, languages.value)),
@@ -483,10 +517,11 @@ export function useDiagramForm() {
     labelDisplay.value = diagram.label_display ?? 'interval'
     color.value = diagram.color ?? null
     savedColor.value = diagram.color ?? null
-    positions.value = [...diagram.positions]
-      .sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0))
-      .map(toLocalPosition)
-    reindexSequence()
+    mode.value = diagram.mode ?? null
+    tempoBpm.value = diagram.tempo_bpm ?? null
+    timeSignature.value = { ...(diagram.time_signature ?? { beats: 4, beat_value: 4 }) }
+    positions.value = diagram.positions.map(toLocalPosition)
+    sequence.value = copySteps(diagram.sequence ?? [])
     // A diagram served by an older API has no regions field at all.
     regions.value = (diagram.regions ?? []).map(toLocalRegion)
     skillIds.value = diagram.classification.skills.map((s) => s.skill_id)
@@ -498,10 +533,13 @@ export function useDiagramForm() {
    * classification replace the form's own, each with a new id. The diagram-level fields
    * (names, languages, instrument, root note, label display, color) stay as they are, and
    * the positions keep the intervals they were merged with rather than being recomputed.
+   * The merged diagram starts without a sequence, tempo or mode: its sources' rhythms don't
+   * combine into one, and they can be in different keys.
    */
   function loadFlattened(flattened: FlattenedStack) {
     positions.value = flattened.positions.map((p) => toLocalPosition({ ...p, position_id: undefined }))
-    reindexSequence()
+    setSequence([])
+    mode.value = null
     regions.value = flattened.regions.map((r) => toLocalRegion({ ...r, region_id: undefined }))
     skillIds.value = [...flattened.skillIds]
     conceptIds.value = [...flattened.conceptIds]
@@ -530,6 +568,10 @@ export function useDiagramForm() {
     labelDisplay,
     color,
     canClearColor,
+    mode,
+    tempoBpm,
+    timeSignature,
+    sequence,
     hasName,
     hasPositions,
     hasCompletePositions,

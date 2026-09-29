@@ -196,7 +196,7 @@ describe('DiagramAuthoringView', () => {
         diagram_id: 'd-new',
         instrument_id: 'i-1',
         names: { en: 'Minor Pentatonic — Position 1' },
-        positions: [{ position_id: 'p-1', interval: 'R', note_name: 'G', string: 1, fret: 3, sequence_index: null }],
+        positions: [{ position_id: 'p-1', interval: 'R', note_name: 'G', string: 1, fret: 3 }],
         classification: { skills: [], concepts: [] },
         created_at: '2026-09-22T00:00:00Z',
       },
@@ -394,7 +394,7 @@ describe('DiagramAuthoringView', () => {
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           names: { en: 'C Major Scale' },
-          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
           classification: {
             skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
             concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
@@ -412,7 +412,7 @@ describe('DiagramAuthoringView', () => {
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
           names: { en: 'C Major Scale (updated)' },
-          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: null }],
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
           classification: {
             skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
             concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
@@ -451,7 +451,7 @@ describe('DiagramAuthoringView', () => {
           names: { en: 'C Major Scale' },
           root_note: 'C',
           label_display: 'note',
-          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'star', string: 2, fret: 1, sequence_index: null }],
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'star', string: 2, fret: 1 }],
           classification: {
             skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
             concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
@@ -484,8 +484,8 @@ describe('DiagramAuthoringView', () => {
           label_display: 'interval',
           color: '#3B82F6',
           positions: [
-            { position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', color: '#EF4444', string: 2, fret: 1, sequence_index: 0 },
-            { position_id: 'p-2', interval: '3', note_name: 'E', shape: 'dot', string: 2, fret: 5, sequence_index: 1 },
+            { position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', color: '#EF4444', string: 2, fret: 1 },
+            { position_id: 'p-2', interval: '3', note_name: 'E', shape: 'dot', string: 2, fret: 5 },
           ],
           classification: {
             skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
@@ -523,7 +523,7 @@ describe('DiagramAuthoringView', () => {
           root_note: 'C',
           label_display: 'interval',
           color: '#3B82F6',
-          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', string: 2, fret: 1, sequence_index: 0 }],
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', string: 2, fret: 1 }],
           classification: {
             skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
             concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
@@ -552,7 +552,7 @@ describe('DiagramAuthoringView', () => {
       root_note: 'C',
       label_display: 'interval',
       color: null,
-      positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
+      positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
       classification: {
         skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
         concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
@@ -627,7 +627,7 @@ describe('DiagramAuthoringView', () => {
           names: { en: 'My C Major' },
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
-          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
+          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
         },
         error: undefined,
         response: { status: 201 },
@@ -645,7 +645,7 @@ describe('DiagramAuthoringView', () => {
           body: expect.objectContaining({
             names: { en: 'My C Major' },
             kind: 'custom',
-            positions: [expect.not.objectContaining({ position_id: expect.anything() })],
+            positions: [expect.objectContaining({ position_id: expect.not.stringMatching(/^p-1$/) })],
           }),
         }),
       )
@@ -665,7 +665,7 @@ describe('DiagramAuthoringView', () => {
           names: { en: 'My C Major' },
           kind: 'custom',
           created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
-          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1, sequence_index: 0 }],
+          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
         },
         error: undefined,
         response: { status: 201 },
@@ -857,7 +857,7 @@ describe('DiagramAuthoringView', () => {
       root_note: 'C',
       label_display: 'interval' as const,
       color: null,
-      positions: [{ position_id: 'p-1', interval: 'R' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1, sequence_index: 0 }],
+      positions: [{ position_id: 'p-1', interval: 'R' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1 }],
       regions: [],
       classification: {
         skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
@@ -873,8 +873,8 @@ describe('DiagramAuthoringView', () => {
       root_note: 'A',
       color: '#22C55E',
       positions: [
-        { position_id: 'o-1', interval: 'R' as const, note_name: 'A', shape: 'dot' as const, string: 3, fret: 2, sequence_index: 0 },
-        { position_id: 'o-2', interval: 'b3' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1, sequence_index: 1 },
+        { position_id: 'o-1', interval: 'R' as const, note_name: 'A', shape: 'dot' as const, string: 3, fret: 2 },
+        { position_id: 'o-2', interval: 'b3' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1 },
       ],
       classification: { skills: [{ skill_id: 's-2', name: 'Pentatonics', parent_id: null }], concepts: [] },
     }
