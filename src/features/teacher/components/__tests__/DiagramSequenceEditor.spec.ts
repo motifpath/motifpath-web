@@ -195,6 +195,27 @@ describe('DiagramSequenceEditor', () => {
     expect(form.sequence.value).toHaveLength(3)
   })
 
+  it('removes a step straight from its card, without selecting it', async () => {
+    const { form, editor, wrapper } = mountEditor()
+
+    const remove = wrapper.findAll('[data-test="sequence-step-remove"]')[1]!
+    expect(remove.attributes('aria-label')).toBe('Remove step 2')
+    await remove.trigger('click')
+
+    expect(form.sequence.value.map((step) => step.position_ids)).toEqual([['p0'], [], ['p0', 'p2', 'p3']])
+    expect(editor.selectedIndex.value).toBeNull()
+  })
+
+  it('keeps the selection on the same step when an earlier one is removed from its card', async () => {
+    const { editor, wrapper } = mountEditor()
+    await wrapper.findAll('[data-test="sequence-step"]')[3]!.trigger('click')
+
+    await wrapper.findAll('[data-test="sequence-step-remove"]')[0]!.trigger('click')
+
+    expect(editor.selectedIndex.value).toBe(2)
+    expect(editor.selectedPositionIds.value).toEqual(['p0', 'p2', 'p3'])
+  })
+
   it('offers a strum only for a step of two or more positions', async () => {
     const { wrapper } = mountEditor()
 

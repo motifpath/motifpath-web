@@ -176,11 +176,13 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     selectedIndex.value = into > from ? into - 1 : into
   }
 
+  /** The selection stays on the step it was on, or clears when that step is the one removed. */
   function removeStep(index: number) {
+    const selected = selectedIndex.value
     replaceStep(index, () => null)
-    if (selectedIndex.value === null) return
-    if (selectedIndex.value >= form.sequence.value.length) selectedIndex.value = form.sequence.value.length - 1
-    if (selectedIndex.value < 0 || form.sequence.value.length === 0) selectedIndex.value = null
+    if (selected === null) return
+    if (selected === index || form.sequence.value.length === 0) selectedIndex.value = null
+    else if (selected > index) selectedIndex.value = selected - 1
   }
 
   function clear() {

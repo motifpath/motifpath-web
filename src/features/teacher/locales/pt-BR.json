@@ -658,6 +658,7 @@
     "fractionValue": "Figura de {num}/{den}",
     "rests": "Pausas",
     "addRest": "Adicionar pausa de {value}",
-    "dragHint": "Arraste um passo para um espaço entre passos para movê-lo, ou sobre outro passo para tocá-los juntos como acorde."
+    "dragHint": "Arraste um passo para um espaço entre passos para movê-lo, ou sobre outro passo para tocá-los juntos como acorde.",
+    "removeStepNumber": "Remover passo {number}"
   }
 }

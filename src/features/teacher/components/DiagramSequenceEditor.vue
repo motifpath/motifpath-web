@@ -350,7 +350,7 @@ const toggleClass = (on: boolean) =>
             class="mr-2 w-0.5 self-stretch rounded-full bg-ink-subtle"
             :aria-label="t('diagramSequenceEditor.barLine')"
           />
-          <li>
+          <li class="relative">
             <button
               type="button"
               draggable="true"
@@ -382,6 +382,16 @@ const toggleClass = (on: boolean) =>
               />
               <span v-else class="text-[0.6875rem]">{{ step.value.num }}/{{ step.value.den }}</span>
               <span v-if="step.position_ids.length > 0" class="font-semibold">{{ stepContent(step) }}</span>
+            </button>
+            <button
+              type="button"
+              data-test="sequence-step-remove"
+              :aria-label="t('diagramSequenceEditor.removeStepNumber', { number: index + 1 })"
+              :title="t('diagramSequenceEditor.removeStepNumber', { number: index + 1 })"
+              class="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-surface text-ink-subtle hover:text-ink"
+              @click="editor.removeStep(index)"
+            >
+              <X :size="10" aria-hidden="true" />
             </button>
           </li>
         </template>

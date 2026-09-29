@@ -658,6 +658,7 @@
     "fractionValue": "{num}/{den} note",
     "rests": "Rests",
     "addRest": "Add {value} rest",
-    "dragHint": "Drag a step into a gap to move it, or onto another step to play them together as a chord."
+    "dragHint": "Drag a step into a gap to move it, or onto another step to play them together as a chord.",
+    "removeStepNumber": "Remove step {number}"
   }
 }

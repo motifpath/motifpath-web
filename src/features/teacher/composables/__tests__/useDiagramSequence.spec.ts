@@ -279,6 +279,20 @@ describe('useDiagramSequence', () => {
       expect(sequence.selectedIndex.value).toBeNull()
     })
 
+    it('keeps the same step selected when another is removed, and unselects a removed one', () => {
+      const { sequence } = setup(makeSequencedFrettedDiagram())
+      sequence.selectStep(2)
+
+      sequence.removeStep(3)
+      expect(sequence.selectedIndex.value).toBe(2)
+
+      sequence.removeStep(0)
+      expect(sequence.selectedIndex.value).toBe(1)
+
+      sequence.removeStep(1)
+      expect(sequence.selectedIndex.value).toBeNull()
+    })
+
     it('clears the whole sequence', () => {
       const { form, sequence } = setup(makeSequencedFrettedDiagram())
 
