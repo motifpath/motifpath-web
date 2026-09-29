@@ -78,6 +78,29 @@ describe('useDiagramSequence', () => {
       expect(ids(form)).toEqual([['p0', 'p3']])
     })
 
+    it('adds a rest of the value given, with the dot or tuplet picked, without changing the palette', () => {
+      const { form, sequence } = setup()
+      sequence.pickPosition('p0')
+      sequence.toggleDotted()
+
+      sequence.addRest(2)
+
+      expect(form.sequence.value[1]).toEqual({ position_ids: [], value: { num: 3, den: 4 }, strum: 'none' })
+      expect(sequence.base.value).toBe(8)
+    })
+
+    it('keeps a chord’s positions in pitch order, lowest first', () => {
+      const { form, sequence } = setup()
+      sequence.pickPosition('p3')
+      sequence.chord.value = true
+
+      sequence.pickPosition('p5')
+      sequence.pickPosition('p0')
+
+      // p0 A2 < p3 E3 < p5 A3
+      expect(ids(form)).toEqual([['p0', 'p3', 'p5']])
+    })
+
     it('adds a rest of the current value after the selected step', () => {
       const { form, sequence } = setup()
       sequence.pickPosition('p0')
@@ -183,6 +206,62 @@ describe('useDiagramSequence', () => {
 
       sequence.moveStep(0, -1)
       expect(ids(form)[0]).toEqual(['p1'])
+    })
+
+    it('moves a dragged step into the gap it is dropped in, keeping it selected', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+      sequence.selectStep(0)
+
+      // Gaps count from 0 (before the first step) to the number of steps (after the last).
+      sequence.moveStepTo(0, 3)
+      expect(ids(form)).toEqual([['p1'], [], ['p0'], ['p0', 'p2', 'p3']])
+      expect(sequence.selectedIndex.value).toBe(2)
+
+      sequence.moveStepTo(3, 0)
+      expect(ids(form)).toEqual([['p0', 'p2', 'p3'], ['p1'], [], ['p0']])
+    })
+
+    it('leaves the steps as they are when a step is dropped next to itself', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+      const before = ids(form)
+
+      sequence.moveStepTo(1, 1)
+      sequence.moveStepTo(1, 2)
+
+      expect(ids(form)).toEqual(before)
+    })
+
+    it('merges a dropped step into another as a chord in pitch order, keeping the target’s value and strum', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+
+      // p1 (C3, an eighth) onto the strummed quarter chord p0 A2, p2 D3, p3 E3.
+      sequence.mergeSteps(1, 3)
+
+      expect(form.sequence.value).toEqual([
+        { position_ids: ['p0'], value: { num: 1, den: 8 }, strum: 'none' },
+        { position_ids: [], value: { num: 1, den: 8 }, strum: 'none' },
+        { position_ids: ['p0', 'p1', 'p2', 'p3'], value: { num: 1, den: 4 }, strum: 'down' },
+      ])
+      expect(sequence.selectedIndex.value).toBe(2)
+    })
+
+    it('turns a rest into a note when a note is dropped onto it, and merges nothing from a rest', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+
+      sequence.mergeSteps(2, 0)
+      expect(form.sequence.value).toHaveLength(4)
+
+      sequence.mergeSteps(1, 2)
+      expect(form.sequence.value[1]).toEqual({ position_ids: ['p1'], value: { num: 1, den: 8 }, strum: 'none' })
+      expect(form.sequence.value).toHaveLength(3)
+    })
+
+    it('does not repeat a position both steps already sound', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+
+      sequence.mergeSteps(0, 3)
+
+      expect(ids(form).at(-1)).toEqual(['p0', 'p2', 'p3'])
     })
 
     it('removes a step, and clears the tempo with the last note', () => {

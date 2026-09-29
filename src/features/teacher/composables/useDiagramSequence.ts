@@ -40,6 +40,19 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
   )
   const selectedPositionIds = computed(() => selectedStep.value?.position_ids ?? [])
 
+  function pitchOf(positionId: string): number {
+    const position = form.positions.value.find((p) => p.id === positionId)
+    return (position && frettedPitch(form.tuning.value, position.string, position.fret)) ?? Number.POSITIVE_INFINITY
+  }
+
+  /** `positionIds` lowest pitch first — how a chord is read; a position without a pitch keeps its place last. */
+  function inPitchOrder(positionIds: string[]): string[] {
+    return positionIds
+      .map((id, order) => ({ id, order, pitch: pitchOf(id) }))
+      .sort((a, b) => a.pitch - b.pitch || a.order - b.order)
+      .map(({ id }) => id)
+  }
+
   function replaceStep(index: number, change: (step: SequenceStep) => SequenceStep | null) {
     form.setSequence(
       form.sequence.value.flatMap((step, i) => {
@@ -99,7 +112,7 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
       replaceStep(selectedIndex.value, (step) => {
         const positionIds = step.position_ids.includes(positionId)
           ? step.position_ids.filter((id) => id !== positionId)
-          : [...step.position_ids, positionId]
+          : inPitchOrder([...step.position_ids, positionId])
         return positionIds.length > 0 ? { ...step, position_ids: positionIds } : null
       })
       if (!form.sequence.value[selectedIndex.value]) selectedIndex.value = null
@@ -108,20 +121,17 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     insertStep({ position_ids: [positionId], value: currentValue.value, strum: 'none' })
   }
 
-  function addRest() {
-    insertStep({ position_ids: [], value: currentValue.value, strum: 'none' })
+  /** A rest of `restBase` (or the palette's value), dotted or in a tuplet as the palette is. */
+  function addRest(restBase: BaseNoteValue = base.value) {
+    const value = noteValue(restBase, { dotted: dotted.value, tuplet: tuplet.value })
+    insertStep({ position_ids: [], value, strum: 'none' })
   }
 
   /** Every position once, lowest pitch first — a scale run to start from. Only for an empty sequence. */
   function fillFromPositions() {
     if (form.sequence.value.length > 0) return
-    const pitched = form.positions.value.map((position, order) => ({
-      id: position.id,
-      order,
-      pitch: frettedPitch(form.tuning.value, position.string, position.fret) ?? Number.POSITIVE_INFINITY,
-    }))
-    pitched.sort((a, b) => a.pitch - b.pitch || a.order - b.order)
-    form.setSequence(pitched.map(({ id }) => ({ position_ids: [id], value: currentValue.value, strum: 'none' })))
+    const ids = inPitchOrder(form.positions.value.map((position) => position.id))
+    form.setSequence(ids.map((id) => ({ position_ids: [id], value: currentValue.value, strum: 'none' })))
     selectedIndex.value = null
   }
 
@@ -138,6 +148,32 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     steps.splice(to, 0, moved)
     form.setSequence(steps)
     if (selectedIndex.value === index) selectedIndex.value = to
+  }
+
+  /** Moves step `from` into gap `gap` — 0 is before the first step, the step count after the last. */
+  function moveStepTo(from: number, gap: number) {
+    if (gap === from || gap === from + 1) return
+    const to = gap > from ? gap - 1 : gap
+    moveStep(from, to - from)
+  }
+
+  /**
+   * Sounds step `from`'s positions in step `into` as well, lowest pitch first,
+   * and removes step `from`. The target keeps its own value and strum; a rest
+   * has no positions to give, so dropping one merges nothing.
+   */
+  function mergeSteps(from: number, into: number) {
+    const source = form.sequence.value[from]
+    const target = form.sequence.value[into]
+    if (from === into || !source || !target || source.position_ids.length === 0) return
+    const merged = inPitchOrder([...new Set([...target.position_ids, ...source.position_ids])])
+    form.setSequence(
+      form.sequence.value.flatMap((step, i) => {
+        if (i === from) return []
+        return i === into ? [{ ...step, position_ids: merged }] : [step]
+      }),
+    )
+    selectedIndex.value = into > from ? into - 1 : into
   }
 
   function removeStep(index: number) {
@@ -194,6 +230,8 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     fillFromPositions,
     setStrum,
     moveStep,
+    moveStepTo,
+    mergeSteps,
     removeStep,
     clear,
     setTempo,

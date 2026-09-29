@@ -629,7 +629,6 @@
       "3": "Tercina",
       "5": "Quintina"
     },
-    "rest": "Adicionar pausa",
     "restLabel": "Pausa",
     "stepsAriaLabel": "Passos da sequência",
     "stepAriaLabel": "Passo {number}: {content}, {value}",
@@ -656,6 +655,9 @@
       "3": "{value} em tercina",
       "5": "{value} em quintina"
     },
-    "fractionValue": "Figura de {num}/{den}"
+    "fractionValue": "Figura de {num}/{den}",
+    "rests": "Pausas",
+    "addRest": "Adicionar pausa de {value}",
+    "dragHint": "Arraste um passo para um espaço entre passos para movê-lo, ou sobre outro passo para tocá-los juntos como acorde."
   }
 }

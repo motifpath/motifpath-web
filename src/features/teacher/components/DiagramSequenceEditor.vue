@@ -4,17 +4,19 @@
  * steps it plays — each step a note, a chord or a rest of one note value,
  * with a bar line wherever a new bar starts. Steps are added by recording
  * clicks on the fretboard above (the caller routes them to `editor`), or all
- * at once from the placed positions.
+ * at once from the placed positions. A step dragged into a gap between steps
+ * moves there; dragged onto another step, its notes join that step as a chord.
  *
  * Edits the form and sequence editor it's given; holds no state itself.
  */
-import { computed } from 'vue'
-import { ChevronLeft, ChevronRight, Circle, Plus, Trash2, X } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { ChevronLeft, ChevronRight, Circle, Trash2, X } from 'lucide-vue-next'
 
 import type { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import type { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import NoteValueIcon from '@/shared/components/NoteValueIcon.vue'
 import { BASE_NOTE_VALUES, barStarts, describeNoteValue } from '@/shared/utils/sequence'
 import type { components } from '@/api/generated/core-domain'
 
@@ -41,6 +43,8 @@ const STRUMS: Strum[] = ['none', 'down', 'up']
 
 const steps = computed(() => props.form.sequence.value)
 const bars = computed(() => barStarts(steps.value, props.form.timeSignature.value))
+// Each step with the note it's written as, when one note, dot or tuplet writes its value.
+const stepViews = computed(() => steps.value.map((step) => ({ step, written: describeNoteValue(step.value) })))
 const hasRoot = computed(() => props.form.rootNote.value.trim() !== '')
 const selectedStep = computed(() =>
   props.editor.selectedIndex.value === null ? null : (steps.value[props.editor.selectedIndex.value] ?? null),
@@ -68,6 +72,10 @@ function baseName(base: (typeof BASE_NOTE_VALUES)[number]): string {
 }
 
 /** A note value's name ("Dotted quarter", "Eighth triplet"); names are lowercase until the label starts with one. */
+function restLabel(base: (typeof BASE_NOTE_VALUES)[number]): string {
+  return t('diagramSequenceEditor.addRest', { value: baseName(base) })
+}
+
 function valueLabel(value: NoteValue): string {
   const parts = describeNoteValue(value)
   if (!parts) return t('diagramSequenceEditor.fractionValue', { num: value.num, den: value.den })
@@ -75,6 +83,54 @@ function valueLabel(value: NoteValue): string {
   if (parts.dotted) return capitalized(t('diagramSequenceEditor.dottedValue', { value: name }))
   if (parts.tuplet) return capitalized(t(`diagramSequenceEditor.tupletValue.${parts.tuplet}`, { value: name }))
   return capitalized(name)
+}
+
+// The step being dragged, and the gap or step it's over — only while a drag is on.
+const dragFrom = ref<number | null>(null)
+const overGap = ref<number | null>(null)
+const overStep = ref<number | null>(null)
+
+function startDrag(index: number, event: DragEvent) {
+  dragFrom.value = index
+  // Firefox starts a drag only once it carries some data.
+  event.dataTransfer?.setData('text/plain', String(index))
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+}
+
+function endDrag() {
+  dragFrom.value = null
+  overGap.value = null
+  overStep.value = null
+}
+
+/** A step can take another's notes unless it's the one dragged, or the dragged one is a rest. */
+function canMergeInto(index: number): boolean {
+  const from = dragFrom.value
+  return from !== null && from !== index && (steps.value[from]?.position_ids.length ?? 0) > 0
+}
+
+function onGapOver(gap: number, event: DragEvent) {
+  if (dragFrom.value === null) return
+  event.preventDefault()
+  overGap.value = gap
+  overStep.value = null
+}
+
+function onStepOver(index: number, event: DragEvent) {
+  if (!canMergeInto(index)) return
+  event.preventDefault()
+  overStep.value = index
+  overGap.value = null
+}
+
+function dropInGap(gap: number) {
+  if (dragFrom.value !== null) props.editor.moveStepTo(dragFrom.value, gap)
+  endDrag()
+}
+
+function dropOnStep(index: number) {
+  if (dragFrom.value !== null && canMergeInto(index)) props.editor.mergeSteps(dragFrom.value, index)
+  endDrag()
 }
 
 function selectValue(event: Event): string {
@@ -208,94 +264,137 @@ const toggleClass = (on: boolean) =>
     </div>
     <p v-if="editor.recording.value" class="text-xs text-accent-text">{{ t('diagramSequenceEditor.recordingHint') }}</p>
 
-    <div class="flex flex-col gap-1">
-      <span class="text-xs text-ink-subtle">{{ t('diagramSequenceEditor.noteValue') }}</span>
-      <div class="flex flex-wrap items-center gap-1.5">
-        <button
-          v-for="base in BASE_NOTE_VALUES"
-          :key="base"
-          type="button"
-          :data-test="`sequence-value-${base}`"
-          :aria-pressed="editor.base.value === base"
-          class="rounded-md border px-2 py-1 text-xs font-semibold"
-          :class="toggleClass(editor.base.value === base)"
-          @click="editor.setBase(base)"
-        >
-          {{ capitalized(baseName(base)) }}
-        </button>
-        <span class="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <button
-          type="button"
-          data-test="sequence-dotted"
-          :aria-pressed="editor.dotted.value"
-          class="rounded-md border px-2 py-1 text-xs font-semibold"
-          :class="toggleClass(editor.dotted.value)"
-          @click="editor.toggleDotted()"
-        >
-          {{ t('diagramSequenceEditor.dotted') }}
-        </button>
-        <button
-          v-for="tuplet in TUPLET_OPTIONS"
-          :key="tuplet"
-          type="button"
-          :data-test="`sequence-tuplet-${tuplet}`"
-          :aria-pressed="editor.tuplet.value === tuplet"
-          class="rounded-md border px-2 py-1 text-xs font-semibold"
-          :class="toggleClass(editor.tuplet.value === tuplet)"
-          @click="editor.setTuplet(editor.tuplet.value === tuplet ? null : tuplet)"
-        >
-          {{ t(`diagramSequenceEditor.tuplets.${tuplet}`) }}
-        </button>
-        <span class="mx-1 h-5 w-px bg-border" aria-hidden="true" />
-        <button
-          type="button"
-          data-test="sequence-rest"
-          class="flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-xs font-semibold text-ink-muted"
-          @click="editor.addRest()"
-        >
-          <Plus :size="12" aria-hidden="true" />
-          {{ t('diagramSequenceEditor.rest') }}
-        </button>
+    <div class="flex flex-wrap items-end gap-x-4 gap-y-2">
+      <div class="flex flex-col gap-1">
+        <span class="text-xs text-ink-subtle">{{ t('diagramSequenceEditor.noteValue') }}</span>
+        <div class="flex flex-wrap items-center gap-1">
+          <button
+            v-for="base in BASE_NOTE_VALUES"
+            :key="base"
+            type="button"
+            :data-test="`sequence-value-${base}`"
+            :aria-pressed="editor.base.value === base"
+            :title="capitalized(baseName(base))"
+            class="flex h-9 w-9 items-center justify-center rounded-md border"
+            :class="toggleClass(editor.base.value === base)"
+            @click="editor.setBase(base)"
+          >
+            <NoteValueIcon kind="note" :base="base" :label="capitalized(baseName(base))" />
+          </button>
+          <span class="mx-1 h-6 w-px bg-border" aria-hidden="true" />
+          <button
+            type="button"
+            data-test="sequence-dotted"
+            :aria-pressed="editor.dotted.value"
+            :aria-label="t('diagramSequenceEditor.dotted')"
+            :title="t('diagramSequenceEditor.dotted')"
+            class="flex h-9 w-9 items-center justify-center rounded-md border text-2xl leading-none"
+            :class="toggleClass(editor.dotted.value)"
+            @click="editor.toggleDotted()"
+          >
+            <span aria-hidden="true">·</span>
+          </button>
+          <button
+            v-for="tuplet in TUPLET_OPTIONS"
+            :key="tuplet"
+            type="button"
+            :data-test="`sequence-tuplet-${tuplet}`"
+            :aria-pressed="editor.tuplet.value === tuplet"
+            :aria-label="t(`diagramSequenceEditor.tuplets.${tuplet}`)"
+            :title="t(`diagramSequenceEditor.tuplets.${tuplet}`)"
+            class="flex h-9 w-9 items-center justify-center rounded-md border text-sm font-bold italic"
+            :class="toggleClass(editor.tuplet.value === tuplet)"
+            @click="editor.setTuplet(editor.tuplet.value === tuplet ? null : tuplet)"
+          >
+            <span aria-hidden="true">{{ tuplet }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="flex flex-col gap-1">
+        <span class="text-xs text-ink-subtle">{{ t('diagramSequenceEditor.rests') }}</span>
+        <div class="flex flex-wrap items-center gap-1">
+          <button
+            v-for="base in BASE_NOTE_VALUES"
+            :key="base"
+            type="button"
+            :data-test="`sequence-rest-${base}`"
+            :aria-label="restLabel(base)"
+            :title="restLabel(base)"
+            class="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-ink-muted"
+            @click="editor.addRest(base)"
+          >
+            <NoteValueIcon kind="rest" :base="base" :dotted="editor.dotted.value" :tuplet="editor.tuplet.value" label="" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
 
     <p v-if="steps.length === 0" data-test="sequence-empty" class="text-sm text-ink-muted">
       {{ t('diagramSequenceEditor.empty') }}
     </p>
-    <ol
-      v-else
-      class="flex flex-wrap items-stretch gap-1.5"
-      :aria-label="t('diagramSequenceEditor.stepsAriaLabel')"
-    >
-      <template v-for="(step, index) in steps" :key="index">
+    <template v-else>
+      <p class="text-xs text-ink-subtle">{{ t('diagramSequenceEditor.dragHint') }}</p>
+      <ol class="flex flex-wrap items-stretch gap-y-1.5" :aria-label="t('diagramSequenceEditor.stepsAriaLabel')">
+        <template v-for="({ step, written }, index) in stepViews" :key="index">
+          <li
+            data-test="sequence-gap"
+            aria-hidden="true"
+            class="w-2 shrink-0 self-stretch rounded-full"
+            :class="overGap === index ? 'bg-accent' : ''"
+            @dragover="onGapOver(index, $event)"
+            @drop.prevent="dropInGap(index)"
+          />
+          <li
+            v-if="bars[index]"
+            data-test="sequence-bar-line"
+            class="mr-2 w-0.5 self-stretch rounded-full bg-ink-subtle"
+            :aria-label="t('diagramSequenceEditor.barLine')"
+          />
+          <li>
+            <button
+              type="button"
+              draggable="true"
+              data-test="sequence-step"
+              :aria-pressed="editor.selectedIndex.value === index"
+              :aria-label="t('diagramSequenceEditor.stepAriaLabel', { number: index + 1, content: stepContent(step), value: valueLabel(step.value) })"
+              class="flex min-w-12 cursor-grab flex-col items-center gap-0.5 rounded-md border px-2 py-1 text-xs"
+              :class="[
+                editor.selectedIndex.value === index
+                  ? 'border-accent bg-accent-muted text-ink'
+                  : 'border-border bg-surface text-ink-muted',
+                overStep === index ? 'ring-2 ring-accent' : '',
+                dragFrom === index ? 'opacity-50' : '',
+              ]"
+              @click="editor.selectStep(index)"
+              @dragstart="startDrag(index, $event)"
+              @dragend="endDrag"
+              @dragover="onStepOver(index, $event)"
+              @drop.prevent="dropOnStep(index)"
+            >
+              <NoteValueIcon
+                v-if="written"
+                :kind="step.position_ids.length === 0 ? 'rest' : 'note'"
+                :base="written.base"
+                :dotted="written.dotted"
+                :tuplet="written.tuplet"
+                label=""
+                aria-hidden="true"
+              />
+              <span v-else class="text-[0.6875rem]">{{ step.value.num }}/{{ step.value.den }}</span>
+              <span v-if="step.position_ids.length > 0" class="font-semibold">{{ stepContent(step) }}</span>
+            </button>
+          </li>
+        </template>
         <li
-          v-if="bars[index]"
-          data-test="sequence-bar-line"
-          class="w-0.5 self-stretch rounded-full bg-ink-subtle"
-          :aria-label="t('diagramSequenceEditor.barLine')"
+          data-test="sequence-gap"
+          aria-hidden="true"
+          class="w-2 shrink-0 self-stretch rounded-full"
+          :class="overGap === steps.length ? 'bg-accent' : ''"
+          @dragover="onGapOver(steps.length, $event)"
+          @drop.prevent="dropInGap(steps.length)"
         />
-        <li>
-          <button
-            type="button"
-            data-test="sequence-step"
-            :aria-pressed="editor.selectedIndex.value === index"
-            :aria-label="t('diagramSequenceEditor.stepAriaLabel', { number: index + 1, content: stepContent(step), value: valueLabel(step.value) })"
-            class="flex min-w-14 flex-col items-center rounded-md border px-2 py-1 text-xs"
-            :class="
-              editor.selectedIndex.value === index
-                ? 'border-accent bg-accent-muted text-ink'
-                : 'border-border bg-surface text-ink-muted'
-            "
-            @click="editor.selectStep(index)"
-          >
-            <span class="font-semibold" :class="step.position_ids.length === 0 ? 'italic text-ink-subtle' : ''">
-              {{ stepContent(step) }}
-            </span>
-            <span class="text-[0.6875rem] text-ink-subtle">{{ valueLabel(step.value) }}</span>
-          </button>
-        </li>
-      </template>
-    </ol>
+      </ol>
+    </template>
 
     <div
       v-if="selectedStep && editor.selectedIndex.value !== null"

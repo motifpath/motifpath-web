@@ -629,7 +629,6 @@
       "3": "Triplet",
       "5": "Quintuplet"
     },
-    "rest": "Add rest",
     "restLabel": "Rest",
     "stepsAriaLabel": "Sequence steps",
     "stepAriaLabel": "Step {number}: {content}, {value}",
@@ -656,6 +655,9 @@
       "3": "{value} triplet",
       "5": "{value} quintuplet"
     },
-    "fractionValue": "{num}/{den} note"
+    "fractionValue": "{num}/{den} note",
+    "rests": "Rests",
+    "addRest": "Add {value} rest",
+    "dragHint": "Drag a step into a gap to move it, or onto another step to play them together as a chord."
   }
 }

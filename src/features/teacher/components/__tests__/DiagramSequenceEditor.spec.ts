@@ -20,17 +20,21 @@ const stepTexts = (wrapper: ReturnType<typeof mount>) =>
   wrapper.findAll('[data-test="sequence-step"]').map((step) => step.text())
 
 describe('DiagramSequenceEditor', () => {
-  it('lists every step with what it sounds and for how long', () => {
+  it('lists every step with what it sounds and, as a note or rest icon, for how long', () => {
     const { wrapper } = mountEditor()
+    const labels = wrapper.findAll('[data-test="sequence-step"]').map((step) => step.attributes('aria-label'))
 
-    expect(stepTexts(wrapper)).toEqual([
-      expect.stringContaining('R'),
-      expect.stringContaining('b3'),
-      expect.stringContaining('Rest'),
-      expect.stringMatching(/R.*4.*5/),
+    expect(stepTexts(wrapper)[0]).toContain('R')
+    expect(stepTexts(wrapper)[3]).toMatch(/R.*4.*5/)
+    expect(labels).toEqual([
+      'Step 1: R, Eighth',
+      'Step 2: b3, Eighth',
+      'Step 3: Rest, Eighth',
+      'Step 4: R 4 5, Quarter',
     ])
-    expect(stepTexts(wrapper)[0]).toContain('Eighth')
-    expect(stepTexts(wrapper)[3]).toContain('Quarter')
+    const steps = wrapper.findAll('[data-test="sequence-step"]')
+    expect(steps[0]!.find('[data-test="note-head"]').exists()).toBe(true)
+    expect(steps[2]!.find('[data-test="rest-8"]').exists()).toBe(true)
   })
 
   it('draws a bar line where a new bar starts', () => {
@@ -103,6 +107,14 @@ describe('DiagramSequenceEditor', () => {
     expect(editor.chord.value).toBe(true)
   })
 
+  it('shows each note value as its notation icon, named for screen readers', () => {
+    const { wrapper } = mountEditor()
+
+    const quarter = wrapper.get('[data-test="sequence-value-4"]')
+    expect(quarter.find('svg').attributes('aria-label')).toBe('Quarter')
+    expect(quarter.find('[data-test="note-head"]').exists()).toBe(true)
+  })
+
   it('picks the note value from the palette, with a dot or as a triplet', async () => {
     const { editor, wrapper } = mountEditor()
 
@@ -117,12 +129,54 @@ describe('DiagramSequenceEditor', () => {
     expect(editor.currentValue.value).toEqual({ num: 3, den: 32 })
   })
 
-  it('adds a rest', async () => {
+  it('adds a rest of the value clicked, in one click', async () => {
     const { form, wrapper } = mountEditor()
 
-    await wrapper.get('[data-test="sequence-rest"]').trigger('click')
+    const halfRest = wrapper.get('[data-test="sequence-rest-2"]')
+    expect(halfRest.attributes('aria-label')).toBe('Add half rest')
+    await halfRest.trigger('click')
 
-    expect(form.sequence.value.at(-1)?.position_ids).toEqual([])
+    expect(form.sequence.value.at(-1)).toEqual({ position_ids: [], value: { num: 1, den: 2 }, strum: 'none' })
+  })
+
+  describe('dragging steps', () => {
+    const drag = async (wrapper: ReturnType<typeof mount>, from: number) =>
+      wrapper.findAll('[data-test="sequence-step"]')[from]!.trigger('dragstart')
+
+    it('moves a step dropped into a gap between steps', async () => {
+      const { form, wrapper } = mountEditor()
+
+      await drag(wrapper, 0)
+      await wrapper.findAll('[data-test="sequence-gap"]')[3]!.trigger('drop')
+
+      expect(form.sequence.value.map((step) => step.position_ids)).toEqual([['p1'], [], ['p0'], ['p0', 'p2', 'p3']])
+    })
+
+    it('has a gap before the first step and after the last', () => {
+      const { wrapper } = mountEditor()
+
+      expect(wrapper.findAll('[data-test="sequence-gap"]')).toHaveLength(5)
+    })
+
+    it('makes a chord of a step dropped onto another', async () => {
+      const { form, wrapper } = mountEditor()
+
+      await drag(wrapper, 1)
+      await wrapper.findAll('[data-test="sequence-step"]')[3]!.trigger('drop')
+
+      expect(form.sequence.value.at(-1)?.position_ids).toEqual(['p0', 'p1', 'p2', 'p3'])
+    })
+
+    it('does nothing when a drag ends without a drop', async () => {
+      const { form, wrapper } = mountEditor()
+      const before = JSON.stringify(form.sequence.value)
+
+      await drag(wrapper, 1)
+      await wrapper.findAll('[data-test="sequence-step"]')[1]!.trigger('dragend')
+      await wrapper.findAll('[data-test="sequence-gap"]')[0]!.trigger('drop')
+
+      expect(JSON.stringify(form.sequence.value)).toBe(before)
+    })
   })
 
   it('edits the selected step: strum a chord, move it, remove it', async () => {
