@@ -194,7 +194,7 @@
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
     "stringFret": "Corda {string}, casa {fret}",
-    "reorderHint": "Arraste uma posição para reordenar sua sequência",
+    "reorderHint": "Arraste uma posição para mudar seu lugar na lista",
     "shapeAriaLabel": "Mostrar esta posição como {shape}",
     "removePositionAriaLabel": "Remover esta posição",
     "positionColor": "Cor do marcador",

@@ -395,7 +395,7 @@ function onDrop(index: number) {
       >
         <GripVertical :size="14" class="cursor-grab text-ink-subtle" aria-hidden="true" />
         <span
-          data-test="position-sequence-badge"
+          data-test="position-number-badge"
           class="flex h-5 w-5 items-center justify-center rounded-full bg-surface-sunken text-[0.6875rem] font-semibold text-ink-muted"
         >
           {{ index + 1 }}
