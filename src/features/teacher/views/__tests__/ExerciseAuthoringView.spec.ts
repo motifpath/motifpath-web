@@ -1045,6 +1045,26 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
       expect(body).not.toHaveProperty('image_url')
     })
 
+    it('keeps Save disabled while the stimulus plays at an out-of-range tempo, and saves once it is fixed', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Tap every root')
+      await pickDiagramStimulus(wrapper)
+      await selectClassification(wrapper)
+      const editor = wrapper.getComponent(DiagramStimulusEditor)
+      const playback = { voice_id: null, direction: 'as_authored' as const, loop: false }
+
+      editor.vm.$emit('update:diagramRef', { ...rootsOnly, playback: { ...playback, tempo_bpm: 500 } })
+      await flushPromises()
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+
+      editor.vm.$emit('update:diagramRef', { ...rootsOnly, playback: { ...playback, tempo_bpm: 120 } })
+      await flushPromises()
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+      expect(POST.mock.calls[0]![1].body.diagram_ref.playback.tempo_bpm).toBe(120)
+    })
+
     it('previews an unsaved diagram stimulus with every fretboard cell to tap', async () => {
       const wrapper = mountWithStubbedPickers()
       await pickDiagramStimulus(wrapper)

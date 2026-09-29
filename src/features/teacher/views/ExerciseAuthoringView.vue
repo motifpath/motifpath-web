@@ -264,7 +264,7 @@ async function save() {
   // Re-checked here, not just via the AppBar button's disabled state — the
   // button is the only other line of defense, and this one doesn't depend
   // on a click ever happening through it.
-  if (!form.hasCorrectOption.value || !hasClassification.value) return
+  if (!form.hasCorrectOption.value || !form.hasValidStimulusPlayback.value || !hasClassification.value) return
 
   saving.value = true
   // The exercise this form is currently backing, not the route it was
@@ -302,7 +302,7 @@ async function save() {
       :primary-nav-to="{ name: 'teacher-exercises' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('exerciseAuthoringView.editExerciseBreadcrumb') : t('exerciseAuthoringView.newExerciseBreadcrumb')"
       :show-save="canAuthor"
-      :save-disabled="!form.hasCorrectOption.value || !hasClassification || saving"
+      :save-disabled="!form.hasCorrectOption.value || !form.hasValidStimulusPlayback.value || !hasClassification || saving"
       :just-saved="justSaved"
       :on-save="save"
     />

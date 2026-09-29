@@ -76,6 +76,13 @@ describe('AuthenticatedLayout', () => {
     expect(active.map((l) => l.text())).toEqual([tab])
   })
 
+  it('links to the credits page from its footer', () => {
+    const wrapper = mountLayout()
+
+    const link = wrapper.get('footer').findComponent(RouterLinkStub)
+    expect(link.props('to')).toEqual({ name: 'credits' })
+  })
+
   it('renders the routed view', () => {
     const wrapper = mountLayout()
 

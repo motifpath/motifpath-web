@@ -23,8 +23,6 @@ export interface PlaybackSource {
   playback: Playback | null
 }
 
-export const MIN_TEMPO_BPM = 20
-export const MAX_TEMPO_BPM = 300
 const FALLBACK_TEMPO_BPM = 90
 /** The spread between the strings of a strummed step, as a pick crosses them. */
 const STRUM_SECONDS = 0.018

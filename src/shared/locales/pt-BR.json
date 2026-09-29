@@ -183,5 +183,15 @@
     "tempo": "Andamento",
     "bpm": "{bpm} BPM",
     "loadFailed": "Não foi possível carregar o som. Toque em Tocar para tentar de novo."
+  },
+  "footer": {
+    "credits": "Créditos"
+  },
+  "creditsView": {
+    "title": "Créditos",
+    "soundsTitle": "Sons",
+    "soundsIntro": "Os diagramas tocam com estas gravações, usadas conforme as suas licenças.",
+    "loadingNoun": "créditos",
+    "errorMessage": "Não foi possível carregar os créditos."
   }
 }

@@ -9,7 +9,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
-import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import { makeFrettedDiagram, makeFrettedInstrument, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
 import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
@@ -92,6 +92,18 @@ describe('DiagramEmbedPicker', () => {
       diagram_id: 'd-penta',
       layers: { label: 'custom', intervals: true, hidden_position_ids: null, subset: null },
     })
+  })
+
+  it('offers playback settings for a diagram with a sequence', async () => {
+    const sequenced = makeSequencedFrettedDiagram({ diagram_id: 'd-penta' })
+    byId['d-penta'] = sequenced
+    serve([sequenced])
+
+    const playing = mountPicker()
+    await flushPromises()
+    await choose(playing)
+    expect(playing.find('[data-test="embed-picker-playback"]').exists()).toBe(true)
+    expect(lastChange(playing)?.playback).toEqual(expect.objectContaining({ direction: 'as_authored' }))
   })
 
   it('chooses the label mode', async () => {

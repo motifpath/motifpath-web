@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { barStarts, describeNoteValue, noteValue, pulse, sameNoteValue } from '@/shared/utils/sequence'
+import { barStarts, describeNoteValue, isValidTempoBpm, noteValue, pulse, sameNoteValue } from '@/shared/utils/sequence'
 
 const step = (num: number, den: number) => ({ position_ids: ['p'], value: { num, den }, strum: 'none' as const })
 
@@ -96,5 +96,19 @@ describe('barStarts', () => {
     const steps = Array.from({ length: 7 }, () => step(1, 8))
 
     expect(barStarts(steps, { beats: 6, beat_value: 8 })).toEqual([false, false, false, false, false, false, true])
+  })
+})
+
+describe('isValidTempoBpm', () => {
+  it.each([
+    [20, true],
+    [300, true],
+    [90, true],
+    [19, false],
+    [301, false],
+    [90.5, false],
+    [Number.NaN, false],
+  ])('%s BPM is valid: %s', (bpm, valid) => {
+    expect(isValidTempoBpm(bpm)).toBe(valid)
   })
 })

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
 
 import AppBar from '@/shared/components/AppBar.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
+import { useTypedT } from '@/shared/composables/useTypedT'
+
+const { t } = useTypedT()
 
 const { isCompact } = useIsCompact()
 
@@ -41,5 +44,9 @@ const contentWidthClass = computed(() =>
     <main class="mx-auto w-full flex-1 px-4 py-8" :class="contentWidthClass">
       <RouterView />
     </main>
+
+    <footer class="mx-auto w-full px-4 pb-6 text-xs text-ink-subtle" :class="contentWidthClass">
+      <RouterLink :to="{ name: 'credits' }" class="hover:text-ink-muted hover:underline">{{ t('footer.credits') }}</RouterLink>
+    </footer>
   </div>
 </template>
