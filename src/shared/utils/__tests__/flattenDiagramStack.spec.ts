@@ -17,7 +17,6 @@ function position(overrides: Partial<DiagramPosition> = {}): DiagramPosition {
     interval: 'R',
     note_name: 'A',
     shape: 'dot',
-    sequence_index: 0,
     string: 6,
     fret: 5,
     ...overrides,
@@ -42,34 +41,33 @@ describe('flattenDiagramStack', () => {
   it('keeps a lone base layer as it is, without its position ids', () => {
     const base = layer({
       positions: [
-        position({ interval: 'R', note_name: 'A', string: 6, fret: 5, sequence_index: 0 }),
-        position({ interval: 'b3', note_name: 'C', string: 6, fret: 8, sequence_index: 1, shape: 'star' }),
+        position({ interval: 'R', note_name: 'A', string: 6, fret: 5 }),
+        position({ interval: 'b3', note_name: 'C', string: 6, fret: 8, shape: 'star' }),
       ],
     })
 
     const result = flattenDiagramStack([base], bothLanguages)
 
     expect(result.positions).toEqual([
-      { interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 0, string: 6, fret: 5 },
-      { interval: 'b3', note_name: 'C', shape: 'star', sequence_index: 1, string: 6, fret: 8 },
+      { interval: 'R', note_name: 'A', shape: 'dot', string: 6, fret: 5 },
+      { interval: 'b3', note_name: 'C', shape: 'star', string: 6, fret: 8 },
     ])
     expect(result.positions.every((p) => p.position_id === undefined)).toBe(true)
   })
 
-  it('stacks overlays after the base in the order they were added, each in its own sequence order', () => {
-    const base = layer({ positions: [position({ note_name: 'C', fret: 8, sequence_index: 0 })] })
+  it('stacks overlays after the base in the order they were added, each in its own position order', () => {
+    const base = layer({ positions: [position({ note_name: 'C', fret: 8 })] })
     const first = layer({
       positions: [
-        position({ note_name: 'E', string: 5, fret: 7, sequence_index: 1 }),
-        position({ note_name: 'D', string: 5, fret: 5, sequence_index: 0 }),
+        position({ note_name: 'E', string: 5, fret: 7 }),
+        position({ note_name: 'D', string: 5, fret: 5 }),
       ],
     })
-    const second = layer({ positions: [position({ note_name: 'G', string: 4, fret: 5, sequence_index: 0 })] })
+    const second = layer({ positions: [position({ note_name: 'G', string: 4, fret: 5 })] })
 
     const result = flattenDiagramStack([base, first, second], bothLanguages)
 
-    expect(result.positions.map((p) => p.note_name)).toEqual(['C', 'D', 'E', 'G'])
-    expect(result.positions.map((p) => p.sequence_index)).toEqual([0, 1, 2, 3])
+    expect(result.positions.map((p) => p.note_name)).toEqual(['C', 'E', 'D', 'G'])
   })
 
   it('keeps each position’s own interval and note name rather than recomputing them', () => {

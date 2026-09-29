@@ -59,10 +59,6 @@ function locationKey(position: DiagramPosition): string {
   return position.key !== undefined ? `key:${position.key}` : `fret:${position.string}:${position.fret}`
 }
 
-function bySequence(a: DiagramPosition, b: DiagramPosition): number {
-  return (a.sequence_index ?? Number.POSITIVE_INFINITY) - (b.sequence_index ?? Number.POSITIVE_INFINITY)
-}
-
 function flattenPosition(position: DiagramPosition, layerColor: string | null, languages: string[]): DiagramPosition {
   const customLabel = inLanguages(position.custom_label, languages)
   const noteText = inLanguages(position.note, languages)
@@ -72,7 +68,6 @@ function flattenPosition(position: DiagramPosition, layerColor: string | null, l
     note_name: position.note_name,
     shape: position.shape,
     ...(color ? { color } : {}),
-    sequence_index: position.sequence_index,
     ...(position.string !== undefined ? { string: position.string } : {}),
     ...(position.fret !== undefined ? { fret: position.fret } : {}),
     ...(position.key !== undefined ? { key: position.key } : {}),
@@ -115,8 +110,8 @@ function unique(ids: string[]): string[] {
  * the rest are overlays in the order they were added, painted bottom to top:
  * where two layers mark the same place only the top one's position is kept.
  * Positions keep their own interval and note name (never recomputed against
- * the base's root), and their color is resolved from their layer. The result is
- * sequenced base first, then each overlay in its own order. Generated per-layer
+ * the base's root), and their color is resolved from their layer. The result
+ * lists the base first, then each overlay, each in its own position order. Generated per-layer
  * regions come before the carried ones, so the narrower authored bands draw on top.
  */
 export function flattenDiagramStack(layers: StackLayer[], options: FlattenOptions): FlattenedStack {
@@ -124,14 +119,14 @@ export function flattenDiagramStack(layers: StackLayer[], options: FlattenOption
 
   const byLocation = new Map<string, DiagramPosition>()
   for (const layer of layers) {
-    for (const position of [...layer.positions].sort(bySequence)) {
+    for (const position of layer.positions) {
       const key = locationKey(position)
       // Delete first so a covering position takes the top layer's place in the order.
       byLocation.delete(key)
       byLocation.set(key, flattenPosition(position, layer.color, languages))
     }
   }
-  const positions = [...byLocation.values()].map((position, index) => ({ ...position, sequence_index: index }))
+  const positions = [...byLocation.values()]
 
   const generated = regionPerLayer
     ? layers.map((layer) => layerRegion(layer, languages)).filter((r): r is DiagramRegion => r !== null)

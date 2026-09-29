@@ -183,8 +183,8 @@ describe('FrettedDiagramView', () => {
   it('numbers no fret below 0, even with open strings, and draws open-string markers on the nut', () => {
     const diagram = makeFrettedDiagram({
       positions: [
-        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
-        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot' },
+        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot' },
       ],
       regions: [],
     })
@@ -207,8 +207,8 @@ describe('FrettedDiagramView', () => {
   it('starts the wood at the nut, leaving the open-string area bare', () => {
     const openDiagram = makeFrettedDiagram({
       positions: [
-        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
-        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+        { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot' },
+        { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot' },
       ],
       regions: [],
     })
@@ -472,8 +472,8 @@ describe('FrettedDiagramView', () => {
           props: {
             diagram: makeFrettedDiagram({
               positions: [
-                { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot', sequence_index: 0 },
-                { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot', sequence_index: 1 },
+                { position_id: 'p0', string: 2, fret: 0, interval: '7', note_name: 'B', shape: 'dot' },
+                { position_id: 'p1', string: 5, fret: 3, interval: 'R', note_name: 'C', shape: 'dot' },
               ],
               regions: [{ region_id: 'r1', fret_start: 0, fret_end: fretEnd, description: { en: 'Open' }, color: null }],
             }),

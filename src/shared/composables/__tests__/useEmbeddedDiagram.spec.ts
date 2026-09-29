@@ -107,6 +107,7 @@ describe('useEmbeddedDiagram', () => {
         languages: ['en'],
         family: 'keyboard',
         key_range: { lowest: 'A0', highest: 'C8' },
+        default_voice_id: 'piano',
       }
       serve([pentatonic], [piano])
 

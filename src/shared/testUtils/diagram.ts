@@ -12,7 +12,8 @@ export function makeFrettedInstrument(overrides: Partial<Instrument> = {}): Inst
     languages: ['en', 'pt_BR'],
     family: 'fretted',
     string_count: 6,
-    tuning: ['E', 'A', 'D', 'G', 'B', 'E'],
+    tuning: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'],
+    default_voice_id: 'acoustic-guitar',
     ...overrides,
   }
 }
@@ -29,8 +30,12 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
     root_note: 'A',
     label_display: 'interval',
     color: null,
+    mode: 'minor',
+    tempo_bpm: null,
+    time_signature: { beats: 4, beat_value: 4 },
+    sequence: [],
     positions: [
-      { position_id: 'p0', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 0 },
+      { position_id: 'p0', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
       {
         position_id: 'p1',
         string: 6,
@@ -38,10 +43,9 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
         interval: 'b3',
         note_name: 'C',
         shape: 'dot',
-        sequence_index: 1,
       },
-      { position_id: 'p2', string: 5, fret: 5, interval: '4', note_name: 'D', shape: 'dot', sequence_index: 2 },
-      { position_id: 'p3', string: 5, fret: 7, interval: '5', note_name: 'E', shape: 'dot', sequence_index: 3 },
+      { position_id: 'p2', string: 5, fret: 5, interval: '4', note_name: 'D', shape: 'dot' },
+      { position_id: 'p3', string: 5, fret: 7, interval: '5', note_name: 'E', shape: 'dot' },
       {
         position_id: 'p4',
         string: 4,
@@ -49,15 +53,31 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
         interval: 'b7',
         note_name: 'G',
         shape: 'dot',
-        sequence_index: 4,
       },
-      { position_id: 'p5', string: 4, fret: 7, interval: 'R', note_name: 'A', shape: 'dot', sequence_index: 5 },
+      { position_id: 'p5', string: 4, fret: 7, interval: 'R', note_name: 'A', shape: 'dot' },
     ],
     regions: [],
     classification: { skills: [], concepts: [] },
     created_at: '2026-09-21T12:00:00Z',
     ...overrides,
   }
+}
+
+/**
+ * The A minor pentatonic with a sequence: the root and minor third as eighths, an eighth rest, then
+ * the root, fourth and fifth strummed down together for a quarter, at 90 BPM in 4/4.
+ */
+export function makeSequencedFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
+  return makeFrettedDiagram({
+    tempo_bpm: 90,
+    sequence: [
+      { position_ids: ['p0'], value: { num: 1, den: 8 }, strum: 'none' },
+      { position_ids: ['p1'], value: { num: 1, den: 8 }, strum: 'none' },
+      { position_ids: [], value: { num: 1, den: 8 }, strum: 'none' },
+      { position_ids: ['p0', 'p2', 'p3'], value: { num: 1, den: 4 }, strum: 'down' },
+    ],
+    ...overrides,
+  })
 }
 
 /** A minimal `DiagramRef` pointing at `diagram-a-minor-pentatonic-1`, default layers/styling. */
