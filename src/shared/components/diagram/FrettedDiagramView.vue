@@ -29,8 +29,6 @@
  * its controls stay usable.
  */
 import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
-import type { ComponentPublicInstance } from 'vue'
-import { Info, X } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
@@ -45,19 +43,15 @@ import {
 } from '@/shared/utils/fretboardGeometry'
 import type { BoardFrame } from '@/shared/utils/fretboardGeometry'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
-import {
-  CONTROL_SIZE,
-  anchorDescription,
-  insetOverlappingOutlines,
-  placeRegionControls,
-  railWidthFor,
-} from '@/shared/utils/regionInfoLayout'
+import { insetOverlappingOutlines, railWidthFor } from '@/shared/utils/regionInfoLayout'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { effectiveLabelMode, markerTextKind } from '@/shared/utils/diagramLabels'
 import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
 import FretboardMarkerShape from '@/shared/components/diagram/FretboardMarkerShape.vue'
+import RegionInfoRail from '@/shared/components/diagram/RegionInfoRail.vue'
+import type { RailRegion } from '@/shared/components/diagram/RegionInfoRail.vue'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -151,9 +145,6 @@ function revealFocused(event: FocusEvent) {
   if (props.compact || !(event.target instanceof Element)) return
   event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
 }
-
-// Ids unique to this drawing, so two drawings of one diagram on a page never share them.
-const drawingId = `fretboard-${useId()}`
 
 const layout = computed(() =>
   // Hidden positions stay in view while an author can see them, or while the cells are the
@@ -284,8 +275,6 @@ const regionOutlines = computed(() => insetOverlappingOutlines(layout.value.regi
 
 // Region descriptions: one open at a time, shown under its control.
 const shownRegionId = ref<string | null>(null)
-const shownRegion = computed(() => layout.value.regions.find((region) => region.regionId === shownRegionId.value))
-const descriptionId = `${drawingId}-region-description`
 watch(
   () => props.diagram,
   () => {
@@ -293,54 +282,20 @@ watch(
   },
 )
 
-const regionControls = computed(() => {
-  const centers = placeRegionControls(
-    layout.value.regions.map((region) => {
-      const box = regionBox(region)
-      return { id: region.regionId, right: (box.x + box.width) * scale.value }
-    }),
-    viewW.value * scale.value,
-  )
-  return layout.value.regions.map((region, index) => ({
-    region,
-    left: centers[index]!.center - CONTROL_SIZE / 2,
-    top: centers[index]!.row * CONTROL_SIZE,
-  }))
-})
-// A readable board is widened to fit every control on one row; a small compact one may wrap them.
-const railHeight = computed(() => Math.max(1, ...regionControls.value.map((control) => control.top / CONTROL_SIZE + 1)) * CONTROL_SIZE)
-
-const DESCRIPTION_WIDTH = 248
-const descriptionPlacement = computed(() => {
-  const control = regionControls.value.find((item) => item.region.regionId === shownRegionId.value)
-  return anchorDescription({
-    controlCenter: (control?.left ?? 0) + CONTROL_SIZE / 2,
-    width: DESCRIPTION_WIDTH,
-    scrollLeft: props.compact ? 0 : scrollLeft.value,
-    visibleWidth: props.compact ? viewW.value * scale.value : availableWidth.value,
-  })
-})
-
-function regionColorStyle(region: Region): { color: string } | undefined {
-  return region.color ? { color: region.color } : undefined
-}
-
-const controlElements = new Map<string, HTMLElement>()
-function setControlElement(regionId: string, element: Element | ComponentPublicInstance | null) {
-  if (element instanceof HTMLElement) controlElements.set(regionId, element)
-  else controlElements.delete(regionId)
-}
+const railRegions = computed<RailRegion[]>(() =>
+  layout.value.regions.map((region) => {
+    const box = regionBox(region)
+    return {
+      id: region.regionId,
+      right: (box.x + box.width) * scale.value,
+      color: region.color,
+      label: localizedName(region.description),
+    }
+  }),
+)
 
 function toggleRegion(region: Region) {
   shownRegionId.value = shownRegionId.value === region.regionId ? null : region.regionId
-}
-
-/** Closes the open description; from the keyboard or its close control, focus goes back to the
- *  control that opened it. */
-function closeDescription(returnFocus: boolean) {
-  const regionId = shownRegionId.value
-  shownRegionId.value = null
-  if (returnFocus && regionId) controlElements.get(regionId)?.focus()
 }
 
 // Notes: shown while a marker is hovered or focused, and kept open by a tap (touch has no
@@ -401,24 +356,8 @@ function onDocumentPointerDown(event: Event) {
   pinnedNote.value = null
 }
 
-/** A click anywhere but this drawing's region controls, description or bands closes the
- *  description, without taking focus; the click still does whatever it does there. A click, not a
- *  press, so swiping the board or dragging its scrollbar leaves the description open. Listened to
- *  while capturing, so it's seen even where a click stops propagating (another diagram's rail). */
-function onDocumentClick(event: Event) {
-  const target = event.target instanceof Element ? event.target : null
-  if (target && container.value?.contains(target) && target.closest('[data-region-ui]')) return
-  shownRegionId.value = null
-}
-
-onMounted(() => {
-  document.addEventListener('pointerdown', onDocumentPointerDown)
-  document.addEventListener('click', onDocumentClick, true)
-})
-onUnmounted(() => {
-  document.removeEventListener('pointerdown', onDocumentPointerDown)
-  document.removeEventListener('click', onDocumentClick, true)
-})
+onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown))
+onUnmounted(() => document.removeEventListener('pointerdown', onDocumentPointerDown))
 
 function isChoice(position: Marker): boolean {
   return props.selectablePositionIds.includes(position.positionId)
@@ -509,7 +448,7 @@ function noteAlignClass(position: Marker): string {
 </script>
 
 <template>
-  <div ref="container" class="relative min-w-0">
+  <div ref="container" class="relative min-w-0" data-region-scope>
     <div
       data-test="board-scroll"
       :class="compact ? '' : 'overflow-x-auto overflow-y-hidden'"
@@ -517,66 +456,15 @@ function noteAlignClass(position: Marker): string {
       @scroll="onBoardScroll"
     >
       <div class="relative" :style="compact ? undefined : { width: `${viewW}px` }">
-        <!-- Region controls sit above the board, never over a marker; a press on them or on a
-             description never reaches whatever holds the diagram (such as an answer card). -->
-        <div v-if="showsRegionInfo" data-test="region-rail" class="relative z-10" :style="{ height: `${railHeight}px` }" @click.stop>
-          <button
-            v-for="control in regionControls"
-            :key="control.region.regionId"
-            :ref="(element) => setControlElement(control.region.regionId, element)"
-            type="button"
-            data-test="region-info"
-            data-region-ui
-            class="absolute flex h-11 w-11 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
-            :class="control.region.color ? '' : 'text-accent'"
-            :style="{ left: `${control.left}px`, top: `${control.top}px`, ...regionColorStyle(control.region) }"
-            :aria-label="localizedName(control.region.description)"
-            :aria-expanded="shownRegionId === control.region.regionId"
-            :aria-controls="shownRegionId === control.region.regionId ? descriptionId : undefined"
-            @click="toggleRegion(control.region)"
-            @keydown.escape="closeDescription(true)"
-          >
-            <Info :size="18" aria-hidden="true" />
-          </button>
-          <div
-            v-if="shownRegion"
-            :id="descriptionId"
-            data-test="region-description"
-            data-region-ui
-            role="status"
-            class="absolute top-full z-30 mt-1 rounded-md border border-t-2 border-border bg-surface-raised text-sm text-ink shadow-level2"
-            :class="shownRegion.color ? '' : 'border-t-accent'"
-            :style="{
-              left: `${descriptionPlacement.left}px`,
-              width: `${descriptionPlacement.width}px`,
-              ...(shownRegion.color ? { borderTopColor: shownRegion.color } : {}),
-            }"
-            @keydown.escape="closeDescription(true)"
-          >
-            <span
-              data-test="region-description-arrow"
-              aria-hidden="true"
-              class="absolute -top-1.5 h-2.5 w-2.5 rotate-45 border-l-2 border-t-2 bg-surface-raised"
-              :class="shownRegion.color ? '' : 'border-accent'"
-              :style="{
-                left: `${descriptionPlacement.arrow - 5}px`,
-                ...(shownRegion.color ? { borderColor: shownRegion.color } : {}),
-              }"
-            />
-            <div class="flex items-center gap-1 py-1 pl-3 pr-1">
-              <span class="flex-1 break-words leading-snug">{{ localizedName(shownRegion.description) }}</span>
-              <button
-                type="button"
-                data-test="region-description-close"
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-                :aria-label="t('fretboard.closeDescription')"
-                @click="closeDescription(true)"
-              >
-                <X :size="16" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <!-- Region controls sit above the board, never over a marker. -->
+        <RegionInfoRail
+          v-if="showsRegionInfo"
+          v-model:open-id="shownRegionId"
+          :regions="railRegions"
+          :width="viewW * scale"
+          :scroll-left="compact ? 0 : scrollLeft"
+          :visible-width="compact ? viewW * scale : availableWidth"
+        />
         <div class="relative">
         <svg
           data-test="diagram-canvas"
