@@ -325,6 +325,8 @@ async function adjustField(id: string, field: ExpandedContentTimeField, delta: n
     content_type: item.content_type,
     media_url: item.media_url,
     rich_content: item.rich_content,
+    diagram_ref: item.diagram_ref,
+    diagram_stack_ref: item.diagram_stack_ref,
     caption: item.caption,
   }
 

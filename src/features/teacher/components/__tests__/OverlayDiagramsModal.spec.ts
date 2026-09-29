@@ -44,14 +44,23 @@ function mountModal(props: Partial<Props> = {}) {
 describe('OverlayDiagramsModal', () => {
   beforeEach(() => {
     GET.mockReset()
-    GET.mockResolvedValue({ data: { items: [pentatonic, major], total: 2, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
+    // The picker also loads instruments (for its thumbnails) and the library's creators.
+    GET.mockImplementation((path: string) => {
+      const data =
+        path === '/diagrams'
+          ? { items: [pentatonic, major], total: 2, limit: 20, offset: 0 }
+          : path === '/instruments'
+            ? [makeFrettedInstrument()]
+            : []
+      return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+    })
   })
 
   it('starts on the list of diagrams to overlay when nothing is overlaid yet, and adds the one picked', async () => {
     const wrapper = mountModal({ overlays: [], preview: null })
     await flush()
 
-    await wrapper.findAll('[data-test="overlay-option"]')[1]!.trigger('click')
+    await wrapper.findAll('[data-test="diagram-option"]')[1]!.trigger('click')
 
     expect(wrapper.emitted('add')).toEqual([[major]])
     expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(false)
@@ -60,7 +69,7 @@ describe('OverlayDiagramsModal', () => {
   it('shows the full-size preview of the merge, and lists what is overlaid', () => {
     const wrapper = mountModal()
 
-    expect(wrapper.find('[data-test="overlay-option"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="diagram-option"]').exists()).toBe(false)
     expect(wrapper.getComponent(FrettedDiagramView).props('diagram')).toEqual(merged)
     expect(wrapper.findAll('[data-test="overlay-item"]').map((item) => item.text())).toEqual(['A minor pentatonic'])
   })
@@ -79,7 +88,7 @@ describe('OverlayDiagramsModal', () => {
     await wrapper.get('[data-test="add-another-overlay"]').trigger('click')
     await flush()
 
-    expect(wrapper.findAll('[data-test="overlay-option-name"]').map((n) => n.text())).toEqual(['C major scale'])
+    expect(wrapper.findAll('[data-test="diagram-option-name"]').map((n) => n.text())).toEqual(['C major scale'])
     await wrapper.get('[data-test="back-to-preview"]').trigger('click')
     expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
   })

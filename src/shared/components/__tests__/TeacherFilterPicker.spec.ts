@@ -23,8 +23,11 @@ vi.mock('@/shared/composables/useCourseCreators', () => ({
 
 import TeacherFilterPicker from '@/shared/components/TeacherFilterPicker.vue'
 
-function mountPicker(modelValue: UserRef | null = null, scope?: 'catalog' | 'managed') {
-  return mount(TeacherFilterPicker, { props: { modelValue, ...(scope ? { scope } : {}) }, attachTo: document.body })
+function mountPicker(modelValue: UserRef | null = null, scope?: 'catalog' | 'managed' | 'diagrams', label?: string) {
+  return mount(TeacherFilterPicker, {
+    props: { modelValue, ...(scope ? { scope } : {}), ...(label ? { label } : {}) },
+    attachTo: document.body,
+  })
 }
 
 function selections(wrapper: ReturnType<typeof mountPicker>) {
@@ -45,6 +48,11 @@ describe('TeacherFilterPicker', () => {
     mountPicker(null, 'managed')
 
     expect(useCourseCreators.mock.calls.map(([scope]) => scope)).toEqual(['catalog', 'managed'])
+  })
+
+  it('is labelled Teacher unless the caller names it', () => {
+    expect(mountPicker().get('label').text()).toBe('Teacher')
+    expect(mountPicker(null, 'diagrams', 'Author').get('label').text()).toBe('Author')
   })
 
   it('is a collapsed combobox until focused', () => {

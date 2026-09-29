@@ -33,12 +33,17 @@ describe('useListDiagrams', () => {
   it('passes every filter through as a query param', async () => {
     GET.mockResolvedValueOnce(ok([]))
 
-    useListDiagrams(() => ({ kind: 'custom', createdBy: 'u-1', instrumentId: 'i-1', skillId: 's-1', conceptId: 'c-1' }))
+    useListDiagrams(() => ({
+      kind: 'custom', createdBy: 'u-1', instrumentId: 'i-1', skillId: 's-1', conceptId: 'c-1', name: 'penta', rootNote: 'A',
+    }))
     await vi.waitFor(() => expect(GET).toHaveBeenCalled())
 
     expect(GET).toHaveBeenCalledWith('/diagrams', {
       params: {
-        query: { limit: 20, offset: 0, kind: 'custom', created_by: 'u-1', instrument_id: 'i-1', skill_id: 's-1', concept_id: 'c-1' },
+        query: {
+          limit: 20, offset: 0, kind: 'custom', created_by: 'u-1', instrument_id: 'i-1', skill_id: 's-1', concept_id: 'c-1',
+          name: 'penta', root_note: 'A',
+        },
       },
     })
   })

@@ -67,6 +67,32 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.findComponent(FrettedDiagramView).props('labelMode')).toBe('hidden')
   })
 
+  it('reports whether the diagram can be shown, for an author previewing it', async () => {
+    serve(makeFrettedDiagram())
+    const shown = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+    expect(shown.emitted('status')).toEqual([['loading'], ['ready']])
+
+    clearEmbeddedDiagramCache()
+    serve(null)
+    const missing = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+    expect(missing.emitted('status')?.at(-1)).toEqual(['unavailable'])
+  })
+
+  it('passes answer cells through and reports the picked one', async () => {
+    serve(makeFrettedDiagram())
+    const cells = [{ optionId: 'o-1', string: 6, fret: 5 }]
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single, answerCells: cells, selectedAnswerIds: ['o-1'] } })
+    await flushPromises()
+
+    const view = wrapper.getComponent(FrettedDiagramView)
+    expect(view.props('answerCells')).toEqual(cells)
+    expect(view.props('selectedAnswerIds')).toEqual(['o-1'])
+    view.vm.$emit('selectAnswer', 'o-1')
+    expect(wrapper.emitted('selectAnswer')).toEqual([['o-1']])
+  })
+
   it('has no caption when none is given', async () => {
     serve(makeFrettedDiagram())
 

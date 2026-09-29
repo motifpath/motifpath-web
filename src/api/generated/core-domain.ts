@@ -710,10 +710,11 @@ export interface paths {
          *     themselves, never another teacher's custom diagrams. An admin sees
          *     every diagram.
          *
-         *     The created_by filter is role-scoped. A teacher may pass only their
-         *     own user_id; passing any other created_by is refused with 403. An
-         *     admin may pass any created_by, or omit it for every creator's
-         *     diagrams.
+         *     Filters only ever narrow what the caller can see. created_by may
+         *     name any user: a teacher who passes another teacher's user_id gets
+         *     none of that teacher's custom diagrams, but does get the basic
+         *     diagrams that user created. GET /diagrams/creators lists the
+         *     creators to offer.
          *
          *     Results are paginated in a {items, total, limit, offset} envelope,
          *     ordered by the name the caller sees — the diagram's name in the
@@ -739,6 +740,39 @@ export interface paths {
          *     link to them.
          */
         post: operations["createDiagram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/diagrams/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the diagrams the caller can see
+         * @description Returns every distinct user who created at least one diagram the
+         *     caller can see in GET /diagrams, so a picker can offer a complete
+         *     creator filter (its created_by parameter) without paging. A teacher
+         *     gets the creators of basic diagrams, plus themselves once they have
+         *     a custom diagram of their own — never another teacher who has only
+         *     custom diagrams. An admin gets the creator of every diagram. A
+         *     student is refused with 403, since students never browse the
+         *     library.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the number of diagrams. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         */
+        get: operations["listDiagramCreators"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2308,11 +2342,36 @@ export interface components {
             root_override?: string | null;
             /** @description Which optional layers are shown, decorating the diagram's base positions. */
             layers: {
-                /** @description Whether to show each visible position's interval label. */
-                intervals: boolean;
                 /**
-                 * @description Interval names to show; positions with any other interval
-                 *     are hidden. Null shows every position.
+                 * @description What each drawn marker shows: its interval, its note name,
+                 *     its custom label (custom — falling back, for a position
+                 *     without one, to what the diagram's own label_display shows),
+                 *     or nothing (none). Null or absent keeps the older rule:
+                 *     intervals false means none, anything else the diagram's own
+                 *     label_display.
+                 * @enum {string|null}
+                 */
+                label?: "interval" | "note" | "custom" | "none" | null;
+                /**
+                 * @deprecated
+                 * @description Deprecated in favour of label, and read only when label is
+                 *     absent: false shows no marker text.
+                 */
+                intervals?: boolean;
+                /**
+                 * @description Positions of the diagram this usage doesn't draw. Ids that
+                 *     aren't positions of the diagram are ignored. A hidden
+                 *     position of an image_recognition stimulus is still an answer
+                 *     cell, and can still be a correct one (see
+                 *     correct_position_ids). Null hides none.
+                 */
+                hidden_position_ids?: string[] | null;
+                /**
+                 * @deprecated
+                 * @description Deprecated in favour of hidden_position_ids, and still
+                 *     honoured: interval names to draw; positions with any other
+                 *     interval are hidden. Null draws every position. A position
+                 *     is drawn only if it passes both.
                  */
                 subset?: string[] | null;
                 /**
@@ -2347,12 +2406,23 @@ export interface components {
                 step_ms: number;
             } | null;
             /**
-             * @description Which interval value(s) among this diagram's currently-visible
-             *     positions (after layers.subset filtering) are correct answers.
-             *     Meaningful, and required, only when this diagram_ref is an
-             *     Exercise's image_recognition stimulus (see Exercise.diagram_ref)
-             *     — ignored when used inline via a PromptNode, attached via
-             *     ExpandedContent, or as an image_choice Option's own diagram_ref.
+             * @description The positions of this diagram that are correct answers, drawn
+             *     or hidden — at least one, each a position of the diagram.
+             *     Meaningful, and required (unless the deprecated
+             *     correct_intervals is given instead), only when this diagram_ref
+             *     is an Exercise's image_recognition stimulus (see
+             *     Exercise.diagram_ref) — ignored when used inline via a
+             *     PromptNode, attached via ExpandedContent, or as an image_choice
+             *     Option's own diagram_ref.
+             */
+            correct_position_ids?: string[] | null;
+            /**
+             * @deprecated
+             * @description Deprecated in favour of correct_position_ids. When a stimulus
+             *     gives this without correct_position_ids, the server converts it
+             *     once, at save, to the drawn positions (after
+             *     layers.hidden_position_ids and layers.subset) whose interval is
+             *     listed, and stores correct_position_ids instead.
              */
             correct_intervals?: string[] | null;
         };
@@ -2700,7 +2770,7 @@ export interface components {
              * @description Timestamp the latest published version was published at, or null if the course has never been published.
              */
             published_at: string | null;
-            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). Present only in the authoring list, GET /courses; GET /catalog/courses never returns it. */
+            /** @description True when the live draft differs from the latest published version in anything a version records (title, summary, level, language, instruments, thumbnail or checkpoints), or nothing has been published yet. Present only in the authoring list, GET /courses; GET /catalog/courses never returns it. */
             has_unpublished_changes?: boolean;
             instrument_ids: components["schemas"]["InstrumentIds"];
             /**
@@ -2746,7 +2816,7 @@ export interface components {
             created_at: string;
             /** @description The version_number of the most recently published CourseVersion, or null if the course has never been published. */
             latest_published_version?: number | null;
-            /** @description True when the live draft differs from the latest published version (or nothing has been published yet). */
+            /** @description True when the live draft differs from the latest published version in anything a version records (title, summary, level, language, instruments, thumbnail or checkpoints), or nothing has been published yet. */
             has_unpublished_changes: boolean;
             /** @description The course's checkpoints, sorted by position ascending. */
             checkpoints: components["schemas"]["CourseCheckpoint"][];
@@ -3384,10 +3454,11 @@ export interface components {
             /**
              * @description A single prebuilt diagram as this exercise's stimulus, replacing
              *     image_url. Only meaningful when exercise_type is
-             *     image_recognition. Its correct_intervals must be set — the
-             *     diagram's own positions (after layers.subset filtering) become
-             *     this exercise's options automatically; options must be omitted
-             *     when this is given. Mutually exclusive with image_url and
+             *     image_recognition. Its correct_position_ids must be set (or the
+             *     deprecated correct_intervals) — for a fretted diagram, every
+             *     fretboard cell of its answer window becomes one of this
+             *     exercise's options automatically (see Option.fret_cell);
+             *     options must be omitted when this is given. Mutually exclusive with image_url and
              *     diagram_stack_ref.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
@@ -3595,8 +3666,8 @@ export interface components {
             /**
              * @description The exercise's selectable answer choices. When diagram_ref or
              *     diagram_stack_ref is present, these are derived automatically
-             *     from the diagram's positions (see Option.diagram_position_id)
-             *     rather than authored directly.
+             *     from the diagram (see Option.fret_cell and
+             *     Option.diagram_position_id) rather than authored directly.
              */
             options: components["schemas"]["Option"][];
             /**
@@ -3699,8 +3770,9 @@ export interface components {
              * @description A prebuilt diagram rendered as this option's own thumbnail,
              *     replacing image_url — e.g. "which of these four diagrams shows
              *     C major?" where each option is a different diagram. Only
-             *     meaningful for image_choice options; correct_intervals is
-             *     ignored here since correctness is this Option's own is_correct.
+             *     meaningful for image_choice options; correct_position_ids and
+             *     correct_intervals are ignored here since correctness is this
+             *     Option's own is_correct.
              *     Mutually exclusive with image_url.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
@@ -3724,10 +3796,33 @@ export interface components {
             /**
              * Format: uuid
              * @description Which position (DiagramPosition.position_id) within diagram_id
-             *     this option represents. Server-derived and read-only, present
-             *     under the same condition as diagram_id.
+             *     occupies this option's cell. Server-derived and read-only;
+             *     absent on a cell no position of the diagram occupies.
              */
             diagram_position_id?: string;
+            /**
+             * @description The fretboard cell this option is, for an image_recognition
+             *     exercise whose stimulus is a single fretted diagram_ref.
+             *     Server-derived and read-only. The server derives one option per
+             *     cell of the answer window:
+             *
+             *     Over ALL the diagram's positions (hidden ones included) and its
+             *     regions, low = max(lowest fret − 1, 0) and high = low +
+             *     max(highest fret + 1 − low, 3); with none, low = 0 and high = 3.
+             *     The cells are every string 1..string_count at every fret
+             *     low+1..high, plus fret 0 (the open string) on every string when
+             *     low is 0.
+             *
+             *     A cell is correct exactly when the position occupying it (see
+             *     diagram_position_id) is one of the stimulus's
+             *     correct_position_ids; every other cell is a wrong answer.
+             */
+            readonly fret_cell?: {
+                /** @description String number, 1 being the highest-pitched string. */
+                string: number;
+                /** @description Fret number; 0 is the open string. */
+                fret: number;
+            };
         };
         /**
          * @description A rectangular or circular region on the parent exercise's image_url,
@@ -5966,10 +6061,23 @@ export interface operations {
                  */
                 kind?: "basic" | "custom";
                 /**
-                 * @description Restricts the results to diagrams created by this user. A
-                 *     teacher may pass only their own user_id.
+                 * @description Restricts the results to diagrams created by this user, among
+                 *     those the caller can see.
                  */
                 created_by?: string;
+                /**
+                 * @description Restricts the results to diagrams with a name containing this
+                 *     text, in any of the diagram's languages, ignoring case and
+                 *     accents ("escala" matches "Escala Maior", "jonico" matches
+                 *     "Jônico").
+                 */
+                name?: string;
+                /**
+                 * @description Restricts the results to diagrams recorded with exactly this
+                 *     root note (e.g. "A", "F#", "Bb"), as spelled by their author. A
+                 *     diagram with no recorded root never matches.
+                 */
+                root_note?: string;
                 /** @description When given, only diagrams authored against this instrument are returned. */
                 instrument_id?: string;
                 /** @description When given, only diagrams with this exact skill id among their linked skills are returned. */
@@ -5992,7 +6100,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedDiagrams"];
                 };
             };
-            /** @description limit, offset, kind or language is out of range. */
+            /** @description limit, offset, kind, language, name or root_note is out of range. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6010,10 +6118,7 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /**
-             * @description The caller is a student, or a teacher passed a created_by other
-             *     than their own user_id.
-             */
+            /** @description The caller is a student. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6077,6 +6182,56 @@ export interface operations {
              *     diagram. Only teachers and admins may create a diagram, and only
              *     an admin may create a basic one.
              */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listDiagramCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the diagrams the caller can see, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description q is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student. */
             403: {
                 headers: {
                     [name: string]: unknown;

@@ -4,6 +4,7 @@ import { resolveMarkerColor } from '@/shared/utils/diagramColors'
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 type DiagramRef = components['schemas']['DiagramRef']
+type DiagramPosition = components['schemas']['DiagramPosition']
 type LocalizedText = components['schemas']['LocalizedNote']
 
 /** One `Diagram` position, resolved for a fretted-family renderer. */
@@ -37,13 +38,17 @@ export interface FrettedRegion {
 
 export interface FrettedDiagramLayout {
   positions: VisibleFrettedPosition[]
+  /** Positions this usage doesn't draw (`layers.hidden_position_ids` or filtered out by
+   *  `layers.subset`) — an author's preview can still show them faded. */
+  hiddenPositions: VisibleFrettedPosition[]
   /** Highlighted bands, in drawing order (later ones on top). */
   regions: FrettedRegion[]
   stringCount: number
-  /** One fret below the lowest visible position or region, but never below the nut (0): open-string markers sit on
-   *  the nut, so nothing is drawn left of it. */
+  /** One fret below the lowest drawn position or region (or, with `includeHidden`, the lowest
+   *  of all of them), but never below the nut (0): open-string markers sit on the nut, so nothing
+   *  is drawn left of it. */
   minFret: number
-  /** One fret above the highest visible position or region (or the diagram's nut, whichever wins the minimum span). */
+  /** One fret above the highest such position or region (or the diagram's nut, whichever wins the minimum span). */
   maxFret: number
 }
 
@@ -63,11 +68,13 @@ export function computeFrettedDiagramLayout(
   diagram: Diagram,
   instrument: Instrument,
   diagramRef: DiagramRef,
+  options: { includeHidden?: boolean } = {},
 ): FrettedDiagramLayout {
   const subset = diagramRef.layers.subset
-  const positions: VisibleFrettedPosition[] = diagram.positions
-    .filter((position) => !subset || subset.includes(position.interval))
-    .map((position) => ({
+  const hidden = diagramRef.layers.hidden_position_ids ?? []
+  const isDrawn = (position: DiagramPosition) =>
+    (!subset || subset.includes(position.interval)) && !hidden.includes(position.position_id ?? '')
+  const allPositions: VisibleFrettedPosition[] = diagram.positions.map((position) => ({
       positionId: position.position_id ?? '',
       string: position.string ?? 0,
       fret: position.fret ?? 0,
@@ -79,6 +86,8 @@ export function computeFrettedDiagramLayout(
       customLabel: position.custom_label ?? null,
       note: position.note ?? null,
     }))
+  const positions = allPositions.filter((_, i) => isDrawn(diagram.positions[i]!))
+  const hiddenPositions = allPositions.filter((_, i) => !isDrawn(diagram.positions[i]!))
   const stringCount = instrument.string_count ?? 0
   // A diagram served by an older API has no regions field at all.
   const regions: FrettedRegion[] = (diagram.regions ?? []).map((region) => ({
@@ -92,7 +101,7 @@ export function computeFrettedDiagramLayout(
   }))
 
   const frets = [
-    ...positions.map((position) => position.fret),
+    ...(options.includeHidden ? allPositions : positions).map((position) => position.fret),
     ...regions.flatMap((region) => [region.fretStart, region.fretEnd]),
   ]
   const lowFret = frets.length > 0 ? Math.max(Math.min(...frets) - 1, 0) : 0
@@ -101,6 +110,7 @@ export function computeFrettedDiagramLayout(
 
   return {
     positions,
+    hiddenPositions,
     regions,
     stringCount,
     minFret: lowFret,

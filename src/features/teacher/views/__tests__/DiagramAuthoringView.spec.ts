@@ -889,16 +889,26 @@ describe('DiagramAuthoringView', () => {
       return wrapper
     }
 
-    async function overlayPentatonic(wrapper: ReturnType<typeof mountView>) {
-      GET.mockResolvedValueOnce({
-        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
-        error: undefined,
-        response: { status: 200 },
+    // The overlay picker lists the library; it also loads instruments (for its
+    // thumbnails) and the library's creators.
+    function serveOverlayLibrary() {
+      GET.mockImplementation((path: string) => {
+        const data =
+          path === '/diagrams'
+            ? { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 }
+            : path === '/instruments'
+              ? [guitar]
+              : []
+        return Promise.resolve({ data, error: undefined, response: { status: 200 } })
       })
+    }
+
+    async function overlayPentatonic(wrapper: ReturnType<typeof mountView>) {
+      serveOverlayLibrary()
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()
       const option = wrapper
-        .findAll('[data-test="overlay-option"]')
+        .findAll('[data-test="diagram-option"]')
         .find((row) => row.text().includes('A Minor Pentatonic'))
       await option!.trigger('click')
     }
@@ -944,16 +954,12 @@ describe('DiagramAuthoringView', () => {
 
     it("offers only diagrams that aren't the one being edited", async () => {
       const wrapper = await openOwnDiagram()
-      GET.mockResolvedValueOnce({
-        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
-        error: undefined,
-        response: { status: 200 },
-      })
+      serveOverlayLibrary()
 
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()
 
-      expect(wrapper.findAll('[data-test="overlay-option-name"]').map((n) => n.text())).toEqual(['A Minor Pentatonic'])
+      expect(wrapper.findAll('[data-test="diagram-option-name"]').map((n) => n.text())).toEqual(['A Minor Pentatonic'])
     })
 
     it('discards the overlays, leaving the diagram and its saving untouched', async () => {
@@ -972,17 +978,14 @@ describe('DiagramAuthoringView', () => {
       const wrapper = await openOwnDiagram()
       await overlayPentatonic(wrapper)
       await wrapper.get('[data-test="discard-overlays"]').trigger('click')
-      GET.mockResolvedValueOnce({
-        data: { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 },
-        error: undefined,
-        response: { status: 200 },
-      })
 
+      // serveOverlayLibrary() still answers by path; a one-off mock here would
+      // go to whichever request came first, instruments included.
       await wrapper.get('[data-test="add-overlay"]').trigger('click')
       await flush()
 
       expect(modal(wrapper).find('[data-test="overlay-item"]').exists()).toBe(false)
-      expect(modal(wrapper).find('[data-test="overlay-option"]').exists()).toBe(true)
+      expect(modal(wrapper).find('[data-test="diagram-option"]').exists()).toBe(true)
     })
 
     it('merges the layers into editable positions, with a region per layer, and then saves only as a new diagram', async () => {

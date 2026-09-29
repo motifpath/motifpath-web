@@ -9,6 +9,10 @@ export interface DiagramFilters {
   instrumentId?: string
   skillId?: string
   conceptId?: string
+  /** Part of a name, in any language; empty means no name search. */
+  name?: string
+  /** An exact root note, as spelled by the diagram's author. */
+  rootNote?: string
 }
 
 /**
@@ -28,6 +32,8 @@ export function useListDiagrams(filters: () => DiagramFilters = () => ({})) {
           ...(f.instrumentId ? { instrument_id: f.instrumentId } : {}),
           ...(f.skillId ? { skill_id: f.skillId } : {}),
           ...(f.conceptId ? { concept_id: f.conceptId } : {}),
+          ...(f.name ? { name: f.name } : {}),
+          ...(f.rootNote ? { root_note: f.rootNote } : {}),
         },
       },
     })

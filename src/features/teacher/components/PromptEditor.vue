@@ -59,6 +59,7 @@ import {
   Redo2,
   Undo2,
   Frame,
+  Guitar,
   Heading1,
   Heading2,
   Heading3,
@@ -89,11 +90,15 @@ import {
 import { ref, watch } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
+import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
+import { PromptDiagramNode } from '@/features/teacher/components/promptDiagramNode'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
+import { parseDiagramEmbed } from '@/shared/utils/diagramEmbed'
 import { useToast } from '@/shared/composables/useToast'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
+type DiagramRef = components['schemas']['DiagramRef']
 
 const props = defineProps<{ modelValue: PromptDocument }>()
 const emit = defineEmits<{ 'update:modelValue': [document: PromptDocument] }>()
@@ -138,6 +143,7 @@ const editor = useEditor({
     StyledTableHeader,
     StyledTableCell,
     TiptapImage,
+    PromptDiagramNode.configure({ onEdit: editDiagram }),
   ],
   onUpdate: ({ editor: current }) => {
     emit('update:modelValue', toWireDocument(current.getJSON()))
@@ -274,6 +280,44 @@ function setBackgroundColor(color: string | null) {
 function pickImage() {
   imageInput.value?.click()
 }
+// The diagram picker either inserts a new diagram at the cursor or, opened
+// from a diagram's own edit button, replaces that one's ref in place.
+const diagramPickerOpen = ref(false)
+const diagramPickerInitial = ref<DiagramRef | null>(null)
+const editingDiagramPos = ref<number | null>(null)
+
+function insertDiagram() {
+  editingDiagramPos.value = null
+  diagramPickerInitial.value = null
+  diagramPickerOpen.value = true
+}
+function editDiagram(pos: number) {
+  const node = editor.value?.state.doc.nodeAt(pos)
+  if (!node) return
+  // Only a single diagram can be picked, so a stack reopens empty and is replaced by the pick.
+  const embed = parseDiagramEmbed(node.attrs.diagramRef, node.attrs.diagramStackRef)
+  editingDiagramPos.value = pos
+  diagramPickerInitial.value = embed?.kind === 'single' ? embed.ref : null
+  diagramPickerOpen.value = true
+}
+function applyDiagram(diagramRef: DiagramRef) {
+  const pos = editingDiagramPos.value
+  const attrs = { diagramRef, diagramStackRef: null }
+  if (pos === null) {
+    editor.value?.chain().focus().insertContent({ type: 'diagram', attrs }).run()
+  } else {
+    editor.value
+      ?.chain()
+      .focus()
+      .command(({ tr }) => {
+        tr.setNodeMarkup(pos, undefined, attrs)
+        return true
+      })
+      .run()
+  }
+  diagramPickerOpen.value = false
+}
+
 async function onImagePicked(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -499,6 +543,16 @@ async function onImagePicked(event: Event) {
         >
           <ImageIcon :size="16" aria-hidden="true" />
         </button>
+        <button
+          type="button"
+          data-test="prompt-toolbar-diagram"
+          class="rounded p-1.5 text-ink-muted"
+          :title="t('promptEditor.insertDiagram')"
+          :aria-label="t('promptEditor.insertDiagram')"
+          @click="insertDiagram()"
+        >
+          <Guitar :size="16" aria-hidden="true" />
+        </button>
         <input
           ref="imageInput"
           type="file"
@@ -625,6 +679,14 @@ async function onImagePicked(event: Event) {
       data-test="prompt-editor-content"
       class="prompt-editor-content rounded-md border border-border bg-surface-raised p-3 text-base"
       :editor="editor"
+    />
+
+    <DiagramEmbedPickerModal
+      :open="diagramPickerOpen"
+      :initial="diagramPickerInitial"
+      :editing="editingDiagramPos !== null"
+      @apply="applyDiagram"
+      @close="diagramPickerOpen = false"
     />
   </div>
 </template>

@@ -68,12 +68,26 @@ function mountView() {
   })
 }
 
+import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
+import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
+import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulusEditor.vue'
+import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
+import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+
+// Picks a stimulus file in whichever picker is open: images come through the image-or-diagram
+// modal, audio through the file picker.
+async function pickStimulus(wrapper: ReturnType<typeof mountView>, file: File) {
+  const media = wrapper.findComponent(MediaPickerModal)
+  if (media.exists() && media.props('open')) await media.vm.$emit('image', file)
+  else await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+}
 
 async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
   await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Name the chord')
@@ -148,12 +162,12 @@ describe('ExerciseAuthoringView', () => {
 
     const trigger = wrapper.get('[data-test="choose-stimulus"]')
     expect(trigger.text()).toContain('No image selected')
-    expect(trigger.text()).toContain('Choose image')
+    expect(trigger.text()).toContain('Choose an image or a diagram')
     expect(trigger.find('img').exists()).toBe(false)
 
     await trigger.trigger('click')
     const file = new File(['data'], 'fret.png', { type: 'image/png' })
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+    await pickStimulus(wrapper, file)
 
     expect(wrapper.get('[data-test="choose-stimulus"]').text()).toContain('fret.png')
   })
@@ -290,7 +304,7 @@ describe('ExerciseAuthoringView', () => {
 
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     const file = new File(['data'], 'fret.png', { type: 'image/png' })
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+    await pickStimulus(wrapper, file)
 
     expect(upload).not.toHaveBeenCalled()
     expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).props('imageUrl')).toBe('blob:fret.png')
@@ -440,7 +454,7 @@ describe('ExerciseAuthoringView', () => {
 
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     const file = new File(['data'], 'fret.png', { type: 'image/png' })
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+    await pickStimulus(wrapper, file)
 
     await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
@@ -464,7 +478,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Root position')
     await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Identify the root position'))
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['data'], 'fret.png', { type: 'image/png' }))
+    await pickStimulus(wrapper, new File(['data'], 'fret.png', { type: 'image/png' }))
     await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
@@ -525,7 +539,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     const file = new File(['data'], 'fret.png', { type: 'image/png' })
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+    await pickStimulus(wrapper, file)
 
     // Switch away before saving -- the picked file must still upload as
     // 'image', not whatever type happens to be selected at save time.
@@ -574,9 +588,9 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
 
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'first.png'))
+    await pickStimulus(wrapper, new File(['a'], 'first.png'))
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['b'], 'second.png'))
+    await pickStimulus(wrapper, new File(['b'], 'second.png'))
 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:first.png')
   })
@@ -585,13 +599,13 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'fret.png'))
+    await pickStimulus(wrapper, new File(['a'], 'fret.png'))
 
     // Switch to audio and pick a stimulus there instead -- the image pick
     // is now abandoned and should not resurface if we switch back.
     await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['b'], 'clip.mp3'))
+    await pickStimulus(wrapper, new File(['b'], 'clip.mp3'))
 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:fret.png')
 
@@ -688,7 +702,7 @@ describe('ExerciseAuthoringView', () => {
     await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
     await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
     await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
-    await wrapper.findComponent(ImagePickerModal).vm.$emit('select', new File(['a'], 'fret.png'))
+    await pickStimulus(wrapper, new File(['a'], 'fret.png'))
     await wrapper.get('img').trigger('load')
     await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
     await wrapper.get('[data-test="region-toggle"]').trigger('click')
@@ -928,6 +942,234 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
 
       expect(wrapper.find('[data-test="load-error"]').exists()).toBe(false)
       expect(wrapper.get<HTMLInputElement>('input[placeholder="Untitled exercise"]').element.value).toBe('t')
+    })
+  })
+
+  describe('diagrams', () => {
+    const penta = makeFrettedDiagram({ diagram_id: 'd-penta' })
+    const picked = { diagram_id: 'd-penta', layers: { label: 'custom' as const, intervals: true }, correct_position_ids: [] }
+    const rootsOnly = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_position_ids: ['p0'] }
+    const chord = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
+
+    // The stimulus diagram and its instrument load by path; everything else (skill/concept
+    // trees) stays the empty default.
+    function serveDiagrams(exercise?: unknown) {
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') return Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
+        if (path === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument()], error: undefined, response: { status: 200 } })
+        if (path === '/exercises/{exercise_id}' && exercise) return Promise.resolve({ data: exercise, error: undefined, response: { status: 200 } })
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+    }
+
+    function mountWithStubbedPickers() {
+      return mount(ExerciseAuthoringView, {
+        global: {
+          plugins: [createPinia()],
+          stubs: { RouterLink: RouterLinkStub, MediaPickerModal: true, DiagramEmbedPickerModal: true, EmbeddedDiagram: true },
+        },
+      })
+    }
+
+    async function pickDiagramStimulus(wrapper: ReturnType<typeof mountWithStubbedPickers>, diagramRef: unknown = picked) {
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', diagramRef)
+      await flushPromises()
+    }
+
+    beforeEach(() => {
+      clearEmbeddedDiagramCache()
+      serveDiagrams()
+    })
+
+    it('picks a diagram as the stimulus, then edits it in the form in place of the image and its regions', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      const media = wrapper.getComponent(MediaPickerModal)
+      expect(media.props()).toEqual(expect.objectContaining({ open: true, initialDiagram: null, chooseOnly: true }))
+
+      media.vm.$emit('diagram', picked)
+      await flushPromises()
+
+      expect(wrapper.getComponent(MediaPickerModal).props('open')).toBe(false)
+      const editor = wrapper.getComponent(DiagramStimulusEditor)
+      expect(editor.props()).toEqual(expect.objectContaining({ diagram: penta, diagramRef: expect.objectContaining({ diagram_id: 'd-penta' }) }))
+      expect(wrapper.find('[data-test="region-canvas"]').exists()).toBe(false)
+    })
+
+    it('asks for a correct position before saving, as for an image with no correct region', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
+
+      wrapper.getComponent(DiagramStimulusEditor).vm.$emit('update:diagramRef', rootsOnly)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(false)
+    })
+
+    it('starts the editor afresh when the same diagram is picked again, agreeing with the form', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+      await wrapper.get('[data-test="stimulus-diagram-editor"] [data-test="embed-picker-tool-correct"]').trigger('click')
+      wrapper.getComponent(DiagramStimulusEditor).findComponent({ name: 'FrettedDiagramView' }).vm.$emit('select', 'p0')
+      await flushPromises()
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', picked)
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-no-correct"]').exists()).toBe(true)
+    })
+
+    it('saves a diagram stimulus with the answers set in the form, and no options', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Tap every root')
+      await pickDiagramStimulus(wrapper)
+      wrapper.getComponent(DiagramStimulusEditor).vm.$emit('update:diagramRef', rootsOnly)
+      await selectClassification(wrapper)
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      const body = POST.mock.calls[0]![1].body
+      expect(body.diagram_ref).toEqual(rootsOnly)
+      expect(body).not.toHaveProperty('options')
+      expect(body).not.toHaveProperty('image_url')
+    })
+
+    it('previews an unsaved diagram stimulus with every fretboard cell to tap', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+      wrapper.getComponent(DiagramStimulusEditor).vm.$emit('update:diagramRef', rootsOnly)
+
+      await wrapper.get('[data-test="open-preview"]').trigger('click')
+
+      const preview = wrapper.getComponent(ExercisePreviewModal)
+      expect(preview.props('diagramRef')).toEqual(rootsOnly)
+      const options = preview.props('options')
+      expect(options).toHaveLength(5 * 6)
+      expect(options.filter((o) => o.is_correct).map((o) => o.fret_cell)).toEqual([{ string: 6, fret: 5 }])
+    })
+
+    it('reopens a saved diagram exercise in the stimulus editor and keeps it when saved again', async () => {
+      route.params = { id: 'e-1' }
+      serveDiagrams({
+        exercise_id: 'e-1',
+        title: 'Tap every root',
+        prompt: plainTextPrompt('p'),
+        exercise_type: 'image_recognition',
+        diagram_ref: rootsOnly,
+        skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+        concepts: [{ concept_id: 'c-1', name: 'roots', parent_id: null }],
+        options: [{ option_id: 'o-1', is_correct: true, diagram_position_id: 'p0', fret_cell: { string: 6, fret: 5 } }],
+        challenge_ids: [],
+        content_node_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+      PUT.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 200 } })
+      const wrapper = mountWithStubbedPickers()
+      await flushPromises()
+
+      expect(wrapper.getComponent(DiagramStimulusEditor).props('diagramRef')).toEqual(expect.objectContaining({ correct_position_ids: ['p0'] }))
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      expect(wrapper.getComponent(MediaPickerModal).props('initialDiagram')).toEqual(expect.objectContaining({ diagram_id: 'd-penta' }))
+      await wrapper.getComponent(MediaPickerModal).vm.$emit('close')
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      const body = PUT.mock.calls[0]![1].body
+      expect(body.diagram_ref).toEqual(expect.objectContaining({ diagram_id: 'd-penta', correct_position_ids: ['p0'] }))
+      expect(body).not.toHaveProperty('options')
+    })
+
+    it('offers to try again when the stimulus diagram fails to load, keeping it in the exercise', async () => {
+      let failing = true
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') {
+          return failing
+            ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+            : Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
+        }
+        if (path === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument()], error: undefined, response: { status: 200 } })
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      const wrapper = mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.find('[data-test="stimulus-diagram-error"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-diagram-unavailable"]').exists()).toBe(false)
+
+      failing = false
+      await wrapper.get('[data-test="stimulus-diagram-error"] [data-test="retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(true)
+    })
+
+    it('says a diagram on an instrument students cannot see yet cannot be used', async () => {
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') {
+          return Promise.resolve({ data: { ...penta, instrument_id: 'instrument-piano' }, error: undefined, response: { status: 200 } })
+        }
+        if (path === '/instruments') {
+          return Promise.resolve({
+            data: [makeFrettedInstrument({ instrument_id: 'instrument-piano', family: 'keyboard' })],
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      const wrapper = mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(false)
+      expect(wrapper.find('[data-test="stimulus-diagram-unavailable"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-diagram-error"]').exists()).toBe(false)
+    })
+
+    it('switches back to an image stimulus by picking an image', async () => {
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', rootsOnly)
+      await wrapper.vm.$nextTick()
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      await wrapper.getComponent(MediaPickerModal).vm.$emit('image', new File(['x'], 'fret.png', { type: 'image/png' }))
+
+      expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(false)
+      expect(wrapper.find('[data-test="region-canvas"]').exists()).toBe(true)
+    })
+
+    it('saves an image_choice option as a diagram, dropping a pending image upload for it', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Which is E major?')
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      const editor = wrapper.getComponent(ImageChoiceOptionsEditor)
+      const id = editor.props('options')[0]!.id
+      editor.vm.$emit('set-file', id, new File(['x'], 'a.png', { type: 'image/png' }))
+      editor.vm.$emit('set-preview', id, 'blob:a.png')
+
+      editor.vm.$emit('set-diagram', id, chord)
+      await wrapper.get('[data-test="option-correct"]').trigger('click')
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(upload).not.toHaveBeenCalled()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:a.png')
+      expect(POST.mock.calls[0]![1].body.options).toEqual([{ option_id: id, is_correct: true, diagram_ref: chord }])
     })
   })
 })

@@ -36,7 +36,10 @@
     "addLabel": "Add image option",
     "chooseImageAriaLabel": "Choose image",
     "changeImageAriaLabel": "Change image",
-    "chooseImage": "Choose image"
+    "chooseImage": "Choose image",
+    "chooseMedia": "Choose image or diagram",
+    "chooseMediaAriaLabel": "Choose an image or a diagram for this option",
+    "changeMediaAriaLabel": "Change this option's image or diagram"
   },
   "imagePickerModal": {
     "chooseAudioFile": "Choose an audio file",
@@ -71,7 +74,11 @@
     "toggleCellBorder": "Add/remove cell border",
     "deleteTable": "Delete table",
     "linkUrlPrompt": "Link URL",
-    "imageUploadFailed": "Failed to upload the image"
+    "imageUploadFailed": "Failed to upload the image",
+    "insertDiagram": "Insert a diagram",
+    "editDiagram": "Edit diagram",
+    "removeDiagram": "Remove diagram",
+    "diagramUnavailable": "This diagram can't be shown. Edit it to choose another, or remove it."
   },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marked correct",
@@ -93,7 +100,6 @@
     "noCorrectOptionWarning": "Mark at least one option correct — an exercise that can't be checked can't be practiced.",
     "imageSelected": "Image selected",
     "noImageSelected": "No image selected",
-    "chooseImage": "Choose image",
     "audioStimulusLabel": "Audio stimulus — what the student listens to",
     "chooseStimulusImage": "Choose stimulus image",
     "changeStimulusImage": "Change stimulus image",
@@ -115,7 +121,9 @@
     "exerciseCreated": "Exercise created.",
     "saveFailed": "Failed to save the exercise",
     "createSkillFailed": "Failed to create the skill",
-    "createConceptFailed": "Failed to create the concept"
+    "createConceptFailed": "Failed to create the concept",
+    "diagramSelected": "Diagram selected",
+    "chooseImageOrDiagram": "Choose an image or a diagram"
   },
   "exerciseListView": {
     "heading": "Exercises",
@@ -399,7 +407,8 @@
     "cancel": "Cancel",
     "save": "Save pop-up",
     "timingInvalidSeconds": "Use whole seconds, starting at 0.",
-    "timingInvalidParagraph": "Use whole numbers: the paragraph starts at 1 and the duration is at least 1 ms."
+    "timingInvalidParagraph": "Use whole numbers: the paragraph starts at 1 and the duration is at least 1 ms.",
+    "diagramStackNote": "This pop-up shows {count} stacked diagrams. It keeps them unless you choose a single diagram below to replace them."
   },
   "saveDiagramAsModal": {
     "copyTitle": "Save a copy",
@@ -526,11 +535,54 @@
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
     "leaveConfirm": "Leave"
   },
-  "overlayDiagramPicker": {
+  "diagramPickerList": {
     "loadingNoun": "diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
-    "emptyHeading": "Nothing to overlay",
-    "emptyMessage": "There's no other diagram for this instrument yet."
+    "emptyHeading": "No diagrams yet",
+    "emptyMessage": "Create a diagram in the Diagrams library first.",
+    "searchLabel": "Search diagrams by name",
+    "searchPlaceholder": "Search by name",
+    "rootLabel": "Root",
+    "anyRoot": "Any",
+    "kindLabel": "Type",
+    "kindAll": "All",
+    "kindTemplates": "Templates",
+    "kindCustom": "Custom",
+    "authorLabel": "Author",
+    "clearFilters": "Clear filters",
+    "noMatches": "No diagrams match these filters."
+  },
+  "diagramEmbedPicker": {
+    "loadingNoun": "diagram",
+    "loadErrorMessage": "We couldn't load this diagram.",
+    "chooseAnother": "Choose another diagram",
+    "changeDiagram": "Change diagram",
+    "intervalsLegend": "Positions",
+    "unavailable": "Students can't see this diagram yet — only fretted instruments (guitar, bass) can be shown in lessons for now.",
+    "insertTitle": "Insert a diagram",
+    "editTitle": "Edit diagram",
+    "cancel": "Cancel",
+    "insert": "Insert",
+    "apply": "Apply",
+    "noCorrect": "Mark at least one correct position.",
+    "labelLegend": "Labels",
+    "labelModes": {
+      "interval": "Intervals",
+      "note": "Notes",
+      "custom": "Custom labels",
+      "none": "None"
+    },
+    "clickToHide": "Click a position on the diagram, or an interval above, to hide or show it.",
+    "clickToMarkCorrect": "Click positions on the diagram to mark the correct answers — hidden ones count too.",
+    "toolLegend": "Clicking a position",
+    "toolCorrect": "Marks it correct",
+    "toolVisibility": "Hides or shows it",
+    "nothingShown": "Show at least one position, or the diagram shows nothing."
+  },
+  "mediaPickerModal": {
+    "title": "Choose an image or a diagram",
+    "image": "Image",
+    "diagram": "Diagram"
   },
   "overlayDiagramsModal": {
     "title": "Overlay diagrams",
@@ -541,6 +593,8 @@
     "regionPerLayer": "Add a highlighted region for each diagram, captioned with its name",
     "mergeNeedsRoot": "Choose a root note first, so every position of this diagram has an interval to merge.",
     "discard": "Discard",
-    "merge": "Merge into the editor"
+    "merge": "Merge into the editor",
+    "pickerEmptyHeading": "Nothing to overlay",
+    "pickerEmptyMessage": "There's no other diagram for this instrument yet."
   }
 }

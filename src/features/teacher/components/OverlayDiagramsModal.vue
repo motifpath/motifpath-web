@@ -9,7 +9,7 @@
 import { ref, useId, watch } from 'vue'
 import { Plus, X } from 'lucide-vue-next'
 
-import OverlayDiagramPicker from '@/features/teacher/components/OverlayDiagramPicker.vue'
+import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
@@ -83,7 +83,13 @@ function checked(event: Event): boolean {
         <p class="text-sm text-ink-muted">{{ t('overlayDiagramsModal.hint') }}</p>
 
         <template v-if="picking">
-          <OverlayDiagramPicker :instrument-id="instrument.instrument_id" :exclude-ids="excludeIds" @select="onPicked" />
+          <DiagramPickerList
+            :instrument-id="instrument.instrument_id"
+            :exclude-ids="excludeIds"
+            :empty-heading="t('overlayDiagramsModal.pickerEmptyHeading')"
+            :empty-message="t('overlayDiagramsModal.pickerEmptyMessage')"
+            @select="onPicked"
+          />
           <button
             v-if="overlays.length > 0"
             type="button"

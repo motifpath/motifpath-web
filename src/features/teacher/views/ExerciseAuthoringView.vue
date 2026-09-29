@@ -7,6 +7,8 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
 import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
+import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
+import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulusEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
@@ -17,13 +19,18 @@ import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
+import { useStimulusDiagram } from '@/features/teacher/composables/useStimulusDiagram'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
+import { diagramStimulusOptions } from '@/shared/utils/diagramAnswerCells'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import type { components } from '@/api/generated/core-domain'
+
+type DiagramRef = components['schemas']['DiagramRef']
 
 const currentUser = useCurrentUserStore()
 // Admins carry every permission a teacher has (canManageContent on the
@@ -131,11 +138,36 @@ function onStimulusPicked(file: File) {
 
   stimulusFile.value = { file, kind }
   target.value = URL.createObjectURL(file)
+  if (kind === 'image') form.stimulusSource.value = 'image'
   stimulusPickerOpen.value = false
 }
 
+// Bumped on every pick, so the stimulus editor starts afresh even when the same diagram is
+// picked again — its own state would otherwise outlive the form's reset answers.
+const stimulusPick = ref(0)
+
+function onStimulusDiagram(diagramRef: DiagramRef) {
+  stimulusPick.value++
+  form.setStimulusDiagram(diagramRef)
+  stimulusPickerOpen.value = false
+}
+
+const showsDiagramStimulus = computed(() => form.stimulusSource.value === 'diagram' && form.stimulusDiagram.value !== null)
+// The stimulus's labels, hidden and correct positions are edited in the form, on the diagram itself.
+const stimulus = useStimulusDiagram(() =>
+  form.hasDiagramStimulus.value ? (form.stimulusDiagram.value?.diagram_id ?? null) : null,
+)
+
 function onOptionFile(id: string, file: File) {
   optionFiles[id] = file
+}
+
+// A diagram replaces the option's image, so an image picked for it but not
+// yet uploaded is dropped rather than uploaded for nothing.
+function onOptionDiagram(id: string, diagramRef: DiagramRef) {
+  delete optionFiles[id]
+  revokeIfBlob(form.imageOptions.value.find((o) => o.id === id)?.imageUrl)
+  form.setImageOptionDiagram(id, diagramRef)
 }
 
 function onRemoveImageOption(id: string) {
@@ -169,7 +201,8 @@ const optionMediaConfig: Partial<
 }
 
 async function uploadPendingMedia() {
-  const pendingStimulus = stimulusFile.value
+  // A diagram stimulus replaces the image, so a picked image isn't uploaded.
+  const pendingStimulus = form.hasDiagramStimulus.value ? null : stimulusFile.value
   const stimulusUpload = pendingStimulus
     ? (async () => {
         const target = pendingStimulus.kind === 'audio' ? form.audioUrl : form.imageUrl
@@ -203,7 +236,16 @@ async function uploadPendingMedia() {
 const previewOpen = ref(false)
 // Only computed while the preview is actually open, so editing the form
 // doesn't re-run the options mapping on every keystroke for no observer.
-const previewOptions = computed(() => (previewOpen.value ? (form.toCreateExerciseRequest().options ?? []) : []))
+// A diagram stimulus's options are only derived on save, so an unsaved one's are worked out here
+// the same way, for the preview to be answerable.
+const previewOptions = computed(() => {
+  if (!previewOpen.value) return []
+  const { diagram, instrument } = stimulus
+  if (form.hasDiagramStimulus.value && form.stimulusDiagram.value && diagram.value && instrument.value) {
+    return diagramStimulusOptions(diagram.value, instrument.value, form.stimulusDiagram.value)
+  }
+  return form.toCreateExerciseRequest().options ?? []
+})
 const saving = ref(false)
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
@@ -342,7 +384,7 @@ async function save() {
           </span>
         </div>
 
-        <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-2">
+        <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-3">
           <button
             type="button"
             data-test="choose-stimulus"
@@ -350,11 +392,33 @@ async function save() {
             @click="stimulusPickerOpen = true"
           >
             <span class="text-left">
-              <span class="block text-[0.8125rem] font-semibold text-ink">{{ stimulusImageLabel }}</span>
-              <span class="block text-xs text-ink-subtle">{{ t('exerciseAuthoringView.chooseImage') }}</span>
+              <span class="block text-[0.8125rem] font-semibold text-ink">{{
+                showsDiagramStimulus ? t('exerciseAuthoringView.diagramSelected') : stimulusImageLabel
+              }}</span>
+              <span class="block text-xs text-ink-subtle">{{ t('exerciseAuthoringView.chooseImageOrDiagram') }}</span>
             </span>
             <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
           </button>
+          <template v-if="showsDiagramStimulus && form.stimulusDiagram.value">
+            <StateLoading v-if="stimulus.status.value === 'loading'" :noun="t('diagramEmbedPicker.loadingNoun')" />
+            <DiagramStimulusEditor
+              v-else-if="stimulus.diagram.value && stimulus.instrument.value"
+              :key="`${stimulus.diagram.value.diagram_id}-${stimulusPick}`"
+              :diagram="stimulus.diagram.value"
+              :instrument="stimulus.instrument.value"
+              :diagram-ref="form.stimulusDiagram.value"
+              @update:diagram-ref="form.setStimulusDiagram"
+            />
+            <StateError
+              v-else-if="stimulus.status.value === 'error'"
+              data-test="stimulus-diagram-error"
+              :message="t('diagramEmbedPicker.loadErrorMessage')"
+              @retry="stimulus.retry"
+            />
+            <p v-else data-test="stimulus-diagram-unavailable" class="text-sm text-ink-muted">
+              {{ t('diagramEmbedPicker.unavailable') }}
+            </p>
+          </template>
         </div>
 
         <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
@@ -371,7 +435,7 @@ async function save() {
         </div>
 
         <ImageRegionEditor
-          v-if="form.exerciseType.value === 'image_recognition'"
+          v-if="form.exerciseType.value === 'image_recognition' && form.stimulusSource.value === 'image'"
           v-model:new-region-shape="form.newRegionShape.value"
           :image-url="form.imageUrl.value"
           :regions="form.regions.value"
@@ -398,6 +462,7 @@ async function save() {
           :compact="isCompact"
           @set-preview="form.setImageOptionURL"
           @set-file="onOptionFile"
+          @set-diagram="onOptionDiagram"
           @toggle="form.toggleImageOption"
           @remove="onRemoveImageOption"
           @add="form.addImageOption"
@@ -511,13 +576,27 @@ async function save() {
       </aside>
     </div>
 
-    <ImagePickerModal :open="stimulusPickerOpen" :kind="stimulusKind" @select="onStimulusPicked" @close="stimulusPickerOpen = false" />
+    <ImagePickerModal
+      :open="stimulusPickerOpen && stimulusKind === 'audio'"
+      kind="audio"
+      @select="onStimulusPicked"
+      @close="stimulusPickerOpen = false"
+    />
+    <MediaPickerModal
+      :open="stimulusPickerOpen && stimulusKind === 'image'"
+      :initial-diagram="showsDiagramStimulus ? form.stimulusDiagram.value : null"
+      choose-only
+      @image="onStimulusPicked"
+      @diagram="onStimulusDiagram"
+      @close="stimulusPickerOpen = false"
+    />
     <ExercisePreviewModal
       :open="previewOpen"
       :prompt="form.prompt.value"
       :exercise-type="form.exerciseType.value"
       :options="previewOptions"
       :image-url="form.imageUrl.value"
+      :diagram-ref="form.hasDiagramStimulus.value ? (form.stimulusDiagram.value ?? undefined) : undefined"
       :audio-url="form.audioUrl.value"
       @close="previewOpen = false"
     />

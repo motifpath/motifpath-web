@@ -1,12 +1,14 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
 import ExpandedContentModal from '@/features/teacher/components/ExpandedContentModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import type { components } from '@/api/generated/core-domain'
 
 type PromptDocument = components['schemas']['PromptDocument']
 type ExpandedContent = components['schemas']['ExpandedContent']
+type DiagramRef = components['schemas']['DiagramRef']
 
 // Already in the shape PromptEditor's Tiptap round trip emits, so it compares
 // equal after passing through the editor.
@@ -234,5 +236,83 @@ describe('ExpandedContentModal', () => {
     await wrapper.get('[data-test="popup-cancel"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
+  })
+
+  describe('diagram pop-ups', () => {
+    const penta: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null } }
+    const other: DiagramRef = { diagram_id: 'd-other', layers: { intervals: false, subset: ['R'] } }
+    const stubs = { global: { stubs: { DiagramEmbedPicker: true } } }
+
+    async function fillTiming(wrapper: ReturnType<typeof mount>) {
+      await wrapper.get('[data-test="popup-trigger-seconds"]').setValue('3')
+      await wrapper.get('[data-test="popup-hide-seconds"]').setValue('6')
+    }
+
+    it('offers a diagram kind that swaps the media url for the diagram picker', async () => {
+      const wrapper = mount(ExpandedContentModal, { props: baseProps, ...stubs })
+
+      await wrapper.get('[data-test="popup-kind"]').setValue('diagram')
+
+      expect(wrapper.findComponent(DiagramEmbedPicker).exists()).toBe(true)
+      expect(wrapper.findComponent(DiagramEmbedPicker).props('initial')).toBeNull()
+      expect(wrapper.find('[data-test="popup-media-url"]').exists()).toBe(false)
+    })
+
+    it('keeps Save disabled until a diagram is chosen, then emits it', async () => {
+      const wrapper = mount(ExpandedContentModal, { props: baseProps, ...stubs })
+      await wrapper.get('[data-test="popup-kind"]').setValue('diagram')
+      await fillTiming(wrapper)
+      await wrapper.get('[data-test="popup-caption"]').setValue('Position 1')
+      expect(wrapper.get('[data-test="popup-save"]').attributes('disabled')).toBeDefined()
+
+      wrapper.getComponent(DiagramEmbedPicker).vm.$emit('change', penta)
+      await wrapper.vm.$nextTick()
+      await wrapper.get('[data-test="popup-save"]').trigger('click')
+
+      expect(wrapper.emitted('save')).toEqual([
+        [{ content_type: 'diagram', diagram_ref: penta, trigger_at_seconds: 3, hide_at_seconds: 6, caption: 'Position 1' }],
+      ])
+    })
+
+    it('reopens an existing diagram pop-up in the picker', async () => {
+      const item = makeItem({ content_type: 'diagram', diagram_ref: penta, trigger_at_seconds: 3, hide_at_seconds: 6 })
+      const wrapper = mount(ExpandedContentModal, { props: { ...baseProps, item }, ...stubs })
+
+      expect(wrapper.getComponent(DiagramEmbedPicker).props('initial')).toEqual(penta)
+    })
+
+    it('keeps a stacked diagram pop-up’s stack when saved without picking a diagram', async () => {
+      const stack = { stack: [penta, other] }
+      const item = makeItem({ content_type: 'diagram', diagram_stack_ref: stack, trigger_at_seconds: 3, hide_at_seconds: 6 })
+      const wrapper = mount(ExpandedContentModal, { props: { ...baseProps, item }, ...stubs })
+
+      expect(wrapper.find('[data-test="popup-diagram-stack-note"]').exists()).toBe(true)
+      expect(wrapper.getComponent(DiagramEmbedPicker).props('initial')).toBeNull()
+      wrapper.getComponent(DiagramEmbedPicker).vm.$emit('change', null)
+      await wrapper.vm.$nextTick()
+      await wrapper.get('[data-test="popup-save"]').trigger('click')
+
+      expect(wrapper.emitted('save')).toEqual([
+        [{ content_type: 'diagram', diagram_stack_ref: stack, trigger_at_seconds: 3, hide_at_seconds: 6 }],
+      ])
+    })
+
+    it('replaces a stack with the single diagram picked', async () => {
+      const item = makeItem({
+        content_type: 'diagram',
+        diagram_stack_ref: { stack: [penta, other] },
+        trigger_at_seconds: 3,
+        hide_at_seconds: 6,
+      })
+      const wrapper = mount(ExpandedContentModal, { props: { ...baseProps, item }, ...stubs })
+
+      wrapper.getComponent(DiagramEmbedPicker).vm.$emit('change', other)
+      await wrapper.vm.$nextTick()
+      await wrapper.get('[data-test="popup-save"]').trigger('click')
+
+      expect(wrapper.emitted('save')).toEqual([
+        [{ content_type: 'diagram', diagram_ref: other, trigger_at_seconds: 3, hide_at_seconds: 6 }],
+      ])
+    })
   })
 })

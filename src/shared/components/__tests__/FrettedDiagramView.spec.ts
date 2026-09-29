@@ -705,4 +705,140 @@ describe('FrettedDiagramView', () => {
       expect(wrapper.get('[data-test="diagram-note"]').isVisible()).toBe(true)
     })
   })
+
+  describe('per-use labels, hidden positions and answer cells', () => {
+    const labelled = () =>
+      makeFrettedDiagram({
+        positions: makeFrettedDiagram().positions.map((p, i) => (i === 1 ? { ...p, custom_label: { en: 'Av' } } : p)),
+      })
+    const labels = (wrapper: ReturnType<typeof mount>) =>
+      wrapper.findAll('[data-test="diagram-position-label"]').map((l) => l.text())
+
+    it('draws the label mode the ref chooses, whatever the diagram’s own display', () => {
+      const mountWith = (label: 'interval' | 'note' | 'custom' | 'none') =>
+        mount(FrettedDiagramView, {
+          props: { diagram: labelled(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef({ layers: { label } }), labelMode: 'hidden' },
+        })
+
+      expect(labels(mountWith('interval'))).toEqual(['R', 'b3', '4', '5', 'b7', 'R'])
+      expect(labels(mountWith('note'))).toEqual(['A', 'C', 'D', 'E', 'G', 'A'])
+      expect(labels(mountWith('custom'))).toEqual(['Av'])
+      expect(labels(mountWith('none'))).toEqual([])
+    })
+
+    it('falls back from a missing custom label to the diagram’s own display', () => {
+      const wrapper = mount(FrettedDiagramView, {
+        props: { diagram: labelled(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef({ layers: { label: 'custom' } }), labelMode: 'note' },
+      })
+
+      expect(labels(wrapper)).toEqual(['A', 'Av', 'D', 'E', 'G', 'A'])
+    })
+
+    it('leaves hidden positions out, or draws them faded for an author who asks', () => {
+      const props = { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef({ layers: { hidden_position_ids: ['p0'] } }) }
+
+      expect(mount(FrettedDiagramView, { props }).findAll('[data-test="diagram-position"]')).toHaveLength(5)
+      const revealed = mount(FrettedDiagramView, { props: { ...props, revealHidden: true } })
+      expect(revealed.findAll('[data-test="diagram-position"]')).toHaveLength(6)
+      expect(revealed.findAll('[data-test="diagram-position-hidden"]')).toHaveLength(1)
+    })
+
+    it('lets an author pick hidden positions too', async () => {
+      const wrapper = mount(FrettedDiagramView, {
+        props: {
+          diagram: makeFrettedDiagram(),
+          instrument: makeFrettedInstrument(),
+          diagramRef: makeDiagramRef({ layers: { hidden_position_ids: ['p0'] } }),
+          revealHidden: true,
+          selectablePositionIds: ['p0', 'p1'],
+          multiple: true,
+        },
+      })
+
+      const choices = wrapper.findAll('[data-test="diagram-choice"]')
+      expect(choices).toHaveLength(2)
+      await choices[1]!.trigger('click')
+      expect(wrapper.emitted('select')).toEqual([['p0']])
+    })
+
+    describe('the fret window', () => {
+      const spread = makeFrettedDiagram({
+        positions: [
+          { position_id: 'low', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
+          { position_id: 'high', string: 1, fret: 12, interval: '5', note_name: 'E', shape: 'dot' },
+        ],
+      })
+      const fretNumbers = (extra: Record<string, unknown>) =>
+        mount(FrettedDiagramView, {
+          props: {
+            diagram: spread,
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef({ layers: { hidden_position_ids: ['low'] } }),
+            ...extra,
+          },
+        })
+          .findAll('[data-test="fret-number"]')
+          .map((n) => n.text())
+
+      it('zooms in on the drawn positions when some are hidden', () => {
+        expect(fretNumbers({})).not.toContain('5')
+      })
+
+      it('keeps hidden positions in view for an author who reveals them', () => {
+        expect(fretNumbers({ revealHidden: true })).toContain('5')
+      })
+
+      it('keeps hidden positions in view when cells are the answers, since a hidden one can be correct', () => {
+        expect(fretNumbers({ answerCells: [{ optionId: 'o-6-5', string: 6, fret: 5 }] })).toContain('5')
+      })
+    })
+
+    describe('answer cells', () => {
+      const cells = [
+        { optionId: 'o-6-5', string: 6, fret: 5 },
+        { optionId: 'o-1-5', string: 1, fret: 5 },
+        { optionId: 'o-6-0', string: 6, fret: 0 },
+      ]
+      const mountCells = (selected: string[] = [], multiple = true) =>
+        mount(FrettedDiagramView, {
+          props: {
+            diagram: makeFrettedDiagram(),
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef({ layers: { hidden_position_ids: ['p0'] } }),
+            answerCells: cells,
+            selectedAnswerIds: selected,
+            multiple,
+          },
+        })
+
+      it('makes every cell a choice named by where it sits, over the drawn markers', () => {
+        const wrapper = mountCells()
+
+        const targets = wrapper.findAll('[data-test="diagram-cell"]')
+        expect(targets).toHaveLength(3)
+        expect(targets[0]!.attributes('aria-label')).toBe('String 6, fret 5')
+        expect(targets[0]!.attributes('role')).toBe('checkbox')
+        expect(wrapper.findAll('[data-test="diagram-choice"]')).toHaveLength(0)
+        expect(wrapper.get('svg').attributes('role')).toBe('group')
+      })
+
+      it('picks a cell by its option', async () => {
+        const wrapper = mountCells([], false)
+
+        await wrapper.findAll('[data-test="diagram-cell"]')[2]!.trigger('click')
+        await wrapper.findAll('[data-test="diagram-cell"]')[1]!.trigger('keydown', { key: 'Enter' })
+
+        expect(wrapper.emitted('selectAnswer')).toEqual([['o-6-0'], ['o-1-5']])
+        expect(wrapper.findAll('[data-test="diagram-cell"]')[0]!.attributes('role')).toBe('radio')
+      })
+
+      it('marks the picked cells', () => {
+        const wrapper = mountCells(['o-6-5'])
+
+        const selected = wrapper.findAll('[data-test="diagram-cell-selected"]')
+        expect(selected).toHaveLength(1)
+        expect(wrapper.findAll('[data-test="diagram-cell"]')[0]!.attributes('aria-checked')).toBe('true')
+      })
+    })
+  })
 })
