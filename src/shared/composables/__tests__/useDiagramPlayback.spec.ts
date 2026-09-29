@@ -47,7 +47,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { clearVoiceCache } from '@/shared/composables/useListVoices'
-import { clearPrefetchedSamples, useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
+import { clearPrefetchedSamples, isPlayable, useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 
 const VOICES = ['acoustic-guitar', 'nylon-guitar'].map((voice_id) => ({
   voice_id,
@@ -128,8 +128,20 @@ describe('useDiagramPlayback — whether Play is offered', () => {
       'the instrument is a keyboard',
       { instrument: makeFrettedInstrument({ family: 'keyboard', tuning: undefined, string_count: undefined }) },
     ],
-  ])("doesn't offer Play when %s", (_, options) => {
+  ])("doesn't offer Play when %s", (_, options: { diagram?: Diagram; instrument?: Instrument; playback?: Playback | null }) => {
     expect(setup(options).player.canPlay.value).toBe(false)
+    // The same rule, for a holder deciding whether to make room for a player before it exists.
+    expect(
+      isPlayable({
+        diagram: options.diagram ?? makeSequencedFrettedDiagram(),
+        instrument: options.instrument ?? makeFrettedInstrument(),
+        playback: options.playback === undefined ? AS_AUTHORED : options.playback,
+      }),
+    ).toBe(false)
+  })
+
+  it('says a diagram with a sounding step is playable, before any player exists', () => {
+    expect(isPlayable({ diagram: makeSequencedFrettedDiagram(), instrument: makeFrettedInstrument(), playback: AS_AUTHORED })).toBe(true)
   })
 })
 
