@@ -117,14 +117,14 @@ describe('ImageChoiceOptionsEditor', () => {
     const chord = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
     const stubs = { global: { stubs: { MediaPickerModal: true, EmbeddedDiagram: true } } }
 
-    it('shows an option that is a diagram as that diagram, not an image', () => {
+    it('shows an option that is a diagram as that diagram, not an image, drawn compact to fit its tile', () => {
       const wrapper = mount(ImageChoiceOptionsEditor, {
         props: { options: [{ id: 'o1', imageUrl: '', diagramRef: chord, correct: false }] },
         ...stubs,
       })
 
       expect(wrapper.getComponent(EmbeddedDiagram).props()).toEqual(
-        expect.objectContaining({ embed: { kind: 'single', ref: chord }, inert: true }),
+        expect.objectContaining({ embed: { kind: 'single', ref: chord }, inert: true, compact: true }),
       )
       expect(wrapper.find('img').exists()).toBe(false)
     })

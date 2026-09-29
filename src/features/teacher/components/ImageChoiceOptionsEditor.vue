@@ -55,7 +55,7 @@ const { t } = useTypedT()
   >
     <template #media="{ option }">
       <div class="relative min-h-[84px] overflow-hidden rounded-sm border border-border bg-surface-sunken">
-        <EmbeddedDiagram v-if="option.diagramRef" :embed="{ kind: 'single', ref: option.diagramRef }" inert class="p-1" />
+        <EmbeddedDiagram v-if="option.diagramRef" :embed="{ kind: 'single', ref: option.diagramRef }" inert compact class="p-1" />
         <img
           v-else-if="option.imageUrl"
           :src="option.imageUrl"
