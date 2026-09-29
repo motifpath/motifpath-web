@@ -16,7 +16,13 @@ import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import { Info, X } from 'lucide-vue-next'
 
-import { CONTROL_SIZE, anchorDescription, placeRegionControls } from '@/shared/utils/regionInfoLayout'
+import {
+  CONTROL_SIZE,
+  RAIL_CONTROL_CLASS,
+  RAIL_ICON_SIZE,
+  anchorDescription,
+  placeRegionControls,
+} from '@/shared/utils/regionInfoLayout'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 export interface RailRegion {
@@ -130,8 +136,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick, true))
       type="button"
       data-test="region-info"
       data-region-ui
-      class="absolute flex h-11 w-11 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
-      :class="control.region.color ? '' : 'text-accent'"
+      :class="['absolute', RAIL_CONTROL_CLASS, control.region.color ? '' : 'text-accent']"
       :style="{ left: `${control.left}px`, top: `${control.top}px`, ...colorStyle(control.region) }"
       :aria-label="control.region.label"
       :aria-expanded="openId === control.region.id"
@@ -139,7 +144,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick, true))
       @click="toggle(control.region)"
       @keydown.escape="close(true)"
     >
-      <Info :size="18" aria-hidden="true" />
+      <Info :size="RAIL_ICON_SIZE" aria-hidden="true" />
     </button>
     <div
       v-if="openRegion"

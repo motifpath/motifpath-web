@@ -85,11 +85,10 @@ describe('DiagramPlayer', () => {
     expect(player.current!.toggle).toHaveBeenCalled()
   })
 
-  it('gives Play and the tempo control touch targets of at least 44 px', () => {
+  it('gives Play and the tempo control the same 44 px square touch target', () => {
     const wrapper = mountPlayer()
     for (const control of [button(wrapper), tempoToggle(wrapper)]) {
-      expect(control.classes()).toContain('h-11')
-      expect(control.classes().some((name) => /^(w-11|w-\[\d+px\])$/.test(name))).toBe(true)
+      expect(control.classes()).toEqual(expect.arrayContaining(['h-11', 'w-11']))
     }
   })
 
@@ -118,11 +117,13 @@ describe('DiagramPlayer', () => {
     expect(player.current!.toggle).toHaveBeenCalled()
   })
 
-  it('shows the tempo on its control, opening a panel only on demand', async () => {
+  it('shows a metronome on the tempo control, naming the tempo, and opens a panel only on demand', async () => {
     const wrapper = mountPlayer()
 
-    expect(tempoToggle(wrapper).text()).toContain('90')
+    expect(tempoToggle(wrapper).text()).toBe('')
+    expect(tempoToggle(wrapper).find('svg.lucide-metronome-icon').exists()).toBe(true)
     expect(tempoToggle(wrapper).attributes('aria-label')).toBe('Tempo: 90 BPM')
+    expect(tempoToggle(wrapper).attributes('title')).toBe('Tempo: 90 BPM')
     expect(tempoToggle(wrapper).attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('[data-test="diagram-tempo-panel"]').exists()).toBe(false)
 

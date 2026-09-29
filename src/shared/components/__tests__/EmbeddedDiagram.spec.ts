@@ -207,6 +207,25 @@ describe('EmbeddedDiagram', () => {
       expect(wrapper.findAll('[data-test="diagram-player"]')).toHaveLength(1)
     })
 
+    it("draws Play, tempo and a region's information control alike: same size, same seat, same icon size", async () => {
+      serve(
+        makeSequencedFrettedDiagram({
+          regions: [{ region_id: 'r1', fret_start: 5, fret_end: 8, description: { en: 'Box 1' }, color: null }],
+        }),
+      )
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: playable } })
+      await flushPromises()
+
+      const controls = ['diagram-play', 'diagram-tempo-toggle', 'region-info'].map((test) => wrapper.get(`[data-test="${test}"]`))
+      const layout = (classes: string[]) => classes.filter((name) => /^(h-|w-|items-|justify-|pb-|pt-)/.test(name)).sort()
+      const [play, tempo, info] = controls.map((control) => layout(control.classes()))
+      expect(play).toEqual(info)
+      expect(tempo).toEqual(info)
+      expect(info).toEqual(expect.arrayContaining(['h-11', 'w-11']))
+      const iconSizes = controls.map((control) => control.get('svg').attributes('width'))
+      expect(new Set(iconSizes).size).toBe(1)
+    })
+
     it("makes no room for a player when the diagram's sequence has nothing to sound", async () => {
       serve(makeSequencedFrettedDiagram({ sequence: [{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }] }))
       const wrapper = mount(EmbeddedDiagram, { props: { embed: playable } })

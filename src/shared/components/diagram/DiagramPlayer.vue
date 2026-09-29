@@ -1,23 +1,25 @@
 <script lang="ts">
 /** The player's width: Play and the tempo control side by side, for a rail to keep clear. */
-export const PLAYER_WIDTH = 112
+export const PLAYER_WIDTH = 88
 </script>
 
 <script setup lang="ts">
 /**
  * Compact Play/Stop and tempo controls for a diagram with a sequence, sized to sit in the
  * diagram's control rail. It reports the positions being heard through `active`, for the diagram
- * to light up. The tempo control shows the tempo and opens a panel on demand with a slider and a
- * numeric input; the tempo a student picks is never saved. When the sound can't load, Play
+ * to light up. Both controls look like the rail's region information controls. The tempo control, a
+ * metronome named with the tempo, opens a panel on demand with a slider and a numeric input; the
+ * tempo a student picks is never saved. When the sound can't load, Play
  * becomes Retry. It shows nothing when the diagram has nothing to play, or its usage offers no
  * Play control. A press on it never reaches whatever holds the diagram, such as an answer card.
  */
 import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
-import { ChevronDown, LoaderCircle, Play, RotateCcw, Square, X } from 'lucide-vue-next'
+import { LoaderCircle, Metronome, Play, RotateCcw, Square, X } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { RAIL_CONTROL_CLASS, RAIL_ICON_SIZE } from '@/shared/utils/regionInfoLayout'
 import { MAX_TEMPO_BPM, MIN_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Diagram = components['schemas']['Diagram']
@@ -43,6 +45,7 @@ const { canPlay, state, activePositionIds, tempo, toggle, prefetch } = useDiagra
 watch(activePositionIds, (ids) => emit('active', ids))
 
 const busy = computed(() => state.value === 'playing' || state.value === 'loading')
+const tempoLabel = computed(() => t('diagramPlayer.tempoControl', { bpm: tempo.value }))
 const actionLabel = computed(() => {
   if (busy.value) return t('diagramPlayer.stop')
   return state.value === 'error' ? t('diagramPlayer.retry') : t('diagramPlayer.play')
@@ -104,20 +107,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="canPlay" ref="root" data-test="diagram-player" class="relative inline-flex items-center" @click.stop>
+  <div v-if="canPlay" ref="root" data-test="diagram-player" class="relative flex" @click.stop>
     <button
       data-test="diagram-play"
       type="button"
-      class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-accent hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+      :class="[RAIL_CONTROL_CLASS, 'text-accent']"
       :aria-label="actionLabel"
       :title="actionLabel"
       :aria-busy="state === 'loading' ? 'true' : undefined"
       @click="toggle"
     >
-      <LoaderCircle v-if="state === 'loading'" :size="18" class="animate-spin motion-reduce:animate-none" aria-hidden="true" />
-      <Square v-else-if="state === 'playing'" :size="15" fill="currentColor" aria-hidden="true" />
-      <RotateCcw v-else-if="state === 'error'" :size="18" aria-hidden="true" />
-      <Play v-else :size="18" fill="currentColor" aria-hidden="true" />
+      <LoaderCircle
+        v-if="state === 'loading'"
+        :size="RAIL_ICON_SIZE"
+        class="animate-spin motion-reduce:animate-none"
+        aria-hidden="true"
+      />
+      <Square v-else-if="state === 'playing'" :size="RAIL_ICON_SIZE" fill="currentColor" aria-hidden="true" />
+      <RotateCcw v-else-if="state === 'error'" :size="RAIL_ICON_SIZE" aria-hidden="true" />
+      <Play v-else :size="RAIL_ICON_SIZE" fill="currentColor" aria-hidden="true" />
     </button>
     <span data-test="diagram-player-status" role="status" class="sr-only">{{
       state === 'loading' ? t('diagramPlayer.loading') : ''
@@ -126,17 +134,14 @@ onBeforeUnmount(() => {
       ref="tempoControl"
       data-test="diagram-tempo-toggle"
       type="button"
-      class="inline-flex h-11 w-[68px] shrink-0 items-center justify-center gap-1 rounded-md text-accent hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
-      :aria-label="t('diagramPlayer.tempoControl', { bpm: tempo })"
+      :class="[RAIL_CONTROL_CLASS, 'text-accent']"
+      :aria-label="tempoLabel"
+      :title="tempoLabel"
       :aria-expanded="tempoOpen"
       @click="tempoOpen = !tempoOpen"
       @keydown.escape="closeTempo(true)"
     >
-      <span class="flex flex-col items-center leading-none">
-        <strong class="text-sm font-semibold tabular-nums">{{ tempo }}</strong>
-        <span class="mt-0.5 text-[0.625rem] text-ink-subtle">{{ t('diagramPlayer.bpm') }}</span>
-      </span>
-      <ChevronDown :size="12" :class="tempoOpen ? 'rotate-180' : ''" aria-hidden="true" />
+      <Metronome :size="RAIL_ICON_SIZE" aria-hidden="true" />
     </button>
 
     <div

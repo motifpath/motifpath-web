@@ -7,6 +7,11 @@
 
 /** A control's touch target, square. */
 export const CONTROL_SIZE = 44
+/** Every control in the rail — region information, Play, tempo — looks alike: a 44 px square with
+ *  its icon seated at the bottom, right on the board's top edge. */
+export const RAIL_CONTROL_CLASS =
+  'flex h-11 w-11 shrink-0 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus'
+export const RAIL_ICON_SIZE = 18
 /** How far each further overlapping region's outline sits inside the one before. */
 const OUTLINE_STEP = 4
 const EDGE_GAP = 4
