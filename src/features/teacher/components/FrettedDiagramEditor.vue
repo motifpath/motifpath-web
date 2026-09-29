@@ -148,10 +148,17 @@ const railRegions = computed<RailRegion[]>(() =>
       id: region.id,
       right: box.x + box.width,
       color: region.color,
-      label: region.description[editingLanguage.value] ?? '',
+      label: regionLabel(region),
     }
   }),
 )
+/** A region's caption in the language being edited; until it has one, its number in the regions
+ *  list, so its control still has a name and its description says what's missing. */
+function regionLabel(region: LocalRegion): string {
+  const caption = (region.description[editingLanguage.value] ?? '').trim()
+  if (caption !== '') return caption
+  return t('frettedDiagramEditor.uncaptionedRegion', { number: props.regions.indexOf(region) + 1 })
+}
 // How far the board is scrolled, so an open description stays in its visible part.
 const scrollLeft = ref(0)
 function onBoardScroll(event: Event) {

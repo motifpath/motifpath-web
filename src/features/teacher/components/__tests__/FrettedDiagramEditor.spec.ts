@@ -509,6 +509,21 @@ describe('FrettedDiagramEditor', () => {
         expect(labels('pt_BR')).toEqual(['Caixa 1', 'Caixa 2'])
       })
 
+      it('names a region with no caption yet in the language being edited by its number, and says so when opened', async () => {
+        const wrapper = mountWith([
+          makeLocalRegion({ description: { en: 'Box 1' } }),
+          makeLocalRegion({ id: 'region-2', fretStart: 10, fretEnd: 12, description: { en: '  ' } }),
+        ], 'pt_BR')
+
+        const controls = wrapper.findAll('[data-test="region-info"]')
+        expect(controls.map((control) => control.attributes('aria-label'))).toEqual([
+          'Region 1 — no caption yet',
+          'Region 2 — no caption yet',
+        ])
+        await controls[1]!.trigger('click')
+        expect(wrapper.get('[data-test="region-description"]').text()).toContain('Region 2 — no caption yet')
+      })
+
       it("colors each control like its region", () => {
         const wrapper = mountWith([makeLocalRegion({ color: '#EF4444' }), makeLocalRegion({ id: 'region-2', fretStart: 10, fretEnd: 12 })])
 
