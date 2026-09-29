@@ -24,8 +24,13 @@ const FLAT_TO_SHARP: Record<string, string> = {
   Bb: 'A#',
 }
 
+// A trailing octave, as an instrument tuning writes each open string ("E2", "C-1"): only the
+// pitch class matters for note names and intervals.
+const OCTAVE_SUFFIX = /-?\d+$/
+
 function chromaticIndex(note: string): number {
-  return CHROMATIC_SCALE.indexOf(FLAT_TO_SHARP[note] ?? note)
+  const pitchClass = note.replace(OCTAVE_SUFFIX, '')
+  return CHROMATIC_SCALE.indexOf(FLAT_TO_SHARP[pitchClass] ?? pitchClass)
 }
 
 /** The note sounded at `fret` on a string whose open note is `openStringNote`. */

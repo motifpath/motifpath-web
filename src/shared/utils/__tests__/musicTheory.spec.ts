@@ -29,6 +29,15 @@ describe('noteAtFret', () => {
     expect(noteAtFret('Db', 0)).toBe('C#')
     expect(noteAtFret('Gb', 0)).toBe('F#')
   })
+
+  it('ignores the octave an instrument tuning carries (e.g. "E2" is the low E string)', () => {
+    expect(noteAtFret('E2', 0)).toBe('E')
+    expect(noteAtFret('E2', 3)).toBe('G')
+    expect(noteAtFret('B3', 1)).toBe('C')
+    expect(noteAtFret('Eb1', 1)).toBe('E')
+    expect(noteAtFret('F#3', 2)).toBe('G#')
+    expect(noteAtFret('C-1', 2)).toBe('D')
+  })
 })
 
 describe('intervalFromRoot', () => {
