@@ -2,7 +2,9 @@
 /**
  * Click-to-place position editor for a `fretted`-family `Instrument`
  * (guitar, bass). Shows the whole playable neck (not the read-only viewer's
- * auto-cropped window) so a teacher can place a position anywhere on it.
+ * auto-cropped window) so a teacher can place a position anywhere on it,
+ * drawn with the student's board, spacing and marker shapes, so the author
+ * sees what a student will.
  * Owns no state itself — every change is emitted for a parent form
  * composable (`useDiagramForm`) to apply, the same split `ImageRegionEditor`
  * already uses for its own click-to-place editor.
@@ -10,7 +12,7 @@
  * While `recording`, a click on a placed marker picks it for the diagram's
  * sequence instead of removing it, and empty cells do nothing.
  */
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Circle, GripVertical, Palette, Square, Star, X } from 'lucide-vue-next'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
@@ -21,28 +23,22 @@ import type { LocalPosition, LocalRegion, PositionShape } from '@/features/teach
 import type { components } from '@/api/generated/core-domain'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import { readableTextColor, resolveMarkerColor } from '@/shared/utils/diagramColors'
-import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
-  EDITOR_BOARD_H,
-  EDITOR_MARGIN_LEFT,
-  EDITOR_MARGIN_TOP,
-  EDITOR_VIEW_H,
-  editorBoardWidth,
   editorRegionBox,
-  editorViewWidth,
-  fretX,
-  frettedEditorGeometry,
+  frettedEditorLayout,
   isDrawableRegion,
   nearestFrettedCell,
-  positionX,
-  stringY,
 } from '@/shared/utils/frettedFretboardEditor'
 import {
-  CAPTION_BAR_HEIGHT,
-  CAPTION_FONT_SIZE,
-  CAPTION_LANE_HEIGHT,
-  layoutRegionCaptions,
-} from '@/shared/utils/regionCaptionLayout'
+  MARKER_RADIUS,
+  MARKER_TEXT_SIZE,
+  TARGET_RADIUS,
+  markerCenterX,
+  stringLineY,
+} from '@/shared/utils/fretboardGeometry'
+import { insetOverlappingOutlines } from '@/shared/utils/regionInfoLayout'
+import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
+import FretboardMarkerShape from '@/shared/components/diagram/FretboardMarkerShape.vue'
 
 type Instrument = components['schemas']['Instrument']
 
@@ -97,79 +93,45 @@ function labelStyle(position: LocalPosition): { fill: string } | undefined {
   return fill ? { fill: readableTextColor(fill) } : undefined
 }
 
-const geometry = computed(() => frettedEditorGeometry(props.instrument.string_count ?? 0))
-const viewWidth = computed(() => editorViewWidth(geometry.value))
-const boardWidth = computed(() => editorBoardWidth(geometry.value))
+// The board fills its container when every fret space fits at a readable width, and grows wider
+// (for the container to scroll) when they don't.
+const scroller = ref<HTMLElement | null>(null)
+const availableWidth = ref(0)
+let resizeObserver: ResizeObserver | undefined
+onMounted(() => {
+  if (!scroller.value) return
+  availableWidth.value = scroller.value.clientWidth
+  if (typeof ResizeObserver === 'undefined') return
+  resizeObserver = new ResizeObserver(([entry]) => {
+    if (entry) availableWidth.value = entry.contentRect.width
+  })
+  resizeObserver.observe(scroller.value)
+})
+onUnmounted(() => resizeObserver?.disconnect())
+
+const board = computed(() => frettedEditorLayout(props.instrument.string_count ?? 0, availableWidth.value))
+const frame = computed(() => board.value.frame)
 
 // Regions that can't be drawn yet (backwards, or past the last string) are left off the board;
 // the regions editor below already flags them.
-const drawableRegions = computed(() => props.regions.filter((region) => isDrawableRegion(region, geometry.value)))
+const drawableRegions = computed(() => props.regions.filter((region) => isDrawableRegion(region, frame.value)))
 
 function regionBox(region: LocalRegion) {
-  return editorRegionBox(region, geometry.value)
+  return editorRegionBox(region, frame.value)
 }
-function regionCaption(region: LocalRegion): string {
-  return region.description[editingLanguage.value] ?? ''
-}
+// Each outline follows its band, one step further inside when it overlaps an earlier band.
+const regionOutlines = computed(() => insetOverlappingOutlines(drawableRegions.value.map(regionBox)))
 
-// Captions stack on as many lines above the board as their overlaps need, and the board shifts
-// down to make room for them.
-const captionLayout = computed(() =>
-  layoutRegionCaptions(
-    drawableRegions.value.map((region) => {
-      const box = regionBox(region)
-      return { left: box.x, right: box.x + box.width, text: regionCaption(region) }
-    }),
-    viewWidth.value,
-  ),
-)
-const boardOffsetY = computed(() => captionLayout.value.laneCount * CAPTION_LANE_HEIGHT)
-const viewHeight = computed(() => EDITOR_VIEW_H + boardOffsetY.value)
-
-/** A caption's line (in board coordinates, above the top string's band edge) and the bar under
- *  it spanning its band's frets, which ties it to its band even when several share a fret. */
-function captionPlacement(index: number): { textX: number; textY: number; barY: number } {
-  const placement = captionLayout.value.placements[index] ?? { lane: 0, textX: 0 }
-  const rowGap = stringY(2, geometry.value) - stringY(1, geometry.value)
-  const linesBottom = stringY(1, geometry.value) - rowGap / 2 - 2
-  const barY = linesBottom - CAPTION_BAR_HEIGHT - placement.lane * CAPTION_LANE_HEIGHT
-  return { textX: placement.textX, textY: barY - 3, barY }
-}
 function regionStyle(region: LocalRegion): { fill: string } | undefined {
   return region.color ? { fill: region.color } : undefined
 }
 
-const frets = computed(() => {
-  const result: number[] = []
-  for (let fret = geometry.value.minFret; fret <= geometry.value.maxFret; fret++) result.push(fret)
-  return result
-})
-
-// Conventional fretboard inlay-dot frets — single dot, except a double dot at the octave marks.
-const SINGLE_DOT_FRETS = [3, 5, 7, 9, 15, 17, 19, 21]
-const DOUBLE_DOT_FRETS = [12, 24]
-const boardMidY = computed(() => (y(1) + y(geometry.value.stringCount)) / 2)
-const inlayDots = computed(() => {
-  const dots: { fret: number; cy: number }[] = []
-  for (const fret of frets.value) {
-    if (SINGLE_DOT_FRETS.includes(fret)) dots.push({ fret, cy: boardMidY.value })
-    if (DOUBLE_DOT_FRETS.includes(fret)) {
-      dots.push({ fret, cy: boardMidY.value - 22 }, { fret, cy: boardMidY.value + 22 })
-    }
-  }
-  return dots
-})
-
-function x(fret: number): number {
-  return fretX(fret, geometry.value)
-}
-
 function markerX(fret: number): number {
-  return positionX(fret, geometry.value)
+  return markerCenterX(frame.value, fret)
 }
 
 function y(stringNumber: number): number {
-  return stringY(stringNumber, geometry.value)
+  return stringLineY(frame.value, stringNumber)
 }
 
 function onFretboardClick(event: MouseEvent) {
@@ -177,9 +139,9 @@ function onFretboardClick(event: MouseEvent) {
   const rect = svg.getBoundingClientRect()
   if (rect.width === 0 || rect.height === 0) return
 
-  const px = ((event.clientX - rect.left) / rect.width) * viewWidth.value
-  const py = ((event.clientY - rect.top) / rect.height) * viewHeight.value - boardOffsetY.value
-  const cell = nearestFrettedCell(px, py, geometry.value)
+  const px = ((event.clientX - rect.left) / rect.width) * board.value.width
+  const py = ((event.clientY - rect.top) / rect.height) * board.value.height
+  const cell = nearestFrettedCell(px, py, frame.value)
   if (!cell) return
   if (!props.recording) {
     emit('toggle-cell', cell)
@@ -230,170 +192,88 @@ function onDrop(index: number) {
          scrolls underneath. -->
     <div class="sticky top-16 z-10 flex flex-col gap-2 bg-surface py-2" data-test="fretboard-sticky">
       <slot name="toolbar" />
-      <div class="overflow-x-auto rounded-md bg-surface-raised" data-test="fretboard-scroll">
-        <!-- w-full lets the board fill however much space it's given (the "leverage full width"
-             requirement); min-w-[1106px] is a legibility floor — the default 0-24 fret range at
-             EDITOR_PX_PER_FRET density (44 + 43*24 + 30, see frettedFretboardEditor.ts, guarded by
-             a test there) — so on a narrower viewport it scrolls instead of squeezing frets thin. -->
+      <!-- Drawn at its real size, like a student's board, so markers and fret spaces stay
+           readable and easy to hit; it scrolls on its own when wider than the screen. -->
+      <div ref="scroller" class="overflow-x-auto rounded-md bg-surface-raised" data-test="fretboard-scroll">
         <svg
-          :viewBox="`0 0 ${viewWidth} ${viewHeight}`"
+          :viewBox="`0 0 ${board.width} ${board.height}`"
+          :width="board.width"
+          :height="board.height"
           role="img"
           :aria-label="t('frettedDiagramEditor.fretboardAriaLabel')"
-          class="w-full min-w-[1106px] cursor-pointer"
-          font-family="monospace"
+          class="block max-w-none cursor-pointer"
+          font-family="inherit"
           @click="onFretboardClick"
         >
-          <defs>
-            <linearGradient id="editor-fretboard-wood" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.55" />
-              <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="1" />
-              <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.7" />
-            </linearGradient>
-          </defs>
-
-          <g :transform="`translate(0 ${boardOffsetY})`">
-            <rect
-              :x="EDITOR_MARGIN_LEFT"
-              :y="EDITOR_MARGIN_TOP - 10"
-              :width="boardWidth"
-              :height="EDITOR_BOARD_H + 20"
-              rx="6"
-              fill="url(#editor-fretboard-wood)"
-            />
-
-            <circle
-              v-for="(dot, index) in inlayDots"
-              :key="`inlay-${dot.fret}-${index}`"
-              data-test="fret-inlay"
-              :cx="markerX(dot.fret)"
-              :cy="dot.cy"
-              r="4"
-              class="fill-ink-subtle"
-              opacity="0.4"
-            />
-
-            <g v-for="(region, index) in drawableRegions" :key="`region-${region.id}`">
+          <FretboardBoard :frame="frame" :tuning="instrument.tuning">
+            <template #fills>
               <rect
+                v-for="region in drawableRegions"
+                :key="`region-${region.id}`"
                 data-test="editor-region"
                 v-bind="regionBox(region)"
                 rx="4"
-                fill-opacity="0.25"
+                fill-opacity="0.24"
                 :class="region.color ? '' : 'fill-accent'"
                 :style="regionStyle(region)"
               />
-              <rect
-                data-test="editor-region-caption-bar"
-                :x="regionBox(region).x"
-                :y="captionPlacement(index).barY"
-                :width="regionBox(region).width"
-                :height="CAPTION_BAR_HEIGHT"
-                rx="1.5"
-                fill-opacity="0.8"
-                :class="region.color ? '' : 'fill-accent'"
-                :style="regionStyle(region)"
-              />
-              <text
-                data-test="editor-region-caption"
-                :x="captionPlacement(index).textX"
-                :y="captionPlacement(index).textY"
-                :font-size="CAPTION_FONT_SIZE"
-                font-weight="600"
-                class="fill-ink-muted"
-              >
-                {{ regionCaption(region) }}
-              </text>
-            </g>
+            </template>
+          </FretboardBoard>
 
-            <line
-              v-for="stringNumber in geometry.stringCount"
-              :key="`string-${stringNumber}`"
-              :x1="EDITOR_MARGIN_LEFT"
-              :y1="y(stringNumber)"
-              :x2="EDITOR_MARGIN_LEFT + boardWidth"
-              :y2="y(stringNumber)"
-              class="stroke-border"
-              stroke-width="1.2"
+          <rect
+            v-for="(outline, index) in regionOutlines"
+            :key="`outline-${drawableRegions[index]!.id}`"
+            data-test="region-outline"
+            v-bind="outline"
+            rx="3"
+            fill="none"
+            stroke-width="2"
+            pointer-events="none"
+            :class="drawableRegions[index]!.color ? '' : 'stroke-accent'"
+            :style="drawableRegions[index]!.color ? { stroke: drawableRegions[index]!.color } : undefined"
+          />
+
+          <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
+            <circle
+              v-if="props.sequenceHighlightIds.includes(position.id)"
+              data-test="sequence-highlight"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              :r="TARGET_RADIUS + 2"
+              fill="none"
+              class="stroke-ink"
+              stroke-width="2.5"
+              stroke-dasharray="4 3"
             />
-
-            <g v-for="fret in frets" :key="`fret-${fret}`">
-              <line
-                :x1="x(fret)"
-                :y1="EDITOR_MARGIN_TOP - 6"
-                :x2="x(fret)"
-                :y2="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 6"
-                class="stroke-ink-subtle"
-                stroke-width="2"
-              />
-              <text
-                :x="x(fret)"
-                :y="EDITOR_MARGIN_TOP + EDITOR_BOARD_H + 24"
-                text-anchor="middle"
-                font-size="12"
-                class="fill-ink-muted"
-              >
-                {{ fret }}
-              </text>
-            </g>
-
-            <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
-              <circle
-                v-if="props.sequenceHighlightIds.includes(position.id)"
-                data-test="sequence-highlight"
-                :cx="markerX(position.fret)"
-                :cy="y(position.string)"
-                r="19"
-                fill="none"
-                class="stroke-ink"
-                stroke-width="2.5"
-                stroke-dasharray="4 3"
-              />
-              <circle
-                v-if="position.id === selectedPositionId"
-                data-test="marker-highlight"
-                :cx="markerX(position.fret)"
-                :cy="y(position.string)"
-                r="18"
-                fill="none"
-                class="stroke-accent"
-                stroke-width="3"
-              />
-              <circle
-                v-if="position.shape === 'dot'"
-                :cx="markerX(position.fret)"
-                :cy="y(position.string)"
-                r="13.5"
-                :class="markerFill(position) ? '' : 'fill-accent'"
-                :style="markerStyle(position)"
-              />
-              <rect
-                v-else-if="position.shape === 'square'"
-                :x="markerX(position.fret) - 12"
-                :y="y(position.string) - 12"
-                width="24"
-                height="24"
-                rx="3"
-                :class="markerFill(position) ? '' : 'fill-accent'"
-                :style="markerStyle(position)"
-              />
-              <polygon
-                v-else
-                :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
-                :class="markerFill(position) ? '' : 'fill-accent'"
-                :style="markerStyle(position)"
-              />
-              <text
-                v-if="labelMode !== 'hidden'"
-                :x="markerX(position.fret)"
-                :y="y(position.string) + 4.5"
-                text-anchor="middle"
-                font-size="11.5"
-                font-weight="600"
-                :class="markerFill(position) ? '' : 'fill-accent-fg'"
-                :style="labelStyle(position)"
-              >
-                {{ labelFor(position) }}
-              </text>
-            </g>
+            <circle
+              v-if="position.id === selectedPositionId"
+              data-test="marker-highlight"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              :r="MARKER_RADIUS + 2"
+              fill="none"
+              class="stroke-accent"
+              stroke-width="3"
+            />
+            <FretboardMarkerShape
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              :shape="position.shape"
+              :class="markerFill(position) ? '' : 'fill-accent'"
+              :style="markerStyle(position)"
+            />
+            <text
+              v-if="labelMode !== 'hidden'"
+              :x="markerX(position.fret)"
+              :y="y(position.string) + 5"
+              text-anchor="middle"
+              :font-size="MARKER_TEXT_SIZE"
+              font-weight="700"
+              :class="markerFill(position) ? '' : 'fill-accent-fg'"
+              :style="labelStyle(position)"
+            >
+              {{ labelFor(position) }}
+            </text>
           </g>
         </svg>
       </div>
