@@ -176,5 +176,12 @@
   },
   "diagramThumbnail": {
     "noPreview": "No preview"
+  },
+  "diagramPlayer": {
+    "play": "Play",
+    "stop": "Stop",
+    "tempo": "Tempo",
+    "bpm": "{bpm} BPM",
+    "loadFailed": "Couldn't load the sound. Press Play to try again."
   }
 }

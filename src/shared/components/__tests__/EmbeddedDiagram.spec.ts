@@ -9,7 +9,13 @@ vi.mock('@/shared/composables/useApi', () => ({
 import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
-import { makeDiagramRef, makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
+import {
+  makeDiagramRef,
+  makeFrettedDiagram,
+  makeFrettedInstrument,
+  makeSequencedFrettedDiagram,
+} from '@/shared/testUtils/diagram'
 import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
 import type { components } from '@/api/generated/core-domain'
 
@@ -157,5 +163,49 @@ describe('EmbeddedDiagram', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="fallback"]').exists()).toBe(true)
+  })
+
+  describe('playing', () => {
+    const playable: DiagramEmbed = {
+      kind: 'single',
+      ref: makeDiagramRef({ playback: { direction: 'reversed', loop: true } }),
+    }
+
+    it("offers Play as the usage sets it, and lights up the markers it's playing", async () => {
+      serve(makeSequencedFrettedDiagram())
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: playable } })
+      await flushPromises()
+
+      const player = wrapper.findComponent(DiagramPlayer)
+      expect(wrapper.find('[data-test="diagram-play"]').exists()).toBe(true)
+      expect(player.props('playback')).toEqual({ direction: 'reversed', loop: true })
+
+      player.vm.$emit('active', ['p0', 'p2'])
+      await flushPromises()
+      expect(wrapper.findComponent(FrettedDiagramView).props('activePositionIds')).toEqual(['p0', 'p2'])
+    })
+
+    it('offers no Play when the usage offers none', async () => {
+      serve(makeSequencedFrettedDiagram())
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
+      await flushPromises()
+      expect(wrapper.find('[data-test="diagram-play"]').exists()).toBe(false)
+    })
+
+    it('offers no Play on an inert thumbnail', async () => {
+      serve(makeSequencedFrettedDiagram())
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: playable, inert: true } })
+      await flushPromises()
+      expect(wrapper.findComponent(DiagramPlayer).exists()).toBe(false)
+    })
+
+    it('never offers Play on a stack', async () => {
+      serve(makeSequencedFrettedDiagram())
+      const stack: DiagramEmbed = { kind: 'stack', stack: [playable.kind === 'single' ? playable.ref : makeDiagramRef()] }
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: stack } })
+      await flushPromises()
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+      expect(wrapper.findComponent(DiagramPlayer).exists()).toBe(false)
+    })
   })
 })

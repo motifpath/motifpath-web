@@ -2,8 +2,9 @@
 /**
  * Renders one `Diagram` authored against a `fretted`-family `Instrument`
  * (guitar, bass) as an SVG fretboard, per a `DiagramRef`'s `layers`/`styling`
- * config. `root_override` transposition and `playback` are not applied here
- * — this draws the diagram's own authored positions as-is.
+ * config. `root_override` transposition is not applied here — this draws the
+ * diagram's own authored positions as-is. While the diagram plays,
+ * `activePositionIds` rings the markers being heard.
  *
  * Given `selectablePositionIds`, those markers become an exercise's answer
  * choices: clicking one (or Enter/Space) emits `select` instead of pinning its
@@ -61,6 +62,8 @@ const props = withDefaults(
     /** The fretboard cells a student can pick as answers; none by default. */
     answerCells?: AnswerCell[]
     selectedAnswerIds?: string[]
+    /** The positions sounding right now, while the diagram plays. A hidden one stays undrawn. */
+    activePositionIds?: string[]
   }>(),
   {
     labelMode: 'interval',
@@ -70,6 +73,7 @@ const props = withDefaults(
     revealHidden: false,
     answerCells: () => [],
     selectedAnswerIds: () => [],
+    activePositionIds: () => [],
   },
 )
 
@@ -559,6 +563,16 @@ function noteAlignClass(position: Marker): string {
           {{ markerLabel(position) }}
         </text>
         </g>
+        <circle
+          v-if="!position.hidden && props.activePositionIds.includes(position.positionId)"
+          data-test="diagram-position-playing"
+          :cx="markerX(position.fret)"
+          :cy="y(position.string)"
+          r="19"
+          fill="none"
+          class="stroke-accent"
+          stroke-width="3.5"
+        />
         <circle
           v-if="position.note"
           data-test="diagram-note-badge"

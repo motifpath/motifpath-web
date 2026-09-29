@@ -183,6 +183,8 @@ const toggleClass = (on: boolean) =>
       <h3 class="text-sm font-semibold text-ink">{{ t('diagramSequenceEditor.heading') }}</h3>
       <p class="text-xs text-ink-subtle">{{ t('diagramSequenceEditor.hint') }}</p>
     </div>
+    <!-- Controls to hear the sequence as it stands. -->
+    <slot name="player" />
 
     <div class="flex flex-wrap items-end gap-4">
       <label class="flex flex-col gap-1 text-xs text-ink-subtle">

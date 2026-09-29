@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, shallowRef, watch, watchEffect } from 'vue'
 import { Layers, Maximize2, Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -8,6 +8,7 @@ import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewMod
 import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
 import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
 import DiagramSequenceEditor from '@/features/teacher/components/DiagramSequenceEditor.vue'
+import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import OverlayDiagramsModal from '@/features/teacher/components/OverlayDiagramsModal.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
@@ -247,6 +248,10 @@ const overlayPreviewDiagram = computed<Diagram | null>(() => {
 })
 
 const previewDiagramRef: DiagramRef = { diagram_id: '', layers: { intervals: true } }
+
+// The author hears the sequence as it stands, once through in order; the editor rings what sounds.
+const EDITOR_PLAYBACK: NonNullable<DiagramRef['playback']> = { direction: 'as_authored', loop: false }
+const playingPositionIds = shallowRef<string[]>([])
 
 const overlaying = ref(false)
 // Neither the diagram being edited nor one already overlaid is offered again.
@@ -503,7 +508,7 @@ async function saveAs(names: Record<string, string>) {
             :color="form.color.value"
             :language="activeLanguage"
             :recording="sequenceEditor.recording.value"
-            :sequence-highlight-ids="sequenceEditor.selectedPositionIds.value"
+            :sequence-highlight-ids="playingPositionIds.length > 0 ? playingPositionIds : sequenceEditor.selectedPositionIds.value"
             @toggle-cell="form.toggleCell"
             @pick-position="sequenceEditor.pickPosition"
             @reorder="form.reorderPositions"
@@ -593,7 +598,17 @@ async function saveAs(names: Record<string, string>) {
                 </div>
               </div>
             </template>
-            <DiagramSequenceEditor :form="form" :editor="sequenceEditor" :label-mode="form.labelDisplay.value" />
+            <DiagramSequenceEditor :form="form" :editor="sequenceEditor" :label-mode="form.labelDisplay.value">
+              <template #player>
+                <DiagramPlayer
+                  v-if="previewDiagram"
+                  :diagram="previewDiagram"
+                  :instrument="selectedInstrument"
+                  :playback="EDITOR_PLAYBACK"
+                  @active="playingPositionIds = $event"
+                />
+              </template>
+            </DiagramSequenceEditor>
             <DiagramRegionsEditor
               :regions="form.regions.value"
               :string-count="selectedInstrument.string_count ?? 0"

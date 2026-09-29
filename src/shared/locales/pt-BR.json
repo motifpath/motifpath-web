@@ -176,5 +176,12 @@
   },
   "diagramThumbnail": {
     "noPreview": "Sem prévia"
+  },
+  "diagramPlayer": {
+    "play": "Tocar",
+    "stop": "Parar",
+    "tempo": "Andamento",
+    "bpm": "{bpm} BPM",
+    "loadFailed": "Não foi possível carregar o som. Toque em Tocar para tentar de novo."
   }
 }

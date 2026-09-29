@@ -841,4 +841,27 @@ describe('FrettedDiagramView', () => {
       })
     })
   })
+
+  describe('while the diagram plays', () => {
+    const base = { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument() }
+
+    it('rings nothing when nothing is sounding', () => {
+      const wrapper = mount(FrettedDiagramView, { props: { ...base, diagramRef: makeDiagramRef() } })
+      expect(wrapper.findAll('[data-test="diagram-position-playing"]')).toHaveLength(0)
+    })
+
+    it('rings each sounding marker', () => {
+      const wrapper = mount(FrettedDiagramView, {
+        props: { ...base, diagramRef: makeDiagramRef(), activePositionIds: ['p1', 'p3'] },
+      })
+      expect(wrapper.findAll('[data-test="diagram-position-playing"]')).toHaveLength(2)
+    })
+
+    it('never draws a position the usage hides, even while it sounds', () => {
+      const diagramRef = makeDiagramRef({ layers: { hidden_position_ids: ['p0'] } })
+      const wrapper = mount(FrettedDiagramView, { props: { ...base, diagramRef, activePositionIds: ['p0'] } })
+      expect(wrapper.findAll('[data-test="diagram-position"]')).toHaveLength(5)
+      expect(wrapper.findAll('[data-test="diagram-position-playing"]')).toHaveLength(0)
+    })
+  })
 })
