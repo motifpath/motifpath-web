@@ -215,7 +215,7 @@ export function useDiagramForm() {
   const savedColor = ref<string | null>(null)
   const canClearColor = computed(() => savedColor.value === null)
   // Persisted with the diagram: the key's mode (needs a root note), the default tempo, the meter,
-  // and the steps it plays. The tempo is set exactly while some step sounds a position.
+  // and the steps it plays. The tempo is set exactly while there are steps.
   const mode = ref<DiagramMode | null>(null)
   const tempoBpm = ref<number | null>(null)
   const timeSignature = ref<TimeSignature>({ beats: 4, beat_value: 4 })
@@ -337,14 +337,13 @@ export function useDiagramForm() {
   }
 
   /**
-   * Replaces the steps, keeping the tempo set exactly while some step sounds a
-   * position: the first note brings a default tempo, and a sequence left
-   * without any note has nothing to play, so it keeps no tempo or rests either.
+   * Replaces the steps, keeping the tempo set exactly while there are any — a
+   * rest included, since a lick can start on one: the first step brings a
+   * default tempo, and an empty sequence keeps none.
    */
   function setSequence(steps: SequenceStep[]) {
-    const sounds = steps.some((step) => step.position_ids.length > 0)
-    sequence.value = sounds ? steps : []
-    if (!sounds) tempoBpm.value = null
+    sequence.value = steps
+    if (steps.length === 0) tempoBpm.value = null
     else if (tempoBpm.value === null) tempoBpm.value = DEFAULT_TEMPO_BPM
   }
 

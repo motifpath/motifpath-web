@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 
 import type { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { frettedPitch } from '@/shared/utils/pitch'
@@ -24,21 +24,32 @@ const MAX_TEMPO_BPM = 300
  * While recording, the value picked is the next note's, as in notation
  * software's note input. Otherwise picking a value changes the selected
  * step's, and selecting a step shows its value on the palette.
+ *
+ * The selection is the step itself, not its place: it stays on that step when
+ * others move or are removed — here or by the form, as when a removed position
+ * takes its steps with it — and clears once the step is removed or replaced.
  */
 export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
   const base = ref<BaseNoteValue>(8)
   const dotted = ref(false)
   const tuplet = ref<Tuplet | null>(null)
-  const selectedIndex = ref<number | null>(null)
+  const selected = shallowRef<SequenceStep | null>(null)
   const recording = ref(false)
   const chord = ref(false)
 
   const currentValue = computed(() => noteValue(base.value, { dotted: dotted.value, tuplet: tuplet.value }))
 
-  const selectedStep = computed(() =>
-    selectedIndex.value === null ? null : (form.sequence.value[selectedIndex.value] ?? null),
+  const selectedIndex = computed(() => {
+    const index = selected.value ? form.sequence.value.indexOf(selected.value) : -1
+    return index === -1 ? null : index
+  })
+  const selectedPositionIds = computed(() =>
+    selectedIndex.value === null ? [] : (form.sequence.value[selectedIndex.value]?.position_ids ?? []),
   )
-  const selectedPositionIds = computed(() => selectedStep.value?.position_ids ?? [])
+
+  function selectAt(index: number | null) {
+    selected.value = index === null ? null : (form.sequence.value[index] ?? null)
+  }
 
   function pitchOf(positionId: string): number {
     const position = form.positions.value.find((p) => p.id === positionId)
@@ -53,14 +64,19 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
       .map(({ id }) => id)
   }
 
+  /** Replaces step `index` with `change`'s result, or removes it on null; a selected step stays selected as changed. */
   function replaceStep(index: number, change: (step: SequenceStep) => SequenceStep | null) {
+    const wasSelected = selectedIndex.value === index
+    let kept = false
     form.setSequence(
       form.sequence.value.flatMap((step, i) => {
         if (i !== index) return [step]
         const changed = change(step)
+        kept = changed !== null
         return changed ? [changed] : []
       }),
     )
+    if (wasSelected) selectAt(kept ? index : null)
   }
 
   function applyValueToSelection() {
@@ -86,10 +102,10 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
 
   function selectStep(index: number) {
     if (selectedIndex.value === index) {
-      selectedIndex.value = null
+      selectAt(null)
       return
     }
-    selectedIndex.value = index
+    selectAt(index)
     const parts = describeNoteValue(form.sequence.value[index]?.value ?? currentValue.value)
     if (parts) {
       base.value = parts.base
@@ -104,18 +120,17 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     const steps = [...form.sequence.value]
     steps.splice(at, 0, step)
     form.setSequence(steps)
-    selectedIndex.value = form.sequence.value.length > 0 ? at : null
+    selectAt(at)
   }
 
   function pickPosition(positionId: string) {
-    if (chord.value && selectedIndex.value !== null && selectedStep.value) {
+    if (chord.value && selectedIndex.value !== null) {
       replaceStep(selectedIndex.value, (step) => {
         const positionIds = step.position_ids.includes(positionId)
           ? step.position_ids.filter((id) => id !== positionId)
           : inPitchOrder([...step.position_ids, positionId])
         return positionIds.length > 0 ? { ...step, position_ids: positionIds } : null
       })
-      if (!form.sequence.value[selectedIndex.value]) selectedIndex.value = null
       return
     }
     insertStep({ position_ids: [positionId], value: currentValue.value, strum: 'none' })
@@ -132,7 +147,7 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     if (form.sequence.value.length > 0) return
     const ids = inPitchOrder(form.positions.value.map((position) => position.id))
     form.setSequence(ids.map((id) => ({ position_ids: [id], value: currentValue.value, strum: 'none' })))
-    selectedIndex.value = null
+    selectAt(null)
   }
 
   function setStrum(index: number, strum: Strum) {
@@ -147,7 +162,6 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     if (!moved) return
     steps.splice(to, 0, moved)
     form.setSequence(steps)
-    if (selectedIndex.value === index) selectedIndex.value = to
   }
 
   /** Moves step `from` into gap `gap` — 0 is before the first step, the step count after the last. */
@@ -173,24 +187,19 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
         return i === into ? [{ ...step, position_ids: merged }] : [step]
       }),
     )
-    selectedIndex.value = into > from ? into - 1 : into
+    selectAt(into > from ? into - 1 : into)
   }
 
-  /** The selection stays on the step it was on, or clears when that step is the one removed. */
   function removeStep(index: number) {
-    const selected = selectedIndex.value
     replaceStep(index, () => null)
-    if (selected === null) return
-    if (selected === index || form.sequence.value.length === 0) selectedIndex.value = null
-    else if (selected > index) selectedIndex.value = selected - 1
   }
 
   function clear() {
     form.setSequence([])
-    selectedIndex.value = null
+    selectAt(null)
   }
 
-  /** A whole number of BPM within the range a diagram accepts; there's no tempo while nothing plays. */
+  /** A whole number of BPM within the range a diagram accepts; there's no tempo without steps. */
   function setTempo(bpm: number) {
     if (form.sequence.value.length === 0 || !Number.isFinite(bpm)) return
     form.tempoBpm.value = Math.min(MAX_TEMPO_BPM, Math.max(MIN_TEMPO_BPM, Math.round(bpm)))

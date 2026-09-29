@@ -65,6 +65,16 @@ describe('DiagramSequenceEditor', () => {
     expect(form.mode.value).toBe('dorian')
   })
 
+  it('shows the tempo that is kept when one typed is out of range', async () => {
+    const { form, wrapper } = mountEditor(makeSequencedFrettedDiagram({ tempo_bpm: 300 }))
+    const tempo = wrapper.get('[data-test="sequence-tempo"]')
+
+    await tempo.setValue('500')
+
+    expect(form.tempoBpm.value).toBe(300)
+    expect((tempo.element as HTMLInputElement).value).toBe('300')
+  })
+
   it('clears the mode when “no key” is chosen', async () => {
     const { form, wrapper } = mountEditor()
 

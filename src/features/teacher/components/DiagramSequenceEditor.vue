@@ -137,10 +137,11 @@ function selectValue(event: Event): string {
   return event.target instanceof HTMLSelectElement ? event.target.value : ''
 }
 
+/** Shows the tempo that was kept, since one typed out of range is clamped to a value the field may already hold. */
 function onTempo(event: Event) {
-  if (event.target instanceof HTMLInputElement && event.target.value !== '') {
-    props.editor.setTempo(Number(event.target.value))
-  }
+  if (!(event.target instanceof HTMLInputElement) || event.target.value === '') return
+  props.editor.setTempo(Number(event.target.value))
+  event.target.value = String(props.form.tempoBpm.value ?? '')
 }
 
 function onBeats(event: Event) {

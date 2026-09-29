@@ -89,6 +89,27 @@ describe('useDiagramSequence', () => {
       expect(sequence.base.value).toBe(8)
     })
 
+    it('starts a sequence with a rest, as a pickup, giving it the default tempo', () => {
+      const { form, sequence } = setup()
+
+      sequence.addRest(8)
+      sequence.pickPosition('p0')
+
+      expect(ids(form)).toEqual([[], ['p0']])
+      expect(form.tempoBpm.value).toBe(90)
+    })
+
+    it('keeps the rests when the last note is removed', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+
+      sequence.removeStep(3)
+      sequence.removeStep(1)
+      sequence.removeStep(0)
+
+      expect(ids(form)).toEqual([[]])
+      expect(form.tempoBpm.value).toBe(90)
+    })
+
     it('keeps a chord’s positions in pitch order, lowest first', () => {
       const { form, sequence } = setup()
       sequence.pickPosition('p3')
@@ -219,6 +240,46 @@ describe('useDiagramSequence', () => {
 
       sequence.moveStepTo(3, 0)
       expect(ids(form)).toEqual([['p0', 'p2', 'p3'], ['p1'], [], ['p0']])
+    })
+
+    it('keeps the selection on its step when another step is moved across it', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+      sequence.selectStep(3)
+
+      sequence.moveStepTo(0, 4)
+      expect(sequence.selectedPositionIds.value).toEqual(['p0', 'p2', 'p3'])
+
+      sequence.setBase(2)
+      expect(form.sequence.value[2]?.value).toEqual({ num: 1, den: 2 })
+      expect(form.sequence.value[3]?.value).toEqual({ num: 1, den: 8 })
+    })
+
+    it('keeps the selection on its step when the form drops an earlier step with a removed position', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+      sequence.selectStep(2)
+
+      form.removePosition('p1')
+
+      expect(sequence.selectedIndex.value).toBe(1)
+      expect(form.sequence.value[1]?.position_ids).toEqual([])
+    })
+
+    it('unselects a step the form changes, rather than pointing at another', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+      sequence.selectStep(3)
+
+      form.removePosition('p2')
+
+      expect(sequence.selectedIndex.value).toBeNull()
+    })
+
+    it('starts with nothing selected when the form loads another diagram', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
+      sequence.selectStep(0)
+
+      form.loadFromDiagram(makeSequencedFrettedDiagram())
+
+      expect(sequence.selectedIndex.value).toBeNull()
     })
 
     it('leaves the steps as they are when a step is dropped next to itself', () => {
