@@ -7,6 +7,12 @@ import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
+type Playback = NonNullable<DiagramRef['playback']>
+type PlaybackDirection = Playback['direction']
+
+/** The tempo range a usage may override the diagram's with (OpenAPI DiagramRef.playback.tempo_bpm). */
+export const MIN_PLAYBACK_TEMPO_BPM = 20
+export const MAX_PLAYBACK_TEMPO_BPM = 300
 
 /** Whether every, none, or only some of an interval's positions are shown. */
 export type IntervalVisibility = 'shown' | 'hidden' | 'mixed'
@@ -27,6 +33,12 @@ export type IntervalVisibility = 'shown' | 'hidden' | 'mixed'
  * which positions are correct (at least one), drawn or hidden, since the
  * student looks for them on the fretboard. Without it, a ref never carries
  * answers, and must draw at least one position.
+ *
+ * A diagram with a sequence can also be offered for playing: tempo and voice
+ * overrides (null keeps the diagram's tempo and the instrument's voice),
+ * direction and loop. A fresh ref offers Play; a reopened one keeps its
+ * choice. A diagram without a sequence never plays, so its ref's playback is
+ * left as it was.
  */
 export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answers?: boolean } = {}) {
   const answers = options.answers ?? false
@@ -34,6 +46,11 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
   const label = ref<DiagramLabelMode>('custom')
   const hiddenPositionIds = ref<string[]>([])
   const correctPositionIds = ref<string[]>([])
+  const playbackOffered = ref(false)
+  const playbackTempo = ref<number | null>(null)
+  const playbackVoiceId = ref<string | null>(null)
+  const playbackDirection = ref<PlaybackDirection>('as_authored')
+  const playbackLoop = ref(false)
   let base: DiagramRef | null = null
 
   const positionIds = computed(() => diagram.value?.positions.map((p) => p.position_id ?? '') ?? [])
@@ -70,7 +87,44 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
         .filter((p) => !hidden.has(p.position_id ?? '') && (base?.correct_intervals ?? []).includes(p.interval))
         .map((p) => p.position_id ?? '')
     correctPositionIds.value = inPositionOrder(correct)
+
+    // A reopened ref without playback offered none; a fresh one offers it.
+    const playback = base ? (base.playback ?? null) : null
+    playbackOffered.value = base ? playback !== null : true
+    playbackTempo.value = playback?.tempo_bpm ?? null
+    playbackVoiceId.value = playback?.voice_id ?? null
+    playbackDirection.value = playback?.direction ?? 'as_authored'
+    playbackLoop.value = playback?.loop ?? false
   }
+
+  const canConfigurePlayback = computed(() => (diagram.value?.sequence.length ?? 0) > 0)
+
+  function setPlaybackOffered(offered: boolean) {
+    playbackOffered.value = offered
+  }
+
+  /** null plays at the diagram's own tempo. */
+  function setPlaybackTempo(bpm: number | null) {
+    playbackTempo.value = bpm
+  }
+
+  /** null plays with the instrument's default voice. */
+  function setPlaybackVoice(voiceId: string | null) {
+    playbackVoiceId.value = voiceId
+  }
+
+  function setPlaybackDirection(direction: PlaybackDirection) {
+    playbackDirection.value = direction
+  }
+
+  function setPlaybackLoop(loop: boolean) {
+    playbackLoop.value = loop
+  }
+
+  const playbackTempoInvalid = computed(() => {
+    const bpm = playbackTempo.value
+    return bpm !== null && !(Number.isInteger(bpm) && bpm >= MIN_PLAYBACK_TEMPO_BPM && bpm <= MAX_PLAYBACK_TEMPO_BPM)
+  })
 
   function setLabel(mode: DiagramLabelMode) {
     label.value = mode
@@ -109,7 +163,12 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
 
   const drawnCount = computed(() => positionIds.value.length - hiddenPositionIds.value.length)
   const canShow = computed(() => diagram.value !== null && (answers || drawnCount.value > 0))
-  const canApply = computed(() => canShow.value && (!answers || correctPositionIds.value.length > 0))
+  const playbackValid = computed(
+    () => !canConfigurePlayback.value || !playbackOffered.value || !playbackTempoInvalid.value,
+  )
+  const canApply = computed(
+    () => canShow.value && (!answers || correctPositionIds.value.length > 0) && playbackValid.value,
+  )
 
   /** The ref to embed, or null while it couldn't be (nothing drawn, or, for a stimulus, no answer yet). */
   function toRef(): DiagramRef | null {
@@ -139,7 +198,18 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
         hidden_position_ids: hiddenPositionIds.value.length > 0 ? [...hiddenPositionIds.value] : null,
         subset: null,
       },
+      ...(canConfigurePlayback.value ? { playback: buildPlayback() } : {}),
       ...(answers ? { correct_position_ids: [...correctPositionIds.value] } : {}),
+    }
+  }
+
+  function buildPlayback(): Playback | null {
+    if (!playbackOffered.value) return null
+    return {
+      tempo_bpm: playbackTempo.value,
+      voice_id: playbackVoiceId.value,
+      direction: playbackDirection.value,
+      loop: playbackLoop.value,
     }
   }
 
@@ -148,6 +218,13 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
     label,
     hiddenPositionIds,
     correctPositionIds,
+    playbackOffered,
+    playbackTempo,
+    playbackVoiceId,
+    playbackDirection,
+    playbackLoop,
+    playbackTempoInvalid,
+    canConfigurePlayback,
     availableIntervals,
     canShow,
     canApply,
@@ -157,6 +234,11 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
     togglePositionCorrect,
     intervalState,
     toggleIntervalVisibility,
+    setPlaybackOffered,
+    setPlaybackTempo,
+    setPlaybackVoice,
+    setPlaybackDirection,
+    setPlaybackLoop,
     toRef,
     toPreviewRef,
   }

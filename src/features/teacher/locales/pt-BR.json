@@ -577,7 +577,23 @@
     "toolLegend": "Clicar numa posição",
     "toolCorrect": "Marca como correta",
     "toolVisibility": "Esconde ou mostra",
-    "nothingShown": "Mostre pelo menos uma posição, senão o diagrama não mostra nada."
+    "nothingShown": "Mostre pelo menos uma posição, senão o diagrama não mostra nada.",
+    "playback": {
+      "legend": "Reprodução",
+      "offered": "Deixar os alunos tocarem",
+      "tempo": "Andamento (BPM)",
+      "tempoHint": "Em branco, toca no andamento do diagrama.",
+      "tempoInvalid": "Escolha um andamento inteiro de {min} a {max} BPM.",
+      "voice": "Som",
+      "voiceDefault": "Padrão do instrumento ({name})",
+      "voiceDefaultUnnamed": "Padrão do instrumento",
+      "direction": "Sentido",
+      "directions": {
+        "as_authored": "Como escrito",
+        "reversed": "Invertido"
+      },
+      "loop": "Repetir"
+    }
   },
   "mediaPickerModal": {
     "title": "Escolha uma imagem ou um diagrama",

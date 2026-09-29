@@ -577,7 +577,23 @@
     "toolLegend": "Clicking a position",
     "toolCorrect": "Marks it correct",
     "toolVisibility": "Hides or shows it",
-    "nothingShown": "Show at least one position, or the diagram shows nothing."
+    "nothingShown": "Show at least one position, or the diagram shows nothing.",
+    "playback": {
+      "legend": "Playback",
+      "offered": "Let students play it",
+      "tempo": "Tempo (BPM)",
+      "tempoHint": "Blank plays at the diagram's tempo.",
+      "tempoInvalid": "Pick a whole tempo from {min} to {max} BPM.",
+      "voice": "Sound",
+      "voiceDefault": "Instrument default ({name})",
+      "voiceDefaultUnnamed": "Instrument default",
+      "direction": "Direction",
+      "directions": {
+        "as_authored": "As written",
+        "reversed": "Reversed"
+      },
+      "loop": "Loop"
+    }
   },
   "mediaPickerModal": {
     "title": "Choose an image or a diagram",
