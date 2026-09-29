@@ -808,7 +808,7 @@ describe('useDiagramForm', () => {
       ])
     })
 
-    it('clears the tempo once deleting positions leaves only rests, since only a sequence with notes plays', () => {
+    it('keeps the rests and the tempo when deleting positions leaves only rests', () => {
       const form = useDiagramForm()
       form.loadFromDiagram(
         makeSequencedFrettedDiagram({
@@ -817,6 +817,19 @@ describe('useDiagramForm', () => {
             { position_ids: [], value: { num: 1, den: 4 }, strum: 'none' },
           ],
         }),
+      )
+
+      form.toggleCell({ string: 6, fret: 5 })
+
+      const request = form.toUpdateDiagramRequest()
+      expect(request.sequence).toEqual([{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }])
+      expect(request.tempo_bpm).toBe(90)
+    })
+
+    it('clears the tempo once deleting positions leaves no step at all', () => {
+      const form = useDiagramForm()
+      form.loadFromDiagram(
+        makeSequencedFrettedDiagram({ sequence: [{ position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' }] }),
       )
 
       form.toggleCell({ string: 6, fret: 5 })

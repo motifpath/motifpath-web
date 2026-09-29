@@ -73,6 +73,49 @@ describe('FrettedDiagramEditor', () => {
     expect(wrapper.emitted('toggle-cell')).toEqual([[{ string: 3, fret: 5 }]])
   })
 
+  describe('recording a sequence', () => {
+    async function clickCell(wrapper: ReturnType<typeof mount>, cell: { string: number; fret: number }) {
+      const geometry = frettedEditorGeometry(6)
+      const svg = wrapper.get('svg')
+      mockOneToOneBoundingRect(svg.element, editorViewWidth(geometry))
+      await svg.trigger('click', { clientX: fretX(cell.fret, geometry), clientY: stringY(cell.string, geometry) })
+    }
+
+    it('picks the clicked marker for the sequence instead of removing it', async () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [makeLocalPosition({ id: 'pos-1', string: 3, fret: 5 })], recording: true },
+      })
+
+      await clickCell(wrapper, { string: 3, fret: 5 })
+
+      expect(wrapper.emitted('pick-position')).toEqual([['pos-1']])
+      expect(wrapper.emitted('toggle-cell')).toBeUndefined()
+    })
+
+    it('places nothing on an empty cell, since only placed markers can play', async () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: { instrument: makeFrettedInstrument(), positions: [], recording: true },
+      })
+
+      await clickCell(wrapper, { string: 3, fret: 5 })
+
+      expect(wrapper.emitted('pick-position')).toBeUndefined()
+      expect(wrapper.emitted('toggle-cell')).toBeUndefined()
+    })
+
+    it('rings the markers of the selected step', () => {
+      const wrapper = mount(FrettedDiagramEditor, {
+        props: {
+          instrument: makeFrettedInstrument(),
+          positions: [makeLocalPosition({ id: 'pos-1' }), makeLocalPosition({ id: 'pos-2', fret: 7 }), makeLocalPosition({ id: 'pos-3', fret: 8 })],
+          sequenceHighlightIds: ['pos-1', 'pos-3'],
+        },
+      })
+
+      expect(wrapper.findAll('[data-test="sequence-highlight"]')).toHaveLength(2)
+    })
+  })
+
   it('does not emit toggle-cell for a click outside the fretboard bounds', async () => {
     const instrument = makeFrettedInstrument()
     const wrapper = mount(FrettedDiagramEditor, { props: { instrument, positions: [] } })

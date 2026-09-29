@@ -596,5 +596,69 @@
     "merge": "Mesclar no editor",
     "pickerEmptyHeading": "Nada para sobrepor",
     "pickerEmptyMessage": "Ainda não há outro diagrama para este instrumento."
+  },
+  "diagramSequenceEditor": {
+    "heading": "Reprodução",
+    "hint": "Os passos que o aluno ouve quando este diagrama toca. Ative a gravação e clique nos marcadores do braço para adicioná-los em ordem.",
+    "empty": "Ainda não há passos, então este diagrama não toca.",
+    "fill": "Preencher com as posições",
+    "fillHint": "Um passo por posição, da mais grave à mais aguda, com a figura escolhida abaixo",
+    "clear": "Limpar sequência",
+    "tempo": "Andamento (BPM)",
+    "timeSignature": "Fórmula de compasso",
+    "beatsAriaLabel": "Tempos por compasso",
+    "beatValueAriaLabel": "Unidade de tempo",
+    "mode": "Modo",
+    "modeNone": "Sem tonalidade",
+    "modeNeedsRoot": "Escolha uma nota fundamental para dar um modo ao diagrama.",
+    "modes": {
+      "major": "Maior",
+      "minor": "Menor",
+      "dorian": "Dórico",
+      "phrygian": "Frígio",
+      "lydian": "Lídio",
+      "mixolydian": "Mixolídio",
+      "locrian": "Lócrio"
+    },
+    "record": "Gravar pelo braço",
+    "recordingHint": "Gravando: clique em um marcador para adicioná-lo como próximo passo.",
+    "chord": "Adicionar ao passo selecionado (acorde)",
+    "noteValue": "Figura",
+    "dotted": "Pontuada",
+    "tuplets": {
+      "3": "Tercina",
+      "5": "Quintina"
+    },
+    "restLabel": "Pausa",
+    "stepsAriaLabel": "Passos da sequência",
+    "stepAriaLabel": "Passo {number}: {content}, {value}",
+    "barLine": "Barra de compasso",
+    "strum": "Rasgueado",
+    "strums": {
+      "none": "Juntas",
+      "down": "Para baixo (do grave ao agudo)",
+      "up": "Para cima (do agudo ao grave)"
+    },
+    "moveEarlier": "Mover para antes",
+    "moveLater": "Mover para depois",
+    "removeStep": "Remover passo",
+    "values": {
+      "1": "semibreve",
+      "2": "mínima",
+      "4": "semínima",
+      "8": "colcheia",
+      "16": "semicolcheia",
+      "32": "fusa"
+    },
+    "dottedValue": "{value} pontuada",
+    "tupletValue": {
+      "3": "{value} em tercina",
+      "5": "{value} em quintina"
+    },
+    "fractionValue": "Figura de {num}/{den}",
+    "rests": "Pausas",
+    "addRest": "Adicionar pausa de {value}",
+    "dragHint": "Arraste um passo para um espaço entre passos para movê-lo, ou sobre outro passo para tocá-los juntos como acorde.",
+    "removeStepNumber": "Remover passo {number}"
   }
 }
