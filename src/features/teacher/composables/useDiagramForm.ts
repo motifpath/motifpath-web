@@ -64,6 +64,9 @@ function makeId(): string {
   return crypto.randomUUID()
 }
 
+/** The tempo a diagram's sequence starts at when its first note is added. */
+export const DEFAULT_TEMPO_BPM = 90
+
 /** The longest region caption the server accepts, in characters. */
 export const REGION_CAPTION_MAX_LENGTH = 60
 
@@ -333,11 +336,16 @@ export function useDiagramForm() {
     return { interval: intervalFromRoot(noteName, rootNote.value), noteName }
   }
 
-  /** A sequence left without any note has nothing to play, so it keeps no tempo or rests either. */
+  /**
+   * Replaces the steps, keeping the tempo set exactly while some step sounds a
+   * position: the first note brings a default tempo, and a sequence left
+   * without any note has nothing to play, so it keeps no tempo or rests either.
+   */
   function setSequence(steps: SequenceStep[]) {
     const sounds = steps.some((step) => step.position_ids.length > 0)
     sequence.value = sounds ? steps : []
     if (!sounds) tempoBpm.value = null
+    else if (tempoBpm.value === null) tempoBpm.value = DEFAULT_TEMPO_BPM
   }
 
   function addPosition(cell: FrettedCell) {
@@ -572,6 +580,7 @@ export function useDiagramForm() {
     tempoBpm,
     timeSignature,
     sequence,
+    setSequence,
     hasName,
     hasPositions,
     hasCompletePositions,
