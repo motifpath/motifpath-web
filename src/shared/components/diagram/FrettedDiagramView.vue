@@ -26,7 +26,8 @@
  * information control above the board near its last fret, which opens the
  * region's description on demand. `regionInfo: false` leaves the controls out
  * of a static picture; `drawingInert` makes the drawing a picture only while
- * its controls stay usable.
+ * its controls stay usable. The `controls` slot, `controlsWidth` wide, puts
+ * other controls such as a player at the left end of that same rail.
  */
 import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
 
@@ -91,8 +92,11 @@ const props = withDefaults(
     /** Make the drawing a picture only — no input reaches it and screen readers skip it — while
      *  its region controls stay usable. */
     drawingInert?: boolean
+    /** Room for the `controls` slot at the left of the control rail; 0 leaves the slot out. */
+    controlsWidth?: number
   }>(),
   {
+    controlsWidth: 0,
     compact: false,
     regionInfo: true,
     drawingInert: false,
@@ -158,6 +162,9 @@ const layout = computed(() =>
 
 const showsNut = computed(() => layout.value.minFret === 0)
 const showsRegionInfo = computed(() => props.regionInfo && layout.value.regions.length > 0)
+const slots = defineSlots<{ controls?: () => unknown }>()
+const showsControls = computed(() => Boolean(slots.controls) && props.controlsWidth > 0)
+const showsRail = computed(() => showsRegionInfo.value || showsControls.value)
 const geometry = computed(() =>
   fretboardGeometry({
     // A readable board grows wide enough for every region's control, side by side.
@@ -176,7 +183,7 @@ const BOARD_H = computed(() => geometry.value.boardHeight)
 // A compact drawing is scaled to its container; a readable one is drawn at its own size.
 const scale = computed(() => (props.compact ? availableWidth.value / viewW.value : 1))
 
-const boardTop = computed(() => boardTopFor(showsRegionInfo.value))
+const boardTop = computed(() => boardTopFor(showsRail.value))
 const viewH = computed(() => boardTop.value + BOARD_H.value + MARGIN_BOTTOM)
 
 const frame = computed<BoardFrame>(() => ({
@@ -456,13 +463,18 @@ function noteAlignClass(position: Marker): string {
       <div class="relative" :style="compact ? undefined : { width: `${viewW}px` }">
         <!-- Region controls sit above the board, never over a marker. -->
         <RegionInfoRail
-          v-if="showsRegionInfo"
+          v-if="showsRail"
           v-model:open-id="shownRegionId"
-          :regions="railRegions"
+          :regions="showsRegionInfo ? railRegions : []"
           :width="viewW * scale"
           :scroll-left="compact ? 0 : scrollLeft"
           :visible-width="compact ? viewW * scale : availableWidth"
-        />
+          :leading-width="showsControls ? controlsWidth : 0"
+        >
+          <template v-if="showsControls" #leading>
+            <slot name="controls" />
+          </template>
+        </RegionInfoRail>
         <div class="relative">
         <svg
           data-test="diagram-canvas"
@@ -535,8 +547,10 @@ function noteAlignClass(position: Marker): string {
               :cx="markerX(position.fret)"
               :cy="y(position.string)"
               :r="TARGET_RADIUS"
-              class="fill-warning"
-              fill-opacity="0.6"
+              fill="none"
+              class="stroke-fretboard-sounding"
+              stroke-width="3"
+              stroke-dasharray="4 3"
             />
             <g
               :opacity="position.hidden ? 0.35 : undefined"

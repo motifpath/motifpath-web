@@ -44,6 +44,22 @@ export function clearPrefetchedSamples() {
   prefetched.clear()
 }
 
+/** Each position's sounding pitch; null where the tuning doesn't give one. */
+function positionPitches({ diagram, instrument }: PlaybackSource): Map<string | undefined, number | null> {
+  const tuning = instrument.tuning ?? []
+  return new Map(diagram.positions.map((p) => [p.position_id, frettedPitch(tuning, p.string ?? 0, p.fret ?? 0)]))
+}
+
+/**
+ * Whether a usage offers Play for a diagram: a fretted diagram whose usage enables playback and
+ * whose sequence has a step that sounds, so a sequence of rests never plays silence.
+ */
+export function isPlayable(source: PlaybackSource): boolean {
+  if (source.playback === null || source.instrument.family !== 'fretted') return false
+  const pitches = positionPitches(source)
+  return source.diagram.sequence.some((step) => step.position_ids.some((id) => (pitches.get(id) ?? null) !== null))
+}
+
 /**
  * Plays a diagram's sequence and says which positions are sounding, so the
  * view can light them up. Every note is scheduled on the audio clock up
@@ -67,23 +83,10 @@ export function useDiagramPlayback(source: MaybeRefOrGetter<PlaybackSource>) {
   })
   const tempo = ref(effectiveTempo.value)
 
-  /** Each position's sounding pitch; null where the tuning doesn't give one. */
-  const pitches = computed(() => {
-    const { diagram, instrument } = toValue(source)
-    const tuning = instrument.tuning ?? []
-    return new Map(diagram.positions.map((p) => [p.position_id, frettedPitch(tuning, p.string ?? 0, p.fret ?? 0)]))
-  })
+  const pitches = computed(() => positionPitches(toValue(source)))
   const pitchOf = (positionId: string) => pitches.value.get(positionId) ?? null
 
-  // Play is offered only when some step sounds, so a sequence of rests never plays silence.
-  const canPlay = computed(() => {
-    const { diagram, instrument, playback } = toValue(source)
-    return (
-      playback !== null &&
-      instrument.family === 'fretted' &&
-      diagram.sequence.some((step) => step.position_ids.some((id) => pitchOf(id) !== null))
-    )
-  })
+  const canPlay = computed(() => isPlayable(toValue(source)))
 
   const voiceId = computed(() => {
     const { instrument, playback } = toValue(source)

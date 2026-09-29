@@ -2,6 +2,8 @@
 /**
  * The rail above a fretboard holding one information control per region, near the region's last
  * fret and colored like it, and the region's description, opened on demand under its control.
+ * Other controls, such as a player, can take the rail's left end (`leading`, `leadingWidth`
+ * wide): when a region's control would sit under them, the regions' controls move to a row below.
  * The student's viewer and the teacher's editor both use it, so an author finds a region's
  * description where a student will.
  *
@@ -14,7 +16,13 @@ import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 import type { ComponentPublicInstance } from 'vue'
 import { Info, X } from 'lucide-vue-next'
 
-import { CONTROL_SIZE, anchorDescription, placeRegionControls } from '@/shared/utils/regionInfoLayout'
+import {
+  CONTROL_SIZE,
+  RAIL_CONTROL_CLASS,
+  RAIL_ICON_SIZE,
+  anchorDescription,
+  placeRegionControls,
+} from '@/shared/utils/regionInfoLayout'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 export interface RailRegion {
@@ -34,7 +42,11 @@ const props = defineProps<{
   /** How far the board is scrolled, and how much of it shows, so a description stays in view. */
   scrollLeft: number
   visibleWidth: number
+  /** Room kept at the rail's left end for the `leading` slot's controls. */
+  leadingWidth?: number
 }>()
+
+defineSlots<{ leading?: () => unknown }>()
 
 const openId = defineModel<string | null>('openId', { default: null })
 
@@ -48,10 +60,15 @@ const controls = computed(() => {
     props.regions.map((region) => ({ id: region.id, right: region.right })),
     props.width,
   )
+  const leading = props.leadingWidth ?? 0
+  // The regions' controls keep their places relative to one another, as one row below the leading
+  // controls rather than under them.
+  const clearsLeading = placed.every((control) => control.row > 0 || control.center - CONTROL_SIZE / 2 >= leading)
+  const rowOffset = leading > 0 && !clearsLeading ? 1 : 0
   return props.regions.map((region, index) => ({
     region,
     left: placed[index]!.center - CONTROL_SIZE / 2,
-    top: placed[index]!.row * CONTROL_SIZE,
+    top: (placed[index]!.row + rowOffset) * CONTROL_SIZE,
   }))
 })
 // A board wide enough keeps every control on one row; a narrow one wraps them onto more.
@@ -109,6 +126,9 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick, true))
   <!-- A press on the controls or a description never reaches whatever holds the diagram (such as
        an answer card). -->
   <div ref="rail" data-test="region-rail" class="relative z-10" :style="{ height: `${railHeight}px` }" @click.stop>
+    <div v-if="(leadingWidth ?? 0) > 0" data-test="rail-leading" class="absolute left-0 top-0 z-20 flex">
+      <slot name="leading" />
+    </div>
     <button
       v-for="control in controls"
       :key="control.region.id"
@@ -116,8 +136,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick, true))
       type="button"
       data-test="region-info"
       data-region-ui
-      class="absolute flex h-11 w-11 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
-      :class="control.region.color ? '' : 'text-accent'"
+      :class="['absolute', RAIL_CONTROL_CLASS, control.region.color ? '' : 'text-accent']"
       :style="{ left: `${control.left}px`, top: `${control.top}px`, ...colorStyle(control.region) }"
       :aria-label="control.region.label"
       :aria-expanded="openId === control.region.id"
@@ -125,7 +144,7 @@ onUnmounted(() => document.removeEventListener('click', onDocumentClick, true))
       @click="toggle(control.region)"
       @keydown.escape="close(true)"
     >
-      <Info :size="18" aria-hidden="true" />
+      <Info :size="RAIL_ICON_SIZE" aria-hidden="true" />
     </button>
     <div
       v-if="openRegion"
