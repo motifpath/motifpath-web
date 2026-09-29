@@ -44,11 +44,11 @@ export interface FrettedDiagramLayout {
   /** Highlighted bands, in drawing order (later ones on top). */
   regions: FrettedRegion[]
   stringCount: number
-  /** One fret below the lowest drawn position or region (or, with `includeHidden`, the lowest
-   *  of all of them), but never below the nut (0): open-string markers sit on the nut, so nothing
-   *  is drawn left of it. */
+  /** The fret wire before the lowest drawn position, region or extra fret (or, with
+   *  `includeHidden`, the lowest of every position), but never below the nut (0): open-string
+   *  markers sit on the nut, so nothing is drawn left of it. */
   minFret: number
-  /** One fret above the highest such position or region (or the diagram's nut, whichever wins the minimum span). */
+  /** The highest such fret, so no empty fret space follows it — widened upward to the minimum span. */
   maxFret: number
 }
 
@@ -68,7 +68,7 @@ export function computeFrettedDiagramLayout(
   diagram: Diagram,
   instrument: Instrument,
   diagramRef: DiagramRef,
-  options: { includeHidden?: boolean } = {},
+  options: { includeHidden?: boolean; extraFrets?: number[] } = {},
 ): FrettedDiagramLayout {
   const subset = diagramRef.layers.subset
   const hidden = diagramRef.layers.hidden_position_ids ?? []
@@ -100,20 +100,39 @@ export function computeFrettedDiagramLayout(
     color: region.color ?? null,
   }))
 
-  const frets = [
+  const { minFret, maxFret } = shownFretWindow([
     ...(options.includeHidden ? allPositions : positions).map((position) => position.fret),
     ...regions.flatMap((region) => [region.fretStart, region.fretEnd]),
-  ]
-  const lowFret = frets.length > 0 ? Math.max(Math.min(...frets) - 1, 0) : 0
-  const highFret = frets.length > 0 ? Math.max(...frets) + 1 : MIN_FRET_SPAN
-  const span = Math.max(highFret - lowFret, MIN_FRET_SPAN)
+    ...(options.extraFrets ?? []),
+  ])
 
-  return {
-    positions,
-    hiddenPositions,
-    regions,
-    stringCount,
-    minFret: lowFret,
-    maxFret: lowFret + span,
-  }
+  return { positions, hiddenPositions, regions, stringCount, minFret, maxFret }
+}
+
+/** The frets every position and region of a diagram uses, hidden ones included. */
+export function allUsedFrets(diagram: Diagram): number[] {
+  return [
+    ...diagram.positions.map((position) => position.fret ?? 0),
+    ...(diagram.regions ?? []).flatMap((region) => [region.fret_start ?? 0, region.fret_end ?? 0]),
+  ]
+}
+
+/** The fret spaces a board shows for the given used frets: from the wire before the lowest to the
+ *  highest, never below the nut, and at least the minimum span. */
+function shownFretWindow(frets: number[]): { minFret: number; maxFret: number } {
+  const minFret = frets.length > 0 ? Math.max(Math.min(...frets) - 1, 0) : 0
+  const highFret = frets.length > 0 ? Math.max(...frets) : 0
+  return { minFret, maxFret: minFret + Math.max(highFret - minFret, MIN_FRET_SPAN) }
+}
+
+/**
+ * The window a diagram's answer cells cover: one spare fret space beyond the used frets on each
+ * side (never below the nut), at least the minimum span. The server derives an exercise's cell
+ * options over exactly this window, so an unsaved preview must use it too — even though the
+ * board shows no spare space of its own, the cells widen it.
+ */
+export function answerCellFretWindow(frets: number[]): { minFret: number; maxFret: number } {
+  const minFret = frets.length > 0 ? Math.max(Math.min(...frets) - 1, 0) : 0
+  const highFret = frets.length > 0 ? Math.max(...frets) + 1 : MIN_FRET_SPAN
+  return { minFret, maxFret: minFret + Math.max(highFret - minFret, MIN_FRET_SPAN) }
 }

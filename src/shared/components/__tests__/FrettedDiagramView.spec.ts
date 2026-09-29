@@ -791,6 +791,10 @@ describe('FrettedDiagramView', () => {
       it('keeps hidden positions in view when cells are the answers, since a hidden one can be correct', () => {
         expect(fretNumbers({ answerCells: [{ optionId: 'o-6-5', string: 6, fret: 5 }] })).toContain('5')
       })
+
+      it('widens the board to every answer cell, beyond the frets the diagram uses', () => {
+        expect(fretNumbers({ answerCells: [{ optionId: 'o-1-13', string: 1, fret: 13 }] })).toContain('13')
+      })
     })
 
     describe('answer cells', () => {

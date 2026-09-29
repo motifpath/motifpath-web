@@ -1,4 +1,4 @@
-import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
+import { allUsedFrets, answerCellFretWindow } from '@/shared/utils/frettedDiagramLayout'
 import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
@@ -18,9 +18,8 @@ type Option = components['schemas']['Option']
  * when it reaches the nut.
  */
 export function diagramStimulusOptions(diagram: Diagram, instrument: Instrument, diagramRef: DiagramRef): Option[] {
-  const { minFret, maxFret, stringCount } = computeFrettedDiagramLayout(diagram, instrument, diagramRef, {
-    includeHidden: true,
-  })
+  const { minFret, maxFret } = answerCellFretWindow(allUsedFrets(diagram))
+  const stringCount = instrument.string_count ?? 0
   const correct = new Set(diagramRef.correct_position_ids ?? [])
   const occupant = new Map<string, string>()
   for (const position of diagram.positions) {

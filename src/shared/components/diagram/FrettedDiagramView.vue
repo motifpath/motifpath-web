@@ -97,8 +97,10 @@ const BOARD_H = 300 - MARGIN_TOP - MARGIN_BOTTOM
 const layout = computed(() =>
   // Hidden positions stay in view while an author can see them, or while the cells are the
   // answers (a hidden position can be a correct one); otherwise the window fits what's drawn.
+  // Every answer cell stays on the board, those past the used frets included.
   computeFrettedDiagramLayout(props.diagram, props.instrument, props.diagramRef, {
     includeHidden: props.revealHidden || props.answerCells.length > 0,
+    extraFrets: props.answerCells.map((cell) => cell.fret),
   }),
 )
 

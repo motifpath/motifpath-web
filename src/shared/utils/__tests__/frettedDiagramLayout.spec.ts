@@ -84,10 +84,10 @@ describe('computeFrettedDiagramLayout', () => {
     const layout = computeFrettedDiagramLayout(diagram, makeFrettedInstrument(), makeDiagramRef())
 
     expect(layout.minFret).toBe(0)
-    expect(layout.maxFret).toBe(4)
+    expect(layout.maxFret).toBe(3)
   })
 
-  it('computes minFret/maxFret one fret beyond the visible range', () => {
+  it('spans the used fret spaces, from the fret wire before the lowest to the highest, with no empty space after', () => {
     const diagram = makeFrettedDiagram()
     const instrument = makeFrettedInstrument()
     const diagramRef = makeDiagramRef()
@@ -96,7 +96,7 @@ describe('computeFrettedDiagramLayout', () => {
 
     // visible frets span 5..8
     expect(layout.minFret).toBe(4)
-    expect(layout.maxFret).toBe(9)
+    expect(layout.maxFret).toBe(8)
   })
 
   it('widens a narrow fret window to a minimum span of 3', () => {
@@ -180,7 +180,27 @@ describe('computeFrettedDiagramLayout', () => {
 
     // positions span 5..8; the region spans 3..12
     expect(layout.minFret).toBe(2)
-    expect(layout.maxFret).toBe(13)
+    expect(layout.maxFret).toBe(12)
+  })
+
+  it('widens the fret window to cover extra frets, such as answer cells', () => {
+    const layout = computeFrettedDiagramLayout(makeFrettedDiagram(), makeFrettedInstrument(), makeDiagramRef(), {
+      extraFrets: [10],
+    })
+
+    expect(layout.minFret).toBe(4)
+    expect(layout.maxFret).toBe(10)
+  })
+
+  it('shows an empty diagram as three fret spaces from the nut', () => {
+    const layout = computeFrettedDiagramLayout(
+      makeFrettedDiagram({ positions: [], regions: [] }),
+      makeFrettedInstrument(),
+      makeDiagramRef(),
+    )
+
+    expect(layout.minFret).toBe(0)
+    expect(layout.maxFret).toBe(3)
   })
 
   it('has no regions when the diagram has none', () => {
@@ -230,7 +250,7 @@ describe('computeFrettedDiagramLayout', () => {
 
       expect(layout.positions).toEqual([])
       expect(layout.minFret).toBe(4)
-      expect(layout.maxFret).toBe(13)
+      expect(layout.maxFret).toBe(12)
     })
   })
 })
