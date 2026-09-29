@@ -2,7 +2,7 @@ import { computed, ref, shallowRef } from 'vue'
 
 import type { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { frettedPitch } from '@/shared/utils/pitch'
-import { describeNoteValue, noteValue } from '@/shared/utils/sequence'
+import { describeNoteValue, MAX_TEMPO_BPM, MIN_TEMPO_BPM, noteValue } from '@/shared/utils/sequence'
 import type { BaseNoteValue, Tuplet } from '@/shared/utils/sequence'
 import type { components } from '@/api/generated/core-domain'
 
@@ -10,9 +10,6 @@ type SequenceStep = components['schemas']['SequenceStep']
 type DiagramMode = components['schemas']['DiagramMode']
 type TimeSignature = components['schemas']['TimeSignature']
 type Strum = NonNullable<SequenceStep['strum']>
-
-const MIN_TEMPO_BPM = 20
-const MAX_TEMPO_BPM = 300
 
 /**
  * Editing a diagram's playback steps in the form it's given: the note value

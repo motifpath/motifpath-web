@@ -483,6 +483,28 @@ describe('useExerciseForm', () => {
       expect(update).not.toHaveProperty('options')
     })
 
+    it('cannot save a diagram stimulus whose playback tempo is out of range', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      const playing = (tempo_bpm: number | null): DiagramRef => ({
+        ...rootsOnly,
+        playback: { tempo_bpm, voice_id: null, direction: 'as_authored', loop: false },
+      })
+
+      form.setStimulusDiagram(playing(500))
+      expect(form.hasValidStimulusPlayback.value).toBe(false)
+
+      form.setStimulusDiagram(playing(120))
+      expect(form.hasValidStimulusPlayback.value).toBe(true)
+      form.setStimulusDiagram(playing(null))
+      expect(form.hasValidStimulusPlayback.value).toBe(true)
+
+      // Only the stimulus being authored counts.
+      form.setStimulusDiagram(playing(500))
+      form.stimulusSource.value = 'image'
+      expect(form.hasValidStimulusPlayback.value).toBe(true)
+    })
+
     it('has no correct answer for a diagram stimulus without correct intervals', () => {
       const form = useExerciseForm()
       form.exerciseType.value = 'image_recognition'

@@ -592,7 +592,8 @@
         "as_authored": "Como escrito",
         "reversed": "Invertido"
       },
-      "loop": "Repetir"
+      "loop": "Repetir",
+      "voicesError": "Não foi possível carregar os outros sons, então só o padrão do instrumento está disponível."
     }
   },
   "mediaPickerModal": {

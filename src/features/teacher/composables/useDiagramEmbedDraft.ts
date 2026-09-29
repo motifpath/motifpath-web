@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 
 import { effectiveLabelMode, type DiagramLabelMode } from '@/shared/utils/diagramLabels'
 import { INTERVAL_CODES } from '@/shared/utils/intervalLabels'
+import { isValidTempoBpm } from '@/shared/utils/sequence'
 import type { IntervalCode } from '@/shared/utils/intervalLabels'
 import type { components } from '@/api/generated/core-domain'
 
@@ -9,10 +10,6 @@ type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
 type Playback = NonNullable<DiagramRef['playback']>
 type PlaybackDirection = Playback['direction']
-
-/** The tempo range a usage may override the diagram's with (OpenAPI DiagramRef.playback.tempo_bpm). */
-export const MIN_PLAYBACK_TEMPO_BPM = 20
-export const MAX_PLAYBACK_TEMPO_BPM = 300
 
 /** Whether every, none, or only some of an interval's positions are shown. */
 export type IntervalVisibility = 'shown' | 'hidden' | 'mixed'
@@ -37,11 +34,16 @@ export type IntervalVisibility = 'shown' | 'hidden' | 'mixed'
  * A diagram with a sequence can also be offered for playing: tempo and voice
  * overrides (null keeps the diagram's tempo and the instrument's voice),
  * direction and loop. A fresh ref offers Play; a reopened one keeps its
- * choice. A diagram without a sequence never plays, so its ref's playback is
- * left as it was.
+ * choice. A diagram without a sequence never plays, nor does a usage that
+ * only ever draws it as a still picture (`playable: false`), so their ref's
+ * playback is left as it was.
  */
-export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answers?: boolean } = {}) {
+export function useDiagramEmbedDraft(
+  initial: DiagramRef | null,
+  options: { answers?: boolean; playable?: boolean } = {},
+) {
   const answers = options.answers ?? false
+  const playable = options.playable ?? true
   const diagram = ref<Diagram | null>(null)
   const label = ref<DiagramLabelMode>('custom')
   const hiddenPositionIds = ref<string[]>([])
@@ -97,7 +99,7 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
     playbackLoop.value = playback?.loop ?? false
   }
 
-  const canConfigurePlayback = computed(() => (diagram.value?.sequence.length ?? 0) > 0)
+  const canConfigurePlayback = computed(() => playable && (diagram.value?.sequence.length ?? 0) > 0)
 
   function setPlaybackOffered(offered: boolean) {
     playbackOffered.value = offered
@@ -123,7 +125,7 @@ export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answ
 
   const playbackTempoInvalid = computed(() => {
     const bpm = playbackTempo.value
-    return bpm !== null && !(Number.isInteger(bpm) && bpm >= MIN_PLAYBACK_TEMPO_BPM && bpm <= MAX_PLAYBACK_TEMPO_BPM)
+    return bpm !== null && !isValidTempoBpm(bpm)
   })
 
   function setLabel(mode: DiagramLabelMode) {

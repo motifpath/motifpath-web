@@ -112,6 +112,20 @@ describe('DiagramRefControls playback', () => {
     expect(draft.toRef()?.playback?.voice_id).toBeNull()
   })
 
+  it('says when the voices couldn’t load, and lists them after a retry', async () => {
+    GET.mockImplementation(() => Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } }))
+    const { wrapper } = mountControls(playable)
+    await flushPromises()
+
+    const error = wrapper.get('[data-test="embed-picker-playback-voices-error"]')
+    GET.mockImplementation((path: string) => (path === '/voices' ? ok(VOICES) : ok([])))
+    await error.get('button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="embed-picker-playback-voices-error"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="embed-picker-playback-voice"]').findAll('option')).toHaveLength(3)
+  })
+
   it('writes the direction and loop', async () => {
     const { wrapper, draft } = mountControls(playable)
     await flushPromises()

@@ -13,18 +13,16 @@
  */
 import { computed, ref } from 'vue'
 
-import {
-  MAX_PLAYBACK_TEMPO_BPM,
-  MIN_PLAYBACK_TEMPO_BPM,
-  type useDiagramEmbedDraft,
-} from '@/features/teacher/composables/useDiagramEmbedDraft'
+import type { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramEmbedDraft'
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
+import StateError from '@/shared/components/StateError.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useListVoices } from '@/shared/composables/useListVoices'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { DiagramLabelMode } from '@/shared/utils/diagramLabels'
 import { intervalLabelKey } from '@/shared/utils/intervalLabels'
+import { MAX_TEMPO_BPM, MIN_TEMPO_BPM } from '@/shared/utils/sequence'
 import type { IntervalCode } from '@/shared/utils/intervalLabels'
 import type { components } from '@/api/generated/core-domain'
 
@@ -45,7 +43,7 @@ const props = withDefaults(
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
-const { voices } = useListVoices()
+const { voices, isLoading: voicesLoading, error: voicesError, retry: retryVoices } = useListVoices()
 
 const LABEL_MODES: DiagramLabelMode[] = ['interval', 'note', 'custom', 'none']
 
@@ -188,8 +186,8 @@ function intervalLabel(code: IntervalCode): string {
             data-test="embed-picker-playback-tempo"
             type="number"
             inputmode="numeric"
-            :min="MIN_PLAYBACK_TEMPO_BPM"
-            :max="MAX_PLAYBACK_TEMPO_BPM"
+            :min="MIN_TEMPO_BPM"
+            :max="MAX_TEMPO_BPM"
             step="1"
             :value="draft.playbackTempo.value ?? ''"
             :placeholder="diagram.tempo_bpm != null ? String(diagram.tempo_bpm) : undefined"
@@ -205,7 +203,7 @@ function intervalLabel(code: IntervalCode): string {
             role="alert"
             class="max-w-48 text-xs text-danger"
           >
-            {{ t('diagramEmbedPicker.playback.tempoInvalid', { min: MIN_PLAYBACK_TEMPO_BPM, max: MAX_PLAYBACK_TEMPO_BPM }) }}
+            {{ t('diagramEmbedPicker.playback.tempoInvalid', { min: MIN_TEMPO_BPM, max: MAX_TEMPO_BPM }) }}
           </p>
           <p v-else id="embed-picker-playback-tempo-hint" class="max-w-48 text-xs text-ink-subtle">
             {{ t('diagramEmbedPicker.playback.tempoHint') }}
@@ -217,6 +215,8 @@ function intervalLabel(code: IntervalCode): string {
             id="embed-picker-playback-voice"
             data-test="embed-picker-playback-voice"
             :value="draft.playbackVoiceId.value ?? ''"
+            :disabled="voicesLoading"
+            :aria-busy="voicesLoading ? 'true' : undefined"
             class="rounded-md border border-border bg-surface px-2 py-1.5 text-sm"
             @change="onPlaybackVoice"
           >
@@ -243,6 +243,12 @@ function intervalLabel(code: IntervalCode): string {
           {{ t('diagramEmbedPicker.playback.loop') }}
         </label>
       </div>
+      <StateError
+        v-if="draft.playbackOffered.value && voicesError"
+        data-test="embed-picker-playback-voices-error"
+        :message="t('diagramEmbedPicker.playback.voicesError')"
+        @retry="retryVoices"
+      />
     </fieldset>
 
     <slot name="warnings" />

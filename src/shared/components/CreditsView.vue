@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Credits for the recordings diagrams play with: each voice's name and the
- * attribution its samples' license asks for (ADR-041).
+ * attribution its samples' license asks for.
  */
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'

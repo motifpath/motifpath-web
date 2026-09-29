@@ -5,7 +5,8 @@
  * configured in the diagram picker and taken once applied — or, with
  * `chooseOnly` (a stimulus, whose labels, hidden and correct positions are
  * set in the exercise form), taken as soon as it's picked, drawn as its
- * author made it with no answer yet. Rendered at the document body, and a
+ * author made it with no answer yet. An option's diagram is drawn as a still
+ * picture, so it's configured without playback settings. Rendered at the document body, and a
  * fixed-height panel so switching tabs or filtering never resizes it.
  */
 import { ref, watch } from 'vue'
@@ -92,7 +93,7 @@ function apply() {
         <div class="min-h-0 flex-1 overflow-y-auto">
           <FileDropField v-if="tab === 'image'" @select="emit('image', $event)" />
           <DiagramPickerList v-else-if="chooseOnly" @select="pick" />
-          <DiagramEmbedPicker v-else :initial="initialDiagram" @change="chosen = $event" />
+          <DiagramEmbedPicker v-else :initial="initialDiagram" :playable="false" @change="chosen = $event" />
         </div>
 
         <div class="flex justify-end gap-2 border-t border-border pt-4">

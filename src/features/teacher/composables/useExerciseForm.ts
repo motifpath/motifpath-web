@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from 'vue'
 
+import { isValidTempoBpm } from '@/shared/utils/sequence'
 import type { components } from '@/api/generated/core-domain'
 
 type CreateExerciseRequest = components['schemas']['CreateExerciseRequest']
@@ -144,6 +145,13 @@ export function useExerciseForm() {
       default:
         return false
     }
+  })
+
+  // The stimulus editor reports every edit, a tempo still being typed
+  // included, so a tempo the server would reject has to stop the save here.
+  const hasValidStimulusPlayback = computed(() => {
+    const tempo = hasDiagramStimulus.value ? stimulusDiagram.value?.playback?.tempo_bpm : null
+    return tempo == null || isValidTempoBpm(tempo)
   })
 
   const textOptionHelpers = makeOptionListHelpers(textOptions)
@@ -383,6 +391,7 @@ export function useExerciseForm() {
     regions,
     newRegionShape,
     hasCorrectOption,
+    hasValidStimulusPlayback,
     addTextOption,
     editTextOption,
     toggleTextOption,

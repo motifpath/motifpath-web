@@ -9,6 +9,15 @@ type NoteValue = components['schemas']['NoteValue']
 type SequenceStep = components['schemas']['SequenceStep']
 type TimeSignature = components['schemas']['TimeSignature']
 
+/** The tempo range a diagram, or a usage overriding it, may play at. */
+export const MIN_TEMPO_BPM = 20
+export const MAX_TEMPO_BPM = 300
+
+/** Whether a tempo is a whole number of beats per minute within the allowed range. */
+export function isValidTempoBpm(bpm: number): boolean {
+  return Number.isInteger(bpm) && bpm >= MIN_TEMPO_BPM && bpm <= MAX_TEMPO_BPM
+}
+
 /** The plain note lengths an author picks from: 1 a whole note … 32 a thirty-second. */
 export const BASE_NOTE_VALUES = [1, 2, 4, 8, 16, 32] as const
 export type BaseNoteValue = (typeof BASE_NOTE_VALUES)[number]

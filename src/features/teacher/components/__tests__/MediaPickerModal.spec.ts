@@ -41,6 +41,8 @@ describe('MediaPickerModal', () => {
     await wrapper.get('[data-test="media-tab-diagram"]').trigger('click')
     const picker = wrapper.getComponent(DiagramEmbedPicker)
     expect(picker.props('initial')).toBeNull()
+    // An option's diagram is drawn as a still picture, so it has nothing to play.
+    expect(picker.props('playable')).toBe(false)
     expect(wrapper.get('[data-test="media-apply"]').attributes('disabled')).toBeDefined()
 
     picker.vm.$emit('change', chord)

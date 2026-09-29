@@ -592,7 +592,8 @@
         "as_authored": "As written",
         "reversed": "Reversed"
       },
-      "loop": "Loop"
+      "loop": "Loop",
+      "voicesError": "We couldn't load the other sounds, so only the instrument's default is offered."
     }
   },
   "mediaPickerModal": {

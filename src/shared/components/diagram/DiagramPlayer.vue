@@ -9,8 +9,9 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import Icon from '@/shared/components/Icon.vue'
-import { MAX_TEMPO_BPM, MIN_TEMPO_BPM, useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
+import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { MAX_TEMPO_BPM, MIN_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
