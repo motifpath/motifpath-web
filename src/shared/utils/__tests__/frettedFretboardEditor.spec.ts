@@ -3,147 +3,138 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_MAX_FRET,
   DEFAULT_MIN_FRET,
-  EDITOR_MARGIN_LEFT,
-  EDITOR_MARGIN_RIGHT,
-  EDITOR_PX_PER_FRET,
-  editorBoardWidth,
-  editorViewWidth,
-  frettedEditorGeometry,
-  fretX,
+  editorRegionBox,
+  frettedEditorLayout,
+  isDrawableRegion,
   nearestFrettedCell,
-  positionX,
-  stringY,
 } from '@/shared/utils/frettedFretboardEditor'
+import {
+  MIN_COLUMN_GAP_WITH_NUT,
+  ROW_GAP,
+  TARGET_RADIUS,
+  fretLineX,
+  fretboardGeometry,
+  markerCenterX,
+  regionBandBox,
+  stringLineY,
+} from '@/shared/utils/fretboardGeometry'
 
-describe('frettedEditorGeometry', () => {
-  it('defaults to a full-neck fret range regardless of any diagram content', () => {
-    const geometry = frettedEditorGeometry(6)
+describe('frettedEditorLayout', () => {
+  it('spans the whole neck regardless of any diagram content, so any fret can be placed', () => {
+    const { frame } = frettedEditorLayout(6, 800)
 
-    expect(geometry.minFret).toBe(DEFAULT_MIN_FRET)
-    expect(geometry.maxFret).toBe(DEFAULT_MAX_FRET)
-    expect(geometry.stringCount).toBe(6)
+    expect(frame.minFret).toBe(DEFAULT_MIN_FRET)
+    expect(frame.maxFret).toBe(DEFAULT_MAX_FRET)
+    expect(DEFAULT_MAX_FRET).toBe(24)
+    expect(frame.stringCount).toBe(6)
+  })
+
+  it("spaces frets and strings as a student's board does", () => {
+    const layout = frettedEditorLayout(6, 800)
+    const student = fretboardGeometry({ availableWidth: 800, fretSpan: 24, stringCount: 6, showsNut: true })
+
+    expect(layout.frame.columnGap).toBe(student.columnGap)
+    expect(layout.frame.columnGap).toBe(MIN_COLUMN_GAP_WITH_NUT)
+    expect(layout.frame.rowGap).toBe(ROW_GAP)
+    expect(layout.frame.left).toBe(student.left)
+    expect(layout.width).toBe(student.width)
+  })
+
+  it('grows wider than a narrow container, for it to scroll, and fills a wide one', () => {
+    expect(frettedEditorLayout(6, 360).width).toBeGreaterThan(360)
+    expect(frettedEditorLayout(6, 4000).width).toBe(4000)
+  })
+
+  it('makes room above string 1 for the wood and below the last string for the fret numbers', () => {
+    const { frame, height } = frettedEditorLayout(6, 800)
+
+    expect(stringLineY(frame, 1) - ROW_GAP / 2).toBeGreaterThanOrEqual(0)
+    expect(height - stringLineY(frame, 6)).toBeGreaterThanOrEqual(ROW_GAP / 2 + 22)
+  })
+
+  it('seats the board right under a rail of region controls, as a student\'s board does', () => {
+    const plain = frettedEditorLayout(6, 800)
+    const underRail = frettedEditorLayout(6, 800, { underRail: true })
+    const woodTop = (layout: typeof plain) => stringLineY(layout.frame, 1) - ROW_GAP / 2
+
+    expect(woodTop(underRail)).toBeLessThanOrEqual(2)
+    expect(woodTop(underRail)).toBeGreaterThanOrEqual(0)
+    expect(woodTop(plain)).toBeGreaterThan(woodTop(underRail))
+    expect(plain.height - underRail.height).toBe(woodTop(plain) - woodTop(underRail))
   })
 
   it('accepts an explicit fret range override', () => {
-    const geometry = frettedEditorGeometry(6, 0, 20)
+    const { frame } = frettedEditorLayout(4, 800, { minFret: 3, maxFret: 12 })
 
-    expect(geometry.minFret).toBe(0)
-    expect(geometry.maxFret).toBe(20)
-  })
-})
-
-describe('editorBoardWidth / editorViewWidth', () => {
-  it('grows the board with the fret range, at a fixed pixel width per fret', () => {
-    const narrow = frettedEditorGeometry(6, 0, 12)
-    const wide = frettedEditorGeometry(6, 0, 24)
-
-    expect(editorBoardWidth(narrow)).toBeCloseTo(EDITOR_PX_PER_FRET * 12)
-    expect(editorBoardWidth(wide)).toBeCloseTo(EDITOR_PX_PER_FRET * 24)
-    expect(editorViewWidth(wide)).toBeCloseTo(editorBoardWidth(wide) + EDITOR_MARGIN_LEFT + EDITOR_MARGIN_RIGHT)
-  })
-
-  it('matches the min-w-[1106px] floor FrettedDiagramEditor.vue hardcodes for the default range', () => {
-    // Tailwind's arbitrary-value classes can't be computed at runtime, so that class is a
-    // literal pixel value — this guards it against drifting out of sync with the geometry
-    // constants it's derived from.
-    expect(editorViewWidth(frettedEditorGeometry(6))).toBe(1106)
-  })
-})
-
-describe('fretX / stringY', () => {
-  const geometry = frettedEditorGeometry(6)
-
-  it('places the lowest fret at the left margin', () => {
-    expect(fretX(geometry.minFret, geometry)).toBeCloseTo(44)
-  })
-
-  it('places the highest fret at the right edge of the board', () => {
-    expect(fretX(geometry.maxFret, geometry)).toBeCloseTo(EDITOR_MARGIN_LEFT + editorBoardWidth(geometry))
-  })
-
-  it('places string 1 (highest-pitched) at the top of the board', () => {
-    expect(stringY(1, geometry)).toBeCloseTo(34)
-  })
-
-  it('places the highest-numbered string (lowest-pitched) at the bottom', () => {
-    expect(stringY(geometry.stringCount, geometry)).toBeCloseTo(260)
-  })
-})
-
-describe('positionX', () => {
-  const geometry = frettedEditorGeometry(6)
-
-  it('places a fretted position in the middle of its fret space, never on the fret wire', () => {
-    const midpoint = (fretX(4, geometry) + fretX(5, geometry)) / 2
-
-    expect(positionX(5, geometry)).toBeCloseTo(midpoint)
-    expect(positionX(5, geometry)).not.toBeCloseTo(fretX(5, geometry))
-  })
-
-  it('places an open-string (fret 0) position on the nut', () => {
-    expect(positionX(0, geometry)).toBeCloseTo(fretX(0, geometry))
+    expect(frame.minFret).toBe(3)
+    expect(frame.maxFret).toBe(12)
   })
 })
 
 describe('nearestFrettedCell', () => {
-  const geometry = frettedEditorGeometry(6)
+  const { frame } = frettedEditorLayout(6, 800)
 
-  it('resolves a click at a marker\'s own drawn position back to that exact string/fret', () => {
-    const cell = nearestFrettedCell(positionX(5, geometry), stringY(3, geometry), geometry)
-
-    expect(cell).toEqual({ string: 3, fret: 5 })
+  it("resolves a click at a marker's own drawn position back to that exact string/fret", () => {
+    expect(nearestFrettedCell(markerCenterX(frame, 5), stringLineY(frame, 3), frame)).toEqual({ string: 3, fret: 5 })
   })
 
-  it('resolves any click within a fret\'s visual space to that fret, not the nearer wire', () => {
-    // Just right of the fret-4/fret-5 wire — visually inside fret 5's space, closer to wire 5,
-    // but the whole space up to wire 5 belongs to fret 5, not fret 4.
-    const px = fretX(4, geometry) + 2
-    const cell = nearestFrettedCell(px, stringY(3, geometry), geometry)
-
-    expect(cell).toEqual({ string: 3, fret: 5 })
+  it("resolves any click within a fret's visual space to that fret, not the nearer wire", () => {
+    expect(nearestFrettedCell(fretLineX(frame, 4) + 2, stringLineY(frame, 3), frame)).toEqual({ string: 3, fret: 5 })
   })
 
-  it('resolves a click just past a fret wire to the next fret\'s space', () => {
-    const px = fretX(5, geometry) + 2
-    const cell = nearestFrettedCell(px, stringY(3, geometry), geometry)
-
-    expect(cell).toEqual({ string: 3, fret: 6 })
+  it("resolves a click just past a fret wire to the next fret's space", () => {
+    expect(nearestFrettedCell(fretLineX(frame, 5) + 2, stringLineY(frame, 3), frame)).toEqual({ string: 3, fret: 6 })
   })
 
-  it('treats a click on the nut, where open-string markers sit, as fret 0', () => {
-    for (const offset of [-10, 0, 6]) {
-      const cell = nearestFrettedCell(fretX(0, geometry) + offset, stringY(3, geometry), geometry)
-      expect(cell).toEqual({ string: 3, fret: 0 })
+  it("treats a click anywhere on an open-string marker's touch target as fret 0", () => {
+    for (const offset of [-TARGET_RADIUS, 0, TARGET_RADIUS - 1]) {
+      expect(nearestFrettedCell(fretLineX(frame, 0) + offset, stringLineY(frame, 3), frame)).toEqual({ string: 3, fret: 0 })
     }
   })
 
-  it("still gives fret 1 the whole of its marker, just past the nut", () => {
-    const markerLeftEdge = positionX(1, geometry) - 13.5
+  it("still gives fret 1 the whole of its marker's touch target, just past the nut", () => {
+    const targetLeftEdge = markerCenterX(frame, 1) - TARGET_RADIUS + 1
 
-    expect(nearestFrettedCell(markerLeftEdge, stringY(3, geometry), geometry)).toEqual({ string: 3, fret: 1 })
+    expect(nearestFrettedCell(targetLeftEdge, stringLineY(frame, 3), frame)).toEqual({ string: 3, fret: 1 })
+  })
+
+  it('resolves a click between two strings to the nearer one', () => {
+    expect(nearestFrettedCell(markerCenterX(frame, 5), stringLineY(frame, 3) + ROW_GAP / 2 - 1, frame)).toEqual({ string: 3, fret: 5 })
   })
 
   it('returns null for a click left of the open-string zone', () => {
-    const cell = nearestFrettedCell(fretX(geometry.minFret, geometry) - 100, stringY(1, geometry), geometry)
-
-    expect(cell).toBeNull()
+    expect(nearestFrettedCell(fretLineX(frame, 0) - TARGET_RADIUS - 2, stringLineY(frame, 1), frame)).toBeNull()
   })
 
   it('returns null for a click past the highest playable fret', () => {
-    const cell = nearestFrettedCell(fretX(geometry.maxFret, geometry) + 100, stringY(1, geometry), geometry)
-
-    expect(cell).toBeNull()
+    expect(nearestFrettedCell(fretLineX(frame, frame.maxFret) + 10, stringLineY(frame, 1), frame)).toBeNull()
   })
 
-  it('returns null for a click above string 1 (past the top edge)', () => {
-    const cell = nearestFrettedCell(fretX(5, geometry), stringY(1, geometry) - 100, geometry)
+  it('returns null for a click above string 1 or below the last string', () => {
+    expect(nearestFrettedCell(markerCenterX(frame, 5), stringLineY(frame, 1) - ROW_GAP, frame)).toBeNull()
+    expect(nearestFrettedCell(markerCenterX(frame, 5), stringLineY(frame, 6) + ROW_GAP, frame)).toBeNull()
+  })
+})
 
-    expect(cell).toBeNull()
+describe('editor regions', () => {
+  const { frame } = frettedEditorLayout(6, 800)
+  const region = { fretStart: 5, fretEnd: 8, stringStart: 2, stringEnd: 4 }
+
+  it("draws a region's band exactly where a student's board does", () => {
+    expect(editorRegionBox(region, frame)).toEqual(regionBandBox(frame, region))
   })
 
-  it('returns null for a click below the highest-numbered string (past the bottom edge)', () => {
-    const cell = nearestFrettedCell(fretX(5, geometry), stringY(geometry.stringCount, geometry) + 100, geometry)
+  it('covers every string when a region has no string limits', () => {
+    expect(editorRegionBox({ ...region, stringStart: null, stringEnd: null }, frame)).toEqual(
+      regionBandBox(frame, { ...region, stringStart: 1, stringEnd: 6 }),
+    )
+  })
 
-    expect(cell).toBeNull()
+  it("can't draw a region that runs backwards, off the neck or past the last string", () => {
+    expect(isDrawableRegion(region, frame)).toBe(true)
+    expect(isDrawableRegion({ ...region, fretStart: 9 }, frame)).toBe(false)
+    expect(isDrawableRegion({ ...region, fretEnd: 25 }, frame)).toBe(false)
+    expect(isDrawableRegion({ ...region, stringEnd: 7 }, frame)).toBe(false)
+    expect(isDrawableRegion({ ...region, stringStart: null }, frame)).toBe(false)
   })
 })
