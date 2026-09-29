@@ -183,5 +183,15 @@
     "tempo": "Tempo",
     "bpm": "{bpm} BPM",
     "loadFailed": "Couldn't load the sound. Press Play to try again."
+  },
+  "footer": {
+    "credits": "Credits"
+  },
+  "creditsView": {
+    "title": "Credits",
+    "soundsTitle": "Sounds",
+    "soundsIntro": "Diagrams play with these recordings, used under their licenses.",
+    "loadingNoun": "credits",
+    "errorMessage": "We couldn't load the credits."
   }
 }

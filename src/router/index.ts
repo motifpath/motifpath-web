@@ -121,6 +121,20 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // Open to every role: anyone who can hear a diagram play. Signed in only,
+    // since the voices it credits (GET /voices) are.
+    path: '/credits',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'credits',
+        meta: { requiresAuth: true },
+        component: () => import('@/shared/components/CreditsView.vue'),
+      },
+    ],
+  },
+  {
     path: '/teacher/exercises',
     // A pass-through parent (no layout of its own — just RouterView) so all
     // three exercise routes below share one beforeEnter instead of each

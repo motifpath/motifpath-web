@@ -42,6 +42,15 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('path')
   })
 
+  it('lets a registered visitor of any role reach the credits page', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+
+    await router.push('/credits')
+
+    expect(router.currentRoute.value.name).toBe('credits')
+  })
+
   it('sends a signed-in visitor whose registration has not settled to the registering route', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registering')
