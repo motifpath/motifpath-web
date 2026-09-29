@@ -34,8 +34,8 @@ function serve(list: Diagram[]) {
   })
 }
 
-function mountPicker(initial: DiagramRef | null = null, playable?: boolean) {
-  return mount(DiagramEmbedPicker, { props: { initial, ...(playable === undefined ? {} : { playable }) } })
+function mountPicker(initial: DiagramRef | null = null) {
+  return mount(DiagramEmbedPicker, { props: { initial } })
 }
 
 type Picker = ReturnType<typeof mountPicker>
@@ -94,7 +94,7 @@ describe('DiagramEmbedPicker', () => {
     })
   })
 
-  it('offers playback settings for a diagram with a sequence, unless its usage never plays', async () => {
+  it('offers playback settings for a diagram with a sequence', async () => {
     const sequenced = makeSequencedFrettedDiagram({ diagram_id: 'd-penta' })
     byId['d-penta'] = sequenced
     serve([sequenced])
@@ -104,12 +104,6 @@ describe('DiagramEmbedPicker', () => {
     await choose(playing)
     expect(playing.find('[data-test="embed-picker-playback"]').exists()).toBe(true)
     expect(lastChange(playing)?.playback).toEqual(expect.objectContaining({ direction: 'as_authored' }))
-
-    const still = mountPicker(null, false)
-    await flushPromises()
-    await choose(still)
-    expect(still.find('[data-test="embed-picker-playback"]').exists()).toBe(false)
-    expect(lastChange(still)).not.toHaveProperty('playback')
   })
 
   it('chooses the label mode', async () => {

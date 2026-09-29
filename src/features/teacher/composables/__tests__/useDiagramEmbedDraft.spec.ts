@@ -139,21 +139,6 @@ describe('useDiagramEmbedDraft', () => {
       expect(reopened.toRef()?.playback).toEqual({ direction: 'reversed', loop: true })
     })
 
-    it('has no playback settings where the diagram is only ever a still picture, keeping what the ref had', () => {
-      const draft = useDiagramEmbedDraft(null, { playable: false })
-      draft.select(playable)
-
-      expect(draft.canConfigurePlayback.value).toBe(false)
-      expect(draft.toRef()).not.toHaveProperty('playback')
-
-      const reopened = useDiagramEmbedDraft(
-        { diagram_id: playable.diagram_id, layers: {}, playback: { direction: 'reversed', loop: true } },
-        { playable: false },
-      )
-      reopened.select(playable)
-      expect(reopened.toRef()?.playback).toEqual({ direction: 'reversed', loop: true })
-    })
-
     it('writes no playback once Play is no longer offered', () => {
       const draft = useDiagramEmbedDraft(null)
       draft.select(playable)

@@ -27,21 +27,16 @@ import type { components } from '@/api/generated/core-domain'
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
 
-const props = withDefaults(
-  defineProps<{
-    /** The ref already embedded, reopened for editing; null to embed a new one. */
-    initial: DiagramRef | null
-    /** False where the diagram is only ever drawn as a still picture, so it has no playback settings. */
-    playable?: boolean
-  }>(),
-  { playable: true },
-)
+const props = defineProps<{
+  /** The ref already embedded, reopened for editing; null to embed a new one. */
+  initial: DiagramRef | null
+}>()
 const emit = defineEmits<{ change: [diagramRef: DiagramRef | null] }>()
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
 
-const draft = useDiagramEmbedDraft(props.initial, { playable: props.playable })
+const draft = useDiagramEmbedDraft(props.initial)
 const step = ref<'list' | 'initial' | 'configure'>(props.initial ? 'initial' : 'list')
 const { instruments } = useListInstruments()
 

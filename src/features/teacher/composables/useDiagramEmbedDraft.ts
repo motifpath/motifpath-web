@@ -34,16 +34,11 @@ export type IntervalVisibility = 'shown' | 'hidden' | 'mixed'
  * A diagram with a sequence can also be offered for playing: tempo and voice
  * overrides (null keeps the diagram's tempo and the instrument's voice),
  * direction and loop. A fresh ref offers Play; a reopened one keeps its
- * choice. A diagram without a sequence never plays, nor does a usage that
- * only ever draws it as a still picture (`playable: false`), so their ref's
- * playback is left as it was.
+ * choice. A diagram without a sequence never plays, so its ref's playback is
+ * left as it was.
  */
-export function useDiagramEmbedDraft(
-  initial: DiagramRef | null,
-  options: { answers?: boolean; playable?: boolean } = {},
-) {
+export function useDiagramEmbedDraft(initial: DiagramRef | null, options: { answers?: boolean } = {}) {
   const answers = options.answers ?? false
-  const playable = options.playable ?? true
   const diagram = ref<Diagram | null>(null)
   const label = ref<DiagramLabelMode>('custom')
   const hiddenPositionIds = ref<string[]>([])
@@ -99,7 +94,7 @@ export function useDiagramEmbedDraft(
     playbackLoop.value = playback?.loop ?? false
   }
 
-  const canConfigurePlayback = computed(() => playable && (diagram.value?.sequence.length ?? 0) > 0)
+  const canConfigurePlayback = computed(() => (diagram.value?.sequence.length ?? 0) > 0)
 
   function setPlaybackOffered(offered: boolean) {
     playbackOffered.value = offered
