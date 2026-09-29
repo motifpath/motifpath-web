@@ -84,6 +84,29 @@ describe('createPlaybackRun', () => {
     expect(run.activePositionIds(13.5)).toEqual(['a'])
   })
 
+  it('after a long gap between updates (a background tab), skips the missed passes instead of replaying them', () => {
+    const { sink, sounding } = fakeSink()
+    const run = createPlaybackRun(STEPS, { sink, wholeSeconds: 4, loop: true, startAt: 10 })
+    run.update(10)
+    const before = sounding().length
+
+    run.update(100)
+    run.update(100.016)
+    const resumed = sounding().slice(before)
+    expect(resumed.every(([, time]) => time! >= 100)).toBe(true)
+    expect(resumed).toHaveLength(3)
+    expect(run.activePositionIds(resumed[0]![1]!)).toEqual(['a'])
+  })
+
+  it('a new tempo after a long gap starts the next pass just ahead of now, not in the past', () => {
+    const { sink, sounding } = fakeSink()
+    const run = createPlaybackRun(STEPS, { sink, wholeSeconds: 4, loop: true, startAt: 10 })
+    run.update(10)
+    run.setWholeSeconds(2, 100)
+    expect(sounding().filter(([, time]) => time! > 16).every(([, time]) => time! >= 100)).toBe(true)
+    expect(sounding().filter(([, time]) => time! >= 100)).toHaveLength(3)
+  })
+
   it('a new tempo applies from the next step; the sounding step keeps its length', () => {
     const { sink, sounding } = fakeSink()
     const run = createPlaybackRun(STEPS, { sink, wholeSeconds: 4, loop: false, startAt: 10 })

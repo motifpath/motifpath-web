@@ -25,6 +25,9 @@ export interface PlaybackRun {
   stop(): void
 }
 
+/** How far ahead of the clock a pass starts when the previous one already ended, so it isn't late. */
+const RESUME_LEAD_SECONDS = 0.1
+
 interface ScheduledStep extends StepSpan {
   pass: number
   cancels: (() => void)[]
@@ -60,8 +63,10 @@ export function createPlaybackRun(
 
   function update(now: number) {
     if (stopped || !loop) return
-    // The latest pass has started, so the one after it is due.
-    if (now >= latestPassStart()) schedule(last()!.pass + 1, 0, last()!.end)
+    // The latest pass has started, so the one after it is due. After a long gap between updates
+    // (a background tab pauses animation frames) it would start in the past and sound at once, so
+    // the missed passes are skipped and the next one starts just ahead of now.
+    if (now >= latestPassStart()) schedule(last()!.pass + 1, 0, Math.max(last()!.end, now + RESUME_LEAD_SECONDS))
   }
 
   function setWholeSeconds(next: number, now: number) {
@@ -72,9 +77,16 @@ export function createPlaybackRun(
     scheduled = kept
 
     const current = last()
-    if (!current) schedule(0, 0, startAt)
-    else if (current.stepIndex + 1 < steps.length) schedule(current.pass, current.stepIndex + 1, current.end)
-    else if (loop) schedule(current.pass + 1, 0, current.end)
+    if (!current) {
+      schedule(0, 0, startAt)
+    } else if (current.end < now) {
+      // The run went quiet while no update came (see update): a loop starts afresh, a single pass is over.
+      if (loop) schedule(current.pass + 1, 0, now + RESUME_LEAD_SECONDS)
+    } else if (current.stepIndex + 1 < steps.length) {
+      schedule(current.pass, current.stepIndex + 1, current.end)
+    } else if (loop) {
+      schedule(current.pass + 1, 0, current.end)
+    }
     update(now)
   }
 
