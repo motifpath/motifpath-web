@@ -344,8 +344,14 @@ const regionControls = computed(() => {
     layout.value.regions.map((region) => ({ id: region.regionId, right: regionFretEdges(region).right * scale.value })),
     viewW.value * scale.value,
   )
-  return layout.value.regions.map((region, index) => ({ region, left: centers[index]!.center - CONTROL_SIZE / 2 }))
+  return layout.value.regions.map((region, index) => ({
+    region,
+    left: centers[index]!.center - CONTROL_SIZE / 2,
+    top: centers[index]!.row * CONTROL_SIZE,
+  }))
 })
+// A readable board is widened to fit every control on one row; a small compact one may wrap them.
+const railHeight = computed(() => Math.max(1, ...regionControls.value.map((control) => control.top / CONTROL_SIZE + 1)) * CONTROL_SIZE)
 
 const DESCRIPTION_WIDTH = 248
 const descriptionPlacement = computed(() => {
@@ -556,7 +562,7 @@ function noteAlignClass(position: Marker): string {
       <div class="relative" :style="compact ? undefined : { width: `${viewW}px` }">
         <!-- Region controls sit above the board, never over a marker; a press on them or on a
              description never reaches whatever holds the diagram (such as an answer card). -->
-        <div v-if="showsRegionInfo" data-test="region-rail" class="relative z-10 h-11" @click.stop>
+        <div v-if="showsRegionInfo" data-test="region-rail" class="relative z-10" :style="{ height: `${railHeight}px` }" @click.stop>
           <button
             v-for="control in regionControls"
             :key="control.region.regionId"
@@ -564,9 +570,9 @@ function noteAlignClass(position: Marker): string {
             type="button"
             data-test="region-info"
             data-region-ui
-            class="absolute top-0 flex h-11 w-11 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+            class="absolute flex h-11 w-11 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
             :class="control.region.color ? '' : 'text-accent'"
-            :style="{ left: `${control.left}px`, ...regionColorStyle(control.region) }"
+            :style="{ left: `${control.left}px`, top: `${control.top}px`, ...regionColorStyle(control.region) }"
             :aria-label="localizedName(control.region.description)"
             :aria-expanded="shownRegionId === control.region.regionId"
             :aria-controls="shownRegionId === control.region.regionId ? descriptionId : undefined"

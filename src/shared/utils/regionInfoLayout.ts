@@ -20,23 +20,35 @@ export interface ControlAnchor {
 /**
  * One control per region, centred just inside its last fret. Controls that
  * would overlap sit side by side, the rightmost staying at its fret, and none
- * leaves the rail. Returned in the order given.
+ * leaves the rail. When more controls than fit side by side share the rail
+ * (a small compact card), the rest wrap onto further rows, left to right.
+ * Returned in the order given.
  */
-export function placeRegionControls(anchors: ControlAnchor[], railWidth: number): { id: string; center: number }[] {
+export function placeRegionControls(
+  anchors: ControlAnchor[],
+  railWidth: number,
+): { id: string; center: number; row: number }[] {
   const half = CONTROL_SIZE / 2
-  const placed = anchors
-    .map((anchor, order) => ({ id: anchor.id, order, center: Math.min(anchor.right - half, railWidth - half) }))
+  const perRow = Math.max(1, Math.floor(railWidth / CONTROL_SIZE))
+  const sorted = anchors
+    .map((anchor, order) => ({ id: anchor.id, order, center: Math.min(anchor.right - half, railWidth - half), row: 0 }))
     .sort((a, b) => a.center - b.center || a.order - b.order)
-  // Shared endpoints: shift the earlier controls left, keeping the last at its fret.
-  for (let index = placed.length - 2; index >= 0; index--) {
-    placed[index]!.center = Math.min(placed[index]!.center, placed[index + 1]!.center - CONTROL_SIZE)
+  const placed: typeof sorted = []
+  for (let start = 0, row = 0; start < sorted.length; start += perRow, row++) {
+    const inRow = sorted.slice(start, start + perRow)
+    // Shared endpoints: shift the earlier controls left, keeping the last at its fret.
+    for (let index = inRow.length - 2; index >= 0; index--) {
+      inRow[index]!.center = Math.min(inRow[index]!.center, inRow[index + 1]!.center - CONTROL_SIZE)
+    }
+    // Then push any that fell off the left edge back right, still one control apart.
+    for (let index = 0; index < inRow.length; index++) {
+      const floor = index === 0 ? half : inRow[index - 1]!.center + CONTROL_SIZE
+      inRow[index]!.center = Math.max(inRow[index]!.center, floor)
+      inRow[index]!.row = row
+    }
+    placed.push(...inRow)
   }
-  // Then push any that fell off the left edge back right, still one control apart.
-  for (let index = 0; index < placed.length; index++) {
-    const floor = index === 0 ? half : placed[index - 1]!.center + CONTROL_SIZE
-    placed[index]!.center = Math.max(placed[index]!.center, floor)
-  }
-  return placed.sort((a, b) => a.order - b.order).map(({ id, center }) => ({ id, center }))
+  return placed.sort((a, b) => a.order - b.order).map(({ id, center, row }) => ({ id, center, row }))
 }
 
 /** The narrowest rail that fits `count` controls side by side. */

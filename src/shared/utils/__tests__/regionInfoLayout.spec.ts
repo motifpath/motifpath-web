@@ -12,7 +12,7 @@ describe('placeRegionControls', () => {
   it('centres a lone control just inside its region’s last fret', () => {
     const [control] = placeRegionControls([{ id: 'a', right: 300 }], 600)
 
-    expect(control).toEqual({ id: 'a', center: 300 - CONTROL_SIZE / 2 })
+    expect(control).toEqual({ id: 'a', center: 300 - CONTROL_SIZE / 2, row: 0 })
   })
 
   it('places controls of regions ending on the same fret side by side, the last at the fret', () => {
@@ -44,6 +44,35 @@ describe('placeRegionControls', () => {
     const centers = controls.map((control) => control.center).sort((a, b) => a - b)
     expect(centers[0]).toBeGreaterThanOrEqual(CONTROL_SIZE / 2)
     expect(centers[1]! - centers[0]!).toBeGreaterThanOrEqual(CONTROL_SIZE)
+  })
+
+  it('wraps controls that cannot fit side by side onto further rows, none leaving the rail', () => {
+    const anchors = Array.from({ length: 10 }, (_, index) => ({ id: `r${index}`, right: 150 }))
+
+    const controls = placeRegionControls(anchors, 200)
+
+    expect(Math.max(...controls.map((control) => control.row))).toBeGreaterThan(0)
+    for (const control of controls) {
+      expect(control.center - CONTROL_SIZE / 2).toBeGreaterThanOrEqual(0)
+      expect(control.center + CONTROL_SIZE / 2).toBeLessThanOrEqual(200)
+    }
+    for (const a of controls) {
+      for (const b of controls) {
+        if (a !== b && a.row === b.row) expect(Math.abs(a.center - b.center)).toBeGreaterThanOrEqual(CONTROL_SIZE)
+      }
+    }
+  })
+
+  it('keeps every control on one row when they fit', () => {
+    const controls = placeRegionControls(
+      [
+        { id: 'a', right: 300 },
+        { id: 'b', right: 300 },
+      ],
+      600,
+    )
+
+    expect(controls.every((control) => control.row === 0)).toBe(true)
   })
 
   it('never lets a control pass the right edge of the rail', () => {
