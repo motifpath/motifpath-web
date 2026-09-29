@@ -36,13 +36,15 @@ import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
 import {
   fretboardGeometry,
+  MARKER_RADIUS,
+  MARKER_TEXT_SIZE as TEXT_SIZE,
+  TARGET_RADIUS,
   markerCenterX,
   regionBandBox,
   stringLineY,
 } from '@/shared/utils/fretboardGeometry'
 import type { BoardFrame } from '@/shared/utils/fretboardGeometry'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
-import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
   CONTROL_SIZE,
   anchorDescription,
@@ -55,6 +57,7 @@ import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { effectiveLabelMode, markerTextKind } from '@/shared/utils/diagramLabels'
 import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
+import FretboardMarkerShape from '@/shared/components/diagram/FretboardMarkerShape.vue'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -122,9 +125,6 @@ const NOMINAL_WIDTH = 720
 const MARGIN_TOP = 34
 // Room under the board for the fret numbers.
 const MARGIN_BOTTOM = 52
-const MARKER_RADIUS = 18
-const TARGET_RADIUS = 22
-const TEXT_SIZE = 14
 
 const container = ref<HTMLElement | null>(null)
 const availableWidth = ref(NOMINAL_WIDTH)
@@ -656,35 +656,12 @@ function noteAlignClass(position: Marker): string {
               :opacity="position.hidden ? 0.35 : undefined"
               :data-test="position.hidden ? 'diagram-position-hidden' : undefined"
             >
-              <circle
-                v-if="position.shape === 'dot'"
+              <FretboardMarkerShape
                 data-test="diagram-position"
                 :cx="markerX(position.fret)"
                 :cy="y(position.string)"
-                :r="MARKER_RADIUS"
-                :class="[shapeClass(position), 'stroke-surface']"
-                stroke-width="2"
-                :style="shapeStyle(position)"
-              />
-              <rect
-                v-else-if="position.shape === 'square'"
-                data-test="diagram-position"
-                :x="markerX(position.fret) - 16"
-                :y="y(position.string) - 16"
-                width="32"
-                height="32"
-                rx="3"
-                :class="[shapeClass(position), 'stroke-surface']"
-                stroke-width="2"
-                :style="shapeStyle(position)"
-              />
-              <polygon
-                v-else
-                data-test="diagram-position"
-                :points="starPolygonPoints(markerX(position.fret), y(position.string), 21, 10)"
-                :class="[shapeClass(position), 'stroke-surface']"
-                stroke-width="2"
-                stroke-linejoin="round"
+                :shape="position.shape"
+                :class="shapeClass(position)"
                 :style="shapeStyle(position)"
               />
               <text

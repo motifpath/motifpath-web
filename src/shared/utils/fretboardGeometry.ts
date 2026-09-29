@@ -51,6 +51,12 @@ export function fretboardGeometry(input: {
   }
 }
 
+/** A position marker's radius; its label is drawn at MARKER_TEXT_SIZE. */
+export const MARKER_RADIUS = 18
+export const MARKER_TEXT_SIZE = 14
+/** A marker's touch target: 44 px across. */
+export const TARGET_RADIUS = 22
+
 /** A board laid out on the page: its fret window, and where its first fret wire and string sit. */
 export interface BoardFrame {
   minFret: number
