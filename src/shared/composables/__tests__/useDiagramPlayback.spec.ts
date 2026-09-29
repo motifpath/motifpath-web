@@ -1,4 +1,4 @@
-import { effectScope, nextTick, ref } from 'vue'
+import { effectScope, nextTick, ref, watch } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
@@ -183,6 +183,21 @@ describe('useDiagramPlayback — playing', () => {
     frameAt(start + 1.7)
     expect(player.state.value).toBe('idle')
     expect(player.activePositionIds.value).toEqual([])
+  })
+
+  it('reports the lit positions only when they change, not on every animation frame', async () => {
+    const { player } = setup()
+    await play(player)
+    const start = audio.played[0]!.time
+    let updates = 0
+    watch(player.activePositionIds, () => updates++, { flush: 'sync' })
+
+    frameAt(start + 0.05)
+    frameAt(start + 0.1)
+    frameAt(start + 0.15)
+    expect(updates).toBe(1)
+    frameAt(start + 0.4)
+    expect(updates).toBe(2)
   })
 
   it('keeps going when the usage loops', async () => {

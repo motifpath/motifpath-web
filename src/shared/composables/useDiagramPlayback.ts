@@ -37,6 +37,10 @@ let stopPlaying: (() => void) | null = null
 // Recordings never change at their URL, so one fetch a page puts each in the HTTP cache.
 const prefetched = new Set<string>()
 
+function sameIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i])
+}
+
 /** Forgets which recordings were prefetched. For tests. */
 export function clearPrefetchedSamples() {
   prefetched.clear()
@@ -132,7 +136,10 @@ export function useDiagramPlayback(source: MaybeRefOrGetter<PlaybackSource>) {
       stop()
       return
     }
-    activePositionIds.value = run.activePositionIds(heard)
+    // Assigned only when the lit positions change: every assignment re-renders the diagram (and
+    // whatever holds it), and a step lasts many frames.
+    const heardIds = run.activePositionIds(heard)
+    if (!sameIds(heardIds, activePositionIds.value)) activePositionIds.value = heardIds
     frame = requestAnimationFrame(tick)
   }
 
