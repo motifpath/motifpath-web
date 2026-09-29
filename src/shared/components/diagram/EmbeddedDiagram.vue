@@ -7,17 +7,18 @@
  * student can do nothing about it — unless the caller fills the `unavailable`
  * slot.
  *
- * A single diagram whose usage offers playback gets a Play control, an inert
- * thumbnail's included: only the drawing is inert, and a tap on Play never
- * reaches the card around it, so it doesn't pick an option. A stack never
- * plays. `root_override` isn't applied yet: the diagram is drawn, and played,
+ * A single diagram whose usage offers playback gets compact Play and tempo
+ * controls in the diagram's own control rail, an inert thumbnail's included:
+ * only the drawing is inert, and a tap on them never reaches the card around
+ * it, so it doesn't pick an option. A stack never plays. `root_override` isn't applied yet: the diagram is drawn, and played,
  * as authored.
  */
-import { shallowRef, watch } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 
-import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
+import DiagramPlayer, { PLAYER_WIDTH } from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
+import { isPlayable } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import type { EmbeddedDiagramStatus } from '@/shared/composables/useEmbeddedDiagram'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -64,6 +65,16 @@ const { status, diagram, instrument, diagramRef, labelMode } = useEmbeddedDiagra
 watch(status, (next) => emit('status', next), { immediate: true })
 
 const activePositionIds = shallowRef<string[]>([])
+
+// The rail keeps room for the player only when there is something to play.
+const playable = computed(
+  () =>
+    props.embed.kind === 'single' &&
+    diagram.value !== null &&
+    instrument.value !== null &&
+    diagramRef.value !== null &&
+    isPlayable({ diagram: diagram.value, instrument: instrument.value, playback: diagramRef.value.playback ?? null }),
+)
 </script>
 
 <template>
@@ -93,18 +104,19 @@ const activePositionIds = shallowRef<string[]>([])
         :active-position-ids="activePositionIds"
         :compact="props.compact"
         :drawing-inert="props.inert"
+        :controls-width="playable ? PLAYER_WIDTH : 0"
         @select="emit('select', $event)"
         @select-answer="emit('selectAnswer', $event)"
-      />
-    </div>
-    <!-- Its own layer (z-10), so it stays tappable above a card's full-size overlay button. -->
-    <div v-if="props.embed.kind === 'single'" class="relative z-10" @click.stop>
-      <DiagramPlayer
-        :diagram="diagram"
-        :instrument="instrument"
-        :playback="diagramRef.playback ?? null"
-        @active="activePositionIds = $event"
-      />
+      >
+        <template #controls>
+          <DiagramPlayer
+            :diagram="diagram"
+            :instrument="instrument"
+            :playback="diagramRef.playback ?? null"
+            @active="activePositionIds = $event"
+          />
+        </template>
+      </FrettedDiagramView>
     </div>
     <figcaption v-if="props.caption" class="text-sm text-ink-muted">{{ props.caption }}</figcaption>
   </figure>

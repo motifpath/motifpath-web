@@ -841,6 +841,57 @@ describe('FrettedDiagramView', () => {
     })
   })
 
+  describe('the controls slot (a player)', () => {
+    const control = () => h('button', { type: 'button', 'data-test': 'slot-control' }, 'Play')
+    const mountWithControls = (diagram = makeFrettedDiagram(), controlsWidth = 112) =>
+      mount(FrettedDiagramView, {
+        props: { diagram, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef(), controlsWidth },
+        slots: { controls: control },
+      })
+    const topPx = (el: { attributes: (name: string) => string | undefined }) =>
+      Number(/top:\s*([-\d.]+)px/.exec(el.attributes('style') ?? '')![1])
+
+    it("puts its controls at the left of the diagram's control rail, even without regions", () => {
+      const wrapper = mountWithControls()
+
+      expect(wrapper.find('[data-test="region-rail"] [data-test="slot-control"]').exists()).toBe(true)
+      expect(wrapper.findAll('[data-test="region-info"]')).toHaveLength(0)
+    })
+
+    it('seats the board right under a rail holding only its controls', () => {
+      const wood = Number(mountWithControls().get('[data-test="fretboard-wood"]').attributes('y'))
+
+      expect(wood).toBeLessThanOrEqual(2)
+    })
+
+    it("moves the regions' controls to a row below its controls when one would sit under them", () => {
+      const early = makeFrettedDiagram({
+        regions: [
+          { region_id: 'r1', fret_start: 1, fret_end: 1, description: { en: 'Near the nut' }, color: null },
+          { region_id: 'r2', fret_start: 1, fret_end: 3, description: { en: 'Box' }, color: null },
+        ],
+      })
+
+      const withControls = mountWithControls(early).findAll('[data-test="region-info"]')
+      const withoutControls = mountWithControls(early, 0).findAll('[data-test="region-info"]')
+
+      expect(withControls.map(topPx)).toEqual([44, 44])
+      expect(withoutControls.map(topPx)).toEqual([0, 0])
+    })
+
+    it("keeps the regions' controls beside its controls when none would sit under them", () => {
+      const far = makeFrettedDiagram({
+        regions: [{ region_id: 'r1', fret_start: 5, fret_end: 8, description: { en: 'Box' }, color: null }],
+      })
+
+      expect(topPx(mountWithControls(far).get('[data-test="region-info"]'))).toBe(0)
+    })
+
+    it('draws no rail for an empty controls width, such as a diagram that cannot play', () => {
+      expect(mountWithControls(makeFrettedDiagram(), 0).find('[data-test="region-rail"]').exists()).toBe(false)
+    })
+  })
+
   describe('answer choices', () => {
     function mountChoices(props: Record<string, unknown> = {}, diagram = makeFrettedDiagram()) {
       return mount(FrettedDiagramView, {
