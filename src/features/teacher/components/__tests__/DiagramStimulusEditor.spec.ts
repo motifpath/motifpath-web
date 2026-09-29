@@ -1,5 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// The playback settings list the voices; no voice matters to these tests.
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({
+    coreApi: { GET: () => Promise.resolve({ data: [], error: undefined, response: { status: 200 } }) },
+    eventApi: {},
+  }),
+}))
 
 import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulusEditor.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
