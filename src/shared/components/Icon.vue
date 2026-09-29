@@ -14,6 +14,7 @@ import {
   CircleCheck,
   CircleDot,
   GripVertical,
+  LoaderCircle,
   Lock,
   Maximize,
   Menu,
@@ -21,6 +22,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Square,
   Sun,
   Volume2,
   VolumeX,
@@ -38,6 +40,8 @@ type IconName =
   | 'moon'
   | 'play'
   | 'pause'
+  | 'stop'
+  | 'loading'
   | 'volume'
   | 'volume-off'
   | 'fullscreen'
@@ -68,6 +72,8 @@ const glyph = computed(
       moon: Moon,
       play: Play,
       pause: Pause,
+      stop: Square,
+      loading: LoaderCircle,
       volume: Volume2,
       'volume-off': VolumeX,
       fullscreen: Maximize,

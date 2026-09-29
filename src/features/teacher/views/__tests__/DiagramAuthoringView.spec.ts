@@ -78,6 +78,7 @@ function mountView() {
 import { i18n } from '@/i18n'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
 import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import DiagramAuthoringView from '@/features/teacher/views/DiagramAuthoringView.vue'
@@ -262,6 +263,30 @@ describe('DiagramAuthoringView', () => {
         }),
       }),
     )
+  })
+
+  it('plays the unsaved sequence from the Playback panel, ringing the markers being heard', async () => {
+    const tunedGuitar = { ...guitar, tuning: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'], default_voice_id: 'acoustic-guitar' }
+    GET.mockResolvedValueOnce({ data: [tunedGuitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    const editor = () => wrapper.findComponent(FrettedDiagramEditor)
+    await editor().vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await editor().vm.$emit('toggle-cell', { string: 2, fret: 5 })
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    expect(wrapper.find('[data-test="diagram-play"]').exists()).toBe(false)
+
+    const [first, second] = editor().props('positions').map((p) => p.id)
+    await wrapper.get('[data-test="sequence-record"]').trigger('click')
+    await editor().vm.$emit('pick-position', first)
+    await editor().vm.$emit('pick-position', second)
+    expect(wrapper.get('[data-test="sequence-editor"]').find('[data-test="diagram-play"]').exists()).toBe(true)
+
+    await wrapper.findComponent(DiagramPlayer).vm.$emit('active', [first])
+    expect(editor().props('sequenceHighlightIds')).toEqual([first])
+    await wrapper.findComponent(DiagramPlayer).vm.$emit('active', [])
+    expect(editor().props('sequenceHighlightIds')).toEqual([second])
   })
 
   it("saves the general color chosen from the palette and a position's own color", async () => {

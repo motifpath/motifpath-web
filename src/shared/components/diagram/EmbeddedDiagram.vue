@@ -7,11 +7,13 @@
  * student can do nothing about it — unless the caller fills the `unavailable`
  * slot.
  *
- * `root_override` and `playback` aren't applied yet: the diagram is drawn as
- * authored.
+ * A single diagram whose usage offers playback gets a Play control; a stack
+ * never plays, and an inert thumbnail has no controls. `root_override` isn't
+ * applied yet: the diagram is drawn, and played, as authored.
  */
-import { watch } from 'vue'
+import { shallowRef, watch } from 'vue'
 
+import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
@@ -54,6 +56,8 @@ const emit = defineEmits<{
 const { t } = useTypedT()
 const { status, diagram, instrument, diagramRef, labelMode } = useEmbeddedDiagram(() => props.embed)
 watch(status, (next) => emit('status', next), { immediate: true })
+
+const activePositionIds = shallowRef<string[]>([])
 </script>
 
 <template>
@@ -80,8 +84,16 @@ watch(status, (next) => emit('status', next), { immediate: true })
       :answer-cells="props.answerCells"
       :selected-answer-ids="props.selectedAnswerIds"
       :multiple="props.multiple"
+      :active-position-ids="activePositionIds"
       @select="emit('select', $event)"
       @select-answer="emit('selectAnswer', $event)"
+    />
+    <DiagramPlayer
+      v-if="props.embed.kind === 'single' && !props.inert"
+      :diagram="diagram"
+      :instrument="instrument"
+      :playback="diagramRef.playback ?? null"
+      @active="activePositionIds = $event"
     />
     <figcaption v-if="props.caption" class="text-sm text-ink-muted">{{ props.caption }}</figcaption>
   </figure>
