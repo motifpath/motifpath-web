@@ -50,7 +50,7 @@ colors['brand-ground'] = tokens.brand.ground.$value
 // Fretboard materials are feature-scoped to the diagram viewer/editor rather than
 // motifpath-brand roles; their per-theme values sit beside --color-fretboard-wood
 // in src/assets/main.css.
-for (const material of ['fretboard-inlay', 'fretboard-string', 'fretboard-metal-shadow', 'fretboard-sounding', 'fretboard-sounding-edge']) {
+for (const material of ['fretboard-inlay', 'fretboard-string', 'fretboard-metal-shadow', 'fretboard-sounding']) {
   colors[material] = `rgb(var(--color-${material}) / <alpha-value>)`
 }
 

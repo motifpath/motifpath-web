@@ -1165,18 +1165,17 @@ describe('FrettedDiagramView', () => {
       expect(wrapper.findAll('[data-test="diagram-position-playing"]')).toHaveLength(2)
     })
 
-    it('rings a sounding marker with a bright band in the sounding color, edged so it stands out from the wood', () => {
+    it('rings a sounding marker with a dashed line in the sounding color, leaving the marker itself as it is', () => {
       const wrapper = mount(FrettedDiagramView, {
         props: { ...base, diagramRef: makeDiagramRef(), activePositionIds: ['p1'] },
       })
 
       const ring = wrapper.get('[data-test="diagram-position-playing"]')
       expect(ring.classes()).toContain('stroke-fretboard-sounding')
-      expect(ring.classes()).not.toContain('fill-warning')
-      expect(Number(ring.attributes('stroke-width'))).toBeGreaterThanOrEqual(3)
-      const halo = wrapper.get('[data-test="diagram-position-playing-halo"]')
-      expect(halo.classes()).toContain('stroke-fretboard-sounding-edge')
-      expect(Number(halo.attributes('stroke-width'))).toBeGreaterThan(Number(ring.attributes('stroke-width')))
+      expect(ring.attributes('fill')).toBe('none')
+      expect(ring.attributes('stroke-dasharray')).toBe('4 3')
+      expect(Number(ring.attributes('stroke-width'))).toBe(3)
+      expect(wrapper.find('[data-test="diagram-position-playing-halo"]').exists()).toBe(false)
     })
 
     it('never draws a position the usage hides, even while it sounds', () => {
