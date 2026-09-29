@@ -142,7 +142,7 @@ describe('EmbeddedDiagram', () => {
     const wrapper = mount(EmbeddedDiagram, { props: { embed: single, inert: true } })
     await flushPromises()
 
-    expect(wrapper.get('[data-test="embedded-diagram"]').attributes()).toHaveProperty('inert')
+    expect(wrapper.get('[data-test="embedded-diagram-drawing"]').attributes()).toHaveProperty('inert')
   })
 
   it('is not inert by default', async () => {
@@ -151,7 +151,7 @@ describe('EmbeddedDiagram', () => {
     const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
     await flushPromises()
 
-    expect(wrapper.get('[data-test="embedded-diagram"]').attributes()).not.toHaveProperty('inert')
+    expect(wrapper.get('[data-test="embedded-diagram-drawing"]').attributes()).not.toHaveProperty('inert')
   })
 
   it('shows its unavailable slot when the diagram cannot be shown, and not while loading', async () => {
@@ -192,11 +192,26 @@ describe('EmbeddedDiagram', () => {
       expect(wrapper.find('[data-test="diagram-play"]').exists()).toBe(false)
     })
 
-    it('offers no Play on an inert thumbnail', async () => {
+    it('still offers Play on an inert thumbnail, and a tap on it never reaches the card around it', async () => {
       serve(makeSequencedFrettedDiagram())
-      const wrapper = mount(EmbeddedDiagram, { props: { embed: playable, inert: true } })
+      const card = document.createElement('div')
+      document.body.appendChild(card)
+      const cardClick = vi.fn()
+      card.addEventListener('click', cardClick)
+      const wrapper = mount(EmbeddedDiagram, {
+        props: { embed: playable, inert: true },
+        attachTo: card,
+        // Only whether the tap bubbles matters here, not the sound it starts.
+        global: { stubs: { DiagramPlayer: { template: '<button data-test="diagram-play" type="button" />' } } },
+      })
       await flushPromises()
-      expect(wrapper.findComponent(DiagramPlayer).exists()).toBe(false)
+
+      expect(wrapper.get('[data-test="embedded-diagram"]').attributes()).not.toHaveProperty('inert')
+      await wrapper.get('[data-test="diagram-play"]').trigger('click')
+      expect(cardClick).not.toHaveBeenCalled()
+
+      wrapper.unmount()
+      card.remove()
     })
 
     it('never offers Play on a stack', async () => {

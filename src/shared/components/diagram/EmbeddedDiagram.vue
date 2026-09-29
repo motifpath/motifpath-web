@@ -7,9 +7,11 @@
  * student can do nothing about it — unless the caller fills the `unavailable`
  * slot.
  *
- * A single diagram whose usage offers playback gets a Play control; a stack
- * never plays, and an inert thumbnail has no controls. `root_override` isn't
- * applied yet: the diagram is drawn, and played, as authored.
+ * A single diagram whose usage offers playback gets a Play control, an inert
+ * thumbnail's included: only the drawing is inert, and a tap on Play never
+ * reaches the card around it, so it doesn't pick an option. A stack never
+ * plays. `root_override` isn't applied yet: the diagram is drawn, and played,
+ * as authored.
  */
 import { shallowRef, watch } from 'vue'
 
@@ -32,8 +34,8 @@ const props = withDefaults(
     answerCells?: AnswerCell[]
     selectedAnswerIds?: string[]
     multiple?: boolean
-    /** A picture only, such as an option thumbnail whose card handles the click: no pointer or
-     *  keyboard input reaches it, and screen readers skip it. */
+    /** The drawing is a picture only, such as an option thumbnail whose card handles the click:
+     *  no pointer or keyboard input reaches it, and screen readers skip it. Play still works. */
     inert?: boolean
   }>(),
   {
@@ -72,29 +74,32 @@ const activePositionIds = shallowRef<string[]>([])
     v-else-if="status === 'ready' && diagram && instrument && diagramRef"
     data-test="embedded-diagram"
     class="flex flex-col gap-2"
-    :inert="props.inert || undefined"
   >
-    <FrettedDiagramView
-      :diagram="diagram"
-      :instrument="instrument"
-      :diagram-ref="diagramRef"
-      :label-mode="labelMode"
-      :selectable-position-ids="props.selectablePositionIds"
-      :selected-position-ids="props.selectedPositionIds"
-      :answer-cells="props.answerCells"
-      :selected-answer-ids="props.selectedAnswerIds"
-      :multiple="props.multiple"
-      :active-position-ids="activePositionIds"
-      @select="emit('select', $event)"
-      @select-answer="emit('selectAnswer', $event)"
-    />
-    <DiagramPlayer
-      v-if="props.embed.kind === 'single' && !props.inert"
-      :diagram="diagram"
-      :instrument="instrument"
-      :playback="diagramRef.playback ?? null"
-      @active="activePositionIds = $event"
-    />
+    <div data-test="embedded-diagram-drawing" :inert="props.inert || undefined">
+      <FrettedDiagramView
+        :diagram="diagram"
+        :instrument="instrument"
+        :diagram-ref="diagramRef"
+        :label-mode="labelMode"
+        :selectable-position-ids="props.selectablePositionIds"
+        :selected-position-ids="props.selectedPositionIds"
+        :answer-cells="props.answerCells"
+        :selected-answer-ids="props.selectedAnswerIds"
+        :multiple="props.multiple"
+        :active-position-ids="activePositionIds"
+        @select="emit('select', $event)"
+        @select-answer="emit('selectAnswer', $event)"
+      />
+    </div>
+    <!-- Its own layer (z-10), so it stays tappable above a card's full-size overlay button. -->
+    <div v-if="props.embed.kind === 'single'" class="relative z-10" @click.stop>
+      <DiagramPlayer
+        :diagram="diagram"
+        :instrument="instrument"
+        :playback="diagramRef.playback ?? null"
+        @active="activePositionIds = $event"
+      />
+    </div>
     <figcaption v-if="props.caption" class="text-sm text-ink-muted">{{ props.caption }}</figcaption>
   </figure>
   <slot v-else-if="status === 'unavailable'" name="unavailable" />
