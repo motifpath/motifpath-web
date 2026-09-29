@@ -51,6 +51,58 @@ export function fretboardGeometry(input: {
   }
 }
 
+/** A board laid out on the page: its fret window, and where its first fret wire and string sit. */
+export interface BoardFrame {
+  minFret: number
+  maxFret: number
+  stringCount: number
+  /** Where the window's lowest fret wire (or the nut) sits. */
+  left: number
+  columnGap: number
+  rowGap: number
+  /** Where string 1 sits. */
+  top: number
+}
+
+/** A fret wire's x position; fret 0 is the nut. */
+export function fretLineX(frame: BoardFrame, fret: number): number {
+  return frame.left + (fret - frame.minFret) * frame.columnGap
+}
+
+/** A marker's x position: the middle of the fret space behind its fret wire, or on the nut for
+ *  an open string, as fretboard diagrams conventionally draw them. */
+export function markerCenterX(frame: BoardFrame, fret: number): number {
+  if (fret === 0) return fretLineX(frame, 0)
+  return (fretLineX(frame, fret - 1) + fretLineX(frame, fret)) / 2
+}
+
+/** A string's y position; string 1 (the highest-pitched) is drawn at the top, as in tab. */
+export function stringLineY(frame: BoardFrame, stringNumber: number): number {
+  return frame.top + (stringNumber - 1) * frame.rowGap
+}
+
+/** Half the width of a band covering only the open strings: it surrounds the markers on the nut. */
+const OPEN_BAND_HALF_WIDTH = 22
+
+/**
+ * A region's band: whole fret spaces from the wire before `fretStart` (the nut for fret 0) to
+ * `fretEnd`'s wire, and from half a string gap above its first string to half a gap below its
+ * last. A band of only the open strings has no fret space, so it surrounds the nut, where their
+ * markers sit.
+ */
+export function regionBandBox(
+  frame: BoardFrame,
+  band: { fretStart: number; fretEnd: number; stringStart: number; stringEnd: number },
+): { x: number; y: number; width: number; height: number } {
+  const nut = fretLineX(frame, 0)
+  const openOnly = band.fretEnd === 0
+  const left = openOnly ? nut - OPEN_BAND_HALF_WIDTH : fretLineX(frame, Math.max(band.fretStart - 1, 0))
+  const right = openOnly ? nut + OPEN_BAND_HALF_WIDTH : fretLineX(frame, band.fretEnd)
+  const top = stringLineY(frame, band.stringStart) - frame.rowGap / 2
+  const bottom = stringLineY(frame, band.stringEnd) + frame.rowGap / 2
+  return { x: left, y: top, width: right - left, height: bottom - top }
+}
+
 const UNIFORM_THICKNESS = 1.6
 const THINNEST = 0.9
 const THICKEST = 4

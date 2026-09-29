@@ -34,7 +34,13 @@ import { Info, X } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
-import { fretboardGeometry, stringThicknesses } from '@/shared/utils/fretboardGeometry'
+import {
+  fretboardGeometry,
+  markerCenterX,
+  regionBandBox,
+  stringLineY,
+} from '@/shared/utils/fretboardGeometry'
+import type { BoardFrame } from '@/shared/utils/fretboardGeometry'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
@@ -48,6 +54,7 @@ import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { effectiveLabelMode, markerTextKind } from '@/shared/utils/diagramLabels'
+import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -115,8 +122,6 @@ const NOMINAL_WIDTH = 720
 const MARGIN_TOP = 34
 // Room under the board for the fret numbers.
 const MARGIN_BOTTOM = 52
-// Half the width of a band covering only the open strings: it surrounds the markers on the nut.
-const OPEN_BAND_HALF_WIDTH = 22
 const MARKER_RADIUS = 18
 const TARGET_RADIUS = 22
 const TEXT_SIZE = 14
@@ -147,8 +152,8 @@ function revealFocused(event: FocusEvent) {
   event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
 }
 
-// Paint ids unique to this drawing, so two drawings of one diagram on a page never share them.
-const paintId = `fretboard-${useId()}`
+// Ids unique to this drawing, so two drawings of one diagram on a page never share them.
+const drawingId = `fretboard-${useId()}`
 
 const layout = computed(() =>
   // Hidden positions stay in view while an author can see them, or while the cells are the
@@ -174,13 +179,8 @@ const geometry = computed(() =>
   }),
 )
 const viewW = computed(() => geometry.value.width)
-const colGap = computed(() => geometry.value.columnGap)
 const rowGap = computed(() => geometry.value.rowGap)
 const BOARD_H = computed(() => geometry.value.boardHeight)
-
-function x(fret: number): number {
-  return geometry.value.left + (fret - layout.value.minFret) * colGap.value
-}
 
 // A compact drawing is scaled to its container; a readable one is drawn at its own size.
 const scale = computed(() => (props.compact ? availableWidth.value / viewW.value : 1))
@@ -190,59 +190,25 @@ const RAIL_GAP = 2
 const boardTop = computed(() => (showsRegionInfo.value ? rowGap.value / 2 + RAIL_GAP : MARGIN_TOP))
 const viewH = computed(() => boardTop.value + BOARD_H.value + MARGIN_BOTTOM)
 
-/**
- * X position for a position marker — the middle of the fret space behind
- * the fret wire, or on the nut for an open string, matching standard
- * fretboard-diagram convention (mirrors
- * `frettedFretboardEditor.ts`'s `positionX`, which the editor uses; this
- * viewer keeps its own local geometry rather than sharing that module).
- */
+const frame = computed<BoardFrame>(() => ({
+  minFret: layout.value.minFret,
+  maxFret: layout.value.maxFret,
+  stringCount: layout.value.stringCount,
+  left: geometry.value.left,
+  columnGap: geometry.value.columnGap,
+  rowGap: rowGap.value,
+  top: boardTop.value,
+}))
+
 function markerX(fret: number): number {
-  if (fret === 0) return x(0)
-  return (x(fret - 1) + x(fret)) / 2
+  return markerCenterX(frame.value, fret)
 }
 
 function y(stringNumber: number): number {
-  return boardTop.value + (stringNumber - 1) * rowGap.value
+  return stringLineY(frame.value, stringNumber)
 }
 
-// The wood and strings start at the window's left edge, which is never below the nut.
-const boardLeft = computed(() => x(layout.value.minFret))
-const boardRight = computed(() => x(layout.value.maxFret))
-const woodTop = computed(() => boardTop.value - rowGap.value / 2)
-const woodHeight = computed(() => BOARD_H.value + rowGap.value)
-
-// The fret wires, from the board's left edge to its right. At fret 0 the nut stands in for one.
-const fretWires = computed(() => {
-  const result: number[] = []
-  for (let fret = Math.max(layout.value.minFret, 1); fret <= layout.value.maxFret; fret++) result.push(fret)
-  return result
-})
-
-// The fret spaces the board shows, each numbered under its middle — plus 0 under the nut.
-const shownFretSpaces = computed(() => {
-  const result: number[] = []
-  for (let fret = layout.value.minFret + 1; fret <= layout.value.maxFret; fret++) result.push(fret)
-  return result
-})
-const fretNumbers = computed(() => (showsNut.value ? [0, ...shownFretSpaces.value] : shownFretSpaces.value))
-
-const stringWidths = computed(() => stringThicknesses(props.instrument.tuning, layout.value.stringCount))
-
-// Conventional fretboard inlay-dot frets — single dot, except a double dot at the octave marks.
-const SINGLE_DOT_FRETS = [3, 5, 7, 9, 15, 17, 19, 21]
-const DOUBLE_DOT_FRETS = [12, 24]
 const boardMidY = computed(() => (y(1) + y(layout.value.stringCount)) / 2)
-const inlayDots = computed(() => {
-  const dots: { fret: number; cy: number }[] = []
-  for (const fret of shownFretSpaces.value) {
-    if (SINGLE_DOT_FRETS.includes(fret)) dots.push({ fret, cy: boardMidY.value })
-    if (DOUBLE_DOT_FRETS.includes(fret)) {
-      dots.push({ fret, cy: boardMidY.value - rowGap.value }, { fret, cy: boardMidY.value + rowGap.value })
-    }
-  }
-  return dots
-})
 
 const rootColor = computed(() => props.diagramRef.styling?.root_color ?? null)
 const intervalColor = computed(() => props.diagramRef.styling?.interval_color ?? null)
@@ -305,20 +271,8 @@ function markerLabel(position: Marker): string | null {
   }
 }
 
-/** A band covers whole fret spaces: from the wire before fret_start (the nut for fret 0) to
- *  fret_end's wire, and from half a string gap above its first string to half a gap below its
- *  last. A band of only the open strings has no fret space, so it surrounds the nut, where
- *  their markers sit. */
-function regionFretEdges(region: Region): { left: number; right: number } {
-  if (region.fretEnd === 0) return { left: x(0) - OPEN_BAND_HALF_WIDTH, right: x(0) + OPEN_BAND_HALF_WIDTH }
-  return { left: x(Math.max(region.fretStart - 1, 0)), right: x(region.fretEnd) }
-}
-
 function regionBox(region: Region): { x: number; y: number; width: number; height: number } {
-  const { left, right } = regionFretEdges(region)
-  const top = y(region.stringStart) - rowGap.value / 2
-  const bottom = y(region.stringEnd) + rowGap.value / 2
-  return { x: left, y: top, width: right - left, height: bottom - top }
+  return regionBandBox(frame.value, region)
 }
 
 function regionFill(region: Region): { fill: string } | undefined {
@@ -331,7 +285,7 @@ const regionOutlines = computed(() => insetOverlappingOutlines(layout.value.regi
 // Region descriptions: one open at a time, shown under its control.
 const shownRegionId = ref<string | null>(null)
 const shownRegion = computed(() => layout.value.regions.find((region) => region.regionId === shownRegionId.value))
-const descriptionId = `${paintId}-region-description`
+const descriptionId = `${drawingId}-region-description`
 watch(
   () => props.diagram,
   () => {
@@ -341,7 +295,10 @@ watch(
 
 const regionControls = computed(() => {
   const centers = placeRegionControls(
-    layout.value.regions.map((region) => ({ id: region.regionId, right: regionFretEdges(region).right * scale.value })),
+    layout.value.regions.map((region) => {
+      const box = regionBox(region)
+      return { id: region.regionId, right: (box.x + box.width) * scale.value }
+    }),
     viewW.value * scale.value,
   )
   return layout.value.regions.map((region, index) => ({
@@ -633,105 +590,22 @@ function noteAlignClass(position: Marker): string {
           :inert="drawingInert || undefined"
           :aria-hidden="drawingInert || undefined"
         >
-          <defs>
-            <linearGradient :id="`${paintId}-wood`" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood-edge))" />
-              <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" />
-              <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood-edge))" />
-            </linearGradient>
-            <pattern :id="`${paintId}-grain`" width="240" height="48" patternUnits="userSpaceOnUse">
-              <path
-                d="M-20 8 Q45 1 110 9 T260 5 M-20 18 Q70 28 170 16 T270 22 M-20 35 Q70 27 160 38 T270 31 M-20 43 Q80 35 180 46 T270 40"
-                fill="none"
-                stroke="rgb(var(--color-fretboard-grain))"
-                stroke-width="0.8"
-                opacity="0.25"
+          <FretboardBoard :frame="frame" :tuning="instrument.tuning" :plain="compact">
+            <template #fills>
+              <rect
+                v-for="region in layout.regions"
+                :key="`region-${region.regionId}`"
+                data-test="diagram-region"
+                v-bind="regionBox(region)"
+                rx="4"
+                fill-opacity="0.24"
+                :class="[region.color ? '' : 'fill-accent', showsRegionInfo ? 'cursor-pointer' : '']"
+                :style="regionFill(region)"
+                :data-region-ui="showsRegionInfo || undefined"
+                @click="showsRegionInfo && toggleRegion(region)"
               />
-            </pattern>
-            <linearGradient :id="`${paintId}-metal`" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="rgb(var(--color-fretboard-metal-shadow))" />
-              <stop offset="0.45" stop-color="rgb(var(--color-fretboard-metal))" />
-              <stop offset="1" stop-color="rgb(var(--color-fretboard-metal-shadow))" />
-            </linearGradient>
-          </defs>
-
-          <rect
-            data-test="fretboard-wood"
-            :x="boardLeft"
-            :y="woodTop"
-            :width="boardRight - boardLeft"
-            :height="woodHeight"
-            rx="6"
-            :fill="`url(#${paintId}-wood)`"
-          />
-          <rect
-            v-if="!compact"
-            data-test="board-grain"
-            :x="boardLeft"
-            :y="woodTop"
-            :width="boardRight - boardLeft"
-            :height="woodHeight"
-            rx="6"
-            :fill="`url(#${paintId}-grain)`"
-          />
-
-          <circle
-            v-for="(dot, index) in inlayDots"
-            :key="`inlay-${dot.fret}-${index}`"
-            data-test="fret-inlay"
-            :data-fret="dot.fret"
-            :cx="markerX(dot.fret)"
-            :cy="dot.cy"
-            r="6"
-            class="fill-fretboard-inlay"
-          />
-
-          <rect
-            v-for="region in layout.regions"
-            :key="`region-${region.regionId}`"
-            data-test="diagram-region"
-            v-bind="regionBox(region)"
-            rx="4"
-            fill-opacity="0.24"
-            :class="[region.color ? '' : 'fill-accent', showsRegionInfo ? 'cursor-pointer' : '']"
-            :style="regionFill(region)"
-            :data-region-ui="showsRegionInfo || undefined"
-            @click="showsRegionInfo && toggleRegion(region)"
-          />
-
-          <rect
-            v-if="showsNut"
-            data-test="diagram-nut"
-            :x="x(0) - 5"
-            :y="woodTop"
-            width="10"
-            :height="woodHeight"
-            rx="2"
-            class="fill-fretboard-inlay stroke-fretboard-metal-shadow"
-          />
-          <rect
-            v-for="fret in fretWires"
-            :key="`fret-${fret}`"
-            data-test="fret-wire"
-            :data-fret="fret"
-            :x="x(fret) - 1.5"
-            :y="woodTop"
-            width="3"
-            :height="woodHeight"
-            :fill="`url(#${paintId}-metal)`"
-          />
-
-          <line
-            v-for="stringNumber in layout.stringCount"
-            :key="`string-${stringNumber}`"
-            data-test="diagram-string"
-            :x1="boardLeft"
-            :y1="y(stringNumber)"
-            :x2="boardRight"
-            :y2="y(stringNumber)"
-            class="stroke-fretboard-string"
-            :stroke-width="stringWidths[stringNumber - 1]"
-          />
+            </template>
+          </FretboardBoard>
 
           <rect
             v-for="(outline, index) in regionOutlines"
@@ -745,19 +619,6 @@ function noteAlignClass(position: Marker): string {
             :class="layout.regions[index]!.color ? '' : 'stroke-accent'"
             :style="layout.regions[index]!.color ? { stroke: layout.regions[index]!.color } : undefined"
           />
-
-          <text
-            v-for="fret in fretNumbers"
-            :key="`fret-number-${fret}`"
-            data-test="fret-number"
-            :x="fret === 0 ? x(0) : markerX(fret)"
-            :y="woodTop + woodHeight + 22"
-            text-anchor="middle"
-            :font-size="TEXT_SIZE"
-            class="fill-ink-muted"
-          >
-            {{ fret }}
-          </text>
 
           <g
             v-for="position in markers"

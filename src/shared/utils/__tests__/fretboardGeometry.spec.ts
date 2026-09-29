@@ -4,9 +4,14 @@ import {
   MIN_COLUMN_GAP,
   MIN_COLUMN_GAP_WITH_NUT,
   ROW_GAP,
+  fretLineX,
   fretboardGeometry,
+  markerCenterX,
+  regionBandBox,
+  stringLineY,
   stringThicknesses,
 } from '@/shared/utils/fretboardGeometry'
+import type { BoardFrame } from '@/shared/utils/fretboardGeometry'
 
 describe('fretboardGeometry', () => {
   it('fills the available width when every fret space fits at its minimum width', () => {
@@ -76,5 +81,52 @@ describe('stringThicknesses', () => {
 
     expect(widths).toHaveLength(5)
     expect(new Set(widths).size).toBe(1)
+  })
+})
+
+describe('board frame placement', () => {
+  const frame: BoardFrame = { minFret: 4, maxFret: 8, stringCount: 6, left: 10, columnGap: 50, rowGap: 44, top: 30 }
+
+  it("puts the window's lowest fret wire at the board's left edge, one column per fret after it", () => {
+    expect(fretLineX(frame, 4)).toBe(10)
+    expect(fretLineX(frame, 8)).toBe(210)
+  })
+
+  it('centres a fretted marker in its fret space, behind its fret wire', () => {
+    expect(markerCenterX(frame, 5)).toBe(35)
+  })
+
+  it('centres an open-string marker on the nut', () => {
+    const open: BoardFrame = { ...frame, minFret: 0 }
+
+    expect(markerCenterX(open, 0)).toBe(fretLineX(open, 0))
+  })
+
+  it('draws string 1 at the top, one row gap per string below it', () => {
+    expect(stringLineY(frame, 1)).toBe(30)
+    expect(stringLineY(frame, 6)).toBe(30 + 5 * 44)
+  })
+
+  it("bands a region's whole fret spaces, half a string gap beyond its outer strings", () => {
+    expect(regionBandBox(frame, { fretStart: 5, fretEnd: 7, stringStart: 2, stringEnd: 4 })).toEqual({
+      x: 10,
+      y: 30 + 44 - 22,
+      width: 150,
+      height: 2 * 44 + 44,
+    })
+  })
+
+  it('starts a band from fret 0 at the nut, leaving the open-string area bare', () => {
+    const open: BoardFrame = { ...frame, minFret: 0 }
+
+    expect(regionBandBox(open, { fretStart: 0, fretEnd: 2, stringStart: 1, stringEnd: 6 }).x).toBe(fretLineX(open, 0))
+  })
+
+  it('surrounds the nut with a band of only the open strings, covering their markers', () => {
+    const open: BoardFrame = { ...frame, minFret: 0 }
+    const box = regionBandBox(open, { fretStart: 0, fretEnd: 0, stringStart: 1, stringEnd: 6 })
+
+    expect(box.x).toBeLessThan(fretLineX(open, 0) - 18)
+    expect(box.x + box.width).toBeGreaterThan(fretLineX(open, 0) + 18)
   })
 })
