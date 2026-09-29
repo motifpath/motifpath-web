@@ -275,6 +275,88 @@ describe('DiagramPlayer', () => {
     expect(tempoPanel()).not.toBeNull()
   })
 
+  describe('from the keyboard', () => {
+    it('moves focus onto the tempo slider when the panel opens, so the next keys adjust the tempo', async () => {
+      const wrapper = mountPlayer({ attachTo: document.body })
+
+      const panel = await openTempo(wrapper)
+      await nextTick()
+
+      expect(document.activeElement).toBe(panel.get('[data-test="diagram-tempo"]').element)
+    })
+
+    it('closes the tempo panel when focus moves elsewhere on the page', async () => {
+      const outside = document.createElement('button')
+      document.body.append(outside)
+      const wrapper = mountPlayer({ attachTo: document.body })
+      await openTempo(wrapper)
+      await nextTick()
+
+      outside.focus()
+      await nextTick()
+
+      expect(tempoPanel()).toBeNull()
+      expect(document.activeElement).toBe(outside)
+      outside.remove()
+    })
+
+    it('keeps the tempo panel open while focus moves between its own controls', async () => {
+      const wrapper = mountPlayer({ attachTo: document.body })
+      const panel = await openTempo(wrapper)
+      await nextTick()
+
+      panel.get<HTMLInputElement>('[data-test="diagram-tempo-number"]').element.focus()
+      await nextTick()
+
+      expect(tempoPanel()).not.toBeNull()
+    })
+  })
+
+  describe('while its control is out of sight', () => {
+    // What sits on top at a point of the screen: the control itself, or whatever covers it.
+    let topmost: () => Element | null
+    beforeEach(() => {
+      topmost = () => null
+      document.elementFromPoint = () => topmost()
+    })
+    afterEach(() => {
+      Reflect.deleteProperty(document, 'elementFromPoint')
+    })
+    const shown = (element: Element | null) => element !== null && (element as HTMLElement).style.display !== 'none'
+
+    it('hides the load error while Play is covered, such as by the app bar or a menu, and shows it again once Play is back', async () => {
+      player.current!.state.value = 'error'
+      const cover = document.createElement('header')
+      topmost = () => cover
+      const wrapper = mountPlayer({ attachTo: document.body })
+      await nextTick()
+      await nextTick()
+      const alert = () => document.querySelector('[role="alert"]')
+
+      expect(shown(alert())).toBe(false)
+
+      topmost = () => button(wrapper).element
+      window.dispatchEvent(new Event('scroll'))
+      await nextTick()
+      expect(shown(alert())).toBe(true)
+    })
+
+    it('hides the open tempo panel while its control is covered, checking again after a click such as opening a menu', async () => {
+      const wrapper = mountPlayer({ attachTo: document.body })
+      topmost = () => tempoToggle(wrapper).element
+      await openTempo(wrapper)
+      await nextTick()
+      expect(shown(tempoPanel()!.element)).toBe(true)
+
+      topmost = () => document.createElement('nav')
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await nextTick()
+
+      expect(tempoPanel() === null || !shown(tempoPanel()!.element)).toBe(true)
+    })
+  })
+
   it('reports the positions being heard, for the diagram to light up', async () => {
     const wrapper = mountPlayer()
     player.current!.activePositionIds.value = ['p0']

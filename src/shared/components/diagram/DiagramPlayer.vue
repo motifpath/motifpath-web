@@ -14,7 +14,7 @@ export const PLAYER_WIDTH = 88
  * control, so a card that clips its content never cuts them off. It shows nothing when the diagram
  * has nothing to play, or its usage offers no Play control. A press on it never reaches whatever holds the diagram, such as an answer card.
  */
-import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { LoaderCircle, Metronome, Play, RotateCcw, Square, X } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
@@ -68,6 +68,22 @@ function onTempo(event: Event) {
 /** Leaving the numeric input shows the tempo in effect, whatever was typed. */
 function onTempoBlur(event: Event) {
   if (event.target instanceof HTMLInputElement) event.target.value = String(tempo.value)
+}
+
+// Opening the panel moves focus onto its slider, so the next keys adjust the tempo; the slider, not
+// the numeric input, so a phone doesn't raise its keyboard every time the panel opens.
+const tempoSlider = ref<HTMLInputElement | null>(null)
+watch(tempoOpen, async (open) => {
+  if (!open) return
+  await nextTick()
+  tempoSlider.value?.focus()
+})
+
+/** Focus leaving the player and its panel for elsewhere on the page closes the panel. */
+function onPanelFocusOut(event: FocusEvent) {
+  const next = event.relatedTarget
+  if (!(next instanceof Node) || tempoPanel.value?.contains(next) || root.value?.contains(next)) return
+  closeTempo(false)
 }
 
 /** Closes the panel; from the keyboard or its close control, focus goes back to the tempo control. */
@@ -165,6 +181,7 @@ onBeforeUnmount(() => {
       class="fixed z-50 w-72 max-w-[calc(100vw-1rem)] rounded-md border border-border bg-surface-raised p-3 shadow-level2"
       :style="tempoPanelStyle"
       @keydown.escape="closeTempo(true)"
+      @focusout="onPanelFocusOut"
     >
       <div class="flex items-center justify-between gap-2">
         <label :for="tempoInputId" class="text-sm text-ink-muted">{{ t('diagramPlayer.tempo') }}</label>
@@ -180,6 +197,7 @@ onBeforeUnmount(() => {
       </div>
       <div class="flex items-center gap-3">
         <input
+          ref="tempoSlider"
           data-test="diagram-tempo"
           type="range"
           :min="MIN_TEMPO_BPM"
@@ -187,7 +205,7 @@ onBeforeUnmount(() => {
           step="1"
           :value="tempo"
           :aria-label="t('diagramPlayer.tempo')"
-          class="h-11 min-w-0 flex-1 accent-accent"
+          class="h-11 min-w-0 flex-1 rounded-md accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
           @input="onTempo"
         />
         <input
@@ -199,7 +217,7 @@ onBeforeUnmount(() => {
           :max="MAX_TEMPO_BPM"
           step="1"
           :value="tempo"
-          class="h-11 w-20 rounded-md border border-border bg-surface px-2 text-sm tabular-nums text-ink"
+          class="h-11 w-20 rounded-md border border-border bg-surface px-2 text-sm tabular-nums text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
           @input="onTempo"
           @blur="onTempoBlur"
         />
