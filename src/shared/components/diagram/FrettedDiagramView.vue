@@ -504,21 +504,32 @@ function checkPoints(cx: number, cy: number): string {
   return `${cx - 3.5},${cy} ${cx - 1},${cy + 2.5} ${cx + 3.5},${cy - 2.5}`
 }
 
+/** Gap between a marker's centre and the edge of its note's popover. */
+const NOTE_OFFSET = 16
+
+/** The scrolling board clips anything outside it, and there's little room above the top strings,
+ *  so a note on the upper half of the board opens below its marker instead of above. */
+function noteOpensBelow(position: Marker): boolean {
+  return y(position.string) < boardMidY.value
+}
+
 /** Where a note's popover anchors, as percentages of the diagram, so it tracks the marker at
  *  any rendered size. */
 function noteAnchor(position: Marker): { left: string; top: string } {
+  const offset = noteOpensBelow(position) ? NOTE_OFFSET : -NOTE_OFFSET
   return {
     left: `${(markerX(position.fret) / viewW.value) * 100}%`,
-    top: `${((y(position.string) - 16) / viewH.value) * 100}%`,
+    top: `${((y(position.string) + offset) / viewH.value) * 100}%`,
   }
 }
 
 /** A marker near either edge anchors the popover's matching edge, so it stays on screen. */
 function noteAlignClass(position: Marker): string {
   const fraction = markerX(position.fret) / viewW.value
-  if (fraction < 0.3) return '-translate-y-full'
-  if (fraction > 0.7) return '-translate-x-full -translate-y-full'
-  return '-translate-x-1/2 -translate-y-full'
+  const vertical = noteOpensBelow(position) ? '' : '-translate-y-full'
+  if (fraction < 0.3) return vertical
+  if (fraction > 0.7) return `-translate-x-full ${vertical}`
+  return `-translate-x-1/2 ${vertical}`
 }
 </script>
 

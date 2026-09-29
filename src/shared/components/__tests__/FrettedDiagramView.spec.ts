@@ -394,6 +394,42 @@ describe('FrettedDiagramView', () => {
       expect(note().isVisible()).toBe(false)
     })
 
+    it('opens a note on an upper string below its marker, so the scrolling board never clips it', async () => {
+      const note = { en: 'Mind the top string', pt_BR: 'Cuidado com a corda de cima' }
+      const wrapper = mount(FrettedDiagramView, {
+        props: {
+          diagram: makeFrettedDiagram({
+            positions: [
+              { position_id: 'top', string: 1, fret: 5, interval: 'R', note_name: 'A', shape: 'dot', note },
+              { position_id: 'bottom', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot', note },
+            ],
+          }),
+          instrument: makeFrettedInstrument(),
+          diagramRef: makeDiagramRef(),
+        },
+        attachTo: document.body,
+      })
+      const svgHeight = Number(wrapper.get('svg').attributes('height'))
+      const placement = (index: number) => {
+        const marker = wrapper.findAll('[data-test="diagram-position"]')[index]!
+        const popover = wrapper.findAll('[data-test="diagram-note"]')[index]!
+        return {
+          markerTop: (Number(marker.attributes('cy')) / svgHeight) * 100,
+          noteTop: parseFloat((popover.element as HTMLElement).style.top),
+          opensUpward: popover.classes().includes('-translate-y-full'),
+        }
+      }
+
+      const top = placement(0)
+      expect(top.opensUpward).toBe(false)
+      expect(top.noteTop).toBeGreaterThan(top.markerTop)
+
+      const bottom = placement(1)
+      expect(bottom.opensUpward).toBe(true)
+      expect(bottom.noteTop).toBeLessThan(bottom.markerTop)
+      wrapper.unmount()
+    })
+
     it('leaves a diagram without notes a plain image', () => {
       const wrapper = mount(FrettedDiagramView, {
         props: { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
