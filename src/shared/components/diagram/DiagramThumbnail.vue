@@ -42,6 +42,7 @@ const wholeDiagram = computed<DiagramRef>(() => ({
       :instrument="instrument"
       :diagram-ref="wholeDiagram"
       :label-mode="diagram.label_display"
+      compact
     />
     <div
       v-else

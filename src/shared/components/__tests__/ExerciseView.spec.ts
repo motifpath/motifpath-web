@@ -369,6 +369,7 @@ describe('ExerciseView', () => {
         selectedAnswerIds: Array,
         multiple: Boolean,
         inert: Boolean,
+        compact: Boolean,
         // Stands in for the real component's own status: whether it would fall back to its slot.
         unavailable: Boolean,
       },
@@ -471,6 +472,7 @@ describe('ExerciseView', () => {
       const thumb = cards[0]!.getComponent(EmbeddedDiagramStub)
       expect(thumb.props('embed')).toEqual({ kind: 'single', ref: thumbRef })
       expect(thumb.props('inert')).toBe(true)
+      expect(thumb.props('compact')).toBe(true)
       expect(cards[0]!.find('img').exists()).toBe(false)
       expect(cards[1]!.find('img').attributes('src')).toBe('https://x/c.png')
 

@@ -278,7 +278,7 @@ function selectAndPlay(option: Option): void {
             class="flex w-full items-center justify-center overflow-hidden bg-surface-sunken"
             :class="[option.diagram_ref ? 'px-2 py-1' : 'h-32', { 'border-b border-border': option.label }]"
           >
-            <EmbeddedDiagram v-if="option.diagram_ref" :embed="{ kind: 'single', ref: option.diagram_ref }" inert class="w-full" />
+            <EmbeddedDiagram v-if="option.diagram_ref" :embed="{ kind: 'single', ref: option.diagram_ref }" inert compact class="w-full" />
             <img v-else :src="option.image_url" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
           </div>
           <div
