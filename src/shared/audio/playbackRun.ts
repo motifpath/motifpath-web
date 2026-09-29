@@ -1,0 +1,100 @@
+/**
+ * One run of a diagram's playback: it hands every note to a sink (the
+ * sampler) ahead of time, on the audio clock, and says which positions are
+ * sounding at any moment of that clock. A looping run stays one pass ahead,
+ * scheduling the next pass as the current one starts; a tempo change re-times
+ * everything after the step now sounding.
+ */
+import { buildTimeline } from './timeline'
+import type { PlaybackStep, StepSpan } from './timeline'
+
+export interface NoteSink {
+  /** Plays a note at `time` (audio-clock seconds); the returned function cancels it. */
+  play(note: { midi: number; time: number; duration: number }): () => void
+  /** Silences every note, sounding or scheduled. */
+  stopAll(): void
+}
+
+export interface PlaybackRun {
+  /** Schedules the next pass of a loop once the current one has started. Call it as time passes. */
+  update(now: number): void
+  activePositionIds(at: number): string[]
+  finished(at: number): boolean
+  /** Re-times every step that starts after `now`. */
+  setWholeSeconds(wholeSeconds: number, now: number): void
+  stop(): void
+}
+
+interface ScheduledStep extends StepSpan {
+  pass: number
+  cancels: (() => void)[]
+}
+
+export function createPlaybackRun(
+  steps: PlaybackStep[],
+  options: { sink: NoteSink; wholeSeconds: number; loop: boolean; startAt: number },
+): PlaybackRun {
+  const { sink, loop, startAt } = options
+  let wholeSeconds = options.wholeSeconds
+  let scheduled: ScheduledStep[] = []
+  let stopped = false
+
+  /** Schedules pass `pass` from step `from` at `time`, through the end of that pass. */
+  function schedule(pass: number, from: number, time: number) {
+    const timeline = buildTimeline(steps, wholeSeconds, { from, startAt: time })
+    for (const span of timeline.spans) {
+      const cancels = timeline.notes
+        .filter((note) => note.stepIndex === span.stepIndex)
+        .map((note) => sink.play({ midi: note.midi, time: note.time, duration: note.duration }))
+      scheduled.push({ ...span, pass, cancels })
+    }
+  }
+
+  const last = () => scheduled[scheduled.length - 1]
+
+  /** When the latest scheduled pass started (or starts). */
+  function latestPassStart(): number {
+    const pass = last()!.pass
+    return scheduled.find((step) => step.pass === pass)!.start
+  }
+
+  function update(now: number) {
+    if (stopped || !loop) return
+    // The latest pass has started, so the one after it is due.
+    if (now >= latestPassStart()) schedule(last()!.pass + 1, 0, last()!.end)
+  }
+
+  function setWholeSeconds(next: number, now: number) {
+    wholeSeconds = next
+    if (stopped) return
+    const kept = scheduled.filter((step) => step.start <= now)
+    for (const step of scheduled.filter((s) => s.start > now)) step.cancels.forEach((cancel) => cancel())
+    scheduled = kept
+
+    const current = last()
+    if (!current) schedule(0, 0, startAt)
+    else if (current.stepIndex + 1 < steps.length) schedule(current.pass, current.stepIndex + 1, current.end)
+    else if (loop) schedule(current.pass + 1, 0, current.end)
+    update(now)
+  }
+
+  schedule(0, 0, startAt)
+
+  return {
+    update,
+    setWholeSeconds,
+    activePositionIds(at) {
+      if (stopped) return []
+      return scheduled.filter((step) => step.start <= at && at < step.end).flatMap((step) => step.positionIds)
+    },
+    finished(at) {
+      return stopped || (!loop && at >= last()!.end)
+    },
+    stop() {
+      stopped = true
+      for (const step of scheduled) step.cancels.forEach((cancel) => cancel())
+      scheduled = []
+      sink.stopAll()
+    },
+  }
+}
