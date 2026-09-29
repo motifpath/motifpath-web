@@ -10,13 +10,15 @@ export const PLAYER_WIDTH = 88
  * to light up. Both controls look like the rail's region information controls. The tempo control, a
  * metronome named with the tempo, opens a panel on demand with a slider and a numeric input; the
  * tempo a student picks is never saved. When the sound can't load, Play
- * becomes Retry. It shows nothing when the diagram has nothing to play, or its usage offers no
- * Play control. A press on it never reaches whatever holds the diagram, such as an answer card.
+ * becomes Retry. The tempo panel and the load error are drawn over the page, anchored to their
+ * control, so a card that clips its content never cuts them off. It shows nothing when the diagram
+ * has nothing to play, or its usage offers no Play control. A press on it never reaches whatever holds the diagram, such as an answer card.
  */
 import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { LoaderCircle, Metronome, Play, RotateCcw, Square, X } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
+import { useAnchoredPopover } from '@/shared/composables/useAnchoredPopover'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { RAIL_CONTROL_CLASS, RAIL_ICON_SIZE } from '@/shared/utils/regionInfoLayout'
@@ -75,9 +77,19 @@ function closeTempo(returnFocus: boolean) {
 }
 
 const root = ref<HTMLElement | null>(null)
+const playControl = ref<HTMLButtonElement | null>(null)
+const tempoPanel = ref<HTMLElement | null>(null)
+const errorMessage = ref<HTMLElement | null>(null)
 
+const { style: tempoPanelStyle } = useAnchoredPopover(tempoControl, tempoPanel, tempoOpen)
+const errorShown = computed(() => state.value === 'error' && !tempoOpen.value)
+const { style: errorStyle } = useAnchoredPopover(playControl, errorMessage, errorShown)
+
+/** A press anywhere but the player and its panel closes the panel, without taking focus. */
 function onDocumentPointerDown(event: Event) {
-  if (tempoOpen.value && event.target instanceof Node && !root.value?.contains(event.target)) closeTempo(false)
+  if (!tempoOpen.value || !(event.target instanceof Node)) return
+  if (root.value?.contains(event.target) || tempoPanel.value?.contains(event.target)) return
+  closeTempo(false)
 }
 
 // The recordings are fetched once the player comes into view, so Play rarely waits on the network.
@@ -109,6 +121,7 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="canPlay" ref="root" data-test="diagram-player" class="relative flex" @click.stop>
     <button
+      ref="playControl"
       data-test="diagram-play"
       type="button"
       :class="[RAIL_CONTROL_CLASS, 'text-accent']"
@@ -144,10 +157,13 @@ onBeforeUnmount(() => {
       <Metronome :size="RAIL_ICON_SIZE" aria-hidden="true" />
     </button>
 
+    <Teleport to="body">
     <div
       v-if="tempoOpen"
+      ref="tempoPanel"
       data-test="diagram-tempo-panel"
-      class="absolute left-0 top-full z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface-raised p-3 shadow-level2"
+      class="fixed z-50 w-72 max-w-[calc(100vw-1rem)] rounded-md border border-border bg-surface-raised p-3 shadow-level2"
+      :style="tempoPanelStyle"
       @keydown.escape="closeTempo(true)"
     >
       <div class="flex items-center justify-between gap-2">
@@ -193,11 +209,14 @@ onBeforeUnmount(() => {
 
     <!-- Never in the way: the markers, regions and answers under it stay usable. -->
     <p
-      v-if="state === 'error' && !tempoOpen"
+      v-if="errorShown"
+      ref="errorMessage"
       role="alert"
-      class="pointer-events-none absolute left-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface-raised px-3 py-2 text-xs text-danger shadow-level2"
+      class="pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-1rem)] rounded-md border border-border bg-surface-raised px-3 py-2 text-xs text-danger shadow-level2"
+      :style="errorStyle"
     >
       {{ t('diagramPlayer.loadFailed') }}
     </p>
+    </Teleport>
   </div>
 </template>

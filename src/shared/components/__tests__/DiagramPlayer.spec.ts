@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { DOMWrapper, enableAutoUnmount, mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick, ref, shallowRef } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -52,6 +52,9 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
 })
+// The tempo panel and the error message are drawn at the end of the page, so every player is
+// unmounted after its test to take them away with it.
+enableAutoUnmount(afterEach)
 
 function mountPlayer(options: { attachTo?: HTMLElement } = {}) {
   return mount(DiagramPlayer, {
@@ -67,9 +70,15 @@ function mountPlayer(options: { attachTo?: HTMLElement } = {}) {
 const button = (wrapper: ReturnType<typeof mountPlayer>) => wrapper.get('[data-test="diagram-play"]')
 const tempoToggle = (wrapper: ReturnType<typeof mountPlayer>) => wrapper.get('[data-test="diagram-tempo-toggle"]')
 
+/** The tempo panel, wherever it's drawn on the page; null while closed. */
+function tempoPanel(): DOMWrapper<HTMLElement> | null {
+  const panel = document.querySelector<HTMLElement>('[data-test="diagram-tempo-panel"]')
+  return panel ? new DOMWrapper(panel) : null
+}
+
 async function openTempo(wrapper: ReturnType<typeof mountPlayer>) {
   await tempoToggle(wrapper).trigger('click')
-  return wrapper.get('[data-test="diagram-tempo-panel"]')
+  return tempoPanel()!
 }
 
 describe('DiagramPlayer', () => {
@@ -109,7 +118,7 @@ describe('DiagramPlayer', () => {
     player.current!.state.value = 'error'
     const wrapper = mountPlayer()
 
-    const alert = wrapper.get('[role="alert"]')
+    const alert = new DOMWrapper(document.querySelector<HTMLElement>('[role="alert"]')!)
     expect(alert.text()).toContain("Couldn't load the sound")
     expect(alert.classes()).toContain('pointer-events-none')
     expect(button(wrapper).attributes('aria-label')).toBe('Retry')
@@ -125,7 +134,7 @@ describe('DiagramPlayer', () => {
     expect(tempoToggle(wrapper).attributes('aria-label')).toBe('Tempo: 90 BPM')
     expect(tempoToggle(wrapper).attributes('title')).toBe('Tempo: 90 BPM')
     expect(tempoToggle(wrapper).attributes('aria-expanded')).toBe('false')
-    expect(wrapper.find('[data-test="diagram-tempo-panel"]').exists()).toBe(false)
+    expect(tempoPanel()).toBeNull()
 
     await openTempo(wrapper)
     expect(tempoToggle(wrapper).attributes('aria-expanded')).toBe('true')
@@ -167,11 +176,11 @@ describe('DiagramPlayer', () => {
     const wrapper = mountPlayer({ attachTo: document.body })
 
     await (await openTempo(wrapper)).trigger('keydown', { key: 'Escape' })
-    expect(wrapper.find('[data-test="diagram-tempo-panel"]').exists()).toBe(false)
+    expect(tempoPanel()).toBeNull()
     expect(document.activeElement).toBe(tempoToggle(wrapper).element)
 
     await (await openTempo(wrapper)).get('[data-test="diagram-tempo-close"]').trigger('click')
-    expect(wrapper.find('[data-test="diagram-tempo-panel"]').exists()).toBe(false)
+    expect(tempoPanel()).toBeNull()
     expect(document.activeElement).toBe(tempoToggle(wrapper).element)
     wrapper.unmount()
   })
@@ -186,7 +195,7 @@ describe('DiagramPlayer', () => {
     outside.dispatchEvent(new Event('pointerdown', { bubbles: true }))
     await nextTick()
 
-    expect(wrapper.find('[data-test="diagram-tempo-panel"]').exists()).toBe(false)
+    expect(tempoPanel()).toBeNull()
     expect(document.activeElement).toBe(outside)
     wrapper.unmount()
     outside.remove()
@@ -198,10 +207,11 @@ describe('DiagramPlayer', () => {
 
     const [first, second] = page.findAll('[data-test="diagram-tempo-toggle"]')
     await second!.trigger('click')
-    expect(page.findAll('[data-test="diagram-tempo-panel"]')).toHaveLength(1)
+    const allPanels = () => [...document.querySelectorAll<HTMLElement>('[data-test="diagram-tempo-panel"]')].map((panel) => new DOMWrapper(panel))
+    expect(allPanels()).toHaveLength(1)
     await first!.trigger('click')
 
-    const panels = page.findAll('[data-test="diagram-tempo-panel"]')
+    const panels = allPanels()
     const ids = panels.map((panel) => panel.get('input[type="number"]').attributes('id'))
     expect(ids[0]).not.toBe(ids[1])
     panels.forEach((panel, index) => expect(panel.get('label').attributes('for')).toBe(ids[index]))
@@ -221,6 +231,48 @@ describe('DiagramPlayer', () => {
     expect(onCardClick).not.toHaveBeenCalled()
     wrapper.unmount()
     holder.remove()
+  })
+
+  it('opens the tempo panel over the page, so a card that clips its content never cuts it off', async () => {
+    const card = document.createElement('div')
+    card.style.overflow = 'hidden'
+    document.body.append(card)
+    const wrapper = mountPlayer({ attachTo: card })
+    vi.spyOn(tempoToggle(wrapper).element, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 120, y: 60, width: 44, height: 44 }),
+    )
+
+    const panel = await openTempo(wrapper)
+
+    expect(card.contains(panel.element)).toBe(false)
+    expect(panel.classes()).toContain('fixed')
+    expect(panel.element.style.left).toBe('120px')
+    expect(panel.element.style.top).toBe('108px')
+    card.remove()
+  })
+
+  it('shows the load error over the page too, under Play', async () => {
+    player.current!.state.value = 'error'
+    const card = document.createElement('div')
+    card.style.overflow = 'hidden'
+    document.body.append(card)
+    mountPlayer({ attachTo: card })
+    await nextTick()
+
+    const alert = document.querySelector<HTMLElement>('[role="alert"]')!
+    expect(card.contains(alert)).toBe(false)
+    expect(alert.classList).toContain('fixed')
+    card.remove()
+  })
+
+  it('keeps the tempo panel open while its own controls are pressed', async () => {
+    const wrapper = mountPlayer({ attachTo: document.body })
+    const panel = await openTempo(wrapper)
+
+    panel.get('[data-test="diagram-tempo"]').element.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    await nextTick()
+
+    expect(tempoPanel()).not.toBeNull()
   })
 
   it('reports the positions being heard, for the diagram to light up', async () => {
