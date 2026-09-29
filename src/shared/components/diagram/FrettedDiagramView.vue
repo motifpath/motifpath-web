@@ -21,8 +21,16 @@
  * The board is drawn at its real size in CSS pixels, so text and touch targets
  * stay readable on a phone; a board wider than its container scrolls on its
  * own. `compact` instead scales a plainer drawing to fit, for a thumbnail.
+ *
+ * Each region is a translucent band with an outline in its color, and one
+ * information control above the board near its last fret, which opens the
+ * region's description on demand. `regionInfo: false` leaves the controls out
+ * of a static picture; `drawingInert` makes the drawing a picture only while
+ * its controls stay usable.
  */
-import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
+import { Info, X } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
@@ -30,11 +38,12 @@ import { fretboardGeometry, stringThicknesses } from '@/shared/utils/fretboardGe
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
-  CAPTION_BAR_HEIGHT,
-  CAPTION_FONT_SIZE,
-  CAPTION_LANE_HEIGHT,
-  layoutRegionCaptions,
-} from '@/shared/utils/regionCaptionLayout'
+  CONTROL_SIZE,
+  anchorDescription,
+  insetOverlappingOutlines,
+  placeRegionControls,
+  railWidthFor,
+} from '@/shared/utils/regionInfoLayout'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -72,9 +81,16 @@ const props = withDefaults(
     /** Scale a plain drawing to fit its container, for a thumbnail, instead of drawing it at a
      *  readable size that may scroll. */
     compact?: boolean
+    /** Offer each region's information control; off for a static picture. */
+    regionInfo?: boolean
+    /** Make the drawing a picture only — no input reaches it and screen readers skip it — while
+     *  its region controls stay usable. */
+    drawingInert?: boolean
   }>(),
   {
     compact: false,
+    regionInfo: true,
+    drawingInert: false,
     labelMode: 'interval',
     selectablePositionIds: () => [],
     selectedPositionIds: () => [],
@@ -109,7 +125,7 @@ const container = ref<HTMLElement | null>(null)
 const availableWidth = ref(NOMINAL_WIDTH)
 let resizeObserver: ResizeObserver | undefined
 onMounted(() => {
-  if (props.compact || !container.value) return
+  if (!container.value) return
   if (container.value.clientWidth > 0) availableWidth.value = container.value.clientWidth
   if (typeof ResizeObserver === 'undefined') return
   resizeObserver = new ResizeObserver(([entry]) => {
@@ -118,6 +134,12 @@ onMounted(() => {
   resizeObserver.observe(container.value)
 })
 onUnmounted(() => resizeObserver?.disconnect())
+
+// How far the board is scrolled, so an open description stays in its visible part.
+const scrollLeft = ref(0)
+function onBoardScroll(event: Event) {
+  if (event.target instanceof HTMLElement) scrollLeft.value = event.target.scrollLeft
+}
 
 /** Brings a focused answer or note fully into view when the board scrolls. */
 function revealFocused(event: FocusEvent) {
@@ -139,9 +161,13 @@ const layout = computed(() =>
 )
 
 const showsNut = computed(() => layout.value.minFret === 0)
+const showsRegionInfo = computed(() => props.regionInfo && layout.value.regions.length > 0)
 const geometry = computed(() =>
   fretboardGeometry({
-    availableWidth: props.compact ? NOMINAL_WIDTH : availableWidth.value,
+    // A readable board grows wide enough for every region's control, side by side.
+    availableWidth: props.compact
+      ? NOMINAL_WIDTH
+      : Math.max(availableWidth.value, showsRegionInfo.value ? railWidthFor(layout.value.regions.length) : 0),
     fretSpan: layout.value.maxFret - layout.value.minFret,
     stringCount: layout.value.stringCount,
     showsNut: showsNut.value,
@@ -156,19 +182,12 @@ function x(fret: number): number {
   return geometry.value.left + (fret - layout.value.minFret) * colGap.value
 }
 
-// Region captions stack on as many lines above the board as their overlaps need (horizontal
-// geometry only, so this doesn't depend on where the board ends up vertically).
-const captionLayout = computed(() =>
-  layoutRegionCaptions(
-    layout.value.regions.map((region) => {
-      const { left, right } = regionFretEdges(region)
-      return { left, right, text: localizedName(region.description) }
-    }),
-    viewW.value,
-  ),
-)
+// A compact drawing is scaled to its container; a readable one is drawn at its own size.
+const scale = computed(() => (props.compact ? availableWidth.value / viewW.value : 1))
 
-const boardTop = computed(() => MARGIN_TOP + captionLayout.value.laneCount * CAPTION_LANE_HEIGHT)
+// Under a rail of region controls the wood starts at the top, so the controls sit right on it.
+const RAIL_GAP = 2
+const boardTop = computed(() => (showsRegionInfo.value ? rowGap.value / 2 + RAIL_GAP : MARGIN_TOP))
 const viewH = computed(() => boardTop.value + BOARD_H.value + MARGIN_BOTTOM)
 
 /**
@@ -302,17 +321,69 @@ function regionBox(region: Region): { x: number; y: number; width: number; heigh
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
 
-function regionStyle(region: Region): { fill: string } | undefined {
+function regionFill(region: Region): { fill: string } | undefined {
   return region.color ? { fill: region.color } : undefined
 }
 
-/** A caption's line and the bar under it spanning its band's frets, which ties it to its band
- *  even when several captions share a fret. */
-function captionPlacement(index: number): { textX: number; textY: number; barY: number } {
-  const placement = captionLayout.value.placements[index] ?? { lane: 0, textX: 0 }
-  const linesBottom = y(1) - rowGap.value / 2 - 2
-  const barY = linesBottom - CAPTION_BAR_HEIGHT - placement.lane * CAPTION_LANE_HEIGHT
-  return { textX: placement.textX, textY: barY - 3, barY }
+// Each outline follows its band, one step further inside when it overlaps an earlier band.
+const regionOutlines = computed(() => insetOverlappingOutlines(layout.value.regions.map(regionBox)))
+
+// Region descriptions: one open at a time, shown under its control.
+const shownRegionId = ref<string | null>(null)
+const shownRegion = computed(() => layout.value.regions.find((region) => region.regionId === shownRegionId.value))
+const descriptionId = `${paintId}-region-description`
+watch(
+  () => props.diagram,
+  () => {
+    shownRegionId.value = null
+  },
+)
+
+const regionControls = computed(() => {
+  const centers = placeRegionControls(
+    layout.value.regions.map((region) => ({ id: region.regionId, right: regionFretEdges(region).right * scale.value })),
+    viewW.value * scale.value,
+  )
+  return layout.value.regions.map((region, index) => ({
+    region,
+    left: centers[index]!.center - CONTROL_SIZE / 2,
+    top: centers[index]!.row * CONTROL_SIZE,
+  }))
+})
+// A readable board is widened to fit every control on one row; a small compact one may wrap them.
+const railHeight = computed(() => Math.max(1, ...regionControls.value.map((control) => control.top / CONTROL_SIZE + 1)) * CONTROL_SIZE)
+
+const DESCRIPTION_WIDTH = 248
+const descriptionPlacement = computed(() => {
+  const control = regionControls.value.find((item) => item.region.regionId === shownRegionId.value)
+  return anchorDescription({
+    controlCenter: (control?.left ?? 0) + CONTROL_SIZE / 2,
+    width: DESCRIPTION_WIDTH,
+    scrollLeft: props.compact ? 0 : scrollLeft.value,
+    visibleWidth: props.compact ? viewW.value * scale.value : availableWidth.value,
+  })
+})
+
+function regionColorStyle(region: Region): { color: string } | undefined {
+  return region.color ? { color: region.color } : undefined
+}
+
+const controlElements = new Map<string, HTMLElement>()
+function setControlElement(regionId: string, element: Element | ComponentPublicInstance | null) {
+  if (element instanceof HTMLElement) controlElements.set(regionId, element)
+  else controlElements.delete(regionId)
+}
+
+function toggleRegion(region: Region) {
+  shownRegionId.value = shownRegionId.value === region.regionId ? null : region.regionId
+}
+
+/** Closes the open description; from the keyboard or its close control, focus goes back to the
+ *  control that opened it. */
+function closeDescription(returnFocus: boolean) {
+  const regionId = shownRegionId.value
+  shownRegionId.value = null
+  if (returnFocus && regionId) controlElements.get(regionId)?.focus()
 }
 
 // Notes: shown while a marker is hovered or focused, and kept open by a tap (touch has no
@@ -373,8 +444,24 @@ function onDocumentPointerDown(event: Event) {
   pinnedNote.value = null
 }
 
-onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown))
-onUnmounted(() => document.removeEventListener('pointerdown', onDocumentPointerDown))
+/** A click anywhere but this drawing's region controls, description or bands closes the
+ *  description, without taking focus; the click still does whatever it does there. A click, not a
+ *  press, so swiping the board or dragging its scrollbar leaves the description open. Listened to
+ *  while capturing, so it's seen even where a click stops propagating (another diagram's rail). */
+function onDocumentClick(event: Event) {
+  const target = event.target instanceof Element ? event.target : null
+  if (target && container.value?.contains(target) && target.closest('[data-region-ui]')) return
+  shownRegionId.value = null
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocumentPointerDown)
+  document.addEventListener('click', onDocumentClick, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  document.removeEventListener('click', onDocumentClick, true)
+})
 
 function isChoice(position: Marker): boolean {
   return props.selectablePositionIds.includes(position.positionId)
@@ -466,9 +553,76 @@ function noteAlignClass(position: Marker): string {
 
 <template>
   <div ref="container" class="relative min-w-0">
-    <div data-test="board-scroll" :class="compact ? '' : 'overflow-x-auto overflow-y-hidden'" @focusin="revealFocused">
+    <div
+      data-test="board-scroll"
+      :class="compact ? '' : 'overflow-x-auto overflow-y-hidden'"
+      @focusin="revealFocused"
+      @scroll="onBoardScroll"
+    >
       <div class="relative" :style="compact ? undefined : { width: `${viewW}px` }">
+        <!-- Region controls sit above the board, never over a marker; a press on them or on a
+             description never reaches whatever holds the diagram (such as an answer card). -->
+        <div v-if="showsRegionInfo" data-test="region-rail" class="relative z-10" :style="{ height: `${railHeight}px` }" @click.stop>
+          <button
+            v-for="control in regionControls"
+            :key="control.region.regionId"
+            :ref="(element) => setControlElement(control.region.regionId, element)"
+            type="button"
+            data-test="region-info"
+            data-region-ui
+            class="absolute flex h-11 w-11 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+            :class="control.region.color ? '' : 'text-accent'"
+            :style="{ left: `${control.left}px`, top: `${control.top}px`, ...regionColorStyle(control.region) }"
+            :aria-label="localizedName(control.region.description)"
+            :aria-expanded="shownRegionId === control.region.regionId"
+            :aria-controls="shownRegionId === control.region.regionId ? descriptionId : undefined"
+            @click="toggleRegion(control.region)"
+            @keydown.escape="closeDescription(true)"
+          >
+            <Info :size="18" aria-hidden="true" />
+          </button>
+          <div
+            v-if="shownRegion"
+            :id="descriptionId"
+            data-test="region-description"
+            data-region-ui
+            role="status"
+            class="absolute top-full z-30 mt-1 rounded-md border border-t-2 border-border bg-surface-raised text-sm text-ink shadow-level2"
+            :class="shownRegion.color ? '' : 'border-t-accent'"
+            :style="{
+              left: `${descriptionPlacement.left}px`,
+              width: `${descriptionPlacement.width}px`,
+              ...(shownRegion.color ? { borderTopColor: shownRegion.color } : {}),
+            }"
+            @keydown.escape="closeDescription(true)"
+          >
+            <span
+              data-test="region-description-arrow"
+              aria-hidden="true"
+              class="absolute -top-1.5 h-2.5 w-2.5 rotate-45 border-l-2 border-t-2 bg-surface-raised"
+              :class="shownRegion.color ? '' : 'border-accent'"
+              :style="{
+                left: `${descriptionPlacement.arrow - 5}px`,
+                ...(shownRegion.color ? { borderColor: shownRegion.color } : {}),
+              }"
+            />
+            <div class="flex items-center gap-1 py-1 pl-3 pr-1">
+              <span class="flex-1 break-words leading-snug">{{ localizedName(shownRegion.description) }}</span>
+              <button
+                type="button"
+                data-test="region-description-close"
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                :aria-label="t('fretboard.closeDescription')"
+                @click="closeDescription(true)"
+              >
+                <X :size="16" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="relative">
         <svg
+          data-test="diagram-canvas"
           :viewBox="`0 0 ${viewW} ${viewH}`"
           :width="compact ? undefined : viewW"
           :height="compact ? undefined : viewH"
@@ -476,6 +630,8 @@ function noteAlignClass(position: Marker): string {
           :aria-label="localizedName(diagram.names)"
           :class="compact ? 'w-full' : 'block max-w-none'"
           font-family="inherit"
+          :inert="drawingInert || undefined"
+          :aria-hidden="drawingInert || undefined"
         >
           <defs>
             <linearGradient :id="`${paintId}-wood`" x1="0" y1="0" x2="0" y2="1">
@@ -530,37 +686,18 @@ function noteAlignClass(position: Marker): string {
             class="fill-fretboard-inlay"
           />
 
-          <g v-for="(region, index) in layout.regions" :key="`region-${region.regionId}`">
-            <rect
-              data-test="diagram-region"
-              v-bind="regionBox(region)"
-              rx="4"
-              fill-opacity="0.25"
-              :class="region.color ? '' : 'fill-accent'"
-              :style="regionStyle(region)"
-            />
-            <rect
-              data-test="diagram-region-caption-bar"
-              :x="regionBox(region).x"
-              :y="captionPlacement(index).barY"
-              :width="regionBox(region).width"
-              :height="CAPTION_BAR_HEIGHT"
-              rx="1.5"
-              fill-opacity="0.8"
-              :class="region.color ? '' : 'fill-accent'"
-              :style="regionStyle(region)"
-            />
-            <text
-              data-test="diagram-region-caption"
-              :x="captionPlacement(index).textX"
-              :y="captionPlacement(index).textY"
-              :font-size="CAPTION_FONT_SIZE"
-              font-weight="600"
-              class="fill-ink-muted"
-            >
-              {{ localizedName(region.description) }}
-            </text>
-          </g>
+          <rect
+            v-for="region in layout.regions"
+            :key="`region-${region.regionId}`"
+            data-test="diagram-region"
+            v-bind="regionBox(region)"
+            rx="4"
+            fill-opacity="0.24"
+            :class="[region.color ? '' : 'fill-accent', showsRegionInfo ? 'cursor-pointer' : '']"
+            :style="regionFill(region)"
+            :data-region-ui="showsRegionInfo || undefined"
+            @click="showsRegionInfo && toggleRegion(region)"
+          />
 
           <rect
             v-if="showsNut"
@@ -594,6 +731,19 @@ function noteAlignClass(position: Marker): string {
             :y2="y(stringNumber)"
             class="stroke-fretboard-string"
             :stroke-width="stringWidths[stringNumber - 1]"
+          />
+
+          <rect
+            v-for="(outline, index) in regionOutlines"
+            :key="`outline-${layout.regions[index]!.regionId}`"
+            data-test="region-outline"
+            v-bind="outline"
+            rx="3"
+            fill="none"
+            stroke-width="2"
+            pointer-events="none"
+            :class="layout.regions[index]!.color ? '' : 'stroke-accent'"
+            :style="layout.regions[index]!.color ? { stroke: layout.regions[index]!.color } : undefined"
           />
 
           <text
@@ -796,6 +946,7 @@ function noteAlignClass(position: Marker): string {
           :style="noteAnchor(position)"
         >
           {{ position.note ? localizedName(position.note) : '' }}
+        </div>
         </div>
       </div>
     </div>

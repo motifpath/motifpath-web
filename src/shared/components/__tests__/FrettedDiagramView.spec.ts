@@ -243,8 +243,8 @@ describe('FrettedDiagramView', () => {
       },
     })
 
-    expect(wrapper.get('svg').attributes('role')).toBe('img')
-    expect(wrapper.get('svg').attributes('aria-label')).toBe(makeFrettedDiagram().names.en)
+    expect(wrapper.get('[data-test="diagram-canvas"]').attributes('role')).toBe('img')
+    expect(wrapper.get('[data-test="diagram-canvas"]').attributes('aria-label')).toBe(makeFrettedDiagram().names.en)
   })
 
   describe('persisted colors', () => {
@@ -436,7 +436,7 @@ describe('FrettedDiagramView', () => {
       })
 
       expect(wrapper.find('[data-test="diagram-note-badge"]').exists()).toBe(false)
-      expect(wrapper.get('svg').attributes('role')).toBe('img')
+      expect(wrapper.get('[data-test="diagram-canvas"]').attributes('role')).toBe('img')
     })
   })
 
@@ -456,26 +456,19 @@ describe('FrettedDiagramView', () => {
       })
     }
 
-    it('draws one captioned band per region, in order', () => {
+    it('draws one band and one outline per region, in order, with no permanent caption', () => {
       const wrapper = mountWithRegions()
 
       expect(wrapper.findAll('[data-test="diagram-region"]')).toHaveLength(2)
-      expect(wrapper.findAll('[data-test="diagram-region-caption"]').map((c) => c.text())).toEqual(['Box 1', 'Box 2'])
-    })
-
-    it("captions regions in the reader's language", () => {
-      i18n.global.locale.value = 'pt-BR'
-      try {
-        const captions = mountWithRegions().findAll('[data-test="diagram-region-caption"]').map((c) => c.text())
-        expect(captions).toEqual(['Caixa 1', 'Box 2'])
-      } finally {
-        i18n.global.locale.value = 'en'
-      }
+      expect(wrapper.findAll('[data-test="region-outline"]')).toHaveLength(2)
+      expect(wrapper.find('[data-test="diagram-region-caption"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="diagram-region-caption-bar"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
     })
 
     it('draws each band behind the markers it spans', () => {
       const wrapper = mountWithRegions()
-      const svg = wrapper.get('svg').element
+      const svg = wrapper.get('[data-test="diagram-canvas"]').element
       const band = wrapper.findAll('[data-test="diagram-region"]')[0]!.element
       const firstMarker = wrapper.findAll('[data-test="diagram-position"]')[0]!.element
 
@@ -558,76 +551,292 @@ describe('FrettedDiagramView', () => {
       expect(box1?.classes()).toContain('fill-accent')
     })
 
-    describe('captions that would collide', () => {
-      function mountOverlapping() {
-        return mount(FrettedDiagramView, {
-          props: {
-            diagram: makeFrettedDiagram({
-              regions: [
-                { region_id: 'r1', fret_start: 5, fret_end: 10, description: { en: 'A Minor Pentatonic — Positions 1 and 2' }, color: '#3B82F6' },
-                { region_id: 'r2', fret_start: 5, fret_end: 8, description: { en: 'Shape 1' }, color: null },
-                { region_id: 'r3', fret_start: 7, fret_end: 10, description: { en: 'Shape 2' }, color: '#22C55E' },
-              ],
-            }),
-            instrument: makeFrettedInstrument(),
-            diagramRef: makeDiagramRef(),
-          },
-        })
-      }
-      const captionYs = (wrapper: ReturnType<typeof mountOverlapping>) =>
-        wrapper.findAll('[data-test="diagram-region-caption"]').map((c) => Number(c.attributes('y')))
-      const viewHeight = (wrapper: ReturnType<typeof mountOverlapping>) =>
-        Number(wrapper.get('svg').attributes('viewBox')!.split(' ')[3])
+    it("outlines a band in the region's color, else the default token", () => {
+      const [outline1, outline2] = mountWithRegions().findAll('[data-test="region-outline"]')
 
-      it('stacks overlapping captions on separate lines', () => {
-        expect(new Set(captionYs(mountOverlapping())).size).toBe(3)
+      expect(outline2?.attributes('style')).toContain('stroke: #22C55E')
+      expect(outline1?.classes()).toContain('stroke-accent')
+    })
+
+    it('keeps overlapping regions fully filled, with the later outline a parallel line inside', () => {
+      const wrapper = mount(FrettedDiagramView, {
+        props: {
+          diagram: makeFrettedDiagram({
+            regions: [
+              { region_id: 'r1', fret_start: 5, fret_end: 8, description: { en: 'A' }, color: null },
+              { region_id: 'r2', fret_start: 5, fret_end: 8, description: { en: 'B' }, color: null },
+            ],
+          }),
+          instrument: makeFrettedInstrument(),
+          diagramRef: makeDiagramRef(),
+        },
+      })
+      const [band1, band2] = wrapper.findAll('[data-test="diagram-region"]')
+      const [outline1, outline2] = wrapper.findAll('[data-test="region-outline"]')
+      const x = (el: typeof band1) => Number(el!.attributes('x'))
+      const right = (el: typeof band1) => x(el) + Number(el!.attributes('width'))
+
+      expect(band2!.attributes('x')).toBe(band1!.attributes('x'))
+      expect(band2!.attributes('width')).toBe(band1!.attributes('width'))
+      expect(x(outline1)).toBeCloseTo(x(band1))
+      expect(x(outline2)).toBeGreaterThan(x(outline1))
+      expect(right(outline2)).toBeLessThan(right(outline1))
+    })
+
+    describe('information controls and descriptions', () => {
+      const three = makeFrettedDiagram({
+        regions: [
+          { region_id: 'r1', fret_start: 5, fret_end: 8, description: { en: 'Box 1', pt_BR: 'Caixa 1' }, color: '#3B82F6' },
+          { region_id: 'r2', fret_start: 6, fret_end: 8, description: { en: 'Box 2', pt_BR: 'Caixa 2' }, color: null },
+          { region_id: 'r3', fret_start: 7, fret_end: 8, description: { en: 'Box 3', pt_BR: 'Caixa 3' }, color: '#22C55E' },
+        ],
+      })
+      const mountInfo = (props: Record<string, unknown> = {}) =>
+        mount(FrettedDiagramView, {
+          attachTo: document.body,
+          props: { diagram: three, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef(), ...props },
+        })
+      const controls = (wrapper: ReturnType<typeof mountInfo>) => wrapper.findAll('[data-test="region-info"]')
+      const leftPx = (el: { attributes: (name: string) => string | undefined }) =>
+        Number(/left:\s*([-\d.]+)px/.exec(el.attributes('style') ?? '')![1])
+
+      it("offers one control per region, named by its description in the reader's language", () => {
+        i18n.global.locale.value = 'pt-BR'
+        try {
+          const wrapper = mountInfo()
+          expect(controls(wrapper).map((c) => c.attributes('aria-label'))).toEqual(['Caixa 1', 'Caixa 2', 'Caixa 3'])
+          expect(controls(wrapper).every((c) => c.attributes('aria-expanded') === 'false')).toBe(true)
+          expect(controls(wrapper)[0]!.element.tagName).toBe('BUTTON')
+        } finally {
+          i18n.global.locale.value = 'en'
+        }
       })
 
-      it('keeps captions of bands that fit side by side on one line', () => {
-        const apart = mount(FrettedDiagramView, {
-          props: {
-            diagram: makeFrettedDiagram({
-              regions: [
-                { region_id: 'r1', fret_start: 5, fret_end: 6, description: { en: 'A' }, color: null },
-                { region_id: 'r2', fret_start: 8, fret_end: 9, description: { en: 'B' }, color: null },
-              ],
-            }),
-            instrument: makeFrettedInstrument(),
-            diagramRef: makeDiagramRef(),
-          },
-        })
-        expect(new Set(captionYs(apart)).size).toBe(1)
+      it("colors each control like its region", () => {
+        const [first, second] = controls(mountInfo())
+
+        expect(first!.attributes('style')).toContain('color: rgb(59, 130, 246)')
+        expect(second!.classes()).toContain('text-accent')
       })
 
-      it('grows the space above the board by one line per extra caption line', () => {
-        // Box 1 and Box 2 overlap, so two lines; the three pentatonic bands need three.
-        expect(viewHeight(mountOverlapping())).toBeGreaterThan(viewHeight(mountWithRegions()))
+      it('places a control near its region’s last fret, and controls sharing that fret side by side', () => {
+        const wrapper = mountInfo()
+        const wire8 = wrapper.findAll('[data-test="fret-wire"]').find((w) => w.attributes('data-fret') === '8')!
+        const fret8 = Number(wire8.attributes('x')) + 1.5
+        const lefts = controls(wrapper).map(leftPx).sort((a, b) => a - b)
+
+        expect(lefts.at(-1)! + 44).toBeCloseTo(fret8)
+        for (let index = 1; index < lefts.length; index++) expect(lefts[index]! - lefts[index - 1]!).toBeGreaterThanOrEqual(44)
       })
 
-      it("underlines each caption with a bar across its band's frets, in the band's color", () => {
-        const wrapper = mountOverlapping()
-        const bands = wrapper.findAll('[data-test="diagram-region"]')
-        const bars = wrapper.findAll('[data-test="diagram-region-caption-bar"]')
-
-        expect(bars).toHaveLength(3)
-        bars.forEach((bar, index) => {
-          expect(bar.attributes('x')).toBe(bands[index]!.attributes('x'))
-          expect(bar.attributes('width')).toBe(bands[index]!.attributes('width'))
+      it('widens the board rather than overlap the controls of many regions', () => {
+        const crowded = makeFrettedDiagram({
+          regions: Array.from({ length: 12 }, (_, index) => ({
+            region_id: `r${index}`,
+            fret_start: 5,
+            fret_end: 8,
+            description: { en: `Region ${index}` },
+            color: null,
+          })),
         })
-        expect(bars[0]!.attributes('style')).toContain('fill: #3B82F6')
-        expect(bars[1]!.classes()).toContain('fill-accent')
+        const wrapper = mountInfo({ diagram: crowded })
+
+        expect(Number(wrapper.get('[data-test="diagram-canvas"]').attributes('width'))).toBeGreaterThanOrEqual(12 * 44)
+        const lefts = controls(wrapper).map(leftPx).sort((a, b) => a - b)
+        expect(lefts[0]).toBeGreaterThanOrEqual(0)
+        for (let index = 1; index < lefts.length; index++) expect(lefts[index]! - lefts[index - 1]!).toBeGreaterThanOrEqual(44)
       })
 
-      it('keeps every caption and bar above the board', () => {
-        const wrapper = mountOverlapping()
-        const boardTop = Number(wrapper.get('[data-test="fretboard-wood"]').attributes('y'))
-        const bars = wrapper.findAll('[data-test="diagram-region-caption-bar"]')
+      it('seats the controls right on top of the board, with no gap of their own', () => {
+        const withRail = mountInfo()
+        const withoutRail = mountInfo({ regionInfo: false })
+        const woodTop = (wrapper: ReturnType<typeof mountInfo>) => Number(wrapper.get('[data-test="fretboard-wood"]').attributes('y'))
 
-        captionYs(wrapper).forEach((y) => expect(y).toBeLessThan(boardTop))
-        bars.forEach((bar) => {
-          expect(Number(bar.attributes('y')) + Number(bar.attributes('height'))).toBeLessThanOrEqual(boardTop)
-          expect(Number(bar.attributes('y'))).toBeGreaterThan(0)
+        expect(woodTop(withRail)).toBeLessThanOrEqual(2)
+        expect(woodTop(withoutRail)).toBeGreaterThan(woodTop(withRail))
+      })
+
+      it('offers no controls on a static picture', () => {
+        expect(controls(mountInfo({ regionInfo: false }))).toHaveLength(0)
+      })
+
+      it('opens a region’s description from its control, next to it', async () => {
+        const wrapper = mountInfo()
+        const control = controls(wrapper)[1]!
+
+        await control.trigger('click')
+
+        const description = wrapper.get('[data-test="region-description"]')
+        expect(description.text()).toContain('Box 2')
+        expect(control.attributes('aria-expanded')).toBe('true')
+        expect(control.attributes('aria-controls')).toBe(description.attributes('id'))
+      })
+
+      it('points only the expanded control at the description, which exists only while open', async () => {
+        const wrapper = mountInfo()
+        expect(controls(wrapper).some((c) => c.attributes('aria-controls') !== undefined)).toBe(false)
+
+        await controls(wrapper)[0]!.trigger('click')
+
+        expect(controls(wrapper).map((c) => c.attributes('aria-controls') !== undefined)).toEqual([true, false, false])
+      })
+
+      it('points the description at the control that opened it', async () => {
+        const wrapper = mountInfo()
+        const control = controls(wrapper)[0]!
+        await control.trigger('click')
+
+        const description = wrapper.get('[data-test="region-description"]')
+        const pointer = leftPx(description.get('[data-test="region-description-arrow"]'))
+        // The arrow is a 10 px square; its middle lines up with the control's middle.
+        expect(leftPx(description) + pointer + 5).toBeCloseTo(leftPx(control) + 22)
+      })
+
+      it('opens a description by tapping the region itself', async () => {
+        const wrapper = mountInfo()
+
+        await wrapper.findAll('[data-test="diagram-region"]')[0]!.trigger('click')
+
+        expect(wrapper.get('[data-test="region-description"]').text()).toContain('Box 1')
+      })
+
+      it('shows one description at a time', async () => {
+        const wrapper = mountInfo()
+
+        await controls(wrapper)[0]!.trigger('click')
+        await controls(wrapper)[2]!.trigger('click')
+
+        expect(wrapper.findAll('[data-test="region-description"]')).toHaveLength(1)
+        expect(wrapper.get('[data-test="region-description"]').text()).toContain('Box 3')
+        expect(controls(wrapper)[0]!.attributes('aria-expanded')).toBe('false')
+      })
+
+      it('closes from its close control, returning focus to the region control', async () => {
+        const wrapper = mountInfo()
+        await controls(wrapper)[0]!.trigger('click')
+
+        await wrapper.get('[data-test="region-description-close"]').trigger('click')
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
+        expect(document.activeElement).toBe(controls(wrapper)[0]!.element)
+      })
+
+      it('closes when its control is activated again', async () => {
+        const wrapper = mountInfo()
+        await controls(wrapper)[0]!.trigger('click')
+        await controls(wrapper)[0]!.trigger('click')
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
+      })
+
+      it('closes on Escape, returning focus to the region control', async () => {
+        const wrapper = mountInfo()
+        await controls(wrapper)[1]!.trigger('click')
+
+        await wrapper.get('[data-test="region-description"]').trigger('keydown', { key: 'Escape' })
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
+        expect(document.activeElement).toBe(controls(wrapper)[1]!.element)
+      })
+
+      it('closes on a press outside it and its control, without taking focus', async () => {
+        const wrapper = mountInfo()
+        const outside = document.createElement('button')
+        document.body.appendChild(outside)
+        await controls(wrapper)[0]!.trigger('click')
+        outside.focus()
+
+        outside.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+        outside.dispatchEvent(new Event('click', { bubbles: true }))
+        await nextTick()
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
+        expect(document.activeElement).toBe(outside)
+        outside.remove()
+      })
+
+      it('stays open while the board is swiped or its scrollbar dragged', async () => {
+        const wrapper = mountInfo()
+        await controls(wrapper)[0]!.trigger('click')
+
+        // A swipe or a scrollbar drag presses on the board without ever clicking it.
+        await wrapper.get('[data-test="diagram-canvas"]').trigger('pointerdown')
+        await wrapper.get('[data-test="board-scroll"]').trigger('pointerdown')
+        await wrapper.get('[data-test="board-scroll"]').trigger('scroll')
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(true)
+      })
+
+      it("closes when another diagram's region control is pressed", async () => {
+        const props = { diagram: three, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() }
+        const page = mount(defineComponent({ render: () => [h(FrettedDiagramView, props), h(FrettedDiagramView, props)] }), {
+          attachTo: document.body,
         })
+        const [first, second] = page.findAllComponents(FrettedDiagramView)
+        await first!.findAll('[data-test="region-info"]')[0]!.trigger('click')
+
+        await second!.findAll('[data-test="region-info"]')[0]!.trigger('click')
+
+        expect(first!.find('[data-test="region-description"]').exists()).toBe(false)
+        expect(second!.find('[data-test="region-description"]').exists()).toBe(true)
+      })
+
+      it('still selects a note tapped outside an open description', async () => {
+        const wrapper = mountInfo({ selectablePositionIds: ['p0'] })
+        await controls(wrapper)[0]!.trigger('click')
+        const choice = wrapper.get('[data-test="diagram-choice"]')
+
+        await choice.trigger('pointerdown')
+        await choice.trigger('click')
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
+        expect(wrapper.emitted('select')).toEqual([['p0']])
+      })
+
+      it('keeps the description inside the visible part of a scrolled board', async () => {
+        const wrapper = mountInfo()
+        const scroller = wrapper.get('[data-test="board-scroll"]')
+        ;(scroller.element as HTMLElement).scrollLeft = 300
+        await scroller.trigger('scroll')
+
+        await controls(wrapper)[0]!.trigger('click')
+
+        expect(leftPx(wrapper.get('[data-test="region-description"]'))).toBeGreaterThanOrEqual(300)
+      })
+
+      it('closes the description when another diagram is shown', async () => {
+        const wrapper = mountInfo()
+        await controls(wrapper)[0]!.trigger('click')
+
+        await wrapper.setProps({ diagram: makeFrettedDiagram({ regions: three.regions }) })
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
+      })
+
+      it('keeps its controls usable while the drawing itself is inert', async () => {
+        const wrapper = mountInfo({ drawingInert: true })
+
+        expect(wrapper.get('[data-test="diagram-canvas"]').attributes()).toHaveProperty('inert')
+        await controls(wrapper)[0]!.trigger('click')
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(true)
+      })
+
+      it('keeps a press on its controls from reaching whatever holds the diagram', async () => {
+        const onClick = vi.fn()
+        const holder = mount(
+          defineComponent({
+            render: () =>
+              h('div', { onClick }, [
+                h(FrettedDiagramView, { diagram: three, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() }),
+              ]),
+          }),
+          { attachTo: document.body },
+        )
+
+        await holder.findAll('[data-test="region-info"]')[0]!.trigger('click')
+        await holder.get('[data-test="region-description-close"]').trigger('click')
+
+        expect(onClick).not.toHaveBeenCalled()
       })
     })
   })
@@ -728,8 +937,8 @@ describe('FrettedDiagramView', () => {
     })
 
     it('exposes its choices to assistive technology: a radiogroup for one pick, never a presentational image', () => {
-      const single = mountChoices().get('svg')
-      const multiple = mountChoices({ multiple: true }).get('svg')
+      const single = mountChoices().get('[data-test="diagram-canvas"]')
+      const multiple = mountChoices({ multiple: true }).get('[data-test="diagram-canvas"]')
 
       expect(single.attributes('role')).toBe('radiogroup')
       expect(multiple.attributes('role')).toBe('group')
@@ -867,7 +1076,7 @@ describe('FrettedDiagramView', () => {
         expect(targets[0]!.attributes('aria-label')).toBe('String 6, fret 5')
         expect(targets[0]!.attributes('role')).toBe('checkbox')
         expect(wrapper.findAll('[data-test="diagram-choice"]')).toHaveLength(0)
-        expect(wrapper.get('svg').attributes('role')).toBe('group')
+        expect(wrapper.get('[data-test="diagram-canvas"]').attributes('role')).toBe('group')
       })
 
       it('picks a cell by its option', async () => {
@@ -951,7 +1160,7 @@ describe('FrettedDiagramView', () => {
     it('draws the board at its real size, filling the width it is given', async () => {
       const wrapper = await mountAt(600)
 
-      expect(Number(wrapper.get('svg').attributes('width'))).toBe(600)
+      expect(Number(wrapper.get('[data-test="diagram-canvas"]').attributes('width'))).toBe(600)
     })
 
     it('gives every fret space the same width', async () => {
@@ -965,7 +1174,7 @@ describe('FrettedDiagramView', () => {
     it('grows a board that cannot fit wider than the screen, inside its own scroll area', async () => {
       const wrapper = await mountAt(320, { diagram: wide })
 
-      expect(Number(wrapper.get('svg').attributes('width'))).toBeGreaterThan(320)
+      expect(Number(wrapper.get('[data-test="diagram-canvas"]').attributes('width'))).toBeGreaterThan(320)
       expect(wrapper.get('[data-test="board-scroll"]').classes()).toContain('overflow-x-auto')
     })
 
@@ -1018,7 +1227,7 @@ describe('FrettedDiagramView', () => {
     it('scales a compact drawing to fit, without scrolling or decoration', async () => {
       const wrapper = await mountAt(160, { diagram: wide, compact: true })
 
-      const svg = wrapper.get('svg')
+      const svg = wrapper.get('[data-test="diagram-canvas"]')
       expect(svg.attributes('width')).toBeUndefined()
       expect(svg.attributes('viewBox')).toBeDefined()
       expect(svg.classes()).toContain('w-full')
