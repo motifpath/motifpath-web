@@ -180,9 +180,14 @@
   "diagramPlayer": {
     "play": "Tocar",
     "stop": "Parar",
+    "retry": "Tentar de novo",
+    "loading": "Carregando o som…",
     "tempo": "Andamento",
-    "bpm": "{bpm} BPM",
-    "loadFailed": "Não foi possível carregar o som. Toque em Tocar para tentar de novo."
+    "tempoControl": "Andamento: {bpm} BPM",
+    "closeTempo": "Fechar andamento",
+    "tempoHint": "20–300 BPM · muda a partir do próximo passo",
+    "bpm": "BPM",
+    "loadFailed": "Não foi possível carregar o som. Toque em Tentar de novo."
   },
   "footer": {
     "credits": "Créditos"

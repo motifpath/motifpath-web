@@ -180,9 +180,14 @@
   "diagramPlayer": {
     "play": "Play",
     "stop": "Stop",
+    "retry": "Retry",
+    "loading": "Loading the sound…",
     "tempo": "Tempo",
-    "bpm": "{bpm} BPM",
-    "loadFailed": "Couldn't load the sound. Press Play to try again."
+    "tempoControl": "Tempo: {bpm} BPM",
+    "closeTempo": "Close tempo",
+    "tempoHint": "20–300 BPM · changes from the next step",
+    "bpm": "BPM",
+    "loadFailed": "Couldn't load the sound. Press Retry to try again."
   },
   "footer": {
     "credits": "Credits"
