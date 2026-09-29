@@ -227,6 +227,43 @@ describe('DiagramAuthoringView', () => {
     )
   })
 
+  it('records a sequence by clicking placed markers, rings the selected step, and saves it with its tempo', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    POST.mockResolvedValueOnce({ data: undefined, error: { message: 'stop here' }, response: { status: 400 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Two notes')
+    const editor = () => wrapper.findComponent(FrettedDiagramEditor)
+    await editor().vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await editor().vm.$emit('toggle-cell', { string: 2, fret: 5 })
+    await selectClassification(wrapper)
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    const [first, second] = editor().props('positions').map((p) => p.id)
+
+    await wrapper.get('[data-test="sequence-record"]').trigger('click')
+    expect(editor().props('recording')).toBe(true)
+    await wrapper.get('[data-test="sequence-value-4"]').trigger('click')
+    await editor().vm.$emit('pick-position', second)
+    await editor().vm.$emit('pick-position', first)
+    expect(editor().props('sequenceHighlightIds')).toEqual([first])
+
+    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+
+    expect(POST).toHaveBeenCalledWith(
+      '/diagrams',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          tempo_bpm: 90,
+          sequence: [
+            { position_ids: [second], value: { num: 1, den: 4 }, strum: 'none' },
+            { position_ids: [first], value: { num: 1, den: 4 }, strum: 'none' },
+          ],
+        }),
+      }),
+    )
+  })
+
   it("saves the general color chosen from the palette and a position's own color", async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     POST.mockResolvedValueOnce({

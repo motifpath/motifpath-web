@@ -7,6 +7,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
 import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
 import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
+import DiagramSequenceEditor from '@/features/teacher/components/DiagramSequenceEditor.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import OverlayDiagramsModal from '@/features/teacher/components/OverlayDiagramsModal.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
@@ -16,6 +17,7 @@ import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagra
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { useDiagramOverlays } from '@/features/teacher/composables/useDiagramOverlays'
+import { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
@@ -64,6 +66,7 @@ const { instruments } = useListInstruments()
 const frettedInstruments = computed(() => instruments.value.filter((i) => i.family === 'fretted'))
 
 const form = useDiagramForm()
+const sequenceEditor = useDiagramSequence(form)
 const {
   overlays,
   overlayIds,
@@ -499,7 +502,10 @@ async function saveAs(names: Record<string, string>) {
             :label-mode="form.labelDisplay.value"
             :color="form.color.value"
             :language="activeLanguage"
+            :recording="sequenceEditor.recording.value"
+            :sequence-highlight-ids="sequenceEditor.selectedPositionIds.value"
             @toggle-cell="form.toggleCell"
+            @pick-position="sequenceEditor.pickPosition"
             @reorder="form.reorderPositions"
             @set-shape="form.setPositionShape"
             @set-color="form.setPositionColor"
@@ -587,6 +593,7 @@ async function saveAs(names: Record<string, string>) {
                 </div>
               </div>
             </template>
+            <DiagramSequenceEditor :form="form" :editor="sequenceEditor" :label-mode="form.labelDisplay.value" />
             <DiagramRegionsEditor
               :regions="form.regions.value"
               :string-count="selectedInstrument.string_count ?? 0"

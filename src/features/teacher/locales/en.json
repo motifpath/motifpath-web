@@ -596,5 +596,66 @@
     "merge": "Merge into the editor",
     "pickerEmptyHeading": "Nothing to overlay",
     "pickerEmptyMessage": "There's no other diagram for this instrument yet."
+  },
+  "diagramSequenceEditor": {
+    "heading": "Playback",
+    "hint": "The steps a student hears when this diagram plays. Turn on recording, then click markers on the fretboard to add them in order.",
+    "empty": "No steps yet, so this diagram doesn't play.",
+    "fill": "Fill from positions",
+    "fillHint": "One step per position, lowest pitch first, in the value picked below",
+    "clear": "Clear sequence",
+    "tempo": "Tempo (BPM)",
+    "timeSignature": "Time signature",
+    "beatsAriaLabel": "Beats per bar",
+    "beatValueAriaLabel": "Beat value",
+    "mode": "Mode",
+    "modeNone": "No key",
+    "modeNeedsRoot": "Choose a root note to give the diagram a mode.",
+    "modes": {
+      "major": "Major",
+      "minor": "Minor",
+      "dorian": "Dorian",
+      "phrygian": "Phrygian",
+      "lydian": "Lydian",
+      "mixolydian": "Mixolydian",
+      "locrian": "Locrian"
+    },
+    "record": "Record from fretboard",
+    "recordingHint": "Recording: click a marker to add it as the next step.",
+    "chord": "Add to selected step (chord)",
+    "noteValue": "Note value",
+    "dotted": "Dotted",
+    "tuplets": {
+      "3": "Triplet",
+      "5": "Quintuplet"
+    },
+    "rest": "Add rest",
+    "restLabel": "Rest",
+    "stepsAriaLabel": "Sequence steps",
+    "stepAriaLabel": "Step {number}: {content}, {value}",
+    "barLine": "Bar line",
+    "strum": "Strum",
+    "strums": {
+      "none": "Together",
+      "down": "Strum down (low to high)",
+      "up": "Strum up (high to low)"
+    },
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later",
+    "removeStep": "Remove step",
+    "values": {
+      "1": "whole",
+      "2": "half",
+      "4": "quarter",
+      "8": "eighth",
+      "16": "sixteenth",
+      "32": "thirty-second"
+    },
+    "dottedValue": "Dotted {value}",
+    "tupletValue": {
+      "3": "{value} triplet",
+      "5": "{value} quintuplet"
+    },
+    "fractionValue": "{num}/{den} note"
   }
 }

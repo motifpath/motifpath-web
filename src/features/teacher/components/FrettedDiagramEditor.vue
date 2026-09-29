@@ -6,6 +6,9 @@
  * Owns no state itself — every change is emitted for a parent form
  * composable (`useDiagramForm`) to apply, the same split `ImageRegionEditor`
  * already uses for its own click-to-place editor.
+ *
+ * While `recording`, a click on a placed marker picks it for the diagram's
+ * sequence instead of removing it, and empty cells do nothing.
  */
 import { computed, ref } from 'vue'
 import { Circle, GripVertical, Palette, Square, Star, X } from 'lucide-vue-next'
@@ -55,12 +58,17 @@ const props = withDefaults(
     language?: string
     /** Highlighted regions drawn behind the markers, so the author sees them where they place positions. */
     regions?: LocalRegion[]
+    /** Clicks pick placed markers for the sequence rather than placing or removing positions. */
+    recording?: boolean
+    /** The positions of the selected sequence step, ringed on the board. */
+    sequenceHighlightIds?: string[]
   }>(),
-  { labelMode: 'interval', regions: () => [] },
+  { labelMode: 'interval', regions: () => [], recording: false, sequenceHighlightIds: () => [] },
 )
 
 const emit = defineEmits<{
   'toggle-cell': [cell: { string: number; fret: number }]
+  'pick-position': [id: string]
   reorder: [fromIndex: number, toIndex: number]
   'set-shape': [id: string, shape: PositionShape]
   'set-color': [id: string, color: string | null]
@@ -172,7 +180,13 @@ function onFretboardClick(event: MouseEvent) {
   const px = ((event.clientX - rect.left) / rect.width) * viewWidth.value
   const py = ((event.clientY - rect.top) / rect.height) * viewHeight.value - boardOffsetY.value
   const cell = nearestFrettedCell(px, py, geometry.value)
-  if (cell) emit('toggle-cell', cell)
+  if (!cell) return
+  if (!props.recording) {
+    emit('toggle-cell', cell)
+    return
+  }
+  const picked = props.positions.find((p) => p.string === cell.string && p.fret === cell.fret)
+  if (picked) emit('pick-position', picked.id)
 }
 
 const { intervalLabel } = useIntervalLabel()
@@ -322,6 +336,17 @@ function onDrop(index: number) {
             </g>
 
             <g v-for="position in props.positions" :key="position.id" data-test="editor-position">
+              <circle
+                v-if="props.sequenceHighlightIds.includes(position.id)"
+                data-test="sequence-highlight"
+                :cx="markerX(position.fret)"
+                :cy="y(position.string)"
+                r="19"
+                fill="none"
+                class="stroke-ink"
+                stroke-width="2.5"
+                stroke-dasharray="4 3"
+              />
               <circle
                 v-if="position.id === selectedPositionId"
                 data-test="marker-highlight"
