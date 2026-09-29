@@ -40,6 +40,10 @@
   --color-fretboard-metal-shadow: 132 130 124;
   --color-fretboard-inlay: 250 245 230;
   --color-fretboard-string: 92 90 86;
+  /* A sounding position's ring: a bright band, edged so the band or its edge stands out 3:1 from
+     every wood tone and the band 3:1 from its edge. */
+  --color-fretboard-sounding: 14 165 233;
+  --color-fretboard-sounding-edge: 26 22 51;
   --elevation-level0: none;
   --elevation-level1: 0 1px 2px rgba(26,22,51,.06), 0 1px 1px rgba(26,22,51,.04);
   --elevation-level2: 0 4px 12px rgba(26,22,51,.10);
@@ -76,6 +80,8 @@
   --color-fretboard-metal-shadow: 118 116 110;
   --color-fretboard-inlay: 226 216 190;
   --color-fretboard-string: 214 210 200;
+  --color-fretboard-sounding: 56 189 248;
+  --color-fretboard-sounding-edge: 11 13 46;
   --elevation-level0: none;
   --elevation-level1: 0 1px 2px rgba(3,4,20,.5);
   --elevation-level2: 0 6px 18px rgba(3,4,20,.55);

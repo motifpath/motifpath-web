@@ -540,16 +540,28 @@ function noteAlignClass(position: Marker): string {
               :r="TARGET_RADIUS"
               fill="transparent"
             />
-            <!-- Behind the marker, so a sounding marker keeps its shape, color and label. -->
-            <circle
-              v-if="!position.hidden && props.activePositionIds.includes(position.positionId)"
-              data-test="diagram-position-playing"
-              :cx="markerX(position.fret)"
-              :cy="y(position.string)"
-              :r="TARGET_RADIUS"
-              class="fill-warning"
-              fill-opacity="0.6"
-            />
+            <!-- Behind the marker, so a sounding marker keeps its shape, color and label: a bright
+                 band in the sounding color, edged on both sides so it stands out from the wood. -->
+            <g v-if="!position.hidden && props.activePositionIds.includes(position.positionId)">
+              <circle
+                data-test="diagram-position-playing-halo"
+                :cx="markerX(position.fret)"
+                :cy="y(position.string)"
+                :r="TARGET_RADIUS"
+                fill="none"
+                class="stroke-fretboard-sounding-edge"
+                stroke-width="9"
+              />
+              <circle
+                data-test="diagram-position-playing"
+                :cx="markerX(position.fret)"
+                :cy="y(position.string)"
+                :r="TARGET_RADIUS"
+                class="fill-fretboard-sounding stroke-fretboard-sounding"
+                fill-opacity="0.3"
+                stroke-width="6"
+              />
+            </g>
             <g
               :opacity="position.hidden ? 0.35 : undefined"
               :data-test="position.hidden ? 'diagram-position-hidden' : undefined"
