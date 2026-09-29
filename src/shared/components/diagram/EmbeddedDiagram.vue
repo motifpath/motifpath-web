@@ -35,7 +35,8 @@ const props = withDefaults(
     selectedAnswerIds?: string[]
     multiple?: boolean
     /** The drawing is a picture only, such as an option thumbnail whose card handles the click:
-     *  no pointer or keyboard input reaches it, and screen readers skip it. Play still works. */
+     *  no pointer or keyboard input reaches it, and screen readers skip it. Play and the regions'
+     *  information controls still work. */
     inert?: boolean
     /** Scale a plain drawing to fit, for a small card, instead of a readable board that may scroll. */
     compact?: boolean
@@ -78,7 +79,7 @@ const activePositionIds = shallowRef<string[]>([])
     data-test="embedded-diagram"
     class="flex flex-col gap-2"
   >
-    <div data-test="embedded-diagram-drawing" :inert="props.inert || undefined">
+    <div data-test="embedded-diagram-drawing">
       <FrettedDiagramView
         :diagram="diagram"
         :instrument="instrument"
@@ -91,6 +92,7 @@ const activePositionIds = shallowRef<string[]>([])
         :multiple="props.multiple"
         :active-position-ids="activePositionIds"
         :compact="props.compact"
+        :drawing-inert="props.inert"
         @select="emit('select', $event)"
         @select-answer="emit('selectAnswer', $event)"
       />

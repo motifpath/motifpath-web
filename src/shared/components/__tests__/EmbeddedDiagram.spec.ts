@@ -135,14 +135,15 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.emitted('select')).toEqual([['p0']])
   })
 
-  it('draws an inert diagram: no pointer or keyboard input, hidden from screen readers, even where a marker has a note', async () => {
+  it('draws an inert diagram: no pointer or keyboard input, hidden from screen readers, even where a marker has a note, while its region information stays usable', async () => {
     const base = makeFrettedDiagram()
     serve(makeFrettedDiagram({ positions: base.positions.map((p, i) => (i === 1 ? { ...p, note: { en: 'N', pt_BR: 'N' } } : p)) }))
 
     const wrapper = mount(EmbeddedDiagram, { props: { embed: single, inert: true } })
     await flushPromises()
 
-    expect(wrapper.get('[data-test="embedded-diagram-drawing"]').attributes()).toHaveProperty('inert')
+    expect(wrapper.getComponent(FrettedDiagramView).props('drawingInert')).toBe(true)
+    expect(wrapper.get('[data-test="embedded-diagram-drawing"]').attributes()).not.toHaveProperty('inert')
   })
 
   it('draws a compact drawing when asked, such as an option thumbnail, and a readable one by default', async () => {
@@ -163,6 +164,7 @@ describe('EmbeddedDiagram', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-test="embedded-diagram-drawing"]').attributes()).not.toHaveProperty('inert')
+    expect(wrapper.getComponent(FrettedDiagramView).props('drawingInert')).toBe(false)
   })
 
   it('shows its unavailable slot when the diagram cannot be shown, and not while loading', async () => {

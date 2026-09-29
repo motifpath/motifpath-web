@@ -19,6 +19,7 @@ describe('DiagramThumbnail', () => {
     expect(view.props('instrument')).toEqual(guitar)
     expect(view.props('labelMode')).toBe('note')
     expect(view.props('compact')).toBe(true)
+    expect(view.props('regionInfo')).toBe(false)
     expect(view.props('diagramRef')).toEqual({ diagram_id: diagram.diagram_id, layers: { intervals: true, subset: null } })
   })
 
