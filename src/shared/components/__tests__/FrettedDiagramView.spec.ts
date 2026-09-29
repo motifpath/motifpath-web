@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { defineComponent, h, nextTick } from 'vue'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { i18n } from '@/i18n'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT } from '@/shared/utils/diagramColors'
@@ -228,8 +229,9 @@ describe('FrettedDiagramView', () => {
     const closed = mount(FrettedDiagramView, {
       props: { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
     })
-    const firstFretX = Number(closed.findAll('[data-test="fret-number"]')[0]!.attributes('x'))
-    expect(Number(closed.get('[data-test="fretboard-wood"]').attributes('x'))).toBe(firstFretX)
+    const firstWire = closed.findAll('[data-test="fret-wire"]')[0]!
+    const firstFretX = Number(firstWire.attributes('x')) + Number(firstWire.attributes('width')) / 2
+    expect(Number(closed.get('[data-test="fretboard-wood"]').attributes('x'))).toBeCloseTo(firstFretX)
   })
 
   it('renders an accessible label on the root svg element', () => {
@@ -482,8 +484,13 @@ describe('FrettedDiagramView', () => {
           },
         })
       }
-      const fretLineX = (wrapper: ReturnType<typeof mountFromOpen>, fret: number) =>
-        Number(wrapper.findAll('[data-test="fret-number"]').find((n) => n.text() === String(fret))!.attributes('x'))
+      const fretLineX = (wrapper: ReturnType<typeof mountFromOpen>, fret: number) => {
+        const line =
+          fret === 0
+            ? wrapper.get('[data-test="diagram-nut"]')
+            : wrapper.findAll('[data-test="fret-wire"]').find((wire) => wire.attributes('data-fret') === String(fret))!
+        return Number(line.attributes('x')) + Number(line.attributes('width')) / 2
+      }
 
       it('starts at the nut, leaving the open-string area bare', () => {
         const wrapper = mountFromOpen(3)
@@ -500,8 +507,9 @@ describe('FrettedDiagramView', () => {
         const left = Number(band.attributes('x'))
         const right = left + Number(band.attributes('width'))
 
-        expect(left).toBeLessThan(openMarkerX - 13.5)
-        expect(right).toBeGreaterThan(openMarkerX + 13.5)
+        const radius = Number(wrapper.findAll('[data-test="diagram-position"]')[0]!.attributes('r'))
+        expect(left).toBeLessThan(openMarkerX - radius)
+        expect(right).toBeGreaterThan(openMarkerX + radius)
         expect(right).toBeLessThanOrEqual(fretLineX(wrapper, 1))
       })
     })
@@ -866,6 +874,216 @@ describe('FrettedDiagramView', () => {
       const wrapper = mount(FrettedDiagramView, { props: { ...base, diagramRef, activePositionIds: ['p0'] } })
       expect(wrapper.findAll('[data-test="diagram-position"]')).toHaveLength(5)
       expect(wrapper.findAll('[data-test="diagram-position-playing"]')).toHaveLength(0)
+    })
+  })
+
+  describe('readable geometry', () => {
+    /** Reports `width` as the board container's width, as a browser's layout would. */
+    function stubContainerWidth(width: number) {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(private readonly callback: ResizeObserverCallback) {}
+          observe(target: Element) {
+            this.callback([{ contentRect: { width }, target } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver)
+          }
+          unobserve() {}
+          disconnect() {}
+        },
+      )
+    }
+    afterEach(() => vi.unstubAllGlobals())
+
+    const wide = makeFrettedDiagram({
+      positions: [
+        { position_id: 'low', string: 6, fret: 1, interval: 'R', note_name: 'F', shape: 'dot' },
+        { position_id: 'high', string: 1, fret: 12, interval: '5', note_name: 'E', shape: 'dot' },
+      ],
+    })
+    const mountAt = async (width: number, props: Record<string, unknown> = {}) => {
+      stubContainerWidth(width)
+      const wrapper = mount(FrettedDiagramView, {
+        attachTo: document.body,
+        props: { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef(), ...props },
+      })
+      await nextTick()
+      return wrapper
+    }
+    const fretWireXs = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
+      wrapper.findAll('[data-test="fret-wire"]').map((wire) => Number(wire.attributes('x')) + Number(wire.attributes('width')) / 2)
+
+    it('draws the board at its real size, filling the width it is given', async () => {
+      const wrapper = await mountAt(600)
+
+      expect(Number(wrapper.get('svg').attributes('width'))).toBe(600)
+    })
+
+    it('gives every fret space the same width', async () => {
+      const wires = fretWireXs(await mountAt(600))
+      const gaps = wires.slice(1).map((x, index) => x - wires[index]!)
+
+      expect(gaps.length).toBeGreaterThan(1)
+      for (const gap of gaps) expect(gap).toBeCloseTo(gaps[0]!)
+    })
+
+    it('grows a board that cannot fit wider than the screen, inside its own scroll area', async () => {
+      const wrapper = await mountAt(320, { diagram: wide })
+
+      expect(Number(wrapper.get('svg').attributes('width'))).toBeGreaterThan(320)
+      expect(wrapper.get('[data-test="board-scroll"]').classes()).toContain('overflow-x-auto')
+    })
+
+    it('keeps fret numbers and marker text at least 14 px tall on a phone', async () => {
+      const wrapper = await mountAt(320, { diagramRef: makeDiagramRef({ layers: { intervals: true } }) })
+
+      const sizes = [
+        ...wrapper.findAll('[data-test="fret-number"]'),
+        ...wrapper.findAll('[data-test="diagram-position-label"]'),
+      ].map((text) => Number(text.attributes('font-size')))
+      expect(sizes.length).toBeGreaterThan(0)
+      for (const size of sizes) expect(size).toBeGreaterThanOrEqual(14)
+    })
+
+    it('numbers each shown fret space under its middle, and the nut 0', async () => {
+      const wrapper = await mountAt(600, { diagram: wide })
+
+      const numbers = wrapper.findAll('[data-test="fret-number"]').map((n) => n.text())
+      expect(numbers).toEqual(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+    })
+
+    it('keeps an open-string marker whole, with a touch target apart from a fret-1 marker', async () => {
+      const diagram = makeFrettedDiagram({
+        positions: [
+          { position_id: 'open', string: 6, fret: 0, interval: 'R', note_name: 'E', shape: 'dot' },
+          { position_id: 'first', string: 6, fret: 1, interval: 'b2', note_name: 'F', shape: 'dot' },
+        ],
+      })
+      const wrapper = await mountAt(320, { diagram, selectablePositionIds: ['open', 'first'] })
+
+      const [open, first] = wrapper.findAll('[data-test="diagram-choice-target"]')
+      const openX = Number(open!.attributes('cx'))
+      expect(openX - Number(open!.attributes('r'))).toBeGreaterThanOrEqual(0)
+      expect(Number(first!.attributes('cx')) - openX).toBeGreaterThanOrEqual(
+        Number(open!.attributes('r')) + Number(first!.attributes('r')),
+      )
+    })
+
+    it('scrolls a keyboard-focused answer into view', async () => {
+      const wrapper = await mountAt(320, { diagram: wide, selectablePositionIds: ['high'] })
+      const choice = wrapper.get('[data-test="diagram-choice"]')
+      const scrollIntoView = vi.fn()
+      ;(choice.element as Element & { scrollIntoView: typeof scrollIntoView }).scrollIntoView = scrollIntoView
+
+      await choice.trigger('focusin')
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' })
+    })
+
+    it('scales a compact drawing to fit, without scrolling or decoration', async () => {
+      const wrapper = await mountAt(160, { diagram: wide, compact: true })
+
+      const svg = wrapper.get('svg')
+      expect(svg.attributes('width')).toBeUndefined()
+      expect(svg.attributes('viewBox')).toBeDefined()
+      expect(svg.classes()).toContain('w-full')
+      expect(wrapper.find('[data-test="board-scroll"]').classes()).not.toContain('overflow-x-auto')
+      expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(false)
+    })
+  })
+
+  describe('instrument materials', () => {
+    const mountDiagram = (diagram = makeFrettedDiagram(), instrument = makeFrettedInstrument()) =>
+      mount(FrettedDiagramView, { props: { diagram, instrument, diagramRef: makeDiagramRef() } })
+    const openDiagram = makeFrettedDiagram({
+      positions: [{ position_id: 'open', string: 6, fret: 0, interval: 'R', note_name: 'E', shape: 'dot' }],
+    })
+
+    it('draws a nut only when the board starts at fret 0', () => {
+      expect(mountDiagram(openDiagram).find('[data-test="diagram-nut"]').exists()).toBe(true)
+      expect(mountDiagram().find('[data-test="diagram-nut"]').exists()).toBe(false)
+    })
+
+    it('draws inlays only in the fret spaces the board shows: single ones, and a double at 12', () => {
+      const diagram = makeFrettedDiagram({
+        positions: [
+          { position_id: 'a', string: 6, fret: 4, interval: 'R', note_name: 'G#', shape: 'dot' },
+          { position_id: 'b', string: 1, fret: 12, interval: '5', note_name: 'E', shape: 'dot' },
+        ],
+      })
+      const inlays = mountDiagram(diagram).findAll('[data-test="fret-inlay"]').map((dot) => dot.attributes('data-fret'))
+
+      // The board starts at the wire of fret 3, so fret space 3 isn't shown.
+      expect(inlays).toEqual(['5', '7', '9', '12', '12'])
+    })
+
+    it('draws strings thicker as their open pitch gets lower', () => {
+      const widths = mountDiagram()
+        .findAll('[data-test="diagram-string"]')
+        .map((string) => Number(string.attributes('stroke-width')))
+
+      for (let index = 1; index < widths.length; index++) expect(widths[index]!).toBeGreaterThan(widths[index - 1]!)
+    })
+
+    it('draws every string alike on an instrument without a tuning', () => {
+      const widths = mountDiagram(makeFrettedDiagram(), makeFrettedInstrument({ tuning: undefined }))
+        .findAll('[data-test="diagram-string"]')
+        .map((string) => string.attributes('stroke-width'))
+
+      expect(new Set(widths).size).toBe(1)
+    })
+
+    it('draws metal fret wires and a wood grain', () => {
+      const wrapper = mountDiagram()
+
+      expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(true)
+      const wire = wrapper.get('[data-test="fret-wire"]')
+      expect(wire.attributes('fill')).toMatch(/^url\(#.+-metal\)$/)
+    })
+
+    it('keeps its own paint ids when the same diagram is drawn twice on a page', () => {
+      const props = { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() }
+      const page = mount(defineComponent({ render: () => [h(FrettedDiagramView, props), h(FrettedDiagramView, props)] }))
+
+      const fills = page.findAll('[data-test="fretboard-wood"]').map((wood) => wood.attributes('fill'))
+      expect(fills).toHaveLength(2)
+      expect(fills[0]).not.toBe(fills[1])
+    })
+  })
+
+  describe('marker states', () => {
+    it('shows selected, focused and sounding at once, the sounding glow behind the marker', async () => {
+      const wrapper = mount(FrettedDiagramView, {
+        props: {
+          diagram: makeFrettedDiagram(),
+          instrument: makeFrettedInstrument(),
+          diagramRef: makeDiagramRef({ layers: { intervals: true } }),
+          selectablePositionIds: ['p0'],
+          selectedPositionIds: ['p0'],
+          activePositionIds: ['p0'],
+        },
+      })
+      const choice = wrapper.get('[data-test="diagram-choice"]')
+
+      await choice.trigger('focus')
+
+      expect(choice.find('[data-test="diagram-choice-selected"]').exists()).toBe(true)
+      expect(choice.find('[data-test="diagram-focus-ring"]').exists()).toBe(true)
+      const parts = choice.findAll('[data-test]').map((part) => part.attributes('data-test'))
+      expect(parts.indexOf('diagram-position-playing')).toBeGreaterThanOrEqual(0)
+      expect(parts.indexOf('diagram-position-playing')).toBeLessThan(parts.indexOf('diagram-position'))
+      expect(choice.get('[data-test="diagram-position-label"]').text()).toBe('R')
+    })
+
+    it('outlines every marker, so an authored color close to the wood stays distinguishable', () => {
+      const diagram = makeFrettedDiagram()
+      diagram.positions[0]!.color = '#C49E6E'
+      const wrapper = mount(FrettedDiagramView, {
+        props: { diagram, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
+      })
+
+      const marker = wrapper.get('[data-test="diagram-position"]')
+      expect(Number(marker.attributes('stroke-width'))).toBeGreaterThan(0)
+      expect(marker.attributes('style')).toContain('fill: #C49E6E')
     })
   })
 })

@@ -47,6 +47,13 @@ const colors: Record<string, string> = Object.fromEntries(
 // themes, so it skips the custom-property indirection.
 colors['brand-ground'] = tokens.brand.ground.$value
 
+// Fretboard materials are feature-scoped to the diagram viewer/editor rather than
+// motifpath-brand roles; their per-theme values sit beside --color-fretboard-wood
+// in src/assets/main.css.
+for (const material of ['fretboard-inlay', 'fretboard-string', 'fretboard-metal-shadow']) {
+  colors[material] = `rgb(var(--color-${material}) / <alpha-value>)`
+}
+
 // Elevation shadows are full box-shadow strings (already colour-complete per
 // theme), so they resolve straight from the custom property.
 const elevationRoles = Object.keys(tokens.elevation).filter((key) => !key.startsWith('$'))

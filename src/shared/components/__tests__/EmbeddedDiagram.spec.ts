@@ -145,6 +145,17 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.get('[data-test="embedded-diagram-drawing"]').attributes()).toHaveProperty('inert')
   })
 
+  it('draws a compact drawing when asked, such as an option thumbnail, and a readable one by default', async () => {
+    serve(makeFrettedDiagram())
+
+    const compact = mount(EmbeddedDiagram, { props: { embed: single, compact: true } })
+    const readable = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+
+    expect(compact.getComponent(FrettedDiagramView).props('compact')).toBe(true)
+    expect(readable.getComponent(FrettedDiagramView).props('compact')).toBe(false)
+  })
+
   it('is not inert by default', async () => {
     serve(makeFrettedDiagram())
 

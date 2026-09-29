@@ -37,6 +37,8 @@ const props = withDefaults(
     /** The drawing is a picture only, such as an option thumbnail whose card handles the click:
      *  no pointer or keyboard input reaches it, and screen readers skip it. Play still works. */
     inert?: boolean
+    /** Scale a plain drawing to fit, for a small card, instead of a readable board that may scroll. */
+    compact?: boolean
   }>(),
   {
     selectablePositionIds: () => [],
@@ -45,6 +47,7 @@ const props = withDefaults(
     selectedAnswerIds: () => [],
     multiple: false,
     inert: false,
+    compact: false,
   },
 )
 
@@ -87,6 +90,7 @@ const activePositionIds = shallowRef<string[]>([])
         :selected-answer-ids="props.selectedAnswerIds"
         :multiple="props.multiple"
         :active-position-ids="activePositionIds"
+        :compact="props.compact"
         @select="emit('select', $event)"
         @select-answer="emit('selectAnswer', $event)"
       />

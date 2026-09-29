@@ -17,11 +17,16 @@
  * Markers show the text the ref's label mode picks (`labelMode` is the
  * diagram's own label display, which that mode can fall back to). Hidden
  * positions aren't drawn, unless `revealHidden` draws them faded for an author.
+ *
+ * The board is drawn at its real size in CSS pixels, so text and touch targets
+ * stay readable on a phone; a board wider than its container scrolls on its
+ * own. `compact` instead scales a plainer drawing to fit, for a thumbnail.
  */
 import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
+import { fretboardGeometry, stringThicknesses } from '@/shared/utils/fretboardGeometry'
 import { LABEL_TEXT_DARK, LABEL_TEXT_LIGHT, readableTextColor } from '@/shared/utils/diagramColors'
 import { starPolygonPoints } from '@/shared/utils/diagramMarkerShapes'
 import {
@@ -64,8 +69,12 @@ const props = withDefaults(
     selectedAnswerIds?: string[]
     /** The positions sounding right now, while the diagram plays. A hidden one stays undrawn. */
     activePositionIds?: string[]
+    /** Scale a plain drawing to fit its container, for a thumbnail, instead of drawing it at a
+     *  readable size that may scroll. */
+    compact?: boolean
   }>(),
   {
+    compact: false,
     labelMode: 'interval',
     selectablePositionIds: () => [],
     selectedPositionIds: () => [],
@@ -84,15 +93,40 @@ const { t } = useTypedT()
 const { intervalLabel } = useIntervalLabel()
 const { localizedName } = useLocalizedName()
 
-const VIEW_W = 720
-const MARGIN_LEFT = 44
-const MARGIN_RIGHT = 30
+/** The width a compact drawing is laid out at before it's scaled to fit, and the width assumed
+ *  for a readable one until its container has been measured. */
+const NOMINAL_WIDTH = 720
 const MARGIN_TOP = 34
-const MARGIN_BOTTOM = 40
+// Room under the board for the fret numbers.
+const MARGIN_BOTTOM = 52
 // Half the width of a band covering only the open strings: it surrounds the markers on the nut.
-const OPEN_BAND_HALF_WIDTH = 18
-const BOARD_W = VIEW_W - MARGIN_LEFT - MARGIN_RIGHT
-const BOARD_H = 300 - MARGIN_TOP - MARGIN_BOTTOM
+const OPEN_BAND_HALF_WIDTH = 22
+const MARKER_RADIUS = 18
+const TARGET_RADIUS = 22
+const TEXT_SIZE = 14
+
+const container = ref<HTMLElement | null>(null)
+const availableWidth = ref(NOMINAL_WIDTH)
+let resizeObserver: ResizeObserver | undefined
+onMounted(() => {
+  if (props.compact || !container.value) return
+  if (container.value.clientWidth > 0) availableWidth.value = container.value.clientWidth
+  if (typeof ResizeObserver === 'undefined') return
+  resizeObserver = new ResizeObserver(([entry]) => {
+    if (entry && entry.contentRect.width > 0) availableWidth.value = entry.contentRect.width
+  })
+  resizeObserver.observe(container.value)
+})
+onUnmounted(() => resizeObserver?.disconnect())
+
+/** Brings a focused answer or note fully into view when the board scrolls. */
+function revealFocused(event: FocusEvent) {
+  if (props.compact || !(event.target instanceof Element)) return
+  event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+}
+
+// Paint ids unique to this drawing, so two drawings of one diagram on a page never share them.
+const paintId = `fretboard-${useId()}`
 
 const layout = computed(() =>
   // Hidden positions stay in view while an author can see them, or while the cells are the
@@ -104,12 +138,22 @@ const layout = computed(() =>
   }),
 )
 
-const fretSpan = computed(() => layout.value.maxFret - layout.value.minFret)
-const colGap = computed(() => BOARD_W / fretSpan.value)
-const rowGap = computed(() => BOARD_H / Math.max(layout.value.stringCount - 1, 1))
+const showsNut = computed(() => layout.value.minFret === 0)
+const geometry = computed(() =>
+  fretboardGeometry({
+    availableWidth: props.compact ? NOMINAL_WIDTH : availableWidth.value,
+    fretSpan: layout.value.maxFret - layout.value.minFret,
+    stringCount: layout.value.stringCount,
+    showsNut: showsNut.value,
+  }),
+)
+const viewW = computed(() => geometry.value.width)
+const colGap = computed(() => geometry.value.columnGap)
+const rowGap = computed(() => geometry.value.rowGap)
+const BOARD_H = computed(() => geometry.value.boardHeight)
 
 function x(fret: number): number {
-  return MARGIN_LEFT + (fret - layout.value.minFret) * colGap.value
+  return geometry.value.left + (fret - layout.value.minFret) * colGap.value
 }
 
 // Region captions stack on as many lines above the board as their overlaps need (horizontal
@@ -120,12 +164,12 @@ const captionLayout = computed(() =>
       const { left, right } = regionFretEdges(region)
       return { left, right, text: localizedName(region.description) }
     }),
-    VIEW_W,
+    viewW.value,
   ),
 )
 
 const boardTop = computed(() => MARGIN_TOP + captionLayout.value.laneCount * CAPTION_LANE_HEIGHT)
-const viewH = computed(() => boardTop.value + BOARD_H + MARGIN_BOTTOM)
+const viewH = computed(() => boardTop.value + BOARD_H.value + MARGIN_BOTTOM)
 
 /**
  * X position for a position marker — the middle of the fret space behind
@@ -145,15 +189,26 @@ function y(stringNumber: number): number {
 
 // The wood and strings start at the window's left edge, which is never below the nut.
 const boardLeft = computed(() => x(layout.value.minFret))
+const boardRight = computed(() => x(layout.value.maxFret))
+const woodTop = computed(() => boardTop.value - rowGap.value / 2)
+const woodHeight = computed(() => BOARD_H.value + rowGap.value)
 
-// The window never reaches below the nut, so no fret line is drawn or numbered below 0.
-const frets = computed(() => {
-  const start = Math.max(Math.ceil(layout.value.minFret), 0)
-  const end = Math.floor(layout.value.maxFret)
+// The fret wires, from the board's left edge to its right. At fret 0 the nut stands in for one.
+const fretWires = computed(() => {
   const result: number[] = []
-  for (let fret = start; fret <= end; fret++) result.push(fret)
+  for (let fret = Math.max(layout.value.minFret, 1); fret <= layout.value.maxFret; fret++) result.push(fret)
   return result
 })
+
+// The fret spaces the board shows, each numbered under its middle — plus 0 under the nut.
+const shownFretSpaces = computed(() => {
+  const result: number[] = []
+  for (let fret = layout.value.minFret + 1; fret <= layout.value.maxFret; fret++) result.push(fret)
+  return result
+})
+const fretNumbers = computed(() => (showsNut.value ? [0, ...shownFretSpaces.value] : shownFretSpaces.value))
+
+const stringWidths = computed(() => stringThicknesses(props.instrument.tuning, layout.value.stringCount))
 
 // Conventional fretboard inlay-dot frets — single dot, except a double dot at the octave marks.
 const SINGLE_DOT_FRETS = [3, 5, 7, 9, 15, 17, 19, 21]
@@ -161,10 +216,10 @@ const DOUBLE_DOT_FRETS = [12, 24]
 const boardMidY = computed(() => (y(1) + y(layout.value.stringCount)) / 2)
 const inlayDots = computed(() => {
   const dots: { fret: number; cy: number }[] = []
-  for (const fret of frets.value) {
+  for (const fret of shownFretSpaces.value) {
     if (SINGLE_DOT_FRETS.includes(fret)) dots.push({ fret, cy: boardMidY.value })
     if (DOUBLE_DOT_FRETS.includes(fret)) {
-      dots.push({ fret, cy: boardMidY.value - 22 }, { fret, cy: boardMidY.value + 22 })
+      dots.push({ fret, cy: boardMidY.value - rowGap.value }, { fret, cy: boardMidY.value + rowGap.value })
     }
   }
   return dots
@@ -372,6 +427,9 @@ function cellAttrs(cell: AnswerCell): Record<string, string | number | boolean> 
   }
 }
 
+/** Where a selected choice's check badge sits, off the marker's top-left. */
+const BADGE_OFFSET = 15
+
 /** A check mark centred on (cx, cy), sized for the selected-choice badge. */
 function checkPoints(cx: number, cy: number): string {
   return `${cx - 3.5},${cy} ${cx - 1},${cy + 2.5} ${cx + 3.5},${cy - 2.5}`
@@ -381,14 +439,14 @@ function checkPoints(cx: number, cy: number): string {
  *  any rendered size. */
 function noteAnchor(position: Marker): { left: string; top: string } {
   return {
-    left: `${(markerX(position.fret) / VIEW_W) * 100}%`,
+    left: `${(markerX(position.fret) / viewW.value) * 100}%`,
     top: `${((y(position.string) - 16) / viewH.value) * 100}%`,
   }
 }
 
 /** A marker near either edge anchors the popover's matching edge, so it stays on screen. */
 function noteAlignClass(position: Marker): string {
-  const fraction = markerX(position.fret) / VIEW_W
+  const fraction = markerX(position.fret) / viewW.value
   if (fraction < 0.3) return '-translate-y-full'
   if (fraction > 0.7) return '-translate-x-full -translate-y-full'
   return '-translate-x-1/2 -translate-y-full'
@@ -396,283 +454,339 @@ function noteAlignClass(position: Marker): string {
 </script>
 
 <template>
-  <div class="relative">
-    <svg
-      :viewBox="`0 0 ${VIEW_W} ${viewH}`"
-      :role="svgRole"
-      :aria-label="localizedName(diagram.names)"
-      class="w-full"
-      font-family="monospace"
-    >
-      <defs>
-        <linearGradient :id="`fretboard-wood-${diagram.diagram_id}`" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.55" />
-          <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="1" />
-          <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.7" />
-        </linearGradient>
-      </defs>
-
-      <rect
-        data-test="fretboard-wood"
-        :x="boardLeft"
-        :y="boardTop - rowGap / 2"
-        :width="MARGIN_LEFT + BOARD_W - boardLeft"
-        :height="BOARD_H + rowGap"
-        rx="6"
-        :fill="`url(#fretboard-wood-${diagram.diagram_id})`"
-      />
-
-      <circle
-        v-for="(dot, index) in inlayDots"
-        :key="`inlay-${dot.fret}-${index}`"
-        data-test="fret-inlay"
-        :cx="markerX(dot.fret)"
-        :cy="dot.cy"
-        r="4"
-        class="fill-ink-subtle"
-        opacity="0.4"
-      />
-
-      <g v-for="(region, index) in layout.regions" :key="`region-${region.regionId}`">
-        <rect
-          data-test="diagram-region"
-          v-bind="regionBox(region)"
-          rx="4"
-          fill-opacity="0.25"
-          :class="region.color ? '' : 'fill-accent'"
-          :style="regionStyle(region)"
-        />
-        <rect
-          data-test="diagram-region-caption-bar"
-          :x="regionBox(region).x"
-          :y="captionPlacement(index).barY"
-          :width="regionBox(region).width"
-          :height="CAPTION_BAR_HEIGHT"
-          rx="1.5"
-          fill-opacity="0.8"
-          :class="region.color ? '' : 'fill-accent'"
-          :style="regionStyle(region)"
-        />
-        <text
-          data-test="diagram-region-caption"
-          :x="captionPlacement(index).textX"
-          :y="captionPlacement(index).textY"
-          :font-size="CAPTION_FONT_SIZE"
-          font-weight="600"
-          class="fill-ink-muted"
+  <div ref="container" class="relative min-w-0">
+    <div data-test="board-scroll" :class="compact ? '' : 'overflow-x-auto overflow-y-hidden'" @focusin="revealFocused">
+      <div class="relative" :style="compact ? undefined : { width: `${viewW}px` }">
+        <svg
+          :viewBox="`0 0 ${viewW} ${viewH}`"
+          :width="compact ? undefined : viewW"
+          :height="compact ? undefined : viewH"
+          :role="svgRole"
+          :aria-label="localizedName(diagram.names)"
+          :class="compact ? 'w-full' : 'block max-w-none'"
+          font-family="inherit"
         >
-          {{ localizedName(region.description) }}
-        </text>
-      </g>
+          <defs>
+            <linearGradient :id="`${paintId}-wood`" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood-edge))" />
+              <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" />
+              <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood-edge))" />
+            </linearGradient>
+            <pattern :id="`${paintId}-grain`" width="240" height="48" patternUnits="userSpaceOnUse">
+              <path
+                d="M-20 8 Q45 1 110 9 T260 5 M-20 18 Q70 28 170 16 T270 22 M-20 35 Q70 27 160 38 T270 31 M-20 43 Q80 35 180 46 T270 40"
+                fill="none"
+                stroke="rgb(var(--color-fretboard-grain))"
+                stroke-width="0.8"
+                opacity="0.25"
+              />
+            </pattern>
+            <linearGradient :id="`${paintId}-metal`" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="rgb(var(--color-fretboard-metal-shadow))" />
+              <stop offset="0.45" stop-color="rgb(var(--color-fretboard-metal))" />
+              <stop offset="1" stop-color="rgb(var(--color-fretboard-metal-shadow))" />
+            </linearGradient>
+          </defs>
 
-      <line
-        v-for="stringNumber in layout.stringCount"
-        :key="`string-${stringNumber}`"
-        data-test="diagram-string"
-        :x1="boardLeft"
-        :y1="y(stringNumber)"
-        :x2="MARGIN_LEFT + BOARD_W"
-        :y2="y(stringNumber)"
-        class="stroke-border"
-        stroke-width="1.2"
-      />
+          <rect
+            data-test="fretboard-wood"
+            :x="boardLeft"
+            :y="woodTop"
+            :width="boardRight - boardLeft"
+            :height="woodHeight"
+            rx="6"
+            :fill="`url(#${paintId}-wood)`"
+          />
+          <rect
+            v-if="!compact"
+            data-test="board-grain"
+            :x="boardLeft"
+            :y="woodTop"
+            :width="boardRight - boardLeft"
+            :height="woodHeight"
+            rx="6"
+            :fill="`url(#${paintId}-grain)`"
+          />
 
-      <g v-for="fret in frets" :key="`fret-${fret}`">
-        <line
-          :x1="x(fret)"
-          :y1="boardTop - 6"
-          :x2="x(fret)"
-          :y2="boardTop + BOARD_H + 6"
-          class="stroke-ink-subtle"
-          stroke-width="2"
-        />
-        <text
-          data-test="fret-number"
-          :x="x(fret)"
-          :y="boardTop + BOARD_H + 24"
-          text-anchor="middle"
-          font-size="12"
-          class="fill-ink-muted"
-        >
-          {{ fret }}
-        </text>
-      </g>
-
-      <g
-        v-for="position in markers"
-        :key="position.positionId"
-        v-bind="markerAttrs(position)"
-        :class="isInteractive(position) ? 'cursor-pointer outline-none' : ''"
-        @mouseenter="position.note && (hoveredNote = position.positionId)"
-        @mouseleave="position.note && (hoveredNote = null)"
-        @focus="onMarkerFocus(position)"
-        @blur="onMarkerBlur(position)"
-        @click="activate(position)"
-        @keydown.escape="closeNotes"
-        @keydown.enter.prevent="activate(position)"
-        @keydown.space.prevent="activate(position)"
-      >
-        <circle
-          v-if="isChoice(position)"
-          data-test="diagram-choice-target"
-          :cx="markerX(position.fret)"
-          :cy="y(position.string)"
-          r="21"
-          fill="transparent"
-        />
-        <g
-          :opacity="position.hidden ? 0.35 : undefined"
-          :data-test="position.hidden ? 'diagram-position-hidden' : undefined"
-        >
-        <circle
-          v-if="position.shape === 'dot'"
-          data-test="diagram-position"
-          :cx="markerX(position.fret)"
-          :cy="y(position.string)"
-          r="13.5"
-          :class="shapeClass(position)"
-          :style="shapeStyle(position)"
-        />
-        <rect
-          v-else-if="position.shape === 'square'"
-          data-test="diagram-position"
-          :x="markerX(position.fret) - 12"
-          :y="y(position.string) - 12"
-          width="24"
-          height="24"
-          rx="3"
-          :class="shapeClass(position)"
-          :style="shapeStyle(position)"
-        />
-        <polygon
-          v-else
-          data-test="diagram-position"
-          :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
-          :class="shapeClass(position)"
-          :style="shapeStyle(position)"
-        />
-        <text
-          v-if="markerLabel(position) !== null"
-          data-test="diagram-position-label"
-          :x="markerX(position.fret)"
-          :y="y(position.string) + 4.5"
-          text-anchor="middle"
-          font-size="11.5"
-          font-weight="600"
-          :class="labelClass(position)"
-          :style="labelStyle(position)"
-        >
-          {{ markerLabel(position) }}
-        </text>
-        </g>
-        <circle
-          v-if="!position.hidden && props.activePositionIds.includes(position.positionId)"
-          data-test="diagram-position-playing"
-          :cx="markerX(position.fret)"
-          :cy="y(position.string)"
-          r="19"
-          fill="none"
-          class="stroke-accent"
-          stroke-width="3.5"
-        />
-        <circle
-          v-if="position.note"
-          data-test="diagram-note-badge"
-          :cx="markerX(position.fret) + 11"
-          :cy="y(position.string) - 11"
-          r="5"
-          class="fill-accent stroke-surface"
-          stroke-width="1.5"
-        />
-        <circle
-          v-if="isInteractive(position) && (focusedMarker === position.positionId)"
-          :cx="markerX(position.fret)"
-          :cy="y(position.string)"
-          :r="isChoice(position) ? 22 : 18"
-          fill="none"
-          class="stroke-accent"
-          stroke-width="2"
-          :stroke-dasharray="isChoice(position) ? '4 3' : undefined"
-        />
-        <g v-if="isSelectedChoice(position)" data-test="diagram-choice-selected">
           <circle
-            :cx="markerX(position.fret)"
-            :cy="y(position.string)"
-            r="18"
-            fill="none"
-            class="stroke-accent"
-            stroke-width="3.5"
+            v-for="(dot, index) in inlayDots"
+            :key="`inlay-${dot.fret}-${index}`"
+            data-test="fret-inlay"
+            :data-fret="dot.fret"
+            :cx="markerX(dot.fret)"
+            :cy="dot.cy"
+            r="6"
+            class="fill-fretboard-inlay"
           />
-          <circle
-            :cx="markerX(position.fret) - 12"
-            :cy="y(position.string) - 12"
-            r="7.5"
-            class="fill-accent stroke-surface"
-            stroke-width="1.5"
-          />
-          <polyline
-            :points="checkPoints(markerX(position.fret) - 12, y(position.string) - 12)"
-            fill="none"
-            class="stroke-accent-fg"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </g>
-      </g>
-      <g
-        v-for="cell in answerCells"
-        :key="cell.optionId"
-        data-test="diagram-cell"
-        v-bind="cellAttrs(cell)"
-        class="group cursor-pointer outline-none"
-        @click="emit('selectAnswer', cell.optionId)"
-        @keydown.enter.prevent="emit('selectAnswer', cell.optionId)"
-        @keydown.space.prevent="emit('selectAnswer', cell.optionId)"
-      >
-        <circle :cx="markerX(cell.fret)" :cy="y(cell.string)" r="18" fill="transparent" />
-        <circle
-          :cx="markerX(cell.fret)"
-          :cy="y(cell.string)"
-          r="18"
-          fill="none"
-          class="stroke-accent opacity-0 group-hover:opacity-60 group-focus:opacity-100"
-          stroke-width="2"
-          stroke-dasharray="4 3"
-        />
-        <g v-if="isSelectedAnswer(cell)" data-test="diagram-cell-selected">
-          <circle :cx="markerX(cell.fret)" :cy="y(cell.string)" r="18" fill="none" class="stroke-accent" stroke-width="3.5" />
-          <circle
-            :cx="markerX(cell.fret) - 12"
-            :cy="y(cell.string) - 12"
-            r="7.5"
-            class="fill-accent stroke-surface"
-            stroke-width="1.5"
-          />
-          <polyline
-            :points="checkPoints(markerX(cell.fret) - 12, y(cell.string) - 12)"
-            fill="none"
-            class="stroke-accent-fg"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </g>
-      </g>
-    </svg>
 
-    <div
-      v-for="position in notedPositions"
-      v-show="shownNote === position.positionId"
-      :id="noteId(position)"
-      :key="`note-${position.positionId}`"
-      data-test="diagram-note"
-      role="tooltip"
-      class="pointer-events-none absolute z-30 max-w-xs rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink shadow-level2"
-      :class="noteAlignClass(position)"
-      :style="noteAnchor(position)"
-    >
-      {{ position.note ? localizedName(position.note) : '' }}
+          <g v-for="(region, index) in layout.regions" :key="`region-${region.regionId}`">
+            <rect
+              data-test="diagram-region"
+              v-bind="regionBox(region)"
+              rx="4"
+              fill-opacity="0.25"
+              :class="region.color ? '' : 'fill-accent'"
+              :style="regionStyle(region)"
+            />
+            <rect
+              data-test="diagram-region-caption-bar"
+              :x="regionBox(region).x"
+              :y="captionPlacement(index).barY"
+              :width="regionBox(region).width"
+              :height="CAPTION_BAR_HEIGHT"
+              rx="1.5"
+              fill-opacity="0.8"
+              :class="region.color ? '' : 'fill-accent'"
+              :style="regionStyle(region)"
+            />
+            <text
+              data-test="diagram-region-caption"
+              :x="captionPlacement(index).textX"
+              :y="captionPlacement(index).textY"
+              :font-size="CAPTION_FONT_SIZE"
+              font-weight="600"
+              class="fill-ink-muted"
+            >
+              {{ localizedName(region.description) }}
+            </text>
+          </g>
+
+          <rect
+            v-if="showsNut"
+            data-test="diagram-nut"
+            :x="x(0) - 5"
+            :y="woodTop"
+            width="10"
+            :height="woodHeight"
+            rx="2"
+            class="fill-fretboard-inlay stroke-fretboard-metal-shadow"
+          />
+          <rect
+            v-for="fret in fretWires"
+            :key="`fret-${fret}`"
+            data-test="fret-wire"
+            :data-fret="fret"
+            :x="x(fret) - 1.5"
+            :y="woodTop"
+            width="3"
+            :height="woodHeight"
+            :fill="`url(#${paintId}-metal)`"
+          />
+
+          <line
+            v-for="stringNumber in layout.stringCount"
+            :key="`string-${stringNumber}`"
+            data-test="diagram-string"
+            :x1="boardLeft"
+            :y1="y(stringNumber)"
+            :x2="boardRight"
+            :y2="y(stringNumber)"
+            class="stroke-fretboard-string"
+            :stroke-width="stringWidths[stringNumber - 1]"
+          />
+
+          <text
+            v-for="fret in fretNumbers"
+            :key="`fret-number-${fret}`"
+            data-test="fret-number"
+            :x="fret === 0 ? x(0) : markerX(fret)"
+            :y="woodTop + woodHeight + 22"
+            text-anchor="middle"
+            :font-size="TEXT_SIZE"
+            class="fill-ink-muted"
+          >
+            {{ fret }}
+          </text>
+
+          <g
+            v-for="position in markers"
+            :key="position.positionId"
+            v-bind="markerAttrs(position)"
+            :class="isInteractive(position) ? 'cursor-pointer outline-none' : ''"
+            @mouseenter="position.note && (hoveredNote = position.positionId)"
+            @mouseleave="position.note && (hoveredNote = null)"
+            @focus="onMarkerFocus(position)"
+            @blur="onMarkerBlur(position)"
+            @click="activate(position)"
+            @keydown.escape="closeNotes"
+            @keydown.enter.prevent="activate(position)"
+            @keydown.space.prevent="activate(position)"
+          >
+            <circle
+              v-if="isChoice(position)"
+              data-test="diagram-choice-target"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              :r="TARGET_RADIUS"
+              fill="transparent"
+            />
+            <!-- Behind the marker, so a sounding marker keeps its shape, color and label. -->
+            <circle
+              v-if="!position.hidden && props.activePositionIds.includes(position.positionId)"
+              data-test="diagram-position-playing"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              :r="TARGET_RADIUS"
+              class="fill-warning"
+              fill-opacity="0.6"
+            />
+            <g
+              :opacity="position.hidden ? 0.35 : undefined"
+              :data-test="position.hidden ? 'diagram-position-hidden' : undefined"
+            >
+              <circle
+                v-if="position.shape === 'dot'"
+                data-test="diagram-position"
+                :cx="markerX(position.fret)"
+                :cy="y(position.string)"
+                :r="MARKER_RADIUS"
+                :class="[shapeClass(position), 'stroke-surface']"
+                stroke-width="2"
+                :style="shapeStyle(position)"
+              />
+              <rect
+                v-else-if="position.shape === 'square'"
+                data-test="diagram-position"
+                :x="markerX(position.fret) - 16"
+                :y="y(position.string) - 16"
+                width="32"
+                height="32"
+                rx="3"
+                :class="[shapeClass(position), 'stroke-surface']"
+                stroke-width="2"
+                :style="shapeStyle(position)"
+              />
+              <polygon
+                v-else
+                data-test="diagram-position"
+                :points="starPolygonPoints(markerX(position.fret), y(position.string), 21, 10)"
+                :class="[shapeClass(position), 'stroke-surface']"
+                stroke-width="2"
+                stroke-linejoin="round"
+                :style="shapeStyle(position)"
+              />
+              <text
+                v-if="markerLabel(position) !== null"
+                data-test="diagram-position-label"
+                :x="markerX(position.fret)"
+                :y="y(position.string) + 5"
+                text-anchor="middle"
+                :font-size="TEXT_SIZE"
+                font-weight="700"
+                :class="labelClass(position)"
+                :style="labelStyle(position)"
+              >
+                {{ markerLabel(position) }}
+              </text>
+            </g>
+            <circle
+              v-if="position.note"
+              data-test="diagram-note-badge"
+              :cx="markerX(position.fret) + 14"
+              :cy="y(position.string) - 14"
+              r="5"
+              class="fill-accent stroke-surface"
+              stroke-width="1.5"
+            />
+            <circle
+              v-if="isInteractive(position) && focusedMarker === position.positionId"
+              data-test="diagram-focus-ring"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              :r="TARGET_RADIUS + 2"
+              fill="none"
+              class="stroke-focus"
+              stroke-width="2"
+              :stroke-dasharray="isChoice(position) ? '4 3' : undefined"
+            />
+            <g v-if="isSelectedChoice(position)" data-test="diagram-choice-selected">
+              <circle
+                :cx="markerX(position.fret)"
+                :cy="y(position.string)"
+                :r="MARKER_RADIUS + 2"
+                fill="none"
+                class="stroke-accent"
+                stroke-width="3"
+              />
+              <circle
+                :cx="markerX(position.fret) - BADGE_OFFSET"
+                :cy="y(position.string) - BADGE_OFFSET"
+                r="7.5"
+                class="fill-accent stroke-surface"
+                stroke-width="1.5"
+              />
+              <polyline
+                :points="checkPoints(markerX(position.fret) - BADGE_OFFSET, y(position.string) - BADGE_OFFSET)"
+                fill="none"
+                class="stroke-accent-fg"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </g>
+          </g>
+          <g
+            v-for="cell in answerCells"
+            :key="cell.optionId"
+            data-test="diagram-cell"
+            v-bind="cellAttrs(cell)"
+            class="group cursor-pointer outline-none"
+            @click="emit('selectAnswer', cell.optionId)"
+            @keydown.enter.prevent="emit('selectAnswer', cell.optionId)"
+            @keydown.space.prevent="emit('selectAnswer', cell.optionId)"
+          >
+            <circle :cx="markerX(cell.fret)" :cy="y(cell.string)" :r="TARGET_RADIUS" fill="transparent" />
+            <circle
+              :cx="markerX(cell.fret)"
+              :cy="y(cell.string)"
+              :r="MARKER_RADIUS + 2"
+              fill="none"
+              class="stroke-focus opacity-0 group-hover:opacity-60 group-focus:opacity-100"
+              stroke-width="2"
+              stroke-dasharray="4 3"
+            />
+            <g v-if="isSelectedAnswer(cell)" data-test="diagram-cell-selected">
+              <circle
+                :cx="markerX(cell.fret)"
+                :cy="y(cell.string)"
+                :r="MARKER_RADIUS + 2"
+                fill="none"
+                class="stroke-accent"
+                stroke-width="3"
+              />
+              <circle
+                :cx="markerX(cell.fret) - BADGE_OFFSET"
+                :cy="y(cell.string) - BADGE_OFFSET"
+                r="7.5"
+                class="fill-accent stroke-surface"
+                stroke-width="1.5"
+              />
+              <polyline
+                :points="checkPoints(markerX(cell.fret) - BADGE_OFFSET, y(cell.string) - BADGE_OFFSET)"
+                fill="none"
+                class="stroke-accent-fg"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </g>
+          </g>
+        </svg>
+
+        <div
+          v-for="position in notedPositions"
+          v-show="shownNote === position.positionId"
+          :id="noteId(position)"
+          :key="`note-${position.positionId}`"
+          data-test="diagram-note"
+          role="tooltip"
+          class="pointer-events-none absolute z-30 max-w-xs rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink shadow-level2"
+          :class="noteAlignClass(position)"
+          :style="noteAnchor(position)"
+        >
+          {{ position.note ? localizedName(position.note) : '' }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
