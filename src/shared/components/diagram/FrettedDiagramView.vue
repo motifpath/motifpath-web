@@ -569,7 +569,7 @@ function noteAlignClass(position: Marker): string {
             :style="{ left: `${control.left}px`, ...regionColorStyle(control.region) }"
             :aria-label="localizedName(control.region.description)"
             :aria-expanded="shownRegionId === control.region.regionId"
-            :aria-controls="descriptionId"
+            :aria-controls="shownRegionId === control.region.regionId ? descriptionId : undefined"
             @click="toggleRegion(control.region)"
             @keydown.escape="closeDescription(true)"
           >

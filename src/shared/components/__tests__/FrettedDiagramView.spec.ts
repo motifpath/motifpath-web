@@ -672,6 +672,26 @@ describe('FrettedDiagramView', () => {
         expect(control.attributes('aria-controls')).toBe(description.attributes('id'))
       })
 
+      it('points only the expanded control at the description, which exists only while open', async () => {
+        const wrapper = mountInfo()
+        expect(controls(wrapper).some((c) => c.attributes('aria-controls') !== undefined)).toBe(false)
+
+        await controls(wrapper)[0]!.trigger('click')
+
+        expect(controls(wrapper).map((c) => c.attributes('aria-controls') !== undefined)).toEqual([true, false, false])
+      })
+
+      it('points the description at the control that opened it', async () => {
+        const wrapper = mountInfo()
+        const control = controls(wrapper)[0]!
+        await control.trigger('click')
+
+        const description = wrapper.get('[data-test="region-description"]')
+        const pointer = leftPx(description.get('[data-test="region-description-arrow"]'))
+        // The arrow is a 10 px square; its middle lines up with the control's middle.
+        expect(leftPx(description) + pointer + 5).toBeCloseTo(leftPx(control) + 22)
+      })
+
       it('opens a description by tapping the region itself', async () => {
         const wrapper = mountInfo()
 
