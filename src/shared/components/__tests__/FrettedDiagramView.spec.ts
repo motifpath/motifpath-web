@@ -611,6 +611,15 @@ describe('FrettedDiagramView', () => {
         for (let index = 1; index < lefts.length; index++) expect(lefts[index]! - lefts[index - 1]!).toBeGreaterThanOrEqual(44)
       })
 
+      it('seats the controls right on top of the board, with no gap of their own', () => {
+        const withRail = mountInfo()
+        const withoutRail = mountInfo({ regionInfo: false })
+        const woodTop = (wrapper: ReturnType<typeof mountInfo>) => Number(wrapper.get('[data-test="fretboard-wood"]').attributes('y'))
+
+        expect(woodTop(withRail)).toBeLessThanOrEqual(2)
+        expect(woodTop(withoutRail)).toBeGreaterThan(woodTop(withRail))
+      })
+
       it('offers no controls on a static picture', () => {
         expect(controls(mountInfo({ regionInfo: false }))).toHaveLength(0)
       })

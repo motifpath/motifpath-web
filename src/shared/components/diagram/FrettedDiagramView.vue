@@ -185,8 +185,10 @@ function x(fret: number): number {
 // A compact drawing is scaled to its container; a readable one is drawn at its own size.
 const scale = computed(() => (props.compact ? availableWidth.value / viewW.value : 1))
 
-const boardTop = MARGIN_TOP
-const viewH = computed(() => boardTop + BOARD_H.value + MARGIN_BOTTOM)
+// Under a rail of region controls the wood starts at the top, so the controls sit right on it.
+const RAIL_GAP = 2
+const boardTop = computed(() => (showsRegionInfo.value ? rowGap.value / 2 + RAIL_GAP : MARGIN_TOP))
+const viewH = computed(() => boardTop.value + BOARD_H.value + MARGIN_BOTTOM)
 
 /**
  * X position for a position marker — the middle of the fret space behind
@@ -201,13 +203,13 @@ function markerX(fret: number): number {
 }
 
 function y(stringNumber: number): number {
-  return boardTop + (stringNumber - 1) * rowGap.value
+  return boardTop.value + (stringNumber - 1) * rowGap.value
 }
 
 // The wood and strings start at the window's left edge, which is never below the nut.
 const boardLeft = computed(() => x(layout.value.minFret))
 const boardRight = computed(() => x(layout.value.maxFret))
-const woodTop = computed(() => boardTop - rowGap.value / 2)
+const woodTop = computed(() => boardTop.value - rowGap.value / 2)
 const woodHeight = computed(() => BOARD_H.value + rowGap.value)
 
 // The fret wires, from the board's left edge to its right. At fret 0 the nut stands in for one.
@@ -539,7 +541,7 @@ function noteAlignClass(position: Marker): string {
             type="button"
             data-test="region-info"
             data-region-ui
-            class="absolute top-0 flex h-11 w-11 items-center justify-center rounded-md hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
+            class="absolute top-0 flex h-11 w-11 items-end justify-center rounded-md pb-1.5 hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
             :class="control.region.color ? '' : 'text-accent'"
             :style="{ left: `${control.left}px`, ...regionColorStyle(control.region) }"
             :aria-label="localizedName(control.region.description)"
