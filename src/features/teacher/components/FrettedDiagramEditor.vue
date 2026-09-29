@@ -24,6 +24,8 @@ import type { components } from '@/api/generated/core-domain'
 import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import { readableTextColor, resolveMarkerColor } from '@/shared/utils/diagramColors'
 import {
+  DEFAULT_MAX_FRET,
+  DEFAULT_MIN_FRET,
   editorRegionBox,
   frettedEditorLayout,
   isDrawableRegion,
@@ -39,6 +41,8 @@ import {
 import { insetOverlappingOutlines } from '@/shared/utils/regionInfoLayout'
 import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
 import FretboardMarkerShape from '@/shared/components/diagram/FretboardMarkerShape.vue'
+import RegionInfoRail from '@/shared/components/diagram/RegionInfoRail.vue'
+import type { RailRegion } from '@/shared/components/diagram/RegionInfoRail.vue'
 
 type Instrument = components['schemas']['Instrument']
 
@@ -109,18 +113,50 @@ onMounted(() => {
 })
 onUnmounted(() => resizeObserver?.disconnect())
 
-const board = computed(() => frettedEditorLayout(props.instrument.string_count ?? 0, availableWidth.value))
-const frame = computed(() => board.value.frame)
-
 // Regions that can't be drawn yet (backwards, or past the last string) are left off the board;
 // the regions editor below already flags them.
-const drawableRegions = computed(() => props.regions.filter((region) => isDrawableRegion(region, frame.value)))
+const drawableRegions = computed(() =>
+  props.regions.filter((region) =>
+    isDrawableRegion(region, {
+      minFret: DEFAULT_MIN_FRET,
+      maxFret: DEFAULT_MAX_FRET,
+      stringCount: props.instrument.string_count ?? 0,
+    }),
+  ),
+)
+// Each drawn region offers its information control above the board, as a student's board does.
+const showsRegionInfo = computed(() => drawableRegions.value.length > 0)
+
+const board = computed(() =>
+  frettedEditorLayout(props.instrument.string_count ?? 0, availableWidth.value, { underRail: showsRegionInfo.value }),
+)
+const frame = computed(() => board.value.frame)
 
 function regionBox(region: LocalRegion) {
   return editorRegionBox(region, frame.value)
 }
 // Each outline follows its band, one step further inside when it overlaps an earlier band.
 const regionOutlines = computed(() => insetOverlappingOutlines(drawableRegions.value.map(regionBox)))
+
+// Region descriptions: one open at a time, in the language being edited. Tapping a band places a
+// position, as anywhere on the board, so only its control opens the description.
+const openRegionId = ref<string | null>(null)
+const railRegions = computed<RailRegion[]>(() =>
+  drawableRegions.value.map((region) => {
+    const box = regionBox(region)
+    return {
+      id: region.id,
+      right: box.x + box.width,
+      color: region.color,
+      label: region.description[editingLanguage.value] ?? '',
+    }
+  }),
+)
+// How far the board is scrolled, so an open description stays in its visible part.
+const scrollLeft = ref(0)
+function onBoardScroll(event: Event) {
+  if (event.target instanceof HTMLElement) scrollLeft.value = event.target.scrollLeft
+}
 
 function regionStyle(region: LocalRegion): { fill: string } | undefined {
   return region.color ? { fill: region.color } : undefined
@@ -194,8 +230,24 @@ function onDrop(index: number) {
       <slot name="toolbar" />
       <!-- Drawn at its real size, like a student's board, so markers and fret spaces stay
            readable and easy to hit; it scrolls on its own when wider than the screen. -->
-      <div ref="scroller" class="overflow-x-auto rounded-md bg-surface-raised" data-test="fretboard-scroll">
+      <div
+        ref="scroller"
+        class="overflow-x-auto overflow-y-hidden rounded-md bg-surface-raised"
+        data-test="fretboard-scroll"
+        data-region-scope
+        @scroll="onBoardScroll"
+      >
+        <div class="relative" :style="{ width: `${board.width}px` }">
+        <RegionInfoRail
+          v-if="showsRegionInfo"
+          v-model:open-id="openRegionId"
+          :regions="railRegions"
+          :width="board.width"
+          :scroll-left="scrollLeft"
+          :visible-width="availableWidth || board.width"
+        />
         <svg
+          data-test="editor-board"
           :viewBox="`0 0 ${board.width} ${board.height}`"
           :width="board.width"
           :height="board.height"
@@ -276,6 +328,7 @@ function onDrop(index: number) {
             </text>
           </g>
         </svg>
+        </div>
       </div>
     </div>
 

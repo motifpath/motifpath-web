@@ -36,6 +36,7 @@ import {
   fretboardGeometry,
   MARKER_RADIUS,
   MARKER_TEXT_SIZE as TEXT_SIZE,
+  boardTopFor,
   TARGET_RADIUS,
   markerCenterX,
   regionBandBox,
@@ -116,7 +117,6 @@ const { localizedName } = useLocalizedName()
 /** The width a compact drawing is laid out at before it's scaled to fit, and the width assumed
  *  for a readable one until its container has been measured. */
 const NOMINAL_WIDTH = 720
-const MARGIN_TOP = 34
 // Room under the board for the fret numbers.
 const MARGIN_BOTTOM = 52
 
@@ -176,9 +176,7 @@ const BOARD_H = computed(() => geometry.value.boardHeight)
 // A compact drawing is scaled to its container; a readable one is drawn at its own size.
 const scale = computed(() => (props.compact ? availableWidth.value / viewW.value : 1))
 
-// Under a rail of region controls the wood starts at the top, so the controls sit right on it.
-const RAIL_GAP = 2
-const boardTop = computed(() => (showsRegionInfo.value ? rowGap.value / 2 + RAIL_GAP : MARGIN_TOP))
+const boardTop = computed(() => boardTopFor(showsRegionInfo.value))
 const viewH = computed(() => boardTop.value + BOARD_H.value + MARGIN_BOTTOM)
 
 const frame = computed<BoardFrame>(() => ({

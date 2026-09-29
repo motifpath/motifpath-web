@@ -69,7 +69,7 @@ describe('FrettedDiagramEditor', () => {
   it('emits toggle-cell with the nearest string/fret when the fretboard is clicked', async () => {
     const wrapper = mount(FrettedDiagramEditor, { props: { instrument: makeFrettedInstrument(), positions: [] } })
 
-    const svg = wrapper.get('svg')
+    const svg = wrapper.get('[data-test="editor-board"]')
     mockOneToOneBoundingRect(svg.element)
     await svg.trigger('click', { clientX: markerCenterX(FRAME, 5), clientY: stringLineY(FRAME, 3) + 0.4 * FRAME.rowGap })
 
@@ -78,7 +78,7 @@ describe('FrettedDiagramEditor', () => {
 
   describe('recording a sequence', () => {
     async function clickCell(wrapper: ReturnType<typeof mount>, cell: { string: number; fret: number }) {
-      const svg = wrapper.get('svg')
+      const svg = wrapper.get('[data-test="editor-board"]')
       mockOneToOneBoundingRect(svg.element)
       await svg.trigger('click', { clientX: markerCenterX(FRAME, cell.fret), clientY: stringLineY(FRAME, cell.string) })
     }
@@ -120,7 +120,7 @@ describe('FrettedDiagramEditor', () => {
 
   it('does not emit toggle-cell for a click outside the fretboard bounds', async () => {
     const wrapper = mount(FrettedDiagramEditor, { props: { instrument: makeFrettedInstrument(), positions: [] } })
-    const svg = wrapper.get('svg')
+    const svg = wrapper.get('[data-test="editor-board"]')
     mockOneToOneBoundingRect(svg.element)
 
     await svg.trigger('click', { clientX: -500, clientY: -500 })
@@ -133,8 +133,8 @@ describe('FrettedDiagramEditor', () => {
       props: { instrument: makeFrettedInstrument(), positions: [] },
     })
 
-    expect(wrapper.get('svg').classes()).toContain('cursor-pointer')
-    expect(wrapper.get('svg').classes()).not.toContain('cursor-crosshair')
+    expect(wrapper.get('[data-test="editor-board"]').classes()).toContain('cursor-pointer')
+    expect(wrapper.get('[data-test="editor-board"]').classes()).not.toContain('cursor-crosshair')
   })
 
   it('shows string 1 above string 6 (high string on top, matching tab convention)', () => {
@@ -431,6 +431,9 @@ describe('FrettedDiagramEditor', () => {
 
   describe('highlighted regions', () => {
     const instrument = makeFrettedInstrument()
+    // With regions to describe, the board sits under a rail of their information controls.
+    const RAIL_LAYOUT = frettedEditorLayout(6, 0, { underRail: true })
+    const RAIL_FRAME = RAIL_LAYOUT.frame
     const mountWith = (regions: LocalRegion[], language = 'en') =>
       mount(FrettedDiagramEditor, { props: { instrument, positions: [], regions, language } })
     const box = (element: { attributes: (name: string) => string | undefined }) => ({
@@ -444,7 +447,7 @@ describe('FrettedDiagramEditor', () => {
       const wrapper = mountWith([makeLocalRegion({ fretStart: 5, fretEnd: 8, stringStart: 2, stringEnd: 4 })])
 
       expect(box(wrapper.get('[data-test="editor-region"]'))).toEqual(
-        regionBandBox(FRAME, { fretStart: 5, fretEnd: 8, stringStart: 2, stringEnd: 4 }),
+        regionBandBox(RAIL_FRAME, { fretStart: 5, fretEnd: 8, stringStart: 2, stringEnd: 4 }),
       )
     })
 
@@ -452,21 +455,21 @@ describe('FrettedDiagramEditor', () => {
       const wrapper = mountWith([makeLocalRegion()])
 
       expect(box(wrapper.get('[data-test="editor-region"]'))).toEqual(
-        regionBandBox(FRAME, { fretStart: 5, fretEnd: 8, stringStart: 1, stringEnd: 6 }),
+        regionBandBox(RAIL_FRAME, { fretStart: 5, fretEnd: 8, stringStart: 1, stringEnd: 6 }),
       )
     })
 
     it('starts a region from fret 0 at the nut, leaving the open-string area bare', () => {
       const wrapper = mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 2 })])
 
-      expect(box(wrapper.get('[data-test="editor-region"]')).x).toBeCloseTo(fretLineX(FRAME, 0))
+      expect(box(wrapper.get('[data-test="editor-region"]')).x).toBeCloseTo(fretLineX(RAIL_FRAME, 0))
     })
 
     it('draws a region covering only the open strings around the nut, where their markers sit', () => {
       const band = box(mountWith([makeLocalRegion({ fretStart: 0, fretEnd: 0 })]).get('[data-test="editor-region"]'))
 
-      expect(band.x).toBeLessThan(fretLineX(FRAME, 0) - MARKER_RADIUS)
-      expect(band.x + band.width).toBeGreaterThan(fretLineX(FRAME, 0) + MARKER_RADIUS)
+      expect(band.x).toBeLessThan(fretLineX(RAIL_FRAME, 0) - MARKER_RADIUS)
+      expect(band.x + band.width).toBeGreaterThan(fretLineX(RAIL_FRAME, 0) + MARKER_RADIUS)
     })
 
     it("tints a band and outlines it in the region's color, or the accent color when it has none", () => {
@@ -490,13 +493,72 @@ describe('FrettedDiagramEditor', () => {
     it('labels no band on the board: its description is edited in the regions list', () => {
       const wrapper = mountWith([makeLocalRegion({ description: { en: 'Box 1' } })])
 
-      expect(wrapper.get('svg').text()).not.toContain('Box 1')
+      expect(wrapper.get('[data-test="editor-board"]').text()).not.toContain('Box 1')
     })
 
-    it('keeps the board the same height with or without regions', () => {
-      const height = (regions: LocalRegion[]) => mountWith(regions).get('svg').attributes('height')
+    describe('information controls', () => {
+      it("offers one control per region, named by its description in the editor's language", () => {
+        const regions = [
+          makeLocalRegion({ description: { en: 'Box 1', pt_BR: 'Caixa 1' } }),
+          makeLocalRegion({ id: 'region-2', fretStart: 10, fretEnd: 12, description: { en: 'Box 2', pt_BR: 'Caixa 2' } }),
+        ]
 
-      expect(height([makeLocalRegion()])).toBe(height([]))
+        const labels = (language: string) =>
+          mountWith(regions, language).findAll('[data-test="region-info"]').map((control) => control.attributes('aria-label'))
+        expect(labels('en')).toEqual(['Box 1', 'Box 2'])
+        expect(labels('pt_BR')).toEqual(['Caixa 1', 'Caixa 2'])
+      })
+
+      it("colors each control like its region", () => {
+        const wrapper = mountWith([makeLocalRegion({ color: '#EF4444' }), makeLocalRegion({ id: 'region-2', fretStart: 10, fretEnd: 12 })])
+
+        const [colored, plain] = wrapper.findAll('[data-test="region-info"]')
+        expect(colored!.attributes('style')).toContain('color: rgb(239, 68, 68)')
+        expect(plain!.classes()).toContain('text-accent')
+      })
+
+      it("places a control near its region's last fret", () => {
+        const wrapper = mountWith([makeLocalRegion({ fretStart: 5, fretEnd: 8 })])
+
+        const control = wrapper.get('[data-test="region-info"]')
+        const center = parseFloat(control.attributes('style')!.match(/left: ([\d.]+)px/)![1]!) + 22
+        expect(center).toBeLessThanOrEqual(fretLineX(FRAME, 8))
+        expect(center).toBeGreaterThan(fretLineX(FRAME, 7))
+      })
+
+      it('opens the description from its control', async () => {
+        const wrapper = mountWith([makeLocalRegion({ description: { en: 'Box 1' } })])
+
+        await wrapper.get('[data-test="region-info"]').trigger('click')
+
+        expect(wrapper.get('[data-test="region-description"]').text()).toContain('Box 1')
+      })
+
+      it('still places a position when the region itself is tapped, rather than opening its description', async () => {
+        const wrapper = mountWith([makeLocalRegion({ fretStart: 5, fretEnd: 8 })])
+        const svg = wrapper.get('[data-test="editor-board"]')
+        mockOneToOneBoundingRect(svg.element, RAIL_LAYOUT.width, RAIL_LAYOUT.height)
+
+        await wrapper.get('[data-test="editor-region"]').trigger('click', {
+          clientX: markerCenterX(FRAME, 6),
+          clientY: stringLineY(RAIL_FRAME, 3),
+        })
+
+        expect(wrapper.emitted('toggle-cell')).toEqual([[{ string: 3, fret: 6 }]])
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
+      })
+
+      it('seats the controls right on top of the board', () => {
+        const woodTop = (regions: LocalRegion[]) => Number(mountWith(regions).get('[data-test="fretboard-wood"]').attributes('y'))
+
+        expect(woodTop([makeLocalRegion()])).toBeLessThanOrEqual(2)
+        expect(woodTop([])).toBeGreaterThan(woodTop([makeLocalRegion()]))
+      })
+
+      it('offers no controls without regions, nor for a region that cannot be drawn', () => {
+        expect(mountWith([]).find('[data-test="region-rail"]').exists()).toBe(false)
+        expect(mountWith([makeLocalRegion({ fretStart: 8, fretEnd: 5 })]).find('[data-test="region-rail"]').exists()).toBe(false)
+      })
     })
 
     it("doesn't draw a region that runs backwards or past the last string", () => {
@@ -514,7 +576,7 @@ describe('FrettedDiagramEditor', () => {
         props: { instrument, positions: [makeLocalPosition()], regions: [makeLocalRegion()] },
       })
 
-      const html = wrapper.get('svg').html()
+      const html = wrapper.get('[data-test="editor-board"]').html()
       const band = html.indexOf('data-test="editor-region"')
       expect(band).toBeGreaterThanOrEqual(0)
       expect(band).toBeLessThan(html.indexOf('data-test="editor-position"'))
@@ -547,7 +609,7 @@ describe('FrettedDiagramEditor', () => {
     it('draws the board at its real size, scrolling on its own when wider than the screen', () => {
       const wrapper = mountEditor()
 
-      expect(Number(wrapper.get('svg').attributes('width'))).toBe(LAYOUT.width)
+      expect(Number(wrapper.get('[data-test="editor-board"]').attributes('width'))).toBe(LAYOUT.width)
       expect(wrapper.get('[data-test="fretboard-scroll"]').classes()).toContain('overflow-x-auto')
     })
 

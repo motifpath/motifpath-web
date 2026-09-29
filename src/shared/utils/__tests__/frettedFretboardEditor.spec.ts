@@ -52,8 +52,19 @@ describe('frettedEditorLayout', () => {
     expect(height - stringLineY(frame, 6)).toBeGreaterThanOrEqual(ROW_GAP / 2 + 22)
   })
 
+  it('seats the board right under a rail of region controls, as a student\'s board does', () => {
+    const plain = frettedEditorLayout(6, 800)
+    const underRail = frettedEditorLayout(6, 800, { underRail: true })
+    const woodTop = (layout: typeof plain) => stringLineY(layout.frame, 1) - ROW_GAP / 2
+
+    expect(woodTop(underRail)).toBeLessThanOrEqual(2)
+    expect(woodTop(underRail)).toBeGreaterThanOrEqual(0)
+    expect(woodTop(plain)).toBeGreaterThan(woodTop(underRail))
+    expect(plain.height - underRail.height).toBe(woodTop(plain) - woodTop(underRail))
+  })
+
   it('accepts an explicit fret range override', () => {
-    const { frame } = frettedEditorLayout(4, 800, 3, 12)
+    const { frame } = frettedEditorLayout(4, 800, { minFret: 3, maxFret: 12 })
 
     expect(frame.minFret).toBe(3)
     expect(frame.maxFret).toBe(12)

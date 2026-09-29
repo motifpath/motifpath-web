@@ -9,14 +9,12 @@
  * spaced exactly as a student's board spaces them, so the author sees the board a student will;
  * the caller scrolls it when it's wider than its container.
  */
-import { ROW_GAP, TARGET_RADIUS, fretLineX, fretboardGeometry, regionBandBox } from '@/shared/utils/fretboardGeometry'
+import { ROW_GAP, TARGET_RADIUS, boardTopFor, fretLineX, fretboardGeometry, regionBandBox } from '@/shared/utils/fretboardGeometry'
 import type { BoardFrame } from '@/shared/utils/fretboardGeometry'
 
 export const DEFAULT_MIN_FRET = 0
 export const DEFAULT_MAX_FRET = 24
 
-/** Room above string 1: the wood's half-gap edge plus a little air. */
-const MARGIN_TOP = 34
 /** Room under the last string for the wood's edge and the fret numbers. */
 const MARGIN_BOTTOM = 52
 
@@ -30,9 +28,10 @@ export interface FrettedEditorLayout {
 export function frettedEditorLayout(
   stringCount: number,
   availableWidth: number,
-  minFret: number = DEFAULT_MIN_FRET,
-  maxFret: number = DEFAULT_MAX_FRET,
+  options: { minFret?: number; maxFret?: number; underRail?: boolean } = {},
 ): FrettedEditorLayout {
+  const { minFret = DEFAULT_MIN_FRET, maxFret = DEFAULT_MAX_FRET } = options
+  const top = boardTopFor(options.underRail ?? false)
   const geometry = fretboardGeometry({
     availableWidth,
     fretSpan: maxFret - minFret,
@@ -47,10 +46,10 @@ export function frettedEditorLayout(
       left: geometry.left,
       columnGap: geometry.columnGap,
       rowGap: geometry.rowGap,
-      top: MARGIN_TOP,
+      top,
     },
     width: geometry.width,
-    height: MARGIN_TOP + geometry.boardHeight + MARGIN_BOTTOM,
+    height: top + geometry.boardHeight + MARGIN_BOTTOM,
   }
 }
 
@@ -87,7 +86,10 @@ export interface EditorRegionSpan {
 
 /** Whether a region can be drawn on this board: frets in order and in range, and either no
  *  string limits or limits in order within the instrument's strings. */
-export function isDrawableRegion(region: EditorRegionSpan, frame: BoardFrame): boolean {
+export function isDrawableRegion(
+  region: EditorRegionSpan,
+  frame: Pick<BoardFrame, 'minFret' | 'maxFret' | 'stringCount'>,
+): boolean {
   if (region.fretStart > region.fretEnd) return false
   if (region.fretStart < frame.minFret || region.fretEnd > frame.maxFret) return false
   if (region.stringStart === null && region.stringEnd === null) return true

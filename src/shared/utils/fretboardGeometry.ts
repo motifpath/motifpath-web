@@ -57,6 +57,12 @@ export const MARKER_TEXT_SIZE = 14
 /** A marker's touch target: 44 px across. */
 export const TARGET_RADIUS = 22
 
+/** Where string 1 sits: under a rail of region controls the wood starts right at the top, so the
+ *  controls sit on it; otherwise there's a little air above the wood. */
+export function boardTopFor(underRail: boolean): number {
+  return underRail ? ROW_GAP / 2 + 2 : 34
+}
+
 /** A board laid out on the page: its fret window, and where its first fret wire and string sit. */
 export interface BoardFrame {
   minFret: number
