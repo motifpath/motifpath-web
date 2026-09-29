@@ -18,7 +18,10 @@
  * diagram's own label display, which that mode can fall back to). Hidden
  * positions aren't drawn, unless `revealHidden` draws them faded for an author.
  */
-import { computed, onMounted, onUnmounted, ref, useId } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
+import { Info, X } from 'lucide-vue-next'
+
+import { readableBoardGeometry } from '@/spike/diagram-ui/geometry'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
@@ -48,6 +51,10 @@ export interface AnswerCell {
 
 const props = withDefaults(
   defineProps<{
+    presentation?: 'classic' | 'study'
+    texture?: boolean
+    controlsWidth?: number
+    drawingInert?: boolean
     diagram: Diagram
     instrument: Instrument
     diagramRef: DiagramRef
@@ -66,6 +73,10 @@ const props = withDefaults(
     activePositionIds?: string[]
   }>(),
   {
+    presentation: 'classic',
+    texture: true,
+    controlsWidth: 0,
+    drawingInert: false,
     labelMode: 'interval',
     selectablePositionIds: () => [],
     selectedPositionIds: () => [],
@@ -84,15 +95,45 @@ const { t } = useTypedT()
 const { intervalLabel } = useIntervalLabel()
 const { localizedName } = useLocalizedName()
 
-const VIEW_W = 720
+const study = computed(() => props.presentation === 'study')
+const leftMargin = computed(() => study.value ? geometry.value.left : MARGIN_LEFT)
+const rightMargin = computed(() => study.value ? geometry.value.right : MARGIN_RIGHT)
+const shownRegion = ref<string | null>(null)
+const activeRegion = computed(() => layout.value.regions.find(region => region.regionId === shownRegion.value))
+watch(() => [props.diagram, props.diagramRef], () => { shownRegion.value = null })
+function regionColor(region: Region) { return region.color ?? 'rgb(var(--color-accent-text))' }
+function toggleRegion(region: Region) {
+  if (study.value) shownRegion.value = shownRegion.value === region.regionId ? null : region.regionId
+}
+const viewport = ref<HTMLElement | null>(null)
+const boardScrollLeft = ref(0)
+function onBoardScroll(event: Event) {
+  if (event.target instanceof HTMLElement) boardScrollLeft.value = event.target.scrollLeft
+}
+const availableWidth = ref(328)
+const paintId = `board-${useId()}`
+let resizeObserver: ResizeObserver | undefined
+onMounted(() => {
+  if (typeof ResizeObserver === 'undefined' || !viewport.value) return
+  resizeObserver = new ResizeObserver(([entry]) => {
+    if (entry) availableWidth.value = entry.contentRect.width
+  })
+  resizeObserver.observe(viewport.value)
+})
+onUnmounted(() => resizeObserver?.disconnect())
+function revealFocused(event: FocusEvent) {
+  if (study.value && event.target instanceof Element) event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+}
+const geometry = computed(() => readableBoardGeometry(Math.max(availableWidth.value, layout.value.regions.length * 44 + 8), fretSpan.value, layout.value.stringCount, layout.value.minFret === 0))
+const VIEW_W = computed(() => study.value ? geometry.value.width : 720)
 const MARGIN_LEFT = 44
 const MARGIN_RIGHT = 30
 const MARGIN_TOP = 34
 const MARGIN_BOTTOM = 40
 // Half the width of a band covering only the open strings: it surrounds the markers on the nut.
 const OPEN_BAND_HALF_WIDTH = 18
-const BOARD_W = VIEW_W - MARGIN_LEFT - MARGIN_RIGHT
-const BOARD_H = 300 - MARGIN_TOP - MARGIN_BOTTOM
+const BOARD_W = computed(() => VIEW_W.value - leftMargin.value - rightMargin.value)
+const BOARD_H = computed(() => study.value ? geometry.value.height : 300 - MARGIN_TOP - MARGIN_BOTTOM)
 
 const layout = computed(() =>
   // Hidden positions stay in view while an author can see them, or while the cells are the
@@ -102,12 +143,13 @@ const layout = computed(() =>
   }),
 )
 
-const fretSpan = computed(() => layout.value.maxFret - layout.value.minFret)
-const colGap = computed(() => BOARD_W / fretSpan.value)
-const rowGap = computed(() => BOARD_H / Math.max(layout.value.stringCount - 1, 1))
+const lastFret = computed(() => study.value ? Math.max(layout.value.minFret + 1, layout.value.maxFret - 1) : layout.value.maxFret)
+const fretSpan = computed(() => lastFret.value - layout.value.minFret)
+const colGap = computed(() => study.value ? geometry.value.columnGap : BOARD_W.value / fretSpan.value)
+const rowGap = computed(() => BOARD_H.value / Math.max(layout.value.stringCount - 1, 1))
 
 function x(fret: number): number {
-  return MARGIN_LEFT + (fret - layout.value.minFret) * colGap.value
+  return leftMargin.value + (fret - layout.value.minFret) * colGap.value
 }
 
 // Region captions stack on as many lines above the board as their overlaps need (horizontal
@@ -118,12 +160,12 @@ const captionLayout = computed(() =>
       const { left, right } = regionFretEdges(region)
       return { left, right, text: localizedName(region.description) }
     }),
-    VIEW_W,
+    VIEW_W.value,
   ),
 )
 
-const boardTop = computed(() => MARGIN_TOP + captionLayout.value.laneCount * CAPTION_LANE_HEIGHT)
-const viewH = computed(() => boardTop.value + BOARD_H + MARGIN_BOTTOM)
+const boardTop = computed(() => MARGIN_TOP + (study.value ? regionControlLanes.value * 44 - (regionControlLanes.value ? 12 : 0) : captionLayout.value.laneCount * CAPTION_LANE_HEIGHT))
+const viewH = computed(() => boardTop.value + BOARD_H.value + MARGIN_BOTTOM + (study.value ? 16 : 0))
 
 /**
  * X position for a position marker — the middle of the fret space behind
@@ -147,7 +189,7 @@ const boardLeft = computed(() => x(layout.value.minFret))
 // The window never reaches below the nut, so no fret line is drawn or numbered below 0.
 const frets = computed(() => {
   const start = Math.max(Math.ceil(layout.value.minFret), 0)
-  const end = Math.floor(layout.value.maxFret)
+  const end = Math.floor(lastFret.value)
   const result: number[] = []
   for (let fret = start; fret <= end; fret++) result.push(fret)
   return result
@@ -245,6 +287,46 @@ function regionBox(region: Region): { x: number; y: number; width: number; heigh
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
 
+const regionControls = computed(() => {
+  const placed = layout.value.regions.map(region => ({ region, center: Math.max(22, Math.min(regionFretEdges(region).right - 12, VIEW_W.value - 22)), top: 0 }))
+    .sort((a, b) => a.center - b.center)
+  // Pack shared endpoints horizontally, keeping the last control at the final fret.
+  for (let index = placed.length - 2; index >= 0; index--) {
+    placed[index]!.center = Math.min(placed[index]!.center, placed[index + 1]!.center - 44)
+  }
+  for (let index = 0; index < placed.length; index++) {
+    placed[index]!.center = Math.max(placed[index]!.center, index === 0 ? 22 : placed[index - 1]!.center + 44)
+  }
+  // Preserve endpoint anchors; a crowded information rail moves as one row below transport.
+  if (props.controlsWidth && placed.some(control => control.center - 22 < props.controlsWidth)) {
+    placed.forEach(control => { control.top = 44 })
+  }
+  return placed
+})
+const regionControlLanes = computed(() => study.value ? Math.max(props.controlsWidth ? 1 : 0, ...regionControls.value.map(control => 1 + control.top / 44)) : 0)
+const regionOutlines = computed(() => {
+  const placed: { region: Region; lane: number; box: ReturnType<typeof regionBox> }[] = []
+  for (const region of layout.value.regions) {
+    const box = regionBox(region)
+    const overlaps = placed.filter(other => box.x <= other.box.x + other.box.width && box.x + box.width >= other.box.x && box.y <= other.box.y + other.box.height && box.y + box.height >= other.box.y)
+    let lane = 0
+    while (overlaps.some(other => other.lane === lane)) lane++
+    placed.push({ region, lane, box })
+  }
+  return placed.map(({ region, lane, box }) => {
+    const inset = Math.min(lane * 4, box.width / 3, box.height / 3)
+    return { region, box: { x: box.x + inset, y: box.y + inset, width: box.width - 2 * inset, height: box.height - 2 * inset } }
+  })
+})
+const regionPopover = computed(() => {
+  const control = regionControls.value.find(item => item.region.regionId === shownRegion.value)
+  const textWidth = activeRegion.value ? localizedName(activeRegion.value.description).length * 7 + 60 : 140
+  const width = Math.min(248, availableWidth.value - 8, Math.max(140, textWidth))
+  const center = control?.center ?? 22
+  const left = Math.max(boardScrollLeft.value + 4, Math.min(center - width + 20, boardScrollLeft.value + availableWidth.value - width - 4))
+  return { left, width, top: (control?.top ?? 0) + 40, arrow: Math.max(12, Math.min(center - left - 4, width - 20)) }
+})
+
 function regionStyle(region: Region): { fill: string } | undefined {
   return region.color ? { fill: region.color } : undefined
 }
@@ -265,6 +347,7 @@ const hasNotes = computed(() => notedPositions.value.length > 0)
 // An image role would make every marker presentational, hiding answer choices and notes alike.
 const svgRole = computed(() => {
   if (props.selectablePositionIds.length > 0 || props.answerCells.length > 0) return props.multiple ? 'group' : 'radiogroup'
+  if (study.value && layout.value.regions.length) return 'group'
   return hasNotes.value ? 'group' : 'img'
 })
 const noteIdPrefix = useId()
@@ -312,6 +395,10 @@ function closeNotes() {
 }
 
 function onDocumentPointerDown(event: Event) {
+  const target = event.target
+  if (!(target instanceof Element && viewport.value?.contains(target) && target.closest('[data-test="region-description"], [data-test="region-info"], [data-test="diagram-region"]'))) {
+    shownRegion.value = null
+  }
   if (event.target instanceof Element && event.target.closest('[data-note-marker]')) return
   pinnedNote.value = null
 }
@@ -379,14 +466,14 @@ function checkPoints(cx: number, cy: number): string {
  *  any rendered size. */
 function noteAnchor(position: Marker): { left: string; top: string } {
   return {
-    left: `${(markerX(position.fret) / VIEW_W) * 100}%`,
+    left: `${(markerX(position.fret) / VIEW_W.value) * 100}%`,
     top: `${((y(position.string) - 16) / viewH.value) * 100}%`,
   }
 }
 
 /** A marker near either edge anchors the popover's matching edge, so it stays on screen. */
 function noteAlignClass(position: Marker): string {
-  const fraction = markerX(position.fret) / VIEW_W
+  const fraction = markerX(position.fret) / VIEW_W.value
   if (fraction < 0.3) return '-translate-y-full'
   if (fraction > 0.7) return '-translate-x-full -translate-y-full'
   return '-translate-x-1/2 -translate-y-full'
@@ -394,19 +481,48 @@ function noteAlignClass(position: Marker): string {
 </script>
 
 <template>
-  <div class="relative">
+  <div ref="viewport" class="relative min-w-0" :class="study ? 'study-board' : ''">
+    <div data-test="board-scroll" :class="study ? 'overflow-x-auto rounded-lg' : ''" @focusin="revealFocused" @scroll="onBoardScroll">
+    <div class="relative" :style="study ? { width: `${VIEW_W}px` } : undefined">
+    <div v-if="$slots.controls" data-test="diagram-controls" :class="study ? 'pointer-events-none absolute left-0 top-0 z-30' : 'relative z-30'" :style="study ? { width: `${Math.min(availableWidth, VIEW_W)}px` } : undefined" @click.stop>
+      <slot name="controls" />
+    </div>
+    <template v-if="study">
+      <button v-for="control in regionControls" :key="control.region.regionId" type="button" data-test="region-info" class="absolute z-20 flex h-11 w-11 items-center justify-center rounded-md bg-transparent transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]" :style="{ left: `${control.center - 22}px`, top: `${control.top}px`, color: regionColor(control.region) }" :aria-label="localizedName(control.region.description)" :aria-expanded="shownRegion === control.region.regionId" :aria-controls="`${paintId}-region-description`" @click.stop="toggleRegion(control.region)" @keydown.esc="shownRegion = null">
+        <Info :size="16" aria-hidden="true" />
+      </button>
+      <div v-if="activeRegion" :id="`${paintId}-region-description`" data-test="region-description" role="status" class="absolute z-30 rounded-md border border-border bg-surface-raised text-sm leading-relaxed text-ink shadow-level2" :style="{ left: `${regionPopover.left}px`, top: `${regionPopover.top}px`, width: `${regionPopover.width}px`, borderTopColor: regionColor(activeRegion) }" @click.stop @keydown.esc="shownRegion = null">
+        <span aria-hidden="true" class="absolute -top-1 h-2 w-2 rotate-45 border-l border-t bg-surface-raised" :style="{ left: `${regionPopover.arrow}px`, borderColor: regionColor(activeRegion) }" />
+        <div class="flex items-center gap-1 py-2 pl-3 pr-1">
+          <span class="max-h-48 flex-1 overflow-y-auto break-words">{{ localizedName(activeRegion.description) }}</span>
+          <button type="button" :aria-label="t('modalCloseButton.ariaLabel')" class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-ink-muted hover:bg-surface-sunken" @click="shownRegion = null"><X :size="14" aria-hidden="true" /></button>
+        </div>
+      </div>
+    </template>
     <svg
+      data-test="diagram-canvas"
+      :inert="drawingInert || undefined"
+      :aria-hidden="drawingInert || undefined"
       :viewBox="`0 0 ${VIEW_W} ${viewH}`"
       :role="svgRole"
       :aria-label="localizedName(diagram.names)"
-      class="w-full"
-      font-family="monospace"
+      :class="study ? 'block max-w-none' : 'w-full'"
+      :width="study ? VIEW_W : undefined"
+      :height="study ? viewH : undefined"
+      :font-family="study ? 'inherit' : 'monospace'"
     >
       <defs>
-        <linearGradient :id="`fretboard-wood-${diagram.diagram_id}`" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.55" />
-          <stop offset="50%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="1" />
-          <stop offset="100%" stop-color="rgb(var(--color-fretboard-wood))" stop-opacity="0.7" />
+        <linearGradient :id="`${paintId}-wood`" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" :stop-color="study ? 'var(--board-edge)' : 'rgb(var(--color-fretboard-wood))'" :stop-opacity="study ? 1 : 0.55" />
+          <stop offset="50%" :stop-color="study ? 'var(--board-center)' : 'rgb(var(--color-fretboard-wood))'" />
+          <stop offset="100%" :stop-color="study ? 'var(--board-edge)' : 'rgb(var(--color-fretboard-wood))'" :stop-opacity="study ? 1 : 0.7" />
+        </linearGradient>
+        <pattern :id="`${paintId}-grain`" width="240" height="48" patternUnits="userSpaceOnUse">
+          <path d="M-20 8 Q45 1 110 9 T260 5 M-20 18 Q70 28 170 16 T270 22 M-20 35 Q70 27 160 38 T270 31 M-20 43 Q80 35 180 46 T270 40" fill="none" stroke="var(--board-grain)" stroke-width="0.8" opacity="0.12" />
+          <path d="M-20 12 Q75 7 150 15 T270 9 M-20 32 Q85 39 150 29 T270 34" fill="none" stroke="var(--board-grain)" stroke-width="0.4" opacity="0.16" />
+        </pattern>
+        <linearGradient :id="`${paintId}-metal`" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="var(--board-metal-shadow)"/><stop offset="0.45" stop-color="var(--board-metal-light)"/><stop offset="1" stop-color="var(--board-metal-shadow)"/>
         </linearGradient>
       </defs>
 
@@ -414,33 +530,33 @@ function noteAlignClass(position: Marker): string {
         data-test="fretboard-wood"
         :x="boardLeft"
         :y="boardTop - rowGap / 2"
-        :width="MARGIN_LEFT + BOARD_W - boardLeft"
+        :width="leftMargin + BOARD_W - boardLeft"
         :height="BOARD_H + rowGap"
         rx="6"
-        :fill="`url(#fretboard-wood-${diagram.diagram_id})`"
+        :fill="`url(#${paintId}-wood)`"
       />
 
-      <circle
-        v-for="(dot, index) in inlayDots"
-        :key="`inlay-${dot.fret}-${index}`"
-        data-test="fret-inlay"
-        :cx="markerX(dot.fret)"
-        :cy="dot.cy"
-        r="4"
-        class="fill-ink-subtle"
-        opacity="0.4"
-      />
+      <rect v-if="study && texture" data-test="board-grain" :x="boardLeft" :y="boardTop - rowGap / 2" :width="BOARD_W" :height="BOARD_H + rowGap" rx="6" :fill="`url(#${paintId}-grain)`" />
 
       <g v-for="(region, index) in layout.regions" :key="`region-${region.regionId}`">
         <rect
           data-test="diagram-region"
           v-bind="regionBox(region)"
           rx="4"
-          fill-opacity="0.25"
-          :class="region.color ? '' : 'fill-accent'"
-          :style="regionStyle(region)"
+          :fill-opacity="study ? 0.24 : 0.25"
+          :class="study ? 'cursor-pointer focus:outline-none' : region.color ? '' : 'fill-accent'"
+          :style="study ? { fill: regionColor(region) } : regionStyle(region)"
+          :role="study ? 'button' : undefined"
+          :tabindex="study ? 0 : undefined"
+          :aria-label="study ? localizedName(region.description) : undefined"
+          :aria-expanded="study ? shownRegion === region.regionId : undefined"
+          @click.stop="toggleRegion(region)"
+          @keydown.enter.prevent="toggleRegion(region)"
+          @keydown.space.prevent="toggleRegion(region)"
+          @keydown.esc="shownRegion = null"
         />
         <rect
+          v-if="!study"
           data-test="diagram-region-caption-bar"
           :x="regionBox(region).x"
           :y="captionPlacement(index).barY"
@@ -452,6 +568,7 @@ function noteAlignClass(position: Marker): string {
           :style="regionStyle(region)"
         />
         <text
+          v-if="!study"
           data-test="diagram-region-caption"
           :x="captionPlacement(index).textX"
           :y="captionPlacement(index).textY"
@@ -463,33 +580,51 @@ function noteAlignClass(position: Marker): string {
         </text>
       </g>
 
+      <g v-if="study" pointer-events="none">
+        <rect v-for="outline in regionOutlines" :key="outline.region.regionId" data-test="region-outline" v-bind="outline.box" rx="3" fill="none" :stroke="regionColor(outline.region)" stroke-width="2" />
+      </g>
+      <circle
+        v-for="(dot, index) in inlayDots.filter(dot => !study || dot.fret > layout.minFret)"
+        :key="`inlay-${dot.fret}-${index}`"
+        data-test="fret-inlay"
+        :cx="markerX(dot.fret)"
+        :cy="dot.cy"
+        :r="study ? 6 : 4"
+        :class="study ? 'board-inlay' : 'fill-ink-subtle'"
+        :opacity="study ? 1 : 0.4"
+      />
+
+      <rect v-if="study && layout.minFret === 0" data-test="diagram-nut" :x="x(0) - 5" :y="boardTop - rowGap / 2" width="10" :height="BOARD_H + rowGap" rx="2" class="board-nut" />
       <line
         v-for="stringNumber in layout.stringCount"
         :key="`string-${stringNumber}`"
         data-test="diagram-string"
         :x1="boardLeft"
         :y1="y(stringNumber)"
-        :x2="MARGIN_LEFT + BOARD_W"
+        :x2="leftMargin + BOARD_W"
         :y2="y(stringNumber)"
-        class="stroke-border"
-        stroke-width="1.2"
+          :class="study ? 'board-string' : 'stroke-border'"
+        :stroke-width="study ? (instrument.string_count === 6 ? 0.9 + (stringNumber - 1) * 0.48 : 1.6) : 1.2"
       />
 
       <g v-for="fret in frets" :key="`fret-${fret}`">
-        <line
+        <rect v-if="study && fret !== 0" :x="x(fret) - 1.5" :y="boardTop - rowGap / 2" width="3" :height="BOARD_H + rowGap" :fill="`url(#${paintId}-metal)`" />
+        <line v-if="!study"
           :x1="x(fret)"
           :y1="boardTop - 6"
           :x2="x(fret)"
           :y2="boardTop + BOARD_H + 6"
-          class="stroke-ink-subtle"
-          stroke-width="2"
+          :class="study ? '' : 'stroke-ink-subtle'"
+          :stroke="study ? `url(#${paintId}-metal)` : undefined"
+          :stroke-width="study ? 3 : 2"
         />
         <text
           data-test="fret-number"
-          :x="x(fret)"
-          :y="boardTop + BOARD_H + 24"
+          v-if="!study || fret > layout.minFret || fret === 0"
+          :x="study ? markerX(fret) : x(fret)"
+          :y="boardTop + BOARD_H + (study ? 48 : 24)"
           text-anchor="middle"
-          font-size="12"
+          :font-size="study ? 14 : 12"
           class="fill-ink-muted"
         >
           {{ fret }}
@@ -515,9 +650,10 @@ function noteAlignClass(position: Marker): string {
           data-test="diagram-choice-target"
           :cx="markerX(position.fret)"
           :cy="y(position.string)"
-          r="21"
+          :r="study ? 22 : 21"
           fill="transparent"
         />
+        <circle v-if="study && !position.hidden && activePositionIds.includes(position.positionId)" data-test="diagram-playing" :data-position-id="position.positionId" :cx="markerX(position.fret)" :cy="y(position.string)" r="22" fill="none" class="board-playing" stroke-width="3" stroke-dasharray="4 3" />
         <g
           :opacity="position.hidden ? 0.35 : undefined"
           :data-test="position.hidden ? 'diagram-position-hidden' : undefined"
@@ -527,17 +663,17 @@ function noteAlignClass(position: Marker): string {
           data-test="diagram-position"
           :cx="markerX(position.fret)"
           :cy="y(position.string)"
-          r="13.5"
+          :r="study ? 18 : 13.5"
           :class="shapeClass(position)"
           :style="shapeStyle(position)"
         />
         <rect
           v-else-if="position.shape === 'square'"
           data-test="diagram-position"
-          :x="markerX(position.fret) - 12"
-          :y="y(position.string) - 12"
-          width="24"
-          height="24"
+          :x="markerX(position.fret) - (study ? 17 : 12)"
+          :y="y(position.string) - (study ? 17 : 12)"
+          :width="study ? 34 : 24"
+          :height="study ? 34 : 24"
           rx="3"
           :class="shapeClass(position)"
           :style="shapeStyle(position)"
@@ -545,7 +681,7 @@ function noteAlignClass(position: Marker): string {
         <polygon
           v-else
           data-test="diagram-position"
-          :points="starPolygonPoints(markerX(position.fret), y(position.string), 15, 6.5)"
+          :points="starPolygonPoints(markerX(position.fret), y(position.string), study ? 21 : 15, study ? 11 : 6.5)"
           :class="shapeClass(position)"
           :style="shapeStyle(position)"
         />
@@ -555,16 +691,16 @@ function noteAlignClass(position: Marker): string {
           :x="markerX(position.fret)"
           :y="y(position.string) + 4.5"
           text-anchor="middle"
-          font-size="11.5"
+          :font-size="study ? 14 : 11.5"
           font-weight="600"
-          :class="labelClass(position)"
-          :style="labelStyle(position)"
+          :class="study ? 'study-position-label' : labelClass(position)"
+          :style="study ? undefined : labelStyle(position)"
         >
           {{ markerLabel(position) }}
         </text>
         </g>
         <circle
-          v-if="!position.hidden && props.activePositionIds.includes(position.positionId)"
+          v-if="!study && !position.hidden && props.activePositionIds.includes(position.positionId)"
           data-test="diagram-position-playing"
           :cx="markerX(position.fret)"
           :cy="y(position.string)"
@@ -658,6 +794,8 @@ function noteAlignClass(position: Marker): string {
         </g>
       </g>
     </svg>
+    </div>
+    </div>
 
     <div
       v-for="position in notedPositions"
@@ -674,3 +812,21 @@ function noteAlignClass(position: Marker): string {
     </div>
   </div>
 </template>
+
+<style scoped>
+.study-board {
+  --board-edge: #241a18;
+  --board-center: #493025;
+  --board-grain: #ca9465;
+  --board-metal-shadow: #898882;
+  --board-metal-light: #f1eee5;
+  --board-ivory: #eee4c9;
+  --board-playing: #ffd580;
+}
+.board-inlay { fill: var(--board-ivory); }
+.board-string { stroke: var(--board-metal-light); filter: drop-shadow(0 1px 1px #000); }
+.board-nut { fill: var(--board-ivory); stroke: var(--board-metal-shadow); }
+.board-playing { stroke: var(--board-playing); }
+.study-board [data-test="diagram-region"]:focus-visible { stroke-width: 4; stroke-dasharray: 5 3; }
+.study-position-label { fill: #17131b; stroke: #fff8e9; stroke-width: 3px; paint-order: stroke; font-weight: 800; }
+</style>
