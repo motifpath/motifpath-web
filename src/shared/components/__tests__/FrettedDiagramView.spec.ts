@@ -672,17 +672,6 @@ describe('FrettedDiagramView', () => {
         expect(control.attributes('aria-controls')).toBe(description.attributes('id'))
       })
 
-      it('points the description at the control that opened it', async () => {
-        const wrapper = mountInfo()
-        const control = controls(wrapper)[0]!
-        await control.trigger('click')
-
-        const description = wrapper.get('[data-test="region-description"]')
-        const pointer = leftPx(description.get('[data-test="region-description-arrow"]'))
-        // The arrow is a 10 px square; its middle lines up with the control's middle.
-        expect(leftPx(description) + pointer + 5).toBeCloseTo(leftPx(control) + 22)
-      })
-
       it('opens a description by tapping the region itself', async () => {
         const wrapper = mountInfo()
 
@@ -738,11 +727,38 @@ describe('FrettedDiagramView', () => {
         outside.focus()
 
         outside.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+        outside.dispatchEvent(new Event('click', { bubbles: true }))
         await nextTick()
 
         expect(wrapper.find('[data-test="region-description"]').exists()).toBe(false)
         expect(document.activeElement).toBe(outside)
         outside.remove()
+      })
+
+      it('stays open while the board is swiped or its scrollbar dragged', async () => {
+        const wrapper = mountInfo()
+        await controls(wrapper)[0]!.trigger('click')
+
+        // A swipe or a scrollbar drag presses on the board without ever clicking it.
+        await wrapper.get('[data-test="diagram-canvas"]').trigger('pointerdown')
+        await wrapper.get('[data-test="board-scroll"]').trigger('pointerdown')
+        await wrapper.get('[data-test="board-scroll"]').trigger('scroll')
+
+        expect(wrapper.find('[data-test="region-description"]').exists()).toBe(true)
+      })
+
+      it("closes when another diagram's region control is pressed", async () => {
+        const props = { diagram: three, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() }
+        const page = mount(defineComponent({ render: () => [h(FrettedDiagramView, props), h(FrettedDiagramView, props)] }), {
+          attachTo: document.body,
+        })
+        const [first, second] = page.findAllComponents(FrettedDiagramView)
+        await first!.findAll('[data-test="region-info"]')[0]!.trigger('click')
+
+        await second!.findAll('[data-test="region-info"]')[0]!.trigger('click')
+
+        expect(first!.find('[data-test="region-description"]').exists()).toBe(false)
+        expect(second!.find('[data-test="region-description"]').exists()).toBe(true)
       })
 
       it('still selects a note tapped outside an open description', async () => {

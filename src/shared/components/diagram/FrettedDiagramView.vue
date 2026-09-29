@@ -434,16 +434,28 @@ function closeNotes() {
 }
 
 function onDocumentPointerDown(event: Event) {
-  const target = event.target instanceof Element ? event.target : null
-  // A press anywhere but this drawing's region controls, description or bands closes the
-  // description, without taking focus; the press still does whatever it does there.
-  if (!(target && container.value?.contains(target) && target.closest('[data-region-ui]'))) shownRegionId.value = null
-  if (target?.closest('[data-note-marker]')) return
+  if (event.target instanceof Element && event.target.closest('[data-note-marker]')) return
   pinnedNote.value = null
 }
 
-onMounted(() => document.addEventListener('pointerdown', onDocumentPointerDown))
-onUnmounted(() => document.removeEventListener('pointerdown', onDocumentPointerDown))
+/** A click anywhere but this drawing's region controls, description or bands closes the
+ *  description, without taking focus; the click still does whatever it does there. A click, not a
+ *  press, so swiping the board or dragging its scrollbar leaves the description open. Listened to
+ *  while capturing, so it's seen even where a click stops propagating (another diagram's rail). */
+function onDocumentClick(event: Event) {
+  const target = event.target instanceof Element ? event.target : null
+  if (target && container.value?.contains(target) && target.closest('[data-region-ui]')) return
+  shownRegionId.value = null
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', onDocumentPointerDown)
+  document.addEventListener('click', onDocumentClick, true)
+})
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', onDocumentPointerDown)
+  document.removeEventListener('click', onDocumentClick, true)
+})
 
 function isChoice(position: Marker): boolean {
   return props.selectablePositionIds.includes(position.positionId)
