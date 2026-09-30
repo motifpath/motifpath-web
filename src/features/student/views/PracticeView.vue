@@ -100,6 +100,7 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         :reference="practiceReference(props.nodeId, session.currentExercise.value.exercise_id)"
         :path-title="titles.pathTitle.value"
         :lesson-title="titles.lessonTitle.value"
+        raised
       />
 
       <div class="sticky bottom-0 -mx-4 flex items-center justify-between border-t border-border bg-surface px-4 py-3">

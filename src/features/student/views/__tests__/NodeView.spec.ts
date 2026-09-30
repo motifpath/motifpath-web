@@ -47,7 +47,7 @@ vi.mock('@/features/student/components/SendToTeacher.vue', async () => {
   return {
     default: defineComponent({
       name: 'SendToTeacher',
-      props: { reference: String, pathTitle: String, lessonTitle: String },
+      props: { reference: String, pathTitle: String, lessonTitle: String, raised: Boolean },
       setup: () => () => h('div', { 'data-test': 'send-to-teacher-stub' }),
     }),
   }
@@ -618,6 +618,7 @@ describe('NodeView', () => {
         reference: 'L-node-abc',
         pathTitle: 'Blues Basics',
         lessonTitle: 'Shuffle in E',
+        raised: false,
       })
     })
 
