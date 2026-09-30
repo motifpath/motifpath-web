@@ -8,10 +8,12 @@ import SectionedPathList, { type PathBuilderItem } from '@/features/teacher/comp
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import { useCreateLearningPath } from '@/features/teacher/composables/useCreateLearningPath'
 import { useLearningPath } from '@/features/teacher/composables/useLearningPath'
+import { useLearningPathPublishing } from '@/features/teacher/composables/useLearningPathPublishing'
 import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
 import { useReplaceLearningPath } from '@/features/teacher/composables/useReplaceLearningPath'
 import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
+import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import LevelPicker from '@/shared/components/LevelPicker.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -23,11 +25,14 @@ import { useCurrentUserStore } from '@/stores/currentUser'
 import type { components } from '@/api/generated/core-domain'
 
 type LearningPath = components['schemas']['LearningPath']
+type PublishRequirement = components['schemas']['LearningPathNotPublishableError']['missing'][number]
 
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
+// Only an admin publishes and unpublishes paths.
+const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
@@ -49,8 +54,12 @@ const {
 const { contentNodes } = useListContentNodes({ loadAll: true })
 const { createLearningPath } = useCreateLearningPath()
 const { replaceLearningPath } = useReplaceLearningPath()
+const { publishLearningPath, unpublishLearningPath } = useLearningPathPublishing()
 
 const title = ref('')
+const summary = ref('')
+const language = ref<string | null>(null)
+const status = ref<LearningPath['status'] | null>(null)
 // A path saved before levels existed has none, and can't be saved again until one is chosen.
 const level = ref<DifficultyLevel | null>(null)
 const instrumentIds = ref<string[]>([])
@@ -61,6 +70,9 @@ const savedLearningPathId = ref('')
 
 function loadFromLearningPath(learningPath: LearningPath) {
   title.value = learningPath.title
+  summary.value = learningPath.summary ?? ''
+  language.value = learningPath.language ?? null
+  status.value = learningPath.status
   level.value = learningPath.level ?? null
   instrumentIds.value = [...learningPath.instrument_ids]
   thumbnailUrl.value = learningPath.thumbnail_url
@@ -126,12 +138,16 @@ const canSave = computed(
   () => !saving.value && !thumbnailUploading.value && items.value.length > 0 && level.value !== null,
 )
 
-async function save() {
-  if (level.value === null) return
+// Saves the form, returning the saved path, or null once the failure is reported.
+async function saveForm(): Promise<LearningPath | null> {
+  if (level.value === null) return null
   saving.value = true
   const isUpdate = !!savedLearningPathId.value
+  const trimmedSummary = summary.value.trim()
   const request = {
     title: title.value,
+    ...(trimmedSummary ? { summary: trimmedSummary } : {}),
+    ...(language.value ? { language: language.value } : {}),
     level: level.value,
     instrument_ids: [...instrumentIds.value],
     ...(thumbnailUrl.value ? { thumbnail_url: thumbnailUrl.value } : {}),
@@ -146,15 +162,66 @@ async function save() {
       ? await replaceLearningPath(savedLearningPathId.value, request)
       : await createLearningPath(request)
     loadFromLearningPath(learningPath)
-
-    justSaved.value = true
-    clearTimeout(justSavedTimeout)
-    justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
-    toast.success(isUpdate ? t('pathBuilderView.pathUpdated') : t('pathBuilderView.pathCreated'))
+    return learningPath
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('pathBuilderView.saveFailed'))
+    return null
   } finally {
     saving.value = false
+  }
+}
+
+async function save() {
+  const isUpdate = !!savedLearningPathId.value
+  if (!(await saveForm())) return
+  justSaved.value = true
+  clearTimeout(justSavedTimeout)
+  justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
+  toast.success(isUpdate ? t('pathBuilderView.pathUpdated') : t('pathBuilderView.pathCreated'))
+}
+
+const publishing = ref(false)
+// What the last refused publish said the path still lacks.
+const missingToPublish = ref<string[]>([])
+
+function requirementLabel(requirement: PublishRequirement, unpublishedIds: string[]): string {
+  if (requirement !== 'unpublished_content') return t(`pathBuilderView.requirement.${requirement}`)
+  const titles = items.value
+    .filter((item) => unpublishedIds.includes(item.content_node_id))
+    .map((item) => item.title)
+  return t('pathBuilderView.requirement.unpublishedContent', { titles: titles.join(', ') })
+}
+
+// Publishing saves the form first, so what gets published is what the author sees.
+async function publish() {
+  publishing.value = true
+  try {
+    const saved = await saveForm()
+    if (!saved) return
+    const result = await publishLearningPath(saved.learning_path_id)
+    if (result.outcome === 'not-publishable') {
+      missingToPublish.value = result.missing.map((m) => requirementLabel(m, result.unpublishedContentNodeIds))
+      return
+    }
+    missingToPublish.value = []
+    loadFromLearningPath(result.learningPath)
+    toast.success(t('pathBuilderView.published'))
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : t('pathBuilderView.publishFailed'))
+  } finally {
+    publishing.value = false
+  }
+}
+
+async function unpublish() {
+  publishing.value = true
+  try {
+    loadFromLearningPath(await unpublishLearningPath(savedLearningPathId.value))
+    toast.success(t('pathBuilderView.unpublished'))
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : t('pathBuilderView.unpublishFailed'))
+  } finally {
+    publishing.value = false
   }
 }
 </script>
@@ -201,6 +268,72 @@ async function save() {
           :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
         />
         <span class="text-sm text-ink-subtle">{{ t('pathBuilderView.titleHint') }}</span>
+      </div>
+
+      <div
+        v-if="savedLearningPathId && status"
+        data-test="publishing"
+        class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
+      >
+        <div class="flex flex-wrap items-center gap-3">
+          <span
+            data-test="path-status"
+            class="rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-semibold text-accent-text"
+          >{{ t(`pathStatus.${status}`) }}</span>
+          <template v-if="isAdmin">
+            <button
+              v-if="status === 'draft'"
+              type="button"
+              data-test="publish"
+              class="rounded-md bg-accent px-3 py-1.5 text-[0.8125rem] font-semibold text-accent-fg disabled:opacity-50"
+              :disabled="publishing || !canSave"
+              @click="publish"
+            >
+              {{ t('pathBuilderView.publish') }}
+            </button>
+            <button
+              v-else
+              type="button"
+              data-test="unpublish"
+              class="rounded-md border border-border px-3 py-1.5 text-[0.8125rem] font-semibold text-ink disabled:opacity-50"
+              :disabled="publishing"
+              @click="unpublish"
+            >
+              {{ t('pathBuilderView.unpublish') }}
+            </button>
+          </template>
+          <span v-else class="text-sm text-ink-subtle">{{ t('pathBuilderView.adminPublishes') }}</span>
+        </div>
+        <div v-if="missingToPublish.length" data-test="publish-missing" class="flex flex-col gap-1 text-sm text-ink-muted">
+          <span class="font-semibold text-ink">{{ t('pathBuilderView.missingHeading') }}</span>
+          <ul class="list-disc pl-5">
+            <li v-for="requirement in missingToPublish" :key="requirement">{{ requirement }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="path-summary" class="text-sm font-semibold">{{ t('pathBuilderView.summaryLabel') }}</label>
+        <textarea
+          id="path-summary"
+          v-model="summary"
+          data-test="path-summary"
+          rows="3"
+          :placeholder="t('pathBuilderView.summaryPlaceholder')"
+          class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="path-language" class="text-sm font-semibold">{{ t('pathBuilderView.languageLabel') }}</label>
+        <LanguageSelect
+          id="path-language"
+          v-model="language"
+          data-test="path-language"
+          :empty-label="t('pathBuilderView.noLanguage')"
+          class="w-fit"
+        />
+        <span class="text-sm text-ink-subtle">{{ t('pathBuilderView.publishNeeds') }}</span>
       </div>
 
       <div class="flex flex-col gap-2">

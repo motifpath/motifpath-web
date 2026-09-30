@@ -360,7 +360,27 @@
     "levelLabel": "Nível",
     "levelRequired": "Escolha um nível para salvar esta trilha.",
     "instrumentsLabel": "Instrumentos",
-    "thumbnailLabel": "Miniatura"
+    "thumbnailLabel": "Miniatura",
+    "summaryLabel": "Resumo",
+    "summaryPlaceholder": "O que o aluno vai ganhar com esta trilha?",
+    "languageLabel": "Idioma",
+    "noLanguage": "Nenhum idioma ainda",
+    "publishNeeds": "Uma trilha precisa de resumo e idioma para ser publicada.",
+    "publish": "Publicar",
+    "unpublish": "Despublicar",
+    "published": "Trilha publicada.",
+    "unpublished": "Trilha despublicada.",
+    "publishFailed": "Não foi possível publicar a trilha.",
+    "unpublishFailed": "Não foi possível despublicar a trilha.",
+    "adminPublishes": "Um administrador publica as trilhas.",
+    "missingHeading": "Para publicar esta trilha, falta:",
+    "requirement": {
+      "summary": "Um resumo",
+      "language": "Um idioma",
+      "level": "Um nível",
+      "items": "Pelo menos uma lição",
+      "unpublishedContent": "Lições publicadas (ainda não: {titles})"
+    }
   },
   "pathListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",

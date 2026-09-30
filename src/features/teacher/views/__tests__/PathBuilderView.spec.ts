@@ -33,6 +33,11 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
   }),
 }))
 
+const toast = { success: vi.fn(), error: vi.fn() }
+vi.mock('@/shared/composables/useToast', () => ({
+  useToast: () => toast,
+}))
+
 function mockMatchMedia(compact: boolean): void {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches: compact,
@@ -64,6 +69,7 @@ const learningPathFixture = {
   learning_path_id: 'lp-1',
   teacher: { user_id: 't-1', display_name: 'Teacher One' },
   title: 'Beginner path',
+  status: 'draft',
   level: 'intermediate',
   instrument_ids: ['i-guitar'],
   thumbnail_url: 'https://cdn.test/thumbnails/path.png',
@@ -109,6 +115,7 @@ describe('PathBuilderView', () => {
     DELETE.mockReset()
     route.params = {}
     currentUser.profile.role = 'teacher'
+    vi.clearAllMocks()
     mockMatchMedia(false)
     routeGET({})
   })
@@ -156,6 +163,15 @@ describe('PathBuilderView', () => {
           items: [{ content_node_id: 'cn-1', section_label: undefined }],
         },
       })
+    })
+
+    it('shows no publishing controls before the path is first saved', async () => {
+      currentUser.profile.role = 'admin'
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="path-status"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="publish"]').exists()).toBe(false)
     })
 
     it('disables save until a level is chosen', async () => {
@@ -264,6 +280,141 @@ describe('PathBuilderView', () => {
 
       expect(wrapper.text()).not.toContain('Open position triads')
       expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('pre-fills the summary and language, and sends them on save', async () => {
+      const described = { ...learningPathFixture, summary: 'Triads everywhere.', language: 'en' }
+      routeGET({ '/learning-paths/{learning_path_id}': { data: described, error: undefined, response: { status: 200 } } })
+      PUT.mockResolvedValueOnce({ data: described, error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect((wrapper.get('[data-test="path-summary"]').element as HTMLTextAreaElement).value).toBe('Triads everywhere.')
+      expect((wrapper.get('[data-test="path-language"]').element as HTMLSelectElement).value).toBe('en')
+
+      await wrapper.get('[data-test="path-summary"]').setValue('  Triads up the neck.  ')
+      await wrapper.get('[data-test="path-language"]').setValue('pt_BR')
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(PUT.mock.calls[0]?.[1].body).toMatchObject({ summary: 'Triads up the neck.', language: 'pt_BR' })
+    })
+
+    it("shows the path's status, and offers a teacher no publishing control", async () => {
+      routeGET({ '/learning-paths/{learning_path_id}': { data: learningPathFixture, error: undefined, response: { status: 200 } } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="path-status"]').text()).toBe('Draft')
+      expect(wrapper.find('[data-test="publish"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="unpublish"]').exists()).toBe(false)
+    })
+
+    describe('as an admin', () => {
+      beforeEach(() => {
+        currentUser.profile.role = 'admin'
+      })
+
+      it('saves the path, then publishes it', async () => {
+        routeGET({ '/learning-paths/{learning_path_id}': { data: learningPathFixture, error: undefined, response: { status: 200 } } })
+        PUT.mockResolvedValueOnce({ data: learningPathFixture, error: undefined, response: { status: 200 } })
+        POST.mockResolvedValueOnce({ data: { ...learningPathFixture, status: 'published' }, error: undefined, response: { status: 200 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="publish"]').trigger('click')
+        await flushPromises()
+
+        expect(PUT).toHaveBeenCalledTimes(1)
+        expect(POST).toHaveBeenCalledWith('/learning-paths/{learning_path_id}/publish', {
+          params: { path: { learning_path_id: 'lp-1' } },
+        })
+        expect(wrapper.get('[data-test="path-status"]').text()).toBe('Published')
+        expect(wrapper.find('[data-test="publish"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="unpublish"]').exists()).toBe(true)
+        expect(toast.success).toHaveBeenCalled()
+      })
+
+      it('names what a refused publish is missing, down to the unpublished lessons', async () => {
+        routeGET({ '/learning-paths/{learning_path_id}': { data: learningPathFixture, error: undefined, response: { status: 200 } } })
+        PUT.mockResolvedValueOnce({ data: learningPathFixture, error: undefined, response: { status: 200 } })
+        POST.mockResolvedValueOnce({
+          data: undefined,
+          error: {
+            message: 'learning path is not publishable',
+            missing: ['summary', 'language', 'unpublished_content'],
+            unpublished_content_node_ids: ['cn-1'],
+          },
+          response: { status: 409 },
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="publish"]').trigger('click')
+        await flushPromises()
+
+        const missing = wrapper.get('[data-test="publish-missing"]')
+        expect(missing.findAll('li').map((li) => li.text())).toEqual([
+          'A summary',
+          'A language',
+          'Published lessons (not yet: Open position triads)',
+        ])
+        expect(wrapper.get('[data-test="path-status"]').text()).toBe('Draft')
+      })
+
+      it('clears the missing list once the path publishes', async () => {
+        routeGET({ '/learning-paths/{learning_path_id}': { data: learningPathFixture, error: undefined, response: { status: 200 } } })
+        PUT.mockResolvedValue({ data: learningPathFixture, error: undefined, response: { status: 200 } })
+        POST.mockResolvedValueOnce({
+          data: undefined,
+          error: { message: 'learning path is not publishable', missing: ['summary'] },
+          response: { status: 409 },
+        })
+        POST.mockResolvedValueOnce({ data: { ...learningPathFixture, status: 'published' }, error: undefined, response: { status: 200 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="publish"]').trigger('click')
+        await flushPromises()
+        await wrapper.get('[data-test="publish"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="publish-missing"]').exists()).toBe(false)
+      })
+
+      it('unpublishes a published path', async () => {
+        const published = { ...learningPathFixture, status: 'published' }
+        routeGET({ '/learning-paths/{learning_path_id}': { data: published, error: undefined, response: { status: 200 } } })
+        POST.mockResolvedValueOnce({ data: learningPathFixture, error: undefined, response: { status: 200 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="unpublish"]').trigger('click')
+        await flushPromises()
+
+        expect(POST).toHaveBeenCalledWith('/learning-paths/{learning_path_id}/unpublish', {
+          params: { path: { learning_path_id: 'lp-1' } },
+        })
+        expect(wrapper.get('[data-test="path-status"]').text()).toBe('Draft')
+      })
+
+      it('reports why an unpublish was refused', async () => {
+        const published = { ...learningPathFixture, status: 'published' }
+        routeGET({ '/learning-paths/{learning_path_id}': { data: published, error: undefined, response: { status: 200 } } })
+        POST.mockResolvedValueOnce({
+          data: undefined,
+          error: { message: 'learning path is used by a published course' },
+          response: { status: 409 },
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="unpublish"]').trigger('click')
+        await flushPromises()
+
+        expect(toast.error).toHaveBeenCalledWith('Learning path is used by a published course')
+        expect(wrapper.get('[data-test="path-status"]').text()).toBe('Published')
+      })
     })
 
     it('shows an error state with retry when loading the learning path fails', async () => {

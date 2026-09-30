@@ -360,7 +360,27 @@
     "levelLabel": "Level",
     "levelRequired": "Choose a level to save this path.",
     "instrumentsLabel": "Instruments",
-    "thumbnailLabel": "Thumbnail"
+    "thumbnailLabel": "Thumbnail",
+    "summaryLabel": "Summary",
+    "summaryPlaceholder": "What will a learner get from this path?",
+    "languageLabel": "Language",
+    "noLanguage": "No language yet",
+    "publishNeeds": "A path needs a summary and a language before it can be published.",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "published": "Path published.",
+    "unpublished": "Path unpublished.",
+    "publishFailed": "Couldn't publish the path.",
+    "unpublishFailed": "Couldn't unpublish the path.",
+    "adminPublishes": "An admin publishes paths.",
+    "missingHeading": "Before this path can be published, it needs:",
+    "requirement": {
+      "summary": "A summary",
+      "language": "A language",
+      "level": "A level",
+      "items": "At least one lesson",
+      "unpublishedContent": "Published lessons (not yet: {titles})"
+    }
   },
   "pathListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
