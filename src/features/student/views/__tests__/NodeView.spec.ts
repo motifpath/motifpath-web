@@ -622,6 +622,15 @@ describe('NodeView', () => {
       })
     })
 
+    it('floats higher on a short screen, clear of the player controls a full-height video puts at the bottom', async () => {
+      isShortViewport.value = true
+      setLesson({})
+
+      const wrapper = await mountView()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('raised')).toBe(true)
+    })
+
     it.each<LessonNodeState>(['unsupported', 'no-media'])('is offered on an unlocked %s lesson', async (state) => {
       setLesson({ state })
 

@@ -280,11 +280,15 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
       </div>
     </template>
 
+    <!-- On a short screen the video fills the height, so its control bar —
+         fullscreen button last, in the corner — sits where the floating
+         button would; the button floats higher there to leave it reachable. -->
     <SendToTeacher
       v-if="canAskTeacher"
       :reference="lessonReference(nodeId)"
       :path-title="lesson.pathTitle.value"
       :lesson-title="lesson.node.value?.title"
+      :raised="isShortViewport"
     />
   </section>
 </template>
