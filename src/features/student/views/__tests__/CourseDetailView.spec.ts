@@ -116,7 +116,7 @@ describe('CourseDetailView', () => {
     expect(wrapper.get('[data-test="course-detail-title"]').text()).toBe('Fingerstyle journey')
     expect(wrapper.get('[data-test="course-detail-byline"]').text()).toContain('Bob Martins')
     expect(wrapper.get('[data-test="course-detail-lessons"]').text()).toBe('12 lessons')
-    expect(wrapper.get('[data-test="course-detail-checkpoints"]').text()).toBe('3 checkpoints')
+    expect(wrapper.get('[data-test="course-detail-checkpoints"]').text()).toBe('3 learning paths')
     expect(wrapper.get('[data-test="enroll"]').text()).toBe('Enroll')
   })
 
@@ -149,5 +149,20 @@ describe('CourseDetailView', () => {
     published.notFound.value = true
 
     expect(mountView().find('[data-test="not-found"]').exists()).toBe(true)
+  })
+
+  it('renders a legacy published response that lacks presentation metadata', () => {
+    const legacyCourse = course() as unknown as Record<string, unknown>
+    delete legacyCourse.created_by
+    delete legacyCourse.lesson_count
+    delete legacyCourse.checkpoint_count
+    published.course.value = legacyCourse as unknown as CourseDetail
+
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="course-detail-title"]').text()).toBe('Fingerstyle journey')
+    expect(wrapper.find('[data-test="course-detail-byline"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="course-detail-lessons"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="course-detail-checkpoints"]').exists()).toBe(false)
   })
 })

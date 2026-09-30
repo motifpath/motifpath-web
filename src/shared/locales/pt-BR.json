@@ -205,6 +205,6 @@
     "label": "Curso",
     "byline": "por {name}",
     "lessons": "{count} lição | {count} lições",
-    "checkpoints": "{count} etapa | {count} etapas"
+    "learningPaths": "{count} trilha de aprendizagem | {count} trilhas de aprendizagem"
   }
 }

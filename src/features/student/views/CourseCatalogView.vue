@@ -134,10 +134,13 @@ async function enroll(course: CourseCatalogEntry) {
             :checkpoint-count="course.checkpoint_count"
             :thumbnail-url="course.thumbnail_url"
           >
-            <template #supporting>
-              <p data-test="course-instruments" class="text-sm text-ink-subtle">
+            <template #badges>
+              <span
+                data-test="course-instruments"
+                class="rounded-full bg-surface-sunken px-2.5 py-0.5"
+              >
                 {{ instrumentsLabel(course.instrument_ids) }}
-              </p>
+              </span>
             </template>
             <template #actions>
               <button

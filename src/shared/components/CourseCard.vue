@@ -10,9 +10,9 @@ type UserRef = components['schemas']['UserRef']
 defineProps<{
   title: string
   summary: string
-  createdBy: UserRef
+  createdBy?: UserRef
   level: CourseLevel
-  checkpointCount: number
+  checkpointCount?: number
   lessonCount?: number
   language?: string
   thumbnailUrl?: string
@@ -57,15 +57,15 @@ const { t } = useTypedT()
       </div>
 
       <p data-test="course-summary" class="line-clamp-2 text-sm text-ink-muted">{{ summary }}</p>
-      <p data-test="course-byline" class="text-sm text-ink-subtle">
+      <p v-if="createdBy" data-test="course-byline" class="text-sm text-ink-subtle">
         {{ t('courseCard.byline', { name: createdBy.display_name }) }}
       </p>
       <div class="flex flex-wrap gap-2 text-sm text-ink-subtle">
         <span v-if="lessonCount !== undefined" data-test="course-lessons">
           {{ t('courseCard.lessons', { count: lessonCount }) }}
         </span>
-        <span data-test="course-checkpoints">
-          {{ t('courseCard.checkpoints', { count: checkpointCount }) }}
+        <span v-if="checkpointCount !== undefined" data-test="course-checkpoints">
+          {{ t('courseCard.learningPaths', { count: checkpointCount }) }}
         </span>
       </div>
       <slot name="supporting" />

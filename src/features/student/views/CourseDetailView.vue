@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
@@ -110,14 +110,18 @@ async function continueCourse() {
           </div>
           <div>
             <h1 data-test="course-detail-title" class="text-3xl font-semibold text-ink">{{ course.title }}</h1>
-            <p data-test="course-detail-byline" class="mt-2 text-sm text-ink-subtle">
+            <p v-if="course.created_by" data-test="course-detail-byline" class="mt-2 text-sm text-ink-subtle">
               {{ t('courseCard.byline', { name: course.created_by.display_name }) }}
             </p>
           </div>
           <p class="text-base text-ink-muted">{{ course.summary }}</p>
           <div class="flex flex-wrap gap-3 text-sm text-ink-subtle">
-            <span data-test="course-detail-lessons">{{ t('courseCard.lessons', { count: course.lesson_count }) }}</span>
-            <span data-test="course-detail-checkpoints">{{ t('courseCard.checkpoints', { count: course.checkpoint_count }) }}</span>
+            <span v-if="course.lesson_count !== undefined" data-test="course-detail-lessons">
+              {{ t('courseCard.lessons', { count: course.lesson_count }) }}
+            </span>
+            <span v-if="course.checkpoint_count !== undefined" data-test="course-detail-checkpoints">
+              {{ t('courseCard.learningPaths', { count: course.checkpoint_count }) }}
+            </span>
           </div>
         </div>
 
@@ -145,7 +149,7 @@ async function continueCourse() {
             class="rounded-lg border border-border bg-surface-raised p-4"
           >
             <h3 class="font-semibold text-ink">
-              {{ t('courseDetailView.checkpoint', { position: checkpoint.position }) }} · {{ checkpoint.title }}
+              {{ t('courseDetailView.learningPath', { position: checkpoint.position }) }} · {{ checkpoint.title }}
             </h3>
             <ul v-if="checkpoint.items.length" class="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-muted">
               <li v-for="item in checkpoint.items" :key="item.title">{{ item.title }}</li>

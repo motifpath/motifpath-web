@@ -35,11 +35,18 @@ describe('CourseCard', () => {
     expect(wrapper.get('[data-test="course-language"]').text()).toContain('EN')
     expect(wrapper.get('[data-test="course-level"]').text()).toBe('Beginner')
     expect(wrapper.get('[data-test="course-lessons"]').text()).toBe('12 lessons')
-    expect(wrapper.get('[data-test="course-checkpoints"]').text()).toBe('3 checkpoints')
+    expect(wrapper.get('[data-test="course-checkpoints"]').text()).toBe('3 learning paths')
     expect(wrapper.get('[data-test="course-card-actions"]').text()).toContain('Details')
   })
 
   it('uses the intentional placeholder when the course has no image', () => {
     expect(mountCard().find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
+  })
+
+  it('keeps the card usable when a legacy response lacks presentation metadata', () => {
+    const wrapper = mountCard({ createdBy: undefined, checkpointCount: undefined })
+
+    expect(wrapper.find('[data-test="course-byline"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="course-checkpoints"]').exists()).toBe(false)
   })
 })

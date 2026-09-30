@@ -105,7 +105,7 @@
     "coursesHeading": "Cursos",
     "pathsHeading": "Outras trilhas",
     "archivedHeading": "Arquivadas",
-    "checkpoint": "Etapa {position} de {count}",
+    "learningPath": "Trilha de aprendizagem {position} de {count}",
     "statusCompleted": "Concluído",
     "statusAbandoned": "Abandonado",
     "assignedBy": "Atribuída por {name}",
@@ -122,7 +122,7 @@
     "enrolledToast": "Você está inscrito em {title}.",
     "continue": "Continuar curso",
     "outlineHeading": "Estrutura do curso",
-    "checkpoint": "Etapa {position}"
+    "learningPath": "Trilha de aprendizagem {position}"
   },
   "courseCompletedView": {
     "loadingNoun": "seu curso",

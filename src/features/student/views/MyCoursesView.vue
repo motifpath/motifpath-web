@@ -77,8 +77,8 @@ const currentStandalonePathId = computed(() =>
 function enrollmentMeta(enrollment: CourseEnrollment): string {
   if (enrollment.status === 'completed') return t('myCoursesView.statusCompleted')
   if (enrollment.status === 'abandoned') return t('myCoursesView.statusAbandoned')
-  return enrollment.active_checkpoint_position
-    ? t('myCoursesView.checkpoint', {
+  return enrollment.active_checkpoint_position && enrollment.checkpoint_count !== undefined
+    ? t('myCoursesView.learningPath', {
         position: enrollment.active_checkpoint_position,
         count: enrollment.checkpoint_count,
       })

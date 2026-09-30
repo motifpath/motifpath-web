@@ -188,7 +188,7 @@ describe('MyCoursesView', () => {
     expect(links.map((l) => l.props('to'))).toContainEqual({ name: 'course-catalog' })
   })
 
-  it('lists each course enrollment with its checkpoint progress and status', () => {
+  it('lists each course enrollment with its learning-path progress and status', () => {
     enrollments.enrollments.value = [
       enrollment(),
       enrollment({
@@ -205,7 +205,7 @@ describe('MyCoursesView', () => {
 
     const wrapper = mountView()
 
-    expect(card(wrapper, 'Fingerstyle journey').text()).toContain('Checkpoint 2 of 3')
+    expect(card(wrapper, 'Fingerstyle journey').text()).toContain('Learning path 2 of 3')
     expect(card(wrapper, 'Jazz voicings').text()).toContain('Completed')
     expect(card(wrapper, 'Blues basics').text()).toContain('Left')
   })
@@ -218,7 +218,19 @@ describe('MyCoursesView', () => {
     expect(pinned.text()).toContain('From first arpeggios to full arrangements.')
     expect(pinned.text()).toContain('Bob Martins')
     expect(pinned.text()).toContain('Beginner')
-    expect(pinned.text()).toContain('3 checkpoints')
+    expect(pinned.text()).toContain('3 learning paths')
+  })
+
+  it('keeps legacy enrollments usable while their presentation metadata is unavailable', () => {
+    const legacyEnrollment = enrollment() as unknown as Record<string, unknown>
+    delete legacyEnrollment.course_created_by
+    delete legacyEnrollment.checkpoint_count
+    enrollments.enrollments.value = [legacyEnrollment as unknown as CourseEnrollment]
+
+    const legacyCard = card(mountView(), 'Fingerstyle journey')
+
+    expect(legacyCard.find('[data-test="course-byline"]').exists()).toBe(false)
+    expect(legacyCard.find('[data-test="course-checkpoints"]').exists()).toBe(false)
   })
 
   it("shows the thumbnail of the course version each enrollment is on, and a placeholder for standalone paths", () => {

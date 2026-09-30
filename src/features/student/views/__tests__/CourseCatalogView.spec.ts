@@ -178,7 +178,7 @@ describe('CourseCatalogView', () => {
     expect(cards[0]!.text()).toContain('From first arpeggios to full arrangements.')
     expect(cards[0]!.text()).toContain('Beginner')
     expect(cards[0]!.text()).toContain('12 lessons')
-    expect(cards[0]!.text()).toContain('3 checkpoints')
+    expect(cards[0]!.text()).toContain('3 learning paths')
     expect(cards[1]!.text()).toContain('Advanced')
   })
 
@@ -206,6 +206,7 @@ describe('CourseCatalogView', () => {
     expect(cards[0]!.get('[data-test="course-language"]').text()).toContain('EN')
     expect(cards[1]!.get('[data-test="course-language"]').text()).toContain('PT')
     expect(cards[0]!.get('[data-test="course-instruments"]').text()).toBe('Guitar, Bass')
+    expect(cards[0]!.get('[data-test="course-instruments"]').classes()).toContain('rounded-full')
     expect(cards[1]!.get('[data-test="course-instruments"]').text()).toBe('Every instrument')
   })
 

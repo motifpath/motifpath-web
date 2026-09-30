@@ -189,7 +189,7 @@ describe('CourseListView', () => {
     expect(rows[0]!.text()).toContain('Fingerstyle Foundations')
     expect(rows[0]!.text()).toContain('Beginner')
     expect(rows[0]!.text()).toContain('12 lessons')
-    expect(rows[0]!.text()).toContain('3 checkpoints')
+    expect(rows[0]!.text()).toContain('3 learning paths')
     expect(rows[0]!.get('[data-test="course-status"]').text()).toBe('Published')
     expect(rows[0]!.find('[data-test="unpublished-changes"]').exists()).toBe(false)
     expect(rows[1]!.find('[data-test="unpublished-changes"]').exists()).toBe(true)

@@ -105,7 +105,7 @@
     "coursesHeading": "Courses",
     "pathsHeading": "Other paths",
     "archivedHeading": "Archived",
-    "checkpoint": "Checkpoint {position} of {count}",
+    "learningPath": "Learning path {position} of {count}",
     "statusCompleted": "Completed",
     "statusAbandoned": "Left",
     "assignedBy": "Assigned by {name}",
@@ -122,7 +122,7 @@
     "enrolledToast": "You are now enrolled in {title}.",
     "continue": "Continue course",
     "outlineHeading": "Course outline",
-    "checkpoint": "Checkpoint {position}"
+    "learningPath": "Learning path {position}"
   },
   "courseCompletedView": {
     "loadingNoun": "your course",
