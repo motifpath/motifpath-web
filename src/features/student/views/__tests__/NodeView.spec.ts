@@ -36,9 +36,22 @@ const lesson = {
   cues: ref<ExpandedContent[]>([]),
   hasChallenge: ref(false),
   completedCourseEnrollmentId: ref<string | null>(null),
+  pathTitle: ref<string | null>('Blues Basics'),
   retry: vi.fn(),
 }
 vi.mock('@/features/student/composables/useLessonNode', () => ({ useLessonNode: () => lesson }))
+
+// The button has its own tests; here only where it appears and what it is given.
+vi.mock('@/features/student/components/SendToTeacher.vue', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    default: defineComponent({
+      name: 'SendToTeacher',
+      props: { reference: String, pathTitle: String, lessonTitle: String, raised: Boolean },
+      setup: () => () => h('div', { 'data-test': 'send-to-teacher-stub' }),
+    }),
+  }
+})
 
 const waitForCompletion = vi.fn()
 vi.mock('@/features/student/composables/useLessonCompletionSync', () => ({
@@ -50,8 +63,10 @@ vi.mock('@/features/student/composables/useLessonCompletionSync', () => ({
 // window.matchMedia, since useMediaQuery's own reactivity to the query is
 // already covered by its own tests.
 const isShortViewport = ref(false)
+// Short in height only — a phone rotated to landscape, not an upright phone.
+const isShortHeight = ref(false)
 vi.mock('@/shared/composables/useMediaQuery', () => ({
-  useMediaQuery: () => ({ matches: isShortViewport }),
+  useMediaQuery: (query: string) => ({ matches: query === '(max-height: 500px)' ? isShortHeight : isShortViewport }),
 }))
 
 const complete = vi.fn()
@@ -120,6 +135,7 @@ describe('NodeView', () => {
     useLessonTracking.mockClear()
     lesson.retry.mockReset()
     isShortViewport.value = false
+    isShortHeight.value = false
     setLesson({})
   })
 
@@ -591,5 +607,61 @@ describe('NodeView', () => {
       expect(wrapper.find('[data-test="practice-link"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="complete"]').exists()).toBe(false)
     })
+  })
+
+  describe('send to your teacher', () => {
+    it('is offered on the lesson with its reference, path title and lesson title', async () => {
+      setLesson({ node: { ...makeVideoNode('node-abc'), title: 'Shuffle in E' } })
+
+      const wrapper = await mountView()
+
+      const button = wrapper.findComponent({ name: 'SendToTeacher' })
+      expect(button.exists()).toBe(true)
+      expect(button.props()).toEqual({
+        reference: 'L-node-abc',
+        pathTitle: 'Blues Basics',
+        lessonTitle: 'Shuffle in E',
+        raised: false,
+      })
+    })
+
+    it('floats higher on a short screen, clear of the player controls a full-height video puts at the bottom', async () => {
+      isShortViewport.value = true
+      isShortHeight.value = true
+      setLesson({})
+
+      const wrapper = await mountView()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('raised')).toBe(true)
+    })
+
+    it('stays in its low corner on an upright phone, whose video does not reach the bottom', async () => {
+      isShortViewport.value = true
+      setLesson({})
+
+      const wrapper = await mountView()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('raised')).toBe(false)
+    })
+
+    it.each<LessonNodeState>(['unsupported', 'no-media'])('is offered on an unlocked %s lesson', async (state) => {
+      setLesson({ state })
+
+      const wrapper = await mountView()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).exists()).toBe(true)
+    })
+
+    it.each<LessonNodeState>(['loading', 'locked', 'not-found', 'error'])(
+      'is not offered while the lesson is %s',
+      async (state) => {
+        setLesson({ state, node: null })
+
+        const wrapper = mount(NodeView, { global: { stubs: { RouterLink: RouterLinkStub } } })
+        await flushPromises()
+
+        expect(wrapper.findComponent({ name: 'SendToTeacher' }).exists()).toBe(false)
+      },
+    )
   })
 })

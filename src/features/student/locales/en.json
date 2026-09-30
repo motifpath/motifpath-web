@@ -97,13 +97,11 @@
   "myCoursesView": {
     "heading": "My learning",
     "findAnotherCourse": "Find another course",
-    "findPath": "Find a path",
     "loadingNoun": "your courses",
     "errorMessage": "We couldn't load your courses and paths.",
     "emptyHeading": "Nothing here yet",
     "emptyMessage": "Enroll in a course or a path and it will show up here.",
     "browseCatalog": "Browse the course catalog",
-    "browsePathCatalog": "Browse the path catalog",
     "coursesHeading": "Courses",
     "pathsHeading": "Other paths",
     "archivedHeading": "Archived",
@@ -111,10 +109,12 @@
     "statusCompleted": "Completed",
     "statusAbandoned": "Left",
     "assignedBy": "Assigned by {name}",
-    "pathProgress": "{completed} of {count} lesson | {completed} of {count} lessons",
     "current": "Current",
-    "open": "Open",
-    "switch": "Switch to this"
+    "switch": "Switch to this",
+    "findPath": "Find a path",
+    "browsePathCatalog": "Browse the path catalog",
+    "pathProgress": "{completed} of {count} lesson | {completed} of {count} lessons",
+    "open": "Open"
   },
   "courseDetailView": {
     "loadingNoun": "the course",
@@ -138,6 +138,16 @@
     "message": "You finished {title}. Great work — keep the momentum going with your next course.",
     "findNextCourse": "Find your next course",
     "myCourses": "My learning"
+  },
+  "sendToTeacher": {
+    "button": "Send to your teacher",
+    "hint": "Opens WhatsApp. Your message goes to the MotifPath team.",
+    "greeting": "Hi!",
+    "greetingNamed": "Hi! I'm {name}.",
+    "pathLine": "Path: {title}",
+    "lessonLine": "Lesson: {title}",
+    "referenceLine": "Ref: {reference}",
+    "prompt": "My question or recording:"
   },
   "pathCatalogView": {
     "heading": "Find a path",

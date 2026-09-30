@@ -97,13 +97,11 @@
   "myCoursesView": {
     "heading": "Meu aprendizado",
     "findAnotherCourse": "Encontrar outro curso",
-    "findPath": "Encontrar uma trilha",
     "loadingNoun": "seus cursos",
     "errorMessage": "Não foi possível carregar seus cursos e trilhas.",
     "emptyHeading": "Nada por aqui ainda",
     "emptyMessage": "Inscreva-se em um curso ou em uma trilha para vê-los aqui.",
     "browseCatalog": "Ver o catálogo de cursos",
-    "browsePathCatalog": "Ver o catálogo de trilhas",
     "coursesHeading": "Cursos",
     "pathsHeading": "Outras trilhas",
     "archivedHeading": "Arquivadas",
@@ -111,10 +109,12 @@
     "statusCompleted": "Concluído",
     "statusAbandoned": "Abandonado",
     "assignedBy": "Atribuída por {name}",
-    "pathProgress": "{completed} de {count} lição | {completed} de {count} lições",
     "current": "Atual",
-    "open": "Abrir",
-    "switch": "Tornar atual"
+    "switch": "Tornar atual",
+    "findPath": "Encontrar uma trilha",
+    "browsePathCatalog": "Ver o catálogo de trilhas",
+    "pathProgress": "{completed} de {count} lição | {completed} de {count} lições",
+    "open": "Abrir"
   },
   "courseDetailView": {
     "loadingNoun": "o curso",
@@ -138,6 +138,16 @@
     "message": "Você concluiu {title}. Excelente trabalho — mantenha o ritmo com seu próximo curso.",
     "findNextCourse": "Encontrar o próximo curso",
     "myCourses": "Meu aprendizado"
+  },
+  "sendToTeacher": {
+    "button": "Enviar ao professor",
+    "hint": "Abre o WhatsApp. Sua mensagem vai para a equipe MotifPath.",
+    "greeting": "Olá!",
+    "greetingNamed": "Olá! Sou {name}.",
+    "pathLine": "Trilha: {title}",
+    "lessonLine": "Lição: {title}",
+    "referenceLine": "Ref: {reference}",
+    "prompt": "Minha dúvida ou gravação:"
   },
   "pathCatalogView": {
     "heading": "Encontre uma trilha",
