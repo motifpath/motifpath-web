@@ -393,7 +393,6 @@
     "noMatchesMessage": "Try fewer filters or a different search.",
     "noMatchesHeading": "No matching paths",
     "searchPlaceholder": "Search paths by title",
-    "onlyMine": "Only my paths",
     "statusTabsLabel": "Status",
     "allStatuses": "All",
     "editPath": "Edit"

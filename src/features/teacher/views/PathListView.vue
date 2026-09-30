@@ -6,7 +6,6 @@ import {
   type LearningPathStatus,
   useLearningPathLibrary,
 } from '@/features/teacher/composables/useLearningPathLibrary'
-import { useOnlyMineFilter } from '@/features/teacher/composables/useOnlyMineFilter'
 import AppBar from '@/shared/components/AppBar.vue'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
@@ -43,7 +42,6 @@ const {
   retry,
   loadMore,
 } = useLearningPathLibrary()
-const { onlyMine, onOnlyMineChange } = useOnlyMineFilter(filters)
 const { instrumentsLabel } = useInstrumentNames()
 
 function statusLabel(tab: LearningPathStatus | null): string {
@@ -95,19 +93,16 @@ function statusLabel(tab: LearningPathStatus | null): string {
         v-model:levels="filters.levels"
         v-model:skill-ids="filters.skillIds"
         v-model:concept-ids="filters.conceptIds"
+        v-model:teacher="filters.teacher"
         v-model:instrument-id="filters.instrumentId"
         v-model:language="filters.language"
         instrument-filter
         language-filter
+        teacher-scope="path-library"
         :search-placeholder="t('pathListView.searchPlaceholder')"
         :has-active-filters="hasActiveFilters"
         @clear="clearFilters"
-      >
-        <label class="flex items-center gap-2 py-2 text-sm text-ink">
-          <input type="checkbox" data-test="path-only-mine" :checked="onlyMine" @change="onOnlyMineChange" />
-          {{ t('pathListView.onlyMine') }}
-        </label>
-      </CourseFilters>
+      />
 
       <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathListView.loadingNoun')" />
 

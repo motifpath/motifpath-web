@@ -393,7 +393,6 @@
     "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
     "noMatchesHeading": "Nenhuma trilha encontrada",
     "searchPlaceholder": "Buscar trilhas pelo título",
-    "onlyMine": "Só as minhas trilhas",
     "statusTabsLabel": "Status",
     "allStatuses": "Todas",
     "editPath": "Editar"

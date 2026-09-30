@@ -42,6 +42,9 @@ vi.mock('@/shared/composables/useListSkills', () => ({
 vi.mock('@/shared/composables/useListConcepts', () => ({
   useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
+vi.mock('@/shared/composables/useCourseCreators', () => ({
+  useCourseCreators: () => ({ creators: ref([]), nameQuery: ref(''), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
 vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => ({
     instruments: ref([{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]),
@@ -196,22 +199,23 @@ describe('PathListView', () => {
     expect(library.status.value).toBeNull()
   })
 
-  it('binds the language and instrument filters, and offers no teacher list', () => {
+  it("binds the language and instrument filters, and offers the library's creators", () => {
     const filters = mountView().getComponent(CourseFilters)
 
     expect(filters.props('languageFilter')).toBe(true)
     expect(filters.props('instrumentFilter')).toBe(true)
-    expect(filters.props('teacherScope')).toBeNull()
+    expect(filters.props('teacherScope')).toBe('path-library')
   })
 
-  it("narrows the list to the teacher's own paths", async () => {
+  it('filters by the creator picked, so an admin can manage another author\'s paths', async () => {
+    currentUser.profile.role = 'admin'
     const wrapper = mountView()
 
-    await wrapper.get('[data-test="path-only-mine"]').setValue(true)
-    expect(library.filters.teacher).toEqual(tomas)
+    wrapper.getComponent(CourseFilters).vm.$emit('update:teacher', { user_id: 'u-carol', display_name: 'Carol Dias' })
+    await flushPromises()
 
-    await wrapper.get('[data-test="path-only-mine"]').setValue(false)
-    expect(library.filters.teacher).toBeNull()
+    expect(library.filters.teacher).toEqual({ user_id: 'u-carol', display_name: 'Carol Dias' })
+    expect(wrapper.find('[data-test="path-only-mine"]').exists()).toBe(false)
   })
 
   it('offers the next page when more paths remain', async () => {
