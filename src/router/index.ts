@@ -132,6 +132,26 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/paths',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'path-catalog',
+        // Open to every role: anyone can learn.
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/PathCatalogView.vue'),
+      },
+      {
+        path: ':learningPathId',
+        name: 'path-detail',
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/PathDetailView.vue'),
+      },
+    ],
+  },
+  {
     // Open to every role: anyone who can hear a diagram play. Signed in only,
     // since the voices it credits (GET /voices) are.
     path: '/credits',

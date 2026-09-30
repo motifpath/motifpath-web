@@ -134,5 +134,33 @@
     "message": "Você concluiu {title}. Excelente trabalho — mantenha o ritmo com seu próximo curso.",
     "findNextCourse": "Encontrar o próximo curso",
     "myCourses": "Meus cursos"
+  },
+  "pathCatalogView": {
+    "heading": "Encontre uma trilha",
+    "loadingNoun": "as trilhas",
+    "errorMessage": "Não foi possível carregar o catálogo de trilhas.",
+    "emptyHeading": "Nenhuma trilha ainda",
+    "emptyMessage": "Novas trilhas aparecerão aqui assim que forem publicadas.",
+    "noMatchesHeading": "Nenhuma trilha encontrada",
+    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
+    "searchPlaceholder": "Buscar trilhas",
+    "enroll": "Inscrever-se",
+    "enrolling": "Inscrevendo…",
+    "continue": "Continuar",
+    "enrolledToast": "Você está inscrito em {title}.",
+    "details": "Detalhes",
+    "moreFromTeacher": "Mais deste professor"
+  },
+  "pathDetailView": {
+    "loadingNoun": "a trilha",
+    "errorMessage": "Não foi possível carregar esta trilha.",
+    "notFoundHeading": "Esta trilha ainda não foi publicada",
+    "notFoundMessage": "Esta trilha não está disponível no catálogo.",
+    "backToCatalog": "Voltar às trilhas",
+    "enroll": "Inscrever-se",
+    "enrolling": "Inscrevendo…",
+    "continue": "Continuar trilha",
+    "enrolledToast": "Você está inscrito em {title}.",
+    "outlineHeading": "Estrutura da trilha"
   }
 }

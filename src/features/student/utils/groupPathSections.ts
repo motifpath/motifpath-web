@@ -7,14 +7,15 @@ type StudentPathItem = components['schemas']['StudentPathItem']
  * section label for a labelled run, or `null` for an item that carries no
  * section label (rendered ungrouped).
  */
-export interface PathSection {
+export interface PathSection<Item = StudentPathItem> {
   label: string | null
-  items: StudentPathItem[]
+  items: Item[]
 }
 
 /**
- * Partitions a flat, ordered list of student path items into sections by
- * collapsing consecutive items that share the same non-empty `section_label`.
+ * Partitions a flat, ordered list of path items (a student's copy or a
+ * catalog outline) into sections by collapsing consecutive items that share
+ * the same non-empty `section_label`.
  *
  * A run of consecutive items with no label (or one that is empty or
  * whitespace-only) collapses into a single `label: null` section, so an
@@ -24,8 +25,8 @@ export interface PathSection {
  * labels differ only by surrounding whitespace still group together (the
  * API normalises this too — this is belt and braces for an older backend).
  */
-export function groupPathSections(items: StudentPathItem[]): PathSection[] {
-  const sections: PathSection[] = []
+export function groupPathSections<Item extends { section_label?: string }>(items: Item[]): PathSection<Item>[] {
+  const sections: PathSection<Item>[] = []
 
   for (const item of items) {
     const trimmed = item.section_label?.trim()

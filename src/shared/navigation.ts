@@ -6,6 +6,7 @@ export type NavLabelKey =
   | 'nav.student'
   | 'nav.myCourses'
   | 'nav.findCourse'
+  | 'nav.findPath'
   | 'nav.content'
   | 'nav.paths'
   | 'nav.courses'
@@ -23,6 +24,7 @@ export const STUDENT_SECTIONS: NavSection[] = [
   { name: 'path', labelKey: 'nav.student' },
   { name: 'my-courses', labelKey: 'nav.myCourses' },
   { name: 'course-catalog', labelKey: 'nav.findCourse' },
+  { name: 'path-catalog', labelKey: 'nav.findPath' },
 ]
 
 /** The authoring sections, for teachers and admins. */
