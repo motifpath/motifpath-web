@@ -111,6 +111,25 @@ describe('CourseDetailView', () => {
     vi.clearAllMocks()
   })
 
+  it('lists every outline item, even when two share a title', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const items = (titles: string[]) => titles.map((title) => ({ title }))
+    published.course.value = course({
+      checkpoints: [{ position: 1, title: 'Open chords', items: items(['Warm-up', 'Practice', 'E major', 'Practice']) }],
+    })
+    const wrapper = mountView()
+
+    published.course.value = course({
+      checkpoints: [{ position: 1, title: 'Open chords', items: items(['Intro', 'Practice', 'A minor', 'Practice', 'D major']) }],
+    })
+    await flushPromises()
+
+    const outline = wrapper.findAll('ol li li').map((item) => item.text())
+    expect(outline).toEqual(['Intro', 'Practice', 'A minor', 'Practice', 'D major'])
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('Duplicate keys')
+    warn.mockRestore()
+  })
+
   it('shows the published snapshot, its byline, and its course scope before enrollment', () => {
     const wrapper = mountView()
 

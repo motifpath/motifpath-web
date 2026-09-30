@@ -165,7 +165,8 @@ async function continueCourse() {
               {{ t('courseDetailView.learningPath', { position: checkpoint.position }) }} · {{ checkpoint.title }}
             </h3>
             <ul v-if="checkpoint.items.length" class="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-muted">
-              <li v-for="item in checkpoint.items" :key="item.title">{{ item.title }}</li>
+              <!-- Outline items carry no id and titles can repeat, so their order is their identity. -->
+              <li v-for="(item, index) in checkpoint.items" :key="index">{{ item.title }}</li>
             </ul>
           </li>
         </ol>
