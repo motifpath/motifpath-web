@@ -108,6 +108,13 @@ describe('useCourseCreators', () => {
     expect(GET).toHaveBeenCalledWith('/diagrams/creators', { params: { query: {} } })
   })
 
+  it('lists the creators of the exercise pool in the exercises scope', async () => {
+    const { isLoading } = useCourseCreators('exercises')
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(GET).toHaveBeenCalledWith('/exercises/creators', { params: { query: {} } })
+  })
+
   it('lists the creators of published paths in the path catalog scope', async () => {
     const { isLoading } = useCourseCreators('path-catalog')
     await vi.waitFor(() => expect(isLoading.value).toBe(false))

@@ -130,7 +130,12 @@
     "loadingNoun": "exercícios",
     "loadErrorMessage": "Não foi possível carregar os exercícios.",
     "emptyHeading": "Ainda não há exercícios",
-    "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável."
+    "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável.",
+    "searchPlaceholder": "Buscar exercícios pelo título",
+    "typeFilterLabel": "Tipo",
+    "anyType": "Qualquer tipo",
+    "noMatchesHeading": "Nenhum exercício encontrado",
+    "noMatchesMessage": "Nenhum exercício corresponde a estes filtros. Tente remover alguns."
   },
   "diagramPreviewModal": {
     "title": "Pré-visualização do diagrama"
@@ -147,7 +152,12 @@
       "templates": "Modelos",
       "mine": "Meus"
     },
-    "templateBadge": "Modelo"
+    "templateBadge": "Modelo",
+    "searchPlaceholder": "Buscar diagramas pelo nome",
+    "rootNoteFilterLabel": "Tônica",
+    "rootNotePlaceholder": "ex.: A, F#, Bb",
+    "noMatchesHeading": "Nenhum diagrama encontrado",
+    "noMatchesMessage": "Nenhum diagrama corresponde a estes filtros. Tente remover alguns."
   },
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "Novo diagrama",

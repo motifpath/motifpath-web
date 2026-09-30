@@ -11,9 +11,10 @@ const SEARCH_DEBOUNCE_MS = 300
  * Which list the creators belong to: the learner course catalog (published
  * courses, the same for everyone), the learner path catalog (published
  * paths), the caller's authoring course list, the authoring path library
- * (every path, any status), or the diagram library the caller can see.
+ * (every path, any status), the diagram library the caller can see, or the
+ * exercise pool.
  */
-export type CourseCreatorsScope = 'catalog' | 'path-catalog' | 'managed' | 'path-library' | 'diagrams'
+export type CourseCreatorsScope = 'catalog' | 'path-catalog' | 'managed' | 'path-library' | 'diagrams' | 'exercises'
 
 const ENDPOINT = {
   catalog: '/catalog/creators',
@@ -21,6 +22,7 @@ const ENDPOINT = {
   managed: '/courses/creators',
   'path-library': '/learning-paths/creators',
   diagrams: '/diagrams/creators',
+  exercises: '/exercises/creators',
 } as const
 
 /**

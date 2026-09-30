@@ -130,7 +130,12 @@
     "loadingNoun": "exercises",
     "loadErrorMessage": "We couldn't load the exercises.",
     "emptyHeading": "No exercises yet",
-    "emptyMessage": "Create your first exercise to start building the reusable pool."
+    "emptyMessage": "Create your first exercise to start building the reusable pool.",
+    "searchPlaceholder": "Search exercises by title",
+    "typeFilterLabel": "Type",
+    "anyType": "Any type",
+    "noMatchesHeading": "No matching exercises",
+    "noMatchesMessage": "No exercise matches these filters. Try removing some."
   },
   "diagramPreviewModal": {
     "title": "Diagram preview"
@@ -147,7 +152,12 @@
       "templates": "Templates",
       "mine": "Mine"
     },
-    "templateBadge": "Template"
+    "templateBadge": "Template",
+    "searchPlaceholder": "Search diagrams by name",
+    "rootNoteFilterLabel": "Root note",
+    "rootNotePlaceholder": "e.g. A, F#, Bb",
+    "noMatchesHeading": "No matching diagrams",
+    "noMatchesMessage": "No diagram matches these filters. Try removing some."
   },
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "New diagram",
