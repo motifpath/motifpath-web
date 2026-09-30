@@ -8,11 +8,12 @@ import type { components } from '@/api/generated/core-domain'
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 type CourseEnrollment = components['schemas']['CourseEnrollment']
 
+const routeQuery: Record<string, string> = {}
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return {
     ...actual,
-    useRoute: () => ({ query: {} }),
+    useRoute: () => ({ query: routeQuery }),
     onBeforeRouteLeave: vi.fn(),
   }
 })
@@ -85,6 +86,7 @@ vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
 }))
 
+import { saveCourseCatalogReturn } from '@/features/student/utils/courseCatalogReturn'
 import CourseCatalogView from '@/features/student/views/CourseCatalogView.vue'
 
 function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
@@ -132,7 +134,9 @@ describe('CourseCatalogView', () => {
     catalog.courses.value = []
     catalog.total.value = 0
     catalog.isLoading.value = false
+    catalog.isLoadingMore.value = false
     catalog.error.value = false
+    catalog.loadMoreError.value = false
     catalog.hasActiveFilters.value = false
     catalog.searchText.value = ''
     Object.assign(catalog.filters, {
@@ -144,7 +148,61 @@ describe('CourseCatalogView', () => {
       language: null,
     })
     enrollments.enrollments.value = []
+    for (const key of Object.keys(routeQuery)) delete routeQuery[key]
+    window.localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  describe('returning from course details', () => {
+    function page(from: number) {
+      return Array.from({ length: 20 }, (_, i) => course({ course_id: `c-${from + i}` }))
+    }
+
+    beforeEach(() => {
+      saveCourseCatalogReturn({
+        courseId: 'c-1',
+        filters: { levels: [], skillIds: [], conceptIds: [], teacher: null, instrumentId: null, language: 'en' },
+        searchText: '',
+        loadedCount: 40,
+        scrollY: 900,
+      })
+      routeQuery.returnFromCourse = 'c-1'
+      catalog.courses.value = page(0)
+      catalog.total.value = 60
+    })
+
+    it('loads the courses the learner had reached and returns them to the same place', async () => {
+      catalog.loadMore.mockImplementation(async () => {
+        catalog.isLoadingMore.value = true
+        await Promise.resolve()
+        catalog.courses.value = [...catalog.courses.value, ...page(20)]
+        catalog.isLoadingMore.value = false
+      })
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).toHaveBeenCalledTimes(1)
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 900)
+    })
+
+    it('stops asking for more courses once a page fails, and still returns them to their place', async () => {
+      let failed = false
+      catalog.loadMore.mockImplementation(async () => {
+        if (failed) return
+        failed = true
+        catalog.isLoadingMore.value = true
+        await Promise.resolve()
+        catalog.loadMoreError.value = true
+        catalog.isLoadingMore.value = false
+      })
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).toHaveBeenCalledTimes(1)
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 900)
+    })
   })
 
   it('shows a loading state while the catalog loads', () => {

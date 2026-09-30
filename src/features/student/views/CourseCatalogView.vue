@@ -53,7 +53,7 @@ const { enrollments } = useMyCourseEnrollments()
 const { enrollInCourse } = useEnrollInCourse()
 
 const pendingReturn = ref(restoredReturn)
-watch([courses, total, isLoading, isLoadingMore, error], () => {
+watch([courses, total, isLoading, isLoadingMore, error, loadMoreError], () => {
   const returnState = pendingReturn.value
   if (!returnState || isLoading.value || isLoadingMore.value) return
   if (error.value) {
@@ -61,8 +61,10 @@ watch([courses, total, isLoading, isLoadingMore, error], () => {
     return
   }
 
+  // A page that fails to load is not retried here: the learner goes back to
+  // their place among the courses that did load, and Load more offers the rest.
   const loadedTarget = Math.min(returnState.loadedCount, total.value)
-  if (courses.value.length < loadedTarget) {
+  if (courses.value.length < loadedTarget && !loadMoreError.value) {
     void loadMore()
     return
   }
