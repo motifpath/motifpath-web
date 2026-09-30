@@ -103,10 +103,7 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'course-catalog',
         // Open to every role: anyone can learn.
-        // Kept alive while a learner examines a detail page, so returning to
-        // the catalog retains both the filtered results already loaded and
-        // the point they had reached in them.
-        meta: { requiresAuth: true, keepAlive: true },
+        meta: { requiresAuth: true },
         component: () => import('@/features/student/views/CourseCatalogView.vue'),
       },
       {

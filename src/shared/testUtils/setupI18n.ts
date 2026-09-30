@@ -25,4 +25,6 @@ config.global.plugins.push(i18n)
 // Vue Router invokes the browser scroll API for navigation. jsdom exposes the
 // method but intentionally throws because it cannot model layout, so replace
 // it once for every test environment.
-window.scrollTo = vi.fn()
+if (typeof window !== 'undefined') {
+  window.scrollTo = vi.fn()
+}

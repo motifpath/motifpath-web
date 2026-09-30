@@ -42,11 +42,10 @@ const contentWidthClass = computed(() =>
     <AppBar context="student" :compact="isCompact" :primary-nav-to="primaryNavTo" />
 
     <main class="mx-auto w-full flex-1 px-4 py-5 sm:py-8" :class="contentWidthClass">
-      <RouterView v-slot="{ Component, route: childRoute }">
-        <KeepAlive>
-          <component :is="Component" v-if="childRoute.meta.keepAlive" />
+      <RouterView v-slot="{ Component }">
+        <KeepAlive include="CourseCatalogView">
+          <component :is="Component" />
         </KeepAlive>
-        <component :is="Component" v-if="!childRoute.meta.keepAlive" />
       </RouterView>
     </main>
 

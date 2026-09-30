@@ -1,6 +1,8 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, nextTick, onActivated, onDeactivated, ref } from 'vue'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import type * as VueRouter from 'vue-router'
 
 const signOut = vi.fn(async () => {})
@@ -113,5 +115,71 @@ describe('AuthenticatedLayout', () => {
     const wrapper = mountLayout()
 
     expect(wrapper.get('main').classes()).toContain('2xl:max-w-[96rem]')
+  })
+
+  it('retains a cached catalog state and restores its scroll position after visiting course details', async () => {
+    const CatalogProbe = defineComponent({
+      name: 'CourseCatalogView',
+      setup() {
+        const filter = ref('English')
+        const scrollY = ref(0)
+        onDeactivated(() => {
+          scrollY.value = window.scrollY
+        })
+        onActivated(() => {
+          void nextTick(() => window.scrollTo(0, scrollY.value))
+        })
+        return () =>
+          h(
+            'button',
+            {
+              'data-test': 'catalog-filter',
+              onClick: () => (filter.value = 'All languages'),
+            },
+            filter.value,
+          )
+      },
+    })
+    const DetailsProbe = defineComponent({
+      name: 'CourseDetailView',
+      setup: () => () => h('p', { 'data-test': 'course-details' }, 'Details'),
+    })
+    const testRouter = createRouter({
+      history: createMemoryHistory(),
+      scrollBehavior: () => ({ top: 0 }),
+      routes: [
+        {
+          path: '/',
+          component: AuthenticatedLayout,
+          children: [
+            { path: 'catalog', name: 'catalog-probe', component: () => Promise.resolve(CatalogProbe) },
+            { path: 'details', name: 'details-probe', component: () => Promise.resolve(DetailsProbe) },
+          ],
+        },
+      ],
+    })
+    const Root = defineComponent({
+      components: { RouterView },
+      template: '<RouterView />',
+    })
+
+    await testRouter.push('/catalog')
+    await testRouter.isReady()
+    const wrapper = mount(Root, {
+      global: {
+        plugins: [createPinia(), testRouter],
+        stubs: { AppBar: true, RouterLink: RouterLinkStub },
+      },
+    })
+
+    await wrapper.get('[data-test="catalog-filter"]').trigger('click')
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 640 })
+
+    await testRouter.push('/details')
+    await testRouter.push('/catalog')
+    await nextTick()
+
+    expect(wrapper.get('[data-test="catalog-filter"]').text()).toBe('All languages')
+    expect(window.scrollTo).toHaveBeenLastCalledWith(0, 640)
   })
 })

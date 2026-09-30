@@ -265,7 +265,6 @@ describe('router', () => {
     await router.push('/courses')
 
     expect(router.currentRoute.value.name).toBe('course-catalog')
-    expect(router.currentRoute.value.meta.keepAlive).toBe(true)
   })
 
   it('lets a registered student reach a published course detail page', async () => {
