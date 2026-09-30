@@ -94,6 +94,8 @@ describe('AuthenticatedLayout', () => {
 
     expect(wrapper.get('main').classes()).toContain('max-w-4xl')
     expect(wrapper.get('main').classes()).not.toContain('max-w-7xl')
+    expect(wrapper.get('main').classes()).toContain('py-5')
+    expect(wrapper.get('main').classes()).toContain('sm:py-8')
   })
 
   it("gives a route marked 'wideContent' a wider column, so it isn't squeezed into the usual width", () => {
@@ -112,4 +114,5 @@ describe('AuthenticatedLayout', () => {
 
     expect(wrapper.get('main').classes()).toContain('2xl:max-w-[96rem]')
   })
+
 })

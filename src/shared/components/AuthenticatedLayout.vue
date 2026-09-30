@@ -41,7 +41,7 @@ const contentWidthClass = computed(() =>
   <div class="flex min-h-screen flex-col">
     <AppBar context="student" :compact="isCompact" :primary-nav-to="primaryNavTo" />
 
-    <main class="mx-auto w-full flex-1 px-4 py-8" :class="contentWidthClass">
+    <main class="mx-auto w-full flex-1 px-4 py-5 sm:py-8" :class="contentWidthClass">
       <RouterView />
     </main>
 

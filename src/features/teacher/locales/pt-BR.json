@@ -448,7 +448,8 @@
     "noMatchesMessage": "Tente menos filtros ou outra busca.",
     "unpublishedChanges": "Alterações não publicadas",
     "courseTeacher": "por {name}",
-    "newCourse": "Novo curso"
+    "newCourse": "Novo curso",
+    "editCourse": "Editar curso"
   },
   "thumbnailField": {
     "upload": "Enviar imagem",

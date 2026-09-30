@@ -102,6 +102,8 @@ function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry
     created_by: tomas,
     status: 'published',
     published_at: '2026-09-01T00:00:00Z',
+    checkpoint_count: 3,
+    lesson_count: 12,
     has_unpublished_changes: false,
     ...overrides,
   }
@@ -173,7 +175,7 @@ describe('CourseListView', () => {
     expect(managed.clearFilters).toHaveBeenCalled()
   })
 
-  it('lists each course with its level, status and whether it has unpublished changes', () => {
+  it('lists each course with its level, scope, status and whether it has unpublished changes', () => {
     managed.courses.value = [
       course(),
       course({ course_id: 'c-2', title: 'Rhythm Basics', has_unpublished_changes: true }),
@@ -186,6 +188,8 @@ describe('CourseListView', () => {
     expect(rows).toHaveLength(3)
     expect(rows[0]!.text()).toContain('Fingerstyle Foundations')
     expect(rows[0]!.text()).toContain('Beginner')
+    expect(rows[0]!.text()).toContain('12 lessons')
+    expect(rows[0]!.text()).toContain('3 learning paths')
     expect(rows[0]!.get('[data-test="course-status"]').text()).toBe('Published')
     expect(rows[0]!.find('[data-test="unpublished-changes"]').exists()).toBe(false)
     expect(rows[1]!.find('[data-test="unpublished-changes"]').exists()).toBe(true)

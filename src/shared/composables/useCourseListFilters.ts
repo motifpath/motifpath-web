@@ -27,6 +27,10 @@ export interface CourseListFilterQuery {
   language?: string
 }
 
+export type CourseListFilterInitialState = Partial<CourseListFilterState> & {
+  searchText?: string
+}
+
 const SEARCH_DEBOUNCE_MS = 300
 
 /**
@@ -36,7 +40,8 @@ const SEARCH_DEBOUNCE_MS = 300
  * pause. `query` is what to send; `hasActiveFilters` also counts
  * text still being typed, so a "no matches" state appears without waiting.
  */
-export function useCourseListFilters(initial: Partial<CourseListFilterState> = {}) {
+export function useCourseListFilters(initial: CourseListFilterInitialState = {}) {
+  const { searchText: initialSearchText = '', ...initialFilters } = initial
   const filters = reactive<CourseListFilterState>({
     levels: [],
     skillIds: [],
@@ -44,10 +49,10 @@ export function useCourseListFilters(initial: Partial<CourseListFilterState> = {
     teacher: null,
     instrumentId: null,
     language: null,
-    ...initial,
+    ...initialFilters,
   })
-  const searchText = ref('')
-  const appliedSearch = ref('')
+  const searchText = ref(initialSearchText)
+  const appliedSearch = ref(initialSearchText.trim())
 
   let searchTimer: ReturnType<typeof setTimeout> | undefined
   watch(searchText, (text) => {

@@ -90,6 +90,7 @@
     "enrolling": "Inscrevendo…",
     "enrolled": "Inscrito",
     "enrolledToast": "Você está inscrito em {title}.",
+    "details": "Detalhes",
     "moreFromTeacher": "Mais deste professor",
     "courseTeacher": "por {name}"
   },
@@ -104,12 +105,25 @@
     "coursesHeading": "Cursos",
     "pathsHeading": "Outras trilhas",
     "archivedHeading": "Arquivadas",
-    "stage": "Etapa {position}",
+    "learningPath": "Trilha de aprendizagem {position} de {count}",
     "statusCompleted": "Concluído",
     "statusAbandoned": "Abandonado",
     "assignedBy": "Atribuída por {name}",
     "current": "Atual",
     "switch": "Tornar atual"
+  },
+  "courseDetailView": {
+    "loadingNoun": "o curso",
+    "errorMessage": "Não foi possível carregar este curso.",
+    "notFoundHeading": "Este curso ainda não foi publicado",
+    "notFoundMessage": "Este curso não está disponível no catálogo.",
+    "backToCatalog": "Voltar aos cursos",
+    "enroll": "Inscrever-se",
+    "enrolling": "Inscrevendo…",
+    "enrolledToast": "Você está inscrito em {title}.",
+    "continue": "Continuar curso",
+    "outlineHeading": "Estrutura do curso",
+    "learningPath": "Trilha de aprendizagem {position}"
   },
   "courseCompletedView": {
     "loadingNoun": "seu curso",

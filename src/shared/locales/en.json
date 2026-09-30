@@ -147,7 +147,9 @@
     "conceptFilterLabel": "Concept",
     "clearFilters": "Clear filters",
     "languageFilterLabel": "Language",
-    "anyLanguage": "Any language"
+    "anyLanguage": "Any language",
+    "filters": "Filters",
+    "appliedFilters": "Applied filters"
   },
   "teacherFilterPicker": {
     "label": "Teacher",
@@ -200,5 +202,11 @@
   },
   "fretboard": {
     "closeDescription": "Close description"
+  },
+  "courseCard": {
+    "label": "Course",
+    "byline": "by {name}",
+    "lessons": "{count} lesson | {count} lessons",
+    "learningPaths": "{count} learning path | {count} learning paths"
   }
 }

@@ -16,7 +16,7 @@ const { voices, isLoading, error, retry } = useListVoices()
 
 <template>
   <section class="flex flex-col gap-6">
-    <h1 class="text-2xl font-semibold">{{ t('creditsView.title') }}</h1>
+    <h1 class="text-xl font-semibold sm:text-2xl">{{ t('creditsView.title') }}</h1>
 
     <section class="flex flex-col gap-3" aria-labelledby="credits-sounds">
       <h2 id="credits-sounds" class="text-lg font-semibold">{{ t('creditsView.soundsTitle') }}</h2>

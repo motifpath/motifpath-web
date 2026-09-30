@@ -1,4 +1,5 @@
 import { config } from '@vue/test-utils'
+import { vi } from 'vitest'
 
 import authEn from '@/features/auth/locales/en.json'
 import authPtBr from '@/features/auth/locales/pt-BR.json'
@@ -20,3 +21,10 @@ i18n.global.mergeLocaleMessage('en', teacherEn)
 i18n.global.mergeLocaleMessage('pt-BR', teacherPtBr)
 
 config.global.plugins.push(i18n)
+
+// Vue Router invokes the browser scroll API for navigation. jsdom exposes the
+// method but intentionally throws because it cannot model layout, so replace
+// it once for every test environment.
+if (typeof window !== 'undefined') {
+  window.scrollTo = vi.fn()
+}

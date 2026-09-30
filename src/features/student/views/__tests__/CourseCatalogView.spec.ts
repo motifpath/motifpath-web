@@ -1,11 +1,27 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
+import type * as VueRouter from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 type CourseEnrollment = components['schemas']['CourseEnrollment']
+
+const routeQuery: Record<string, string> = {}
+function resolveRoute(path: string) {
+  const match = /^\/courses\/([^/?]+)/.exec(path)
+  return match ? { name: 'course-detail', params: { courseId: match[1] } } : { name: 'not-found', params: {} }
+}
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return {
+    ...actual,
+    useRoute: () => ({ query: routeQuery }),
+    useRouter: () => ({ resolve: resolveRoute }),
+    onBeforeRouteLeave: vi.fn(),
+  }
+})
 
 const catalog = {
   courses: ref<CourseCatalogEntry[]>([]),
@@ -75,6 +91,7 @@ vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
 }))
 
+import { saveCourseCatalogReturn } from '@/features/student/utils/courseCatalogReturn'
 import CourseCatalogView from '@/features/student/views/CourseCatalogView.vue'
 
 function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
@@ -88,6 +105,8 @@ function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry
     created_by: { user_id: 'teacher-1', display_name: 'Bob Martins' },
     status: 'published',
     published_at: '2026-09-01T00:00:00Z',
+    checkpoint_count: 3,
+    lesson_count: 12,
     ...overrides,
   }
 }
@@ -98,7 +117,11 @@ function enrollment(overrides: Partial<CourseEnrollment> = {}): CourseEnrollment
     student: { user_id: 'st-1', display_name: 'Alice Souza' },
     course_id: 'c-1',
     course_title: 'Fingerstyle journey',
+    course_summary: 'From first arpeggios to full arrangements.',
+    course_level: 'beginner',
+    course_created_by: { user_id: 'teacher-1', display_name: 'Bob Martins' },
     course_version_number: 1,
+    checkpoint_count: 3,
     status: 'active',
     active_checkpoint_student_path_id: 'sp-1',
     active_checkpoint_position: 1,
@@ -116,7 +139,9 @@ describe('CourseCatalogView', () => {
     catalog.courses.value = []
     catalog.total.value = 0
     catalog.isLoading.value = false
+    catalog.isLoadingMore.value = false
     catalog.error.value = false
+    catalog.loadMoreError.value = false
     catalog.hasActiveFilters.value = false
     catalog.searchText.value = ''
     Object.assign(catalog.filters, {
@@ -128,7 +153,95 @@ describe('CourseCatalogView', () => {
       language: null,
     })
     enrollments.enrollments.value = []
+    for (const key of Object.keys(routeQuery)) delete routeQuery[key]
+    window.localStorage.clear()
+    window.history.replaceState(null, '')
     vi.clearAllMocks()
+  })
+
+  describe('returning from course details', () => {
+    function page(from: number) {
+      return Array.from({ length: 20 }, (_, i) => course({ course_id: `c-${from + i}` }))
+    }
+
+    beforeEach(() => {
+      saveCourseCatalogReturn({
+        courseId: 'c-1',
+        filters: { levels: [], skillIds: [], conceptIds: [], teacher: null, instrumentId: null, language: 'en' },
+        searchText: '',
+        loadedCount: 40,
+        scrollY: 900,
+      })
+      routeQuery.returnFromCourse = 'c-1'
+      catalog.courses.value = page(0)
+      catalog.total.value = 60
+    })
+
+    it('loads the courses the learner had reached and returns them to the same place', async () => {
+      catalog.loadMore.mockImplementation(async () => {
+        catalog.isLoadingMore.value = true
+        await Promise.resolve()
+        catalog.courses.value = [...catalog.courses.value, ...page(20)]
+        catalog.isLoadingMore.value = false
+      })
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).toHaveBeenCalledTimes(1)
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 900)
+    })
+
+    function loadNextPageOnDemand() {
+      catalog.loadMore.mockImplementation(async () => {
+        catalog.isLoadingMore.value = true
+        await Promise.resolve()
+        catalog.courses.value = [...catalog.courses.value, ...page(20)]
+        catalog.isLoadingMore.value = false
+      })
+    }
+
+    it("also returns them to their place when they use the browser's Back button", async () => {
+      delete routeQuery.returnFromCourse
+      window.history.replaceState({ forward: '/courses/c-1?fromCatalog=true' }, '')
+      loadNextPageOnDemand()
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).toHaveBeenCalledTimes(1)
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 900)
+    })
+
+    it("starts fresh on Back from a course other than the one they opened from here", async () => {
+      delete routeQuery.returnFromCourse
+      window.history.replaceState({ forward: '/courses/c-9' }, '')
+      loadNextPageOnDemand()
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).not.toHaveBeenCalled()
+      expect(window.scrollTo).not.toHaveBeenCalled()
+    })
+
+    it('stops asking for more courses once a page fails, and still returns them to their place', async () => {
+      let failed = false
+      catalog.loadMore.mockImplementation(async () => {
+        if (failed) return
+        failed = true
+        catalog.isLoadingMore.value = true
+        await Promise.resolve()
+        catalog.loadMoreError.value = true
+        catalog.isLoadingMore.value = false
+      })
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).toHaveBeenCalledTimes(1)
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 900)
+    })
   })
 
   it('shows a loading state while the catalog loads', () => {
@@ -161,7 +274,7 @@ describe('CourseCatalogView', () => {
     expect(catalog.clearFilters).toHaveBeenCalled()
   })
 
-  it('lists each course with its title, summary and level', () => {
+  it('lists each course with its title, summary, level, and course scope', () => {
     catalog.courses.value = [course(), course({ course_id: 'c-2', title: 'Jazz voicings', level: 'advanced' })]
     catalog.total.value = 2
 
@@ -171,7 +284,32 @@ describe('CourseCatalogView', () => {
     expect(cards[0]!.text()).toContain('Fingerstyle journey')
     expect(cards[0]!.text()).toContain('From first arpeggios to full arrangements.')
     expect(cards[0]!.text()).toContain('Beginner')
+    expect(cards[0]!.text()).toContain('12 lessons')
+    expect(cards[0]!.text()).toContain('3 learning paths')
     expect(cards[1]!.text()).toContain('Advanced')
+  })
+
+  it('starts with a compact heading and only the catalog search visible', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('h1').classes()).toContain('text-xl')
+    expect(wrapper.get('h1').classes()).toContain('sm:text-2xl')
+    expect(wrapper.find('[data-test="level-filter-beginner"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="advanced-filters"]').exists()).toBe(true)
+  })
+
+  it('links every catalog card to its published detail page', () => {
+    catalog.courses.value = [course()]
+    catalog.total.value = 1
+
+    const details = mountView().getComponent(RouterLinkStub)
+
+    expect(details.props('to')).toEqual({
+      name: 'course-detail',
+      params: { courseId: 'c-1' },
+      query: { fromCatalog: 'true' },
+    })
+    expect(details.text()).toBe('Details')
   })
 
   it("shows each course's thumbnail, or a placeholder, its language and its instruments", () => {
@@ -188,12 +326,15 @@ describe('CourseCatalogView', () => {
     expect(cards[0]!.get('[data-test="course-language"]').text()).toContain('EN')
     expect(cards[1]!.get('[data-test="course-language"]').text()).toContain('PT')
     expect(cards[0]!.get('[data-test="course-instruments"]').text()).toBe('Guitar, Bass')
+    expect(cards[0]!.get('[data-test="course-instruments"]').classes()).toContain('rounded-full')
     expect(cards[1]!.get('[data-test="course-instruments"]').text()).toBe('Every instrument')
   })
 
   it('binds the language and instrument filters to the catalog', async () => {
     catalog.filters.language = 'en'
     const wrapper = mountView()
+
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
 
     expect(wrapper.get<HTMLSelectElement>('[data-test="language-filter"]').element.value).toBe('en')
     await wrapper.get('[data-test="language-filter"]').setValue('')
@@ -213,6 +354,7 @@ describe('CourseCatalogView', () => {
 
   it('toggles a level filter on and off', async () => {
     const wrapper = mountView()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
     const chip = wrapper.get('[data-test="level-filter-intermediate"]')
 
     await chip.trigger('click')
@@ -225,6 +367,7 @@ describe('CourseCatalogView', () => {
 
   it('filters by the most specific skills picked, not their ancestors too', async () => {
     const wrapper = mountView()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
     const picker = wrapper.findAllComponents({ name: 'SkillConceptTreePicker' })[0]!
 
     picker.vm.$emit('update:selectedIds', ['chords', 'triads'])
@@ -237,11 +380,12 @@ describe('CourseCatalogView', () => {
     catalog.courses.value = [course()]
     catalog.total.value = 1
 
-    expect(mountView().get('[data-test="course-teacher"]').text()).toContain('Bob Martins')
+    expect(mountView().get('[data-test="course-byline"]').text()).toContain('Bob Martins')
   })
 
   it('filters by the teacher picked in the teacher filter, and clears it again', async () => {
     const wrapper = mountView()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
     const picker = wrapper.getComponent({ name: 'TeacherFilterPicker' })
 
     picker.vm.$emit('update:modelValue', { user_id: 'teacher-2', display_name: 'Carol Dias' })
@@ -259,6 +403,7 @@ describe('CourseCatalogView', () => {
     const wrapper = mountView()
 
     await wrapper.get('[data-test="more-from-teacher"]').trigger('click')
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
 
     expect(catalog.filters.teacher).toEqual({ user_id: 'teacher-1', display_name: 'Bob Martins' })
     expect(wrapper.getComponent({ name: 'TeacherFilterPicker' }).props('modelValue')).toEqual({

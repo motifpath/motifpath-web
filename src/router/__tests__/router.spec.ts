@@ -15,6 +15,7 @@ import { updateAuthBridge, updateRegistrationBridge, updateRoleBridge } from '@/
 
 describe('router', () => {
   beforeEach(async () => {
+    window.scrollTo = vi.fn()
     updateRoleBridge(null)
     await router.replace('/')
     await router.isReady()
@@ -266,6 +267,17 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('course-catalog')
   })
 
+  it('lets a registered student reach a published course detail page', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/courses/c-1')
+
+    expect(router.currentRoute.value.name).toBe('course-detail')
+    expect(router.currentRoute.value.params.courseId).toBe('c-1')
+  })
+
   it("lets a registered student reach their courses and paths", async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')
@@ -317,6 +329,33 @@ describe('router', () => {
     await router.push('/courses')
 
     expect(router.currentRoute.value.name).toBe('sign-in')
+  })
+
+  // A resolved location as the scroll behavior receives it: always named here.
+  function namedLocation(...args: Parameters<typeof router.resolve>) {
+    const { name, ...location } = router.resolve(...args)
+    if (!name) throw new Error('expected a named route')
+    return { ...location, name }
+  }
+
+  it('opens a newly visited page at the top, and a revisited one where the visitor left it', async () => {
+    const scroll = router.options.scrollBehavior!
+    const catalog = namedLocation({ name: 'course-catalog' })
+    const detail = namedLocation({ name: 'course-detail', params: { courseId: 'c-1' } })
+
+    expect(await scroll(detail, catalog, null)).toEqual({ top: 0 })
+    expect(await scroll(catalog, detail, { left: 0, top: 640 })).toEqual({ left: 0, top: 640 })
+  })
+
+  it.each([
+    ['teacher-course-new', 'teacher-course-edit'],
+    ['teacher-diagram-new', 'teacher-diagram-edit'],
+  ])('keeps an author where they are when %s moves to %s after the first save', async (newRoute, editRoute) => {
+    const scroll = router.options.scrollBehavior!
+
+    expect(
+      await scroll(namedLocation({ name: editRoute, params: { id: 'x-1' } }), namedLocation({ name: newRoute }), null),
+    ).toBe(false)
   })
 
   it('resolves an unknown path to the not-found route', async () => {

@@ -46,9 +46,9 @@ const { instrumentsLabel } = useInstrumentNames()
       </p>
     </div>
 
-    <div v-else class="flex flex-1 flex-col gap-6 px-[48px] pb-[80px] pt-10">
+    <div v-else class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
       <div class="flex items-center justify-between">
-        <h1 class="text-xl font-bold text-ink">{{ t('contentListView.heading') }}</h1>
+        <h1 class="text-lg font-bold text-ink sm:text-xl">{{ t('contentListView.heading') }}</h1>
         <RouterLink
           :to="{ name: 'teacher-content-new' }"
           data-test="new-content-node"

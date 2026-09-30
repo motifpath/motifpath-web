@@ -55,7 +55,7 @@ const completedEnrollment = computed(
         size-class="aspect-video w-full max-w-md rounded-lg"
       />
       <div class="flex flex-col gap-2">
-        <h1 class="text-2xl font-semibold text-accent-text">{{ t('courseCompletedView.heading') }}</h1>
+        <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('courseCompletedView.heading') }}</h1>
         <p class="text-ink">
           {{ t('courseCompletedView.message', { title: completedEnrollment.course_title }) }}
         </p>

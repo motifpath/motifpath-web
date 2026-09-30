@@ -1,28 +1,47 @@
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { onBeforeRouteLeave, RouterLink, useRoute, useRouter } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import { useCourseCatalog } from '@/features/student/composables/useCourseCatalog'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
+import {
+  restoreCourseCatalogReturn,
+  saveCourseCatalogReturn,
+} from '@/features/student/utils/courseCatalogReturn'
+import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
-import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { languageBadge } from '@/shared/utils/languageLabels'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 
 const { t } = useTypedT()
 const toast = useToast()
 const { instrumentsLabel } = useInstrumentNames()
+const route = useRoute()
+const router = useRouter()
+
+// The course whose details the learner is coming back from: named by the
+// details page's Back to courses link, or, after the browser's Back button,
+// found in this history entry's record of the page that followed it.
+function returningCourseId(): string | null {
+  if (typeof route.query.returnFromCourse === 'string') return route.query.returnFromCourse
+  const state: unknown = window.history.state
+  if (!state || typeof state !== 'object' || !('forward' in state) || typeof state.forward !== 'string') return null
+  const next = router.resolve(state.forward)
+  return next.name === 'course-detail' && typeof next.params.courseId === 'string' ? next.params.courseId : null
+}
+const returnedFromCourseId = returningCourseId()
+const restoredReturn = returnedFromCourseId ? restoreCourseCatalogReturn(returnedFromCourseId) : null
 
 const {
   courses,
@@ -37,9 +56,51 @@ const {
   loadMoreError,
   retry,
   loadMore,
-} = useCourseCatalog()
+} = useCourseCatalog(
+  restoredReturn ? { ...restoredReturn.filters, searchText: restoredReturn.searchText } : undefined,
+)
 const { enrollments } = useMyCourseEnrollments()
 const { enrollInCourse } = useEnrollInCourse()
+
+const pendingReturn = ref(restoredReturn)
+watch([courses, total, isLoading, isLoadingMore, error, loadMoreError], () => {
+  const returnState = pendingReturn.value
+  if (!returnState || isLoading.value || isLoadingMore.value) return
+  if (error.value) {
+    pendingReturn.value = null
+    return
+  }
+
+  // A page that fails to load is not retried here: the learner goes back to
+  // their place among the courses that did load, and Load more offers the rest.
+  const loadedTarget = Math.min(returnState.loadedCount, total.value)
+  if (courses.value.length < loadedTarget && !loadMoreError.value) {
+    void loadMore()
+    return
+  }
+
+  pendingReturn.value = null
+  void nextTick(() => window.scrollTo(0, returnState.scrollY))
+}, { immediate: true })
+
+onBeforeRouteLeave((to) => {
+  if (to.name !== 'course-detail' || typeof to.params.courseId !== 'string') return
+
+  saveCourseCatalogReturn({
+    courseId: to.params.courseId,
+    filters: {
+      levels: [...filters.levels],
+      skillIds: [...filters.skillIds],
+      conceptIds: [...filters.conceptIds],
+      teacher: filters.teacher ? { ...filters.teacher } : null,
+      instrumentId: filters.instrumentId,
+      language: filters.language,
+    },
+    searchText: searchText.value,
+    loadedCount: courses.value.length,
+    scrollY: window.scrollY,
+  })
+})
 
 function filterByTeacher(course: CourseCatalogEntry) {
   filters.teacher = course.created_by
@@ -75,7 +136,7 @@ async function enroll(course: CourseCatalogEntry) {
 
 <template>
   <section class="flex flex-col gap-6">
-    <h1 class="text-2xl font-semibold text-accent-text">{{ t('courseCatalogView.heading') }}</h1>
+    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('courseCatalogView.heading') }}</h1>
 
     <CourseFilters
       v-model:search-text="searchText"
@@ -87,6 +148,7 @@ async function enroll(course: CourseCatalogEntry) {
       v-model:language="filters.language"
       instrument-filter
       language-filter
+      compact
       teacher-scope="catalog"
       :has-active-filters="hasActiveFilters"
       @clear="clearFilters"
@@ -122,62 +184,68 @@ async function enroll(course: CourseCatalogEntry) {
     />
 
     <template v-else>
-      <ul class="flex flex-col gap-3">
-        <li
-          v-for="course in courses"
-          :key="course.course_id"
-          data-test="course-card"
-          class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
-        >
-          <div class="flex items-start gap-3">
-            <ThumbnailImage :url="course.thumbnail_url" size-class="h-16 w-24 rounded-md" />
-            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-2">
-              <h2 class="text-lg font-semibold text-ink">{{ course.title }}</h2>
-              <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-ink-muted">
-                <span data-test="course-language" class="rounded-full bg-surface-sunken px-2.5 py-0.5">
-                  {{ languageBadge(course.language).flag }} {{ languageBadge(course.language).shortCode }}
-                </span>
-                <span class="rounded-full bg-surface-sunken px-2.5 py-0.5">
-                  {{ t(`levels.${course.level}`) }}
-                </span>
-              </div>
-            </div>
-          </div>
-          <p data-test="course-teacher" class="text-sm text-ink-subtle">
-            {{ t('courseCatalogView.courseTeacher', { name: course.created_by.display_name }) }}
-          </p>
-          <p class="text-sm text-ink-muted">{{ course.summary }}</p>
-          <p data-test="course-instruments" class="text-sm text-ink-subtle">{{ instrumentsLabel(course.instrument_ids) }}</p>
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <button
-              type="button"
-              data-test="more-from-teacher"
-              class="text-sm font-semibold text-accent-text underline"
-              @click="filterByTeacher(course)"
-            >
-              {{ t('courseCatalogView.moreFromTeacher') }}
-            </button>
-            <span
-              v-if="enrolledCourseIds.has(course.course_id)"
-              data-test="enrolled"
-              class="flex items-center gap-1 text-sm font-semibold text-success"
-            >
-              <Check :size="16" aria-hidden="true" />
-              {{ t('courseCatalogView.enrolled') }}
-            </span>
-            <PrimaryButton
-              v-else
-              data-test="enroll"
-              :disabled="enrollingCourseId === course.course_id"
-              @click="enroll(course)"
-            >
-              {{
-                enrollingCourseId === course.course_id
-                  ? t('courseCatalogView.enrolling')
-                  : t('courseCatalogView.enroll')
-              }}
-            </PrimaryButton>
-          </div>
+      <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <li v-for="course in courses" :key="course.course_id">
+          <CourseCard
+            :title="course.title"
+            :summary="course.summary"
+            :created-by="course.created_by"
+            :level="course.level"
+            :language="course.language"
+            :lesson-count="course.lesson_count"
+            :checkpoint-count="course.checkpoint_count"
+            :thumbnail-url="course.thumbnail_url"
+          >
+            <template #badges>
+              <span
+                data-test="course-instruments"
+                class="rounded-full bg-surface-sunken px-2.5 py-0.5"
+              >
+                {{ instrumentsLabel(course.instrument_ids) }}
+              </span>
+            </template>
+            <template #actions>
+              <button
+                type="button"
+                data-test="more-from-teacher"
+                class="text-sm font-semibold text-accent-text underline"
+                @click="filterByTeacher(course)"
+              >
+                {{ t('courseCatalogView.moreFromTeacher') }}
+              </button>
+              <RouterLink
+                :to="{
+                  name: 'course-detail',
+                  params: { courseId: course.course_id },
+                  query: { fromCatalog: 'true' },
+                }"
+                data-test="details"
+                class="text-sm font-semibold text-accent-text underline"
+              >
+                {{ t('courseCatalogView.details') }}
+              </RouterLink>
+              <span
+                v-if="enrolledCourseIds.has(course.course_id)"
+                data-test="enrolled"
+                class="flex items-center gap-1 text-sm font-semibold text-success"
+              >
+                <Check :size="16" aria-hidden="true" />
+                {{ t('courseCatalogView.enrolled') }}
+              </span>
+              <PrimaryButton
+                v-else
+                data-test="enroll"
+                :disabled="enrollingCourseId === course.course_id"
+                @click="enroll(course)"
+              >
+                {{
+                  enrollingCourseId === course.course_id
+                    ? t('courseCatalogView.enrolling')
+                    : t('courseCatalogView.enroll')
+                }}
+              </PrimaryButton>
+            </template>
+          </CourseCard>
         </li>
       </ul>
       <LoadMoreButton

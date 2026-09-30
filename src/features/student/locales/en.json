@@ -90,6 +90,7 @@
     "enrolling": "Enrolling…",
     "enrolled": "Enrolled",
     "enrolledToast": "You are now enrolled in {title}.",
+    "details": "Details",
     "moreFromTeacher": "More from this teacher",
     "courseTeacher": "by {name}"
   },
@@ -104,12 +105,25 @@
     "coursesHeading": "Courses",
     "pathsHeading": "Other paths",
     "archivedHeading": "Archived",
-    "stage": "Stage {position}",
+    "learningPath": "Learning path {position} of {count}",
     "statusCompleted": "Completed",
     "statusAbandoned": "Left",
     "assignedBy": "Assigned by {name}",
     "current": "Current",
     "switch": "Switch to this"
+  },
+  "courseDetailView": {
+    "loadingNoun": "the course",
+    "errorMessage": "We couldn't load this course.",
+    "notFoundHeading": "This course is not published yet",
+    "notFoundMessage": "This course is not available in the catalog.",
+    "backToCatalog": "Back to courses",
+    "enroll": "Enroll",
+    "enrolling": "Enrolling…",
+    "enrolledToast": "You are now enrolled in {title}.",
+    "continue": "Continue course",
+    "outlineHeading": "Course outline",
+    "learningPath": "Learning path {position}"
   },
   "courseCompletedView": {
     "loadingNoun": "your course",

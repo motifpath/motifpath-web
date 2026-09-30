@@ -3,6 +3,7 @@ import { watch } from 'vue'
 import { i18n, toApiLanguageCode } from '@/i18n'
 import { useApiPagedList } from '@/shared/composables/useApiPagedList'
 import { useCourseListFilters } from '@/shared/composables/useCourseListFilters'
+import type { CourseListFilterInitialState } from '@/shared/composables/useCourseListFilters'
 import type { components } from '@/api/generated/core-domain'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
@@ -14,9 +15,10 @@ type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
  * from the first page; the free-text search waits for typing to pause
  * before it does.
  */
-export function useCourseCatalog() {
+export function useCourseCatalog(initial: CourseListFilterInitialState = {}) {
   const { filters, searchText, query, hasActiveFilters, clearFilters } = useCourseListFilters({
     language: toApiLanguageCode(i18n.global.locale.value),
+    ...initial,
   })
 
   const {

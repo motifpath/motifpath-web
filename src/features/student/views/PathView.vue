@@ -21,7 +21,7 @@ useCourseCompletionRedirect(() => completedCourseEnrollmentId(data.value))
 
 <template>
   <section>
-    <h1 class="mb-4 text-2xl font-semibold text-accent-text">{{ t('pathView.heading') }}</h1>
+    <h1 class="mb-4 text-xl font-semibold text-accent-text sm:text-2xl">{{ t('pathView.heading') }}</h1>
 
     <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathView.loadingNoun')" />
 

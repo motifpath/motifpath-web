@@ -49,6 +49,19 @@ describe('useCourseCatalog', () => {
     expect(lastQuery()).toEqual({ limit: 20, offset: 0, language: 'pt_BR' })
   })
 
+  it('uses a saved catalog state instead of the locale defaults', async () => {
+    const { filters, searchText, isLoading } = useCourseCatalog({
+      language: null,
+      levels: ['beginner'],
+      searchText: 'fingerstyle',
+    })
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(filters.language).toBeNull()
+    expect(searchText.value).toBe('fingerstyle')
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, q: 'fingerstyle', levels: ['beginner'] })
+  })
+
   it('sends the language and instrument picked, and every language once cleared', async () => {
     const { filters, isLoading } = useCourseCatalog()
     await vi.waitFor(() => expect(isLoading.value).toBe(false))

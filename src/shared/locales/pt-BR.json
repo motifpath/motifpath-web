@@ -147,7 +147,9 @@
     "conceptFilterLabel": "Conceito",
     "clearFilters": "Limpar filtros",
     "languageFilterLabel": "Idioma",
-    "anyLanguage": "Qualquer idioma"
+    "anyLanguage": "Qualquer idioma",
+    "filters": "Filtros",
+    "appliedFilters": "Filtros aplicados"
   },
   "teacherFilterPicker": {
     "label": "Professor",
@@ -200,5 +202,11 @@
   },
   "fretboard": {
     "closeDescription": "Fechar descrição"
+  },
+  "courseCard": {
+    "label": "Curso",
+    "byline": "por {name}",
+    "lessons": "{count} lição | {count} lições",
+    "learningPaths": "{count} trilha de aprendizagem | {count} trilhas de aprendizagem"
   }
 }
