@@ -90,6 +90,8 @@ function standalonePath(overrides: Partial<StudentPath> = {}): StudentPath {
     archived_at: null,
     source_course_enrollment_id: null,
     course_checkpoint_position: null,
+    lesson_count: 0,
+    completed_count: 0,
     ...overrides,
   }
 }

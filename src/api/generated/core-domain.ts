@@ -856,9 +856,13 @@ export interface paths {
          *     never matches it. A path matches skill_ids when any of its content
          *     nodes is classified with any of the given skills, and, if
          *     concept_ids is also given, also with any of the given concepts.
+         *     language matches a path's own language; a path with no language
+         *     recorded never matches it. status matches a path's publishing
+         *     status.
          *
          *     Teachers and admins may list learning paths; students may not
-         *     browse paths directly — their view is through
+         *     browse the authoring library — they browse published paths
+         *     through GET /catalog/paths and follow their own through
          *     GET /students/me/path.
          */
         get: operations["listLearningPaths"];
@@ -869,6 +873,10 @@ export interface paths {
          *     Items are specified in the desired order; the service assigns each a
          *     1-based position. All content_node_ids must exist in the system before
          *     the path can be created. A path must contain at least one item.
+         *     Every new path starts as a draft: learners can't find it in the
+         *     path catalog until an admin publishes it. summary and language may
+         *     be left out while the path is being built, but publishing requires
+         *     both.
          */
         post: operations["createLearningPath"];
         delete?: never;
@@ -887,8 +895,9 @@ export interface paths {
         /**
          * Get a learning path by ID
          * @description Returns the learning path with its ordered items. Teachers and admins
-         *     may retrieve any path. Students may not browse paths directly — their
-         *     view is through GET /students/me/path.
+         *     may retrieve any path, draft or published. Students may not retrieve
+         *     the authoring view — a published path's learner view is
+         *     GET /catalog/paths/{learning_path_id}.
          */
         get: operations["getLearningPath"];
         /**
@@ -901,6 +910,13 @@ export interface paths {
          *     Existing student progress against this path (a copied StudentPath
          *     per student, not a shared reference) is unaffected by this call.
          *     Only the creating teacher or an admin may replace a learning path.
+         *
+         *     Replacing never changes a path's status. A published path's edits
+         *     are live: the path catalog shows them and the next learner to
+         *     enroll copies them. So a replace that would leave a published path
+         *     unpublishable — without a summary, language or level, or with an
+         *     item whose content node has never been published — is refused;
+         *     unpublish the path first to make such a change.
          */
         put: operations["replaceLearningPath"];
         post?: never;
@@ -914,10 +930,67 @@ export interface paths {
          *     CourseVersion, even a version belonging to a since-retired
          *     course — a published course's checkpoint sequence must always
          *     resolve, for both future re-publishes and any student still
-         *     reading it. Only the creating teacher or an admin may delete a
-         *     learning path.
+         *     reading it. Also refused while the path is published in the path
+         *     catalog: unpublish it first. Only the creating teacher or an admin
+         *     may delete a learning path.
          */
         delete: operations["deleteLearningPath"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/learning-paths/{learning_path_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a learning path to the path catalog
+         * @description Sets the path's status to published, so it appears in
+         *     GET /catalog/paths and learners can enroll in it. There are no
+         *     path versions: the catalog and every later enrollment use the
+         *     path as it currently is. Refused unless the path is complete: a
+         *     summary, a language, a level, at least one item, and every item's
+         *     content node published at least once. The response lists
+         *     everything that is missing. Publishing a path that is already
+         *     published returns it unchanged. Only admins may publish a
+         *     learning path.
+         */
+        post: operations["publishLearningPath"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/learning-paths/{learning_path_id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove a learning path from the path catalog
+         * @description Sets the path's status back to draft. It leaves GET /catalog/paths
+         *     and no one else can enroll in it. Every StudentPath already copied
+         *     from it is its own snapshot and is unaffected, including whichever
+         *     is a learner's current path. Unpublishing a draft path returns it
+         *     unchanged. Refused while a checkpoint of any published
+         *     CourseVersion uses the path, even a version of a since-retired
+         *     course: learners enrolled in that version still reach its later
+         *     checkpoints. A path used only by a course draft can be
+         *     unpublished. Only admins may unpublish a learning path.
+         */
+        post: operations["unpublishLearningPath"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -984,6 +1057,95 @@ export interface paths {
          *     by user_id; an empty array means no creator matches.
          */
         get: operations["listCatalogCreators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse the published path catalog
+         * @description The learner path catalog, the same for every caller whatever their
+         *     role: published learning paths only, never a draft or authoring
+         *     detail such as an item's content_node_id. Results are ordered by
+         *     title, then id.
+         *
+         *     Results are paginated in a {items, total, limit, offset}
+         *     envelope; an offset past the end returns an empty items array.
+         *     Every filter below is optional and they combine with AND; levels,
+         *     skill_ids and concept_ids are any-of within themselves. created_by
+         *     is a free discovery filter for every caller.
+         *
+         *     skill_ids and concept_ids each accept several ids (repeat the
+         *     parameter). A path matches when any of its content nodes is
+         *     classified with any of the given skills, and, if both parameters
+         *     are given, also with any of the given concepts.
+         */
+        get: operations["listCatalogPaths"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/paths/{learning_path_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a published path as learners see it
+         * @description Returns one published learning path's learner-facing detail: its
+         *     catalog fields plus an outline of its items' titles grouped by
+         *     section_label, never lesson content or an item's
+         *     content_node_id. The same for every caller whatever their role.
+         *     404s for a draft path, even for its author — preview a draft
+         *     through GET /learning-paths/{learning_path_id}.
+         */
+        get: operations["getCatalogPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/path-creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the published paths
+         * @description Returns every distinct user who created at least one published
+         *     learning path, so a learner can filter GET /catalog/paths by
+         *     creator (its created_by parameter) from a complete list, without
+         *     paging through the catalog. The same for every caller whatever
+         *     their role; a creator whose paths are all drafts is left out.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the size of the catalog. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         */
+        get: operations["listCatalogPathCreators"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1167,7 +1329,9 @@ export interface paths {
          *     publication. Every already-enrolled student is unaffected — they
          *     keep progressing on the version their enrollment is pinned to.
          *     Admin-only, because publishing exposes the draft to students for
-         *     the first time.
+         *     the first time. Refused while any checkpoint's learning path is a
+         *     draft: every path a published course uses must itself be
+         *     published. The response names the draft paths.
          */
         post: operations["publishCourse"];
         delete?: never;
@@ -1248,9 +1412,17 @@ export interface paths {
          *     student has is left untouched — including whichever was current
          *     before this call — and remains reachable unless separately
          *     archived or abandoned. A student may hold many StudentPaths at
-         *     once. Every content node the template's items reference must
+         *     once, but never two non-archived standalone copies of the same
+         *     template: if the student already holds one, that copy is made
+         *     current and returned (200) instead of creating another. To give
+         *     the student a newer version, the existing copy must be archived
+         *     first. Every content node the template's items reference must
          *     have at least one published version; each item's copy resolves
-         *     to that node's latest published version at this instant.
+         *     to that node's latest published version at this instant. Only a
+         *     published template can be assigned — the same paths learners find
+         *     in the path catalog; assigning a draft is refused. The copy records
+         *     the template's summary, level, thumbnail and creator as they are at
+         *     this instant.
          */
         post: operations["assignLearningPath"];
         delete?: never;
@@ -1306,11 +1478,33 @@ export interface paths {
          *     active and archived alike — so a student can browse and switch
          *     to one via PUT /students/me/current-path. Paths belonging to a
          *     course enrollment are reached through
-         *     GET /students/me/course-enrollments instead.
+         *     GET /students/me/course-enrollments instead. Each path carries
+         *     the presentation recorded when it was copied, plus its lesson
+         *     count and how many of those lessons the student has completed.
          */
         get: operations["listMyStandalonePaths"];
         put?: never;
-        post?: never;
+        /**
+         * Self-enroll the authenticated user in a published path
+         * @description Copies a published learning path into a new standalone StudentPath
+         *     owned by the caller, exactly as a staff assignment does, with the
+         *     caller recorded as assigned_by. The path always becomes the
+         *     caller's current path, whatever was current before; every other
+         *     course enrollment and standalone path keeps its progress.
+         *
+         *     Enrolling is never refused because of what the caller already
+         *     holds, including a course whose checkpoints contain this path.
+         *     Progress is kept per content node, so lessons already completed
+         *     anywhere show as completed in the copy. If the caller already
+         *     holds a non-archived standalone StudentPath copied from this path
+         *     (there is never more than one), that copy is made current and
+         *     returned (200) instead of creating a second one. To take a newer
+         *     version of the path, the caller archives that copy first: an
+         *     archived copy is not reused, so enrolling again creates a fresh
+         *     copy. Any user may enroll,
+         *     whatever their role.
+         */
+        post: operations["enrollInLearningPath"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1534,6 +1728,9 @@ export interface components {
         };
         PagedCourseCatalog: components["schemas"]["PageMeta"] & {
             items: components["schemas"]["CourseCatalogEntry"][];
+        };
+        PagedPathCatalog: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["PathCatalogEntry"][];
         };
         PagedDiagrams: components["schemas"]["PageMeta"] & {
             /** @description The diagrams on this page, ordered by name, then id. */
@@ -2668,6 +2865,10 @@ export interface components {
         CreateLearningPathRequest: {
             /** @description Human-readable name for this learning path, displayed to teachers and admins. */
             title: string;
+            /** @description Short description of the path shown in the path catalog. Optional while the path is a draft; omitting it removes the current one. Required to publish. */
+            summary?: string;
+            /** @description The language the path is written in, as a Language.code other than "any". Optional while the path is a draft; omitting it removes the current one. Required to publish. */
+            language?: string;
             /**
              * @description The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
              * @enum {string}
@@ -2719,6 +2920,15 @@ export interface components {
             teacher: components["schemas"]["UserRef"];
             /** @description Human-readable name for this learning path. */
             title: string;
+            /** @description Short description of the path shown in the path catalog. Absent until an author gives it one. */
+            summary?: string;
+            /** @description The language the path is written in, as a Language.code other than "any". Absent until an author gives it one. */
+            language?: string;
+            /**
+             * @description draft — only teachers and admins see it. published — listed in the path catalog, where any user can enroll.
+             * @enum {string}
+             */
+            status: "draft" | "published";
             /**
              * @description The level a learner should be at to follow this path. Absent for a path created before levels were recorded, until it is next saved.
              * @enum {string}
@@ -2752,6 +2962,10 @@ export interface components {
         ReplaceLearningPathRequest: {
             /** @description Human-readable name for this learning path, displayed to teachers and admins. */
             title: string;
+            /** @description Short description of the path shown in the path catalog. Optional while the path is a draft; omitting it removes the current one. Required to publish. */
+            summary?: string;
+            /** @description The language the path is written in, as a Language.code other than "any". Optional while the path is a draft; omitting it removes the current one. Required to publish. */
+            language?: string;
             /**
              * @description The level a learner should be at to follow this path, using the same five-value rubric applied to courses and content nodes.
              * @enum {string}
@@ -2778,9 +2992,33 @@ export interface components {
         AssignLearningPathRequest: {
             /**
              * Format: uuid
-             * @description The ID of the learning path to assign. Must exist in the system.
+             * @description The ID of the learning path to assign. Must exist in the system and be published.
              */
             learning_path_id: string;
+        };
+        /** @description Payload for enrolling the caller in a published learning path. */
+        EnrollInLearningPathRequest: {
+            /**
+             * Format: uuid
+             * @description The ID of the published learning path to enroll in.
+             */
+            learning_path_id: string;
+        };
+        /** @description Returned when a course can't be published because a checkpoint uses a learning path that is still a draft. */
+        CourseNotPublishableError: {
+            /** @description Human-readable reason for the refusal. */
+            message: string;
+            /** @description The checkpoints' learning paths that are still drafts, in checkpoint order. */
+            draft_learning_path_ids: string[];
+        };
+        /** @description Returned when a learning path can't be published, or a published one can't be changed, because the result would be incomplete. */
+        LearningPathNotPublishableError: {
+            /** @description Human-readable reason for the refusal. */
+            message: string;
+            /** @description Everything that stops the path from being published. summary, language and level — the field is absent. items — the path has no items. unpublished_content — at least one item's content node has never been published. */
+            missing: ("summary" | "language" | "level" | "items" | "unpublished_content")[];
+            /** @description The items' content nodes that have never been published. Present only when missing includes unpublished_content. */
+            unpublished_content_node_ids?: string[];
         };
         /**
          * @description A student's own copy of a learning path template's items. Created by
@@ -2820,6 +3058,23 @@ export interface components {
             source_course_enrollment_id?: string | null;
             /** @description 1-based position of this checkpoint within its course, or null for a standalone path. Set together with source_course_enrollment_id. */
             course_checkpoint_position?: number | null;
+            /** @description The template's summary when this path was copied. Absent when the template had none, or the path was copied before summaries were recorded. */
+            summary?: string;
+            /**
+             * @description The template's level when this path was copied. Absent when the template had none, or the path was copied before levels were recorded on copies.
+             * @enum {string}
+             */
+            level?: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /**
+             * Format: uri
+             * @description The template's thumbnail when this path was copied. Absent when it had none, or the path was copied before thumbnails were recorded on copies.
+             */
+            thumbnail_url?: string;
+            created_by?: components["schemas"]["UserRef"];
+            /** @description Number of items in this path. */
+            lesson_count: number;
+            /** @description Number of this path's items whose content node the student has completed, here or in any other path. */
+            completed_count: number;
         };
         /** @description A content node in the student's learning path with their current progress state. */
         StudentPathItem: {
@@ -2903,7 +3158,7 @@ export interface components {
             checkpoints: {
                 /**
                  * Format: uuid
-                 * @description The learning path template at this checkpoint. Must exist in the system.
+                 * @description The learning path template at this checkpoint. Must exist in the system. It may be a draft while the course is being built, but the course can't be published until it is published.
                  */
                 learning_path_id: string;
                 /** @description Optional override shown for this checkpoint instead of the learning path's own title (e.g. "Stage 1: Open chords"). */
@@ -2932,7 +3187,7 @@ export interface components {
             checkpoints: {
                 /**
                  * Format: uuid
-                 * @description The learning path template at this checkpoint. Must exist in the system.
+                 * @description The learning path template at this checkpoint. Must exist in the system. It may be a draft while the course is being built, but the course can't be published until it is published.
                  */
                 learning_path_id: string;
                 /** @description Optional override shown for this checkpoint instead of the learning path's own title. */
@@ -3054,11 +3309,11 @@ export interface components {
              */
             thumbnail_url?: string;
         };
-        /** @description One content node's title within a checkpoint's outline. */
+        /** @description One content node's title within a course checkpoint's or a path's outline. */
         CourseOutlineItem: {
             /** @description Title of the content node. */
             title: string;
-            /** @description Optional label grouping this item with its immediate neighbors under a named section, carried through from the underlying learning path. */
+            /** @description Optional label grouping this item with its immediate neighbors under a named section, carried through from the learning path. */
             section_label?: string;
         };
         /** @description A checkpoint as shown to a prospective or enrolled student — title and item outline, never lesson content. */
@@ -3115,6 +3370,64 @@ export interface components {
             checkpoint_count: number;
             /** @description Number of content nodes across this published course version's checkpoint learning paths. This is not an estimated duration. */
             lesson_count: number;
+        };
+        /** @description A published learning path as it appears in the path catalog — enough to browse and pick one, never authoring detail such as an item's content_node_id. */
+        PathCatalogEntry: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this learning path.
+             */
+            learning_path_id: string;
+            /** @description Human-readable name for this learning path. */
+            title: string;
+            /** @description Short description of the path. */
+            summary: string;
+            /**
+             * @description The level a learner should be at to follow this path.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The language the path is written in, as a Language.code. */
+            language: string;
+            created_by: components["schemas"]["UserRef"];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards. Absent when it has none.
+             */
+            thumbnail_url?: string;
+            /** @description Number of items in the path. This is a lesson count, not an estimated duration. */
+            lesson_count: number;
+        };
+        /** @description A single published learning path's learner-facing detail, rendered as an outline of its items' titles, never lesson content. */
+        PathDetail: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this learning path.
+             */
+            learning_path_id: string;
+            /** @description Human-readable name for this learning path. */
+            title: string;
+            /** @description Short description of the path. */
+            summary: string;
+            /**
+             * @description The level a learner should be at to follow this path.
+             * @enum {string}
+             */
+            level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            /** @description The language the path is written in, as a Language.code. */
+            language: string;
+            created_by: components["schemas"]["UserRef"];
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
+             * Format: uri
+             * @description An image shown for this item in lists and cards. Absent when it has none.
+             */
+            thumbnail_url?: string;
+            /** @description Number of items in the path. This is a lesson count, not an estimated duration. */
+            lesson_count: number;
+            /** @description The path's items, in order, as a title-only outline. */
+            items: components["schemas"]["CourseOutlineItem"][];
         };
         /**
          * @description An immutable, permanent snapshot of a course's title, summary,
@@ -3598,10 +3911,13 @@ export interface components {
          *     under text and any inline marks under marks. attrs holds
          *     type-specific attributes (e.g. heading's level, paragraph/heading's
          *     text alignment, image's src and alt, audio/video's src, diagram's
-         *     diagram_ref or diagram_stack_ref (the same shapes DiagramRef/
-         *     DiagramStackRef carry elsewhere in this spec), table cell's colspan,
-         *     rowspan, backgroundColor, and borderColor) and is validated by the
-         *     authoring editor, not by this schema.
+         *     diagramRef or diagramStackRef, table cell's colspan, rowspan,
+         *     backgroundColor, and borderColor) and is validated by the authoring
+         *     editor, not by this schema. attrs keys are camelCase (the rich-text
+         *     editor's convention), so a diagram node's keys are diagramRef and
+         *     diagramStackRef — not diagram_ref/diagram_stack_ref. Their values
+         *     are the DiagramRef/DiagramStackRef shapes defined elsewhere in this
+         *     spec, whose own fields stay snake_case (diagram_id, layers, …).
          */
         PromptNode: {
             /**
@@ -4341,6 +4657,7 @@ export type SchemaPagedContentNodes = components['schemas']['PagedContentNodes']
 export type SchemaPagedExercises = components['schemas']['PagedExercises'];
 export type SchemaPagedLearningPaths = components['schemas']['PagedLearningPaths'];
 export type SchemaPagedCourseCatalog = components['schemas']['PagedCourseCatalog'];
+export type SchemaPagedPathCatalog = components['schemas']['PagedPathCatalog'];
 export type SchemaPagedDiagrams = components['schemas']['PagedDiagrams'];
 export type SchemaHealthStatus = components['schemas']['HealthStatus'];
 export type SchemaCreateContentNodeRequest = components['schemas']['CreateContentNodeRequest'];
@@ -4376,6 +4693,9 @@ export type SchemaLearningPathItem = components['schemas']['LearningPathItem'];
 export type SchemaLearningPath = components['schemas']['LearningPath'];
 export type SchemaReplaceLearningPathRequest = components['schemas']['ReplaceLearningPathRequest'];
 export type SchemaAssignLearningPathRequest = components['schemas']['AssignLearningPathRequest'];
+export type SchemaEnrollInLearningPathRequest = components['schemas']['EnrollInLearningPathRequest'];
+export type SchemaCourseNotPublishableError = components['schemas']['CourseNotPublishableError'];
+export type SchemaLearningPathNotPublishableError = components['schemas']['LearningPathNotPublishableError'];
 export type SchemaStudentPath = components['schemas']['StudentPath'];
 export type SchemaStudentPathItem = components['schemas']['StudentPathItem'];
 export type SchemaStudentPathView = components['schemas']['StudentPathView'];
@@ -4387,6 +4707,8 @@ export type SchemaCourse = components['schemas']['Course'];
 export type SchemaCourseOutlineItem = components['schemas']['CourseOutlineItem'];
 export type SchemaCourseOutlineCheckpoint = components['schemas']['CourseOutlineCheckpoint'];
 export type SchemaCourseDetail = components['schemas']['CourseDetail'];
+export type SchemaPathCatalogEntry = components['schemas']['PathCatalogEntry'];
+export type SchemaPathDetail = components['schemas']['PathDetail'];
 export type SchemaCourseVersion = components['schemas']['CourseVersion'];
 export type SchemaCreateCourseEnrollmentRequest = components['schemas']['CreateCourseEnrollmentRequest'];
 export type SchemaCourseEnrollment = components['schemas']['CourseEnrollment'];
@@ -6671,6 +6993,13 @@ export interface operations {
                 sort?: "title" | "updated";
                 /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
                 instrument_id?: string;
+                /**
+                 * @description Restricts the results to learning paths written in this
+                 *     language (a Language.code other than "any").
+                 */
+                language?: string;
+                /** @description Restricts the results to learning paths with this publishing status. */
+                status?: "draft" | "published";
             };
             header?: never;
             path?: never;
@@ -6888,6 +7217,18 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundError"];
                 };
             };
+            /**
+             * @description The path is published and the replacement would leave it
+             *     unpublishable. The response lists what would be missing.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPathNotPublishableError"];
+                };
+            };
         };
     };
     deleteLearningPath: {
@@ -6942,8 +7283,145 @@ export interface operations {
             };
             /**
              * @description This learning path is referenced by a checkpoint of at
-             *     least one published CourseVersion and cannot be deleted.
+             *     least one published CourseVersion, or is published in the
+             *     path catalog, and cannot be deleted.
              */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    publishLearningPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the learning path to publish. */
+                learning_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The learning path, now published. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"];
+                };
+            };
+            /** @description The learning_path_id is not a valid UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins may publish a learning path. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No learning path exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The path is not complete enough to publish. The response lists what is missing. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPathNotPublishableError"];
+                };
+            };
+        };
+    };
+    unpublishLearningPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the learning path to unpublish. */
+                learning_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The learning path, now a draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearningPath"];
+                };
+            };
+            /** @description The learning_path_id is not a valid UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins may unpublish a learning path. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No learning path exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description A checkpoint of at least one published CourseVersion uses this path. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7033,6 +7511,157 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    listCatalogPaths: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
+                q?: components["parameters"]["SearchText"];
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Restricts the results to paths at any of these levels. */
+                levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
+                /** @description Restricts the results to paths created by this user. */
+                created_by?: string;
+                /** @description Restricts the results to paths with a content node classified with at least one of these skills. */
+                skill_ids?: string[];
+                /** @description Restricts the results to paths with a content node classified with at least one of these concepts. */
+                concept_ids?: string[];
+                /**
+                 * @description Restricts the results to paths written in this language
+                 *     (a Language.code other than "any").
+                 */
+                language?: string;
+                /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
+                instrument_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of the published path catalog, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedPathCatalog"];
+                };
+            };
+            /** @description limit or offset is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    getCatalogPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the published learning path to retrieve. */
+                learning_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The published path, as an outline. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PathDetail"];
+                };
+            };
+            /** @description The learning_path_id is not a valid UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No learning path exists with the given ID, or it is not published. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listCatalogPathCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the published paths, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description q is empty or longer than 200 characters. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
             /** @description Missing or invalid Bearer token. */
@@ -7429,6 +8058,15 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundError"];
                 };
             };
+            /** @description At least one checkpoint's learning path is a draft. The response names them. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseNotPublishableError"];
+                };
+            };
         };
     };
     retireCourse: {
@@ -7556,6 +8194,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description The student already held an active standalone copy of this path. Returns that copy, now the student's current path. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPath"];
+                };
+            };
             /** @description Path assigned. Returns the new StudentPath. */
             201: {
                 headers: {
@@ -7603,6 +8250,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The learning path is a draft. Only published paths can be assigned. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
                 };
             };
         };
@@ -7670,6 +8326,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    enrollInLearningPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnrollInLearningPathRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's existing active copy of this path, now current. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPath"];
+                };
+            };
+            /** @description A new copy of the path, now current. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPath"];
+                };
+            };
+            /** @description The request body failed schema validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No learning path exists with the given ID, or it is not published. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
                 };
             };
         };
