@@ -56,16 +56,23 @@ function writePlace(key: string, place: RestingPlace): void {
  * always entirely on screen and between `topReserve` and `minBottom`. Its place
  * is remembered per device, and brought back into view if the window shrinks.
  *
- * Positions are computed from the window size and the element's known size, not
- * measured from the DOM, so the element can be dragged the moment it renders.
+ * A drag starts from the element's box as the browser actually drew it, and
+ * moves it by exactly the pointer's travel from there.
  */
 export function useDraggableFloat(options: Options) {
   const viewport = ref({ width: window.innerWidth, height: window.innerHeight })
   const place = ref<RestingPlace>(readPlace(options.storageKey))
 
-  // Set only while a drag is under way: the element's top-left corner, in px.
-  const dragPosition = ref<{ x: number; y: number } | null>(null)
-  let press: { pointerId: number; startX: number; startY: number; originX: number; originY: number } | null = null
+  // Set only while a drag is under way: how far the element has moved from
+  // where it was drawn when pressed, in px.
+  const dragOffset = ref<{ x: number; y: number } | null>(null)
+  let press: {
+    pointerId: number
+    startX: number
+    startY: number
+    /** The element's box when pressed, as the browser drew it. */
+    origin: DOMRect
+  } | null = null
   // A drag ends in a click on the element; that click must not act as a tap.
   let swallowNextClick = false
 
@@ -78,38 +85,36 @@ export function useDraggableFloat(options: Options) {
 
   const restingBottom = computed(() => clampBottom(place.value.bottom ?? toValue(options.minBottom)))
 
-  function restingTopLeft(): { x: number; y: number } {
-    const x = place.value.side === 'left' ? options.edge : viewport.value.width - options.edge - options.size
-    return { x, y: viewport.value.height - restingBottom.value - options.size }
+  // The movement from `origin` that keeps the element entirely on screen,
+  // clear of the reserved space at the top and of `minBottom` at the bottom.
+  function clampedOffset(origin: DOMRect, dx: number, dy: number): { x: number; y: number } {
+    const { width, height } = viewport.value
+    const x = Math.max(options.edge, Math.min(origin.left + dx, width - options.edge - origin.width))
+    const y = Math.max(
+      options.topReserve,
+      Math.min(origin.top + dy, height - toValue(options.minBottom) - origin.height),
+    )
+    return { x: x - origin.left, y: y - origin.top }
   }
 
-  function clampTopLeft(x: number, y: number): { x: number; y: number } {
-    const maxX = viewport.value.width - options.edge - options.size
-    const minY = viewport.value.height - clampBottom(Infinity) - options.size
-    const maxY = viewport.value.height - toValue(options.minBottom) - options.size
-    return {
-      x: Math.max(options.edge, Math.min(x, maxX)),
-      y: Math.max(minY, Math.min(y, maxY)),
-    }
-  }
-
-  const dragging = computed(() => dragPosition.value !== null)
+  const dragging = computed(() => dragOffset.value !== null)
   const side = computed<FloatSide>(() => place.value.side)
-  const style = computed(() =>
-    dragPosition.value
-      ? { left: `${dragPosition.value.x}px`, top: `${dragPosition.value.y}px` }
-      : { bottom: `${restingBottom.value}px` },
-  )
+  // While dragging, the element keeps its resting place and is only shifted by
+  // the pointer's travel, so it moves with the pointer from wherever it is
+  // actually drawn — it cannot jump when the drag starts.
+  const style = computed(() => ({
+    bottom: `${restingBottom.value}px`,
+    ...(dragOffset.value && { transform: `translate(${dragOffset.value.x}px, ${dragOffset.value.y}px)` }),
+  }))
 
   function onPointerDown(event: PointerEvent): void {
-    if (event.button !== 0) return
-    const origin = restingTopLeft()
+    if (event.button !== 0 || !(event.currentTarget instanceof Element)) return
+    viewport.value = { width: window.innerWidth, height: window.innerHeight }
     press = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originX: origin.x,
-      originY: origin.y,
+      origin: event.currentTarget.getBoundingClientRect(),
     }
     swallowNextClick = false
   }
@@ -118,24 +123,27 @@ export function useDraggableFloat(options: Options) {
     if (!press || event.pointerId !== press.pointerId) return
     const dx = event.clientX - press.startX
     const dy = event.clientY - press.startY
-    if (!dragPosition.value && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
-    if (!dragPosition.value && event.currentTarget instanceof Element) {
+    if (!dragOffset.value && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+    if (!dragOffset.value && event.currentTarget instanceof Element) {
       // Keeps the moves coming even when the pointer outruns the element.
       event.currentTarget.setPointerCapture?.(event.pointerId)
     }
-    dragPosition.value = clampTopLeft(press.originX + dx, press.originY + dy)
+    dragOffset.value = clampedOffset(press.origin, dx, dy)
   }
 
   function onPointerUp(event: PointerEvent): void {
     if (!press || event.pointerId !== press.pointerId) return
+    const { origin } = press
     press = null
-    const dropped = dragPosition.value
-    if (!dropped) return
-    dragPosition.value = null
+    const offset = dragOffset.value
+    if (!offset) return
+    dragOffset.value = null
     swallowNextClick = true
+    const left = origin.left + offset.x
+    const top = origin.top + offset.y
     const next: RestingPlace = {
-      side: dropped.x + options.size / 2 < viewport.value.width / 2 ? 'left' : 'right',
-      bottom: viewport.value.height - dropped.y - options.size,
+      side: left + origin.width / 2 < viewport.value.width / 2 ? 'left' : 'right',
+      bottom: viewport.value.height - top - origin.height,
     }
     place.value = next
     writePlace(options.storageKey, next)
@@ -143,7 +151,7 @@ export function useDraggableFloat(options: Options) {
 
   function onPointerCancel(): void {
     press = null
-    dragPosition.value = null
+    dragOffset.value = null
   }
 
   function onClick(event: MouseEvent): void {

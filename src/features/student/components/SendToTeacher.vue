@@ -77,7 +77,7 @@ function onBlur(): void {
     v-if="href"
     data-test="send-to-teacher-float"
     class="fixed z-10"
-    :class="float.dragging.value ? null : float.side.value === 'left' ? 'left-4' : 'right-4'"
+    :class="float.side.value === 'left' ? 'left-4' : 'right-4'"
     :style="float.style.value"
   >
     <div

@@ -32,8 +32,25 @@ type Point = { clientX: number; clientY: number }
 
 const POSITION_KEY = 'motifpath:send-to-teacher-position'
 
+/**
+ * jsdom lays nothing out, so this gives the icon the box a browser would draw
+ * it in: its resting side and height inside jsdom's 1024 x 768 window.
+ */
+function drawIconWhereItRests(wrapper: Wrapper) {
+  const floating = float(wrapper)
+  const x = floating.classes().includes('left-4') ? 16 : 1024 - 16 - 48
+  const bottom = Number(/bottom: (\d+)px/.exec(floating.attributes('style') ?? '')?.[1] ?? 16)
+  drawIconAt(wrapper, x, 768 - bottom - 48)
+}
+
+function drawIconAt(wrapper: Wrapper, x: number, y: number) {
+  const link = wrapper.get('[data-test="send-to-teacher"]').element
+  vi.spyOn(link, 'getBoundingClientRect').mockReturnValue(new DOMRect(x, y, 48, 48))
+}
+
 /** A whole pointer gesture on the icon: press at `from`, move to `to`, release there. */
 async function drag(wrapper: Wrapper, from: Point, to: Point) {
+  drawIconWhereItRests(wrapper)
   const link = wrapper.get('[data-test="send-to-teacher"]')
   const pointer = { pointerType: 'mouse', pointerId: 1, button: 0 }
   await link.trigger('pointerdown', { ...pointer, ...from })
@@ -104,6 +121,18 @@ describe('SendToTeacher', () => {
       expect(float(wrapper).attributes('style')).toContain('bottom: 316px')
     })
 
+    it('follows the finger from wherever the icon is drawn, without jumping', async () => {
+      const wrapper = mountButton()
+      // Drawn somewhere other than its resting corner.
+      drawIconAt(wrapper, 500, 300)
+      const link = wrapper.get('[data-test="send-to-teacher"]')
+
+      await link.trigger('pointerdown', { pointerType: 'touch', pointerId: 1, button: 0, clientX: 520, clientY: 320 })
+      await link.trigger('pointermove', { pointerType: 'touch', pointerId: 1, clientX: 420, clientY: 120 })
+
+      expect(float(wrapper).attributes('style')).toContain('translate(-100px, -200px)')
+    })
+
     it('does not open WhatsApp at the end of a drag', async () => {
       const wrapper = mountButton()
 
@@ -161,6 +190,7 @@ describe('SendToTeacher', () => {
       const wrapper = mountButton()
       const link = wrapper.get('[data-test="send-to-teacher"]')
       await link.trigger('pointerenter', { pointerType: 'mouse' })
+      drawIconWhereItRests(wrapper)
 
       await link.trigger('pointerdown', { pointerType: 'mouse', pointerId: 1, button: 0, clientX: 1000, clientY: 740 })
       await link.trigger('pointermove', { pointerType: 'mouse', pointerId: 1, clientX: 800, clientY: 600 })
