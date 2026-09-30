@@ -133,6 +133,45 @@ describe('SendToTeacher', () => {
       expect(float(wrapper).attributes('style')).toContain('translate(-100px, -200px)')
     })
 
+    describe('when the icon is drawn away from where the window size puts it', () => {
+      // Resting at bottom 16px, but drawn 400px higher than that implies.
+      async function dragFromMisplacedIcon(wrapper: Wrapper, dy: number) {
+        drawIconAt(wrapper, 960, 304)
+        const link = wrapper.get('[data-test="send-to-teacher"]')
+        const pointer = { pointerType: 'touch', pointerId: 1, button: 0, clientX: 980 }
+        await link.trigger('pointerdown', { ...pointer, clientY: 330 })
+        await link.trigger('pointermove', { ...pointer, clientY: 330 + dy })
+        return link
+      }
+
+      it('settles where it was let go', async () => {
+        const wrapper = mountButton()
+        const link = await dragFromMisplacedIcon(wrapper, -100)
+
+        await link.trigger('pointerup', { pointerType: 'touch', pointerId: 1, clientX: 980, clientY: 230 })
+
+        expect(float(wrapper).attributes('style')).toContain('bottom: 116px')
+      })
+
+      it('still cannot be dragged below its lowest place', async () => {
+        const wrapper = mountButton()
+
+        await dragFromMisplacedIcon(wrapper, 100)
+
+        expect(float(wrapper).attributes('style')).toContain('translate(0px, 0px)')
+      })
+
+      it('still stops below the app bar', async () => {
+        const wrapper = mountButton()
+        const link = await dragFromMisplacedIcon(wrapper, -1000)
+
+        await link.trigger('pointerup', { pointerType: 'touch', pointerId: 1, clientX: 980, clientY: -670 })
+
+        // Drawn at top 304px, stopped at 80px: moved up 224px from a bottom of 16px.
+        expect(float(wrapper).attributes('style')).toContain('bottom: 240px')
+      })
+    })
+
     it('does not open WhatsApp at the end of a drag', async () => {
       const wrapper = mountButton()
 
