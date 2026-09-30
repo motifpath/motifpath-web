@@ -32,6 +32,16 @@ describe('CourseFilters', () => {
     )
   })
 
+  it('names the compact filters dialog by its heading', async () => {
+    const wrapper = mountFilters({ compact: true })
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
+
+    const dialog = wrapper.get('[role="dialog"]')
+    const labelId = dialog.attributes('aria-labelledby')
+    expect(labelId).toBeTruthy()
+    expect(wrapper.get(`[id="${labelId}"]`).text()).toBe('Filters')
+  })
+
   it('offers no instrument or language filter unless asked to', async () => {
     const wrapper = mountFilters()
     await flushPromises()

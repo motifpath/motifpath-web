@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, Search, SlidersHorizontal, X } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
@@ -57,6 +57,7 @@ const language = defineModel<string | null>('language', { default: null })
 const { t } = useTypedT()
 const { instrumentsLabel } = useInstrumentNames()
 const advancedOpen = ref(false)
+const advancedTitleId = useId()
 
 const { skills, isLoading: skillsLoading } = useListSkills()
 const { concepts, isLoading: conceptsLoading } = useListConcepts()
@@ -206,9 +207,9 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
       panel-class="flex max-h-[85vh] w-[min(720px,calc(100vw-32px))] flex-col gap-4 overflow-y-auto rounded-xl bg-surface-raised p-5 shadow-level2"
       @close="advancedOpen = false"
     >
-      <div role="dialog" aria-modal="true" class="flex flex-col gap-4">
+      <div role="dialog" aria-modal="true" :aria-labelledby="advancedTitleId" class="flex flex-col gap-4">
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-base font-bold text-ink">{{ t('courseFilters.filters') }}</h2>
+          <h2 :id="advancedTitleId" class="text-base font-bold text-ink">{{ t('courseFilters.filters') }}</h2>
           <ModalCloseButton @close="advancedOpen = false" />
         </div>
 
