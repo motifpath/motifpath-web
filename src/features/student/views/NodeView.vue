@@ -27,6 +27,8 @@ const router = useRouter()
 // point of this screen, so the trimmed title and spacing apply whenever
 // either dimension is small, not just a narrow width.
 const { matches: isShortViewport } = useMediaQuery('(max-width: 767px), (max-height: 500px)')
+// Short in height only: there the video fills the screen top to bottom.
+const { matches: isShortHeight } = useMediaQuery('(max-height: 500px)')
 
 // Vue Router types a param as `string | string[]` (array only for a
 // repeatable segment, which `:nodeId` isn't) — narrow instead of asserting.
@@ -280,7 +282,8 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
       </div>
     </template>
 
-    <!-- On a short screen the video fills the height, so its control bar —
+    <!-- On a screen short in height (a phone in landscape) the video fills
+         the height, so its control bar —
          fullscreen button last, in the corner — sits where the floating
          button would; the button floats higher there to leave it reachable. -->
     <SendToTeacher
@@ -288,7 +291,7 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
       :reference="lessonReference(nodeId)"
       :path-title="lesson.pathTitle.value"
       :lesson-title="lesson.node.value?.title"
-      :raised="isShortViewport"
+      :raised="isShortHeight"
     />
   </section>
 </template>

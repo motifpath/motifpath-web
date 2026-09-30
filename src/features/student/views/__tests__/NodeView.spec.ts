@@ -63,8 +63,10 @@ vi.mock('@/features/student/composables/useLessonCompletionSync', () => ({
 // window.matchMedia, since useMediaQuery's own reactivity to the query is
 // already covered by its own tests.
 const isShortViewport = ref(false)
+// Short in height only — a phone rotated to landscape, not an upright phone.
+const isShortHeight = ref(false)
 vi.mock('@/shared/composables/useMediaQuery', () => ({
-  useMediaQuery: () => ({ matches: isShortViewport }),
+  useMediaQuery: (query: string) => ({ matches: query === '(max-height: 500px)' ? isShortHeight : isShortViewport }),
 }))
 
 const complete = vi.fn()
@@ -133,6 +135,7 @@ describe('NodeView', () => {
     useLessonTracking.mockClear()
     lesson.retry.mockReset()
     isShortViewport.value = false
+    isShortHeight.value = false
     setLesson({})
   })
 
@@ -624,11 +627,21 @@ describe('NodeView', () => {
 
     it('floats higher on a short screen, clear of the player controls a full-height video puts at the bottom', async () => {
       isShortViewport.value = true
+      isShortHeight.value = true
       setLesson({})
 
       const wrapper = await mountView()
 
       expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('raised')).toBe(true)
+    })
+
+    it('stays in its low corner on an upright phone, whose video does not reach the bottom', async () => {
+      isShortViewport.value = true
+      setLesson({})
+
+      const wrapper = await mountView()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('raised')).toBe(false)
     })
 
     it.each<LessonNodeState>(['unsupported', 'no-media'])('is offered on an unlocked %s lesson', async (state) => {
