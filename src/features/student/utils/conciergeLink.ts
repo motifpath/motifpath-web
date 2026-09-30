@@ -26,11 +26,21 @@ export function practiceReference(contentNodeId: string, exerciseId: string): st
 }
 
 /**
+ * The concierge's WhatsApp number this build was given, or null when none is
+ * configured — the feature is off then. Read on each call, not at module
+ * load, so it always reflects the running build's environment.
+ */
+export function conciergeNumber(): string | null {
+  const number = import.meta.env.VITE_CONCIERGE_WHATSAPP_NUMBER ?? ''
+  return /\d/.test(number) ? number : null
+}
+
+/**
  * The wa.me link to `number` with `message` prefilled, or null when `number`
  * holds no digits — wa.me takes the international number as digits only, so
  * any formatting ("+55 11 91234-5678") is dropped.
  */
-export function conciergeWhatsAppUrl(number: string | undefined, message: string): string | null {
+export function conciergeWhatsAppUrl(number: string | null | undefined, message: string): string | null {
   const digits = (number ?? '').replace(/\D/g, '')
   if (!digits) return null
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`

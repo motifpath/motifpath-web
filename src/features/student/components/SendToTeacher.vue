@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useId } from 'vue'
 
-import { conciergeWhatsAppUrl } from '@/features/student/utils/conciergeLink'
+import { conciergeNumber, conciergeWhatsAppUrl } from '@/features/student/utils/conciergeLink'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -18,8 +18,7 @@ const { t } = useTypedT()
 const currentUser = useCurrentUserStore()
 const tooltipId = useId()
 
-// Read per render, not at module load, so the number is whatever this build
-// was given — the feature is off when no number is configured.
+// No link at all — so no button — when no concierge number is configured.
 const href = computed(() => {
   const name = currentUser.profile?.display_name?.trim()
   const lines = [
@@ -31,7 +30,7 @@ const href = computed(() => {
     t('sendToTeacher.prompt'),
   ]
   const message = lines.filter((line): line is string => line !== null).join('\n')
-  return conciergeWhatsAppUrl(import.meta.env.VITE_CONCIERGE_WHATSAPP_NUMBER, message)
+  return conciergeWhatsAppUrl(conciergeNumber(), message)
 })
 
 // The tooltip is for a mouse hover or keyboard focus only. A touch has no

@@ -1,5 +1,5 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, nextTick, ref } from 'vue'
 
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -51,7 +51,8 @@ vi.mock('@/features/student/composables/usePracticeSession', () => ({
 }))
 
 const titles = { pathTitle: ref<string | null>('Blues Basics'), lessonTitle: ref<string | null>('Shuffle in E') }
-vi.mock('@/features/student/composables/useLessonTitles', () => ({ useLessonTitles: () => titles }))
+const useLessonTitles = vi.fn(() => titles)
+vi.mock('@/features/student/composables/useLessonTitles', () => ({ useLessonTitles: () => useLessonTitles() }))
 
 // The button has its own tests; here only where it appears and what it is given.
 vi.mock('@/features/student/components/SendToTeacher.vue', async () => {
@@ -262,6 +263,24 @@ describe('PracticeView', () => {
 
   describe('send to your teacher', () => {
     const secondExercise: Exercise = { ...textExercise, exercise_id: 'ex-2' }
+
+    beforeEach(() => {
+      vi.stubEnv('VITE_CONCIERGE_WHATSAPP_NUMBER', '+55 11 91234-5678')
+      useLessonTitles.mockClear()
+    })
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    it('loads nothing for the message when no concierge number is configured', () => {
+      vi.stubEnv('VITE_CONCIERGE_WHATSAPP_NUMBER', '')
+      set({ status: ref('in-progress'), exercises: ref([textExercise]) })
+
+      mountView()
+
+      expect(useLessonTitles).not.toHaveBeenCalled()
+    })
 
     it('is offered on the exercise shown, with its reference and the lesson titles', () => {
       set({ status: ref('in-progress'), exercises: ref([textExercise, secondExercise]) })

@@ -10,7 +10,7 @@ import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useLessonTitles } from '@/features/student/composables/useLessonTitles'
 import { usePracticeSession } from '@/features/student/composables/usePracticeSession'
-import { practiceReference } from '@/features/student/utils/conciergeLink'
+import { conciergeNumber, practiceReference } from '@/features/student/utils/conciergeLink'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
 const props = defineProps<{ nodeId: string }>()
@@ -19,7 +19,9 @@ const props = defineProps<{ nodeId: string }>()
 // route change that reuses this component (same route record, new :nodeId)
 // still reloads instead of showing the previous node's session.
 const session = usePracticeSession(() => props.nodeId)
-const titles = useLessonTitles(() => props.nodeId)
+// Only the concierge message needs the titles, so nothing is loaded for it
+// when no concierge number is configured and the button can't show.
+const titles = conciergeNumber() ? useLessonTitles(() => props.nodeId) : null
 
 const { t } = useTypedT()
 
@@ -98,8 +100,8 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
 
       <SendToTeacher
         :reference="practiceReference(props.nodeId, session.currentExercise.value.exercise_id)"
-        :path-title="titles.pathTitle.value"
-        :lesson-title="titles.lessonTitle.value"
+        :path-title="titles?.pathTitle.value"
+        :lesson-title="titles?.lessonTitle.value"
         raised
       />
 
