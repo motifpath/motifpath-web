@@ -14,6 +14,11 @@ declare module 'vue-router' {
     requiresRole?: Role[]
     /** Route wants a wider content column than the app's usual reading width. */
     wideContent?: boolean
+    /**
+     * The route this one replaces while keeping the same form on screen (a new
+     * item's first save), so arriving from it keeps the scroll position.
+     */
+    keepsScrollFrom?: string
   }
 }
 
@@ -244,7 +249,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: ':id/edit',
         name: 'teacher-course-edit',
-        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'], keepsScrollFrom: 'teacher-course-new' },
         component: () => import('@/features/teacher/views/CourseBuilderView.vue'),
       },
     ],
@@ -270,7 +275,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: ':id/edit',
         name: 'teacher-diagram-edit',
-        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+        meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'], keepsScrollFrom: 'teacher-diagram-new' },
         component: () => import('@/features/teacher/views/DiagramAuthoringView.vue'),
       },
     ],
@@ -285,8 +290,10 @@ const routes: RouteRecordRaw[] = [
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  scrollBehavior(_to, _from, savedPosition) {
-    return savedPosition ?? { top: 0 }
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.meta.keepsScrollFrom && to.meta.keepsScrollFrom === from.name) return false
+    return { top: 0 }
   },
 })
 
