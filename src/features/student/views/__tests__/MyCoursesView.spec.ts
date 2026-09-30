@@ -66,7 +66,11 @@ function enrollment(overrides: Partial<CourseEnrollment> = {}): CourseEnrollment
     student: alice,
     course_id: 'c-1',
     course_title: 'Fingerstyle journey',
+    course_summary: 'From first arpeggios to full arrangements.',
+    course_level: 'beginner',
+    course_created_by: { user_id: 't-1', display_name: 'Bob Martins' },
     course_version_number: 1,
+    checkpoint_count: 3,
     status: 'active',
     active_checkpoint_student_path_id: 'sp-e1',
     active_checkpoint_position: 2,
@@ -184,7 +188,7 @@ describe('MyCoursesView', () => {
     expect(links.map((l) => l.props('to'))).toContainEqual({ name: 'course-catalog' })
   })
 
-  it('lists each course enrollment with its stage and status', () => {
+  it('lists each course enrollment with its checkpoint progress and status', () => {
     enrollments.enrollments.value = [
       enrollment(),
       enrollment({
@@ -201,9 +205,20 @@ describe('MyCoursesView', () => {
 
     const wrapper = mountView()
 
-    expect(card(wrapper, 'Fingerstyle journey').text()).toContain('Stage 2')
+    expect(card(wrapper, 'Fingerstyle journey').text()).toContain('Checkpoint 2 of 3')
     expect(card(wrapper, 'Jazz voicings').text()).toContain('Completed')
     expect(card(wrapper, 'Blues basics').text()).toContain('Left')
+  })
+
+  it('shows the presentation pinned to the enrollment version', () => {
+    enrollments.enrollments.value = [enrollment()]
+
+    const pinned = card(mountView(), 'Fingerstyle journey')
+
+    expect(pinned.text()).toContain('From first arpeggios to full arrangements.')
+    expect(pinned.text()).toContain('Bob Martins')
+    expect(pinned.text()).toContain('Beginner')
+    expect(pinned.text()).toContain('3 checkpoints')
   })
 
   it("shows the thumbnail of the course version each enrollment is on, and a placeholder for standalone paths", () => {

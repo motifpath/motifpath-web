@@ -118,6 +118,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
         component: () => import('@/features/student/views/CourseCompletedView.vue'),
       },
+      {
+        path: ':courseId',
+        name: 'course-detail',
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/CourseDetailView.vue'),
+      },
     ],
   },
   {

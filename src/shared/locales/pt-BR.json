@@ -200,5 +200,11 @@
   },
   "fretboard": {
     "closeDescription": "Fechar descrição"
+  },
+  "courseCard": {
+    "label": "Curso",
+    "byline": "por {name}",
+    "lessons": "{count} lição | {count} lições",
+    "checkpoints": "{count} etapa | {count} etapas"
   }
 }

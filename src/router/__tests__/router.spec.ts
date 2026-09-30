@@ -266,6 +266,17 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('course-catalog')
   })
 
+  it('lets a registered student reach a published course detail page', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/courses/c-1')
+
+    expect(router.currentRoute.value.name).toBe('course-detail')
+    expect(router.currentRoute.value.params.courseId).toBe('c-1')
+  })
+
   it("lets a registered student reach their courses and paths", async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')

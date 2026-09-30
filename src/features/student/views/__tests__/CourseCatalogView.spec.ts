@@ -88,6 +88,8 @@ function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry
     created_by: { user_id: 'teacher-1', display_name: 'Bob Martins' },
     status: 'published',
     published_at: '2026-09-01T00:00:00Z',
+    checkpoint_count: 3,
+    lesson_count: 12,
     ...overrides,
   }
 }
@@ -98,7 +100,11 @@ function enrollment(overrides: Partial<CourseEnrollment> = {}): CourseEnrollment
     student: { user_id: 'st-1', display_name: 'Alice Souza' },
     course_id: 'c-1',
     course_title: 'Fingerstyle journey',
+    course_summary: 'From first arpeggios to full arrangements.',
+    course_level: 'beginner',
+    course_created_by: { user_id: 'teacher-1', display_name: 'Bob Martins' },
     course_version_number: 1,
+    checkpoint_count: 3,
     status: 'active',
     active_checkpoint_student_path_id: 'sp-1',
     active_checkpoint_position: 1,
@@ -161,7 +167,7 @@ describe('CourseCatalogView', () => {
     expect(catalog.clearFilters).toHaveBeenCalled()
   })
 
-  it('lists each course with its title, summary and level', () => {
+  it('lists each course with its title, summary, level, and course scope', () => {
     catalog.courses.value = [course(), course({ course_id: 'c-2', title: 'Jazz voicings', level: 'advanced' })]
     catalog.total.value = 2
 
@@ -171,7 +177,19 @@ describe('CourseCatalogView', () => {
     expect(cards[0]!.text()).toContain('Fingerstyle journey')
     expect(cards[0]!.text()).toContain('From first arpeggios to full arrangements.')
     expect(cards[0]!.text()).toContain('Beginner')
+    expect(cards[0]!.text()).toContain('12 lessons')
+    expect(cards[0]!.text()).toContain('3 checkpoints')
     expect(cards[1]!.text()).toContain('Advanced')
+  })
+
+  it('links every catalog card to its published detail page', () => {
+    catalog.courses.value = [course()]
+    catalog.total.value = 1
+
+    const details = mountView().getComponent(RouterLinkStub)
+
+    expect(details.props('to')).toEqual({ name: 'course-detail', params: { courseId: 'c-1' } })
+    expect(details.text()).toBe('Details')
   })
 
   it("shows each course's thumbnail, or a placeholder, its language and its instruments", () => {
@@ -237,7 +255,7 @@ describe('CourseCatalogView', () => {
     catalog.courses.value = [course()]
     catalog.total.value = 1
 
-    expect(mountView().get('[data-test="course-teacher"]').text()).toContain('Bob Martins')
+    expect(mountView().get('[data-test="course-byline"]').text()).toContain('Bob Martins')
   })
 
   it('filters by the teacher picked in the teacher filter, and clears it again', async () => {

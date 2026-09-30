@@ -13,6 +13,7 @@ import {
 import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
+import CourseCard from '@/shared/components/CourseCard.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -77,7 +78,10 @@ function enrollmentMeta(enrollment: CourseEnrollment): string {
   if (enrollment.status === 'completed') return t('myCoursesView.statusCompleted')
   if (enrollment.status === 'abandoned') return t('myCoursesView.statusAbandoned')
   return enrollment.active_checkpoint_position
-    ? t('myCoursesView.stage', { position: enrollment.active_checkpoint_position })
+    ? t('myCoursesView.checkpoint', {
+        position: enrollment.active_checkpoint_position,
+        count: enrollment.checkpoint_count,
+      })
     : ''
 }
 
@@ -137,36 +141,39 @@ async function switchTo(target: CurrentPathTarget) {
     <template v-else>
       <div v-if="enrollments.length" class="flex flex-col gap-3">
         <h2 class="text-lg font-semibold text-ink">{{ t('myCoursesView.coursesHeading') }}</h2>
-        <ul class="flex flex-col gap-3">
-          <li
-            v-for="enrollment in enrollments"
-            :key="enrollment.course_enrollment_id"
-            data-test="my-course-item"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-raised p-4"
-          >
-            <div class="flex min-w-0 items-center gap-3">
-              <ThumbnailImage :url="enrollment.course_thumbnail_url" />
-              <div class="flex flex-col gap-1">
-                <span class="font-semibold text-ink">{{ enrollment.course_title }}</span>
-                <span class="text-sm text-ink-muted">{{ enrollmentMeta(enrollment) }}</span>
-              </div>
-            </div>
-            <span
-              v-if="enrollment.course_enrollment_id === currentEnrollmentId"
-              data-test="current"
-              class="flex items-center gap-1 text-sm font-semibold text-success"
+        <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <li v-for="enrollment in enrollments" :key="enrollment.course_enrollment_id">
+            <CourseCard
+              data-test="my-course-item"
+              :title="enrollment.course_title"
+              :summary="enrollment.course_summary"
+              :created-by="enrollment.course_created_by"
+              :level="enrollment.course_level"
+              :checkpoint-count="enrollment.checkpoint_count"
+              :thumbnail-url="enrollment.course_thumbnail_url"
             >
-              <Check :size="16" aria-hidden="true" />
-              {{ t('myCoursesView.current') }}
-            </span>
-            <PrimaryButton
-              v-else-if="enrollment.status === 'active'"
-              data-test="switch"
-              :disabled="switching"
-              @click="switchTo({ courseEnrollmentId: enrollment.course_enrollment_id })"
-            >
-              {{ t('myCoursesView.switch') }}
-            </PrimaryButton>
+              <template #supporting>
+                <p class="text-sm text-ink-muted">{{ enrollmentMeta(enrollment) }}</p>
+              </template>
+              <template #actions>
+                <span
+                  v-if="enrollment.course_enrollment_id === currentEnrollmentId"
+                  data-test="current"
+                  class="flex items-center gap-1 text-sm font-semibold text-success"
+                >
+                  <Check :size="16" aria-hidden="true" />
+                  {{ t('myCoursesView.current') }}
+                </span>
+                <PrimaryButton
+                  v-else-if="enrollment.status === 'active'"
+                  data-test="switch"
+                  :disabled="switching"
+                  @click="switchTo({ courseEnrollmentId: enrollment.course_enrollment_id })"
+                >
+                  {{ t('myCoursesView.switch') }}
+                </PrimaryButton>
+              </template>
+            </CourseCard>
           </li>
         </ul>
       </div>

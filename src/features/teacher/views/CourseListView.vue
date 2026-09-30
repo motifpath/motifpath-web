@@ -7,15 +7,14 @@ import {
   useManagedCourses,
 } from '@/features/teacher/composables/useManagedCourses'
 import AppBar from '@/shared/components/AppBar.vue'
+import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
-import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { languageBadge } from '@/shared/utils/languageLabels'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const STATUS_TABS: (CourseStatus | null)[] = [null, 'draft', 'published', 'retired']
@@ -25,7 +24,7 @@ const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
 // A teacher's list is always only their own courses, so only an admin gets a
-// teacher filter and a teacher name on each row.
+// teacher filter. Each shared card always identifies the course creator.
 const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
 const { isCompact } = useIsCompact()
@@ -148,39 +147,26 @@ function statusLabel(tab: CourseStatus | null): string {
       />
 
       <template v-else>
-        <ul class="flex flex-col gap-2">
-          <li v-for="course in courses" :key="course.course_id" data-test="course-row">
-            <RouterLink
-              :to="{ name: 'teacher-course-edit', params: { id: course.course_id } }"
-              class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3 hover:border-accent focus-visible:border-accent"
+        <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <li v-for="course in courses" :key="course.course_id">
+            <CourseCard
+              data-test="course-row"
+              :title="course.title"
+              :summary="course.summary"
+              :created-by="course.created_by"
+              :level="course.level"
+              :language="course.language"
+              :lesson-count="course.lesson_count"
+              :checkpoint-count="course.checkpoint_count"
+              :thumbnail-url="course.thumbnail_url"
             >
-              <div class="flex min-w-0 items-center gap-3">
-                <ThumbnailImage :url="course.thumbnail_url" />
-                <div class="flex min-w-0 flex-col gap-0.5">
-                  <span class="font-semibold text-ink">{{ course.title }}</span>
-                  <span v-if="isAdmin" data-test="course-teacher" class="text-sm text-ink-subtle">
-                    {{
-                      t('courseListView.courseTeacher', { name: course.created_by.display_name })
-                    }}
-                  </span>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
-                <span
-                  data-test="course-language"
-                  class="rounded-full bg-surface-sunken px-2.5 py-0.5 text-ink-muted"
-                >
-                  {{ languageBadge(course.language).flag }}
-                  {{ languageBadge(course.language).shortCode }}
-                </span>
-                <span class="rounded-full bg-surface-sunken px-2.5 py-0.5 text-ink-muted">
-                  {{ t(`levels.${course.level}`) }}
-                </span>
+              <template #badges>
                 <span
                   data-test="course-status"
                   class="rounded-full bg-accent-muted px-2.5 py-0.5 text-accent-text"
-                  >{{ t(`courseStatus.${course.status ?? 'draft'}`) }}</span
                 >
+                  {{ t(`courseStatus.${course.status ?? 'draft'}`) }}
+                </span>
                 <span
                   v-if="course.has_unpublished_changes"
                   data-test="unpublished-changes"
@@ -188,8 +174,16 @@ function statusLabel(tab: CourseStatus | null): string {
                 >
                   {{ t('courseListView.unpublishedChanges') }}
                 </span>
-              </div>
-            </RouterLink>
+              </template>
+              <template #actions>
+                <RouterLink
+                  :to="{ name: 'teacher-course-edit', params: { id: course.course_id } }"
+                  class="text-sm font-semibold text-accent-text underline"
+                >
+                  {{ t('courseListView.editCourse') }}
+                </RouterLink>
+              </template>
+            </CourseCard>
           </li>
         </ul>
         <LoadMoreButton

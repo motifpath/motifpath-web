@@ -200,5 +200,11 @@
   },
   "fretboard": {
     "closeDescription": "Close description"
+  },
+  "courseCard": {
+    "label": "Course",
+    "byline": "by {name}",
+    "lessons": "{count} lesson | {count} lessons",
+    "checkpoints": "{count} checkpoint | {count} checkpoints"
   }
 }
