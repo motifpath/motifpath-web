@@ -29,6 +29,10 @@ vi.mock('@/features/student/composables/useEnrollInLearningPath', () => ({
   useEnrollInLearningPath: () => ({ enrollInLearningPath }),
 }))
 
+vi.mock('@/shared/composables/useListInstruments', () => ({
+  useListInstruments: () => ({ instruments: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
+
 const toast = { success: vi.fn(), error: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
