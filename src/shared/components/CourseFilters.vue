@@ -16,7 +16,7 @@ import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { languageLabelKey } from '@/shared/utils/languageLabels'
 import { DIFFICULTY_LEVELS } from '@/shared/utils/levels'
-import { mostSpecificIds, type TreeNode } from '@/shared/utils/skillConceptTree'
+import { ancestorIds, mostSpecificIds, type TreeNode } from '@/shared/utils/skillConceptTree'
 
 type CourseLevel = components['schemas']['CourseCatalogEntry']['level']
 type UserRef = components['schemas']['UserRef']
@@ -70,16 +70,34 @@ const conceptNodes = computed<TreeNode[]>(() =>
 
 // The picker keeps a node's ancestors selected alongside it; the filter only
 // sends the most specific picks (see mostSpecificIds), but the picker keeps
-// showing the full selection that was made. Clearing the filters from
-// outside empties the picks too.
+// showing the full selection that was made. When the filter changes from
+// outside the picker (restored, cleared, or a chip removed), the picks are
+// rebuilt from it, so the picker never shows or re-sends a filter that is gone.
+function picksFor(nodes: TreeNode[], picked: string[], filterIds: string[]): string[] {
+  const fromPicker = mostSpecificIds(nodes, picked)
+  if (fromPicker.length === filterIds.length && fromPicker.every((id) => filterIds.includes(id))) return picked
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+  return Array.from(
+    new Set(
+      filterIds.flatMap((id) => {
+        const node = byId.get(id)
+        return node ? [...ancestorIds(nodes, node), id] : [id]
+      }),
+    ),
+  )
+}
 const pickedSkillIds = ref<string[]>([])
 const pickedConceptIds = ref<string[]>([])
-watch(skillIds, (ids) => {
-  if (ids.length === 0) pickedSkillIds.value = []
-})
-watch(conceptIds, (ids) => {
-  if (ids.length === 0) pickedConceptIds.value = []
-})
+watch(
+  skillIds,
+  (ids) => (pickedSkillIds.value = picksFor(skillNodes.value, pickedSkillIds.value, ids)),
+  { immediate: true },
+)
+watch(
+  conceptIds,
+  (ids) => (pickedConceptIds.value = picksFor(conceptNodes.value, pickedConceptIds.value, ids)),
+  { immediate: true },
+)
 function onSkillsPicked(ids: string[]) {
   pickedSkillIds.value = ids
   skillIds.value = mostSpecificIds(skillNodes.value, ids)
