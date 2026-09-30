@@ -100,6 +100,23 @@ describe('useLessonNode', () => {
     },
   )
 
+  it('knows the title of the path the step belongs to', async () => {
+    respondWith(healthy)
+
+    const { pathTitle } = await load()
+
+    expect(pathTitle.value).toBe('Blues Foundations')
+  })
+
+  it('forgets the path title while it reloads', async () => {
+    respondWith(healthy)
+    const { pathTitle, retry } = await load()
+
+    void retry()
+
+    expect(pathTitle.value).toBeNull()
+  })
+
   it('reports the enrollment a just-completed course belongs to', async () => {
     respondWith({
       ...healthy,

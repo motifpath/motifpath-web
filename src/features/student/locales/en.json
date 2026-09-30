@@ -134,5 +134,15 @@
     "message": "You finished {title}. Great work — keep the momentum going with your next course.",
     "findNextCourse": "Find your next course",
     "myCourses": "My courses"
+  },
+  "sendToTeacher": {
+    "button": "Send to your teacher",
+    "hint": "Opens WhatsApp. Your message goes to the MotifPath team.",
+    "greeting": "Hi!",
+    "greetingNamed": "Hi! I'm {name}.",
+    "pathLine": "Path: {title}",
+    "lessonLine": "Lesson: {title}",
+    "referenceLine": "Ref: {reference}",
+    "prompt": "My question or recording:"
   }
 }

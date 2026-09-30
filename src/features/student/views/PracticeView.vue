@@ -4,10 +4,13 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import PracticeHelpModal from '@/features/student/components/PracticeHelpModal.vue'
+import SendToTeacher from '@/features/student/components/SendToTeacher.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
+import { useLessonTitles } from '@/features/student/composables/useLessonTitles'
 import { usePracticeSession } from '@/features/student/composables/usePracticeSession'
+import { conciergeNumber, practiceReference } from '@/features/student/utils/conciergeLink'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
 const props = defineProps<{ nodeId: string }>()
@@ -16,6 +19,9 @@ const props = defineProps<{ nodeId: string }>()
 // route change that reuses this component (same route record, new :nodeId)
 // still reloads instead of showing the previous node's session.
 const session = usePracticeSession(() => props.nodeId)
+// Only the concierge message needs the titles, so nothing is loaded for it
+// when no concierge number is configured and the button can't show.
+const titles = conciergeNumber() ? useLessonTitles(() => props.nodeId) : null
 
 const { t } = useTypedT()
 
@@ -90,6 +96,13 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         :allow-multiple="allowMultiple"
         :selected-option-ids="session.currentAnswer.value?.optionIds ?? []"
         @update:selected-option-ids="session.select"
+      />
+
+      <SendToTeacher
+        :reference="practiceReference(props.nodeId, session.currentExercise.value.exercise_id)"
+        :path-title="titles?.pathTitle.value"
+        :lesson-title="titles?.lessonTitle.value"
+        raised
       />
 
       <div class="sticky bottom-0 -mx-4 flex items-center justify-between border-t border-border bg-surface px-4 py-3">

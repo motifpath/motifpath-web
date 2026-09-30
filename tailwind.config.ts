@@ -47,6 +47,10 @@ const colors: Record<string, string> = Object.fromEntries(
 // themes, so it skips the custom-property indirection.
 colors['brand-ground'] = tokens.brand.ground.$value
 
+// WhatsApp's own brand green, for the WhatsApp mark only. A third party's
+// brand colour is fixed by that brand, not by either MotifPath theme.
+colors['whatsapp'] = '#25D366'
+
 // Fretboard materials are feature-scoped to the diagram viewer/editor rather than
 // motifpath-brand roles; their per-theme values sit beside --color-fretboard-wood
 // in src/assets/main.css.
