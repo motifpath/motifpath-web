@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next'
 import { computed, nextTick, ref, watch } from 'vue'
-import { onBeforeRouteLeave, RouterLink, useRoute } from 'vue-router'
+import { onBeforeRouteLeave, RouterLink, useRoute, useRouter } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import { useCourseCatalog } from '@/features/student/composables/useCourseCatalog'
@@ -28,8 +28,20 @@ const { t } = useTypedT()
 const toast = useToast()
 const { instrumentsLabel } = useInstrumentNames()
 const route = useRoute()
-const returningCourseId = typeof route.query.returnFromCourse === 'string' ? route.query.returnFromCourse : null
-const restoredReturn = returningCourseId ? restoreCourseCatalogReturn(returningCourseId) : null
+const router = useRouter()
+
+// The course whose details the learner is coming back from: named by the
+// details page's Back to courses link, or, after the browser's Back button,
+// found in this history entry's record of the page that followed it.
+function returningCourseId(): string | null {
+  if (typeof route.query.returnFromCourse === 'string') return route.query.returnFromCourse
+  const state: unknown = window.history.state
+  if (!state || typeof state !== 'object' || !('forward' in state) || typeof state.forward !== 'string') return null
+  const next = router.resolve(state.forward)
+  return next.name === 'course-detail' && typeof next.params.courseId === 'string' ? next.params.courseId : null
+}
+const returnedFromCourseId = returningCourseId()
+const restoredReturn = returnedFromCourseId ? restoreCourseCatalogReturn(returnedFromCourseId) : null
 
 const {
   courses,

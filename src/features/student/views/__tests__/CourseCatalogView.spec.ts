@@ -9,11 +9,16 @@ type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 type CourseEnrollment = components['schemas']['CourseEnrollment']
 
 const routeQuery: Record<string, string> = {}
+function resolveRoute(path: string) {
+  const match = /^\/courses\/([^/?]+)/.exec(path)
+  return match ? { name: 'course-detail', params: { courseId: match[1] } } : { name: 'not-found', params: {} }
+}
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return {
     ...actual,
     useRoute: () => ({ query: routeQuery }),
+    useRouter: () => ({ resolve: resolveRoute }),
     onBeforeRouteLeave: vi.fn(),
   }
 })
@@ -150,6 +155,7 @@ describe('CourseCatalogView', () => {
     enrollments.enrollments.value = []
     for (const key of Object.keys(routeQuery)) delete routeQuery[key]
     window.localStorage.clear()
+    window.history.replaceState(null, '')
     vi.clearAllMocks()
   })
 
@@ -184,6 +190,39 @@ describe('CourseCatalogView', () => {
 
       expect(catalog.loadMore).toHaveBeenCalledTimes(1)
       expect(window.scrollTo).toHaveBeenCalledWith(0, 900)
+    })
+
+    function loadNextPageOnDemand() {
+      catalog.loadMore.mockImplementation(async () => {
+        catalog.isLoadingMore.value = true
+        await Promise.resolve()
+        catalog.courses.value = [...catalog.courses.value, ...page(20)]
+        catalog.isLoadingMore.value = false
+      })
+    }
+
+    it("also returns them to their place when they use the browser's Back button", async () => {
+      delete routeQuery.returnFromCourse
+      window.history.replaceState({ forward: '/courses/c-1?fromCatalog=true' }, '')
+      loadNextPageOnDemand()
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).toHaveBeenCalledTimes(1)
+      expect(window.scrollTo).toHaveBeenCalledWith(0, 900)
+    })
+
+    it("starts fresh on Back from a course other than the one they opened from here", async () => {
+      delete routeQuery.returnFromCourse
+      window.history.replaceState({ forward: '/courses/c-9' }, '')
+      loadNextPageOnDemand()
+
+      mountView()
+      await flushPromises()
+
+      expect(catalog.loadMore).not.toHaveBeenCalled()
+      expect(window.scrollTo).not.toHaveBeenCalled()
     })
 
     it('stops asking for more courses once a page fails, and still returns them to their place', async () => {
