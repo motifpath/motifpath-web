@@ -1236,9 +1236,10 @@ export interface paths {
          *     are specified in the desired order; the service assigns each a
          *     1-based position. All learning_path_ids must exist in the
          *     system. A course must contain at least one checkpoint. Only
-         *     teachers and admins may create courses. A teacher may use only
-         *     learning paths they created; a checkpoint naming another
-         *     author's path is refused with 403. An admin may use any path.
+         *     teachers and admins may create courses. The caller becomes the
+         *     course's author: a teacher may use only learning paths they
+         *     created, and a checkpoint naming another author's path is
+         *     refused with 403. An admin may use any author's paths.
          */
         post: operations["createCourse"];
         delete?: never;
@@ -1310,10 +1311,12 @@ export interface paths {
          *     changes what students following an already-published version
          *     see; it only takes effect for new enrollments and future
          *     checkpoint advances once separately published. Only the
-         *     creating teacher or an admin may replace a course. A teacher may
-         *     use only learning paths they created; a checkpoint naming
-         *     another author's path is refused with 403, even one an admin
-         *     added earlier. An admin may use any path.
+         *     creating teacher or an admin may replace a course. The course's
+         *     author decides which paths it may use, whoever replaces it: a
+         *     course a teacher authored may use only that teacher's paths, so
+         *     a checkpoint naming another author's path is refused with 403
+         *     even when an admin sends it. A course an admin authored may use
+         *     any author's paths.
          */
         put: operations["replaceCourse"];
         post?: never;
@@ -7889,7 +7892,8 @@ export interface operations {
             };
             /**
              * @description Only teachers and admins may create courses, and a teacher may
-             *     use only their own learning paths as checkpoints.
+             *     use only their own learning paths as checkpoints. The message
+             *     says which rule refused the request.
              */
             403: {
                 headers: {
@@ -8042,8 +8046,9 @@ export interface operations {
             /**
              * @description The authenticated user does not have permission to replace
              *     this course. Only the creating teacher or an admin may
-             *     replace it, and a teacher may use only their own learning
-             *     paths as checkpoints.
+             *     replace it, and a course a teacher authored may use only that
+             *     teacher's learning paths as checkpoints. The message says
+             *     which rule refused the request.
              */
             403: {
                 headers: {
