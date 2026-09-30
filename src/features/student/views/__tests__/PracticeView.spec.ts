@@ -1,6 +1,6 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
@@ -49,6 +49,21 @@ const state = {
 vi.mock('@/features/student/composables/usePracticeSession', () => ({
   usePracticeSession: () => state,
 }))
+
+const titles = { pathTitle: ref<string | null>('Blues Basics'), lessonTitle: ref<string | null>('Shuffle in E') }
+vi.mock('@/features/student/composables/useLessonTitles', () => ({ useLessonTitles: () => titles }))
+
+// The button has its own tests; here only where it appears and what it is given.
+vi.mock('@/features/student/components/SendToTeacher.vue', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    default: defineComponent({
+      name: 'SendToTeacher',
+      props: { reference: String, pathTitle: String, lessonTitle: String },
+      setup: () => () => h('div', { 'data-test': 'send-to-teacher-stub' }),
+    }),
+  }
+})
 
 import PracticeView from '@/features/student/views/PracticeView.vue'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
@@ -243,5 +258,41 @@ describe('PracticeView', () => {
     const percent = wrapper.get('[data-test="result-percent"]')
     expect(percent.text()).toBe('35%')
     expect(percent.classes()).toContain('text-danger')
+  })
+
+  describe('send to your teacher', () => {
+    const secondExercise: Exercise = { ...textExercise, exercise_id: 'ex-2' }
+
+    it('is offered on the exercise shown, with its reference and the lesson titles', () => {
+      set({ status: ref('in-progress'), exercises: ref([textExercise, secondExercise]) })
+
+      const wrapper = mountView()
+
+      const button = wrapper.findComponent({ name: 'SendToTeacher' })
+      expect(button.exists()).toBe(true)
+      expect(button.props()).toEqual({
+        reference: 'X-node-1/ex-1',
+        pathTitle: 'Blues Basics',
+        lessonTitle: 'Shuffle in E',
+      })
+    })
+
+    it('follows the exercise the student moves on to', async () => {
+      set({ status: ref('in-progress'), exercises: ref([textExercise, secondExercise]) })
+      const wrapper = mountView()
+
+      state.currentIndex.value = 1
+      await nextTick()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('reference')).toBe('X-node-1/ex-2')
+    })
+
+    it.each(['loading', 'error', 'empty', 'result'] as const)('is not offered while the practice is %s', (status) => {
+      set({ status: ref(status), exercises: ref([textExercise]) })
+
+      const wrapper = mountView()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).exists()).toBe(false)
+    })
   })
 })

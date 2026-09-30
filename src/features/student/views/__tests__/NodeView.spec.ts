@@ -36,9 +36,22 @@ const lesson = {
   cues: ref<ExpandedContent[]>([]),
   hasChallenge: ref(false),
   completedCourseEnrollmentId: ref<string | null>(null),
+  pathTitle: ref<string | null>('Blues Basics'),
   retry: vi.fn(),
 }
 vi.mock('@/features/student/composables/useLessonNode', () => ({ useLessonNode: () => lesson }))
+
+// The button has its own tests; here only where it appears and what it is given.
+vi.mock('@/features/student/components/SendToTeacher.vue', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    default: defineComponent({
+      name: 'SendToTeacher',
+      props: { reference: String, pathTitle: String, lessonTitle: String },
+      setup: () => () => h('div', { 'data-test': 'send-to-teacher-stub' }),
+    }),
+  }
+})
 
 const waitForCompletion = vi.fn()
 vi.mock('@/features/student/composables/useLessonCompletionSync', () => ({
@@ -591,5 +604,41 @@ describe('NodeView', () => {
       expect(wrapper.find('[data-test="practice-link"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="complete"]').exists()).toBe(false)
     })
+  })
+
+  describe('send to your teacher', () => {
+    it('is offered on the lesson with its reference, path title and lesson title', async () => {
+      setLesson({ node: { ...makeVideoNode('node-abc'), title: 'Shuffle in E' } })
+
+      const wrapper = await mountView()
+
+      const button = wrapper.findComponent({ name: 'SendToTeacher' })
+      expect(button.exists()).toBe(true)
+      expect(button.props()).toEqual({
+        reference: 'L-node-abc',
+        pathTitle: 'Blues Basics',
+        lessonTitle: 'Shuffle in E',
+      })
+    })
+
+    it.each<LessonNodeState>(['unsupported', 'no-media'])('is offered on an unlocked %s lesson', async (state) => {
+      setLesson({ state })
+
+      const wrapper = await mountView()
+
+      expect(wrapper.findComponent({ name: 'SendToTeacher' }).exists()).toBe(true)
+    })
+
+    it.each<LessonNodeState>(['loading', 'locked', 'not-found', 'error'])(
+      'is not offered while the lesson is %s',
+      async (state) => {
+        setLesson({ state, node: null })
+
+        const wrapper = mount(NodeView, { global: { stubs: { RouterLink: RouterLinkStub } } })
+        await flushPromises()
+
+        expect(wrapper.findComponent({ name: 'SendToTeacher' }).exists()).toBe(false)
+      },
+    )
   })
 })

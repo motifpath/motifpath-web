@@ -36,6 +36,7 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
   const cues = ref<ExpandedContent[]>([])
   const hasChallenge = ref(false)
   const completedCourseEnrollmentId = ref<string | null>(null)
+  const pathTitle = ref<string | null>(null)
 
   // Bumped on every load() call; a call only applies its result if it is
   // still the most recent one by the time it resolves, so an overlapping
@@ -50,6 +51,7 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
     cues.value = []
     hasChallenge.value = false
     completedCourseEnrollmentId.value = null
+    pathTitle.value = null
   }
 
   async function load(): Promise<void> {
@@ -71,6 +73,7 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
         return
       }
       completedCourseEnrollmentId.value = completedEnrollmentOf(pathResult.data)
+      pathTitle.value = pathResult.data.title
 
       const item = pathResult.data.items.find((candidate) => candidate.content_node_id === id)
       if (!item) {
@@ -126,5 +129,5 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
   )
   void load()
 
-  return { state, status, node, cues, hasChallenge, completedCourseEnrollmentId, retry: load }
+  return { state, status, node, cues, hasChallenge, completedCourseEnrollmentId, pathTitle, retry: load }
 }

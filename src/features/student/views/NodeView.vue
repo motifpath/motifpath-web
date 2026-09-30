@@ -3,11 +3,13 @@ import { computed, defineAsyncComponent, h, onBeforeUnmount, ref, watch } from '
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import CuePanel from '@/features/student/components/CuePanel.vue'
+import SendToTeacher from '@/features/student/components/SendToTeacher.vue'
 import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
 import { useLessonCompletionSync } from '@/features/student/composables/useLessonCompletionSync'
 import { useLessonNode } from '@/features/student/composables/useLessonNode'
 import { useLessonTracking } from '@/features/student/composables/useLessonTracking'
 import { activeCue } from '@/features/student/utils/activeCue'
+import { lessonReference } from '@/features/student/utils/conciergeLink'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -72,6 +74,9 @@ const finishing = ref(false)
 const isReview = computed(() => lesson.status.value === 'completed')
 const cue = computed(() => activeCue(lesson.cues.value, playbackSeconds.value))
 const mediaUrl = computed(() => lesson.node.value?.media_url ?? '')
+// Any lesson the student may open can be asked about — including one whose
+// video is missing or whose content type has no screen yet.
+const canAskTeacher = computed(() => ['ready', 'unsupported', 'no-media'].includes(lesson.state.value))
 
 function resetPlayback(): void {
   playbackSeconds.value = 0
@@ -274,5 +279,12 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
         </PrimaryButton>
       </div>
     </template>
+
+    <SendToTeacher
+      v-if="canAskTeacher"
+      :reference="lessonReference(nodeId)"
+      :path-title="lesson.pathTitle.value"
+      :lesson-title="lesson.node.value?.title"
+    />
   </section>
 </template>
