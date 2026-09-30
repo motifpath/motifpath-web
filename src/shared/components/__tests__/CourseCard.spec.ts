@@ -39,6 +39,14 @@ describe('CourseCard', () => {
     expect(wrapper.get('[data-test="course-card-actions"]').text()).toContain('Details')
   })
 
+  it('labels a learning path as a path, with lessons and no checkpoint count', () => {
+    const wrapper = mountCard({ kind: 'path', checkpointCount: undefined })
+
+    expect(wrapper.get('[data-test="course-card-label"]').text()).toBe('Path')
+    expect(wrapper.get('[data-test="course-lessons"]').text()).toBe('12 lessons')
+    expect(wrapper.find('[data-test="course-checkpoints"]').exists()).toBe(false)
+  })
+
   it('uses the intentional placeholder when the course has no image', () => {
     expect(mountCard().find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
   })

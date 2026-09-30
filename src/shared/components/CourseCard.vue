@@ -7,16 +7,21 @@ import { languageBadge } from '@/shared/utils/languageLabels'
 type CourseLevel = components['schemas']['CourseCatalogEntry']['level']
 type UserRef = components['schemas']['UserRef']
 
-defineProps<{
-  title: string
-  summary: string
-  createdBy?: UserRef
-  level: CourseLevel
-  checkpointCount?: number
-  lessonCount?: number
-  language?: string
-  thumbnailUrl?: string
-}>()
+withDefaults(
+  defineProps<{
+    /** Whether the card presents a course or a learning path. */
+    kind?: 'course' | 'path'
+    title: string
+    summary: string
+    createdBy?: UserRef
+    level: CourseLevel
+    checkpointCount?: number
+    lessonCount?: number
+    language?: string
+    thumbnailUrl?: string
+  }>(),
+  { kind: 'course' },
+)
 
 const { t } = useTypedT()
 </script>
@@ -37,7 +42,7 @@ const { t } = useTypedT()
             data-test="course-card-label"
             class="text-xs font-semibold uppercase tracking-wide text-ink-subtle"
           >
-            {{ t('courseCard.label') }}
+            {{ kind === 'path' ? t('courseCard.pathLabel') : t('courseCard.label') }}
           </span>
           <h2 class="mt-1 text-lg font-semibold text-ink">{{ title }}</h2>
         </div>

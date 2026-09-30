@@ -205,6 +205,7 @@
   },
   "courseCard": {
     "label": "Curso",
+    "pathLabel": "Trilha",
     "byline": "por {name}",
     "lessons": "{count} lição | {count} lições",
     "learningPaths": "{count} trilha de aprendizagem | {count} trilhas de aprendizagem"
