@@ -181,6 +181,12 @@ describe('PathListView', () => {
     expect(wrapper.find('[data-test="publish"]').exists()).toBe(false)
   })
 
+  it("opens a path's editor from its thumbnail too", () => {
+    const link = mountView().get('[data-test="course-card-thumbnail-link"]').findComponent(RouterLinkStub)
+
+    expect(link.props('to')).toEqual({ name: 'teacher-path-edit', params: { id: 'lp-1' } })
+  })
+
   it('offers a new learning path', () => {
     const link = mountView()
       .findAllComponents(RouterLinkStub)

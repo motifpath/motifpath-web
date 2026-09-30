@@ -165,6 +165,12 @@ describe('PathCatalogView', () => {
     })
   })
 
+  it("opens a path's details from its thumbnail too", () => {
+    const link = mountView().get('[data-test="course-card-thumbnail-link"]').findComponent(RouterLinkStub)
+
+    expect(link.props('to')).toEqual({ name: 'path-detail', params: { learningPathId: 'lp-1' }, query: { fromCatalog: 'true' } })
+  })
+
   it("narrows the catalog to one path's teacher", async () => {
     const wrapper = mountView()
 

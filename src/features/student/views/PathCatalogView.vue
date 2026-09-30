@@ -151,6 +151,7 @@ async function enroll(path: PathCatalogEntry) {
             :language="path.language"
             :lesson-count="path.lesson_count"
             :thumbnail-url="path.thumbnail_url"
+            :to="{ name: 'path-detail', params: { learningPathId: path.learning_path_id }, query: { fromCatalog: 'true' } }"
           >
             <template #badges>
               <span data-test="path-instruments" class="rounded-full bg-surface-sunken px-2.5 py-0.5">

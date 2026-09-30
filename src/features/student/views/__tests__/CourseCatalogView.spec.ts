@@ -244,6 +244,14 @@ describe('CourseCatalogView', () => {
     })
   })
 
+  it("opens a course's details from its thumbnail too", () => {
+    catalog.courses.value = [course()]
+
+    const link = mountView().get('[data-test="course-card-thumbnail-link"]').findComponent(RouterLinkStub)
+
+    expect(link.props('to')).toEqual({ name: 'course-detail', params: { courseId: 'c-1' }, query: { fromCatalog: 'true' } })
+  })
+
   it('shows a loading state while the catalog loads', () => {
     catalog.isLoading.value = true
 
@@ -302,7 +310,7 @@ describe('CourseCatalogView', () => {
     catalog.courses.value = [course()]
     catalog.total.value = 1
 
-    const details = mountView().getComponent(RouterLinkStub)
+    const details = mountView().get('[data-test="details"]').findComponent(RouterLinkStub)
 
     expect(details.props('to')).toEqual({
       name: 'course-detail',

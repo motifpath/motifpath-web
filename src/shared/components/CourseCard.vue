@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { RouteLocationRaw } from 'vue-router'
+
 import type { components } from '@/api/generated/core-domain'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -19,6 +21,8 @@ withDefaults(
     lessonCount?: number
     language?: string
     thumbnailUrl?: string
+    /** Where the thumbnail leads; the card's own actions stay the keyboard route. */
+    to?: RouteLocationRaw
   }>(),
   { kind: 'course' },
 )
@@ -31,10 +35,12 @@ const { t } = useTypedT()
     data-test="course-card"
     class="flex h-full flex-col overflow-hidden rounded-lg border border-border bg-surface-raised shadow-sm"
   >
-    <ThumbnailImage
-      :url="thumbnailUrl"
-      size-class="aspect-video h-auto w-full rounded-none"
-    />
+    <div v-if="to" data-test="course-card-thumbnail-link">
+      <RouterLink :to="to" tabindex="-1" aria-hidden="true" class="block">
+        <ThumbnailImage :url="thumbnailUrl" fit="contain" size-class="aspect-video h-auto w-full rounded-none" />
+      </RouterLink>
+    </div>
+    <ThumbnailImage v-else :url="thumbnailUrl" fit="contain" size-class="aspect-video h-auto w-full rounded-none" />
     <div class="flex flex-1 flex-col gap-3 p-4">
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div class="min-w-0">

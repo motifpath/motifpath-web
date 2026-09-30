@@ -155,6 +155,7 @@ function statusLabel(tab: LearningPathStatus | null): string {
               :language="learningPath.language"
               :lesson-count="learningPath.items.length"
               :thumbnail-url="learningPath.thumbnail_url"
+              :to="{ name: 'teacher-path-edit', params: { id: learningPath.learning_path_id } }"
             >
               <template #badges>
                 <span data-test="path-status" class="rounded-full bg-accent-muted px-2.5 py-0.5 text-accent-text">

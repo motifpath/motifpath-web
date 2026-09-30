@@ -154,6 +154,7 @@ async function enroll(course: CourseCatalogEntry) {
             :lesson-count="course.lesson_count"
             :checkpoint-count="course.checkpoint_count"
             :thumbnail-url="course.thumbnail_url"
+            :to="{ name: 'course-detail', params: { courseId: course.course_id }, query: { fromCatalog: 'true' } }"
           >
             <template #badges>
               <span

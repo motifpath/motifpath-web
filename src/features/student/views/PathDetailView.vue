@@ -86,7 +86,7 @@ async function enroll() {
     <template v-else-if="path">
       <div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
         <div class="flex flex-col gap-4">
-          <ThumbnailImage :url="path.thumbnail_url" size-class="aspect-video h-auto w-full rounded-lg" />
+          <ThumbnailImage :url="path.thumbnail_url" fit="contain" size-class="aspect-video h-auto w-full rounded-lg" />
           <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-ink-muted">
             <span class="rounded-full bg-surface-sunken px-2.5 py-0.5">
               {{ languageBadge(path.language).flag }} {{ languageBadge(path.language).shortCode }}

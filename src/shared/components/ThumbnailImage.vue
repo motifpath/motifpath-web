@@ -7,8 +7,13 @@ const props = withDefaults(
     url?: string
     /** Size and shape classes, e.g. "h-12 w-16 rounded". */
     sizeClass?: string
+    /**
+     * cover fills the box and crops the overflow; contain shows the whole
+     * image, letterboxed on a neutral backdrop.
+     */
+    fit?: 'cover' | 'contain'
   }>(),
-  { url: undefined, sizeClass: 'h-12 w-16 rounded-md' },
+  { url: undefined, sizeClass: 'h-12 w-16 rounded-md', fit: 'cover' },
 )
 
 // A broken url shows the same neutral placeholder as a missing one, rather
@@ -25,8 +30,8 @@ watch(
     v-if="url && !failed"
     :src="url"
     alt=""
-    class="shrink-0 object-cover"
-    :class="sizeClass"
+    class="shrink-0"
+    :class="[sizeClass, fit === 'contain' ? 'bg-surface-sunken object-contain' : 'object-cover']"
     @error="failed = true"
   />
   <div
