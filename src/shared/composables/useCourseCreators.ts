@@ -8,13 +8,19 @@ type UserRef = components['schemas']['UserRef']
 const SEARCH_DEBOUNCE_MS = 300
 
 /**
- * Which list the creators belong to: the learner catalog (published
- * courses, the same for everyone), the caller's authoring course list, or
- * the diagram library the caller can see.
+ * Which list the creators belong to: the learner course catalog (published
+ * courses, the same for everyone), the learner path catalog (published
+ * paths), the caller's authoring course list, or the diagram library the
+ * caller can see.
  */
-export type CourseCreatorsScope = 'catalog' | 'managed' | 'diagrams'
+export type CourseCreatorsScope = 'catalog' | 'path-catalog' | 'managed' | 'diagrams'
 
-const ENDPOINT = { catalog: '/catalog/creators', managed: '/courses/creators', diagrams: '/diagrams/creators' } as const
+const ENDPOINT = {
+  catalog: '/catalog/creators',
+  'path-catalog': '/catalog/path-creators',
+  managed: '/courses/creators',
+  diagrams: '/diagrams/creators',
+} as const
 
 /**
  * The teachers behind a course list, for its teacher filter. The list is
