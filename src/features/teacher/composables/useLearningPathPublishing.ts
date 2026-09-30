@@ -14,8 +14,19 @@ export type PublishResult =
       unpublishedContentNodeIds: string[]
     }
 
-function isNotPublishable(error: unknown): error is NotPublishable {
+export function isNotPublishable(error: unknown): error is NotPublishable {
   return typeof error === 'object' && error !== null && 'missing' in error && Array.isArray(error.missing)
+}
+
+/** A save refused because it would leave a published path without what publishing requires. */
+export class LearningPathNotPublishableError extends Error {
+  constructor(
+    message: string,
+    readonly missing: NotPublishable['missing'],
+    readonly unpublishedContentNodeIds: string[],
+  ) {
+    super(message)
+  }
 }
 
 /** An admin's publish and unpublish actions on a learning path. */

@@ -380,7 +380,8 @@
       "level": "A level",
       "items": "At least one lesson",
       "unpublishedContent": "Published lessons (not yet: {titles})"
-    }
+    },
+    "saveWouldUnpublish": "A published path must keep everything listed below. Restore it, or unpublish the path first."
   },
   "pathListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",

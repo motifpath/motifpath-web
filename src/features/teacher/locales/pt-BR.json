@@ -380,7 +380,8 @@
       "level": "Um nível",
       "items": "Pelo menos uma lição",
       "unpublishedContent": "Lições publicadas (ainda não: {titles})"
-    }
+    },
+    "saveWouldUnpublish": "Uma trilha publicada precisa manter tudo o que está listado abaixo. Restaure esses itens ou despublique a trilha antes."
   },
   "pathListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",

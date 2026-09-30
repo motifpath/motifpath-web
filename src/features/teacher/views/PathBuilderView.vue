@@ -8,7 +8,10 @@ import SectionedPathList, { type PathBuilderItem } from '@/features/teacher/comp
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import { useCreateLearningPath } from '@/features/teacher/composables/useCreateLearningPath'
 import { useLearningPath } from '@/features/teacher/composables/useLearningPath'
-import { useLearningPathPublishing } from '@/features/teacher/composables/useLearningPathPublishing'
+import {
+  LearningPathNotPublishableError,
+  useLearningPathPublishing,
+} from '@/features/teacher/composables/useLearningPathPublishing'
 import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
 import { useReplaceLearningPath } from '@/features/teacher/composables/useReplaceLearningPath'
 import AppBar from '@/shared/components/AppBar.vue'
@@ -138,6 +141,18 @@ const canSave = computed(
   () => !saving.value && !thumbnailUploading.value && items.value.length > 0 && level.value !== null,
 )
 
+const publishing = ref(false)
+// What the last refused publish said the path still lacks.
+const missingToPublish = ref<string[]>([])
+
+function requirementLabel(requirement: PublishRequirement, unpublishedIds: string[]): string {
+  if (requirement !== 'unpublished_content') return t(`pathBuilderView.requirement.${requirement}`)
+  const titles = items.value
+    .filter((item) => unpublishedIds.includes(item.content_node_id))
+    .map((item) => item.title)
+  return t('pathBuilderView.requirement.unpublishedContent', { titles: titles.join(', ') })
+}
+
 // Saves the form, returning the saved path, or null once the failure is reported.
 async function saveForm(): Promise<LearningPath | null> {
   if (level.value === null) return null
@@ -162,9 +177,15 @@ async function saveForm(): Promise<LearningPath | null> {
       ? await replaceLearningPath(savedLearningPathId.value, request)
       : await createLearningPath(request)
     loadFromLearningPath(learningPath)
+    missingToPublish.value = []
     return learningPath
   } catch (e) {
-    toast.error(e instanceof Error ? e.message : t('pathBuilderView.saveFailed'))
+    if (e instanceof LearningPathNotPublishableError) {
+      missingToPublish.value = e.missing.map((m) => requirementLabel(m, e.unpublishedContentNodeIds))
+      toast.error(t('pathBuilderView.saveWouldUnpublish'))
+    } else {
+      toast.error(e instanceof Error ? e.message : t('pathBuilderView.saveFailed'))
+    }
     return null
   } finally {
     saving.value = false
@@ -178,18 +199,6 @@ async function save() {
   clearTimeout(justSavedTimeout)
   justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
   toast.success(isUpdate ? t('pathBuilderView.pathUpdated') : t('pathBuilderView.pathCreated'))
-}
-
-const publishing = ref(false)
-// What the last refused publish said the path still lacks.
-const missingToPublish = ref<string[]>([])
-
-function requirementLabel(requirement: PublishRequirement, unpublishedIds: string[]): string {
-  if (requirement !== 'unpublished_content') return t(`pathBuilderView.requirement.${requirement}`)
-  const titles = items.value
-    .filter((item) => unpublishedIds.includes(item.content_node_id))
-    .map((item) => item.title)
-  return t('pathBuilderView.requirement.unpublishedContent', { titles: titles.join(', ') })
 }
 
 // Publishing saves the form first, so what gets published is what the author sees.
@@ -213,10 +222,14 @@ async function publish() {
   }
 }
 
+// Unpublishing keeps pending edits: it unpublishes first, then saves the form
+// onto the now-draft path. Saving first could be refused for the very edit
+// (a cleared summary, say) that a published path can't take.
 async function unpublish() {
   publishing.value = true
   try {
-    loadFromLearningPath(await unpublishLearningPath(savedLearningPathId.value))
+    status.value = (await unpublishLearningPath(savedLearningPathId.value)).status
+    await saveForm()
     toast.success(t('pathBuilderView.unpublished'))
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('pathBuilderView.unpublishFailed'))

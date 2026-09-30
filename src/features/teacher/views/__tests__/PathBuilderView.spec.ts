@@ -386,6 +386,7 @@ describe('PathBuilderView', () => {
         const published = { ...learningPathFixture, status: 'published' }
         routeGET({ '/learning-paths/{learning_path_id}': { data: published, error: undefined, response: { status: 200 } } })
         POST.mockResolvedValueOnce({ data: learningPathFixture, error: undefined, response: { status: 200 } })
+        PUT.mockResolvedValueOnce({ data: learningPathFixture, error: undefined, response: { status: 200 } })
         const wrapper = mountView()
         await flushPromises()
 
@@ -396,6 +397,43 @@ describe('PathBuilderView', () => {
           params: { path: { learning_path_id: 'lp-1' } },
         })
         expect(wrapper.get('[data-test="path-status"]').text()).toBe('Draft')
+      })
+
+      it('keeps pending edits when unpublishing, saving them onto the draft', async () => {
+        const published = { ...learningPathFixture, status: 'published', summary: 'Old summary.', language: 'en' }
+        routeGET({ '/learning-paths/{learning_path_id}': { data: published, error: undefined, response: { status: 200 } } })
+        POST.mockResolvedValueOnce({ data: { ...published, status: 'draft' }, error: undefined, response: { status: 200 } })
+        PUT.mockResolvedValueOnce({ data: { ...published, summary: '', status: 'draft' }, error: undefined, response: { status: 200 } })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="path-summary"]').setValue('')
+        await wrapper.get('[data-test="unpublish"]').trigger('click')
+        await flushPromises()
+
+        expect(POST.mock.invocationCallOrder[0]).toBeLessThan(PUT.mock.invocationCallOrder[0]!)
+        expect(PUT.mock.calls[0]?.[1].body).not.toHaveProperty('summary')
+        expect((wrapper.get('[data-test="path-summary"]').element as HTMLTextAreaElement).value).toBe('')
+        expect(wrapper.get('[data-test="path-status"]').text()).toBe('Draft')
+      })
+
+      it('names what a published path would lose when a save is refused', async () => {
+        const published = { ...learningPathFixture, status: 'published', summary: 'Old summary.', language: 'en' }
+        routeGET({ '/learning-paths/{learning_path_id}': { data: published, error: undefined, response: { status: 200 } } })
+        PUT.mockResolvedValueOnce({
+          data: undefined,
+          error: { message: 'the path is published and this change would leave it unpublishable', missing: ['summary'] },
+          response: { status: 409 },
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="path-summary"]').setValue('')
+        await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="publish-missing"]').findAll('li').map((li) => li.text())).toEqual(['A summary'])
+        expect(toast.error).toHaveBeenCalledWith('A published path must keep everything listed below. Restore it, or unpublish the path first.')
       })
 
       it('reports why an unpublish was refused', async () => {
