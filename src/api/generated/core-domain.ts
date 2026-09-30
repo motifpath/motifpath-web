@@ -885,6 +885,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/learning-paths/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the learning paths in the authoring library
+         * @description Returns every distinct user who created at least one learning path
+         *     in the authoring library (GET /learning-paths), whatever its status,
+         *     so an authoring screen can offer a complete creator filter (the
+         *     library's created_by parameter) without paging. The library is
+         *     shared, so a teacher and an admin get the same list. A student is
+         *     refused with 403; learners use GET /catalog/path-creators.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the number of paths. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         */
+        get: operations["listLearningPathCreators"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/learning-paths/{learning_path_id}": {
         parameters: {
             query?: never;
@@ -7089,6 +7120,56 @@ export interface operations {
                 };
             };
             /** @description Only teachers and admins may create learning paths. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listLearningPathCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the learning paths in the library, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description q is empty or longer than 200 characters. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student; only teachers and admins browse the authoring library. */
             403: {
                 headers: {
                     [name: string]: unknown;
