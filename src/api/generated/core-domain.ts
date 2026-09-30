@@ -3001,6 +3001,10 @@ export interface components {
              * @description The course's thumbnail: the latest published version's in GET /catalog/courses, the live draft's in GET /courses. Absent when it has none.
              */
             thumbnail_url?: string;
+            /** @description Number of checkpoints in the course version shown: the latest published version in GET /catalog/courses, or the live draft in GET /courses. */
+            checkpoint_count: number;
+            /** @description Number of content nodes across the learning paths in the course version shown. This is a lesson count, not an estimated duration: videos do not yet carry authoritative duration metadata. */
+            lesson_count: number;
         };
         /**
          * @description A course: an ordered, author-editable journey of learning-path
@@ -3067,10 +3071,9 @@ export interface components {
             items: components["schemas"]["CourseOutlineItem"][];
         };
         /**
-         * @description A single course's detail. For a student, this is always the
-         *     latest published version's snapshot, rendered as an outline. For
-         *     a teacher or admin, this is the live draft with its checkpoints'
-         *     full outlines resolved.
+         * @description A single published course's learner-facing detail. It is always the
+         *     latest published version's snapshot, rendered as an outline, so
+         *     unpublished draft edits never change what a prospective learner sees.
          */
         CourseDetail: {
             /**
@@ -3089,6 +3092,7 @@ export interface components {
             level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
             /** @description The language the course is written in, as a Language.code. */
             language: string;
+            created_by: components["schemas"]["UserRef"];
             /**
              * @description The course's authoring status. A student's result is always published.
              * @enum {string}
@@ -3107,6 +3111,10 @@ export interface components {
              * @description An image shown for this item in lists and cards. Absent when it has none.
              */
             thumbnail_url?: string;
+            /** @description Number of checkpoints in this published course version. */
+            checkpoint_count: number;
+            /** @description Number of content nodes across this published course version's checkpoint learning paths. This is not an estimated duration. */
+            lesson_count: number;
         };
         /**
          * @description An immutable, permanent snapshot of a course's title, summary,
@@ -3175,6 +3183,16 @@ export interface components {
             course_id: string;
             /** @description The course's title, as of the pinned version. */
             course_title: string;
+            /** @description The course's summary, as of the pinned version. */
+            course_summary: string;
+            /**
+             * @description The course's level, as of the pinned version.
+             * @enum {string}
+             */
+            course_level: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
+            course_created_by: components["schemas"]["UserRef"];
+            /** @description Number of checkpoints in the pinned course version. */
+            checkpoint_count: number;
             /**
              * Format: uri
              * @description The course's thumbnail, as of the pinned version. Absent when that version had none.
