@@ -117,6 +117,7 @@
     "errorMessage": "We couldn't load this course.",
     "notFoundHeading": "This course is not published yet",
     "notFoundMessage": "This course is not available in the catalog.",
+    "backToCatalog": "Back to courses",
     "enroll": "Enroll",
     "enrolling": "Enrolling…",
     "enrolledToast": "You are now enrolled in {title}.",

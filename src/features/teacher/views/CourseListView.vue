@@ -64,9 +64,9 @@ function statusLabel(tab: CourseStatus | null): string {
       </p>
     </div>
 
-    <div v-else class="flex flex-1 flex-col gap-6 px-[48px] pb-[80px] pt-10">
+    <div v-else class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-xl font-bold text-ink">{{ t('courseListView.heading') }}</h1>
+        <h1 class="text-lg font-bold text-ink sm:text-xl">{{ t('courseListView.heading') }}</h1>
         <RouterLink
           :to="{ name: 'teacher-course-new' }"
           data-test="new-course"

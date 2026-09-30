@@ -147,7 +147,9 @@
     "conceptFilterLabel": "Conceito",
     "clearFilters": "Limpar filtros",
     "languageFilterLabel": "Idioma",
-    "anyLanguage": "Qualquer idioma"
+    "anyLanguage": "Qualquer idioma",
+    "filters": "Filtros",
+    "appliedFilters": "Filtros aplicados"
   },
   "teacherFilterPicker": {
     "label": "Professor",

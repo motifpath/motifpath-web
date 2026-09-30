@@ -15,6 +15,7 @@ import { updateAuthBridge, updateRegistrationBridge, updateRoleBridge } from '@/
 
 describe('router', () => {
   beforeEach(async () => {
+    window.scrollTo = vi.fn()
     updateRoleBridge(null)
     await router.replace('/')
     await router.isReady()
@@ -264,6 +265,7 @@ describe('router', () => {
     await router.push('/courses')
 
     expect(router.currentRoute.value.name).toBe('course-catalog')
+    expect(router.currentRoute.value.meta.keepAlive).toBe(true)
   })
 
   it('lets a registered student reach a published course detail page', async () => {

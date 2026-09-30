@@ -74,4 +74,31 @@ describe('CourseFilters', () => {
 
     expect(wrapper.find('[data-test="extra-filter"]').exists()).toBe(true)
   })
+
+  it('keeps advanced filters in a modal when the compact variant is used', async () => {
+    const wrapper = mountFilters({ compact: true, instrumentFilter: true, languageFilter: true })
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="catalog-search"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="advanced-filters"]').text()).toBe('Filters')
+    expect(wrapper.find('[data-test="level-filter-beginner"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
+
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="level-filter-beginner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="instrument-filter"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="language-filter"]').exists()).toBe(true)
+  })
+
+  it('shows compact applied filters as removable pills', async () => {
+    const wrapper = mountFilters({ compact: true, hasActiveFilters: true, levels: ['beginner'] })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="applied-filter-level-beginner"]').text()).toContain('Beginner')
+
+    await wrapper.get('[data-test="applied-filter-level-beginner"]').trigger('click')
+    expect(wrapper.emitted('update:levels')).toEqual([[[]]])
+  })
 })

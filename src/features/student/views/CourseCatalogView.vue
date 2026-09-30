@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, nextTick, onActivated, onDeactivated, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
@@ -41,6 +41,14 @@ const {
 const { enrollments } = useMyCourseEnrollments()
 const { enrollInCourse } = useEnrollInCourse()
 
+const catalogScrollY = ref(0)
+onDeactivated(() => {
+  catalogScrollY.value = window.scrollY
+})
+onActivated(() => {
+  void nextTick(() => window.scrollTo(0, catalogScrollY.value))
+})
+
 function filterByTeacher(course: CourseCatalogEntry) {
   filters.teacher = course.created_by
 }
@@ -75,7 +83,7 @@ async function enroll(course: CourseCatalogEntry) {
 
 <template>
   <section class="flex flex-col gap-6">
-    <h1 class="text-2xl font-semibold text-accent-text">{{ t('courseCatalogView.heading') }}</h1>
+    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('courseCatalogView.heading') }}</h1>
 
     <CourseFilters
       v-model:search-text="searchText"
@@ -87,6 +95,7 @@ async function enroll(course: CourseCatalogEntry) {
       v-model:language="filters.language"
       instrument-filter
       language-filter
+      compact
       teacher-scope="catalog"
       :has-active-filters="hasActiveFilters"
       @clear="clearFilters"

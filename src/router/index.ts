@@ -103,7 +103,10 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'course-catalog',
         // Open to every role: anyone can learn.
-        meta: { requiresAuth: true },
+        // Kept alive while a learner examines a detail page, so returning to
+        // the catalog retains both the filtered results already loaded and
+        // the point they had reached in them.
+        meta: { requiresAuth: true, keepAlive: true },
         component: () => import('@/features/student/views/CourseCatalogView.vue'),
       },
       {
@@ -285,6 +288,9 @@ const routes: RouteRecordRaw[] = [
 export const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+  scrollBehavior(_to, _from, savedPosition) {
+    return savedPosition ?? { top: 0 }
+  },
 })
 
 router.beforeEach(createAuthGuard(authChecker))

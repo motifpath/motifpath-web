@@ -15,7 +15,7 @@ const { t } = useTypedT()
 
 <template>
   <section class="flex flex-col items-start gap-4">
-    <h1 class="text-2xl font-semibold text-accent-text">{{ t('appBar.brand') }}</h1>
+    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('appBar.brand') }}</h1>
 
     <StateLoading v-if="!isLoaded" data-test="loading" />
 

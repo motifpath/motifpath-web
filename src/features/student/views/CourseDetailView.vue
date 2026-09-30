@@ -74,6 +74,14 @@ async function continueCourse() {
 
 <template>
   <section class="flex flex-col gap-6">
+    <RouterLink
+      :to="{ name: 'course-catalog' }"
+      data-test="back-to-catalog"
+      class="w-fit text-sm font-semibold text-accent-text underline"
+    >
+      {{ t('courseDetailView.backToCatalog') }}
+    </RouterLink>
+
     <StateLoading v-if="isLoading" data-test="loading" :noun="t('courseDetailView.loadingNoun')" />
 
     <StateEmpty
@@ -109,7 +117,7 @@ async function continueCourse() {
             </span>
           </div>
           <div>
-            <h1 data-test="course-detail-title" class="text-3xl font-semibold text-ink">{{ course.title }}</h1>
+            <h1 data-test="course-detail-title" class="text-2xl font-semibold text-ink sm:text-3xl">{{ course.title }}</h1>
             <p v-if="course.created_by" data-test="course-detail-byline" class="mt-2 text-sm text-ink-subtle">
               {{ t('courseCard.byline', { name: course.created_by.display_name }) }}
             </p>

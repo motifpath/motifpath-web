@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { Check, Search } from 'lucide-vue-next'
+import { Check, Search, SlidersHorizontal, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
+import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
+import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import TeacherFilterPicker from '@/shared/components/TeacherFilterPicker.vue'
 import type { CourseCreatorsScope } from '@/shared/composables/useCourseCreators'
 import { useListConcepts } from '@/shared/composables/useListConcepts'
 import { useListSkills } from '@/shared/composables/useListSkills'
+import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { languageLabelKey } from '@/shared/utils/languageLabels'
 import { DIFFICULTY_LEVELS } from '@/shared/utils/levels'
 import { mostSpecificIds, type TreeNode } from '@/shared/utils/skillConceptTree'
 
@@ -29,8 +33,16 @@ const props = withDefaults(
     languageFilter?: boolean
     /** The search box's placeholder; defaults to searching courses. */
     searchPlaceholder?: string
+    /** Shows search first and moves the remaining controls into a modal. */
+    compact?: boolean
   }>(),
-  { teacherScope: null, instrumentFilter: false, languageFilter: false, searchPlaceholder: undefined },
+  {
+    teacherScope: null,
+    instrumentFilter: false,
+    languageFilter: false,
+    searchPlaceholder: undefined,
+    compact: false,
+  },
 )
 const emit = defineEmits<{ clear: [] }>()
 
@@ -43,6 +55,8 @@ const instrumentId = defineModel<string | null>('instrumentId', { default: null 
 const language = defineModel<string | null>('language', { default: null })
 
 const { t } = useTypedT()
+const { instrumentsLabel } = useInstrumentNames()
+const advancedOpen = ref(false)
 
 const { skills, isLoading: skillsLoading } = useListSkills()
 const { concepts, isLoading: conceptsLoading } = useListConcepts()
@@ -81,17 +95,182 @@ function toggleLevel(level: CourseLevel) {
 }
 
 const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 'sm:grid-cols-2'))
+
+type AppliedFilter = { key: string; label: string; clear: () => void }
+
+const appliedFilters = computed<AppliedFilter[]>(() => {
+  const filters: AppliedFilter[] = levels.value.map((level) => ({
+    key: `level-${level}`,
+    label: t(`levels.${level}`),
+    clear: () => toggleLevel(level),
+  }))
+
+  if (teacher.value) {
+    filters.push({
+      key: 'teacher',
+      label: teacher.value.display_name,
+      clear: () => (teacher.value = null),
+    })
+  }
+  if (instrumentId.value) {
+    filters.push({
+      key: 'instrument',
+      label: instrumentsLabel([instrumentId.value]),
+      clear: () => (instrumentId.value = null),
+    })
+  }
+  if (language.value) {
+    const labelKey = languageLabelKey(language.value)
+    filters.push({
+      key: 'language',
+      label: labelKey ? t(labelKey) : language.value,
+      clear: () => (language.value = null),
+    })
+  }
+  for (const skillId of skillIds.value) {
+    filters.push({
+      key: `skill-${skillId}`,
+      label: skillNodes.value.find((skill) => skill.id === skillId)?.name ?? '…',
+      clear: () => (skillIds.value = skillIds.value.filter((id) => id !== skillId)),
+    })
+  }
+  for (const conceptId of conceptIds.value) {
+    filters.push({
+      key: `concept-${conceptId}`,
+      label: conceptNodes.value.find((concept) => concept.id === conceptId)?.name ?? '…',
+      clear: () => (conceptIds.value = conceptIds.value.filter((id) => id !== conceptId)),
+    })
+  }
+
+  return filters
+})
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 rounded-lg border border-border bg-surface-raised p-4">
+  <template v-if="compact">
+    <div class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-3 sm:p-4">
+      <div class="flex gap-2">
+        <label class="relative min-w-0 flex-1">
+          <span class="sr-only">{{ t('courseFilters.searchLabel') }}</span>
+          <Search
+            :size="16"
+            class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle"
+            aria-hidden="true"
+          />
+          <input
+            v-model="searchText"
+            data-test="catalog-search"
+            type="search"
+            :placeholder="searchPlaceholder ?? t('courseFilters.searchPlaceholder')"
+            class="w-full rounded-md border border-border bg-surface-sunken py-2 pl-9 pr-3 text-sm"
+          />
+        </label>
+        <button
+          type="button"
+          data-test="advanced-filters"
+          class="flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface-raised px-3 text-sm font-semibold text-ink"
+          @click="advancedOpen = true"
+        >
+          <SlidersHorizontal :size="16" aria-hidden="true" />
+          {{ t('courseFilters.filters') }}
+        </button>
+      </div>
+
+      <div v-if="appliedFilters.length" class="flex flex-wrap gap-2" :aria-label="t('courseFilters.appliedFilters')">
+        <button
+          v-for="filter in appliedFilters"
+          :key="filter.key"
+          type="button"
+          :data-test="`applied-filter-${filter.key}`"
+          class="flex items-center gap-1 rounded-full bg-accent-muted px-2.5 py-1 text-sm font-medium text-accent-text"
+          @click="filter.clear"
+        >
+          {{ filter.label }}
+          <X :size="14" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div v-if="hasActiveFilters" class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="text-sm font-semibold text-accent-text underline"
+          @click="emit('clear')"
+        >
+          {{ t('courseFilters.clearFilters') }}
+        </button>
+      </div>
+    </div>
+
+    <ModalOverlay
+      :open="advancedOpen"
+      panel-class="flex max-h-[85vh] w-[min(720px,calc(100vw-32px))] flex-col gap-4 overflow-y-auto rounded-xl bg-surface-raised p-5 shadow-level2"
+      @close="advancedOpen = false"
+    >
+      <div role="dialog" aria-modal="true" class="flex flex-col gap-4">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-base font-bold text-ink">{{ t('courseFilters.filters') }}</h2>
+          <ModalCloseButton @close="advancedOpen = false" />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+            {{ t('courseFilters.levelFilterLabel') }}
+          </span>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="level in DIFFICULTY_LEVELS"
+              :key="level"
+              type="button"
+              :data-test="`level-filter-${level}`"
+              :aria-pressed="levels.includes(level)"
+              class="flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
+              :class="levels.includes(level) ? 'border-accent bg-accent text-accent-fg' : 'border-border bg-surface text-ink-muted'"
+              @click="toggleLevel(level)"
+            >
+              <Check v-if="levels.includes(level)" :size="14" aria-hidden="true" />
+              {{ t(`levels.${level}`) }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="instrumentFilter || languageFilter || $slots.default" class="flex flex-wrap items-end gap-4">
+          <InstrumentFilterSelect v-if="instrumentFilter" v-model="instrumentId" />
+          <label v-if="languageFilter" class="flex flex-col gap-1.5">
+            <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+              {{ t('courseFilters.languageFilterLabel') }}
+            </span>
+            <LanguageSelect v-model="language" data-test="language-filter" :empty-label="t('courseFilters.anyLanguage')" />
+          </label>
+          <slot />
+        </div>
+
+        <div class="grid gap-4" :class="pickerColumns">
+          <TeacherFilterPicker v-if="teacherScope" v-model="teacher" :scope="teacherScope" />
+          <SkillConceptTreePicker
+            :label="t('courseFilters.skillFilterLabel')"
+            :nodes="skillNodes"
+            :selected-ids="pickedSkillIds"
+            :is-loading="skillsLoading"
+            :creatable="false"
+            @update:selected-ids="onSkillsPicked"
+          />
+          <SkillConceptTreePicker
+            :label="t('courseFilters.conceptFilterLabel')"
+            :nodes="conceptNodes"
+            :selected-ids="pickedConceptIds"
+            :is-loading="conceptsLoading"
+            :creatable="false"
+            @update:selected-ids="onConceptsPicked"
+          />
+        </div>
+      </div>
+    </ModalOverlay>
+  </template>
+
+  <div v-else class="flex flex-col gap-4 rounded-lg border border-border bg-surface-raised p-4">
     <label class="relative flex items-center">
       <span class="sr-only">{{ t('courseFilters.searchLabel') }}</span>
-      <Search
-        :size="16"
-        class="pointer-events-none absolute left-3 text-ink-subtle"
-        aria-hidden="true"
-      />
+      <Search :size="16" class="pointer-events-none absolute left-3 text-ink-subtle" aria-hidden="true" />
       <input
         v-model="searchText"
         data-test="catalog-search"
@@ -113,11 +292,7 @@ const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 's
           :data-test="`level-filter-${level}`"
           :aria-pressed="levels.includes(level)"
           class="flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
-          :class="
-            levels.includes(level)
-              ? 'border-accent bg-accent text-accent-fg'
-              : 'border-border bg-surface text-ink-muted'
-          "
+          :class="levels.includes(level) ? 'border-accent bg-accent text-accent-fg' : 'border-border bg-surface text-ink-muted'"
           @click="toggleLevel(level)"
         >
           <Check v-if="levels.includes(level)" :size="14" aria-hidden="true" />
@@ -132,11 +307,7 @@ const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 's
         <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
           {{ t('courseFilters.languageFilterLabel') }}
         </span>
-        <LanguageSelect
-          v-model="language"
-          data-test="language-filter"
-          :empty-label="t('courseFilters.anyLanguage')"
-        />
+        <LanguageSelect v-model="language" data-test="language-filter" :empty-label="t('courseFilters.anyLanguage')" />
       </label>
       <slot />
     </div>
@@ -162,11 +333,7 @@ const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 's
     </div>
 
     <div v-if="hasActiveFilters" class="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        class="text-sm font-semibold text-accent-text underline"
-        @click="emit('clear')"
-      >
+      <button type="button" class="text-sm font-semibold text-accent-text underline" @click="emit('clear')">
         {{ t('courseFilters.clearFilters') }}
       </button>
     </div>

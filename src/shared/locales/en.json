@@ -147,7 +147,9 @@
     "conceptFilterLabel": "Concept",
     "clearFilters": "Clear filters",
     "languageFilterLabel": "Language",
-    "anyLanguage": "Any language"
+    "anyLanguage": "Any language",
+    "filters": "Filters",
+    "appliedFilters": "Applied filters"
   },
   "teacherFilterPicker": {
     "label": "Teacher",

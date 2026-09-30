@@ -113,6 +113,9 @@ describe('CourseDetailView', () => {
   it('shows the published snapshot, its byline, and its course scope before enrollment', () => {
     const wrapper = mountView()
 
+    expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ name: 'course-catalog' })
+    expect(wrapper.get('[data-test="course-detail-title"]').classes()).toContain('text-2xl')
+    expect(wrapper.get('[data-test="course-detail-title"]').classes()).toContain('sm:text-3xl')
     expect(wrapper.get('[data-test="course-detail-title"]').text()).toBe('Fingerstyle journey')
     expect(wrapper.get('[data-test="course-detail-byline"]').text()).toContain('Bob Martins')
     expect(wrapper.get('[data-test="course-detail-lessons"]').text()).toBe('12 lessons')

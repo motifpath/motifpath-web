@@ -117,6 +117,7 @@
     "errorMessage": "Não foi possível carregar este curso.",
     "notFoundHeading": "Este curso ainda não foi publicado",
     "notFoundMessage": "Este curso não está disponível no catálogo.",
+    "backToCatalog": "Voltar aos cursos",
     "enroll": "Inscrever-se",
     "enrolling": "Inscrevendo…",
     "enrolledToast": "Você está inscrito em {title}.",

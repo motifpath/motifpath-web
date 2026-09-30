@@ -182,6 +182,15 @@ describe('CourseCatalogView', () => {
     expect(cards[1]!.text()).toContain('Advanced')
   })
 
+  it('starts with a compact heading and only the catalog search visible', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('h1').classes()).toContain('text-xl')
+    expect(wrapper.get('h1').classes()).toContain('sm:text-2xl')
+    expect(wrapper.find('[data-test="level-filter-beginner"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="advanced-filters"]').exists()).toBe(true)
+  })
+
   it('links every catalog card to its published detail page', () => {
     catalog.courses.value = [course()]
     catalog.total.value = 1
@@ -214,6 +223,8 @@ describe('CourseCatalogView', () => {
     catalog.filters.language = 'en'
     const wrapper = mountView()
 
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
+
     expect(wrapper.get<HTMLSelectElement>('[data-test="language-filter"]').element.value).toBe('en')
     await wrapper.get('[data-test="language-filter"]').setValue('')
     await wrapper.get('[data-test="instrument-filter"]').setValue('i-guitar')
@@ -232,6 +243,7 @@ describe('CourseCatalogView', () => {
 
   it('toggles a level filter on and off', async () => {
     const wrapper = mountView()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
     const chip = wrapper.get('[data-test="level-filter-intermediate"]')
 
     await chip.trigger('click')
@@ -244,6 +256,7 @@ describe('CourseCatalogView', () => {
 
   it('filters by the most specific skills picked, not their ancestors too', async () => {
     const wrapper = mountView()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
     const picker = wrapper.findAllComponents({ name: 'SkillConceptTreePicker' })[0]!
 
     picker.vm.$emit('update:selectedIds', ['chords', 'triads'])
@@ -261,6 +274,7 @@ describe('CourseCatalogView', () => {
 
   it('filters by the teacher picked in the teacher filter, and clears it again', async () => {
     const wrapper = mountView()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
     const picker = wrapper.getComponent({ name: 'TeacherFilterPicker' })
 
     picker.vm.$emit('update:modelValue', { user_id: 'teacher-2', display_name: 'Carol Dias' })
@@ -278,6 +292,7 @@ describe('CourseCatalogView', () => {
     const wrapper = mountView()
 
     await wrapper.get('[data-test="more-from-teacher"]').trigger('click')
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
 
     expect(catalog.filters.teacher).toEqual({ user_id: 'teacher-1', display_name: 'Bob Martins' })
     expect(wrapper.getComponent({ name: 'TeacherFilterPicker' }).props('modelValue')).toEqual({
