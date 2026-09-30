@@ -1,6 +1,6 @@
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive } from 'vue'
+import { nextTick, reactive } from 'vue'
 
 import { i18n } from '@/i18n'
 
@@ -27,6 +27,31 @@ function mountButton(props: Partial<typeof lessonProps & { raised: boolean }> = 
   return mount(SendToTeacher, { props: { ...lessonProps, ...props }, attachTo: document.body })
 }
 
+type Wrapper = ReturnType<typeof mountButton>
+type Point = { clientX: number; clientY: number }
+
+const POSITION_KEY = 'motifpath:send-to-teacher-position'
+
+/** A whole pointer gesture on the icon: press at `from`, move to `to`, release there. */
+async function drag(wrapper: Wrapper, from: Point, to: Point) {
+  const link = wrapper.get('[data-test="send-to-teacher"]')
+  const pointer = { pointerType: 'mouse', pointerId: 1, button: 0 }
+  await link.trigger('pointerdown', { ...pointer, ...from })
+  await link.trigger('pointermove', { ...pointer, ...to })
+  await link.trigger('pointerup', { ...pointer, ...to })
+}
+
+/** Whether a click on the icon would go on to open WhatsApp. */
+function clickOpensWhatsApp(wrapper: Wrapper): boolean {
+  const click = new MouseEvent('click', { bubbles: true, cancelable: true })
+  wrapper.get('[data-test="send-to-teacher"]').element.dispatchEvent(click)
+  return !click.defaultPrevented
+}
+
+function float(wrapper: Wrapper) {
+  return wrapper.get('[data-test="send-to-teacher-float"]')
+}
+
 /** The prefilled message carried by the link's `text` query parameter. */
 function prefilledMessage(wrapper: ReturnType<typeof mountButton>): string {
   const href = wrapper.get('[data-test="send-to-teacher"]').attributes('href') ?? ''
@@ -38,10 +63,12 @@ describe('SendToTeacher', () => {
     vi.stubEnv('VITE_CONCIERGE_WHATSAPP_NUMBER', '+55 11 91234-5678')
     currentUser.profile = { display_name: 'Ana Souza' }
     i18n.global.locale.value = 'en'
+    window.localStorage.clear()
   })
 
   afterEach(() => {
     vi.unstubAllEnvs()
+    vi.restoreAllMocks()
     i18n.global.locale.value = 'en'
   })
 
@@ -53,12 +80,138 @@ describe('SendToTeacher', () => {
     expect(link.find('[data-test="whatsapp-icon"]').exists()).toBe(true)
   })
 
-  it('floats in the bottom-right corner, higher when raised above a bottom bar', () => {
-    const resting = mountButton().get('[data-test="send-to-teacher-float"]')
-    const raised = mountButton({ raised: true }).get('[data-test="send-to-teacher-float"]')
+  it('starts in the bottom-right corner, higher when raised above a bottom bar', () => {
+    const resting = float(mountButton())
+    const raised = float(mountButton({ raised: true }))
 
-    expect(resting.classes()).toEqual(expect.arrayContaining(['fixed', 'right-4', 'bottom-4']))
-    expect(raised.classes()).toEqual(expect.arrayContaining(['fixed', 'right-4', 'bottom-20']))
+    expect(resting.classes()).toEqual(expect.arrayContaining(['fixed', 'right-4']))
+    expect(resting.attributes('style')).toContain('bottom: 16px')
+    expect(raised.classes()).toContain('right-4')
+    expect(raised.attributes('style')).toContain('bottom: 80px')
+  })
+
+  describe('dragging', () => {
+    // jsdom's window is 1024 x 768; the 48px icon rests 16px from the right and
+    // bottom edges, so its top-left corner starts at (960, 704).
+
+    it('moves with a drag and settles on the nearest side edge, at the height it was let go', async () => {
+      const wrapper = mountButton()
+
+      await drag(wrapper, { clientX: 1000, clientY: 740 }, { clientX: 100, clientY: 440 })
+
+      expect(float(wrapper).classes()).toContain('left-4')
+      expect(float(wrapper).classes()).not.toContain('right-4')
+      expect(float(wrapper).attributes('style')).toContain('bottom: 316px')
+    })
+
+    it('does not open WhatsApp at the end of a drag', async () => {
+      const wrapper = mountButton()
+
+      await drag(wrapper, { clientX: 1000, clientY: 740 }, { clientX: 100, clientY: 440 })
+
+      expect(clickOpensWhatsApp(wrapper)).toBe(false)
+    })
+
+    it('still opens WhatsApp on a tap', async () => {
+      const wrapper = mountButton()
+
+      await drag(wrapper, { clientX: 1000, clientY: 740 }, { clientX: 1000, clientY: 740 })
+
+      expect(clickOpensWhatsApp(wrapper)).toBe(true)
+    })
+
+    it('treats a slight wobble during a tap as a tap', async () => {
+      const wrapper = mountButton()
+
+      await drag(wrapper, { clientX: 1000, clientY: 740 }, { clientX: 1003, clientY: 742 })
+
+      expect(clickOpensWhatsApp(wrapper)).toBe(true)
+      expect(float(wrapper).classes()).toContain('right-4')
+      expect(float(wrapper).attributes('style')).toContain('bottom: 16px')
+    })
+
+    it('opens WhatsApp on the next tap after a drag', async () => {
+      const wrapper = mountButton()
+      await drag(wrapper, { clientX: 1000, clientY: 740 }, { clientX: 100, clientY: 440 })
+      clickOpensWhatsApp(wrapper)
+
+      await drag(wrapper, { clientX: 40, clientY: 420 }, { clientX: 40, clientY: 420 })
+
+      expect(clickOpensWhatsApp(wrapper)).toBe(true)
+    })
+
+    it('stays entirely on screen, below the app bar', async () => {
+      const wrapper = mountButton()
+
+      await drag(wrapper, { clientX: 1000, clientY: 740 }, { clientX: 1000, clientY: -500 })
+
+      // Top edge held at 80px (64px app bar + 16px), so 768 - 80 - 48 from the bottom.
+      expect(float(wrapper).attributes('style')).toContain('bottom: 640px')
+    })
+
+    it('cannot be dragged below a bottom bar when raised', async () => {
+      const wrapper = mountButton({ raised: true })
+
+      await drag(wrapper, { clientX: 1000, clientY: 700 }, { clientX: 1000, clientY: 760 })
+
+      expect(float(wrapper).attributes('style')).toContain('bottom: 80px')
+    })
+
+    it('hides the tooltip while it is being dragged', async () => {
+      const wrapper = mountButton()
+      const link = wrapper.get('[data-test="send-to-teacher"]')
+      await link.trigger('pointerenter', { pointerType: 'mouse' })
+
+      await link.trigger('pointerdown', { pointerType: 'mouse', pointerId: 1, button: 0, clientX: 1000, clientY: 740 })
+      await link.trigger('pointermove', { pointerType: 'mouse', pointerId: 1, clientX: 800, clientY: 600 })
+
+      expect(wrapper.get('[role="tooltip"]').isVisible()).toBe(false)
+    })
+
+    it('remembers its place on this device', async () => {
+      const first = mountButton()
+      await drag(first, { clientX: 1000, clientY: 740 }, { clientX: 100, clientY: 440 })
+      first.unmount()
+
+      const next = mountButton({ reference: 'X-3eb9ccc1/5c20a7e4', raised: true })
+
+      expect(float(next).classes()).toContain('left-4')
+      expect(float(next).attributes('style')).toContain('bottom: 316px')
+    })
+
+    it('comes back into view when a remembered place no longer fits the window', async () => {
+      window.localStorage.setItem(POSITION_KEY, JSON.stringify({ side: 'right', bottom: 600 }))
+      const wrapper = mountButton()
+      const tallHeight = window.innerHeight
+
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 500 })
+      window.dispatchEvent(new Event('resize'))
+      await nextTick()
+
+      // 500 - 80 (app bar and margin) - 48 (icon)
+      expect(float(wrapper).attributes('style')).toContain('bottom: 372px')
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: tallHeight })
+    })
+
+    it('starts in the bottom-right corner when this device cannot remember its place', () => {
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('storage blocked')
+      })
+
+      const wrapper = mountButton()
+
+      expect(float(wrapper).classes()).toContain('right-4')
+      expect(float(wrapper).attributes('style')).toContain('bottom: 16px')
+    })
+
+    it('ignores a remembered place it cannot read', () => {
+      window.localStorage.setItem(POSITION_KEY, 'not json')
+
+      const wrapper = mountButton()
+
+      expect(float(wrapper).classes()).toContain('right-4')
+      expect(float(wrapper).attributes('style')).toContain('bottom: 16px')
+    })
   })
 
   it('opens the concierge number on wa.me outside the app', () => {

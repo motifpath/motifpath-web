@@ -2,6 +2,7 @@
 import { computed, ref, useId } from 'vue'
 
 import { conciergeNumber, conciergeWhatsAppUrl } from '@/features/student/utils/conciergeLink'
+import { useDraggableFloat } from '@/shared/composables/useDraggableFloat'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -44,6 +45,23 @@ function onPointerEnter(event: PointerEvent): void {
   if (event.pointerType === 'mouse') hovered.value = true
 }
 
+// The student can drag the button off whatever it covers. Its geometry
+// matches the classes below: a 3rem (48px) button, 1rem (16px) from the edges,
+// kept below the 4rem app bar plus that same gap, and above a bottom bar
+// (5rem) when raised.
+const float = useDraggableFloat({
+  storageKey: 'motifpath:send-to-teacher-position',
+  size: 48,
+  edge: 16,
+  topReserve: 80,
+  minBottom: () => (props.raised ? 80 : 16),
+})
+
+function onPointerDown(event: PointerEvent): void {
+  pointerPressed = true
+  float.handlers.pointerdown(event)
+}
+
 function onFocus(): void {
   keyboardFocused.value = !pointerPressed
 }
@@ -58,14 +76,16 @@ function onBlur(): void {
   <div
     v-if="href"
     data-test="send-to-teacher-float"
-    class="fixed right-4 z-10"
-    :class="raised ? 'bottom-20' : 'bottom-4'"
+    class="fixed z-10"
+    :class="float.dragging.value ? null : float.side.value === 'left' ? 'left-4' : 'right-4'"
+    :style="float.style.value"
   >
     <div
-      v-show="hovered || keyboardFocused"
+      v-show="(hovered || keyboardFocused) && !float.dragging.value"
       :id="tooltipId"
       role="tooltip"
-      class="absolute bottom-full right-0 mb-2 w-60 rounded bg-surface-raised px-3 py-2 text-left shadow-level1"
+      class="absolute bottom-full mb-2 w-60 rounded bg-surface-raised px-3 py-2 text-left shadow-level1"
+      :class="float.side.value === 'left' ? 'left-0' : 'right-0'"
     >
       <p class="text-sm font-medium text-ink">{{ t('sendToTeacher.button') }}</p>
       <p class="text-xs text-ink-muted">{{ t('sendToTeacher.hint') }}</p>
@@ -78,10 +98,15 @@ function onBlur(): void {
       rel="noopener noreferrer"
       :aria-label="t('sendToTeacher.button')"
       :aria-describedby="tooltipId"
-      class="flex h-7 w-7 items-center justify-center rounded-full bg-whatsapp text-white shadow-level1"
+      draggable="false"
+      class="flex h-7 w-7 touch-none select-none items-center justify-center rounded-full bg-whatsapp text-white shadow-level1"
       @pointerenter="onPointerEnter"
       @pointerleave="hovered = false"
-      @pointerdown="pointerPressed = true"
+      @pointerdown="onPointerDown"
+      @pointermove="float.handlers.pointermove"
+      @pointerup="float.handlers.pointerup"
+      @pointercancel="float.handlers.pointercancel"
+      @click="float.handlers.click"
       @focus="onFocus"
       @blur="onBlur"
     >
