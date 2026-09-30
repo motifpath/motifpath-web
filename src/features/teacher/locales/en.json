@@ -370,10 +370,13 @@
     "errorMessage": "We couldn't load the learning paths.",
     "emptyHeading": "No paths yet",
     "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
-    "nodeCountSingular": "{count} node",
-    "nodeCountPlural": "{count} nodes",
-    "noMatchesMessage": "No learning path is for this instrument.",
-    "showEveryInstrument": "Show every instrument"
+    "noMatchesMessage": "Try fewer filters or a different search.",
+    "noMatchesHeading": "No matching paths",
+    "searchPlaceholder": "Search paths by title",
+    "onlyMine": "Only my paths",
+    "statusTabsLabel": "Status",
+    "allStatuses": "All",
+    "editPath": "Edit"
   },
   "challengeModal": {
     "buildTitle": "Build challenge",
@@ -679,5 +682,9 @@
     "addRest": "Add {value} rest",
     "dragHint": "Drag a step into a gap to move it, or onto another step to play them together as a chord.",
     "removeStepNumber": "Remove step {number}"
+  },
+  "pathStatus": {
+    "draft": "Draft",
+    "published": "Published"
   }
 }

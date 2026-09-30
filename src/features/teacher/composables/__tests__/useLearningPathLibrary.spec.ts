@@ -73,6 +73,30 @@ describe('useLearningPathLibrary', () => {
     })
   })
 
+  it('sends the language and status filters', async () => {
+    const { filters, status, isLoading } = useLearningPathLibrary()
+    await settle(isLoading)
+
+    filters.language = 'pt_BR'
+    status.value = 'draft'
+    await settle(isLoading)
+
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, sort: 'title', language: 'pt_BR', status: 'draft' })
+  })
+
+  it('keeps the status when the filters are cleared', async () => {
+    const { filters, status, clearFilters, isLoading } = useLearningPathLibrary()
+    await settle(isLoading)
+
+    status.value = 'published'
+    filters.language = 'en'
+    await settle(isLoading)
+    clearFilters()
+    await settle(isLoading)
+
+    expect(lastQuery()).toEqual({ limit: 20, offset: 0, sort: 'title', status: 'published' })
+  })
+
   it('searches by title once typing pauses', async () => {
     vi.useFakeTimers()
     const { searchText, isLoading } = useLearningPathLibrary()

@@ -370,10 +370,13 @@
     "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
     "emptyHeading": "Ainda não há trilhas",
     "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
-    "nodeCountSingular": "{count} nó",
-    "nodeCountPlural": "{count} nós",
-    "noMatchesMessage": "Nenhuma trilha de aprendizagem é para este instrumento.",
-    "showEveryInstrument": "Mostrar todos os instrumentos"
+    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
+    "noMatchesHeading": "Nenhuma trilha encontrada",
+    "searchPlaceholder": "Buscar trilhas pelo título",
+    "onlyMine": "Só as minhas trilhas",
+    "statusTabsLabel": "Status",
+    "allStatuses": "Todas",
+    "editPath": "Editar"
   },
   "challengeModal": {
     "buildTitle": "Montar desafio",
@@ -679,5 +682,9 @@
     "addRest": "Adicionar pausa de {value}",
     "dragHint": "Arraste um passo para um espaço entre passos para movê-lo, ou sobre outro passo para tocá-los juntos como acorde.",
     "removeStepNumber": "Remover passo {number}"
+  },
+  "pathStatus": {
+    "draft": "Rascunho",
+    "published": "Publicada"
   }
 }

@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
 import type { components } from '@/api/generated/core-domain'
 import {
   type LearningPathSort,
   useLearningPathLibrary,
 } from '@/features/teacher/composables/useLearningPathLibrary'
+import { useOnlyMineFilter } from '@/features/teacher/composables/useOnlyMineFilter'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
@@ -16,7 +15,6 @@ import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { formatDate } from '@/shared/utils/formatDate'
-import { useCurrentUserStore } from '@/stores/currentUser'
 
 type LearningPath = components['schemas']['LearningPath']
 
@@ -27,7 +25,6 @@ const SORTS: LearningPathSort[] = ['title', 'updated']
 
 const { t, locale } = useTypedT()
 const { instrumentsLabel } = useInstrumentNames()
-const currentUser = useCurrentUserStore()
 
 const {
   paths,
@@ -45,20 +42,7 @@ const {
   loadMore,
 } = useLearningPathLibrary()
 
-// No endpoint lists the library's authors, so the author filter narrows to
-// the signed-in teacher's own paths or none.
-const onlyMine = computed({
-  get: () => !!currentUser.profile && filters.teacher?.user_id === currentUser.profile.user_id,
-  set: (checked: boolean) => {
-    const profile = currentUser.profile
-    filters.teacher =
-      checked && profile ? { user_id: profile.user_id, display_name: profile.display_name } : null
-  },
-})
-
-function onOnlyMineChange(event: Event) {
-  if (event.target instanceof HTMLInputElement) onlyMine.value = event.target.checked
-}
+const { onlyMine, onOnlyMineChange } = useOnlyMineFilter(filters)
 </script>
 
 <template>
