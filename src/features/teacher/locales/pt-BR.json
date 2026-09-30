@@ -558,7 +558,8 @@
     "reactivateFailed": "Não foi possível reativar o curso.",
     "leaveTitle": "Sair sem salvar?",
     "leaveMessage": "Suas alterações neste curso não foram salvas e serão perdidas.",
-    "leaveConfirm": "Sair"
+    "leaveConfirm": "Sair",
+    "draftPathsBlockPublish": "Publique estas trilhas antes do curso: {titles}"
   },
   "diagramPickerList": {
     "loadingNoun": "diagramas",

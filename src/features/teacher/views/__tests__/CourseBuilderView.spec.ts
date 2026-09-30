@@ -343,6 +343,27 @@ describe('CourseBuilderView', () => {
         expect(wrapper.find('[data-test="unpublished-changes"]').exists()).toBe(false)
       })
 
+      it('names the draft learning paths when publishing is refused over them', async () => {
+        PUT.mockResolvedValueOnce(ok(course({ has_unpublished_changes: true })))
+        POST.mockResolvedValueOnce({
+          data: undefined,
+          error: { message: 'course is not publishable', draft_learning_path_ids: ['lp-1'] },
+          response: { status: 409 },
+        })
+        wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="publish-course"]').trigger('click')
+        await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+        await flushPromises()
+
+        const errors = useToast().toasts.value.filter((toast) => toast.kind === 'error')
+        expect(errors.map((toast) => toast.message)).toEqual([
+          'Publish these learning paths before the course: Open chords',
+        ])
+        expect(wrapper.get('[data-test="course-status"]').text()).toBe('Draft')
+      })
+
       it('does not publish when saving first fails', async () => {
         PUT.mockResolvedValueOnce(failure(400))
         wrapper = mountView()

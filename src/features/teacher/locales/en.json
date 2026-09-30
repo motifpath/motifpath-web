@@ -558,7 +558,8 @@
     "reactivateFailed": "Couldn't reactivate the course.",
     "leaveTitle": "Leave without saving?",
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
-    "leaveConfirm": "Leave"
+    "leaveConfirm": "Leave",
+    "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}"
   },
   "diagramPickerList": {
     "loadingNoun": "diagrams",

@@ -1,6 +1,7 @@
 import { useApi } from '@/shared/composables/useApi'
 import { useApiItem } from '@/shared/composables/useApiItem'
 import { useApiMutation } from '@/shared/composables/useApiMutation'
+import { describeApiError } from '@/shared/utils/apiError'
 import type { components } from '@/api/generated/core-domain'
 
 type Course = components['schemas']['Course']
@@ -8,6 +9,23 @@ type CourseDetail = components['schemas']['CourseDetail']
 type CourseVersion = components['schemas']['CourseVersion']
 type CreateCourseRequest = components['schemas']['CreateCourseRequest']
 type ReplaceCourseRequest = components['schemas']['ReplaceCourseRequest']
+
+/** A course publish refused because some of its checkpoints use draft learning paths. */
+export class DraftLearningPathsError extends Error {
+  constructor(readonly draftLearningPathIds: string[]) {
+    super('The course uses learning paths that are still drafts')
+  }
+}
+
+function hasDraftLearningPaths(error: unknown): error is { draft_learning_path_ids: string[] } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'draft_learning_path_ids' in error &&
+    Array.isArray(error.draft_learning_path_ids) &&
+    error.draft_learning_path_ids.length > 0
+  )
+}
 
 /** A course's live draft, as its author or an admin edits it. */
 export function useCourse(courseId: string) {
@@ -28,6 +46,7 @@ export function usePublishedCourse(courseId: string) {
 }
 
 export function useCourseMutations() {
+  const { coreApi } = useApi()
   const createCourse = useApiMutation<[CreateCourseRequest], Course>(
     (coreApi, request) => coreApi.POST('/courses', { body: request }),
     'Failed to create the course',
@@ -37,10 +56,15 @@ export function useCourseMutations() {
       coreApi.PUT('/courses/{course_id}', { params: { path: { course_id: courseId } }, body: request }),
     'Failed to save the course',
   )
-  const publishCourse = useApiMutation<[string], CourseVersion>(
-    (coreApi, courseId) => coreApi.POST('/courses/{course_id}/publish', { params: { path: { course_id: courseId } } }),
-    'Failed to publish the course',
-  )
+  /** Throws DraftLearningPathsError when draft learning paths block the publish. */
+  async function publishCourse(courseId: string): Promise<CourseVersion> {
+    const { data, error } = await coreApi.POST('/courses/{course_id}/publish', {
+      params: { path: { course_id: courseId } },
+    })
+    if (data) return data
+    if (hasDraftLearningPaths(error)) throw new DraftLearningPathsError(error.draft_learning_path_ids)
+    throw new Error(describeApiError(error, 'Failed to publish the course'))
+  }
   const retireCourse = useApiMutation<[string], Course>(
     (coreApi, courseId) => coreApi.POST('/courses/{course_id}/retire', { params: { path: { course_id: courseId } } }),
     'Failed to retire the course',
