@@ -12,9 +12,9 @@ withDefaults(
     /** Whether the card presents a course or a learning path. */
     kind?: 'course' | 'path'
     title: string
-    summary: string
+    summary?: string
     createdBy?: UserRef
-    level: CourseLevel
+    level?: CourseLevel
     checkpointCount?: number
     lessonCount?: number
     language?: string
@@ -54,14 +54,14 @@ const { t } = useTypedT()
           >
             {{ languageBadge(language).flag }} {{ languageBadge(language).shortCode }}
           </span>
-          <span data-test="course-level" class="rounded-full bg-surface-sunken px-2.5 py-0.5">
+          <span v-if="level" data-test="course-level" class="rounded-full bg-surface-sunken px-2.5 py-0.5">
             {{ t(`levels.${level}`) }}
           </span>
           <slot name="badges" />
         </div>
       </div>
 
-      <p data-test="course-summary" class="line-clamp-2 text-sm text-ink-muted">{{ summary }}</p>
+      <p v-if="summary" data-test="course-summary" class="line-clamp-2 text-sm text-ink-muted">{{ summary }}</p>
       <p v-if="createdBy" data-test="course-byline" class="text-sm text-ink-subtle">
         {{ t('courseCard.byline', { name: createdBy.display_name }) }}
       </p>

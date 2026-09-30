@@ -47,6 +47,13 @@ describe('CourseCard', () => {
     expect(wrapper.find('[data-test="course-checkpoints"]').exists()).toBe(false)
   })
 
+  it('leaves out the level and summary a path copy made before snapshots lacks', () => {
+    const wrapper = mountCard({ kind: 'path', level: undefined, summary: undefined })
+
+    expect(wrapper.find('[data-test="course-level"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="course-summary"]').exists()).toBe(false)
+  })
+
   it('uses the intentional placeholder when the course has no image', () => {
     expect(mountCard().find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
   })

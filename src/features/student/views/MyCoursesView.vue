@@ -18,11 +18,11 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
-import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type CourseEnrollment = components['schemas']['CourseEnrollment']
+type StudentPath = components['schemas']['StudentPath']
 type EnrollmentStatus = CourseEnrollment['status']
 
 const STATUS_ORDER: Record<EnrollmentStatus, number> = { active: 0, completed: 1, abandoned: 2 }
@@ -85,6 +85,11 @@ function enrollmentMeta(enrollment: CourseEnrollment): string {
     : ''
 }
 
+// A path the learner enrolled in themselves needs no "assigned by" line.
+function assignedBySomeoneElse(path: StudentPath): boolean {
+  return path.assigned_by.user_id !== path.student.user_id
+}
+
 const switching = ref(false)
 
 async function switchTo(target: CurrentPathTarget) {
@@ -104,13 +109,14 @@ async function switchTo(target: CurrentPathTarget) {
   <section class="flex flex-col gap-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('myCoursesView.heading') }}</h1>
-      <RouterLink
-        v-if="!isEmpty"
-        :to="{ name: 'course-catalog' }"
-        class="text-sm font-semibold text-accent-text underline"
-      >
-        {{ t('myCoursesView.findAnotherCourse') }}
-      </RouterLink>
+      <div v-if="!isEmpty" class="flex flex-wrap gap-4">
+        <RouterLink :to="{ name: 'course-catalog' }" class="text-sm font-semibold text-accent-text underline">
+          {{ t('myCoursesView.findAnotherCourse') }}
+        </RouterLink>
+        <RouterLink :to="{ name: 'path-catalog' }" class="text-sm font-semibold text-accent-text underline">
+          {{ t('myCoursesView.findPath') }}
+        </RouterLink>
+      </div>
     </div>
 
     <StateLoading v-if="isLoading" data-test="loading" :noun="t('myCoursesView.loadingNoun')" />
@@ -129,12 +135,14 @@ async function switchTo(target: CurrentPathTarget) {
       :message="t('myCoursesView.emptyMessage')"
     >
       <template #action>
-        <RouterLink
-          :to="{ name: 'course-catalog' }"
-          class="text-sm font-semibold text-accent-text underline"
-        >
-          {{ t('myCoursesView.browseCatalog') }}
-        </RouterLink>
+        <div class="flex flex-wrap justify-center gap-4">
+          <RouterLink :to="{ name: 'course-catalog' }" class="text-sm font-semibold text-accent-text underline">
+            {{ t('myCoursesView.browseCatalog') }}
+          </RouterLink>
+          <RouterLink :to="{ name: 'path-catalog' }" class="text-sm font-semibold text-accent-text underline">
+            {{ t('myCoursesView.browsePathCatalog') }}
+          </RouterLink>
+        </div>
       </template>
     </StateEmpty>
 
@@ -156,14 +164,17 @@ async function switchTo(target: CurrentPathTarget) {
                 <p class="text-sm text-ink-muted">{{ enrollmentMeta(enrollment) }}</p>
               </template>
               <template #actions>
-                <span
-                  v-if="enrollment.course_enrollment_id === currentEnrollmentId"
-                  data-test="current"
-                  class="flex items-center gap-1 text-sm font-semibold text-success"
-                >
-                  <Check :size="16" aria-hidden="true" />
-                  {{ t('myCoursesView.current') }}
-                </span>
+                <template v-if="enrollment.course_enrollment_id === currentEnrollmentId">
+                  <span data-test="current" class="flex items-center gap-1 text-sm font-semibold text-success">
+                    <Check :size="16" aria-hidden="true" />
+                    {{ t('myCoursesView.current') }}
+                  </span>
+                  <span data-test="open">
+                    <RouterLink :to="{ name: 'path' }" class="text-sm font-semibold text-accent-text underline">
+                      {{ t('myCoursesView.open') }}
+                    </RouterLink>
+                  </span>
+                </template>
                 <PrimaryButton
                   v-else-if="enrollment.status === 'active'"
                   data-test="switch"
@@ -180,38 +191,47 @@ async function switchTo(target: CurrentPathTarget) {
 
       <div v-if="activePaths.length" class="flex flex-col gap-3">
         <h2 class="text-lg font-semibold text-ink">{{ t('myCoursesView.pathsHeading') }}</h2>
-        <ul class="flex flex-col gap-3">
-          <li
-            v-for="path in activePaths"
-            :key="path.student_path_id"
-            data-test="my-course-item"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface-raised p-4"
-          >
-            <div class="flex min-w-0 items-center gap-3">
-              <ThumbnailImage />
-              <div class="flex flex-col gap-1">
-                <span class="font-semibold text-ink">{{ path.title }}</span>
-                <span class="text-sm text-ink-muted">
+        <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <li v-for="path in activePaths" :key="path.student_path_id">
+            <CourseCard
+              kind="path"
+              data-test="my-course-item"
+              :title="path.title"
+              :summary="path.summary"
+              :created-by="path.created_by"
+              :level="path.level"
+              :thumbnail-url="path.thumbnail_url"
+            >
+              <template #supporting>
+                <p data-test="path-progress" class="text-sm text-ink-muted">
+                  {{ t('myCoursesView.pathProgress', { completed: path.completed_count, count: path.lesson_count }) }}
+                </p>
+                <p v-if="assignedBySomeoneElse(path)" class="text-sm text-ink-muted">
                   {{ t('myCoursesView.assignedBy', { name: path.assigned_by.display_name }) }}
-                </span>
-              </div>
-            </div>
-            <span
-              v-if="path.student_path_id === currentStandalonePathId"
-              data-test="current"
-              class="flex items-center gap-1 text-sm font-semibold text-success"
-            >
-              <Check :size="16" aria-hidden="true" />
-              {{ t('myCoursesView.current') }}
-            </span>
-            <PrimaryButton
-              v-else
-              data-test="switch"
-              :disabled="switching"
-              @click="switchTo({ studentPathId: path.student_path_id })"
-            >
-              {{ t('myCoursesView.switch') }}
-            </PrimaryButton>
+                </p>
+              </template>
+              <template #actions>
+                <template v-if="path.student_path_id === currentStandalonePathId">
+                  <span data-test="current" class="flex items-center gap-1 text-sm font-semibold text-success">
+                    <Check :size="16" aria-hidden="true" />
+                    {{ t('myCoursesView.current') }}
+                  </span>
+                  <span data-test="open">
+                    <RouterLink :to="{ name: 'path' }" class="text-sm font-semibold text-accent-text underline">
+                      {{ t('myCoursesView.open') }}
+                    </RouterLink>
+                  </span>
+                </template>
+                <PrimaryButton
+                  v-else
+                  data-test="switch"
+                  :disabled="switching"
+                  @click="switchTo({ studentPathId: path.student_path_id })"
+                >
+                  {{ t('myCoursesView.switch') }}
+                </PrimaryButton>
+              </template>
+            </CourseCard>
           </li>
         </ul>
       </div>

@@ -72,11 +72,11 @@ describe('AppBar', () => {
     expect(wrapper.classes()).toContain('top-0')
   })
 
-  it('shows the four student tabs (My path, My courses, Find a course, Find a path)', () => {
+  it('shows the four student tabs (My path, My learning, Find a course, Find a path)', () => {
     const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'path' } })
 
     const links = navLinks(wrapper)
-    expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course', 'Find a path'])
+    expect(links.map((l) => l.text())).toEqual(['My path', 'My learning', 'Find a course', 'Find a path'])
     expect(links.map((l) => l.props('to'))).toEqual([
       { name: 'path' },
       { name: 'my-courses' },
@@ -99,7 +99,7 @@ describe('AppBar', () => {
 
     const links = navLinks(mountBar({ context: 'student' }))
 
-    expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course', 'Find a path'])
+    expect(links.map((l) => l.text())).toEqual(['My path', 'My learning', 'Find a course', 'Find a path'])
   })
 
   it('shows a teacher every student tab too, since everyone can learn', () => {
@@ -107,14 +107,14 @@ describe('AppBar', () => {
 
     const links = navLinks(mountBar({ context: 'student' }))
 
-    expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course', 'Find a path'])
+    expect(links.map((l) => l.text())).toEqual(['My path', 'My learning', 'Find a course', 'Find a path'])
   })
 
   describe('overview context, for pages outside any section', () => {
     it("shows a student's sections with none highlighted", () => {
       const links = navLinks(mountBar({ context: 'overview' }))
 
-      expect(links.map((l) => l.text())).toEqual(['My path', 'My courses', 'Find a course', 'Find a path'])
+      expect(links.map((l) => l.text())).toEqual(['My path', 'My learning', 'Find a course', 'Find a path'])
       expect(links.some((l) => l.classes().includes('bg-accent-muted'))).toBe(false)
     })
 
@@ -126,7 +126,7 @@ describe('AppBar', () => {
 
       expect(links.map((l) => l.text())).toEqual([
         'My path',
-        'My courses',
+        'My learning',
         'Find a course',
         'Find a path',
         'Content',
@@ -164,7 +164,7 @@ describe('AppBar', () => {
     await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
 
     const drawerLinks = wrapper.get('[data-test="app-bar-drawer"]').findAllComponents(RouterLinkStub)
-    expect(drawerLinks.map((link: { text: () => string }) => link.text())).toEqual(['My path', 'My courses', 'Find a course', 'Find a path'])
+    expect(drawerLinks.map((link: { text: () => string }) => link.text())).toEqual(['My path', 'My learning', 'Find a course', 'Find a path'])
     expect(drawerLinks[1]!.classes()).toContain('bg-accent-muted')
   })
 

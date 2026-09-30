@@ -11,9 +11,9 @@
     "emptyMessage": "Estamos preparando sua trilha personalizada. Avisaremos quando estiver pronta.",
     "errorMessage": "Não foi possível carregar sua trilha.",
     "completeHeading": "Trilha concluída!",
-    "completeMessage": "Você concluiu {title}. Escolha o próximo passo: encontre um curso ou mude para outra trilha em Meus cursos.",
+    "completeMessage": "Você concluiu {title}. Escolha o próximo passo: encontre um curso ou mude para outra trilha em Meu aprendizado.",
     "findCourse": "Encontrar um curso",
-    "myCourses": "Meus cursos"
+    "myCourses": "Meu aprendizado"
   },
   "pathStep": {
     "status": {
@@ -95,13 +95,15 @@
     "courseTeacher": "por {name}"
   },
   "myCoursesView": {
-    "heading": "Meus cursos e trilhas",
+    "heading": "Meu aprendizado",
     "findAnotherCourse": "Encontrar outro curso",
+    "findPath": "Encontrar uma trilha",
     "loadingNoun": "seus cursos",
     "errorMessage": "Não foi possível carregar seus cursos e trilhas.",
-    "emptyHeading": "Nenhum curso ainda",
-    "emptyMessage": "Inscreva-se em um curso e ele aparecerá aqui.",
+    "emptyHeading": "Nada por aqui ainda",
+    "emptyMessage": "Inscreva-se em um curso ou em uma trilha para vê-los aqui.",
     "browseCatalog": "Ver o catálogo de cursos",
+    "browsePathCatalog": "Ver o catálogo de trilhas",
     "coursesHeading": "Cursos",
     "pathsHeading": "Outras trilhas",
     "archivedHeading": "Arquivadas",
@@ -109,7 +111,9 @@
     "statusCompleted": "Concluído",
     "statusAbandoned": "Abandonado",
     "assignedBy": "Atribuída por {name}",
+    "pathProgress": "{completed} de {count} lição | {completed} de {count} lições",
     "current": "Atual",
+    "open": "Abrir",
     "switch": "Tornar atual"
   },
   "courseDetailView": {
@@ -133,7 +137,7 @@
     "heading": "Curso concluído!",
     "message": "Você concluiu {title}. Excelente trabalho — mantenha o ritmo com seu próximo curso.",
     "findNextCourse": "Encontrar o próximo curso",
-    "myCourses": "Meus cursos"
+    "myCourses": "Meu aprendizado"
   },
   "pathCatalogView": {
     "heading": "Encontre uma trilha",

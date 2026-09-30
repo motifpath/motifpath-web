@@ -176,18 +176,72 @@ describe('MyCoursesView', () => {
     expect(card(wrapper, 'Fingerstyle journey').find('[data-test="switch"]').exists()).toBe(true)
   })
 
-  it('points a student with no courses or paths to the catalog', () => {
-    const empty = mountView().get('[data-test="empty"]')
-
-    expect(empty.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'course-catalog' })
+  it('is headed My learning', () => {
+    expect(mountView().get('h1').text()).toBe('My learning')
   })
 
-  it('always offers a way to find another course', () => {
+  it('points a student with no courses or paths to both catalogs', () => {
+    const empty = mountView().get('[data-test="empty"]')
+
+    expect(empty.findAllComponents(RouterLinkStub).map((l: { props: (key: string) => unknown }) => l.props('to'))).toEqual([
+      { name: 'course-catalog' },
+      { name: 'path-catalog' },
+    ])
+  })
+
+  it('always offers a way to find another course or a path', () => {
     enrollments.enrollments.value = [enrollment()]
 
     const links = mountView().findAllComponents(RouterLinkStub)
 
     expect(links.map((l) => l.props('to'))).toContainEqual({ name: 'course-catalog' })
+    expect(links.map((l) => l.props('to'))).toContainEqual({ name: 'path-catalog' })
+  })
+
+  it('shows each standalone path on the shared card, labeled as a path, with its lesson progress', () => {
+    standalone.paths.value = [
+      standalonePath({
+        summary: 'Five chords, cleanly.',
+        level: 'beginner',
+        created_by: { user_id: 't-2', display_name: 'Carol Dias' },
+        thumbnail_url: 'https://cdn.test/open-chords.png',
+        lesson_count: 4,
+        completed_count: 1,
+      }),
+    ]
+
+    const pathCard = card(mountView(), 'Open chords warm-up')
+
+    expect(pathCard.get('[data-test="course-card-label"]').text()).toBe('Path')
+    expect(pathCard.text()).toContain('Five chords, cleanly.')
+    expect(pathCard.get('[data-test="course-byline"]').text()).toContain('Carol Dias')
+    expect(pathCard.get('[data-test="course-level"]').text()).toBe('Beginner')
+    expect(pathCard.get('img').attributes('src')).toBe('https://cdn.test/open-chords.png')
+    expect(pathCard.get('[data-test="path-progress"]').text()).toBe('1 of 4 lessons')
+  })
+
+  it('says who assigned a path, but not when the learner enrolled themselves', () => {
+    standalone.paths.value = [
+      standalonePath(),
+      standalonePath({ student_path_id: 'sp-2', title: 'Self-picked', assigned_by: alice }),
+    ]
+
+    const wrapper = mountView()
+
+    expect(card(wrapper, 'Open chords warm-up').text()).toContain('Assigned by Bob Martins')
+    expect(card(wrapper, 'Self-picked').text()).not.toContain('Assigned by')
+  })
+
+  it('offers to open the current course or path', () => {
+    enrollments.enrollments.value = [enrollment()]
+    standalone.paths.value = [standalonePath()]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+
+    const wrapper = mountView()
+
+    const open = card(wrapper, 'Fingerstyle journey').get('[data-test="open"]')
+    expect(open.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'path' })
+    expect(card(wrapper, 'Open chords warm-up').find('[data-test="open"]').exists()).toBe(false)
   })
 
   it('lists each course enrollment with its learning-path progress and status', () => {
@@ -280,13 +334,14 @@ describe('MyCoursesView', () => {
     expect(card(wrapper, 'Jazz voicings').find('[data-test="switch"]').exists()).toBe(true)
   })
 
-  it('marks the current standalone path as current', () => {
+  it('marks the current standalone path as current, with a way to open it', () => {
     standalone.paths.value = [standalonePath()]
     current.data.value = currentPath({ student_path_id: 'sp-1', course_enrollment_id: null })
 
-    expect(card(mountView(), 'Open chords warm-up').find('[data-test="current"]').exists()).toBe(
-      true,
-    )
+    const currentCard = card(mountView(), 'Open chords warm-up')
+    expect(currentCard.find('[data-test="current"]').exists()).toBe(true)
+    expect(currentCard.find('[data-test="open"]').exists()).toBe(true)
+    expect(currentCard.find('[data-test="switch"]').exists()).toBe(false)
   })
 
   it('lists archived paths apart, without a switch action', () => {
