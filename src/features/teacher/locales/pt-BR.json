@@ -491,7 +491,6 @@
   "learningPathPickerModal": {
     "title": "Adicionar etapa",
     "searchPlaceholder": "Buscar trilhas pelo título",
-    "onlyMine": "Só as minhas trilhas",
     "sortLabel": "Ordenar",
     "sort": {
       "title": "Título",

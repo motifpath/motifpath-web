@@ -199,12 +199,18 @@ describe('PathListView', () => {
     expect(library.status.value).toBeNull()
   })
 
-  it("binds the language and instrument filters, and offers the library's creators", () => {
+  it('binds the language and instrument filters, and offers a teacher no creator filter', () => {
     const filters = mountView().getComponent(CourseFilters)
 
     expect(filters.props('languageFilter')).toBe(true)
     expect(filters.props('instrumentFilter')).toBe(true)
-    expect(filters.props('teacherScope')).toBe('path-library')
+    expect(filters.props('teacherScope')).toBeNull()
+  })
+
+  it("offers an admin the library's creators", () => {
+    currentUser.profile.role = 'admin'
+
+    expect(mountView().getComponent(CourseFilters).props('teacherScope')).toBe('path-library')
   })
 
   it('filters by the creator picked, so an admin can manage another author\'s paths', async () => {

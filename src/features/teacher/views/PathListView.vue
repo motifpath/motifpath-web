@@ -24,6 +24,9 @@ const currentUser = useCurrentUserStore()
 const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
+// A teacher's library is only their own paths, so only an admin gets a
+// creator filter.
+const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
@@ -98,7 +101,7 @@ function statusLabel(tab: LearningPathStatus | null): string {
         v-model:language="filters.language"
         instrument-filter
         language-filter
-        teacher-scope="path-library"
+        :teacher-scope="isAdmin ? 'path-library' : null"
         :search-placeholder="t('pathListView.searchPlaceholder')"
         :has-active-filters="hasActiveFilters"
         @clear="clearFilters"

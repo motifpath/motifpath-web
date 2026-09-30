@@ -491,7 +491,6 @@
   "learningPathPickerModal": {
     "title": "Add a checkpoint",
     "searchPlaceholder": "Search paths by title",
-    "onlyMine": "Only my paths",
     "sortLabel": "Sort",
     "sort": {
       "title": "Title",

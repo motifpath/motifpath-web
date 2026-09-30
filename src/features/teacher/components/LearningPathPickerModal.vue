@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import type { components } from '@/api/generated/core-domain'
 import {
   type LearningPathSort,
   useLearningPathLibrary,
 } from '@/features/teacher/composables/useLearningPathLibrary'
-import { useOnlyMineFilter } from '@/features/teacher/composables/useOnlyMineFilter'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
@@ -15,6 +16,7 @@ import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { formatDate } from '@/shared/utils/formatDate'
+import { useCurrentUserStore } from '@/stores/currentUser'
 
 type LearningPath = components['schemas']['LearningPath']
 
@@ -42,7 +44,10 @@ const {
   loadMore,
 } = useLearningPathLibrary()
 
-const { onlyMine, onOnlyMineChange } = useOnlyMineFilter(filters)
+// A teacher's library is only their own paths, so only an admin gets a
+// creator filter.
+const currentUser = useCurrentUserStore()
+const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 </script>
 
 <template>
@@ -61,21 +66,14 @@ const { onlyMine, onOnlyMineChange } = useOnlyMineFilter(filters)
       v-model:levels="filters.levels"
       v-model:skill-ids="filters.skillIds"
       v-model:concept-ids="filters.conceptIds"
+      v-model:teacher="filters.teacher"
       v-model:instrument-id="filters.instrumentId"
       instrument-filter
+      :teacher-scope="isAdmin ? 'path-library' : null"
       :search-placeholder="t('learningPathPickerModal.searchPlaceholder')"
       :has-active-filters="hasActiveFilters"
       @clear="clearFilters"
     >
-      <label class="flex items-center gap-2 py-2 text-sm text-ink">
-        <input
-          type="checkbox"
-          data-test="path-only-mine"
-          :checked="onlyMine"
-          @change="onOnlyMineChange"
-        />
-        {{ t('learningPathPickerModal.onlyMine') }}
-      </label>
       <div
         class="ml-auto flex items-center gap-1"
         role="group"
