@@ -30,6 +30,11 @@ const { setCurrentPath } = useSetCurrentPath()
 const enrolledHere = ref<CourseEnrollment | null>(null)
 const enrolling = ref(false)
 const continuing = ref(false)
+const backToCatalog = computed(() =>
+  route.query.fromCatalog === 'true'
+    ? { name: 'course-catalog', query: { returnFromCourse: String(route.params.courseId) } }
+    : { name: 'course-catalog' },
+)
 
 const activeEnrollment = computed(
   () =>
@@ -75,7 +80,7 @@ async function continueCourse() {
 <template>
   <section class="flex flex-col gap-6">
     <RouterLink
-      :to="{ name: 'course-catalog' }"
+      :to="backToCatalog"
       data-test="back-to-catalog"
       class="w-fit text-sm font-semibold text-accent-text underline"
     >

@@ -1,11 +1,21 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
+import type * as VueRouter from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 type CourseEnrollment = components['schemas']['CourseEnrollment']
+
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return {
+    ...actual,
+    useRoute: () => ({ query: {} }),
+    onBeforeRouteLeave: vi.fn(),
+  }
+})
 
 const catalog = {
   courses: ref<CourseCatalogEntry[]>([]),
@@ -197,7 +207,11 @@ describe('CourseCatalogView', () => {
 
     const details = mountView().getComponent(RouterLinkStub)
 
-    expect(details.props('to')).toEqual({ name: 'course-detail', params: { courseId: 'c-1' } })
+    expect(details.props('to')).toEqual({
+      name: 'course-detail',
+      params: { courseId: 'c-1' },
+      query: { fromCatalog: 'true' },
+    })
     expect(details.text()).toBe('Details')
   })
 

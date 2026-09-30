@@ -45,11 +45,12 @@ vi.mock('@/shared/composables/useToast', () => ({
 }))
 
 const push = vi.fn()
+const route = { params: { courseId: 'c-1' }, query: { fromCatalog: 'true' } }
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return {
     ...actual,
-    useRoute: () => ({ params: { courseId: 'c-1' } }),
+    useRoute: () => route,
     useRouter: () => ({ push }),
   }
 })
@@ -113,7 +114,10 @@ describe('CourseDetailView', () => {
   it('shows the published snapshot, its byline, and its course scope before enrollment', () => {
     const wrapper = mountView()
 
-    expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({ name: 'course-catalog' })
+    expect(wrapper.getComponent(RouterLinkStub).props('to')).toEqual({
+      name: 'course-catalog',
+      query: { returnFromCourse: 'c-1' },
+    })
     expect(wrapper.get('[data-test="course-detail-title"]').classes()).toContain('text-2xl')
     expect(wrapper.get('[data-test="course-detail-title"]').classes()).toContain('sm:text-3xl')
     expect(wrapper.get('[data-test="course-detail-title"]').text()).toBe('Fingerstyle journey')

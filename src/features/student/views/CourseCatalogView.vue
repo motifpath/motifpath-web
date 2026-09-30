@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next'
-import { computed, nextTick, onActivated, onDeactivated, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, nextTick, ref, watch } from 'vue'
+import { onBeforeRouteLeave, RouterLink, useRoute } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import { useCourseCatalog } from '@/features/student/composables/useCourseCatalog'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
+import {
+  restoreCourseCatalogReturn,
+  saveCourseCatalogReturn,
+} from '@/features/student/utils/courseCatalogReturn'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
@@ -23,6 +27,9 @@ type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 const { t } = useTypedT()
 const toast = useToast()
 const { instrumentsLabel } = useInstrumentNames()
+const route = useRoute()
+const returningCourseId = typeof route.query.returnFromCourse === 'string' ? route.query.returnFromCourse : null
+const restoredReturn = returningCourseId ? restoreCourseCatalogReturn(returningCourseId) : null
 
 const {
   courses,
@@ -37,16 +44,50 @@ const {
   loadMoreError,
   retry,
   loadMore,
-} = useCourseCatalog()
+} = useCourseCatalog(
+  restoredReturn
+    ? { filters: restoredReturn.filters, searchText: restoredReturn.searchText }
+    : undefined,
+)
 const { enrollments } = useMyCourseEnrollments()
 const { enrollInCourse } = useEnrollInCourse()
 
-const catalogScrollY = ref(0)
-onDeactivated(() => {
-  catalogScrollY.value = window.scrollY
-})
-onActivated(() => {
-  void nextTick(() => window.scrollTo(0, catalogScrollY.value))
+const pendingReturn = ref(restoredReturn)
+watch([courses, total, isLoading, isLoadingMore, error], () => {
+  const returnState = pendingReturn.value
+  if (!returnState || isLoading.value || isLoadingMore.value) return
+  if (error.value) {
+    pendingReturn.value = null
+    return
+  }
+
+  const loadedTarget = Math.min(returnState.loadedCount, total.value)
+  if (courses.value.length < loadedTarget) {
+    void loadMore()
+    return
+  }
+
+  pendingReturn.value = null
+  void nextTick(() => window.scrollTo(0, returnState.scrollY))
+}, { immediate: true })
+
+onBeforeRouteLeave((to) => {
+  if (to.name !== 'course-detail' || typeof to.params.courseId !== 'string') return
+
+  saveCourseCatalogReturn({
+    courseId: to.params.courseId,
+    filters: {
+      levels: [...filters.levels],
+      skillIds: [...filters.skillIds],
+      conceptIds: [...filters.conceptIds],
+      teacher: filters.teacher ? { ...filters.teacher } : null,
+      instrumentId: filters.instrumentId,
+      language: filters.language,
+    },
+    searchText: searchText.value,
+    loadedCount: courses.value.length,
+    scrollY: window.scrollY,
+  })
 })
 
 function filterByTeacher(course: CourseCatalogEntry) {
@@ -161,7 +202,11 @@ async function enroll(course: CourseCatalogEntry) {
                 {{ t('courseCatalogView.moreFromTeacher') }}
               </button>
               <RouterLink
-                :to="{ name: 'course-detail', params: { courseId: course.course_id } }"
+                :to="{
+                  name: 'course-detail',
+                  params: { courseId: course.course_id },
+                  query: { fromCatalog: 'true' },
+                }"
                 data-test="details"
                 class="text-sm font-semibold text-accent-text underline"
               >
