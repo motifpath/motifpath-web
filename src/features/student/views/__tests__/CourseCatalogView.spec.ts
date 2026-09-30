@@ -91,7 +91,7 @@ vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
 }))
 
-import { saveCourseCatalogReturn } from '@/features/student/utils/courseCatalogReturn'
+import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import CourseCatalogView from '@/features/student/views/CourseCatalogView.vue'
 
 function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
@@ -165,8 +165,8 @@ describe('CourseCatalogView', () => {
     }
 
     beforeEach(() => {
-      saveCourseCatalogReturn({
-        courseId: 'c-1',
+      saveCatalogReturn('courses', {
+        itemId: 'c-1',
         filters: { levels: [], skillIds: [], conceptIds: [], teacher: null, instrumentId: null, language: 'en' },
         searchText: '',
         loadedCount: 40,

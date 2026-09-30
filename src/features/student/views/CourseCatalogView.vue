@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next'
-import { computed, nextTick, ref, watch } from 'vue'
-import { onBeforeRouteLeave, RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
+import { useCatalogReturn } from '@/features/student/composables/useCatalogReturn'
 import { useCourseCatalog } from '@/features/student/composables/useCourseCatalog'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
-import {
-  restoreCourseCatalogReturn,
-  saveCourseCatalogReturn,
-} from '@/features/student/utils/courseCatalogReturn'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
@@ -27,21 +24,13 @@ type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
 const { t } = useTypedT()
 const toast = useToast()
 const { instrumentsLabel } = useInstrumentNames()
-const route = useRoute()
-const router = useRouter()
 
-// The course whose details the learner is coming back from: named by the
-// details page's Back to courses link, or, after the browser's Back button,
-// found in this history entry's record of the page that followed it.
-function returningCourseId(): string | null {
-  if (typeof route.query.returnFromCourse === 'string') return route.query.returnFromCourse
-  const state: unknown = window.history.state
-  if (!state || typeof state !== 'object' || !('forward' in state) || typeof state.forward !== 'string') return null
-  const next = router.resolve(state.forward)
-  return next.name === 'course-detail' && typeof next.params.courseId === 'string' ? next.params.courseId : null
-}
-const returnedFromCourseId = returningCourseId()
-const restoredReturn = returnedFromCourseId ? restoreCourseCatalogReturn(returnedFromCourseId) : null
+const catalogReturn = useCatalogReturn({
+  kind: 'courses',
+  detailRoute: 'course-detail',
+  idParam: 'courseId',
+  returnQuery: 'returnFromCourse',
+})
 
 const {
   courses,
@@ -56,50 +45,20 @@ const {
   loadMoreError,
   retry,
   loadMore,
-} = useCourseCatalog(
-  restoredReturn ? { ...restoredReturn.filters, searchText: restoredReturn.searchText } : undefined,
-)
+} = useCourseCatalog(catalogReturn.initialState)
 const { enrollments } = useMyCourseEnrollments()
 const { enrollInCourse } = useEnrollInCourse()
 
-const pendingReturn = ref(restoredReturn)
-watch([courses, total, isLoading, isLoadingMore, error, loadMoreError], () => {
-  const returnState = pendingReturn.value
-  if (!returnState || isLoading.value || isLoadingMore.value) return
-  if (error.value) {
-    pendingReturn.value = null
-    return
-  }
-
-  // A page that fails to load is not retried here: the learner goes back to
-  // their place among the courses that did load, and Load more offers the rest.
-  const loadedTarget = Math.min(returnState.loadedCount, total.value)
-  if (courses.value.length < loadedTarget && !loadMoreError.value) {
-    void loadMore()
-    return
-  }
-
-  pendingReturn.value = null
-  void nextTick(() => window.scrollTo(0, returnState.scrollY))
-}, { immediate: true })
-
-onBeforeRouteLeave((to) => {
-  if (to.name !== 'course-detail' || typeof to.params.courseId !== 'string') return
-
-  saveCourseCatalogReturn({
-    courseId: to.params.courseId,
-    filters: {
-      levels: [...filters.levels],
-      skillIds: [...filters.skillIds],
-      conceptIds: [...filters.conceptIds],
-      teacher: filters.teacher ? { ...filters.teacher } : null,
-      instrumentId: filters.instrumentId,
-      language: filters.language,
-    },
-    searchText: searchText.value,
-    loadedCount: courses.value.length,
-    scrollY: window.scrollY,
-  })
+catalogReturn.resume({
+  itemCount: computed(() => courses.value.length),
+  total,
+  isLoading,
+  isLoadingMore,
+  error,
+  loadMoreError,
+  loadMore,
+  filters,
+  searchText,
 })
 
 function filterByTeacher(course: CourseCatalogEntry) {
