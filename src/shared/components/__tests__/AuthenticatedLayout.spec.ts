@@ -64,9 +64,12 @@ describe('AuthenticatedLayout', () => {
     ['path', 'My path'],
     ['node', 'My path'],
     ['practice', 'My path'],
-    ['my-courses', 'My courses'],
-    ['course-completed', 'My courses'],
+    ['my-courses', 'My learning'],
+    ['course-completed', 'My learning'],
     ['course-catalog', 'Find a course'],
+    ['course-detail', 'Find a course'],
+    ['path-catalog', 'Find a path'],
+    ['path-detail', 'Find a path'],
   ])('marks the %s route under the %s tab', (routeName, tab) => {
     route.name = routeName
     const wrapper = mountLayout()

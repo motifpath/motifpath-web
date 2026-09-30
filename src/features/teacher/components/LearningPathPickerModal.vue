@@ -27,7 +27,6 @@ const SORTS: LearningPathSort[] = ['title', 'updated']
 
 const { t, locale } = useTypedT()
 const { instrumentsLabel } = useInstrumentNames()
-const currentUser = useCurrentUserStore()
 
 const {
   paths,
@@ -45,20 +44,10 @@ const {
   loadMore,
 } = useLearningPathLibrary()
 
-// No endpoint lists the library's authors, so the author filter narrows to
-// the signed-in teacher's own paths or none.
-const onlyMine = computed({
-  get: () => !!currentUser.profile && filters.teacher?.user_id === currentUser.profile.user_id,
-  set: (checked: boolean) => {
-    const profile = currentUser.profile
-    filters.teacher =
-      checked && profile ? { user_id: profile.user_id, display_name: profile.display_name } : null
-  },
-})
-
-function onOnlyMineChange(event: Event) {
-  if (event.target instanceof HTMLInputElement) onlyMine.value = event.target.checked
-}
+// A teacher's library is only their own paths, so only an admin gets a
+// creator filter.
+const currentUser = useCurrentUserStore()
+const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 </script>
 
 <template>
@@ -77,21 +66,14 @@ function onOnlyMineChange(event: Event) {
       v-model:levels="filters.levels"
       v-model:skill-ids="filters.skillIds"
       v-model:concept-ids="filters.conceptIds"
+      v-model:teacher="filters.teacher"
       v-model:instrument-id="filters.instrumentId"
       instrument-filter
+      :teacher-scope="isAdmin ? 'path-library' : null"
       :search-placeholder="t('learningPathPickerModal.searchPlaceholder')"
       :has-active-filters="hasActiveFilters"
       @clear="clearFilters"
     >
-      <label class="flex items-center gap-2 py-2 text-sm text-ink">
-        <input
-          type="checkbox"
-          data-test="path-only-mine"
-          :checked="onlyMine"
-          @change="onOnlyMineChange"
-        />
-        {{ t('learningPathPickerModal.onlyMine') }}
-      </label>
       <div
         class="ml-auto flex items-center gap-1"
         role="group"

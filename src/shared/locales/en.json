@@ -1,8 +1,9 @@
 {
   "nav": {
     "student": "My path",
-    "myCourses": "My courses",
+    "myCourses": "My learning",
     "findCourse": "Find a course",
+    "findPath": "Find a path",
     "content": "Content",
     "paths": "Paths",
     "courses": "Courses",
@@ -205,6 +206,7 @@
   },
   "courseCard": {
     "label": "Course",
+    "pathLabel": "Path",
     "byline": "by {name}",
     "lessons": "{count} lesson | {count} lessons",
     "learningPaths": "{count} learning path | {count} learning paths"

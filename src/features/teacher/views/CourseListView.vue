@@ -159,6 +159,7 @@ function statusLabel(tab: CourseStatus | null): string {
               :lesson-count="course.lesson_count"
               :checkpoint-count="course.checkpoint_count"
               :thumbnail-url="course.thumbnail_url"
+              :to="{ name: 'teacher-course-edit', params: { id: course.course_id } }"
             >
               <template #badges>
                 <span

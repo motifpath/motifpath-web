@@ -11,9 +11,9 @@
     "emptyMessage": "We're building your personalized path. We'll let you know when it's ready.",
     "errorMessage": "We couldn't load your path.",
     "completeHeading": "Path complete!",
-    "completeMessage": "You finished {title}. Pick your next step: find a course, or switch to another path in My courses.",
+    "completeMessage": "You finished {title}. Pick your next step: find a course, or switch to another path in My learning.",
     "findCourse": "Find a course",
-    "myCourses": "My courses"
+    "myCourses": "My learning"
   },
   "pathStep": {
     "status": {
@@ -95,12 +95,12 @@
     "courseTeacher": "by {name}"
   },
   "myCoursesView": {
-    "heading": "My courses and paths",
+    "heading": "My learning",
     "findAnotherCourse": "Find another course",
     "loadingNoun": "your courses",
     "errorMessage": "We couldn't load your courses and paths.",
-    "emptyHeading": "No courses yet",
-    "emptyMessage": "Enroll in a course and it will show up here.",
+    "emptyHeading": "Nothing here yet",
+    "emptyMessage": "Enroll in a course or a path and it will show up here.",
     "browseCatalog": "Browse the course catalog",
     "coursesHeading": "Courses",
     "pathsHeading": "Other paths",
@@ -110,7 +110,11 @@
     "statusAbandoned": "Left",
     "assignedBy": "Assigned by {name}",
     "current": "Current",
-    "switch": "Switch to this"
+    "switch": "Switch to this",
+    "findPath": "Find a path",
+    "browsePathCatalog": "Browse the path catalog",
+    "pathProgress": "{completed} of {count} lesson | {completed} of {count} lessons",
+    "open": "Open"
   },
   "courseDetailView": {
     "loadingNoun": "the course",
@@ -133,7 +137,7 @@
     "heading": "Course complete!",
     "message": "You finished {title}. Great work — keep the momentum going with your next course.",
     "findNextCourse": "Find your next course",
-    "myCourses": "My courses"
+    "myCourses": "My learning"
   },
   "sendToTeacher": {
     "button": "Send to your teacher",
@@ -144,5 +148,33 @@
     "lessonLine": "Lesson: {title}",
     "referenceLine": "Ref: {reference}",
     "prompt": "My question or recording:"
+  },
+  "pathCatalogView": {
+    "heading": "Find a path",
+    "loadingNoun": "paths",
+    "errorMessage": "We couldn't load the path catalog.",
+    "emptyHeading": "No paths yet",
+    "emptyMessage": "New paths will appear here as soon as they are published.",
+    "noMatchesHeading": "No matching paths",
+    "noMatchesMessage": "Try fewer filters or a different search.",
+    "searchPlaceholder": "Search paths",
+    "enroll": "Enroll",
+    "enrolling": "Enrolling…",
+    "continue": "Continue",
+    "enrolledToast": "You are now enrolled in {title}.",
+    "details": "Details",
+    "moreFromTeacher": "More from this teacher"
+  },
+  "pathDetailView": {
+    "loadingNoun": "the path",
+    "errorMessage": "We couldn't load this path.",
+    "notFoundHeading": "This path is not published yet",
+    "notFoundMessage": "This path is not available in the catalog.",
+    "backToCatalog": "Back to paths",
+    "enroll": "Enroll",
+    "enrolling": "Enrolling…",
+    "continue": "Continue path",
+    "enrolledToast": "You are now enrolled in {title}.",
+    "outlineHeading": "Path outline"
   }
 }

@@ -2,38 +2,54 @@
 import { Plus } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-import { useListLearningPaths } from '@/features/teacher/composables/useListLearningPaths'
+import {
+  type LearningPathStatus,
+  useLearningPathLibrary,
+} from '@/features/teacher/composables/useLearningPathLibrary'
 import AppBar from '@/shared/components/AppBar.vue'
-import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
+import CourseCard from '@/shared/components/CourseCard.vue'
+import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
-import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
+const STATUS_TABS: (LearningPathStatus | null)[] = [null, 'draft', 'published']
+
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
+// A teacher's library is only their own paths, so only an admin gets a
+// creator filter.
+const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
 const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 const {
-  learningPaths,
-  instrumentId,
+  paths,
   total,
+  status,
+  filters,
+  searchText,
+  hasActiveFilters,
+  clearFilters,
   isLoading,
   isLoadingMore,
   error,
   loadMoreError,
   retry,
   loadMore,
-} = useListLearningPaths()
+} = useLearningPathLibrary()
 const { instrumentsLabel } = useInstrumentNames()
+
+function statusLabel(tab: LearningPathStatus | null): string {
+  return tab ? t(`pathStatus.${tab}`) : t('pathListView.allStatuses')
+}
 </script>
 
 <template>
@@ -47,7 +63,7 @@ const { instrumentsLabel } = useInstrumentNames()
     </div>
 
     <div v-else class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-lg font-bold text-ink sm:text-xl">{{ t('pathListView.heading') }}</h1>
         <RouterLink
           :to="{ name: 'teacher-path-new' }"
@@ -59,25 +75,62 @@ const { instrumentsLabel } = useInstrumentNames()
         </RouterLink>
       </div>
 
-      <InstrumentFilterSelect v-model="instrumentId" class="w-fit" />
+      <div role="tablist" :aria-label="t('pathListView.statusTabsLabel')" class="flex flex-wrap gap-1">
+        <button
+          v-for="tab in STATUS_TABS"
+          :key="tab ?? 'all'"
+          type="button"
+          role="tab"
+          :data-test="`status-tab-${tab ?? 'all'}`"
+          :aria-selected="status === tab"
+          class="rounded-full px-3.5 py-1.5 text-sm font-semibold"
+          :class="status === tab ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
+          @click="status = tab"
+        >
+          {{ statusLabel(tab) }}
+        </button>
+      </div>
+
+      <CourseFilters
+        v-model:search-text="searchText"
+        v-model:levels="filters.levels"
+        v-model:skill-ids="filters.skillIds"
+        v-model:concept-ids="filters.conceptIds"
+        v-model:teacher="filters.teacher"
+        v-model:instrument-id="filters.instrumentId"
+        v-model:language="filters.language"
+        instrument-filter
+        language-filter
+        :teacher-scope="isAdmin ? 'path-library' : null"
+        :search-placeholder="t('pathListView.searchPlaceholder')"
+        :has-active-filters="hasActiveFilters"
+        @clear="clearFilters"
+      />
 
       <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathListView.loadingNoun')" />
 
       <StateError v-else-if="error" data-test="error" :message="t('pathListView.errorMessage')" @retry="retry" />
 
-      <div
-        v-else-if="learningPaths.length === 0 && instrumentId"
+      <StateEmpty
+        v-else-if="paths.length === 0 && hasActiveFilters"
         data-test="no-matches"
-        class="flex flex-col items-start gap-2 text-sm text-ink-muted"
+        :heading="t('pathListView.noMatchesHeading')"
+        :message="t('pathListView.noMatchesMessage')"
       >
-        {{ t('pathListView.noMatchesMessage') }}
-        <button type="button" class="font-semibold text-accent-text underline" @click="instrumentId = null">
-          {{ t('pathListView.showEveryInstrument') }}
-        </button>
-      </div>
+        <template #action>
+          <button
+            type="button"
+            data-test="clear-filters"
+            class="text-sm font-semibold text-accent-text underline"
+            @click="clearFilters"
+          >
+            {{ t('courseFilters.clearFilters') }}
+          </button>
+        </template>
+      </StateEmpty>
 
       <StateEmpty
-        v-else-if="learningPaths.length === 0"
+        v-else-if="paths.length === 0"
         data-test="empty"
         :heading="t('pathListView.emptyHeading')"
         :message="t('pathListView.emptyMessage')"
@@ -90,30 +143,43 @@ const { instrumentsLabel } = useInstrumentNames()
       </StateEmpty>
 
       <template v-else>
-        <ul class="flex flex-col gap-2">
-          <li v-for="learningPath in learningPaths" :key="learningPath.learning_path_id">
-            <RouterLink
-              :to="{ name: 'teacher-path-edit', params: { id: learningPath.learning_path_id } }"
+        <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <li v-for="learningPath in paths" :key="learningPath.learning_path_id">
+            <CourseCard
+              kind="path"
               data-test="learning-path-row"
-              class="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3"
+              :title="learningPath.title"
+              :summary="learningPath.summary"
+              :created-by="learningPath.teacher"
+              :level="learningPath.level"
+              :language="learningPath.language"
+              :lesson-count="learningPath.items.length"
+              :thumbnail-url="learningPath.thumbnail_url"
+              :to="{ name: 'teacher-path-edit', params: { id: learningPath.learning_path_id } }"
             >
-              <div class="flex min-w-0 items-center gap-3">
-                <ThumbnailImage :url="learningPath.thumbnail_url" />
-                <div class="flex min-w-0 flex-col gap-0.5">
-                  <span class="font-semibold text-ink">{{ learningPath.title }}</span>
-                  <span class="text-sm text-ink-subtle">{{ instrumentsLabel(learningPath.instrument_ids) }}</span>
-                </div>
-              </div>
-              <span class="text-sm text-ink-subtle">{{
-                learningPath.items.length === 1
-                  ? t('pathListView.nodeCountSingular', { count: learningPath.items.length })
-                  : t('pathListView.nodeCountPlural', { count: learningPath.items.length })
-              }}</span>
-            </RouterLink>
+              <template #badges>
+                <span data-test="path-status" class="rounded-full bg-accent-muted px-2.5 py-0.5 text-accent-text">
+                  {{ t(`pathStatus.${learningPath.status}`) }}
+                </span>
+                <span data-test="path-instruments" class="rounded-full bg-surface-sunken px-2.5 py-0.5">
+                  {{ instrumentsLabel(learningPath.instrument_ids) }}
+                </span>
+              </template>
+              <template #actions>
+                <span data-test="edit-path">
+                  <RouterLink
+                    :to="{ name: 'teacher-path-edit', params: { id: learningPath.learning_path_id } }"
+                    class="text-sm font-semibold text-accent-text underline"
+                  >
+                    {{ t('pathListView.editPath') }}
+                  </RouterLink>
+                </span>
+              </template>
+            </CourseCard>
           </li>
         </ul>
         <LoadMoreButton
-          :loaded="learningPaths.length"
+          :loaded="paths.length"
           :total="total"
           :loading="isLoadingMore"
           :failed="loadMoreError"

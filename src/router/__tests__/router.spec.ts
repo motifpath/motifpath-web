@@ -267,6 +267,19 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('course-catalog')
   })
 
+  it('lets a registered student reach the path catalog and a published path detail page', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/paths')
+    expect(router.currentRoute.value.name).toBe('path-catalog')
+
+    await router.push('/paths/lp-1')
+    expect(router.currentRoute.value.name).toBe('path-detail')
+    expect(router.currentRoute.value.params.learningPathId).toBe('lp-1')
+  })
+
   it('lets a registered student reach a published course detail page', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')

@@ -10,6 +10,7 @@ import LearningPathPickerModal from '@/features/teacher/components/LearningPathP
 import PublishedCourseModal from '@/features/teacher/components/PublishedCourseModal.vue'
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import {
+  DraftLearningPathsError,
   useCourse,
   useCourseMutations,
   useLearningPathTitles,
@@ -141,11 +142,23 @@ async function runAction(action: () => Promise<void>, failureMessage: string) {
   }
 }
 
+// Names the draft paths a refused publish points at, by the titles the
+// author sees in the checkpoint list.
+function draftPathsMessage(ids: string[]): string {
+  const titles = ids.map((id) => {
+    const checkpoint = form.checkpoints.value.find((c) => c.learningPathId === id)
+    return checkpoint?.pathTitle || checkpoint?.override || id
+  })
+  return t('courseBuilderView.draftPathsBlockPublish', { titles: titles.join(', ') })
+}
+
 function onPublish() {
   void runAction(async () => {
     const course = await saveForm()
     if (!course) return
-    const version = await publishCourse(course.course_id)
+    const version = await publishCourse(course.course_id).catch((e: unknown) => {
+      throw e instanceof DraftLearningPathsError ? new Error(draftPathsMessage(e.draftLearningPathIds)) : e
+    })
     savedCourse.value = {
       ...course,
       status: 'published',

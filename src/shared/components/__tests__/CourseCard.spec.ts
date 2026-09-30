@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { mount, RouterLinkStub } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
@@ -21,6 +21,7 @@ function mountCard(overrides: Partial<InstanceType<typeof CourseCard>['$props']>
       ...overrides,
     },
     slots: { actions: '<button type="button">Details</button>' },
+    global: { stubs: { RouterLink: RouterLinkStub } },
   })
 }
 
@@ -37,6 +38,41 @@ describe('CourseCard', () => {
     expect(wrapper.get('[data-test="course-lessons"]').text()).toBe('12 lessons')
     expect(wrapper.get('[data-test="course-checkpoints"]').text()).toBe('3 learning paths')
     expect(wrapper.get('[data-test="course-card-actions"]').text()).toContain('Details')
+  })
+
+  it('labels a learning path as a path, with lessons and no checkpoint count', () => {
+    const wrapper = mountCard({ kind: 'path', checkpointCount: undefined })
+
+    expect(wrapper.get('[data-test="course-card-label"]').text()).toBe('Path')
+    expect(wrapper.get('[data-test="course-lessons"]').text()).toBe('12 lessons')
+    expect(wrapper.find('[data-test="course-checkpoints"]').exists()).toBe(false)
+  })
+
+  it('leaves out the level and summary a path copy made before snapshots lacks', () => {
+    const wrapper = mountCard({ kind: 'path', level: undefined, summary: undefined })
+
+    expect(wrapper.find('[data-test="course-level"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="course-summary"]').exists()).toBe(false)
+  })
+
+  it('shows the whole thumbnail rather than cropping it', () => {
+    const wrapper = mountCard({ thumbnailUrl: 'https://cdn.test/fingerstyle.png' })
+
+    expect(wrapper.get('img').classes()).toContain('object-contain')
+  })
+
+  it('opens the given destination from the thumbnail, leaving the card actions as the keyboard route', () => {
+    const wrapper = mountCard({ thumbnailUrl: 'https://cdn.test/fingerstyle.png', to: { name: 'course-detail', params: { courseId: 'c-1' } } })
+
+    const link = wrapper.get('[data-test="course-card-thumbnail-link"]')
+    expect(link.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'course-detail', params: { courseId: 'c-1' } })
+    expect(link.find('img').exists()).toBe(true)
+    expect(link.findComponent(RouterLinkStub).attributes('tabindex')).toBe('-1')
+    expect(link.findComponent(RouterLinkStub).attributes('aria-hidden')).toBe('true')
+  })
+
+  it('leaves the thumbnail unlinked without a destination', () => {
+    expect(mountCard().find('[data-test="course-card-thumbnail-link"]').exists()).toBe(false)
   })
 
   it('uses the intentional placeholder when the course has no image', () => {

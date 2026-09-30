@@ -12,6 +12,7 @@ const currentUser = reactive({
 })
 vi.mock('@/stores/currentUser', () => ({ useCurrentUserStore: () => currentUser }))
 
+import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LearningPathPickerModal from '@/features/teacher/components/LearningPathPickerModal.vue'
 
 const paths = [
@@ -60,6 +61,7 @@ describe('LearningPathPickerModal', () => {
   beforeEach(() => {
     GET.mockReset()
     routeGET()
+    currentUser.profile.role = 'teacher'
   })
 
   it("lists the library with each path's thumbnail, title, author, level, instruments and last update", async () => {
@@ -104,13 +106,23 @@ describe('LearningPathPickerModal', () => {
     expect(lastLibraryQuery()).toMatchObject({ sort: 'updated' })
   })
 
-  it("narrows to the teacher's own paths", async () => {
+  it('offers a teacher no author filter, since their library is only their own paths', async () => {
     const wrapper = await mountPicker()
 
-    await wrapper.get('[data-test="path-only-mine"]').setValue(true)
+    expect(wrapper.getComponent(CourseFilters).props('teacherScope')).toBeNull()
+    expect(wrapper.find('[data-test="path-only-mine"]').exists()).toBe(false)
+  })
+
+  it("lets an admin narrow the library to one author's paths", async () => {
+    currentUser.profile.role = 'admin'
+    const wrapper = await mountPicker()
+
+    const filters = wrapper.getComponent(CourseFilters)
+    expect(filters.props('teacherScope')).toBe('path-library')
+    filters.vm.$emit('update:teacher', { user_id: 'u-tomas', display_name: 'Tomás Ribeiro' })
     await flushPromises()
 
-    expect(lastLibraryQuery()).toMatchObject({ created_by: 'u-me' })
+    expect(lastLibraryQuery()).toMatchObject({ created_by: 'u-tomas' })
   })
 
   it('filters by level and instrument', async () => {

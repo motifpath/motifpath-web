@@ -11,9 +11,9 @@
     "emptyMessage": "Estamos preparando sua trilha personalizada. Avisaremos quando estiver pronta.",
     "errorMessage": "Não foi possível carregar sua trilha.",
     "completeHeading": "Trilha concluída!",
-    "completeMessage": "Você concluiu {title}. Escolha o próximo passo: encontre um curso ou mude para outra trilha em Meus cursos.",
+    "completeMessage": "Você concluiu {title}. Escolha o próximo passo: encontre um curso ou mude para outra trilha em Meu aprendizado.",
     "findCourse": "Encontrar um curso",
-    "myCourses": "Meus cursos"
+    "myCourses": "Meu aprendizado"
   },
   "pathStep": {
     "status": {
@@ -95,12 +95,12 @@
     "courseTeacher": "por {name}"
   },
   "myCoursesView": {
-    "heading": "Meus cursos e trilhas",
+    "heading": "Meu aprendizado",
     "findAnotherCourse": "Encontrar outro curso",
     "loadingNoun": "seus cursos",
     "errorMessage": "Não foi possível carregar seus cursos e trilhas.",
-    "emptyHeading": "Nenhum curso ainda",
-    "emptyMessage": "Inscreva-se em um curso e ele aparecerá aqui.",
+    "emptyHeading": "Nada por aqui ainda",
+    "emptyMessage": "Inscreva-se em um curso ou em uma trilha para vê-los aqui.",
     "browseCatalog": "Ver o catálogo de cursos",
     "coursesHeading": "Cursos",
     "pathsHeading": "Outras trilhas",
@@ -110,7 +110,11 @@
     "statusAbandoned": "Abandonado",
     "assignedBy": "Atribuída por {name}",
     "current": "Atual",
-    "switch": "Tornar atual"
+    "switch": "Tornar atual",
+    "findPath": "Encontrar uma trilha",
+    "browsePathCatalog": "Ver o catálogo de trilhas",
+    "pathProgress": "{completed} de {count} lição | {completed} de {count} lições",
+    "open": "Abrir"
   },
   "courseDetailView": {
     "loadingNoun": "o curso",
@@ -133,7 +137,7 @@
     "heading": "Curso concluído!",
     "message": "Você concluiu {title}. Excelente trabalho — mantenha o ritmo com seu próximo curso.",
     "findNextCourse": "Encontrar o próximo curso",
-    "myCourses": "Meus cursos"
+    "myCourses": "Meu aprendizado"
   },
   "sendToTeacher": {
     "button": "Enviar ao professor",
@@ -144,5 +148,33 @@
     "lessonLine": "Lição: {title}",
     "referenceLine": "Ref: {reference}",
     "prompt": "Minha dúvida ou gravação:"
+  },
+  "pathCatalogView": {
+    "heading": "Encontre uma trilha",
+    "loadingNoun": "as trilhas",
+    "errorMessage": "Não foi possível carregar o catálogo de trilhas.",
+    "emptyHeading": "Nenhuma trilha ainda",
+    "emptyMessage": "Novas trilhas aparecerão aqui assim que forem publicadas.",
+    "noMatchesHeading": "Nenhuma trilha encontrada",
+    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
+    "searchPlaceholder": "Buscar trilhas",
+    "enroll": "Inscrever-se",
+    "enrolling": "Inscrevendo…",
+    "continue": "Continuar",
+    "enrolledToast": "Você está inscrito em {title}.",
+    "details": "Detalhes",
+    "moreFromTeacher": "Mais deste professor"
+  },
+  "pathDetailView": {
+    "loadingNoun": "a trilha",
+    "errorMessage": "Não foi possível carregar esta trilha.",
+    "notFoundHeading": "Esta trilha ainda não foi publicada",
+    "notFoundMessage": "Esta trilha não está disponível no catálogo.",
+    "backToCatalog": "Voltar às trilhas",
+    "enroll": "Inscrever-se",
+    "enrolling": "Inscrevendo…",
+    "continue": "Continuar trilha",
+    "enrolledToast": "Você está inscrito em {title}.",
+    "outlineHeading": "Estrutura da trilha"
   }
 }

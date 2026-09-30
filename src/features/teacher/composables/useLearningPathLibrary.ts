@@ -7,16 +7,18 @@ import type { components, operations } from '@/api/generated/core-domain'
 type LearningPath = components['schemas']['LearningPath']
 type LearningPathListQuery = NonNullable<operations['listLearningPaths']['parameters']['query']>
 export type LearningPathSort = NonNullable<LearningPathListQuery['sort']>
+export type LearningPathStatus = LearningPath['status']
 
 /**
- * The learning path library a course's checkpoints are picked from: one page
- * at a time, narrowed server-side by title, author, level, skills, concepts
- * and instrument, sorted by title or by last update. The sort is not a
- * filter, so clearing the filters keeps it.
+ * The learning path library, one page at a time: narrowed server-side by
+ * title, author, level, skills, concepts, instrument, language and status,
+ * and sorted by title or by last update. The sort and the status are not
+ * filters, so clearing the filters keeps them.
  */
 export function useLearningPathLibrary() {
   const { filters, searchText, query, hasActiveFilters, clearFilters } = useCourseListFilters()
   const sort = ref<LearningPathSort>('title')
+  const status = ref<LearningPathStatus | null>(null)
 
   const {
     items: paths,
@@ -28,18 +30,14 @@ export function useLearningPathLibrary() {
         query: {
           ...pageRequest,
           sort: sort.value,
-          ...(query.value.q ? { q: query.value.q } : {}),
-          ...(query.value.levels ? { levels: query.value.levels } : {}),
-          ...(query.value.skill_ids ? { skill_ids: query.value.skill_ids } : {}),
-          ...(query.value.concept_ids ? { concept_ids: query.value.concept_ids } : {}),
-          ...(query.value.instrument_id ? { instrument_id: query.value.instrument_id } : {}),
-          ...(query.value.created_by ? { created_by: query.value.created_by } : {}),
+          ...query.value,
+          ...(status.value ? { status: status.value } : {}),
         },
       },
     }),
   )
 
-  watch([query, sort], () => void reload(), { deep: true })
+  watch([query, sort, status], () => void reload(), { deep: true })
 
-  return { paths, sort, filters, searchText, hasActiveFilters, clearFilters, retry: reload, ...page }
+  return { paths, sort, status, filters, searchText, hasActiveFilters, clearFilters, retry: reload, ...page }
 }

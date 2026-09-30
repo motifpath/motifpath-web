@@ -208,6 +208,14 @@ describe('CourseListView', () => {
     ])
   })
 
+  it("opens a course's builder from its thumbnail too", () => {
+    managed.courses.value = [course()]
+
+    const link = mountView().get('[data-test="course-card-thumbnail-link"]').findComponent(RouterLinkStub)
+
+    expect(link.props('to')).toEqual({ name: 'teacher-course-edit', params: { id: 'c-1' } })
+  })
+
   it('offers a new course', () => {
     const link = mountView()
       .findAllComponents(RouterLinkStub)

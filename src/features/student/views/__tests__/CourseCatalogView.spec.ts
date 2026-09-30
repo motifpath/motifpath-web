@@ -91,7 +91,7 @@ vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
 }))
 
-import { saveCourseCatalogReturn } from '@/features/student/utils/courseCatalogReturn'
+import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import CourseCatalogView from '@/features/student/views/CourseCatalogView.vue'
 
 function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
@@ -165,8 +165,8 @@ describe('CourseCatalogView', () => {
     }
 
     beforeEach(() => {
-      saveCourseCatalogReturn({
-        courseId: 'c-1',
+      saveCatalogReturn('courses', {
+        itemId: 'c-1',
         filters: { levels: [], skillIds: [], conceptIds: [], teacher: null, instrumentId: null, language: 'en' },
         searchText: '',
         loadedCount: 40,
@@ -244,6 +244,14 @@ describe('CourseCatalogView', () => {
     })
   })
 
+  it("opens a course's details from its thumbnail too", () => {
+    catalog.courses.value = [course()]
+
+    const link = mountView().get('[data-test="course-card-thumbnail-link"]').findComponent(RouterLinkStub)
+
+    expect(link.props('to')).toEqual({ name: 'course-detail', params: { courseId: 'c-1' }, query: { fromCatalog: 'true' } })
+  })
+
   it('shows a loading state while the catalog loads', () => {
     catalog.isLoading.value = true
 
@@ -302,7 +310,7 @@ describe('CourseCatalogView', () => {
     catalog.courses.value = [course()]
     catalog.total.value = 1
 
-    const details = mountView().getComponent(RouterLinkStub)
+    const details = mountView().get('[data-test="details"]').findComponent(RouterLinkStub)
 
     expect(details.props('to')).toEqual({
       name: 'course-detail',

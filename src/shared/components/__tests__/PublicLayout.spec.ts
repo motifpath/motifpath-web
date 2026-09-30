@@ -80,7 +80,7 @@ describe('PublicLayout', () => {
   it('offers a student the learner sections', () => {
     signInAs('student')
 
-    expect(tabLabels(mountLayout())).toEqual(['My path', 'My courses', 'Find a course'])
+    expect(tabLabels(mountLayout())).toEqual(['My path', 'My learning', 'Find a course', 'Find a path'])
   })
 
   it('offers a teacher the learner sections as well as the authoring ones', () => {
@@ -88,8 +88,9 @@ describe('PublicLayout', () => {
 
     expect(tabLabels(mountLayout())).toEqual([
       'My path',
-      'My courses',
+      'My learning',
       'Find a course',
+      'Find a path',
       'Content',
       'Paths',
       'Courses',

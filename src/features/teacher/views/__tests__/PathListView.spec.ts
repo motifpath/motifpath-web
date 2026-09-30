@@ -1,18 +1,66 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 
-const GET = vi.fn()
-vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { GET }, eventApi: {} }),
+import type { components } from '@/api/generated/core-domain'
+
+type LearningPath = components['schemas']['LearningPath']
+type UserRef = components['schemas']['UserRef']
+
+const library = {
+  paths: ref<LearningPath[]>([]),
+  total: ref(0),
+  isLoading: ref(false),
+  isLoadingMore: ref(false),
+  error: ref(false),
+  loadMoreError: ref(false),
+  hasMore: ref(false),
+  sort: ref<'title' | 'updated'>('title'),
+  status: ref<'draft' | 'published' | null>(null),
+  filters: reactive({
+    levels: [] as string[],
+    skillIds: [] as string[],
+    conceptIds: [] as string[],
+    teacher: null as UserRef | null,
+    instrumentId: null as string | null,
+    language: null as string | null,
+  }),
+  searchText: ref(''),
+  hasActiveFilters: ref(false),
+  clearFilters: vi.fn(),
+  retry: vi.fn(),
+  loadMore: vi.fn(),
+}
+vi.mock('@/features/teacher/composables/useLearningPathLibrary', () => ({
+  useLearningPathLibrary: () => library,
 }))
 
-const currentUser = reactive({ profile: { role: 'teacher' as 'student' | 'teacher' | 'admin' } })
+vi.mock('@/shared/composables/useListSkills', () => ({
+  useListSkills: () => ({ skills: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
+vi.mock('@/shared/composables/useListConcepts', () => ({
+  useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
+vi.mock('@/shared/composables/useCourseCreators', () => ({
+  useCourseCreators: () => ({ creators: ref([]), nameQuery: ref(''), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
+vi.mock('@/shared/composables/useListInstruments', () => ({
+  useListInstruments: () => ({
+    instruments: ref([{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]),
+    isLoading: ref(false),
+    error: ref(false),
+    retry: vi.fn(),
+  }),
+}))
+
+const tomas: UserRef = { user_id: 'u-tomas', display_name: 'Tomás Ribeiro' }
+const currentUser = reactive({
+  profile: { role: 'teacher' as 'student' | 'teacher' | 'admin', ...tomas },
+})
 vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
-
 vi.mock('@/features/auth/composables/useAuth', () => ({
   useAuth: () => ({
     isLoaded: { value: true },
@@ -22,6 +70,29 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
     displayInitial: { value: 'G' },
   }),
 }))
+
+import CourseFilters from '@/shared/components/CourseFilters.vue'
+import PathListView from '@/features/teacher/views/PathListView.vue'
+
+function learningPath(overrides: Partial<LearningPath> = {}): LearningPath {
+  return {
+    learning_path_id: 'lp-1',
+    teacher: tomas,
+    title: 'Open chords',
+    summary: 'Your first five chords, cleanly.',
+    language: 'en',
+    status: 'published',
+    level: 'beginner',
+    items: [
+      { position: 1, content_node_id: 'n-1', title: 'E major' },
+      { position: 2, content_node_id: 'n-2', title: 'A minor' },
+    ] as LearningPath['items'],
+    created_at: '2026-09-01T00:00:00Z',
+    updated_at: '2026-09-02T00:00:00Z',
+    instrument_ids: ['i-guitar'],
+    ...overrides,
+  }
+}
 
 function mockMatchMedia(compact: boolean): void {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -34,158 +105,136 @@ function mockMatchMedia(compact: boolean): void {
   }))
 }
 
-const instruments = [{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]
-
-import PathListView from '@/features/teacher/views/PathListView.vue'
-
 function mountView() {
   return mount(PathListView, {
-    global: {
-      plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
-    },
+    global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
   })
 }
 
 describe('PathListView', () => {
   beforeEach(() => {
-    GET.mockReset()
-    GET.mockImplementation((requestPath: string) =>
-      Promise.resolve(
-        requestPath === '/instruments'
-          ? { data: instruments, error: undefined, response: { status: 200 } }
-          : { data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } },
-      ),
-    )
+    library.paths.value = [learningPath()]
+    library.total.value = 1
+    library.isLoading.value = false
+    library.error.value = false
+    library.hasActiveFilters.value = false
+    library.status.value = null
+    Object.assign(library.filters, { teacher: null, language: null, instrumentId: null })
     currentUser.profile.role = 'teacher'
+    vi.clearAllMocks()
     mockMatchMedia(false)
   })
 
   it('shows a permission-denied state for a student instead of the list', () => {
     currentUser.profile.role = 'student'
-    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
-    const wrapper = mountView()
 
-    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
+    expect(mountView().find('[data-test="permission-denied"]').exists()).toBe(true)
   })
 
-  it('shows a loading state while fetching', () => {
-    GET.mockReturnValueOnce(new Promise(() => {}))
+  it('shows a loading state, then an error state whose retry reloads', async () => {
+    library.isLoading.value = true
     const wrapper = mountView()
-
     expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
-  })
 
-  it('shows an error state with retry when loading fails', async () => {
-    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(true)
-
-    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
+    library.isLoading.value = false
+    library.error.value = true
+    await flushPromises()
     await wrapper.get('[data-test="retry"]').trigger('click')
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(false)
+    expect(library.retry).toHaveBeenCalled()
   })
 
-  it('shows an empty state with a link to create the first learning path', async () => {
-    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
+  it('shows an empty state with a link to create the first learning path', () => {
+    library.paths.value = []
 
-    expect(wrapper.find('[data-test="empty"]').exists()).toBe(true)
-    const link = wrapper.get('[data-test="empty"]').findComponent(RouterLinkStub)
-    expect(link.props('to')).toEqual({ name: 'teacher-path-new' })
+    const empty = mountView().get('[data-test="empty"]')
+
+    expect(empty.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'teacher-path-new' })
   })
 
-  it('lists learning paths, each linking to its edit route', async () => {
-    GET.mockResolvedValueOnce({
-      data: {
-        items: [
-          { learning_path_id: 'lp-1', instrument_ids: [], title: 'Beginner guitar', items: [{}, {}] },
-          { learning_path_id: 'lp-2', instrument_ids: [], title: 'Advanced theory', items: [{}] },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      },
-      error: undefined,
-      response: { status: 200 },
-    })
+  it('offers to clear the filters when they match nothing', async () => {
+    library.paths.value = []
+    library.hasActiveFilters.value = true
+
+    await mountView().get('[data-test="clear-filters"]').trigger('click')
+
+    expect(library.clearFilters).toHaveBeenCalled()
+  })
+
+  it('shows each path on the shared card with its status, instruments and lesson count', () => {
+    library.paths.value = [learningPath(), learningPath({ learning_path_id: 'lp-2', title: 'Blues shuffle', status: 'draft' })]
+
+    const cards = mountView().findAll('[data-test="learning-path-row"]')
+
+    expect(cards[0]!.get('[data-test="course-card-label"]').text()).toBe('Path')
+    expect(cards[0]!.get('[data-test="course-byline"]').text()).toContain('Tomás Ribeiro')
+    expect(cards[0]!.get('[data-test="course-lessons"]').text()).toBe('2 lessons')
+    expect(cards[0]!.get('[data-test="path-status"]').text()).toBe('Published')
+    expect(cards[0]!.get('[data-test="path-instruments"]').text()).toBe('Guitar')
+    expect(cards[1]!.get('[data-test="path-status"]').text()).toBe('Draft')
+  })
+
+  it("opens a path's editor from its card, and offers no publish control there", () => {
     const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
 
-    expect(wrapper.text()).toContain('Beginner guitar')
-    expect(wrapper.text()).toContain('Advanced theory')
+    const edit = wrapper.get('[data-test="edit-path"]').findComponent(RouterLinkStub)
+    expect(edit.props('to')).toEqual({ name: 'teacher-path-edit', params: { id: 'lp-1' } })
+    expect(wrapper.find('[data-test="publish"]').exists()).toBe(false)
+  })
 
-    const links = wrapper
+  it("opens a path's editor from its thumbnail too", () => {
+    const link = mountView().get('[data-test="course-card-thumbnail-link"]').findComponent(RouterLinkStub)
+
+    expect(link.props('to')).toEqual({ name: 'teacher-path-edit', params: { id: 'lp-1' } })
+  })
+
+  it('offers a new learning path', () => {
+    const link = mountView()
       .findAllComponents(RouterLinkStub)
-      .filter((l) => typeof l.props('to') === 'object' && (l.props('to') as { name?: string }).name === 'teacher-path-edit')
-    expect(links.map((l) => l.props('to'))).toEqual(
-      expect.arrayContaining([
-        { name: 'teacher-path-edit', params: { id: 'lp-1' } },
-        { name: 'teacher-path-edit', params: { id: 'lp-2' } },
-      ]),
-    )
+      .find((l) => l.attributes('data-test') === 'new-learning-path')
+
+    expect(link?.props('to')).toEqual({ name: 'teacher-path-new' })
   })
 
-  it('loads the next page when the teacher asks for more', async () => {
-    GET.mockResolvedValueOnce({
-      data: { items: [{ learning_path_id: 'lp-1', instrument_ids: [], title: 'Beginner blues', items: [], created_at: '2026-01-01T00:00:00Z' }], total: 2, limit: 20, offset: 0 },
-      error: undefined,
-      response: { status: 200 },
-    })
+  it('switches the status tab, and back to every status', async () => {
     const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
-    expect(wrapper.text()).toContain('Showing 1 of 2')
 
-    GET.mockResolvedValueOnce({
-      data: { items: [{ learning_path_id: 'lp-2', instrument_ids: [], title: 'Jazz voicings', items: [], created_at: '2026-01-01T00:00:00Z' }], total: 2, limit: 20, offset: 1 },
-      error: undefined,
-      response: { status: 200 },
-    })
-    await wrapper.get('[data-test="load-more"]').trigger('click')
-    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="status-tab-draft"]').trigger('click')
+    expect(library.status.value).toBe('draft')
 
-    expect(GET).toHaveBeenLastCalledWith('/learning-paths', { params: { query: { limit: 20, offset: 1 } } })
-    expect(wrapper.findAll('[data-test="learning-path-row"]')).toHaveLength(2)
-    expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
-  })
-  it("shows each item's thumbnail, or a placeholder, and its instruments", async () => {
-    GET.mockResolvedValueOnce({
-      data: {
-        items: [
-          { learning_path_id: 'lp-1', title: 'Beginner guitar', level: 'beginner', instrument_ids: ['i-guitar'], thumbnail_url: 'https://cdn.test/thumbnails/lp-1.png', items: [] },
-          { learning_path_id: 'lp-2', title: 'Reading rhythm', instrument_ids: [], items: [] },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      },
-      error: undefined,
-      response: { status: 200 },
-    })
-    const wrapper = mountView()
-    await flushPromises()
-
-    const rows = wrapper.findAll('[data-test="learning-path-row"]')
-    expect(rows[0]!.get('img').attributes('src')).toMatch(/^https:\/\/cdn.test\/thumbnails\//)
-    expect(rows[0]!.text()).toContain('Guitar')
-    expect(rows[1]!.find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
-    expect(rows[1]!.text()).toContain('Every instrument')
+    await wrapper.get('[data-test="status-tab-all"]').trigger('click')
+    expect(library.status.value).toBeNull()
   })
 
-  it('filters by instrument, and says when nothing matches', async () => {
+  it('binds the language and instrument filters, and offers a teacher no creator filter', () => {
+    const filters = mountView().getComponent(CourseFilters)
+
+    expect(filters.props('languageFilter')).toBe(true)
+    expect(filters.props('instrumentFilter')).toBe(true)
+    expect(filters.props('teacherScope')).toBeNull()
+  })
+
+  it("offers an admin the library's creators", () => {
+    currentUser.profile.role = 'admin'
+
+    expect(mountView().getComponent(CourseFilters).props('teacherScope')).toBe('path-library')
+  })
+
+  it('filters by the creator picked, so an admin can manage another author\'s paths', async () => {
+    currentUser.profile.role = 'admin'
     const wrapper = mountView()
+
+    wrapper.getComponent(CourseFilters).vm.$emit('update:teacher', { user_id: 'u-carol', display_name: 'Carol Dias' })
     await flushPromises()
 
-    await wrapper.get('[data-test="instrument-filter"]').setValue('i-guitar')
-    await flushPromises()
+    expect(library.filters.teacher).toEqual({ user_id: 'u-carol', display_name: 'Carol Dias' })
+    expect(wrapper.find('[data-test="path-only-mine"]').exists()).toBe(false)
+  })
 
-    expect(GET).toHaveBeenLastCalledWith('/learning-paths', { params: { query: { limit: 20, offset: 0, instrument_id: 'i-guitar' } } })
-    expect(wrapper.find('[data-test="no-matches"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="empty"]').exists()).toBe(false)
+  it('offers the next page when more paths remain', async () => {
+    library.total.value = 2
+
+    await mountView().get('[data-test="load-more"]').trigger('click')
+
+    expect(library.loadMore).toHaveBeenCalled()
   })
 })

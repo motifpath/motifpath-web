@@ -99,7 +99,7 @@ describe('CourseCompletedView', () => {
     ['an enrollment the student does not have', [enrollment({ course_enrollment_id: 'ce-other' })]],
     ['a course still in progress', [enrollment({ status: 'active', active_checkpoint_position: 2 })]],
     ['a course the student left', [enrollment({ status: 'abandoned' })]],
-  ])('shows a not-found state, with a way back to My courses, for %s', (_label, enrollments) => {
+  ])('shows a not-found state, with a way back to My learning, for %s', (_label, enrollments) => {
     state.enrollments.value = enrollments
 
     const wrapper = mountView()

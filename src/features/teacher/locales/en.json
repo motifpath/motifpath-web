@@ -360,7 +360,28 @@
     "levelLabel": "Level",
     "levelRequired": "Choose a level to save this path.",
     "instrumentsLabel": "Instruments",
-    "thumbnailLabel": "Thumbnail"
+    "thumbnailLabel": "Thumbnail",
+    "summaryLabel": "Summary",
+    "summaryPlaceholder": "What will a learner get from this path?",
+    "languageLabel": "Language",
+    "noLanguage": "No language yet",
+    "publishNeeds": "A path needs a summary and a language before it can be published.",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "published": "Path published.",
+    "unpublished": "Path unpublished.",
+    "publishFailed": "Couldn't publish the path.",
+    "unpublishFailed": "Couldn't unpublish the path.",
+    "adminPublishes": "An admin publishes paths.",
+    "missingHeading": "Before this path can be published, it needs:",
+    "requirement": {
+      "summary": "A summary",
+      "language": "A language",
+      "level": "A level",
+      "items": "At least one lesson",
+      "unpublishedContent": "Published lessons (not yet: {titles})"
+    },
+    "saveWouldUnpublish": "A published path must keep everything listed below. Restore it, or unpublish the path first."
   },
   "pathListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
@@ -370,10 +391,12 @@
     "errorMessage": "We couldn't load the learning paths.",
     "emptyHeading": "No paths yet",
     "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
-    "nodeCountSingular": "{count} node",
-    "nodeCountPlural": "{count} nodes",
-    "noMatchesMessage": "No learning path is for this instrument.",
-    "showEveryInstrument": "Show every instrument"
+    "noMatchesMessage": "Try fewer filters or a different search.",
+    "noMatchesHeading": "No matching paths",
+    "searchPlaceholder": "Search paths by title",
+    "statusTabsLabel": "Status",
+    "allStatuses": "All",
+    "editPath": "Edit"
   },
   "challengeModal": {
     "buildTitle": "Build challenge",
@@ -469,7 +492,6 @@
   "learningPathPickerModal": {
     "title": "Add a checkpoint",
     "searchPlaceholder": "Search paths by title",
-    "onlyMine": "Only my paths",
     "sortLabel": "Sort",
     "sort": {
       "title": "Title",
@@ -535,7 +557,8 @@
     "reactivateFailed": "Couldn't reactivate the course.",
     "leaveTitle": "Leave without saving?",
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
-    "leaveConfirm": "Leave"
+    "leaveConfirm": "Leave",
+    "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}"
   },
   "diagramPickerList": {
     "loadingNoun": "diagrams",
@@ -679,5 +702,9 @@
     "addRest": "Add {value} rest",
     "dragHint": "Drag a step into a gap to move it, or onto another step to play them together as a chord.",
     "removeStepNumber": "Remove step {number}"
+  },
+  "pathStatus": {
+    "draft": "Draft",
+    "published": "Published"
   }
 }

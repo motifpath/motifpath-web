@@ -1,8 +1,9 @@
 {
   "nav": {
     "student": "Minha trilha",
-    "myCourses": "Meus cursos",
+    "myCourses": "Meu aprendizado",
     "findCourse": "Encontrar um curso",
+    "findPath": "Encontrar uma trilha",
     "content": "Conteúdo",
     "paths": "Trilhas",
     "courses": "Cursos",
@@ -205,6 +206,7 @@
   },
   "courseCard": {
     "label": "Curso",
+    "pathLabel": "Trilha",
     "byline": "por {name}",
     "lessons": "{count} lição | {count} lições",
     "learningPaths": "{count} trilha de aprendizagem | {count} trilhas de aprendizagem"

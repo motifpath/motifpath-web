@@ -360,7 +360,28 @@
     "levelLabel": "Nível",
     "levelRequired": "Escolha um nível para salvar esta trilha.",
     "instrumentsLabel": "Instrumentos",
-    "thumbnailLabel": "Miniatura"
+    "thumbnailLabel": "Miniatura",
+    "summaryLabel": "Resumo",
+    "summaryPlaceholder": "O que o aluno vai ganhar com esta trilha?",
+    "languageLabel": "Idioma",
+    "noLanguage": "Nenhum idioma ainda",
+    "publishNeeds": "Uma trilha precisa de resumo e idioma para ser publicada.",
+    "publish": "Publicar",
+    "unpublish": "Despublicar",
+    "published": "Trilha publicada.",
+    "unpublished": "Trilha despublicada.",
+    "publishFailed": "Não foi possível publicar a trilha.",
+    "unpublishFailed": "Não foi possível despublicar a trilha.",
+    "adminPublishes": "Um administrador publica as trilhas.",
+    "missingHeading": "Para publicar esta trilha, falta:",
+    "requirement": {
+      "summary": "Um resumo",
+      "language": "Um idioma",
+      "level": "Um nível",
+      "items": "Pelo menos uma lição",
+      "unpublishedContent": "Lições publicadas (ainda não: {titles})"
+    },
+    "saveWouldUnpublish": "Uma trilha publicada precisa manter tudo o que está listado abaixo. Restaure esses itens ou despublique a trilha antes."
   },
   "pathListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
@@ -370,10 +391,12 @@
     "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
     "emptyHeading": "Ainda não há trilhas",
     "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
-    "nodeCountSingular": "{count} nó",
-    "nodeCountPlural": "{count} nós",
-    "noMatchesMessage": "Nenhuma trilha de aprendizagem é para este instrumento.",
-    "showEveryInstrument": "Mostrar todos os instrumentos"
+    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
+    "noMatchesHeading": "Nenhuma trilha encontrada",
+    "searchPlaceholder": "Buscar trilhas pelo título",
+    "statusTabsLabel": "Status",
+    "allStatuses": "Todas",
+    "editPath": "Editar"
   },
   "challengeModal": {
     "buildTitle": "Montar desafio",
@@ -469,7 +492,6 @@
   "learningPathPickerModal": {
     "title": "Adicionar etapa",
     "searchPlaceholder": "Buscar trilhas pelo título",
-    "onlyMine": "Só as minhas trilhas",
     "sortLabel": "Ordenar",
     "sort": {
       "title": "Título",
@@ -535,7 +557,8 @@
     "reactivateFailed": "Não foi possível reativar o curso.",
     "leaveTitle": "Sair sem salvar?",
     "leaveMessage": "Suas alterações neste curso não foram salvas e serão perdidas.",
-    "leaveConfirm": "Sair"
+    "leaveConfirm": "Sair",
+    "draftPathsBlockPublish": "Publique estas trilhas antes do curso: {titles}"
   },
   "diagramPickerList": {
     "loadingNoun": "diagramas",
@@ -679,5 +702,9 @@
     "addRest": "Adicionar pausa de {value}",
     "dragHint": "Arraste um passo para um espaço entre passos para movê-lo, ou sobre outro passo para tocá-los juntos como acorde.",
     "removeStepNumber": "Remover passo {number}"
+  },
+  "pathStatus": {
+    "draft": "Rascunho",
+    "published": "Publicada"
   }
 }

@@ -1,17 +1,24 @@
 import type { CourseListFilterState } from '@/shared/composables/useCourseListFilters'
 
-const STORAGE_KEY = 'motifpath.course-catalog-return.v1'
+/** The learner catalogs whose place is kept across a visit to an item's details. */
+export type CatalogKind = 'courses' | 'paths'
 
-export interface CourseCatalogReturn {
-  courseId: string
+const STORAGE_KEY: Record<CatalogKind, string> = {
+  courses: 'motifpath.catalog-return.courses.v1',
+  paths: 'motifpath.catalog-return.paths.v1',
+}
+
+export interface CatalogReturn {
+  /** The course or learning path whose details were opened. */
+  itemId: string
   filters: CourseListFilterState
   searchText: string
-  /** Number of matching cards loaded before opening course details. */
+  /** Number of matching cards loaded before opening the details. */
   loadedCount: number
   scrollY: number
 }
 
-type StoredCourseCatalogReturn = CourseCatalogReturn & { version: 1 }
+type StoredCatalogReturn = CatalogReturn & { version: 1 }
 
 function isFilterState(value: unknown): value is CourseListFilterState {
   if (!value || typeof value !== 'object') return false
@@ -30,12 +37,12 @@ function isFilterState(value: unknown): value is CourseListFilterState {
   )
 }
 
-function isStoredReturn(value: unknown): value is StoredCourseCatalogReturn {
+function isStoredReturn(value: unknown): value is StoredCatalogReturn {
   if (!value || typeof value !== 'object') return false
   const stored = value as Record<string, unknown>
   return (
     stored.version === 1 &&
-    typeof stored.courseId === 'string' &&
+    typeof stored.itemId === 'string' &&
     isFilterState(stored.filters) &&
     typeof stored.searchText === 'string' &&
     typeof stored.loadedCount === 'number' &&
@@ -47,10 +54,10 @@ function isStoredReturn(value: unknown): value is StoredCourseCatalogReturn {
   )
 }
 
-export function saveCourseCatalogReturn(returnState: CourseCatalogReturn) {
-  const stored: StoredCourseCatalogReturn = { ...returnState, version: 1 }
+export function saveCatalogReturn(kind: CatalogKind, returnState: CatalogReturn) {
+  const stored: StoredCatalogReturn = { ...returnState, version: 1 }
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
+    window.localStorage.setItem(STORAGE_KEY[kind], JSON.stringify(stored))
   } catch {
     // Storage is an enhancement; navigation still works when it is unavailable.
   }
@@ -60,18 +67,19 @@ export function saveCourseCatalogReturn(returnState: CourseCatalogReturn) {
  * Consumes the saved catalog state only when the detail page that created it
  * returns the learner to the catalog. A normal catalog visit remains fresh.
  */
-export function restoreCourseCatalogReturn(courseId: string): Omit<CourseCatalogReturn, 'courseId'> | null {
+export function restoreCatalogReturn(kind: CatalogKind, itemId: string): Omit<CatalogReturn, 'itemId'> | null {
+  const key = STORAGE_KEY[kind]
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(key)
     if (!raw) return null
     const stored: unknown = JSON.parse(raw)
     if (!isStoredReturn(stored)) {
-      window.localStorage.removeItem(STORAGE_KEY)
+      window.localStorage.removeItem(key)
       return null
     }
-    if (stored.courseId !== courseId) return null
+    if (stored.itemId !== itemId) return null
 
-    window.localStorage.removeItem(STORAGE_KEY)
+    window.localStorage.removeItem(key)
     return {
       filters: stored.filters,
       searchText: stored.searchText,

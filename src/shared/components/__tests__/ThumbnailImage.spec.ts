@@ -12,6 +12,15 @@ describe('ThumbnailImage', () => {
     expect(wrapper.find('[data-test="thumbnail-placeholder"]').exists()).toBe(false)
   })
 
+  it('crops to fill its box by default, or shows the whole image when asked to fit', () => {
+    const cropped = mount(ThumbnailImage, { props: { url: 'https://cdn.test/t.png' } })
+    const fitted = mount(ThumbnailImage, { props: { url: 'https://cdn.test/t.png', fit: 'contain' } })
+
+    expect(cropped.get('img').classes()).toContain('object-cover')
+    expect(fitted.get('img').classes()).toContain('object-contain')
+    expect(fitted.get('img').classes()).not.toContain('object-cover')
+  })
+
   it('shows a neutral placeholder when there is none', () => {
     const wrapper = mount(ThumbnailImage, { props: {} })
 
