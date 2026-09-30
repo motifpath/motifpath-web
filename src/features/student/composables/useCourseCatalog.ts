@@ -3,15 +3,10 @@ import { watch } from 'vue'
 import { i18n, toApiLanguageCode } from '@/i18n'
 import { useApiPagedList } from '@/shared/composables/useApiPagedList'
 import { useCourseListFilters } from '@/shared/composables/useCourseListFilters'
-import type { CourseListFilterState } from '@/shared/composables/useCourseListFilters'
+import type { CourseListFilterInitialState } from '@/shared/composables/useCourseListFilters'
 import type { components } from '@/api/generated/core-domain'
 
 type CourseCatalogEntry = components['schemas']['CourseCatalogEntry']
-
-export interface CourseCatalogInitialState {
-  filters?: Partial<CourseListFilterState>
-  searchText?: string
-}
 
 /**
  * The learner course catalog: one page of published courses at a time,
@@ -20,11 +15,10 @@ export interface CourseCatalogInitialState {
  * from the first page; the free-text search waits for typing to pause
  * before it does.
  */
-export function useCourseCatalog(initial: CourseCatalogInitialState = {}) {
+export function useCourseCatalog(initial: CourseListFilterInitialState = {}) {
   const { filters, searchText, query, hasActiveFilters, clearFilters } = useCourseListFilters({
     language: toApiLanguageCode(i18n.global.locale.value),
-    ...initial.filters,
-    searchText: initial.searchText,
+    ...initial,
   })
 
   const {

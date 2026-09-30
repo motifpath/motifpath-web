@@ -57,9 +57,7 @@ const {
   retry,
   loadMore,
 } = useCourseCatalog(
-  restoredReturn
-    ? { filters: restoredReturn.filters, searchText: restoredReturn.searchText }
-    : undefined,
+  restoredReturn ? { ...restoredReturn.filters, searchText: restoredReturn.searchText } : undefined,
 )
 const { enrollments } = useMyCourseEnrollments()
 const { enrollInCourse } = useEnrollInCourse()

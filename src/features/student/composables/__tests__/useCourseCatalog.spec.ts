@@ -51,7 +51,8 @@ describe('useCourseCatalog', () => {
 
   it('uses a saved catalog state instead of the locale defaults', async () => {
     const { filters, searchText, isLoading } = useCourseCatalog({
-      filters: { language: null, levels: ['beginner'] },
+      language: null,
+      levels: ['beginner'],
       searchText: 'fingerstyle',
     })
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
