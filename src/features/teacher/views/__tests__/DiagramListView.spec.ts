@@ -1,7 +1,7 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive } from 'vue'
+import { defineComponent, reactive } from 'vue'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -45,11 +45,30 @@ function page(items: unknown[], total = items.length) {
 
 const flush = () => new Promise((r) => setTimeout(r, 0))
 
+
+// The filter panel has its own spec; here it only needs to take the page's
+// filter state and show the page's own extra filters.
+const CourseFiltersStub = defineComponent({
+  name: 'CourseFilters',
+  props: {
+    hasActiveFilters: Boolean,
+    teacherScope: { type: String, default: null },
+    instrumentFilter: Boolean,
+    languageFilter: Boolean,
+    levelFilter: { type: Boolean, default: true },
+    singleClassification: Boolean,
+    searchPlaceholder: { type: String, default: undefined },
+    searchText: { type: String, default: '' },
+  },
+  emits: ['update:searchText', 'update:language', 'update:teacher', 'clear'],
+  template: '<div data-test="course-filters"><slot /></div>',
+})
+
 function mountView() {
   return mount(DiagramListView, {
     global: {
       plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
+      stubs: { RouterLink: RouterLinkStub, CourseFilters: CourseFiltersStub },
     },
   })
 }
@@ -192,5 +211,48 @@ describe('DiagramListView', () => {
 
     expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 1 } } })
     expect(wrapper.findAll('[data-test="diagram-row"]')).toHaveLength(2)
+  })
+
+  it('offers name search, instrument, language and single skill and concept filters, but no level or creator', async () => {
+    GET.mockResolvedValue(page([]))
+    const wrapper = mountView()
+    await flush()
+
+    expect(wrapper.getComponent(CourseFiltersStub).props()).toMatchObject({
+      teacherScope: null,
+      instrumentFilter: true,
+      languageFilter: true,
+      levelFilter: false,
+      singleClassification: true,
+      searchPlaceholder: 'Search diagrams by name',
+    })
+  })
+
+  it('narrows the list to a root note, within the chosen scope', async () => {
+    GET.mockResolvedValue(page([]))
+    const wrapper = mountView()
+    await flush()
+
+    await wrapper.get('[data-test="filter-templates"]').trigger('click')
+    await wrapper.get('[data-test="root-note-filter"]').setValue('F#')
+    await flush()
+
+    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0, kind: 'basic', root_note: 'F#' } } })
+  })
+
+  it('offers to clear the filters when they match nothing, keeping the scope', async () => {
+    GET.mockResolvedValue(page([]))
+    const wrapper = mountView()
+    await flush()
+    await wrapper.get('[data-test="filter-mine"]').trigger('click')
+    await wrapper.get('[data-test="root-note-filter"]').setValue('Bb')
+    await flush()
+
+    expect(wrapper.find('[data-test="empty"]').exists()).toBe(false)
+    await wrapper.get('[data-test="no-matches"] [data-test="clear-filters"]').trigger('click')
+    await flush()
+
+    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0, created_by: 'u-teacher' } } })
+    expect(wrapper.get('[data-test="filter-mine"]').attributes('aria-pressed')).toBe('true')
   })
 })

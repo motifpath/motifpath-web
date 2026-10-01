@@ -257,7 +257,9 @@ export interface paths {
          *     returned in a {items, total, limit, offset} envelope. An offset
          *     past the end returns an empty items array, not an error.
          *     Only teachers and admins may list exercises; the pool is an
-         *     authoring surface, not a student-facing catalog.
+         *     authoring surface, not a student-facing catalog. Every teacher sees
+         *     the whole pool, whoever created each exercise.
+         *     Every filter below is optional and they combine with AND.
          */
         get: operations["listExercises"];
         put?: never;
@@ -512,6 +514,36 @@ export interface paths {
          *     content item.
          */
         delete: operations["deleteExpandedContent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exercises/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the exercises in the pool
+         * @description Returns every distinct user who created at least one exercise, so a
+         *     picker can offer a complete creator filter (the created_by
+         *     parameter of GET /exercises) without paging. Exercises with no
+         *     recorded creator contribute nobody. Only teachers and admins may
+         *     list exercise creators, as with the pool itself.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the number of exercises. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         */
+        get: operations["listExerciseCreators"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4305,6 +4337,12 @@ export interface components {
              */
             languages: components["schemas"]["Language"][];
             /**
+             * @description The user who created the exercise, recorded from the caller of
+             *     POST /exercises. Absent on exercises created before creators
+             *     were recorded.
+             */
+            created_by?: components["schemas"]["UserRef"];
+            /**
              * Format: date-time
              * @description Timestamp at which the exercise was created.
              */
@@ -5407,6 +5445,8 @@ export interface operations {
     listExercises: {
         parameters: {
             query?: {
+                /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
+                q?: components["parameters"]["SearchText"];
                 /** @description Maximum number of items to return in this page (ADR-031). */
                 limit?: components["parameters"]["Limit"];
                 /** @description Number of matching items to skip before this page (ADR-031). */
@@ -5416,6 +5456,23 @@ export interface operations {
                  *     returned.
                  */
                 skill_id?: string;
+                /**
+                 * @description When given, only exercises linked to this exact concept id are
+                 *     returned.
+                 */
+                concept_id?: string;
+                /**
+                 * @description Restricts the results to exercises written in this language (a
+                 *     Language.code other than "any").
+                 */
+                language?: string;
+                /**
+                 * @description Restricts the results to exercises created by this user. An
+                 *     exercise with no recorded creator (created before creators were
+                 *     recorded) never matches. GET /exercises/creators lists the
+                 *     creators to offer.
+                 */
+                created_by?: string;
                 /** @description When given, only exercises of this type are returned. */
                 exercise_type?: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
             };
@@ -6171,6 +6228,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listExerciseCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the exercises in the pool, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRef"][];
+                };
+            };
+            /** @description q is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };

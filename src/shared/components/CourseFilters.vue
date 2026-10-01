@@ -31,6 +31,10 @@ const props = withDefaults(
     instrumentFilter?: boolean
     /** Whether to offer the language filter. */
     languageFilter?: boolean
+    /** Whether to offer the level filter; off for items that have no level. */
+    levelFilter?: boolean
+    /** Picks at most one skill and one concept, for lists filtered by a single one of each. */
+    singleClassification?: boolean
     /** The search box's placeholder; defaults to searching courses. */
     searchPlaceholder?: string
     /** Shows search first and moves the remaining controls into a modal. */
@@ -40,6 +44,8 @@ const props = withDefaults(
     teacherScope: null,
     instrumentFilter: false,
     languageFilter: false,
+    levelFilter: true,
+    singleClassification: false,
     searchPlaceholder: undefined,
     compact: false,
   },
@@ -231,7 +237,7 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
           <ModalCloseButton @close="advancedOpen = false" />
         </div>
 
-        <div class="flex flex-col gap-2">
+        <div v-if="levelFilter" class="flex flex-col gap-2">
           <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
             {{ t('courseFilters.levelFilterLabel') }}
           </span>
@@ -270,6 +276,7 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
             :nodes="skillNodes"
             :selected-ids="pickedSkillIds"
             :is-loading="skillsLoading"
+            :multiple="!singleClassification"
             :creatable="false"
             @update:selected-ids="onSkillsPicked"
           />
@@ -278,6 +285,7 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
             :nodes="conceptNodes"
             :selected-ids="pickedConceptIds"
             :is-loading="conceptsLoading"
+            :multiple="!singleClassification"
             :creatable="false"
             @update:selected-ids="onConceptsPicked"
           />
@@ -299,7 +307,7 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
       />
     </label>
 
-    <div class="flex flex-col gap-2">
+    <div v-if="levelFilter" class="flex flex-col gap-2">
       <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
         {{ t('courseFilters.levelFilterLabel') }}
       </span>
@@ -338,6 +346,7 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
         :nodes="skillNodes"
         :selected-ids="pickedSkillIds"
         :is-loading="skillsLoading"
+        :multiple="!singleClassification"
         :creatable="false"
         @update:selected-ids="onSkillsPicked"
       />
@@ -346,6 +355,7 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
         :nodes="conceptNodes"
         :selected-ids="pickedConceptIds"
         :is-loading="conceptsLoading"
+        :multiple="!singleClassification"
         :creatable="false"
         @update:selected-ids="onConceptsPicked"
       />

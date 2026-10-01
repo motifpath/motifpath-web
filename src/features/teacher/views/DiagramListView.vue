@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-import { type DiagramFilters, useListDiagrams } from '@/features/teacher/composables/useListDiagrams'
+import { type DiagramScope, useDiagramLibrary } from '@/features/teacher/composables/useDiagramLibrary'
 import AppBar from '@/shared/components/AppBar.vue'
+import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
@@ -22,26 +23,24 @@ const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
 
-// all: every diagram the caller may see (for a teacher, the templates plus their own);
-// templates: basic diagrams only; mine: the ones the caller created.
-type Scope = 'all' | 'templates' | 'mine'
-const scopes: Scope[] = ['all', 'templates', 'mine']
-const scope = ref<Scope>('all')
+const scopes: DiagramScope[] = ['all', 'templates', 'mine']
 
-function filtersFor(selected: Scope): DiagramFilters {
-  if (selected === 'templates') return { kind: 'basic' }
-  if (selected === 'mine') return { createdBy: currentUser.profile?.user_id }
-  return {}
-}
-
-const { diagrams, total, isLoading, isLoadingMore, error, loadMoreError, reload, loadMore } =
-  useListDiagrams(() => filtersFor(scope.value))
-
-function selectScope(selected: Scope) {
-  if (selected === scope.value) return
-  scope.value = selected
-  void reload()
-}
+const {
+  diagrams,
+  total,
+  scope,
+  filters,
+  searchText,
+  rootNote,
+  hasActiveFilters,
+  clearFilters,
+  isLoading,
+  isLoadingMore,
+  error,
+  loadMoreError,
+  reload,
+  loadMore,
+} = useDiagramLibrary(currentUser.profile?.user_id)
 </script>
 
 <template>
@@ -76,15 +75,63 @@ function selectScope(selected: Scope) {
           :aria-pressed="scope === option"
           class="rounded-md px-3 py-1 text-xs font-semibold"
           :class="scope === option ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="selectScope(option)"
+          @click="scope = option"
         >
           {{ t(`diagramListView.scopes.${option}`) }}
         </button>
       </div>
 
+      <CourseFilters
+        v-model:search-text="searchText"
+        v-model:levels="filters.levels"
+        v-model:skill-ids="filters.skillIds"
+        v-model:concept-ids="filters.conceptIds"
+        v-model:instrument-id="filters.instrumentId"
+        v-model:language="filters.language"
+        instrument-filter
+        language-filter
+        :level-filter="false"
+        single-classification
+        :search-placeholder="t('diagramListView.searchPlaceholder')"
+        :has-active-filters="hasActiveFilters"
+        @clear="clearFilters"
+      >
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+            {{ t('diagramListView.rootNoteFilterLabel') }}
+          </span>
+          <input
+            v-model="rootNote"
+            data-test="root-note-filter"
+            type="text"
+            maxlength="3"
+            :placeholder="t('diagramListView.rootNotePlaceholder')"
+            class="w-32 rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm text-ink"
+          />
+        </label>
+      </CourseFilters>
+
       <StateLoading v-if="isLoading" data-test="loading" :noun="t('diagramListView.loadingNoun')" />
 
       <StateError v-else-if="error" data-test="error" :message="t('diagramListView.loadErrorMessage')" @retry="reload" />
+
+      <StateEmpty
+        v-else-if="diagrams.length === 0 && hasActiveFilters"
+        data-test="no-matches"
+        :heading="t('diagramListView.noMatchesHeading')"
+        :message="t('diagramListView.noMatchesMessage')"
+      >
+        <template #action>
+          <button
+            type="button"
+            data-test="clear-filters"
+            class="text-sm font-semibold text-accent-text underline"
+            @click="clearFilters"
+          >
+            {{ t('courseFilters.clearFilters') }}
+          </button>
+        </template>
+      </StateEmpty>
 
       <StateEmpty
         v-else-if="diagrams.length === 0"

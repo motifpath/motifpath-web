@@ -3,8 +3,9 @@ import { Plus } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-import { useListExercises } from '@/features/teacher/composables/useListExercises'
+import { type ExerciseType, useExerciseLibrary } from '@/features/teacher/composables/useExerciseLibrary'
 import AppBar from '@/shared/components/AppBar.vue'
+import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
@@ -18,11 +19,24 @@ const canAuthor = computed(
 )
 
 const { isCompact } = useIsCompact()
-const { exercises, total, isLoading, isLoadingMore, error, loadMoreError, retry, loadMore } =
-  useListExercises()
+const {
+  exercises,
+  total,
+  filters,
+  searchText,
+  exerciseType,
+  hasActiveFilters,
+  clearFilters,
+  isLoading,
+  isLoadingMore,
+  error,
+  loadMoreError,
+  retry,
+  loadMore,
+} = useExerciseLibrary()
 const { t } = useTypedT()
 
-const exerciseTypeLabels = computed<Record<string, string>>(() => ({
+const exerciseTypeLabels = computed<Record<ExerciseType, string>>(() => ({
   text_response: t('common.exerciseTypes.text_response'),
   audio_recognition: t('common.exerciseTypes.audio_recognition'),
   image_recognition: t('common.exerciseTypes.image_recognition'),
@@ -54,9 +68,57 @@ const exerciseTypeLabels = computed<Record<string, string>>(() => ({
         </RouterLink>
       </div>
 
+      <CourseFilters
+        v-model:search-text="searchText"
+        v-model:levels="filters.levels"
+        v-model:skill-ids="filters.skillIds"
+        v-model:concept-ids="filters.conceptIds"
+        v-model:teacher="filters.teacher"
+        v-model:language="filters.language"
+        teacher-scope="exercises"
+        language-filter
+        :level-filter="false"
+        single-classification
+        :search-placeholder="t('exerciseListView.searchPlaceholder')"
+        :has-active-filters="hasActiveFilters"
+        @clear="clearFilters"
+      >
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+            {{ t('exerciseListView.typeFilterLabel') }}
+          </span>
+          <select
+            v-model="exerciseType"
+            data-test="exercise-type-filter"
+            class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm text-ink"
+          >
+            <option :value="null">{{ t('exerciseListView.anyType') }}</option>
+            <option v-for="(label, type) in exerciseTypeLabels" :key="type" :value="type">{{ label }}</option>
+          </select>
+        </label>
+      </CourseFilters>
+
       <StateLoading v-if="isLoading" data-test="loading" :noun="t('exerciseListView.loadingNoun')" />
 
       <StateError v-else-if="error" data-test="error" :message="t('exerciseListView.loadErrorMessage')" @retry="retry" />
+
+      <StateEmpty
+        v-else-if="exercises.length === 0 && hasActiveFilters"
+        data-test="no-matches"
+        :heading="t('exerciseListView.noMatchesHeading')"
+        :message="t('exerciseListView.noMatchesMessage')"
+      >
+        <template #action>
+          <button
+            type="button"
+            data-test="clear-filters"
+            class="text-sm font-semibold text-accent-text underline"
+            @click="clearFilters"
+          >
+            {{ t('courseFilters.clearFilters') }}
+          </button>
+        </template>
+      </StateEmpty>
 
       <StateEmpty
         v-else-if="exercises.length === 0"
@@ -79,8 +141,13 @@ const exerciseTypeLabels = computed<Record<string, string>>(() => ({
               data-test="exercise-row"
               class="flex items-center justify-between rounded-md border border-border bg-surface-raised px-4 py-3"
             >
-              <span class="font-semibold text-ink">{{ exercise.title }}</span>
-              <span class="text-sm text-ink-subtle">{{ exerciseTypeLabels[exercise.exercise_type] ?? exercise.exercise_type }}</span>
+              <span class="flex min-w-0 flex-col">
+                <span class="font-semibold text-ink">{{ exercise.title }}</span>
+                <span v-if="exercise.created_by" data-test="exercise-creator" class="text-xs text-ink-subtle">{{
+                  exercise.created_by.display_name
+                }}</span>
+              </span>
+              <span class="shrink-0 text-sm text-ink-subtle">{{ exerciseTypeLabels[exercise.exercise_type] ?? exercise.exercise_type }}</span>
             </RouterLink>
           </li>
         </ul>

@@ -1,7 +1,7 @@
 import { mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive } from 'vue'
+import { defineComponent, reactive } from 'vue'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -36,14 +36,38 @@ function mockMatchMedia(compact: boolean): void {
 
 import ExerciseListView from '@/features/teacher/views/ExerciseListView.vue'
 
+// The filter panel has its own spec; here it only needs to take the page's
+// filter state and show the page's own extra filters.
+const CourseFiltersStub = defineComponent({
+  name: 'CourseFilters',
+  props: {
+    hasActiveFilters: Boolean,
+    teacherScope: { type: String, default: null },
+    instrumentFilter: Boolean,
+    languageFilter: Boolean,
+    levelFilter: { type: Boolean, default: true },
+    singleClassification: Boolean,
+    searchPlaceholder: { type: String, default: undefined },
+    searchText: { type: String, default: '' },
+  },
+  emits: ['update:searchText', 'update:language', 'update:teacher', 'clear'],
+  template: '<div data-test="course-filters"><slot /></div>',
+})
+
 function mountView() {
   return mount(ExerciseListView, {
     global: {
       plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
+      stubs: { RouterLink: RouterLinkStub, CourseFilters: CourseFiltersStub },
     },
   })
 }
+
+function page(items: unknown[], total = items.length) {
+  return { data: { items, total, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } }
+}
+
+const flush = () => new Promise((r) => setTimeout(r, 0))
 
 describe('ExerciseListView', () => {
   beforeEach(() => {
@@ -146,5 +170,60 @@ describe('ExerciseListView', () => {
     expect(GET).toHaveBeenLastCalledWith('/exercises', { params: { query: { limit: 20, offset: 1 } } })
     expect(wrapper.findAll('[data-test="exercise-row"]')).toHaveLength(2)
     expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
+  })
+
+  it('offers search, language, creator and single skill and concept filters, but no level or instrument', async () => {
+    GET.mockResolvedValue(page([]))
+    const wrapper = mountView()
+    await flush()
+
+    const panel = wrapper.getComponent(CourseFiltersStub)
+    expect(panel.props()).toMatchObject({
+      teacherScope: 'exercises',
+      languageFilter: true,
+      instrumentFilter: false,
+      levelFilter: false,
+      singleClassification: true,
+      searchPlaceholder: 'Search exercises by title',
+    })
+  })
+
+  it('narrows the list to one exercise type', async () => {
+    GET.mockResolvedValue(page([]))
+    const wrapper = mountView()
+    await flush()
+
+    await wrapper.get('[data-test="exercise-type-filter"]').setValue('audio_selection')
+    await flush()
+
+    expect(GET).toHaveBeenLastCalledWith('/exercises', { params: { query: { limit: 20, offset: 0, exercise_type: 'audio_selection' } } })
+  })
+
+  it('offers to clear the filters when they match nothing', async () => {
+    GET.mockResolvedValue(page([]))
+    const wrapper = mountView()
+    await flush()
+    await wrapper.get('[data-test="exercise-type-filter"]').setValue('image_choice')
+    await flush()
+
+    expect(wrapper.find('[data-test="empty"]').exists()).toBe(false)
+    await wrapper.get('[data-test="no-matches"] [data-test="clear-filters"]').trigger('click')
+    await flush()
+
+    expect(GET).toHaveBeenLastCalledWith('/exercises', { params: { query: { limit: 20, offset: 0 } } })
+    expect(wrapper.get<HTMLSelectElement>('[data-test="exercise-type-filter"]').element.selectedIndex).toBe(0)
+  })
+
+  it("names each exercise's creator when one is recorded", async () => {
+    GET.mockResolvedValueOnce(page([
+      { exercise_id: 'e-1', title: 'Name the chord', exercise_type: 'text_response', created_by: { user_id: 'u-1', display_name: 'Bob Ferreira' } },
+      { exercise_id: 'e-2', title: 'Legacy drill', exercise_type: 'text_response' },
+    ]))
+    const wrapper = mountView()
+    await flush()
+
+    const rows = wrapper.findAll('[data-test="exercise-row"]')
+    expect(rows[0]!.get('[data-test="exercise-creator"]').text()).toBe('Bob Ferreira')
+    expect(rows[1]!.find('[data-test="exercise-creator"]').exists()).toBe(false)
   })
 })

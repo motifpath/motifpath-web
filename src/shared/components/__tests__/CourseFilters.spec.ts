@@ -92,6 +92,24 @@ describe('CourseFilters', () => {
     expect(wrapper.get(`[id="${labelId}"]`).text()).toBe('Filters')
   })
 
+  it('offers the level filter unless told the items have no level', async () => {
+    const withLevels = mountFilters()
+    const withoutLevels = mountFilters({ levelFilter: false })
+    await flushPromises()
+
+    expect(withLevels.find('[data-test="level-filter-beginner"]').exists()).toBe(true)
+    expect(withoutLevels.find('[data-test="level-filter-beginner"]').exists()).toBe(false)
+  })
+
+  it('lets one skill and one concept be picked when the list filters by a single one of each', async () => {
+    const multiple = mountFilters()
+    const single = mountFilters({ singleClassification: true })
+    await flushPromises()
+
+    expect(multiple.findAllComponents(SkillConceptTreePicker).map((p) => p.props('multiple'))).toEqual([true, true])
+    expect(single.findAllComponents(SkillConceptTreePicker).map((p) => p.props('multiple'))).toEqual([false, false])
+  })
+
   it('offers no instrument or language filter unless asked to', async () => {
     const wrapper = mountFilters()
     await flushPromises()

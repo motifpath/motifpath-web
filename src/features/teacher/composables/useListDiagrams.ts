@@ -13,6 +13,8 @@ export interface DiagramFilters {
   name?: string
   /** An exact root note, as spelled by the diagram's author. */
   rootNote?: string
+  /** A Language.code the diagram must have a name in. */
+  language?: string
 }
 
 /**
@@ -34,6 +36,7 @@ export function useListDiagrams(filters: () => DiagramFilters = () => ({})) {
           ...(f.conceptId ? { concept_id: f.conceptId } : {}),
           ...(f.name ? { name: f.name } : {}),
           ...(f.rootNote ? { root_note: f.rootNote } : {}),
+          ...(f.language ? { language: f.language } : {}),
         },
       },
     })
