@@ -81,12 +81,24 @@ export function deriveState(item: PracticeItem, evidence: Evidence[], now: Date)
   let fluency = 0
   let box = 0
   let due: number | null = null
-  ordered.forEach((e, i) => {
+  let counted = 0
+  // The best clean tempo (or change rate) claimed since the latest teacher review.
+  let edge: number | null = null
+  ordered.forEach((e) => {
     const t = Date.parse(e.occurred_at)
+    const measure = e.source === 'auto_graded' ? null : (e.bpm ?? e.changes_per_minute)
+    if (e.source === 'teacher_reviewed') edge = null
+    // The tempo ladder pushes every session to the student's edge: a take that isn't clean
+    // above the best clean tempo is exploring, not forgetting, so it doesn't count against them.
+    const exploring =
+      e.source === 'self_assessed' && e.rating !== 'clean' && measure !== null && edge !== null && measure > edge
+    if (e.source !== 'auto_graded' && e.rating === 'clean' && measure !== null) edge = Math.max(edge ?? 0, measure)
+    if (exploring) return
     const r = read(item, e)
     const w = SOURCE_WEIGHT[e.source]
-    accuracy = i === 0 ? r.accuracy : accuracy + w * (r.accuracy - accuracy)
-    fluency = i === 0 ? r.fluency : fluency + w * (r.fluency - fluency)
+    accuracy = counted === 0 ? r.accuracy : accuracy + w * (r.accuracy - accuracy)
+    fluency = counted === 0 ? r.fluency : fluency + w * (r.fluency - fluency)
+    counted++
     if (r.outcome === 'miss') box = 1
     else if (box === 0) box = 1
     else if (r.outcome === 'hit' && due !== null && t >= due) box = Math.min(MAX_BOX, box + 1)

@@ -190,6 +190,26 @@ describe('deriveState — self-assessed play-along', () => {
     expect(s.attempts).toBe(2)
   })
 
+  it('a struggle above the best clean tempo is exploring the edge, not a miss', () => {
+    const base = [self(0, 'clean', 100), self(1, 'clean', 100)]
+    const explored = deriveState(drill, [...base, self(1.01, 'struggled', 110)], new Date(T0 + 2 * DAY))
+    const clean = deriveState(drill, base, new Date(T0 + 2 * DAY))
+    expect(explored.box).toBe(clean.box)
+    expect(explored.accuracy).toBe(clean.accuracy)
+    expect(explored.attempts).toBe(3)
+  })
+
+  it('a struggle at or below the best clean tempo is a real miss', () => {
+    const s = deriveState(drill, [self(0, 'clean', 100), self(1, 'clean', 100), self(3, 'struggled', 95)], new Date(T0 + 3 * DAY))
+    expect(s.box).toBe(1)
+    expect(s.accuracy).toBeLessThan(1)
+  })
+
+  it('a teacher rating always counts, whatever the tempo', () => {
+    const s = deriveState(drill, [self(0, 'clean', 100), teacher(1, 'struggled', 110, false)], new Date(T0 + DAY))
+    expect(s.box).toBe(1)
+  })
+
   it('chord changes measure changes per minute against the target', () => {
     const e: SelfAssessedEvidence = { ...self(0, 'clean', null, 'changes'), changes_per_minute: 30 }
     const s = deriveState(changes, [e], new Date(T0))
