@@ -54,7 +54,6 @@ watch(
   { deep: true },
 )
 
-const pageLoadedAt = Date.now()
 const simulation = computed(() => simulate(state.archetype, { items, start: SIM_START, days: SIM_DAYS, seed: 1 }))
 const now = computed(() => new Date(SIM_START.getTime() + state.day * DAY_MS))
 const before = (iso: string, t: Date) => Date.parse(iso) <= t.getTime()
@@ -76,9 +75,14 @@ const activeNotes = computed(() =>
 
 const states = computed(() => deriveStates(items, evidence.value, now.value))
 
-/** The simulated "now" plus real seconds since the page loaded, so live events keep their order. */
+/**
+ * A timestamp for something done live. Screens only see evidence up to "now", so live events
+ * are stamped in the hour before it, one second apart, keeping the order they happened in.
+ */
+const LIVE_WINDOW_MS = 3_600_000
+let liveSeq = state.live.evidence.length + state.live.notes.length
 function clock(): string {
-  return new Date(now.value.getTime() + (Date.now() - pageLoadedAt)).toISOString()
+  return new Date(now.value.getTime() - LIVE_WINDOW_MS + (liveSeq++ % 3600) * 1000).toISOString()
 }
 
 let counter = 0
@@ -129,6 +133,7 @@ export function usePracticeSpike() {
       state.takes.push(take)
     },
     resetLive() {
+      liveSeq = 0
       state.live = { evidence: [], notes: [] }
       state.takes = []
     },

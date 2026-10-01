@@ -42,6 +42,8 @@ const CATEGORIES: Category[] = ['due', 'weak', 'new']
 
 const MAX_FOCUS_ITEMS = 3
 const APPLICATION_MIN_MINUTES = 10
+/** Shorter sessions skip the warm-up: it would take the whole time. */
+const WARM_UP_MIN_MINUTES = 5
 
 export function costSeconds(item: PracticeItem): number {
   switch (item.kind) {
@@ -135,10 +137,14 @@ export function composeSession(input: ComposeInput): Session {
     const repertoire = pool.filter((i) => i.kind === 'play_along' && i.purpose === 'repertoire')
     let budget = input.minutes * 60
 
-    const seenTechnique = technique.filter((i) => (states.get(i.item_key)?.attempts ?? 0) > 0)
+    // A warm-up is something easy: never what the teacher asked to work on.
+    const warmUpPool = technique.filter((i) => !isSuggested(i))
+    const seenTechnique = warmUpPool.filter((i) => (states.get(i.item_key)?.attempts ?? 0) > 0)
     const warmUp =
-      seenTechnique.sort((a, b) => states.get(b.item_key)!.fluency - states.get(a.item_key)!.fluency)[0] ??
-      technique[0]
+      input.minutes < WARM_UP_MIN_MINUTES
+        ? undefined
+        : (seenTechnique.sort((a, b) => states.get(b.item_key)!.fluency - states.get(a.item_key)!.fluency)[0] ??
+          warmUpPool[0])
     if (warmUp) {
       blocks.push({ kind: 'warm_up', entries: [{ item_key: warmUp.item_key, reason: 'warm_up' }] })
       budget -= costSeconds(warmUp)

@@ -181,11 +181,24 @@ describe('composeSession — instrument in hand', () => {
     ])
   })
 
+  it('3 minutes: no time for a warm-up — straight to the focus item', () => {
+    const s = composeSession(input({ items, states, instrument_in_hand: true, minutes: 3 }))
+    expect(s.blocks).toEqual([{ kind: 'focus', entries: [{ item_key: 'shaky', reason: 'weak' }] }])
+  })
+
   it('15 minutes: warm-up, focus, then applying it to music', () => {
     const s = composeSession(input({ items, states, instrument_in_hand: true, minutes: 15 }))
     expect(s.blocks.map((b) => b.kind)).toEqual(['warm_up', 'focus', 'application'])
     expect(s.blocks[2]!.entries).toEqual([{ item_key: 'riff', reason: 'application' }])
     expect(s.blocks[1]!.entries.map((e) => e.item_key)).toEqual(['shaky', 'fresh'])
+  })
+
+  it('never warms up on something the teacher flagged — that belongs in focus', () => {
+    const s = composeSession(
+      input({ items, states, instrument_in_hand: true, minutes: 5, teacher_notes: [note({ suggested_item_keys: ['known'] })] }),
+    )
+    expect(s.blocks[0]!.entries[0]!.item_key).not.toBe('known')
+    expect(s.blocks[1]!.entries[0]).toEqual({ item_key: 'known', reason: 'teacher_suggested' })
   })
 
   it('a skill the teacher flagged comes first in the focus block', () => {

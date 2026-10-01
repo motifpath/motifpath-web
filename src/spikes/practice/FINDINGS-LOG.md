@@ -37,3 +37,21 @@ Raw notes as they come up; the curated version goes to
 10. **Count-in belongs in the sequence, not a timer (U2).** iOS only starts audio inside the tap,
     so the count-in is rest steps prepended to the take, and loops are unrolled so a take ends on
     its own and goes straight to rating — no "stop" tap needed.
+11. **Verification is a manual teacher call (decided 2026-10-01).** No automatic rule promotes an
+    item to `verified`; the teacher's "I vouch for it" on a review is the only source.
+12. **A caught-up student runs dry (M6, product).** The improving archetype's 3-minute mind session
+    had 4 items: everything on the path was fresh. Needs a rule — "review ahead" (least-secure
+    not-due items) and/or "stretch" (the next skills on the path). Open for the PO.
+13. **A flagged item must not become the warm-up (M5).** The composer warmed up on the drill the
+    teacher had just flagged, because it was the most fluent. Warm-ups now exclude suggested items.
+14. **Short guitar sessions skip the warm-up (U1).** At 3 minutes the warm-up took the whole budget.
+15. **Live-timestamp bug in the spike's own plumbing.** Live evidence was stamped after "now" and
+    silently filtered out — the scripted walkthrough caught it; no effect on the model.
+
+## Scripted walkthrough (headless Chrome over CDP, fake camera)
+
+All loops click through end to end with no console errors: mind session → summary; guitar session
+(recorded warm-up take, rating, chord-change minute) → summary; take sent for review → teacher
+video review with timestamped comment, rating, needs-work skill and suggestions → home shows the
+note → next session's focus is "Suggested by your teacher"; overconfident and decaying archetypes
+on Progress; decaying at day 30 → 27 items fading, a 5-minute session of 26 due reviews.

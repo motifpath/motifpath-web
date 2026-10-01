@@ -15,8 +15,7 @@ type Screen = 'home' | 'session' | 'summary' | 'progress' | 'takes' | 'teacher'
 
 const spike = usePracticeSpike()
 const LINKABLE: Screen[] = ['home', 'progress', 'takes', 'teacher']
-const fromHash = window.location.hash.slice(1) as Screen
-const screen = ref<Screen>(LINKABLE.includes(fromHash) ? fromHash : 'home')
+const screen = ref<Screen>('home')
 watch(screen, (s) => {
   if (LINKABLE.includes(s)) history.replaceState(null, '', `#${s}`)
 })
@@ -37,8 +36,14 @@ function finished(keys: string[]) {
 }
 
 // `#run=mind-5` or `#run=guitar-15` starts a session straight away, for walkthroughs.
-const run = /^#run=(mind|guitar)-(\d+)$/.exec(window.location.hash)
-if (run) start(run[1] === 'guitar', Number(run[2]))
+function followHash() {
+  const run = /^#run=(mind|guitar)-(\d+)$/.exec(window.location.hash)
+  if (run) start(run[1] === 'guitar', Number(run[2]))
+  const linked = window.location.hash.slice(1) as Screen
+  if (LINKABLE.includes(linked)) screen.value = linked
+}
+followHash()
+window.addEventListener('hashchange', followHash)
 
 const tabs: { key: Screen; label: string }[] = [
   { key: 'home', label: 'Practice' },
