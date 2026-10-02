@@ -44,6 +44,30 @@
         "fluent": "Fluent",
         "retained": "Retained"
       }
+    },
+    "move": {
+      "title": "Move",
+      "root": "No parent — make it a root",
+      "inside": "Inside the node you’re moving",
+      "currentParent": "Already its parent",
+      "narrower": "Narrower than this node",
+      "confirm": "Move",
+      "summaryRoot": "Make {name} a root?",
+      "summaryAlone": "Move {name} under {parent}?",
+      "summaryOne": "Move {name} and its 1 descendant under {parent}?",
+      "summaryMany": "Move {name} and its {count} descendants under {parent}?"
+    },
+    "delete": {
+      "title": "Delete",
+      "blocked": "{name} can’t be deleted while these depend on it:",
+      "child": "Child: {name}",
+      "applies": "Applies {name}",
+      "appliedBy": "Applied by {name}",
+      "requires": "Requires {name}",
+      "requiredBy": "Required by {name}",
+      "close": "Close",
+      "confirmMessage": "Delete {name}? This can’t be undone.",
+      "confirm": "Delete"
     }
   }
 }

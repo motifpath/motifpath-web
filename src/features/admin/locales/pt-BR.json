@@ -44,6 +44,30 @@
         "fluent": "Fluente",
         "retained": "Retido"
       }
+    },
+    "move": {
+      "title": "Mover",
+      "root": "Sem pai — tornar uma raiz",
+      "inside": "Dentro do nó que você está movendo",
+      "currentParent": "Já é o pai",
+      "narrower": "Mais restrito que este nó",
+      "confirm": "Mover",
+      "summaryRoot": "Tornar {name} uma raiz?",
+      "summaryAlone": "Mover {name} para baixo de {parent}?",
+      "summaryOne": "Mover {name} e seu 1 descendente para baixo de {parent}?",
+      "summaryMany": "Mover {name} e seus {count} descendentes para baixo de {parent}?"
+    },
+    "delete": {
+      "title": "Excluir",
+      "blocked": "{name} não pode ser excluído enquanto estes dependem dele:",
+      "child": "Filho: {name}",
+      "applies": "Aplica {name}",
+      "appliedBy": "Aplicado por {name}",
+      "requires": "Requer {name}",
+      "requiredBy": "Requerido por {name}",
+      "close": "Fechar",
+      "confirmMessage": "Excluir {name}? Isso não pode ser desfeito.",
+      "confirm": "Excluir"
     }
   }
 }
