@@ -1,7 +1,13 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 
 import ChallengeConfigPanel from '@/features/teacher/components/ChallengeConfigPanel.vue'
+
+// The picker's instrument filter loads the instrument list when a picker opens.
+vi.mock('@/shared/composables/useListInstruments', () => ({
+  useListInstruments: () => ({ instruments: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
 
 const skillNodes = [{ id: 's-1', name: 'triad-shapes', parent_id: null }]
 const conceptNodes = [{ id: 'c-1', name: 'chord-theory', parent_id: null }]

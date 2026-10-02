@@ -73,6 +73,9 @@ vi.mock('@/shared/composables/useListKnowledgeNodes', () => ({
   }),
 }))
 
+vi.mock('@/shared/composables/useListKnowledgeEdges', () => ({
+  useListKnowledgeEdges: () => ({ edges: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
 vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => ({
     instruments: ref([

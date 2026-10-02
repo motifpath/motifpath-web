@@ -63,6 +63,9 @@ vi.mock('@/features/student/composables/useEnrollInLearningPath', () => ({
 vi.mock('@/shared/composables/useListKnowledgeNodes', () => ({
   useListKnowledgeNodes: () => ({ nodes: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
+vi.mock('@/shared/composables/useListKnowledgeEdges', () => ({
+  useListKnowledgeEdges: () => ({ edges: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
 vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => ({
     instruments: ref([{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]),
