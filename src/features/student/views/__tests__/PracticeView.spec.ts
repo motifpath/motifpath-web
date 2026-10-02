@@ -22,6 +22,7 @@ const textExercise: Exercise = {
   content_node_ids: [],
   remediation_targets: [],
   languages: [],
+  instrument_ids: [],
   created_at: '2026-09-01T00:00:00Z',
 }
 

@@ -36,14 +36,14 @@ vi.mock('@/features/teacher/composables/useLearningPathLibrary', () => ({
   useLearningPathLibrary: () => library,
 }))
 
-vi.mock('@/shared/composables/useListSkills', () => ({
-  useListSkills: () => ({ skills: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
-}))
-vi.mock('@/shared/composables/useListConcepts', () => ({
-  useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+vi.mock('@/shared/composables/useListKnowledgeNodes', () => ({
+  useListKnowledgeNodes: () => ({ nodes: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 vi.mock('@/shared/composables/useCourseCreators', () => ({
   useCourseCreators: () => ({ creators: ref([]), nameQuery: ref(''), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
+vi.mock('@/shared/composables/useListKnowledgeEdges', () => ({
+  useListKnowledgeEdges: () => ({ edges: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => ({

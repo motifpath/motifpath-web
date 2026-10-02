@@ -8,6 +8,8 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
+import { i18n } from '@/i18n'
 
 const instruments = [{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]
 
@@ -25,6 +27,12 @@ function mountFilters(props: Record<string, unknown> = {}, slots: Record<string,
   })
 }
 
+function pickerLabelled(wrapper: ReturnType<typeof mountFilters>, label: string) {
+  const picker = wrapper.findAllComponents(SkillConceptTreePicker).find((p) => p.props('label') === label)
+  if (!picker) throw new Error(`no ${label} picker`)
+  return picker
+}
+
 describe('CourseFilters', () => {
   beforeEach(() => {
     GET.mockReset()
@@ -35,14 +43,19 @@ describe('CourseFilters', () => {
 
   describe('skill picks made outside the picker', () => {
     const skills = [
-      { skill_id: 'chords', name: 'chords', parent_id: null },
-      { skill_id: 'triads', name: 'triads', parent_id: 'chords' },
-      { skill_id: 'arpeggios', name: 'arpeggios', parent_id: null },
+      knowledgeNode('chords'),
+      knowledgeNode('triads', { parent_id: 'chords' }),
+      knowledgeNode('sevenths', { parent_id: 'chords' }),
+      knowledgeNode('arpeggios'),
     ]
 
     beforeEach(() => {
-      GET.mockImplementation((path: string) =>
-        Promise.resolve({ data: path === '/skills' ? skills : [], error: undefined, response: { status: 200 } }),
+      GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+        Promise.resolve({
+          data: path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill' ? skills : [],
+          error: undefined,
+          response: { status: 200 },
+        }),
       )
     })
 
@@ -56,7 +69,7 @@ describe('CourseFilters', () => {
       const wrapper = mountFilters({ compact: true, hasActiveFilters: true, skillIds })
       await flushPromises()
       await wrapper.get('[data-test="advanced-filters"]').trigger('click')
-      return { wrapper, picker: wrapper.findAllComponents(SkillConceptTreePicker)[0]! }
+      return { wrapper, picker: pickerLabelled(wrapper, 'Skill') }
     }
 
     it('shows a skill filter the catalog started with as picked, and keeps it when another is picked', async () => {
@@ -66,6 +79,38 @@ describe('CourseFilters', () => {
       picker.vm.$emit('update:selectedIds', [...picker.props('selectedIds'), 'arpeggios'])
 
       expect(lastSkillIds(wrapper)).toEqual(expect.arrayContaining(['triads', 'arpeggios']))
+    })
+
+    it('says the skills failed to load, and loads them again on retry', async () => {
+      GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+        Promise.resolve(
+          path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+            ? { data: undefined, error: { message: 'boom' }, response: { status: 500 } }
+            : { data: [], error: undefined, response: { status: 200 } },
+        ),
+      )
+      const { picker } = await openSkillPicker([])
+      expect(picker.props('loadFailed')).toBe(true)
+
+      GET.mockClear()
+      picker.vm.$emit('retry')
+      await flushPromises()
+
+      expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+    })
+
+    it('names an applied skill filter in the UI language', async () => {
+      skills[1] = knowledgeNode('triads', { parent_id: 'chords', names: { en: 'Triads', pt_BR: 'Tríades' } })
+      i18n.global.locale.value = 'pt-BR'
+      try {
+        const wrapper = mountFilters({ compact: true, hasActiveFilters: true, skillIds: ['triads'] })
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="applied-filter-skill-triads"]').text()).toContain('Tríades')
+      } finally {
+        i18n.global.locale.value = 'en'
+        skills[1] = knowledgeNode('triads', { parent_id: 'chords' })
+      }
     })
 
     it('unpicks a skill whose applied-filter chip was removed, so the next pick does not bring it back', async () => {
@@ -79,6 +124,124 @@ describe('CourseFilters', () => {
       expect(picker.props('selectedIds')).not.toContain('triads')
       picker.vm.$emit('update:selectedIds', [...picker.props('selectedIds'), 'chords'])
       expect(lastSkillIds(wrapper)).not.toContain('triads')
+    })
+  })
+
+  it('asks for the concepts before the skills, in the filters and in the applied-filter pills', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve({
+        data:
+          path === '/knowledge-nodes'
+            ? init?.params?.query?.kind === 'skill'
+              ? [knowledgeNode('s-1', { names: { en: 'Bends' } })]
+              : [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Pitch' } })]
+            : [],
+        error: undefined,
+        response: { status: 200 },
+      }),
+    )
+    const wrapper = mountFilters({ compact: true, hasActiveFilters: true, skillIds: ['s-1'], conceptIds: ['c-1'] })
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-test^="applied-filter-"]').map((pill) => pill.attributes('data-test'))).toEqual([
+      'applied-filter-concept-c-1',
+      'applied-filter-skill-s-1',
+    ])
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
+    expect(wrapper.findAllComponents(SkillConceptTreePicker).map((p) => p.props('label'))).toEqual(['Concept', 'Skill'])
+  })
+
+  it('lists every skill to search through when no concept is picked', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string; type?: string } } }) =>
+      Promise.resolve({
+        data:
+          path === '/knowledge-nodes'
+            ? init?.params?.query?.kind === 'skill'
+              ? [knowledgeNode('s-1', { names: { en: 'Bends' } }), knowledgeNode('s-2', { names: { en: 'Slides' } })]
+              : [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Pitch' } })]
+            : path === '/knowledge-edges'
+              ? [{ edge_id: 'e-1', from_id: 's-1', to_id: 'c-1', type: 'applies', level: null }]
+              : [],
+        error: undefined,
+        response: { status: 200 },
+      }),
+    )
+    const wrapper = mountFilters({ compact: true })
+    await flushPromises()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
+
+    const skillPicker = pickerLabelled(wrapper, 'Skill')
+    await skillPicker.get('[data-test="tree-open-picker"]').trigger('click')
+    await flushPromises()
+
+    expect(skillPicker.findAll('[data-test="tree-node-name"]').map((name) => name.text())).toEqual(['Bends', 'Slides'])
+    await skillPicker.get('[data-test="tree-search"]').setValue('sli')
+    expect(skillPicker.findAll('[data-test="tree-node-name"]').map((name) => name.text())).toEqual(['Slides'])
+  })
+
+  it('suggests the skills that apply the picked concepts', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string; type?: string } } }) =>
+      Promise.resolve({
+        data:
+          path === '/knowledge-nodes'
+            ? init?.params?.query?.kind === 'skill'
+              ? [knowledgeNode('s-1')]
+              : [knowledgeNode('c-1', { kind: 'concept' })]
+            : path === '/knowledge-edges' && init?.params?.query?.type === 'applies'
+              ? [{ edge_id: 'e-1', from_id: 's-1', to_id: 'c-1', type: 'applies', level: null }]
+              : [],
+        error: undefined,
+        response: { status: 200 },
+      }),
+    )
+    const wrapper = mountFilters()
+    await flushPromises()
+
+    pickerLabelled(wrapper, 'Concept').vm.$emit('update:selectedIds', ['c-1'])
+    await flushPromises()
+
+    expect(pickerLabelled(wrapper, 'Skill').props('suggestedIds')).toEqual(['s-1'])
+  })
+
+  describe('a whole area picked', () => {
+    const skills = [
+      knowledgeNode('chords', { names: { en: 'Chords' } }),
+      knowledgeNode('triads', { names: { en: 'Triads' }, parent_id: 'chords' }),
+      knowledgeNode('sevenths', { names: { en: 'Sevenths' }, parent_id: 'chords' }),
+    ]
+
+    beforeEach(() => {
+      GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+        Promise.resolve({
+          data: path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill' ? skills : [],
+          error: undefined,
+          response: { status: 200 },
+        }),
+      )
+    })
+
+    it('filters by the area and everything under it', async () => {
+      const wrapper = mountFilters()
+      await flushPromises()
+
+      pickerLabelled(wrapper, 'Skill').vm.$emit('update:selectedIds', ['chords', 'triads', 'sevenths'])
+
+      expect(wrapper.emitted('update:skillIds')?.at(-1)).toEqual([['chords', 'triads', 'sevenths']])
+    })
+
+    it('shows the area as one pill that counts the rest, and clears it whole', async () => {
+      const wrapper = mountFilters({
+        compact: true,
+        hasActiveFilters: true,
+        skillIds: ['chords', 'triads', 'sevenths'],
+      })
+      await flushPromises()
+
+      const pills = wrapper.findAll('[data-test^="applied-filter-skill-"]')
+      expect(pills.map((pill) => pill.text())).toEqual(['Chords +2'])
+      await pills[0]!.trigger('click')
+
+      expect(wrapper.emitted('update:skillIds')?.at(-1)).toEqual([[]])
     })
   })
 

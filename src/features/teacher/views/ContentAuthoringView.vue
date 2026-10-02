@@ -23,12 +23,12 @@ import { useListExercises } from '@/features/teacher/composables/useListExercise
 import { useListExpandedContent } from '@/features/teacher/composables/useListExpandedContent'
 import { usePublishContentNode } from '@/features/teacher/composables/usePublishContentNode'
 import { useSaveChallenge } from '@/features/teacher/composables/useSaveChallenge'
-import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
+import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -65,11 +65,19 @@ const form = useContentNodeForm()
 const { createContentNode } = useCreateContentNode()
 const { updateContentNode } = useUpdateContentNode()
 
-const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
-  useSkillConceptCreation(form.skillIds, form.conceptIds, {
-    createSkillFailed: t('contentAuthoringView.createSkillFailed'),
-    createConceptFailed: t('contentAuthoringView.createConceptFailed'),
-  })
+const {
+  skillNodes,
+  conceptNodes,
+  skillsLoading,
+  conceptsLoading,
+  skillsError,
+  conceptsError,
+  retrySkills,
+  retryConcepts,
+  suggestedSkillIds,
+  suggestedConceptIds,
+  nodeName,
+} = useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds })
 
 const savedContentNodeId = ref('')
 const savedTeacherId = ref('')
@@ -245,9 +253,8 @@ const challengeInitial = computed<ChallengeModalInitial | null>(() => {
 const challengeSubjectName = computed(() => {
   const c = challenge.value
   if (!c) return ''
-  const skill = skills.value.find((s) => s.skill_id === c.subject_skill_id)
-  const concept = concepts.value.find((cn) => cn.concept_id === c.subject_concept_id)
-  return skill?.name ?? concept?.name ?? ''
+  const subjectId = c.subject_skill_id ?? c.subject_concept_id
+  return subjectId ? nodeName(subjectId) : ''
 })
 
 // Timed pop-ups only make sense once the node exists server-side, same as
@@ -463,6 +470,11 @@ async function onSaveChallenge({
         </span>
       </div>
 
+      <div class="flex flex-col gap-2">
+        <span class="text-sm font-semibold">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
+        <InstrumentPicker v-model="form.instrumentIds.value" />
+      </div>
+
       <div v-if="form.contentType.value === 'video'" class="flex flex-col gap-2">
         <label for="content-media-url" class="text-sm font-semibold">{{ t('contentAuthoringView.mediaUrlLabel') }}</label>
         <input
@@ -492,19 +504,19 @@ async function onSaveChallenge({
           v-model:skill-ids="form.skillIds.value"
           v-model:concept-ids="form.conceptIds.value"
           v-model:difficulty-level="form.difficultyLevel.value"
-          :skill-nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
-          :concept-nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+          :skill-nodes="skillNodes"
+          :concept-nodes="conceptNodes"
           :skills-loading="skillsLoading"
           :concepts-loading="conceptsLoading"
+          :skills-error="skillsError"
+          :concepts-error="conceptsError"
+          :instrument-ids="form.instrumentIds.value"
+          :suggested-skill-ids="suggestedSkillIds"
+          :suggested-concept-ids="suggestedConceptIds"
           :review-state="form.reviewState.value"
-          @create-skill="onCreateSkill"
-          @create-concept="onCreateConcept"
+          @retry-skills="retrySkills"
+          @retry-concepts="retryConcepts"
         />
-      </div>
-
-      <div class="flex flex-col gap-2 border-t border-border pt-4">
-        <span class="text-sm font-semibold">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
-        <InstrumentPicker v-model="form.instrumentIds.value" />
       </div>
 
       <div class="flex flex-col gap-2">
@@ -654,8 +666,8 @@ async function onSaveChallenge({
 
     <ChallengeModal
       :open="challengeModalOpen"
-      :skill-nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
-      :concept-nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+      :skill-nodes="skillNodes"
+      :concept-nodes="conceptNodes"
       :allowed-skill-ids="form.skillIds.value"
       :allowed-concept-ids="form.conceptIds.value"
       :exercise-pool="exercisePool"

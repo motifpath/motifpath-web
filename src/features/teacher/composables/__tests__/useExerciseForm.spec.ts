@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { useExerciseForm } from '@/features/teacher/composables/useExerciseForm'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 import type { components } from '@/api/generated/core-domain'
 
 type Exercise = components['schemas']['Exercise']
@@ -20,6 +21,7 @@ function exercise(overrides: Partial<Exercise>): Exercise {
     content_node_ids: [],
     remediation_targets: [],
     languages: [],
+    instrument_ids: [],
     created_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }
@@ -333,13 +335,14 @@ describe('useExerciseForm', () => {
         title: 'Name the chord',
         prompt: plainTextPrompt('Name this chord shape'),
         exercise_type: 'text_response',
-        skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+        skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
         concepts: [],
         options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         challenge_ids: [],
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -366,6 +369,7 @@ describe('useExerciseForm', () => {
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -391,6 +395,7 @@ describe('useExerciseForm', () => {
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -421,6 +426,7 @@ describe('useExerciseForm', () => {
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 

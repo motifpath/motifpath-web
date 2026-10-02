@@ -331,8 +331,8 @@ export function useExerciseForm() {
     title.value = exercise.title
     prompt.value = exercise.prompt
     exerciseType.value = exercise.exercise_type
-    skillIds.value = exercise.skills.map((s) => s.skill_id)
-    conceptIds.value = exercise.concepts.map((c) => c.concept_id)
+    skillIds.value = exercise.skills.map((s) => s.node_id)
+    conceptIds.value = exercise.concepts.map((c) => c.node_id)
     imageUrl.value = exercise.image_url ?? ''
     audioUrl.value = exercise.audio_url ?? ''
     stimulusDiagram.value = exercise.diagram_ref ?? null
