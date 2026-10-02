@@ -188,6 +188,35 @@ describe('useExerciseForm', () => {
     })
   })
 
+  describe('language codes', () => {
+    it('default to any language and travel on create and update', () => {
+      const form = useExerciseForm()
+      expect(form.languageCodes.value).toEqual(['any'])
+      expect(form.toCreateExerciseRequest().language_codes).toEqual(['any'])
+
+      form.languageCodes.value = ['pt_BR']
+
+      expect(form.toCreateExerciseRequest().language_codes).toEqual(['pt_BR'])
+      expect(form.toUpdateExerciseRequest().language_codes).toEqual(['pt_BR'])
+    })
+
+    it("load an existing exercise's languages, so saving an edit keeps them", () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', languages: [{ code: 'pt_BR', name: 'Portuguese' }] }))
+
+      expect(form.toUpdateExerciseRequest().language_codes).toEqual(['pt_BR'])
+    })
+
+    it('load an exercise stored without languages as any language, since the API rejects an empty set', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', languages: [] }))
+
+      expect(form.languageCodes.value).toEqual(['any'])
+    })
+  })
+
   describe('instrument ids', () => {
     it('default to every instrument (an empty list) and travel on create and update', () => {
       const form = useExerciseForm()

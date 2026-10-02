@@ -94,6 +94,7 @@
     "titlePlaceholder": "Untitled exercise",
     "titleHint": "Internal title — for the content library, not shown to students",
     "promptLabel": "Prompt shown to the student",
+    "languagesLabel": "Languages",
     "instrumentsLabel": "Instruments",
     "exerciseTypeLabel": "Exercise type",
     "typeLockedHint": "Type can't be changed after creation.",

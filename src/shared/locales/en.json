@@ -180,6 +180,9 @@
     "published": "Published",
     "retired": "Retired"
   },
+  "languageCodesPicker": {
+    "any": "Any language"
+  },
   "instrumentPicker": {
     "every": "Every instrument",
     "any": "Any instrument",

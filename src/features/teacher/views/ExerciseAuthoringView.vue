@@ -23,6 +23,7 @@ import { useStimulusDiagram } from '@/features/teacher/composables/useStimulusDi
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
+import LanguageCodesPicker from '@/shared/components/LanguageCodesPicker.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
@@ -402,6 +403,11 @@ async function save() {
         <div class="flex flex-col gap-2">
           <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.instrumentsLabel') }}</span>
           <InstrumentPicker v-model="form.instrumentIds.value" />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.languagesLabel') }}</span>
+          <LanguageCodesPicker v-model="form.languageCodes.value" />
         </div>
 
         <div

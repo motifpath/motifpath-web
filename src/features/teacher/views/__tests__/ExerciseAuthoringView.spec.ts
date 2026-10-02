@@ -423,6 +423,21 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['reading-tab', 'slap'])
   })
 
+  it('starts at any language and sends the languages picked', async () => {
+    POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] }, error: undefined, response: { status: 201 } })
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="language-any"]').attributes('aria-pressed')).toBe('true')
+
+    await fillMinimalTextResponse(wrapper)
+    await wrapper.get('[data-test="language-option-pt_BR"]').trigger('click')
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST.mock.calls[0]?.[1].body.language_codes).toEqual(['pt_BR'])
+  })
+
   it('starts at every instrument and sends the instruments picked', async () => {
     GET.mockImplementation((path: string) =>
       Promise.resolve({ data: path === '/instruments' ? instruments : [], error: undefined, response: { status: 200 } }),
@@ -931,6 +946,7 @@ describe('ExerciseAuthoringView', () => {
               challenge_ids: ['c-1'],
               content_node_ids: [],
               instrument_ids: [],
+              languages: [],
               created_at: '2026-01-01T00:00:00Z',
             },
             error: undefined,
@@ -973,6 +989,7 @@ options: [],
           challenge_ids: [],
           content_node_ids: [],
           instrument_ids: [],
+          languages: [],
           created_at: '2026-01-01T00:00:00Z',
         },
         error: undefined,
@@ -998,6 +1015,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
           challenge_ids: [],
           content_node_ids: [],
           instrument_ids: [],
+          languages: [],
           created_at: '2026-01-01T00:00:00Z',
         },
         error: undefined,
@@ -1032,6 +1050,42 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
       )
     })
 
+    it("keeps the exercise's languages when saving an edit", async () => {
+      GET.mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/exercises/{exercise_id}'
+            ? {
+                data: {
+                  exercise_id: 'e-1',
+                  title: 't',
+                  prompt: plainTextPrompt('p'),
+                  exercise_type: 'text_response',
+                  skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+                  concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'roots' } })],
+                  options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+                  challenge_ids: [],
+                  content_node_ids: [],
+                  instrument_ids: [],
+                  languages: [{ code: 'pt_BR', name: 'Portuguese' }],
+                  created_at: '2026-01-01T00:00:00Z',
+                },
+                error: undefined,
+                response: { status: 200 },
+              }
+            : { data: [], error: undefined, response: { status: 200 } },
+        ),
+      )
+      PUT.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] }, error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="language-option-pt_BR"]').attributes('aria-pressed')).toBe('true')
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(PUT.mock.calls[0]?.[1].body.language_codes).toEqual(['pt_BR'])
+    })
+
     it('shows an error state with retry when loading the exercise fails', async () => {
       let exerciseCallCount = 0
       GET.mockImplementation((path: string) => {
@@ -1052,6 +1106,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
               challenge_ids: [],
               content_node_ids: [],
               instrument_ids: [],
+              languages: [],
               created_at: '2026-01-01T00:00:00Z',
             },
             error: undefined,
@@ -1134,6 +1189,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         challenge_ids: [],
         content_node_ids: [],
         instrument_ids: [],
+        languages: [],
         created_at: '2026-01-01T00:00:00Z',
       })
       const wrapper = mountWithStubbedPickers()
@@ -1274,6 +1330,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         challenge_ids: [],
         content_node_ids: [],
         instrument_ids: [],
+        languages: [],
         created_at: '2026-01-01T00:00:00Z',
       })
       PUT.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 200 } })
