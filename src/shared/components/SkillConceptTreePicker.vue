@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronRight, Plus, SlidersHorizontal, X } from 'lucide-vue-next'
-import { computed, ref, useId } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 
 import KnowledgeInstrumentFilter from '@/shared/components/KnowledgeInstrumentFilter.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
@@ -128,6 +128,14 @@ const suggestedPickable = computed(() => {
   return props.nodes.filter((node) => ids.has(node.id) && allowed(node) && suits(node))
 })
 const suggestedPickableIds = computed(() => new Set(suggestedPickable.value.map((node) => node.id)))
+// With nothing left to suggest (e.g. the picks that fed the suggestions were
+// cleared) the toggle is hidden, so it must not keep narrowing the tree to nothing.
+watch(
+  () => suggestedPickable.value.length,
+  (count) => {
+    if (count === 0) suggestedOnly.value = false
+  },
+)
 
 const areas = computed(() =>
   props.nodes

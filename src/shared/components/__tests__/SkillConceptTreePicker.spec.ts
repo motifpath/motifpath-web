@@ -369,6 +369,35 @@ describe('SkillConceptTreePicker', () => {
       expect(wrapper.findAll('[data-test="tree-suggested-badge"]')).toHaveLength(1)
     })
 
+    it('lists every node again once the suggestions are gone, instead of an empty tree', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes, selectedIds: [], suggestedIds: ['child-1'] },
+      })
+      await open(wrapper)
+      await wrapper.get('[data-test="tree-suggested-only"]').trigger('click')
+
+      await wrapper.setProps({ suggestedIds: [] })
+
+      expect(wrapper.find('[data-test="tree-suggested-only"]').exists()).toBe(false)
+      expect(rowNames(wrapper)).toEqual(['chord-theory', 'rhythm'])
+      await wrapper.get('[data-test="tree-search"]').setValue('rhy')
+      expect(rowNames(wrapper)).toEqual(['rhythm'])
+    })
+
+    it('does not narrow to suggestions again when new ones arrive later', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes, selectedIds: [], suggestedIds: ['child-1'] },
+      })
+      await open(wrapper)
+      await wrapper.get('[data-test="tree-suggested-only"]').trigger('click')
+      await wrapper.setProps({ suggestedIds: [] })
+
+      await wrapper.setProps({ suggestedIds: ['root-2'] })
+
+      expect(wrapper.get('[data-test="tree-suggested-only"]').attributes('aria-pressed')).toBe('false')
+      expect(rowNames(wrapper)).toEqual(['chord-theory', 'rhythm'])
+    })
+
     it('offers no suggestions filter when there is nothing to suggest', async () => {
       const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Concept', nodes, selectedIds: [] } })
       await open(wrapper)

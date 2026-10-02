@@ -151,6 +151,34 @@ describe('CourseFilters', () => {
     expect(wrapper.findAllComponents(SkillConceptTreePicker).map((p) => p.props('label'))).toEqual(['Concept', 'Skill'])
   })
 
+  it('lists every skill to search through when no concept is picked', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string; type?: string } } }) =>
+      Promise.resolve({
+        data:
+          path === '/knowledge-nodes'
+            ? init?.params?.query?.kind === 'skill'
+              ? [knowledgeNode('s-1', { names: { en: 'Bends' } }), knowledgeNode('s-2', { names: { en: 'Slides' } })]
+              : [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Pitch' } })]
+            : path === '/knowledge-edges'
+              ? [{ edge_id: 'e-1', from_id: 's-1', to_id: 'c-1', type: 'applies', level: null }]
+              : [],
+        error: undefined,
+        response: { status: 200 },
+      }),
+    )
+    const wrapper = mountFilters({ compact: true })
+    await flushPromises()
+    await wrapper.get('[data-test="advanced-filters"]').trigger('click')
+
+    const skillPicker = pickerLabelled(wrapper, 'Skill')
+    await skillPicker.get('[data-test="tree-open-picker"]').trigger('click')
+    await flushPromises()
+
+    expect(skillPicker.findAll('[data-test="tree-node-name"]').map((name) => name.text())).toEqual(['Bends', 'Slides'])
+    await skillPicker.get('[data-test="tree-search"]').setValue('sli')
+    expect(skillPicker.findAll('[data-test="tree-node-name"]').map((name) => name.text())).toEqual(['Slides'])
+  })
+
   it('suggests the skills that apply the picked concepts', async () => {
     GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string; type?: string } } }) =>
       Promise.resolve({
