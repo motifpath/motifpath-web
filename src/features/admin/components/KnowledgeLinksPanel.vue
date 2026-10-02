@@ -26,8 +26,10 @@ const props = withDefaults(
     edges: KnowledgeEdge[]
     /** The server's reason for refusing the last change to each list. */
     errors?: { applies?: string; requires?: string }
+    /** Links with a change still being saved; they can't be changed again until it settles. */
+    busyEdgeIds?: string[]
   }>(),
-  { errors: () => ({}) },
+  { errors: () => ({}), busyEdgeIds: () => [] },
 )
 const emit = defineEmits<{
   addEdge: [request: CreateKnowledgeEdgeRequest]
@@ -235,6 +237,7 @@ const sections = computed(() => {
               v-if="section.editable"
               data-test="kmap-link-level"
               :value="link.edge.level ?? 'accurate'"
+              :disabled="busyEdgeIds.includes(link.edge.edge_id)"
               :aria-label="t('knowledgeMap.links.levelAriaLabel', { name: nameOf(link.otherId) })"
               class="rounded-md border border-border bg-surface-sunken px-2 py-1 text-xs"
               @change="onLevel(link.edge.edge_id, $event)"
@@ -249,7 +252,8 @@ const sections = computed(() => {
             v-if="section.editable"
             type="button"
             data-test="kmap-link-remove"
-            class="flex h-6 w-6 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken"
+            :disabled="busyEdgeIds.includes(link.edge.edge_id)"
+            class="flex h-6 w-6 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-50"
             :aria-label="t('knowledgeMap.links.removeAriaLabel', { name: nameOf(link.otherId) })"
             @click="emit('removeEdge', link.edge.edge_id)"
           >

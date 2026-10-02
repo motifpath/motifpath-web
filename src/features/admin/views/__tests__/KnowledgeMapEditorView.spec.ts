@@ -448,6 +448,25 @@ describe('KnowledgeMapEditorView', () => {
       })
     })
 
+    it('sends one removal when the admin double-clicks remove', async () => {
+      const wrapper = await mountEditor({ node: 'bends' })
+      let settle!: () => void
+      DELETE.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            settle = () => resolve({ data: undefined, error: undefined, response: { status: 204 } })
+          }),
+      )
+
+      const remove = wrapper.get('[data-test="kmap-links-applies"] [data-test="kmap-link-remove"]')
+      await remove.trigger('click')
+      await remove.trigger('click')
+      settle()
+      await flushPromises()
+
+      expect(DELETE).toHaveBeenCalledTimes(1)
+    })
+
     it("shows a refused link's reason under its list", async () => {
       const wrapper = await mountEditor({ node: 'bends' })
       DELETE.mockResolvedValueOnce(refused(404, 'knowledge edge not found'))

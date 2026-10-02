@@ -291,12 +291,26 @@ async function writeLink(type: 'applies' | 'requires', perform: () => Promise<Wr
 function addEdge(request: CreateKnowledgeEdgeRequest) {
   void writeLink(request.type, () => map.createEdge(request))
 }
+// A link with a change in flight takes no other change until it settles, so
+// a double-click never sends the same removal twice.
+const busyEdgeIds = ref<string[]>([])
+
+async function writeEdge(edgeId: string, type: 'applies' | 'requires', perform: () => Promise<WriteOutcome<unknown>>) {
+  if (busyEdgeIds.value.includes(edgeId)) return
+  busyEdgeIds.value = [...busyEdgeIds.value, edgeId]
+  try {
+    await writeLink(type, perform)
+  } finally {
+    busyEdgeIds.value = busyEdgeIds.value.filter((id) => id !== edgeId)
+  }
+}
+
 function changeLevel(edgeId: string, level: MasteryLevel) {
-  void writeLink('requires', () => map.updateEdgeLevel(edgeId, level))
+  void writeEdge(edgeId, 'requires', () => map.updateEdgeLevel(edgeId, level))
 }
 function removeEdge(edgeId: string) {
   const type = edges.value.find((edge) => edge.edge_id === edgeId)?.type ?? 'requires'
-  void writeLink(type, () => map.deleteEdge(edgeId))
+  void writeEdge(edgeId, type, () => map.deleteEdge(edgeId))
 }
 </script>
 
@@ -469,6 +483,7 @@ function removeEdge(edgeId: string) {
                 :nodes="nodes"
                 :edges="edges"
                 :errors="linkErrors"
+                :busy-edge-ids="busyEdgeIds"
                 @add-edge="addEdge"
                 @change-level="changeLevel"
                 @remove-edge="removeEdge"

@@ -42,7 +42,10 @@ const edges: KnowledgeEdge[] = [
   { edge_id: 'e-requires', from_id: 'vibrato', to_id: 'bends', type: 'requires', level: 'fluent' },
 ]
 
-async function mountPanel(nodeId: string, extra: Partial<{ edges: KnowledgeEdge[]; errors: { applies?: string; requires?: string } }> = {}) {
+async function mountPanel(
+  nodeId: string,
+  extra: Partial<{ edges: KnowledgeEdge[]; errors: { applies?: string; requires?: string }; busyEdgeIds: string[] }> = {},
+) {
   const wrapper = mount(KnowledgeLinksPanel, {
     props: { node: byId.get(nodeId)!, nodes, edges, ...extra },
     attachTo: document.body,
@@ -140,6 +143,16 @@ describe('KnowledgeLinksPanel', () => {
     await section(wrapper, 'requires').get('[data-test="kmap-link-level"]').setValue('retained')
 
     expect(wrapper.emitted('changeLevel')).toEqual([['e-requires', 'retained']])
+  })
+
+  it('locks a link while a change to it is being saved', async () => {
+    const wrapper = await mountPanel('vibrato', { busyEdgeIds: ['e-requires'] })
+
+    const row = section(wrapper, 'requires').get('[data-test="kmap-link-row"]')
+    expect(row.get('[data-test="kmap-link-level"]').attributes('disabled')).toBeDefined()
+    expect(row.get('[data-test="kmap-link-remove"]').attributes('disabled')).toBeDefined()
+    await row.get('[data-test="kmap-link-remove"]').trigger('click')
+    expect(wrapper.emitted('removeEdge')).toBeUndefined()
   })
 
   it('removes a link', async () => {
