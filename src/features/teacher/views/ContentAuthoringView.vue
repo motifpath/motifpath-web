@@ -77,7 +77,7 @@ const {
   suggestedSkillIds,
   suggestedConceptIds,
   nodeName,
-} = useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds })
+} = useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, {}, { refreshOnReturn: true })
 
 const savedContentNodeId = ref('')
 const savedTeacherId = ref('')
@@ -514,6 +514,7 @@ async function onSaveChallenge({
           :suggested-skill-ids="suggestedSkillIds"
           :suggested-concept-ids="suggestedConceptIds"
           :review-state="form.reviewState.value"
+          :can-create-nodes="currentUser.profile?.role === 'admin'"
           @retry-skills="retrySkills"
           @retry-concepts="retryConcepts"
         />

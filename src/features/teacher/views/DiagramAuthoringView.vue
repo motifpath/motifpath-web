@@ -107,7 +107,11 @@ const {
   suggestedSkillIds,
   suggestedConceptIds,
 } =
-  useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, { locale: editingLocale })
+  useKnowledgeTrees(
+    { skillIds: form.skillIds, conceptIds: form.conceptIds },
+    { locale: editingLocale },
+    { refreshOnReturn: true },
+  )
 // Classification must suit every instrument the diagram is for; before any are
 // toggled, that is the layout instrument alone.
 const classificationInstrumentIds = computed(() =>
@@ -696,6 +700,7 @@ async function saveAs(names: Record<string, string>) {
             :instrument-ids="classificationInstrumentIds"
             :suggested-ids="suggestedConceptIds"
             missing-hint
+            :create-kind="isAdmin ? 'concept' : null"
             @update:selected-ids="form.conceptIds.value = $event"
             @retry="retryConcepts"
           />
@@ -708,6 +713,7 @@ async function saveAs(names: Record<string, string>) {
             :instrument-ids="classificationInstrumentIds"
             :suggested-ids="suggestedSkillIds"
             missing-hint
+            :create-kind="isAdmin ? 'skill' : null"
             @update:selected-ids="form.skillIds.value = $event"
             @retry="retrySkills"
           />

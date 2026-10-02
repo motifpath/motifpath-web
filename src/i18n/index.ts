@@ -5,6 +5,7 @@ import sharedPtBr from '@/shared/locales/pt-BR.json'
 import type StudentMessageSchema from '@/features/student/locales/en.json'
 import type AuthMessageSchema from '@/features/auth/locales/en.json'
 import type TeacherMessageSchema from '@/features/teacher/locales/en.json'
+import type AdminMessageSchema from '@/features/admin/locales/en.json'
 
 /**
  * The canonical shape every locale's messages must match, derived from each
@@ -19,7 +20,8 @@ import type TeacherMessageSchema from '@/features/teacher/locales/en.json'
 export type MessageSchema = typeof sharedEn &
   typeof StudentMessageSchema &
   typeof AuthMessageSchema &
-  typeof TeacherMessageSchema
+  typeof TeacherMessageSchema &
+  typeof AdminMessageSchema
 
 declare module 'vue-i18n' {
   // Module augmentation requires an interface here — this mirrors vue-i18n's

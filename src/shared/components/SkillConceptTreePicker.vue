@@ -39,6 +39,11 @@ const props = withDefaults(
     suggestedIds?: string[]
     /** Shows a hint that missing nodes are added by the team, for authoring pickers. */
     missingHint?: boolean
+    /**
+     * Turns the hint into a link that opens the knowledge map on a new node of
+     * this kind, in a new tab — for viewers who may edit the map.
+     */
+    createKind?: 'skill' | 'concept' | null
   }>(),
   {
     multiple: true,
@@ -48,6 +53,7 @@ const props = withDefaults(
     instrumentIds: null,
     suggestedIds: () => [],
     missingHint: false,
+    createKind: null,
   },
 )
 const emit = defineEmits<{
@@ -504,7 +510,14 @@ function removeSelected(id: string) {
 
       <div class="flex items-center justify-between gap-3">
         <p v-if="missingHint && !loadFailed" data-test="tree-missing-hint" class="text-xs text-ink-subtle">
-          {{ t('skillConceptTreePicker.missingHint') }}
+          <RouterLink
+            v-if="createKind"
+            :to="{ name: 'admin-knowledge-map', query: { tree: createKind, new: createKind } }"
+            target="_blank"
+            class="font-semibold text-accent-text underline"
+            >{{ t('skillConceptTreePicker.missingHintCreate') }}</RouterLink
+          >
+          <template v-else>{{ t('skillConceptTreePicker.missingHint') }}</template>
         </p>
         <button
           type="button"

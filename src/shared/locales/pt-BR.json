@@ -8,7 +8,8 @@
     "paths": "Trilhas",
     "courses": "Cursos",
     "exercises": "Exercícios",
-    "diagrams": "Diagramas"
+    "diagrams": "Diagramas",
+    "knowledgeMap": "Mapa de conhecimento"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
@@ -125,6 +126,7 @@
     "empty": "Nenhum item encontrado.",
     "closeButton": "Concluir",
     "missingHint": "Falta algum? Peça à equipe.",
+    "missingHintCreate": "Falta algum? Adicione no mapa de conhecimento",
     "unsuitedNote": "Os itens em vermelho não são para os instrumentos deste conteúdo. Remova-os antes de salvar.",
     "loadFailed": "Não foi possível carregar a lista.",
     "retry": "Tentar novamente",

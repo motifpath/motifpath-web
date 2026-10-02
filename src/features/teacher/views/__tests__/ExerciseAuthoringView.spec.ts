@@ -356,6 +356,44 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(true)
   })
 
+  it("sends an admin to the knowledge map for a missing skill", async () => {
+    currentUser.profile.role = 'admin'
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+    const link = wrapper.get('[data-test="tree-missing-hint"]').getComponent(RouterLinkStub)
+    expect(link.props('to')).toEqual({ name: 'admin-knowledge-map', query: { tree: 'skill', new: 'skill' } })
+  })
+
+  it('offers a skill added in the knowledge map in another tab once the author comes back', async () => {
+    const skill = (node_id: string, en: string) => ({
+      node_id,
+      kind: 'skill',
+      key: node_id,
+      names: { en, pt_BR: en },
+      descriptions: null,
+      languages: ['en', 'pt_BR'],
+      parent_id: null,
+      instrument_ids: [],
+    })
+    let skills = [skill('s-1', 'Bends')]
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) =>
+      Promise.resolve({ data: isSkillsRequest(path, init) ? [...skills] : [], error: undefined, response: { status: 200 } }),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+
+    skills = [...skills, skill('s-2', 'Pre-bends')]
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+    expect(wrapper.text()).toContain('Pre-bends')
+    wrapper.unmount()
+  })
+
   it('lists skills for any instrument, since exercises are not matched to instruments yet', async () => {
     GET.mockImplementation((path: string, init?: KnowledgeQuery) =>
       Promise.resolve({

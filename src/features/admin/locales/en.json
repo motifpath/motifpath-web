@@ -1,0 +1,92 @@
+{
+  "knowledgeMap": {
+    "heading": "Knowledge map",
+    "form": {
+      "keyLabel": "Key",
+      "keyHint": "Suggested from the English name. It can't change after saving.",
+      "keyReadonlyNote": "Keys never change.",
+      "keyTaken": "This key is already in use.",
+      "keyInvalid": "Use lowercase letters, digits and single dashes, like pre-bends.",
+      "nameLabel": "Name — {language}",
+      "descriptionLabel": "Description — {language}",
+      "descriptionsIncomplete": "Write the description in every language, or leave all of them empty.",
+      "parentLabel": "Parent",
+      "noParent": "No parent — a root",
+      "changeParent": "Change",
+      "instrumentsLabel": "Instruments",
+      "instrumentsLimit": "A node is never wider than its parent, so only the instruments of {parent} are offered.",
+      "save": "Save",
+      "saving": "Saving…",
+      "discard": "Discard",
+      "cancel": "Cancel"
+    },
+    "tabs": {
+      "concept": "Concepts",
+      "skill": "Skills"
+    },
+    "links": {
+      "applies": "Applies",
+      "requires": "Requires",
+      "requiredBy": "Required by",
+      "appliedBy": "Applied by",
+      "add": "Add",
+      "none": "None yet.",
+      "addAppliesTitle": "Add a concept that {name} applies",
+      "addRequiresTitle": "Add something {name} requires",
+      "thisNode": "This node",
+      "alreadyLinked": "Already linked",
+      "loop": "{from} already requires {to} — this link would close a loop.",
+      "loopThrough": "{from} already requires {to} (through {via}) — this link would close a loop.",
+      "levelAriaLabel": "Level required of {name}",
+      "removeAriaLabel": "Remove the link to {name}",
+      "levels": {
+        "accurate": "Accurate",
+        "fluent": "Fluent",
+        "retained": "Retained"
+      }
+    },
+    "move": {
+      "title": "Move",
+      "root": "No parent — make it a root",
+      "inside": "Inside the node you’re moving",
+      "currentParent": "Already its parent",
+      "narrower": "Narrower than this node",
+      "confirm": "Move",
+      "summaryRoot": "Make {name} a root?",
+      "summaryAlone": "Move {name} under {parent}?",
+      "summaryOne": "Move {name} and its 1 descendant under {parent}?",
+      "summaryMany": "Move {name} and its {count} descendants under {parent}?"
+    },
+    "delete": {
+      "title": "Delete",
+      "blocked": "{name} can’t be deleted while these depend on it:",
+      "child": "Child: {name}",
+      "applies": "Applies {name}",
+      "appliedBy": "Applied by {name}",
+      "requires": "Requires {name}",
+      "requiredBy": "Required by {name}",
+      "close": "Close",
+      "confirmMessage": "Delete {name}? This can’t be undone.",
+      "confirm": "Delete"
+    },
+    "loadingNoun": "the knowledge map",
+    "loadFailed": "Couldn't load the knowledge map.",
+    "newSkill": "New skill",
+    "newConcept": "New concept",
+    "back": "All nodes",
+    "empty": "Pick a node, or create one.",
+    "missing": "This node no longer exists.",
+    "kindSkill": "Skill",
+    "kindConcept": "Concept",
+    "copyKey": "Copy the key",
+    "addChild": "Add child",
+    "moveButton": "Move…",
+    "deleteButton": "Delete…",
+    "chooseParent": "Choose the parent",
+    "saved": "Saved.",
+    "deleted": "{name} deleted.",
+    "saveFailed": "Couldn't save. Check your connection and try again.",
+    "discardTitle": "Discard your changes?",
+    "discardMessage": "What you changed in this node hasn't been saved."
+  }
+}

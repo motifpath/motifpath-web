@@ -92,6 +92,19 @@ describe('ClassificationFields', () => {
     expect(conceptPicker!.props()).toMatchObject({ instrumentIds: ['guitar'], suggestedIds: ['c-1'], missingHint: true })
   })
 
+  it('lets the pickers link to the knowledge map when the viewer may add nodes there', () => {
+    const props = { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner' as const, reviewState: null }
+
+    const teacher = mount(ClassificationFields, { props })
+    const admin = mount(ClassificationFields, { props: { ...props, canCreateNodes: true } })
+
+    expect(teacher.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('createKind'))).toEqual([null, null])
+    expect(admin.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('createKind'))).toEqual([
+      'concept',
+      'skill',
+    ])
+  })
+
   it('shows a tree that failed to load and asks for it again on retry', async () => {
     const wrapper = mount(ClassificationFields, {
       props: {

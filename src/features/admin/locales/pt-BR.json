@@ -1,0 +1,92 @@
+{
+  "knowledgeMap": {
+    "heading": "Mapa de conhecimento",
+    "form": {
+      "keyLabel": "Chave",
+      "keyHint": "Sugerida a partir do nome em inglês. Não pode mudar depois de salvar.",
+      "keyReadonlyNote": "Chaves nunca mudam.",
+      "keyTaken": "Esta chave já está em uso.",
+      "keyInvalid": "Use letras minúsculas, dígitos e hífens simples, como pre-bends.",
+      "nameLabel": "Nome — {language}",
+      "descriptionLabel": "Descrição — {language}",
+      "descriptionsIncomplete": "Escreva a descrição em todos os idiomas ou deixe todas em branco.",
+      "parentLabel": "Pai",
+      "noParent": "Sem pai — uma raiz",
+      "changeParent": "Alterar",
+      "instrumentsLabel": "Instrumentos",
+      "instrumentsLimit": "Um nó nunca é mais amplo que o pai, então só os instrumentos de {parent} são oferecidos.",
+      "save": "Salvar",
+      "saving": "Salvando…",
+      "discard": "Descartar",
+      "cancel": "Cancelar"
+    },
+    "tabs": {
+      "concept": "Conceitos",
+      "skill": "Habilidades"
+    },
+    "links": {
+      "applies": "Aplica",
+      "requires": "Requer",
+      "requiredBy": "Requerido por",
+      "appliedBy": "Aplicado por",
+      "add": "Adicionar",
+      "none": "Nenhum ainda.",
+      "addAppliesTitle": "Adicionar um conceito que {name} aplica",
+      "addRequiresTitle": "Adicionar algo que {name} requer",
+      "thisNode": "Este nó",
+      "alreadyLinked": "Já ligado",
+      "loop": "{from} já requer {to} — esta ligação fecharia um ciclo.",
+      "loopThrough": "{from} já requer {to} (passando por {via}) — esta ligação fecharia um ciclo.",
+      "levelAriaLabel": "Nível exigido de {name}",
+      "removeAriaLabel": "Remover a ligação com {name}",
+      "levels": {
+        "accurate": "Preciso",
+        "fluent": "Fluente",
+        "retained": "Retido"
+      }
+    },
+    "move": {
+      "title": "Mover",
+      "root": "Sem pai — tornar uma raiz",
+      "inside": "Dentro do nó que você está movendo",
+      "currentParent": "Já é o pai",
+      "narrower": "Mais restrito que este nó",
+      "confirm": "Mover",
+      "summaryRoot": "Tornar {name} uma raiz?",
+      "summaryAlone": "Mover {name} para baixo de {parent}?",
+      "summaryOne": "Mover {name} e seu 1 descendente para baixo de {parent}?",
+      "summaryMany": "Mover {name} e seus {count} descendentes para baixo de {parent}?"
+    },
+    "delete": {
+      "title": "Excluir",
+      "blocked": "{name} não pode ser excluído enquanto estes dependem dele:",
+      "child": "Filho: {name}",
+      "applies": "Aplica {name}",
+      "appliedBy": "Aplicado por {name}",
+      "requires": "Requer {name}",
+      "requiredBy": "Requerido por {name}",
+      "close": "Fechar",
+      "confirmMessage": "Excluir {name}? Isso não pode ser desfeito.",
+      "confirm": "Excluir"
+    },
+    "loadingNoun": "o mapa de conhecimento",
+    "loadFailed": "Não foi possível carregar o mapa de conhecimento.",
+    "newSkill": "Nova habilidade",
+    "newConcept": "Novo conceito",
+    "back": "Todos os nós",
+    "empty": "Escolha um nó ou crie um.",
+    "missing": "Este nó não existe mais.",
+    "kindSkill": "Habilidade",
+    "kindConcept": "Conceito",
+    "copyKey": "Copiar a chave",
+    "addChild": "Adicionar filho",
+    "moveButton": "Mover…",
+    "deleteButton": "Excluir…",
+    "chooseParent": "Escolha o pai",
+    "saved": "Salvo.",
+    "deleted": "{name} excluído.",
+    "saveFailed": "Não foi possível salvar. Verifique sua conexão e tente novamente.",
+    "discardTitle": "Descartar suas alterações?",
+    "discardMessage": "O que você alterou neste nó não foi salvo."
+  }
+}

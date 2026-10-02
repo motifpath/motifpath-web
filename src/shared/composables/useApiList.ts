@@ -39,7 +39,20 @@ export function useApiList<TItem, TArgs extends unknown[] = []>(
     isLoading.value = false
   }
 
+  /**
+   * Loads again without showing a loading state, keeping the current items
+   * when the request fails — for picking up changes made elsewhere while the
+   * list stays on screen.
+   */
+  async function refresh() {
+    const result = await perform(coreApi, ...args)
+    if (result.data && !result.error) {
+      items.value = result.data as typeof items.value
+      error.value = false
+    }
+  }
+
   void load()
 
-  return { items, isLoading, error, retry: load }
+  return { items, isLoading, error, retry: load, refresh }
 }

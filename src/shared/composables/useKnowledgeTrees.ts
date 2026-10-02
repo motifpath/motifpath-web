@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue'
+import { computed, getCurrentScope, onScopeDispose, type Ref } from 'vue'
 
 import { toApiLanguageCode } from '@/i18n'
 import { useListKnowledgeEdges } from '@/shared/composables/useListKnowledgeEdges'
@@ -12,10 +12,15 @@ import { appliesSuggestions, toTreeNodes, type TreeNode } from '@/shared/utils/s
  * the form's picked skills and concepts, it also loads the applies edges and
  * suggests the concepts the picked skills apply and the skills that apply the
  * picked concepts.
+ *
+ * With `refreshOnReturn`, the trees reload quietly whenever the viewer comes
+ * back to the page — for authoring screens, whose missing nodes an admin adds
+ * in the knowledge map in another tab.
  */
 export function useKnowledgeTrees(
   picks?: { skillIds: Ref<string[]>; conceptIds: Ref<string[]> },
   override: LocaleOverride = {},
+  options: { refreshOnReturn?: boolean } = {},
 ) {
   const locale = useScopedLocale(override)
   const {
@@ -23,13 +28,38 @@ export function useKnowledgeTrees(
     isLoading: skillsLoading,
     error: skillsError,
     retry: retrySkills,
+    refresh: refreshSkills,
   } = useListKnowledgeNodes('skill')
   const {
     nodes: concepts,
     isLoading: conceptsLoading,
     error: conceptsError,
     retry: retryConcepts,
+    refresh: refreshConcepts,
   } = useListKnowledgeNodes('concept')
+
+  // A return to the tab usually fires both focus and visibilitychange; one
+  // reload in flight covers both.
+  let refreshing = false
+  async function refreshOnReturn() {
+    if (refreshing || document.visibilityState === 'hidden') return
+    refreshing = true
+    try {
+      await Promise.all([refreshSkills(), refreshConcepts()])
+    } finally {
+      refreshing = false
+    }
+  }
+  if (options.refreshOnReturn) {
+    window.addEventListener('focus', refreshOnReturn)
+    document.addEventListener('visibilitychange', refreshOnReturn)
+    if (getCurrentScope()) {
+      onScopeDispose(() => {
+        window.removeEventListener('focus', refreshOnReturn)
+        document.removeEventListener('visibilitychange', refreshOnReturn)
+      })
+    }
+  }
   const applies = picks ? useListKnowledgeEdges('applies').edges : null
 
   const languageCode = computed(() => toApiLanguageCode(locale.value))
