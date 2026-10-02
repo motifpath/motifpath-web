@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, Search, SlidersHorizontal, X } from 'lucide-vue-next'
-import { computed, ref, useId, watch } from 'vue'
+import { computed, ref, useId, watch, type Ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
@@ -15,7 +15,7 @@ import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { languageLabelKey } from '@/shared/utils/languageLabels'
 import { DIFFICULTY_LEVELS } from '@/shared/utils/levels'
-import { ancestorIds, mostSpecificIds, type TreeNode } from '@/shared/utils/skillConceptTree'
+import { ancestorIds, descendantIds, filterIds, selectionSummary, type TreeNode } from '@/shared/utils/skillConceptTree'
 
 type CourseLevel = components['schemas']['CourseCatalogEntry']['level']
 type UserRef = components['schemas']['UserRef']
@@ -64,6 +64,8 @@ const { instrumentsLabel } = useInstrumentNames()
 const advancedOpen = ref(false)
 const advancedTitleId = useId()
 
+const pickedSkillIds = ref<string[]>([])
+const pickedConceptIds = ref<string[]>([])
 const {
   skillNodes,
   conceptNodes,
@@ -73,28 +75,30 @@ const {
   conceptsError,
   retrySkills,
   retryConcepts,
-} = useKnowledgeTrees()
+  suggestedSkillIds,
+  suggestedConceptIds,
+} = useKnowledgeTrees({ skillIds: pickedSkillIds, conceptIds: pickedConceptIds })
 
-// The picker keeps a node's ancestors selected alongside it; the filter only
-// sends the most specific picks (see mostSpecificIds), but the picker keeps
-// showing the full selection that was made. When the filter changes from
-// outside the picker (restored, cleared, or a chip removed), the picks are
-// rebuilt from it, so the picker never shows or re-sends a filter that is gone.
-function picksFor(nodes: TreeNode[], picked: string[], filterIds: string[]): string[] {
-  const fromPicker = mostSpecificIds(nodes, picked)
-  if (fromPicker.length === filterIds.length && fromPicker.every((id) => filterIds.includes(id))) return picked
+// The picker keeps a node's ancestors selected alongside it; the filter sends
+// only what was meant (see filterIds): a node picked with its whole subtree
+// filters by all of it, a parent picked only along with a child is left out.
+// The picker keeps showing the full selection that was made. When the filter
+// changes from outside the picker (restored, cleared, or a chip removed), the
+// picks are rebuilt from it, so the picker never shows or re-sends a filter
+// that is gone.
+function picksFor(nodes: TreeNode[], picked: string[], ids: string[]): string[] {
+  const fromPicker = filterIds(nodes, picked)
+  if (fromPicker.length === ids.length && fromPicker.every((id) => ids.includes(id))) return picked
   const byId = new Map(nodes.map((n) => [n.id, n]))
   return Array.from(
     new Set(
-      filterIds.flatMap((id) => {
+      ids.flatMap((id) => {
         const node = byId.get(id)
         return node ? [...ancestorIds(nodes, node), id] : [id]
       }),
     ),
   )
 }
-const pickedSkillIds = ref<string[]>([])
-const pickedConceptIds = ref<string[]>([])
 watch(
   skillIds,
   (ids) => (pickedSkillIds.value = picksFor(skillNodes.value, pickedSkillIds.value, ids)),
@@ -107,11 +111,11 @@ watch(
 )
 function onSkillsPicked(ids: string[]) {
   pickedSkillIds.value = ids
-  skillIds.value = mostSpecificIds(skillNodes.value, ids)
+  skillIds.value = filterIds(skillNodes.value, ids)
 }
 function onConceptsPicked(ids: string[]) {
   pickedConceptIds.value = ids
-  conceptIds.value = mostSpecificIds(conceptNodes.value, ids)
+  conceptIds.value = filterIds(conceptNodes.value, ids)
 }
 
 function toggleLevel(level: CourseLevel) {
@@ -123,6 +127,21 @@ function toggleLevel(level: CourseLevel) {
 const pickerColumns = computed(() => (props.teacherScope ? 'sm:grid-cols-3' : 'sm:grid-cols-2'))
 
 type AppliedFilter = { key: string; label: string; clear: () => void }
+
+/** One pill per picked node, a whole area as one pill counting the rest; clearing a pill clears its area. */
+function classificationFilters(kind: 'skill' | 'concept', nodes: TreeNode[], ids: Ref<string[]>): AppliedFilter[] {
+  return selectionSummary(nodes, ids.value).map(({ id, more }) => {
+    const name = nodes.find((node) => node.id === id)?.name ?? '…'
+    return {
+      key: `${kind}-${id}`,
+      label: more > 0 ? `${name} +${more}` : name,
+      clear: () => {
+        const cleared = new Set([id, ...descendantIds(nodes, id)])
+        ids.value = ids.value.filter((other) => !cleared.has(other))
+      },
+    }
+  })
+}
 
 const appliedFilters = computed<AppliedFilter[]>(() => {
   const filters: AppliedFilter[] = levels.value.map((level) => ({
@@ -153,20 +172,8 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
       clear: () => (language.value = null),
     })
   }
-  for (const skillId of skillIds.value) {
-    filters.push({
-      key: `skill-${skillId}`,
-      label: skillNodes.value.find((skill) => skill.id === skillId)?.name ?? '…',
-      clear: () => (skillIds.value = skillIds.value.filter((id) => id !== skillId)),
-    })
-  }
-  for (const conceptId of conceptIds.value) {
-    filters.push({
-      key: `concept-${conceptId}`,
-      label: conceptNodes.value.find((concept) => concept.id === conceptId)?.name ?? '…',
-      clear: () => (conceptIds.value = conceptIds.value.filter((id) => id !== conceptId)),
-    })
-  }
+  filters.push(...classificationFilters('concept', conceptNodes.value, conceptIds))
+  filters.push(...classificationFilters('skill', skillNodes.value, skillIds))
 
   return filters
 })
@@ -273,24 +280,26 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
         <div class="grid gap-4" :class="pickerColumns">
           <TeacherFilterPicker v-if="teacherScope" v-model="teacher" :scope="teacherScope" />
           <SkillConceptTreePicker
-            :label="t('courseFilters.skillFilterLabel')"
-            :nodes="skillNodes"
-            :selected-ids="pickedSkillIds"
-            :is-loading="skillsLoading"
-            :load-failed="skillsError"
-            :multiple="!singleClassification"
-            @update:selected-ids="onSkillsPicked"
-            @retry="retrySkills"
-          />
-          <SkillConceptTreePicker
             :label="t('courseFilters.conceptFilterLabel')"
             :nodes="conceptNodes"
             :selected-ids="pickedConceptIds"
             :is-loading="conceptsLoading"
+            :suggested-ids="suggestedConceptIds"
             :load-failed="conceptsError"
             :multiple="!singleClassification"
             @update:selected-ids="onConceptsPicked"
             @retry="retryConcepts"
+          />
+          <SkillConceptTreePicker
+            :label="t('courseFilters.skillFilterLabel')"
+            :nodes="skillNodes"
+            :selected-ids="pickedSkillIds"
+            :is-loading="skillsLoading"
+            :suggested-ids="suggestedSkillIds"
+            :load-failed="skillsError"
+            :multiple="!singleClassification"
+            @update:selected-ids="onSkillsPicked"
+            @retry="retrySkills"
           />
         </div>
       </div>
@@ -345,24 +354,26 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
     <div class="grid gap-4" :class="pickerColumns">
       <TeacherFilterPicker v-if="teacherScope" v-model="teacher" :scope="teacherScope" />
       <SkillConceptTreePicker
-        :label="t('courseFilters.skillFilterLabel')"
-        :nodes="skillNodes"
-        :selected-ids="pickedSkillIds"
-        :is-loading="skillsLoading"
-        :load-failed="skillsError"
-        :multiple="!singleClassification"
-        @update:selected-ids="onSkillsPicked"
-        @retry="retrySkills"
-      />
-      <SkillConceptTreePicker
         :label="t('courseFilters.conceptFilterLabel')"
         :nodes="conceptNodes"
         :selected-ids="pickedConceptIds"
         :is-loading="conceptsLoading"
+        :suggested-ids="suggestedConceptIds"
         :load-failed="conceptsError"
         :multiple="!singleClassification"
         @update:selected-ids="onConceptsPicked"
         @retry="retryConcepts"
+      />
+      <SkillConceptTreePicker
+        :label="t('courseFilters.skillFilterLabel')"
+        :nodes="skillNodes"
+        :selected-ids="pickedSkillIds"
+        :is-loading="skillsLoading"
+        :suggested-ids="suggestedSkillIds"
+        :load-failed="skillsError"
+        :multiple="!singleClassification"
+        @update:selected-ids="onSkillsPicked"
+        @retry="retrySkills"
       />
     </div>
 

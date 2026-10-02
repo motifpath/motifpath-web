@@ -62,6 +62,7 @@ vi.mock('@/features/student/composables/useEnrollInCourse', () => ({
 const skills = ref([
   knowledgeNode('chords', { names: { en: 'chords' } }),
   knowledgeNode('triads', { names: { en: 'triads' }, parent_id: 'chords' }),
+  knowledgeNode('sevenths', { names: { en: 'sevenths' }, parent_id: 'chords' }),
 ])
 vi.mock('@/shared/composables/useListKnowledgeNodes', () => ({
   useListKnowledgeNodes: (kind: string) => ({
@@ -379,7 +380,9 @@ describe('CourseCatalogView', () => {
   it('filters by the most specific skills picked, not their ancestors too', async () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="advanced-filters"]').trigger('click')
-    const picker = wrapper.findAllComponents({ name: 'SkillConceptTreePicker' })[0]!
+    const picker = wrapper
+      .findAllComponents({ name: 'SkillConceptTreePicker' })
+      .find((candidate) => candidate.props('label') === 'Skill')!
 
     picker.vm.$emit('update:selectedIds', ['chords', 'triads'])
     await flushPromises()
