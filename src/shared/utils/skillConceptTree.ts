@@ -45,7 +45,11 @@ export function suitsInstruments(node: TreeNode, contentInstrumentIds: string[])
  * skills apply, or the skills that apply the picked concepts. Suggestions only —
  * applies never restricts what may be picked.
  */
-export function appliesSuggestions(edges: KnowledgeEdge[], pickedIds: string[], suggest: 'skills' | 'concepts'): string[] {
+export function appliesSuggestions(
+  edges: KnowledgeEdge[],
+  pickedIds: string[],
+  suggest: 'skills' | 'concepts',
+): string[] {
   const picked = new Set(pickedIds)
   const ids = edges
     .filter((edge) => edge.type === 'applies')
@@ -89,4 +93,73 @@ export function mostSpecificIds(nodes: TreeNode[], ids: string[]): string[] {
     }),
   )
   return ids.filter((id) => !coveredAncestors.has(id))
+}
+
+export interface TreeRow {
+  node: TreeNode
+  depth: number
+  hasChildren: boolean
+  expanded: boolean
+  /** True when the row matched the active search or filter; false for an ancestor shown for context. */
+  matched: boolean
+}
+
+/**
+ * The rows of a tree view, depth-first with siblings sorted by name. Only nodes
+ * passing `include` appear; a node whose parent is excluded is listed as a root.
+ * Without `match`, a node's children show only when it is in `expandedIds`.
+ * With `match`, the matching nodes show with all their ancestors, fully expanded.
+ */
+export function treeRows(
+  nodes: TreeNode[],
+  options: {
+    include: (node: TreeNode) => boolean
+    match: ((node: TreeNode) => boolean) | null
+    expandedIds: Set<string>
+  },
+): TreeRow[] {
+  const included = nodes.filter(options.include)
+  const { match } = options
+
+  let shown = included
+  const matchedIds = new Set<string>()
+  if (match) {
+    const keep = new Set<string>()
+    for (const node of included) {
+      if (!match(node)) continue
+      matchedIds.add(node.id)
+      keep.add(node.id)
+      for (const id of ancestorIds(included, node)) keep.add(id)
+    }
+    shown = included.filter((n) => keep.has(n.id))
+  }
+
+  const shownIds = new Set(shown.map((n) => n.id))
+  const parentOf = (node: TreeNode) =>
+    node.parent_id && shownIds.has(node.parent_id) ? node.parent_id : null
+  const children = new Map<string | null, TreeNode[]>()
+  for (const node of shown) {
+    const siblings = children.get(parentOf(node)) ?? []
+    siblings.push(node)
+    children.set(parentOf(node), siblings)
+  }
+  for (const siblings of children.values()) siblings.sort((a, b) => a.name.localeCompare(b.name))
+
+  const rows: TreeRow[] = []
+  function visit(parentId: string | null, depth: number) {
+    for (const node of children.get(parentId) ?? []) {
+      const hasChildren = children.has(node.id)
+      const expanded = hasChildren && (match !== null || options.expandedIds.has(node.id))
+      rows.push({
+        node,
+        depth,
+        hasChildren,
+        expanded,
+        matched: match === null || matchedIds.has(node.id),
+      })
+      if (expanded) visit(node.id, depth + 1)
+    }
+  }
+  visit(null, 0)
+  return rows
 }

@@ -7,6 +7,7 @@ import {
   mostSpecificIds,
   suitsInstruments,
   toTreeNodes,
+  treeRows,
 } from '@/shared/utils/skillConceptTree'
 import { knowledgeNode as fixture } from '@/shared/testUtils/knowledgeNode'
 import type { components } from '@/api/generated/core-domain'
@@ -139,5 +140,46 @@ describe('appliesSuggestions', () => {
   it('ignores requires edges', () => {
     const requires: KnowledgeEdge = { edge_id: 'e-4', from_id: 'skill-3', to_id: 'concept-3', type: 'requires', level: 'fluent' }
     expect(appliesSuggestions([requires], ['skill-3'], 'concepts')).toEqual([])
+  })
+})
+
+describe('treeRows', () => {
+  const tree = [
+    { id: 'tech', name: 'Technique', parent_id: null },
+    { id: 'bends', name: 'Bends', parent_id: 'tech' },
+    { id: 'half', name: 'Half-step bend', parent_id: 'bends' },
+    { id: 'alt', name: 'Alternate picking', parent_id: 'tech' },
+    { id: 'rhythm', name: 'Rhythm', parent_id: null },
+  ]
+  const all = () => true
+  const rowsOf = (rows: ReturnType<typeof treeRows>) => rows.map((r) => `${'  '.repeat(r.depth)}${r.node.name}`)
+
+  it('lists the roots by name, with collapsed children hidden', () => {
+    const rows = treeRows(tree, { include: all, match: null, expandedIds: new Set() })
+
+    expect(rowsOf(rows)).toEqual(['Rhythm', 'Technique'])
+    expect(rows.map((r) => [r.hasChildren, r.expanded])).toEqual([
+      [false, false],
+      [true, false],
+    ])
+  })
+
+  it('shows the children of an expanded node, sorted by name, one level deeper', () => {
+    const rows = treeRows(tree, { include: all, match: null, expandedIds: new Set(['tech']) })
+
+    expect(rowsOf(rows)).toEqual(['Rhythm', 'Technique', '  Alternate picking', '  Bends'])
+  })
+
+  it('shows every match with its ancestors, all expanded, when matching', () => {
+    const rows = treeRows(tree, { include: all, match: (n) => n.id === 'half', expandedIds: new Set() })
+
+    expect(rowsOf(rows)).toEqual(['Technique', '  Bends', '    Half-step bend'])
+    expect(rows.map((r) => r.matched)).toEqual([false, false, true])
+  })
+
+  it('leaves out excluded nodes, and lists a node whose parent is excluded as a root', () => {
+    const rows = treeRows(tree, { include: (n) => n.id !== 'tech', match: null, expandedIds: new Set(['bends']) })
+
+    expect(rowsOf(rows)).toEqual(['Alternate picking', 'Bends', '  Half-step bend', 'Rhythm'])
   })
 })
