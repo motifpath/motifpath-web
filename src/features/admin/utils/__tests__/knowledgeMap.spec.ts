@@ -92,14 +92,12 @@ describe('requiresChain', () => {
 
 describe('refusalText', () => {
   it("is the server's message", () => {
-    expect(refusalText({ ok: false, status: 409, message: 'Would create a cycle', fields: [] })).toBe('Would create a cycle')
+    expect(refusalText({ message: 'Would create a cycle', fields: [] })).toBe('Would create a cycle')
   })
 
   it('adds the reason of each failing field', () => {
     expect(
       refusalText({
-        ok: false,
-        status: 400,
         message: 'Request failed validation',
         fields: [
           { field: '/names', reason: 'missing pt_BR' },
