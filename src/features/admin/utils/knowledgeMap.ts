@@ -61,3 +61,11 @@ export function requiresChain(edges: KnowledgeEdge[], fromId: string, toId: stri
   }
   return null
 }
+
+type FieldError = components['schemas']['ValidationError']['errors'][number]
+
+/** A refused write as one line: the server's message, then each failing field's reason. */
+export function refusalText(refusal: { message: string; fields: FieldError[] }): string {
+  if (refusal.fields.length === 0) return refusal.message
+  return `${refusal.message}: ${refusal.fields.map((field) => field.reason).join('; ')}`
+}

@@ -17,10 +17,12 @@ const props = withDefaults(
     /** The trees to pick from, one tab each, in the order given. */
     trees: { kind: KnowledgeNodeKind; nodes: TreeNode[] }[]
     disabledReason?: (id: string) => string | null
+    /** Offers choosing no node at all (e.g. "No parent — a root"), with this label. */
+    rootLabel?: string
   }>(),
-  { disabledReason: () => null },
+  { disabledReason: () => null, rootLabel: '' },
 )
-const emit = defineEmits<{ pick: [id: string]; close: [] }>()
+const emit = defineEmits<{ pick: [id: string]; pickRoot: []; close: [] }>()
 
 const { t } = useTypedT()
 
@@ -59,6 +61,15 @@ watch(
           {{ t(tree.kind === 'skill' ? 'knowledgeMap.tabs.skill' : 'knowledgeMap.tabs.concept') }}
         </button>
       </div>
+      <button
+        v-if="rootLabel"
+        type="button"
+        data-test="kmap-picker-root"
+        class="w-fit rounded-md border border-border bg-surface-raised px-3 py-1.5 text-[0.8125rem] font-semibold text-ink"
+        @click="emit('pickRoot')"
+      >
+        {{ rootLabel }}
+      </button>
       <template v-for="tree in trees" :key="tree.kind">
         <KnowledgeTreeBrowser
           v-if="activeKind === tree.kind"

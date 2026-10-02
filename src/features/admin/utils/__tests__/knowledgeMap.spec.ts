@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   fitsWithin,
   isValidKey,
+  refusalText,
   requiresChain,
   suggestKey,
 } from '@/features/admin/utils/knowledgeMap'
@@ -86,5 +87,25 @@ describe('requiresChain', () => {
   it('finds the shortest chain', () => {
     const edges = [requires('a', 'b'), requires('b', 'c'), requires('c', 'd'), requires('a', 'd')]
     expect(requiresChain(edges, 'a', 'd')).toEqual(['a', 'd'])
+  })
+})
+
+describe('refusalText', () => {
+  it("is the server's message", () => {
+    expect(refusalText({ ok: false, status: 409, message: 'Would create a cycle', fields: [] })).toBe('Would create a cycle')
+  })
+
+  it('adds the reason of each failing field', () => {
+    expect(
+      refusalText({
+        ok: false,
+        status: 400,
+        message: 'Request failed validation',
+        fields: [
+          { field: '/names', reason: 'missing pt_BR' },
+          { field: '/key', reason: 'must be kebab-case' },
+        ],
+      }),
+    ).toBe('Request failed validation: missing pt_BR; must be kebab-case')
   })
 })

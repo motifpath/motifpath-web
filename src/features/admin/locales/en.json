@@ -68,6 +68,25 @@
       "close": "Close",
       "confirmMessage": "Delete {name}? This can’t be undone.",
       "confirm": "Delete"
-    }
+    },
+    "loadingNoun": "the knowledge map",
+    "loadFailed": "Couldn't load the knowledge map.",
+    "newSkill": "New skill",
+    "newConcept": "New concept",
+    "back": "All nodes",
+    "empty": "Pick a node, or create one.",
+    "missing": "This node no longer exists.",
+    "kindSkill": "Skill",
+    "kindConcept": "Concept",
+    "copyKey": "Copy the key",
+    "addChild": "Add child",
+    "moveButton": "Move…",
+    "deleteButton": "Delete…",
+    "chooseParent": "Choose the parent",
+    "saved": "Saved.",
+    "deleted": "{name} deleted.",
+    "saveFailed": "Couldn't save. Check your connection and try again.",
+    "discardTitle": "Discard your changes?",
+    "discardMessage": "What you changed in this node hasn't been saved."
   }
 }
