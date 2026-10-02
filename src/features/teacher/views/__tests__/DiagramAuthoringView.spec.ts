@@ -190,6 +190,81 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
   })
 
+  describe('compatible instruments', () => {
+    const electric = {
+      instrument_id: 'i-4',
+      names: { en: 'Electric guitar', pt_BR: 'Guitarra elétrica' },
+      languages: ['en', 'pt_BR'],
+      family: 'fretted' as const,
+      string_count: 6,
+      tuning: ['E', 'A', 'D', 'G', 'B', 'E'],
+    }
+
+    async function mountWithLayout() {
+      GET.mockResolvedValueOnce({ data: [guitar, bass, electric], error: undefined, response: { status: 200 } })
+      POST.mockResolvedValueOnce({ data: { diagram_id: 'd-new', instrument_id: 'i-1', instrument_ids: ['i-1'], names: { en: 'Shape' }, positions: [], classification: { skills: [], concepts: [] }, created_at: '2026-10-02T00:00:00Z' }, error: undefined, response: { status: 201 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.findAll('[data-test="instrument-option"]')[0]!.trigger('click')
+      return wrapper
+    }
+
+    async function save(wrapper: ReturnType<typeof mountView>) {
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Shape')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+    }
+
+    it('offers only instruments that share the layout geometry, with the layout itself always selected', async () => {
+      const wrapper = await mountWithLayout()
+
+      expect(wrapper.find('[data-test="compatible-instrument-i-1"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('[data-test="compatible-instrument-i-4"]').attributes('aria-pressed')).toBe('false')
+      expect(wrapper.find('[data-test="compatible-instrument-i-3"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="compatible-instrument-i-1"]').trigger('click')
+      expect(wrapper.get('[data-test="compatible-instrument-i-1"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('saves the chosen compatible instruments after the layout instrument', async () => {
+      const wrapper = await mountWithLayout()
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      await save(wrapper)
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ instrument_ids: ['i-1', 'i-4'] }) }),
+      )
+    })
+
+    it('drops a compatible instrument that is toggled off again', async () => {
+      const wrapper = await mountWithLayout()
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      await save(wrapper)
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ instrument_ids: ['i-1'] }) }),
+      )
+    })
+
+    it('labels the compatible instruments in the editing language', async () => {
+      i18n.global.locale.value = 'pt-BR'
+      try {
+        const wrapper = await mountWithLayout()
+
+        expect(wrapper.get('[data-test="compatible-instruments-label"]').text()).toBe('Instrumentos compatíveis')
+      } finally {
+        i18n.global.locale.value = 'en'
+      }
+    })
+  })
+
   it('creates a diagram once, from the positions placed on the editor', async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     POST.mockResolvedValueOnce({
@@ -220,7 +295,7 @@ describe('DiagramAuthoringView', () => {
       '/diagrams',
       expect.objectContaining({
         body: expect.objectContaining({
-          instrument_id: 'i-1',
+          instrument_ids: ['i-1'],
           names: { en: 'Minor Pentatonic — Position 1' },
           positions: [expect.objectContaining({ interval: 'R', note_name: 'G', string: 1, fret: 3 })],
         }),
