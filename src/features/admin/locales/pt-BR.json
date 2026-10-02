@@ -1,1 +1,24 @@
-{ "knowledgeMap": { "heading": "Mapa de conhecimento" } }
+{
+  "knowledgeMap": {
+    "heading": "Mapa de conhecimento",
+    "form": {
+      "keyLabel": "Chave",
+      "keyHint": "Sugerida a partir do nome em inglês. Não pode mudar depois de salvar.",
+      "keyReadonlyNote": "Chaves nunca mudam.",
+      "keyTaken": "Esta chave já está em uso.",
+      "keyInvalid": "Use letras minúsculas, dígitos e hífens simples, como pre-bends.",
+      "nameLabel": "Nome — {language}",
+      "descriptionLabel": "Descrição — {language}",
+      "descriptionsIncomplete": "Escreva a descrição em todos os idiomas ou deixe todas em branco.",
+      "parentLabel": "Pai",
+      "noParent": "Sem pai — uma raiz",
+      "changeParent": "Alterar",
+      "instrumentsLabel": "Instrumentos",
+      "instrumentsLimit": "Um nó nunca é mais amplo que o pai, então só os instrumentos de {parent} são oferecidos.",
+      "save": "Salvar",
+      "saving": "Salvando…",
+      "discard": "Descartar",
+      "cancel": "Cancelar"
+    }
+  }
+}

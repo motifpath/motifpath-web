@@ -1,1 +1,24 @@
-{ "knowledgeMap": { "heading": "Knowledge map" } }
+{
+  "knowledgeMap": {
+    "heading": "Knowledge map",
+    "form": {
+      "keyLabel": "Key",
+      "keyHint": "Suggested from the English name. It can't change after saving.",
+      "keyReadonlyNote": "Keys never change.",
+      "keyTaken": "This key is already in use.",
+      "keyInvalid": "Use lowercase letters, digits and single dashes, like pre-bends.",
+      "nameLabel": "Name — {language}",
+      "descriptionLabel": "Description — {language}",
+      "descriptionsIncomplete": "Write the description in every language, or leave all of them empty.",
+      "parentLabel": "Parent",
+      "noParent": "No parent — a root",
+      "changeParent": "Change",
+      "instrumentsLabel": "Instruments",
+      "instrumentsLimit": "A node is never wider than its parent, so only the instruments of {parent} are offered.",
+      "save": "Save",
+      "saving": "Saving…",
+      "discard": "Discard",
+      "cancel": "Cancel"
+    }
+  }
+}
