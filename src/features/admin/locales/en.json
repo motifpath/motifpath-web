@@ -19,6 +19,31 @@
       "saving": "Saving…",
       "discard": "Discard",
       "cancel": "Cancel"
+    },
+    "tabs": {
+      "concept": "Concepts",
+      "skill": "Skills"
+    },
+    "links": {
+      "applies": "Applies",
+      "requires": "Requires",
+      "requiredBy": "Required by",
+      "appliedBy": "Applied by",
+      "add": "Add",
+      "none": "None yet.",
+      "addAppliesTitle": "Add a concept that {name} applies",
+      "addRequiresTitle": "Add something {name} requires",
+      "thisNode": "This node",
+      "alreadyLinked": "Already linked",
+      "loop": "{from} already requires {to} — this link would close a loop.",
+      "loopThrough": "{from} already requires {to} (through {via}) — this link would close a loop.",
+      "levelAriaLabel": "Level required of {name}",
+      "removeAriaLabel": "Remove the link to {name}",
+      "levels": {
+        "accurate": "Accurate",
+        "fluent": "Fluent",
+        "retained": "Retained"
+      }
     }
   }
 }

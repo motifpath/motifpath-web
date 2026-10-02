@@ -19,6 +19,31 @@
       "saving": "Salvando…",
       "discard": "Descartar",
       "cancel": "Cancelar"
+    },
+    "tabs": {
+      "concept": "Conceitos",
+      "skill": "Habilidades"
+    },
+    "links": {
+      "applies": "Aplica",
+      "requires": "Requer",
+      "requiredBy": "Requerido por",
+      "appliedBy": "Aplicado por",
+      "add": "Adicionar",
+      "none": "Nenhum ainda.",
+      "addAppliesTitle": "Adicionar um conceito que {name} aplica",
+      "addRequiresTitle": "Adicionar algo que {name} requer",
+      "thisNode": "Este nó",
+      "alreadyLinked": "Já ligado",
+      "loop": "{from} já requer {to} — esta ligação fecharia um ciclo.",
+      "loopThrough": "{from} já requer {to} (passando por {via}) — esta ligação fecharia um ciclo.",
+      "levelAriaLabel": "Nível exigido de {name}",
+      "removeAriaLabel": "Remover a ligação com {name}",
+      "levels": {
+        "accurate": "Preciso",
+        "fluent": "Fluente",
+        "retained": "Retido"
+      }
     }
   }
 }
