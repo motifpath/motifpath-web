@@ -173,7 +173,7 @@ describe('ExerciseListView', () => {
     expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
   })
 
-  it('offers search, language, creator and single skill and concept filters, but no level or instrument', async () => {
+  it('offers search, language, creator, instrument and single skill and concept filters, but no level', async () => {
     GET.mockResolvedValue(page([]))
     const wrapper = mountView()
     await flush()
@@ -182,7 +182,7 @@ describe('ExerciseListView', () => {
     expect(panel.props()).toMatchObject({
       teacherScope: 'exercises',
       languageFilter: true,
-      instrumentFilter: false,
+      instrumentFilter: true,
       levelFilter: false,
       singleClassification: true,
       searchPlaceholder: 'Search exercises by title',

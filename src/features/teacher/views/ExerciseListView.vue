@@ -75,6 +75,8 @@ const exerciseTypeLabels = computed<Record<ExerciseType, string>>(() => ({
         v-model:concept-ids="filters.conceptIds"
         v-model:teacher="filters.teacher"
         v-model:language="filters.language"
+        v-model:instrument-id="filters.instrumentId"
+        instrument-filter
         teacher-scope="exercises"
         language-filter
         :level-filter="false"
