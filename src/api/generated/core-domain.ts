@@ -4210,7 +4210,7 @@ export interface components {
          *     instrument_ids. An exercise for every instrument (empty
          *     instrument_ids) may use only nodes for every instrument. A violation
          *     is rejected with the offending skill_ids or concept_ids identified —
-         *     the same rule content nodes and diagrams follow (ADR-043).
+         *     the same rule content nodes and diagrams follow.
          */
         CreateExerciseRequest: {
             /**
@@ -4348,7 +4348,7 @@ export interface components {
          *     instrument_ids. An exercise for every instrument (empty
          *     instrument_ids) may use only nodes for every instrument. A violation
          *     is rejected with the offending skill_ids or concept_ids identified —
-         *     the same rule content nodes and diagrams follow (ADR-043).
+         *     the same rule content nodes and diagrams follow.
          *     The rule is checked against the instruments the exercise has after
          *     the update — the current ones when instrument_ids is omitted — so
          *     changing only the instruments can be rejected too.
@@ -4534,9 +4534,9 @@ export interface components {
              *     holds for every link between them (a path exercise, or an
              *     exercise in one of the node's challenges) and for every write
              *     that could break it: linking, changing the exercise's
-             *     instruments, and changing the node's instruments. Choosing a
-             *     student's exercises by the student's own instrument is left to
-             *     practice sessions (PB-22).
+             *     instruments, and changing the node's instruments. The rule only
+             *     constrains these links; it does not choose a student's exercises
+             *     by the student's own instrument.
              */
             instrument_ids: components["schemas"]["InstrumentIds"];
             /**
