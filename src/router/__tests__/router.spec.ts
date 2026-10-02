@@ -371,6 +371,26 @@ describe('router', () => {
     ).toBe(false)
   })
 
+  it('lets a registered admin reach the knowledge map editor', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('admin')
+
+    await router.push('/admin/knowledge-map')
+
+    expect(router.currentRoute.value.name).toBe('admin-knowledge-map')
+  })
+
+  it.each(['teacher', 'student'] as const)('sends a registered %s away from the knowledge map editor to home', async (role) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge(role)
+
+    await router.push('/admin/knowledge-map')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 

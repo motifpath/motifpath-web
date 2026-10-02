@@ -5,7 +5,13 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
 import Icon from '@/shared/components/Icon.vue'
-import { type NavSection, STUDENT_SECTIONS, TEACHER_SECTIONS, sectionsFor } from '@/shared/navigation'
+import {
+  type NavSection,
+  STUDENT_SECTIONS,
+  TEACHER_SECTIONS,
+  authoringSectionsFor,
+  sectionsFor,
+} from '@/shared/navigation'
 import { useCurrentUserStore } from '@/stores/currentUser'
 import { useThemeStore } from '@/stores/theme'
 
@@ -51,7 +57,7 @@ const hasCrumb = computed(() => props.context === 'teacher' && !!props.breadcrum
 // a breadcrumb drills down from.
 const navItems = computed<NavSection[]>(() => {
   if (isOverview.value) return currentUser.profile ? sectionsFor(currentUser.profile.role) : []
-  return isStudent.value ? STUDENT_SECTIONS : TEACHER_SECTIONS
+  return isStudent.value ? STUDENT_SECTIONS : authoringSectionsFor(currentUser.profile?.role)
 })
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string } | undefined)?.name)
 const fallbackSection = computed(

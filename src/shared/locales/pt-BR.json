@@ -8,7 +8,8 @@
     "paths": "Trilhas",
     "courses": "Cursos",
     "exercises": "Exercícios",
-    "diagrams": "Diagramas"
+    "diagrams": "Diagramas",
+    "knowledgeMap": "Mapa de conhecimento"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
