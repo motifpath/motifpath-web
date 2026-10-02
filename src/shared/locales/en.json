@@ -126,7 +126,9 @@
     "closeButton": "Close",
     "suggested": "Suggested",
     "missingHint": "Missing one? Ask the team.",
-    "unsuitedTitle": "Not for this content's instruments"
+    "unsuitedNote": "The items in red aren't for this content's instruments. Remove them before saving.",
+    "loadFailed": "Couldn't load the list.",
+    "retry": "Try again"
   },
   "levels": {
     "beginner": "Beginner",

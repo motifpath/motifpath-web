@@ -74,6 +74,24 @@ describe('CourseFilters', () => {
       expect(lastSkillIds(wrapper)).toEqual(expect.arrayContaining(['triads', 'arpeggios']))
     })
 
+    it('says the skills failed to load, and loads them again on retry', async () => {
+      GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+        Promise.resolve(
+          path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+            ? { data: undefined, error: { message: 'boom' }, response: { status: 500 } }
+            : { data: [], error: undefined, response: { status: 200 } },
+        ),
+      )
+      const { picker } = await openSkillPicker([])
+      expect(picker.props('loadFailed')).toBe(true)
+
+      GET.mockClear()
+      picker.vm.$emit('retry')
+      await flushPromises()
+
+      expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+    })
+
     it('names an applied skill filter in the UI language', async () => {
       skills[1] = knowledgeNode('triads', { parent_id: 'chords', names: { en: 'Triads', pt_BR: 'Tríades' } })
       i18n.global.locale.value = 'pt-BR'

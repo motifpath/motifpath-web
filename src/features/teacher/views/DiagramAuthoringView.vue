@@ -95,7 +95,18 @@ const { t: te } = useTypedT({ locale: editingLocale })
 const { localizedName: localizedNameInEditor } = useLocalizedName({ locale: editingLocale })
 const { createDiagram } = useCreateDiagram()
 const { updateDiagram } = useUpdateDiagram()
-const { skillNodes, conceptNodes, skillsLoading, conceptsLoading, suggestedSkillIds, suggestedConceptIds } =
+const {
+  skillNodes,
+  conceptNodes,
+  skillsLoading,
+  conceptsLoading,
+  skillsError,
+  conceptsError,
+  retrySkills,
+  retryConcepts,
+  suggestedSkillIds,
+  suggestedConceptIds,
+} =
   useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, { locale: editingLocale })
 // Classification must suit every instrument the diagram is for; before any are
 // toggled, that is the layout instrument alone.
@@ -681,20 +692,24 @@ async function saveAs(names: Record<string, string>) {
             :nodes="skillNodes"
             :selected-ids="form.skillIds.value"
             :is-loading="skillsLoading"
+            :load-failed="skillsError"
             :instrument-ids="classificationInstrumentIds"
             :suggested-ids="suggestedSkillIds"
             missing-hint
             @update:selected-ids="form.skillIds.value = $event"
+            @retry="retrySkills"
           />
           <SkillConceptTreePicker
             :label="te('classificationFields.conceptLabel')"
             :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"
+            :load-failed="conceptsError"
             :instrument-ids="classificationInstrumentIds"
             :suggested-ids="suggestedConceptIds"
             missing-hint
             @update:selected-ids="form.conceptIds.value = $event"
+            @retry="retryConcepts"
           />
         </div>
         </LocaleScope>

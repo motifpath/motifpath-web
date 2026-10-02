@@ -70,6 +70,10 @@ const {
   conceptNodes,
   skillsLoading,
   conceptsLoading,
+  skillsError,
+  conceptsError,
+  retrySkills,
+  retryConcepts,
   suggestedSkillIds,
   suggestedConceptIds,
   nodeName,
@@ -499,10 +503,14 @@ async function onSaveChallenge({
           :concept-nodes="conceptNodes"
           :skills-loading="skillsLoading"
           :concepts-loading="conceptsLoading"
+          :skills-error="skillsError"
+          :concepts-error="conceptsError"
           :instrument-ids="form.instrumentIds.value"
           :suggested-skill-ids="suggestedSkillIds"
           :suggested-concept-ids="suggestedConceptIds"
           :review-state="form.reviewState.value"
+          @retry-skills="retrySkills"
+          @retry-concepts="retryConcepts"
         />
       </div>
 

@@ -215,6 +215,25 @@ describe('DiagramAuthoringView', () => {
     }
   })
 
+  it('says the skills failed to load, and offers a retry', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve(
+        path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+          ? { data: undefined, error: { message: 'boom' }, response: { status: 500 } }
+          : { data: [], error: undefined, response: { status: 200 } },
+      ),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+
+    const [skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    expect(skillPicker!.props('loadFailed')).toBe(true)
+    GET.mockClear()
+    skillPicker!.vm.$emit('retry')
+
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+  })
+
   describe('compatible instruments', () => {
     const electric = {
       instrument_id: 'i-4',

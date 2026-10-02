@@ -64,7 +64,16 @@ const { instrumentsLabel } = useInstrumentNames()
 const advancedOpen = ref(false)
 const advancedTitleId = useId()
 
-const { skillNodes, conceptNodes, skillsLoading, conceptsLoading } = useKnowledgeTrees()
+const {
+  skillNodes,
+  conceptNodes,
+  skillsLoading,
+  conceptsLoading,
+  skillsError,
+  conceptsError,
+  retrySkills,
+  retryConcepts,
+} = useKnowledgeTrees()
 
 // The picker keeps a node's ancestors selected alongside it; the filter only
 // sends the most specific picks (see mostSpecificIds), but the picker keeps
@@ -268,16 +277,20 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
             :nodes="skillNodes"
             :selected-ids="pickedSkillIds"
             :is-loading="skillsLoading"
+            :load-failed="skillsError"
             :multiple="!singleClassification"
             @update:selected-ids="onSkillsPicked"
+            @retry="retrySkills"
           />
           <SkillConceptTreePicker
             :label="t('courseFilters.conceptFilterLabel')"
             :nodes="conceptNodes"
             :selected-ids="pickedConceptIds"
             :is-loading="conceptsLoading"
+            :load-failed="conceptsError"
             :multiple="!singleClassification"
             @update:selected-ids="onConceptsPicked"
+            @retry="retryConcepts"
           />
         </div>
       </div>
@@ -336,16 +349,20 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
         :nodes="skillNodes"
         :selected-ids="pickedSkillIds"
         :is-loading="skillsLoading"
+        :load-failed="skillsError"
         :multiple="!singleClassification"
         @update:selected-ids="onSkillsPicked"
+        @retry="retrySkills"
       />
       <SkillConceptTreePicker
         :label="t('courseFilters.conceptFilterLabel')"
         :nodes="conceptNodes"
         :selected-ids="pickedConceptIds"
         :is-loading="conceptsLoading"
+        :load-failed="conceptsError"
         :multiple="!singleClassification"
         @update:selected-ids="onConceptsPicked"
+        @retry="retryConcepts"
       />
     </div>
 

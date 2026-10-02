@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Plus, X } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
@@ -22,6 +22,8 @@ const props = withDefaults(
     /** false renders radios and keeps selectedIds to at most one entry — used for a Challenge's single subject. */
     multiple?: boolean
     isLoading?: boolean
+    /** The nodes failed to load: the picker says so and offers a retry. */
+    loadFailed?: boolean
     /** Restricts which nodes can be browsed/picked, e.g. to a content node's own linked classification. */
     allowedIds?: string[] | null
     /**
@@ -37,6 +39,7 @@ const props = withDefaults(
   {
     multiple: true,
     isLoading: false,
+    loadFailed: false,
     allowedIds: null,
     instrumentIds: null,
     suggestedIds: () => [],
@@ -45,6 +48,7 @@ const props = withDefaults(
 )
 const emit = defineEmits<{
   'update:selectedIds': [ids: string[]]
+  retry: []
 }>()
 
 const { t } = useTypedT()
@@ -120,6 +124,9 @@ const selectedNodes = computed(() =>
   props.selectedIds.map((id) => nodesById.value.get(id)).filter((n): n is TreeNode => !!n),
 )
 
+const unsuitedNoteId = useId()
+const hasUnsuitedPick = computed(() => selectedNodes.value.some((node) => !suits(node)))
+
 function isSelected(id: string): boolean {
   return props.selectedIds.includes(id)
 }
@@ -164,7 +171,7 @@ function removeSelected(id: string) {
         :key="node.id"
         data-test="tree-selected-chip"
         :data-unsuited="suits(node) ? undefined : 'true'"
-        :title="suits(node) ? undefined : t('skillConceptTreePicker.unsuitedTitle')"
+        :aria-describedby="suits(node) ? undefined : unsuitedNoteId"
         class="flex items-center gap-1.5 rounded-full py-[5px] pl-3 pr-1.5 text-[0.8125rem] font-semibold"
         :class="
           suits(node)
@@ -185,6 +192,14 @@ function removeSelected(id: string) {
         </button>
       </span>
     </div>
+    <p
+      v-if="hasUnsuitedPick"
+      :id="unsuitedNoteId"
+      data-test="tree-unsuited-note"
+      class="text-[0.8125rem] text-danger"
+    >
+      {{ t('skillConceptTreePicker.unsuitedNote') }}
+    </p>
 
     <button
       type="button"
@@ -227,6 +242,21 @@ function removeSelected(id: string) {
           <p v-if="isLoading" data-test="tree-loading" class="p-1.5 text-sm text-ink-subtle">
             {{ t('skillConceptTreePicker.loading') }}
           </p>
+          <div
+            v-else-if="loadFailed"
+            data-test="tree-load-failed"
+            class="flex flex-col items-start gap-2 p-1.5 text-sm text-ink-subtle"
+          >
+            {{ t('skillConceptTreePicker.loadFailed') }}
+            <button
+              type="button"
+              data-test="tree-retry"
+              class="rounded-md border border-border bg-surface-raised px-3 py-1.5 text-[0.8125rem] font-semibold text-ink"
+              @click="emit('retry')"
+            >
+              {{ t('skillConceptTreePicker.retry') }}
+            </button>
+          </div>
           <p
             v-else-if="visibleNodes.length === 0"
             data-test="tree-empty"
@@ -294,7 +324,7 @@ function removeSelected(id: string) {
           </div>
         </div>
 
-        <p v-if="missingHint" data-test="tree-missing-hint" class="text-xs text-ink-subtle">
+        <p v-if="missingHint && !loadFailed" data-test="tree-missing-hint" class="text-xs text-ink-subtle">
           {{ t('skillConceptTreePicker.missingHint') }}
         </p>
 

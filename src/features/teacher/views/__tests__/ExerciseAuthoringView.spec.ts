@@ -372,6 +372,24 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['slap'])
   })
 
+  it('says the concepts failed to load, and offers a retry', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve(
+        path === '/knowledge-nodes' && init?.params?.query?.kind === 'concept'
+          ? { data: undefined, error: { message: 'boom' }, response: { status: 500 } }
+          : { data: [], error: undefined, response: { status: 200 } },
+      ),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+    GET.mockClear()
+
+    await wrapper.get('[data-test="tree-retry"]').trigger('click')
+
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'concept' } } })
+  })
+
   it('suggests the skills that apply the picked concepts', async () => {
     GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string; type?: string } } }) => {
       const query = init?.params?.query

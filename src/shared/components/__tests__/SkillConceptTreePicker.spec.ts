@@ -169,6 +169,22 @@ describe('SkillConceptTreePicker', () => {
     expect(wrapper.get('[data-test="tree-empty"]').text()).toBe('No matching nodes.')
   })
 
+  describe('when the nodes failed to load', () => {
+    it('says so and offers a retry instead of an empty list or the missing-node hint', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes: [], selectedIds: [], loadFailed: true, missingHint: true },
+      })
+      await open(wrapper)
+
+      expect(wrapper.get('[data-test="tree-load-failed"]').text()).toContain("Couldn't load the list.")
+      expect(wrapper.find('[data-test="tree-empty"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="tree-retry"]').trigger('click')
+      expect(wrapper.emitted('retry')).toHaveLength(1)
+    })
+  })
+
   describe('search', () => {
     const graph = [
       { id: 'bends', name: 'Bends', parent_id: null, searchTerms: ['Bends', 'Puxadas', 'bends'] },
@@ -244,8 +260,27 @@ describe('SkillConceptTreePicker', () => {
 
       const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
       expect(chips[0]!.attributes('data-unsuited')).toBe('true')
-      expect(chips[0]!.attributes('title')).toBe("Not for this content's instruments")
       expect(chips[1]!.attributes('data-unsuited')).toBeUndefined()
+    })
+
+    it('explains a flagged node in visible text that the flagged chip is described by', () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes: scoped, selectedIds: ['slap', 'reading'], instrumentIds: ['electric'] },
+      })
+
+      const note = wrapper.get('[data-test="tree-unsuited-note"]')
+      expect(note.text()).toBe("The items in red aren't for this content's instruments. Remove them before saving.")
+      const [flagged, suited] = wrapper.findAll('[data-test="tree-selected-chip"]')
+      expect(flagged!.attributes('aria-describedby')).toBe(note.attributes('id'))
+      expect(suited!.attributes('aria-describedby')).toBeUndefined()
+    })
+
+    it('shows no explanation when every picked node suits the instruments', () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes: scoped, selectedIds: ['reading'], instrumentIds: ['electric'] },
+      })
+
+      expect(wrapper.find('[data-test="tree-unsuited-note"]').exists()).toBe(false)
     })
   })
 

@@ -18,8 +18,18 @@ export function useKnowledgeTrees(
   override: LocaleOverride = {},
 ) {
   const locale = useScopedLocale(override)
-  const { nodes: skills, isLoading: skillsLoading } = useListKnowledgeNodes('skill')
-  const { nodes: concepts, isLoading: conceptsLoading } = useListKnowledgeNodes('concept')
+  const {
+    nodes: skills,
+    isLoading: skillsLoading,
+    error: skillsError,
+    retry: retrySkills,
+  } = useListKnowledgeNodes('skill')
+  const {
+    nodes: concepts,
+    isLoading: conceptsLoading,
+    error: conceptsError,
+    retry: retryConcepts,
+  } = useListKnowledgeNodes('concept')
   const applies = picks ? useListKnowledgeEdges('applies').edges : null
 
   const languageCode = computed(() => toApiLanguageCode(locale.value))
@@ -47,6 +57,10 @@ export function useKnowledgeTrees(
     conceptNodes,
     skillsLoading,
     conceptsLoading,
+    skillsError,
+    conceptsError,
+    retrySkills,
+    retryConcepts,
     suggestedSkillIds,
     suggestedConceptIds,
     nodeName,

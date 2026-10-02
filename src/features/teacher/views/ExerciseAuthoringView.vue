@@ -60,7 +60,18 @@ const form = useExerciseForm()
 const { createExercise } = useCreateExercise()
 const { updateExercise } = useUpdateExercise()
 const { upload } = useMediaUpload()
-const { skillNodes, conceptNodes, skillsLoading, conceptsLoading, suggestedSkillIds, suggestedConceptIds } =
+const {
+  skillNodes,
+  conceptNodes,
+  skillsLoading,
+  conceptsLoading,
+  skillsError,
+  conceptsError,
+  retrySkills,
+  retryConcepts,
+  suggestedSkillIds,
+  suggestedConceptIds,
+} =
   useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds })
 
 const savedExerciseId = ref('')
@@ -489,18 +500,22 @@ async function save() {
             :nodes="skillNodes"
             :selected-ids="form.skillIds.value"
             :is-loading="skillsLoading"
+            :load-failed="skillsError"
             :suggested-ids="suggestedSkillIds"
             missing-hint
             @update:selected-ids="form.skillIds.value = $event"
+            @retry="retrySkills"
           />
           <SkillConceptTreePicker
             :label="t('classificationFields.conceptLabel')"
             :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"
+            :load-failed="conceptsError"
             :suggested-ids="suggestedConceptIds"
             missing-hint
             @update:selected-ids="form.conceptIds.value = $event"
+            @retry="retryConcepts"
           />
         </div>
 

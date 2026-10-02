@@ -375,6 +375,26 @@ describe('ContentAuthoringView', () => {
       ])
     })
 
+    it('says the skills failed to load, and shows them after a retry', async () => {
+      routeGET({
+        '/knowledge-nodes?kind=skill': { data: undefined, error: { message: 'boom' }, response: { status: 500 } },
+      })
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+
+      expect(wrapper.find('[data-test="tree-load-failed"]').exists()).toBe(true)
+
+      routeGET({
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+      })
+      await wrapper.get('[data-test="tree-retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="tree-load-failed"]').exists()).toBe(false)
+      expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['alternate-picking'])
+    })
+
     it('suggests the concepts that the picked skills apply', async () => {
       routeGET({
         '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },

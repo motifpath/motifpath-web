@@ -16,6 +16,8 @@ withDefaults(
     conceptNodes: TreeNode[]
     skillsLoading?: boolean
     conceptsLoading?: boolean
+    skillsError?: boolean
+    conceptsError?: boolean
     /** The content's instruments, to list only the nodes that suit them; null lists every node. */
     instrumentIds?: string[] | null
     suggestedSkillIds?: string[]
@@ -29,6 +31,8 @@ const emit = defineEmits<{
   'update:skillIds': [value: string[]]
   'update:conceptIds': [value: string[]]
   'update:difficultyLevel': [value: DifficultyLevel]
+  retrySkills: []
+  retryConcepts: []
 }>()
 
 const difficultyLevels: DifficultyLevel[] = [
@@ -58,10 +62,12 @@ const { t } = useTypedT()
       :nodes="skillNodes"
       :selected-ids="skillIds"
       :is-loading="skillsLoading"
+      :load-failed="skillsError"
       :instrument-ids="instrumentIds"
       :suggested-ids="suggestedSkillIds"
       missing-hint
       @update:selected-ids="emit('update:skillIds', $event)"
+      @retry="emit('retrySkills')"
     />
 
     <SkillConceptTreePicker
@@ -69,10 +75,12 @@ const { t } = useTypedT()
       :nodes="conceptNodes"
       :selected-ids="conceptIds"
       :is-loading="conceptsLoading"
+      :load-failed="conceptsError"
       :instrument-ids="instrumentIds"
       :suggested-ids="suggestedConceptIds"
       missing-hint
       @update:selected-ids="emit('update:conceptIds', $event)"
+      @retry="emit('retryConcepts')"
     />
 
     <div class="flex flex-col gap-1.5">

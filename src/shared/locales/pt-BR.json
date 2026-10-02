@@ -126,7 +126,9 @@
     "closeButton": "Fechar",
     "suggested": "Sugeridos",
     "missingHint": "Falta algum? Peça à equipe.",
-    "unsuitedTitle": "Não é para os instrumentos deste conteúdo"
+    "unsuitedNote": "Os itens em vermelho não são para os instrumentos deste conteúdo. Remova-os antes de salvar.",
+    "loadFailed": "Não foi possível carregar a lista.",
+    "retry": "Tentar novamente"
   },
   "levels": {
     "beginner": "Iniciante",

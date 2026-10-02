@@ -75,6 +75,29 @@ describe('ClassificationFields', () => {
     expect(conceptPicker!.props()).toMatchObject({ instrumentIds: ['guitar'], suggestedIds: ['c-1'], missingHint: true })
   })
 
+  it('shows a tree that failed to load and asks for it again on retry', async () => {
+    const wrapper = mount(ClassificationFields, {
+      props: {
+        skillIds: [],
+        conceptIds: [],
+        skillNodes: [],
+        conceptNodes,
+        difficultyLevel: 'beginner',
+        reviewState: null,
+        skillsError: true,
+      },
+    })
+
+    const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    expect(skillPicker!.props('loadFailed')).toBe(true)
+    expect(conceptPicker!.props('loadFailed')).toBe(false)
+
+    skillPicker!.vm.$emit('retry')
+    conceptPicker!.vm.$emit('retry')
+    expect(wrapper.emitted('retrySkills')).toHaveLength(1)
+    expect(wrapper.emitted('retryConcepts')).toHaveLength(1)
+  })
+
   it('lists every node when no content instruments are given', () => {
     const wrapper = mount(ClassificationFields, {
       props: { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner', reviewState: null },

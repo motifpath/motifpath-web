@@ -95,6 +95,19 @@ describe('useKnowledgeTrees', () => {
     expect(trees.nodeName('nope')).toBe('')
   })
 
+  it('reports a tree that failed to load, and loads it again on retry', async () => {
+    respond()
+    GET.mockImplementationOnce(() => Promise.resolve({ error: { message: 'boom' } }))
+    const trees = useKnowledgeTrees()
+    await vi.waitFor(() => expect(trees.skillsError.value).toBe(true))
+    expect(trees.conceptsError.value).toBe(false)
+
+    await trees.retrySkills()
+
+    expect(trees.skillsError.value).toBe(false)
+    expect(trees.skillNodes.value).toHaveLength(2)
+  })
+
   it('loads no applies edges when no picks are given to suggest from', async () => {
     respond()
     useKnowledgeTrees()
