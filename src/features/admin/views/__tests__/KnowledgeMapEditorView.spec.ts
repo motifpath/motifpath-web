@@ -302,6 +302,27 @@ describe('KnowledgeMapEditorView', () => {
       expect(wrapper.get('[data-test="instrument-option-i-acoustic"]').attributes('aria-pressed')).toBe('false')
     })
 
+    it('explains instruments the server finds wider than the parent under the instruments', async () => {
+      const wrapper = await mountEditor({ node: 'expressive' })
+      await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+      PATCH.mockResolvedValueOnce({
+        data: undefined,
+        error: {
+          message: 'request failed validation',
+          errors: [{ field: 'instrument_ids', reason: 'must stay within the parent instruments' }],
+        },
+        response: { status: 400 },
+      })
+
+      await wrapper.get('[data-test="kmap-save"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="kmap-instruments-error"]').text()).toBe(
+        'Request failed validation: must stay within the parent instruments',
+      )
+      expect(wrapper.find('[data-test="kmap-form-error"]').exists()).toBe(false)
+    })
+
     it('reports a save that never reached the server in a toast', async () => {
       const wrapper = await mountEditor({ node: 'bends' })
       await wrapper.get('[data-test="kmap-name-pt_BR"]').setValue('Curvas')

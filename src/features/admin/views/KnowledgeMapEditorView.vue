@@ -133,8 +133,10 @@ function showRefusal(outcome: WriteOutcome<unknown>, touchedInstruments: boolean
     toast.error(t('knowledgeMap.saveFailed'))
     return
   }
+  // The server names the field either bare or as a JSON pointer.
   const onInstruments =
-    outcome.fields.some((field) => field.field === '/instrument_ids') || (outcome.status === 409 && touchedInstruments)
+    outcome.fields.some((field) => field.field.replace(/^\//, '') === 'instrument_ids') ||
+    (outcome.status === 409 && touchedInstruments)
   if (onInstruments) instrumentsError.value = refusalText(outcome)
   else formError.value = refusalText(outcome)
 }
