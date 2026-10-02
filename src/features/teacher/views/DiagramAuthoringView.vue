@@ -503,7 +503,9 @@ async function saveAs(names: Record<string, string>) {
             {{ te('diagramAuthoringView.instrumentLockedHint') }}
           </span>
           <div v-if="selectedInstrument" class="flex flex-col gap-2">
-            <span class="text-sm text-ink-subtle">Compatible instruments</span>
+            <span data-test="compatible-instruments-label" class="text-sm text-ink-subtle">{{
+              te('diagramAuthoringView.compatibleInstrumentsLabel')
+            }}</span>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="instrument in compatibleInstruments"

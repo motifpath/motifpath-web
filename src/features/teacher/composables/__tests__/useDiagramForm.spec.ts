@@ -258,6 +258,22 @@ describe('useDiagramForm', () => {
     expect(form.rootNote.value).toBe('')
   })
 
+  it("keeps a loaded diagram's compatible instruments, layout first, when the edit is saved", () => {
+    const form = useDiagramForm()
+    form.loadFromDiagram(
+      makeFrettedDiagram({ instrument_id: 'instrument-guitar', instrument_ids: ['instrument-guitar', 'instrument-electric'] }),
+    )
+
+    expect(form.toUpdateDiagramRequest().instrument_ids).toEqual(['instrument-guitar', 'instrument-electric'])
+  })
+
+  it('falls back to the layout instrument alone when a loaded diagram lists no compatible instruments', () => {
+    const form = useDiagramForm()
+    form.loadFromDiagram(makeFrettedDiagram({ instrument_id: 'instrument-guitar', instrument_ids: [] }))
+
+    expect(form.toUpdateDiagramRequest().instrument_ids).toEqual(['instrument-guitar'])
+  })
+
   describe('colors', () => {
     function placedForm() {
       const form = useDiagramForm()
