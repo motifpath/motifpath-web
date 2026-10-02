@@ -470,6 +470,11 @@ async function onSaveChallenge({
         </span>
       </div>
 
+      <div class="flex flex-col gap-2">
+        <span class="text-sm font-semibold">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
+        <InstrumentPicker v-model="form.instrumentIds.value" />
+      </div>
+
       <div v-if="form.contentType.value === 'video'" class="flex flex-col gap-2">
         <label for="content-media-url" class="text-sm font-semibold">{{ t('contentAuthoringView.mediaUrlLabel') }}</label>
         <input
@@ -512,11 +517,6 @@ async function onSaveChallenge({
           @retry-skills="retrySkills"
           @retry-concepts="retryConcepts"
         />
-      </div>
-
-      <div class="flex flex-col gap-2 border-t border-border pt-4">
-        <span class="text-sm font-semibold">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
-        <InstrumentPicker v-model="form.instrumentIds.value" />
       </div>
 
       <div class="flex flex-col gap-2">

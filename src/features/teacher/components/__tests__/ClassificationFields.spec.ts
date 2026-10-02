@@ -25,6 +25,17 @@ describe('ClassificationFields', () => {
     expect((wrapper.get('[data-test="difficulty-level"]').element as HTMLSelectElement).value).toBe('intermediate')
   })
 
+  it('asks for the concepts before the skills', () => {
+    const wrapper = mount(ClassificationFields, {
+      props: { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner', reviewState: null },
+    })
+
+    expect(wrapper.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('label'))).toEqual([
+      'Concept',
+      'Skill',
+    ])
+  })
+
   it('offers all 5 difficulty levels', () => {
     const wrapper = mount(ClassificationFields, {
       props: { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner', reviewState: null },
@@ -42,11 +53,11 @@ describe('ClassificationFields', () => {
     })
 
     const openButtons = wrapper.findAll('[data-test="tree-open-picker"]')
-    await openButtons[0].trigger('click')
+    await openButtons[1].trigger('click')
     await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
     expect(wrapper.emitted('update:skillIds')).toEqual([[['s-1']]])
 
-    await openButtons[1].trigger('click')
+    await openButtons[0].trigger('click')
     const conceptCheckboxes = wrapper.findAll('[data-test="tree-node-checkbox"][value="c-1"]')
     await conceptCheckboxes[0].setValue(true)
     expect(wrapper.emitted('update:conceptIds')).toEqual([[['c-1']]])
@@ -70,7 +81,7 @@ describe('ClassificationFields', () => {
       },
     })
 
-    const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    const [conceptPicker, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
     expect(skillPicker!.props()).toMatchObject({ instrumentIds: ['guitar'], suggestedIds: ['s-1'], missingHint: true })
     expect(conceptPicker!.props()).toMatchObject({ instrumentIds: ['guitar'], suggestedIds: ['c-1'], missingHint: true })
   })
@@ -88,7 +99,7 @@ describe('ClassificationFields', () => {
       },
     })
 
-    const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    const [conceptPicker, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
     expect(skillPicker!.props('loadFailed')).toBe(true)
     expect(conceptPicker!.props('loadFailed')).toBe(false)
 

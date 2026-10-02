@@ -688,18 +688,6 @@ async function saveAs(names: Record<string, string>) {
             </span>
           </div>
           <SkillConceptTreePicker
-            :label="te('classificationFields.skillLabel')"
-            :nodes="skillNodes"
-            :selected-ids="form.skillIds.value"
-            :is-loading="skillsLoading"
-            :load-failed="skillsError"
-            :instrument-ids="classificationInstrumentIds"
-            :suggested-ids="suggestedSkillIds"
-            missing-hint
-            @update:selected-ids="form.skillIds.value = $event"
-            @retry="retrySkills"
-          />
-          <SkillConceptTreePicker
             :label="te('classificationFields.conceptLabel')"
             :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
@@ -710,6 +698,18 @@ async function saveAs(names: Record<string, string>) {
             missing-hint
             @update:selected-ids="form.conceptIds.value = $event"
             @retry="retryConcepts"
+          />
+          <SkillConceptTreePicker
+            :label="te('classificationFields.skillLabel')"
+            :nodes="skillNodes"
+            :selected-ids="form.skillIds.value"
+            :is-loading="skillsLoading"
+            :load-failed="skillsError"
+            :instrument-ids="classificationInstrumentIds"
+            :suggested-ids="suggestedSkillIds"
+            missing-hint
+            @update:selected-ids="form.skillIds.value = $event"
+            @retry="retrySkills"
           />
         </div>
         </LocaleScope>

@@ -169,9 +169,9 @@ describe('ContentAuthoringView', () => {
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
-      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()
@@ -209,9 +209,9 @@ describe('ContentAuthoringView', () => {
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('Alternate picking basics')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
-      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()
@@ -249,9 +249,9 @@ describe('ContentAuthoringView', () => {
     })
 
     async function classify(wrapper: ReturnType<typeof mountView>) {
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
-      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
     }
 
@@ -340,12 +340,23 @@ describe('ContentAuthoringView', () => {
       })
     })
 
+    it('asks for the instruments right after the content type, before the fields they influence', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      const contentType = wrapper.getComponent({ name: 'ContentTypeToggle' }).element
+      const instruments = wrapper.get('[data-test="instrument-every"]').element
+      const mediaUrl = wrapper.get('[data-test="media-url-input"]').element
+      expect(contentType.compareDocumentPosition(instruments) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(instruments.compareDocumentPosition(mediaUrl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
     it('offers no way to create a skill or concept, and asks the team for missing ones', async () => {
       routeGET({})
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
 
       expect(wrapper.find('[data-test="tree-create-name"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(true)
@@ -365,7 +376,7 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['reading-tab'])
 
       await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
@@ -381,7 +392,7 @@ describe('ContentAuthoringView', () => {
       })
       const wrapper = mountView()
       await flushPromises()
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
 
       expect(wrapper.find('[data-test="tree-load-failed"]').exists()).toBe(true)
 
@@ -408,13 +419,15 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
-      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.get('[data-test="tree-close"]').trigger('click')
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
 
-      expect(wrapper.findAll('[data-test="tree-suggested-row"]').map((row) => row.text())).toEqual([
-        'picking-technique',
-      ])
+      const suggestedOnly = wrapper.get('[data-test="tree-suggested-only"]')
+      expect(suggestedOnly.text()).toBe('Suggested (1)')
+      await suggestedOnly.trigger('click')
+      expect(wrapper.findAll('[data-test="tree-node-name"]').map((name) => name.text())).toEqual(['picking-technique'])
     })
 
     it('shows the challenge section, with no challenge yet, once the node is saved', async () => {
@@ -428,9 +441,9 @@ describe('ContentAuthoringView', () => {
 
       await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
-      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
-      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
       await wrapper.get('[data-test="app-bar-save"]').trigger('click')
       await flushPromises()

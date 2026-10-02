@@ -89,7 +89,7 @@ import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 type Diagram = components['schemas']['Diagram']
 
 async function selectClassification(wrapper: ReturnType<typeof mountView>) {
-  const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+  const [conceptPicker, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
   await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
   await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
 }
@@ -207,7 +207,7 @@ describe('DiagramAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      const [skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+      const [, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
       expect(skillPicker!.props('nodes').map((node) => node.name)).toEqual(['Puxadas'])
       expect(skillPicker!.props('missingHint')).toBe(true)
     } finally {
@@ -226,12 +226,22 @@ describe('DiagramAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const [skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    const [, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
     expect(skillPicker!.props('loadFailed')).toBe(true)
     GET.mockClear()
     skillPicker!.vm.$emit('retry')
 
     expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+  })
+
+  it('asks for the concepts before the skills', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('label'))).toEqual([
+      'Concept',
+      'Skill',
+    ])
   })
 
   describe('compatible instruments', () => {

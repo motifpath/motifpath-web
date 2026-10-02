@@ -496,17 +496,6 @@ async function save() {
             </span>
           </div>
           <SkillConceptTreePicker
-            :label="t('classificationFields.skillLabel')"
-            :nodes="skillNodes"
-            :selected-ids="form.skillIds.value"
-            :is-loading="skillsLoading"
-            :load-failed="skillsError"
-            :suggested-ids="suggestedSkillIds"
-            missing-hint
-            @update:selected-ids="form.skillIds.value = $event"
-            @retry="retrySkills"
-          />
-          <SkillConceptTreePicker
             :label="t('classificationFields.conceptLabel')"
             :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
@@ -516,6 +505,17 @@ async function save() {
             missing-hint
             @update:selected-ids="form.conceptIds.value = $event"
             @retry="retryConcepts"
+          />
+          <SkillConceptTreePicker
+            :label="t('classificationFields.skillLabel')"
+            :nodes="skillNodes"
+            :selected-ids="form.skillIds.value"
+            :is-loading="skillsLoading"
+            :load-failed="skillsError"
+            :suggested-ids="suggestedSkillIds"
+            missing-hint
+            @update:selected-ids="form.skillIds.value = $event"
+            @retry="retrySkills"
           />
         </div>
 

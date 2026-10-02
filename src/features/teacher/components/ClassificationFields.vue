@@ -58,19 +58,6 @@ const { t } = useTypedT()
 <template>
   <div class="flex flex-col gap-4">
     <SkillConceptTreePicker
-      :label="t('classificationFields.skillLabel')"
-      :nodes="skillNodes"
-      :selected-ids="skillIds"
-      :is-loading="skillsLoading"
-      :load-failed="skillsError"
-      :instrument-ids="instrumentIds"
-      :suggested-ids="suggestedSkillIds"
-      missing-hint
-      @update:selected-ids="emit('update:skillIds', $event)"
-      @retry="emit('retrySkills')"
-    />
-
-    <SkillConceptTreePicker
       :label="t('classificationFields.conceptLabel')"
       :nodes="conceptNodes"
       :selected-ids="conceptIds"
@@ -81,6 +68,19 @@ const { t } = useTypedT()
       missing-hint
       @update:selected-ids="emit('update:conceptIds', $event)"
       @retry="emit('retryConcepts')"
+    />
+
+    <SkillConceptTreePicker
+      :label="t('classificationFields.skillLabel')"
+      :nodes="skillNodes"
+      :selected-ids="skillIds"
+      :is-loading="skillsLoading"
+      :load-failed="skillsError"
+      :instrument-ids="instrumentIds"
+      :suggested-ids="suggestedSkillIds"
+      missing-hint
+      @update:selected-ids="emit('update:skillIds', $event)"
+      @retry="emit('retrySkills')"
     />
 
     <div class="flex flex-col gap-1.5">

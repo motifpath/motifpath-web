@@ -103,7 +103,7 @@ async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
 // API -- set it directly via the pickers' own update event rather than
 // depending on whatever fixture list each individual test's GET mock returns.
 async function selectClassification(wrapper: ReturnType<typeof mountView>) {
-  const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+  const [conceptPicker, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
   await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
   await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
 }
@@ -279,7 +279,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
     await fillMinimalTextResponse(wrapper)
-    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
     await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
@@ -340,7 +340,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
     await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
 
     expect(wrapper.text()).toContain('technique')
@@ -350,7 +350,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
 
     expect(wrapper.find('[data-test="tree-create-name"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(true)
@@ -367,7 +367,7 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
 
     expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['slap'])
   })
@@ -382,12 +382,22 @@ describe('ExerciseAuthoringView', () => {
     )
     const wrapper = mountView()
     await flushPromises()
-    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
     GET.mockClear()
 
     await wrapper.get('[data-test="tree-retry"]').trigger('click')
 
     expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'concept' } } })
+  })
+
+  it('asks for the concepts before the skills', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('label'))).toEqual([
+      'Concept',
+      'Skill',
+    ])
   })
 
   it('suggests the skills that apply the picked concepts', async () => {
@@ -406,11 +416,15 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
-    await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
     await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
+    await wrapper.get('[data-test="tree-close"]').trigger('click')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
 
-    expect(wrapper.findAll('[data-test="tree-suggested-row"]').map((row) => row.text())).toEqual(['bends'])
+    const suggestedOnly = wrapper.get('[data-test="tree-suggested-only"]')
+    expect(suggestedOnly.text()).toBe('Suggested (1)')
+    await suggestedOnly.trigger('click')
+    expect(wrapper.findAll('[data-test="tree-node-name"]').map((name) => name.text())).toEqual(['bends'])
   })
 
   it('disables the AppBar Save button until at least one option is marked correct', async () => {
