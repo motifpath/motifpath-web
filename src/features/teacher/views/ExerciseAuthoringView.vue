@@ -2,6 +2,7 @@
 import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
@@ -18,7 +19,6 @@ import { useCreateExercise } from '@/features/teacher/composables/useCreateExerc
 import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
-import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useStimulusDiagram } from '@/features/teacher/composables/useStimulusDiagram'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
@@ -60,11 +60,8 @@ const form = useExerciseForm()
 const { createExercise } = useCreateExercise()
 const { updateExercise } = useUpdateExercise()
 const { upload } = useMediaUpload()
-const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
-  useSkillConceptCreation(form.skillIds, form.conceptIds, {
-    createSkillFailed: t('exerciseAuthoringView.createSkillFailed'),
-    createConceptFailed: t('exerciseAuthoringView.createConceptFailed'),
-  })
+const { skillNodes, conceptNodes, skillsLoading, conceptsLoading, suggestedSkillIds, suggestedConceptIds } =
+  useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds })
 
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])
@@ -489,19 +486,21 @@ async function save() {
           </div>
           <SkillConceptTreePicker
             :label="t('classificationFields.skillLabel')"
-            :nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
+            :nodes="skillNodes"
             :selected-ids="form.skillIds.value"
             :is-loading="skillsLoading"
+            :suggested-ids="suggestedSkillIds"
+            missing-hint
             @update:selected-ids="form.skillIds.value = $event"
-            @create="onCreateSkill"
           />
           <SkillConceptTreePicker
             :label="t('classificationFields.conceptLabel')"
-            :nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+            :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"
+            :suggested-ids="suggestedConceptIds"
+            missing-hint
             @update:selected-ids="form.conceptIds.value = $event"
-            @create="onCreateConcept"
           />
         </div>
 

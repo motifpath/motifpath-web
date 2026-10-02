@@ -19,6 +19,7 @@ function makeExercise(overrides: Partial<Exercise>): Exercise {
     content_node_ids: [],
     remediation_targets: [],
     languages: [],
+    instrument_ids: [],
     created_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }

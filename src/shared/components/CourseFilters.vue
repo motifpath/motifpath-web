@@ -10,8 +10,7 @@ import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import TeacherFilterPicker from '@/shared/components/TeacherFilterPicker.vue'
 import type { CourseCreatorsScope } from '@/shared/composables/useCourseCreators'
-import { useListConcepts } from '@/shared/composables/useListConcepts'
-import { useListSkills } from '@/shared/composables/useListSkills'
+import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { languageLabelKey } from '@/shared/utils/languageLabels'
@@ -65,14 +64,7 @@ const { instrumentsLabel } = useInstrumentNames()
 const advancedOpen = ref(false)
 const advancedTitleId = useId()
 
-const { skills, isLoading: skillsLoading } = useListSkills()
-const { concepts, isLoading: conceptsLoading } = useListConcepts()
-const skillNodes = computed<TreeNode[]>(() =>
-  skills.value.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id })),
-)
-const conceptNodes = computed<TreeNode[]>(() =>
-  concepts.value.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id })),
-)
+const { skillNodes, conceptNodes, skillsLoading, conceptsLoading } = useKnowledgeTrees()
 
 // The picker keeps a node's ancestors selected alongside it; the filter only
 // sends the most specific picks (see mostSpecificIds), but the picker keeps
@@ -277,7 +269,6 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
             :selected-ids="pickedSkillIds"
             :is-loading="skillsLoading"
             :multiple="!singleClassification"
-            :creatable="false"
             @update:selected-ids="onSkillsPicked"
           />
           <SkillConceptTreePicker
@@ -286,7 +277,6 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
             :selected-ids="pickedConceptIds"
             :is-loading="conceptsLoading"
             :multiple="!singleClassification"
-            :creatable="false"
             @update:selected-ids="onConceptsPicked"
           />
         </div>
@@ -347,7 +337,6 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
         :selected-ids="pickedSkillIds"
         :is-loading="skillsLoading"
         :multiple="!singleClassification"
-        :creatable="false"
         @update:selected-ids="onSkillsPicked"
       />
       <SkillConceptTreePicker
@@ -356,7 +345,6 @@ const appliedFilters = computed<AppliedFilter[]>(() => {
         :selected-ids="pickedConceptIds"
         :is-loading="conceptsLoading"
         :multiple="!singleClassification"
-        :creatable="false"
         @update:selected-ids="onConceptsPicked"
       />
     </div>

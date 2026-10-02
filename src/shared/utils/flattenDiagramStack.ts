@@ -40,8 +40,8 @@ export function stackLayerFromDiagram(diagram: Diagram): StackLayer {
     positions: diagram.positions,
     // A diagram served by an older API has no regions field at all.
     regions: diagram.regions ?? [],
-    skillIds: diagram.classification.skills.map((s) => s.skill_id),
-    conceptIds: diagram.classification.concepts.map((c) => c.concept_id),
+    skillIds: diagram.classification.skills.map((s) => s.node_id),
+    conceptIds: diagram.classification.concepts.map((c) => c.node_id),
   }
 }
 

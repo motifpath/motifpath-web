@@ -8,6 +8,8 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
+import { i18n } from '@/i18n'
 
 const instruments = [{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]
 
@@ -35,14 +37,18 @@ describe('CourseFilters', () => {
 
   describe('skill picks made outside the picker', () => {
     const skills = [
-      { skill_id: 'chords', name: 'chords', parent_id: null },
-      { skill_id: 'triads', name: 'triads', parent_id: 'chords' },
-      { skill_id: 'arpeggios', name: 'arpeggios', parent_id: null },
+      knowledgeNode('chords'),
+      knowledgeNode('triads', { parent_id: 'chords' }),
+      knowledgeNode('arpeggios'),
     ]
 
     beforeEach(() => {
-      GET.mockImplementation((path: string) =>
-        Promise.resolve({ data: path === '/skills' ? skills : [], error: undefined, response: { status: 200 } }),
+      GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+        Promise.resolve({
+          data: path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill' ? skills : [],
+          error: undefined,
+          response: { status: 200 },
+        }),
       )
     })
 
@@ -66,6 +72,20 @@ describe('CourseFilters', () => {
       picker.vm.$emit('update:selectedIds', [...picker.props('selectedIds'), 'arpeggios'])
 
       expect(lastSkillIds(wrapper)).toEqual(expect.arrayContaining(['triads', 'arpeggios']))
+    })
+
+    it('names an applied skill filter in the UI language', async () => {
+      skills[1] = knowledgeNode('triads', { parent_id: 'chords', names: { en: 'Triads', pt_BR: 'Tríades' } })
+      i18n.global.locale.value = 'pt-BR'
+      try {
+        const wrapper = mountFilters({ compact: true, hasActiveFilters: true, skillIds: ['triads'] })
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="applied-filter-skill-triads"]').text()).toContain('Tríades')
+      } finally {
+        i18n.global.locale.value = 'en'
+        skills[1] = knowledgeNode('triads', { parent_id: 'chords' })
+      }
     })
 
     it('unpicks a skill whose applied-filter chip was removed, so the next pick does not bring it back', async () => {

@@ -6,6 +6,7 @@ import {
   type StackLayer,
 } from '@/shared/utils/flattenDiagramStack'
 import { makeFrettedDiagram } from '@/shared/testUtils/diagram'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 import type { components } from '@/api/generated/core-domain'
 
 type DiagramPosition = components['schemas']['DiagramPosition']
@@ -247,8 +248,8 @@ describe('stackLayerFromDiagram', () => {
   it('takes a saved diagram’s names, colour, positions, regions and classification ids', () => {
     const p = position()
     const region: DiagramRegion = { fret_start: 1, fret_end: 2, description: { en: 'x' }, color: null }
-    const skill = { skill_id: 's1', name: 'Scales', parent_id: null }
-    const concept = { concept_id: 'c1', name: 'Pentatonic', parent_id: null }
+    const skill = knowledgeNode('s1', { names: { en: 'Scales' } })
+    const concept = knowledgeNode('c1', { kind: 'concept', names: { en: 'Pentatonic' } })
 
     const saved = makeFrettedDiagram({
       names: { en: 'A minor pentatonic' },

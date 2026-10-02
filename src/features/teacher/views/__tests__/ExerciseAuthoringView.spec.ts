@@ -80,6 +80,7 @@ import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.v
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 // Picks a stimulus file in whichever picker is open: images come through the image-or-diagram
 // modal, audio through the file picker.
@@ -105,6 +106,12 @@ async function selectClassification(wrapper: ReturnType<typeof mountView>) {
   const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
   await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
   await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
+}
+
+type KnowledgeQuery = { params?: { query?: { kind?: string } } }
+
+function isSkillsRequest(path: string, init?: KnowledgeQuery): boolean {
+  return path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
 }
 
 describe('ExerciseAuthoringView', () => {
@@ -254,10 +261,10 @@ describe('ExerciseAuthoringView', () => {
   })
 
   it('shows practice-session eligibility once a skill is linked', async () => {
-    GET.mockImplementation((path: string) => {
-      if (path === '/skills') {
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
+      if (isSkillsRequest(path, init)) {
         return Promise.resolve({
-          data: [{ skill_id: 's-1', name: 'alternate_picking', parent_id: null }],
+          data: [knowledgeNode('s-1', { names: { en: 'alternate_picking' } })],
           error: undefined,
           response: { status: 200 },
         })
@@ -314,16 +321,16 @@ describe('ExerciseAuthoringView', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(GET).toHaveBeenCalledWith('/skills', {})
-    expect(GET).toHaveBeenCalledWith('/concepts', {})
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'concept' } } })
     expect(wrapper.findComponent({ name: 'SkillConceptTreePicker' }).exists()).toBe(true)
   })
 
   it('selects a skill via the tree picker', async () => {
-    GET.mockImplementation((path: string) => {
-      if (path === '/skills') {
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
+      if (isSkillsRequest(path, init)) {
         return Promise.resolve({
-          data: [{ skill_id: 's-1', name: 'technique', parent_id: null }],
+          data: [knowledgeNode('s-1', { names: { en: 'technique' } })],
           error: undefined,
           response: { status: 200 },
         })
@@ -339,36 +346,53 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.text()).toContain('technique')
   })
 
-  it('selects a newly created skill together with its parent chain', async () => {
-    const rootSkill = { skill_id: 's-1', name: 'technique', parent_id: null }
-    const childSkill = { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' }
-    let skillsRequestCount = 0
-    GET.mockImplementation((path: string) => {
-      if (path === '/skills') {
-        skillsRequestCount += 1
-        // The first load happens before the skill exists; reloadSkills()
-        // after the create call reflects the real backend's post-create state.
-        const data = skillsRequestCount === 1 ? [rootSkill] : [rootSkill, childSkill]
-        return Promise.resolve({ data, error: undefined, response: { status: 200 } })
-      }
-      return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
-    })
-    POST.mockResolvedValueOnce({ data: childSkill, error: undefined, response: { status: 201 } })
+  it('offers no way to create a skill, and asks the team for missing ones', async () => {
     const wrapper = mountView()
     await flushPromises()
 
     await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
-    await wrapper.get('[data-test="tree-create-name"]').setValue('sweep-picking')
-    await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
-    await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="s-1"]').trigger('click')
-    await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
+
+    expect(wrapper.find('[data-test="tree-create-name"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(true)
+  })
+
+  it('lists skills for any instrument, since exercises are not matched to instruments yet', async () => {
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) =>
+      Promise.resolve({
+        data: isSkillsRequest(path, init) ? [knowledgeNode('s-bass', { names: { en: 'slap' }, instrument_ids: ['i-bass'] })] : [],
+        error: undefined,
+        response: { status: 200 },
+      }),
+    )
+    const wrapper = mountView()
     await flushPromises()
 
-    const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
-    expect(chips).toHaveLength(2)
-    expect(chips.map((c) => c.text())).toEqual(
-      expect.arrayContaining([expect.stringContaining('technique'), expect.stringContaining('sweep-picking')]),
-    )
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+
+    expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['slap'])
+  })
+
+  it('suggests the skills that apply the picked concepts', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string; type?: string } } }) => {
+      const query = init?.params?.query
+      const data =
+        path === '/knowledge-nodes'
+          ? query?.kind === 'skill'
+            ? [knowledgeNode('s-1', { names: { en: 'bends' } })]
+            : [knowledgeNode('c-1', { kind: 'concept', names: { en: 'pitch' } })]
+          : path === '/knowledge-edges' && query?.type === 'applies'
+            ? [{ edge_id: 'e-1', from_id: 's-1', to_id: 'c-1', type: 'applies', level: null }]
+            : []
+      return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+    })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+    await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+
+    expect(wrapper.findAll('[data-test="tree-suggested-row"]').map((row) => row.text())).toEqual(['bends'])
   })
 
   it('disables the AppBar Save button until at least one option is marked correct', async () => {
@@ -792,7 +816,7 @@ describe('ExerciseAuthoringView', () => {
     })
 
     it('loads the exercise by id and pre-fills the form', async () => {
-      GET.mockImplementation((path: string) => {
+      GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
         if (path === '/exercises/{exercise_id}') {
           return Promise.resolve({
             data: {
@@ -800,7 +824,7 @@ describe('ExerciseAuthoringView', () => {
               title: 'Name the chord',
               prompt: plainTextPrompt('Name this chord shape'),
               exercise_type: 'text_response',
-              skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+              skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
               concepts: [],
               options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
               challenge_ids: ['c-1'],
@@ -811,9 +835,9 @@ describe('ExerciseAuthoringView', () => {
             response: { status: 200 },
           })
         }
-        if (path === '/skills') {
+        if (isSkillsRequest(path, init)) {
           return Promise.resolve({
-            data: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+            data: [knowledgeNode('s-1', { names: { en: 'theory' } })],
             error: undefined,
             response: { status: 200 },
           })
@@ -1087,8 +1111,8 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         prompt: plainTextPrompt('p'),
         exercise_type: 'image_recognition',
         diagram_ref: rootsOnly,
-        skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
-        concepts: [{ concept_id: 'c-1', name: 'roots', parent_id: null }],
+        skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'roots' } })],
         options: [{ option_id: 'o-1', is_correct: true, diagram_position_id: 'p0', fret_cell: { string: 6, fret: 5 } }],
         challenge_ids: [],
         content_node_ids: [],

@@ -60,14 +60,16 @@ vi.mock('@/features/student/composables/useEnrollInCourse', () => ({
 }))
 
 const skills = ref([
-  { skill_id: 'chords', name: 'chords', parent_id: null },
-  { skill_id: 'triads', name: 'triads', parent_id: 'chords' },
+  knowledgeNode('chords', { names: { en: 'chords' } }),
+  knowledgeNode('triads', { names: { en: 'triads' }, parent_id: 'chords' }),
 ])
-vi.mock('@/shared/composables/useListSkills', () => ({
-  useListSkills: () => ({ skills, isLoading: ref(false), error: ref(false), retry: vi.fn() }),
-}))
-vi.mock('@/shared/composables/useListConcepts', () => ({
-  useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+vi.mock('@/shared/composables/useListKnowledgeNodes', () => ({
+  useListKnowledgeNodes: (kind: string) => ({
+    nodes: kind === 'skill' ? skills : ref([]),
+    isLoading: ref(false),
+    error: ref(false),
+    retry: vi.fn(),
+  }),
 }))
 
 vi.mock('@/shared/composables/useListInstruments', () => ({
@@ -93,6 +95,7 @@ vi.mock('@/shared/composables/useToast', () => ({
 
 import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import CourseCatalogView from '@/features/student/views/CourseCatalogView.vue'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
   return {

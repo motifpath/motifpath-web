@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, shallowRef, watch, watchEffect } from 'vue'
 import { Layers, Maximize2, Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
+import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
@@ -20,7 +21,6 @@ import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { useDiagramOverlays } from '@/features/teacher/composables/useDiagramOverlays'
 import { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
-import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
 import AppBar from '@/shared/components/AppBar.vue'
 import LocaleScope from '@/shared/components/LocaleScope.vue'
@@ -95,11 +95,13 @@ const { t: te } = useTypedT({ locale: editingLocale })
 const { localizedName: localizedNameInEditor } = useLocalizedName({ locale: editingLocale })
 const { createDiagram } = useCreateDiagram()
 const { updateDiagram } = useUpdateDiagram()
-const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
-  useSkillConceptCreation(form.skillIds, form.conceptIds, {
-    createSkillFailed: t('diagramAuthoringView.createSkillFailed'),
-    createConceptFailed: t('diagramAuthoringView.createConceptFailed'),
-  })
+const { skillNodes, conceptNodes, skillsLoading, conceptsLoading, suggestedSkillIds, suggestedConceptIds } =
+  useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, { locale: editingLocale })
+// Classification must suit every instrument the diagram is for; before any are
+// toggled, that is the layout instrument alone.
+const classificationInstrumentIds = computed(() =>
+  form.instrumentIds.value.length > 0 ? form.instrumentIds.value : [form.instrumentId.value].filter(Boolean),
+)
 
 const savedDiagramId = ref('')
 // Who may save over the diagram being edited follows from the server's copy of it; null
@@ -676,21 +678,23 @@ async function saveAs(names: Record<string, string>) {
           </div>
           <SkillConceptTreePicker
             :label="te('classificationFields.skillLabel')"
-            :nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
+            :nodes="skillNodes"
             :selected-ids="form.skillIds.value"
             :is-loading="skillsLoading"
+            :instrument-ids="classificationInstrumentIds"
+            :suggested-ids="suggestedSkillIds"
+            missing-hint
             @update:selected-ids="form.skillIds.value = $event"
-            @create="onCreateSkill"
           />
           <SkillConceptTreePicker
             :label="te('classificationFields.conceptLabel')"
-            :nodes="
-              concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))
-            "
+            :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"
+            :instrument-ids="classificationInstrumentIds"
+            :suggested-ids="suggestedConceptIds"
+            missing-hint
             @update:selected-ids="form.conceptIds.value = $event"
-            @create="onCreateConcept"
           />
         </div>
         </LocaleScope>

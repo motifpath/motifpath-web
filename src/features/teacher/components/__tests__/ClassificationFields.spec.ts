@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import ClassificationFields from '@/features/teacher/components/ClassificationFields.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 
 const skillNodes = [{ id: 's-1', name: 'triad-shapes', parent_id: null }]
 const conceptNodes = [{ id: 'c-1', name: 'chord-theory', parent_id: null }]
@@ -54,24 +55,34 @@ describe('ClassificationFields', () => {
     expect(wrapper.emitted('update:difficultyLevel')).toEqual([['advanced']])
   })
 
-  it('re-emits createSkill/createConcept from the tree pickers', async () => {
+  it('passes the content instruments and the applies suggestions to the pickers, which ask the team for missing nodes', () => {
+    const wrapper = mount(ClassificationFields, {
+      props: {
+        skillIds: [],
+        conceptIds: [],
+        skillNodes,
+        conceptNodes,
+        difficultyLevel: 'beginner',
+        reviewState: null,
+        instrumentIds: ['guitar'],
+        suggestedSkillIds: ['s-1'],
+        suggestedConceptIds: ['c-1'],
+      },
+    })
+
+    const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    expect(skillPicker!.props()).toMatchObject({ instrumentIds: ['guitar'], suggestedIds: ['s-1'], missingHint: true })
+    expect(conceptPicker!.props()).toMatchObject({ instrumentIds: ['guitar'], suggestedIds: ['c-1'], missingHint: true })
+  })
+
+  it('lists every node when no content instruments are given', () => {
     const wrapper = mount(ClassificationFields, {
       props: { skillIds: [], conceptIds: [], skillNodes, conceptNodes, difficultyLevel: 'beginner', reviewState: null },
     })
 
-    const openButtons = wrapper.findAll('[data-test="tree-open-picker"]')
-    await openButtons[0].trigger('click')
-    await openButtons[1].trigger('click')
-
-    const nameInputs = wrapper.findAll('[data-test="tree-create-name"]')
-    await nameInputs[0].setValue('sweep-picking')
-    const submitButtons = wrapper.findAll('[data-test="tree-create-submit"]')
-    await submitButtons[0].trigger('click')
-    expect(wrapper.emitted('createSkill')).toEqual([[{ name: 'sweep-picking', parentId: null }]])
-
-    await nameInputs[1].setValue('interval-recognition')
-    await submitButtons[1].trigger('click')
-    expect(wrapper.emitted('createConcept')).toEqual([[{ name: 'interval-recognition', parentId: null }]])
+    for (const picker of wrapper.findAllComponents(SkillConceptTreePicker)) {
+      expect(picker.props('instrumentIds')).toBeNull()
+    }
   })
 
   it('shows no review-state badge when reviewState is null (not yet created)', () => {

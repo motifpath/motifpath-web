@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { useDiagramOverlays } from '@/features/teacher/composables/useDiagramOverlays'
 import { makeFrettedDiagram } from '@/shared/testUtils/diagram'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 const base = makeFrettedDiagram({
   diagram_id: 'd-base',
@@ -16,8 +17,8 @@ const base = makeFrettedDiagram({
   ],
   regions: [],
   classification: {
-    skills: [{ skill_id: 's1', name: 'Scales', parent_id: null }],
-    concepts: [{ concept_id: 'c1', name: 'Major', parent_id: null }],
+    skills: [knowledgeNode('s1', { names: { en: 'Scales' } })],
+    concepts: [knowledgeNode('c1', { kind: 'concept', names: { en: 'Major' } })],
   },
 })
 
@@ -33,8 +34,8 @@ const overlay = makeFrettedDiagram({
   ],
   regions: [],
   classification: {
-    skills: [{ skill_id: 's2', name: 'Pentatonics', parent_id: null }],
-    concepts: [{ concept_id: 'c1', name: 'Major', parent_id: null }],
+    skills: [knowledgeNode('s2', { names: { en: 'Pentatonics' } })],
+    concepts: [knowledgeNode('c1', { kind: 'concept', names: { en: 'Major' } })],
   },
 })
 

@@ -98,8 +98,8 @@ export function useContentNodeForm() {
   function loadFromContentNode(contentNode: ContentNode) {
     title.value = contentNode.title
     contentType.value = contentNode.content_type
-    skillIds.value = contentNode.classification.skills.map((s) => s.skill_id)
-    conceptIds.value = contentNode.classification.concepts.map((c) => c.concept_id)
+    skillIds.value = contentNode.classification.skills.map((s) => s.node_id)
+    conceptIds.value = contentNode.classification.concepts.map((c) => c.node_id)
     difficultyLevel.value = contentNode.classification.difficulty_level
     reviewState.value = contentNode.classification.review_state
     mediaUrl.value = contentNode.media_url ?? ''

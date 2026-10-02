@@ -536,8 +536,8 @@ export function useDiagramForm() {
     sequence.value = copySteps(diagram.sequence ?? [])
     // A diagram served by an older API has no regions field at all.
     regions.value = (diagram.regions ?? []).map(toLocalRegion)
-    skillIds.value = diagram.classification.skills.map((s) => s.skill_id)
-    conceptIds.value = diagram.classification.concepts.map((c) => c.concept_id)
+    skillIds.value = diagram.classification.skills.map((s) => s.node_id)
+    conceptIds.value = diagram.classification.concepts.map((c) => c.node_id)
   }
 
   /**

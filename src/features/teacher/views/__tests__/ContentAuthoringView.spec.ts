@@ -47,6 +47,8 @@ function mockMatchMedia(compact: boolean): void {
 import type { components } from '@/api/generated/core-domain'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
+import { i18n } from '@/i18n'
 import ContentAuthoringView from '@/features/teacher/views/ContentAuthoringView.vue'
 
 // Already in the shape PromptEditor's Tiptap round trip emits (paragraphs gain
@@ -72,8 +74,8 @@ function mountView() {
   })
 }
 
-const skillFixture = { skill_id: 's-1', name: 'alternate-picking', parent_id: null }
-const conceptFixture = { concept_id: 'c-1', name: 'picking-technique', parent_id: null }
+const skillFixture = knowledgeNode('s-1', { names: { en: 'alternate-picking' } })
+const conceptFixture = knowledgeNode('c-1', { kind: 'concept', names: { en: 'picking-technique' } })
 
 const contentNodeFixture = {
   content_node_id: 'cn-1',
@@ -106,15 +108,22 @@ const instruments = [
  * it cares about, defaulting everything else to an empty/absent result.
  */
 function routeGET(overrides: Record<string, unknown>) {
-  GET.mockImplementation((path: string) => {
+  GET.mockImplementation((requestPath: string, init?: { params?: { query?: { kind?: string; type?: string } } }) => {
+    // The knowledge trees share one path; tests address each kind as e.g. '/knowledge-nodes?kind=skill'.
+    const query = init?.params?.query
+    const path =
+      requestPath === '/knowledge-nodes'
+        ? `${requestPath}?kind=${query?.kind}`
+        : requestPath === '/knowledge-edges'
+          ? `${requestPath}?type=${query?.type}`
+          : requestPath
     if (path in overrides) return Promise.resolve(overrides[path])
     if (path === '/instruments') {
       return Promise.resolve({ data: instruments, error: undefined, response: { status: 200 } })
     }
     if (
       path === '/content-nodes/{content_node_id}/challenges' ||
-      path === '/skills' ||
-      path === '/concepts'
+      path.startsWith('/knowledge-')
     ) {
       return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
     }
@@ -148,8 +157,8 @@ describe('ContentAuthoringView', () => {
   describe('create mode', () => {
     it('offers publishing only once the new node has been saved', async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
         '/content-nodes/{content_node_id}/versions': { data: [], error: undefined, response: { status: 200 } },
       })
       POST.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 201 } })
@@ -173,8 +182,8 @@ describe('ContentAuthoringView', () => {
 
     it('posts a CreateContentNodeRequest on save', async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
       })
       POST.mockResolvedValueOnce({
         data: {
@@ -221,8 +230,8 @@ describe('ContentAuthoringView', () => {
 
     it('starts at every instrument and sends the instruments picked', async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
       })
       POST.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 201 } })
       const wrapper = mountView()
@@ -248,8 +257,8 @@ describe('ContentAuthoringView', () => {
 
     it('keeps Save disabled until a video has a media URL', async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
       })
       const wrapper = mountView()
       await flushPromises()
@@ -264,8 +273,8 @@ describe('ContentAuthoringView', () => {
 
     it('flags a media URL that is not http(s) and keeps Save disabled', async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
       })
       const wrapper = mountView()
       await flushPromises()
@@ -300,8 +309,8 @@ describe('ContentAuthoringView', () => {
 
     it('posts an article with rich_content and no media_url', async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
       })
       POST.mockResolvedValueOnce({
         data: { ...contentNodeFixture, content_type: 'article', media_url: undefined, rich_content: ARTICLE_BODY },
@@ -331,70 +340,67 @@ describe('ContentAuthoringView', () => {
       })
     })
 
-    it('selects a newly created skill together with its parent chain', async () => {
+    it('offers no way to create a skill or concept, and asks the team for missing ones', async () => {
+      routeGET({})
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+
+      expect(wrapper.find('[data-test="tree-create-name"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(true)
+    })
+
+    it("lists only the skills that suit the node's instruments, following the instrument picks", async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
-      })
-      POST.mockResolvedValueOnce({
-        data: { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' },
-        error: undefined,
-        response: { status: 201 },
-      })
-      POST.mockResolvedValueOnce({
-        data: {
-          content_node_id: 'cn-1',
-          teacher: { user_id: 't-1', display_name: 'Tina Teacher' },
-          title: 'Sweep basics',
-          content_type: 'video',
-          classification: {
-            skills: [skillFixture, { skill_id: 's-2', name: 'sweep-picking', parent_id: 's-1' }],
-            concepts: [conceptFixture],
-            difficulty_level: 'beginner',
-            review_state: 'pending',
-          },
-          languages: [],
-          instrument_ids: [],
-          created_at: '2026-01-01T00:00:00Z',
+        '/knowledge-nodes?kind=skill': {
+          data: [
+            knowledgeNode('s-all', { names: { en: 'reading-tab' } }),
+            knowledgeNode('s-bass', { names: { en: 'slap' }, instrument_ids: ['i-bass'] }),
+          ],
+          error: undefined,
+          response: { status: 200 },
         },
-        error: undefined,
-        response: { status: 201 },
       })
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Sweep basics')
-      await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
-      await wrapper.get('[data-test="tree-create-name"]').setValue('sweep-picking')
-      await wrapper.get('[data-test="tree-create-parent-search"]').trigger('focus')
-      await wrapper.get('[data-test="tree-create-parent-option"][data-node-id="s-1"]').trigger('click')
-      await wrapper.get('[data-test="tree-create-submit"]').trigger('click')
-      await flushPromises()
+      expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['reading-tab'])
 
-      expect(POST).toHaveBeenNthCalledWith(1, '/skills', { body: { name: 'sweep-picking', parent_id: 's-1' } })
+      await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+      expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual([
+        'reading-tab',
+        'slap',
+      ])
+    })
 
-      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
-      await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
-      await flushPromises()
-
-      expect(POST).toHaveBeenNthCalledWith(2, '/content-nodes', {
-        body: {
-          title: 'Sweep basics',
-          content_type: 'video',
-          media_url: VIDEO_URL,
-          classification: { skill_ids: ['s-2', 's-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
-          language_codes: ['any'],
-          instrument_ids: [],
+    it('suggests the concepts that the picked skills apply', async () => {
+      routeGET({
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-edges?type=applies': {
+          data: [{ edge_id: 'e-1', from_id: 's-1', to_id: 'c-1', type: 'applies', level: null }],
+          error: undefined,
+          response: { status: 200 },
         },
       })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+      await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+      await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+      expect(wrapper.findAll('[data-test="tree-suggested-row"]').map((row) => row.text())).toEqual([
+        'picking-technique',
+      ])
     })
 
     it('shows the challenge section, with no challenge yet, once the node is saved', async () => {
       routeGET({
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
       })
       POST.mockResolvedValueOnce({ data: contentNodeFixture, error: undefined, response: { status: 201 } })
       const wrapper = mountView()
@@ -422,8 +428,8 @@ describe('ContentAuthoringView', () => {
     it('loads the content node by id and pre-fills the form', async () => {
       routeGET({
         '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } },
-        '/skills': { data: [skillFixture], error: undefined, response: { status: 200 } },
-        '/concepts': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
       })
       const wrapper = mountView()
       await flushPromises()
@@ -545,7 +551,7 @@ describe('ContentAuthoringView', () => {
       function routeChallenge(linkedExercises: ReturnType<typeof exerciseFixture>[], pool = linkedExercises) {
         routeGET({
           '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
-          '/skills': okResponse([skillFixture]),
+          '/knowledge-nodes?kind=skill': okResponse([skillFixture]),
           '/content-nodes/{content_node_id}/challenges': okResponse([challengeFixture]),
           '/challenges/{challenge_id}/exercises': okResponse(linkedExercises),
           '/exercises': okResponse({ items: pool, total: pool.length, limit: 100, offset: 0 }),
@@ -565,7 +571,7 @@ describe('ContentAuthoringView', () => {
       it('builds a challenge and links its exercises from the modal', async () => {
         routeGET({
           '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
-          '/skills': okResponse([skillFixture]),
+          '/knowledge-nodes?kind=skill': okResponse([skillFixture]),
           '/exercises': okResponse({ items: [exerciseFixture('e-1', 'Name the chord')], total: 1, limit: 100, offset: 0 }),
         })
         POST.mockResolvedValueOnce({ data: challengeFixture, error: undefined, response: { status: 201 } }).mockResolvedValueOnce(
@@ -774,17 +780,17 @@ describe('ContentAuthoringView', () => {
         async function saveWithFailingSecondLink() {
           routeGET({
             '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
-            '/skills': okResponse([skillFixture]),
+            '/knowledge-nodes?kind=skill': okResponse([skillFixture]),
             '/exercises': okResponse({ items: [exerciseFixture('e-1', 'Name the chord'), exerciseFixture('e-2', 'Pick the diagram')], total: 2, limit: 100, offset: 0 }),
           })
           const defaultGET = GET.getMockImplementation()
           let resolveRefresh: (value: unknown) => void = () => {}
           let refreshGate: Promise<unknown> | null = null
           let linkedNow = okResponse([])
-          GET.mockImplementation((path: string) => {
+          GET.mockImplementation((path: string, init?: unknown) => {
             if (path === CHALLENGES && refreshGate) return refreshGate
             if (path === EXERCISES) return Promise.resolve(linkedNow)
-            return defaultGET?.(path)
+            return defaultGET?.(path, init)
           })
           POST.mockResolvedValueOnce({ data: challengeFixture, error: undefined, response: { status: 201 } })
             .mockResolvedValueOnce(noContent)
@@ -1032,6 +1038,30 @@ describe('ContentAuthoringView', () => {
 
         expect(wrapper.get('[data-test="publish-status"]').text()).toContain('Not published yet')
         expect(wrapper.find('[data-test="no-versions"]').exists()).toBe(true)
+      })
+
+      it("names each version's skills and concepts in the UI language", async () => {
+        const version = {
+          ...versionFixture(1, 'First title'),
+          classification_snapshot: {
+            ...contentNodeFixture.classification,
+            skills: [knowledgeNode('s-1', { names: { en: 'Alternate picking', pt_BR: 'Palhetada alternada' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Picking', pt_BR: 'Palhetada' } })],
+          },
+        }
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse({ ...contentNodeFixture, latest_published_version: 1 }),
+          '/content-nodes/{content_node_id}/versions': okResponse([version]),
+        })
+        i18n.global.locale.value = 'pt-BR'
+        try {
+          const wrapper = mountView()
+          await flushPromises()
+
+          expect(wrapper.get('[data-test="version-row"]').text()).toContain('Palhetada alternada · Palhetada')
+        } finally {
+          i18n.global.locale.value = 'en'
+        }
       })
 
       it('lists the published versions newest first, with the latest one called out', async () => {

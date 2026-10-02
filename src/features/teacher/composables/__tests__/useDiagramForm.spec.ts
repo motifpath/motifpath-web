@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { makeFrettedDiagram, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 describe('useDiagramForm', () => {
   it('starts empty with no positions and nothing markable as valid', () => {
@@ -225,8 +226,8 @@ describe('useDiagramForm', () => {
       root_note: 'A',
       label_display: 'note',
       classification: {
-        skills: [{ skill_id: 's-1', name: 'Pentatonic scales', parent_id: null }],
-        concepts: [{ concept_id: 'c-1', name: 'Scale construction', parent_id: null }],
+        skills: [knowledgeNode('s-1', { names: { en: 'Pentatonic scales' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Scale construction' } })],
       },
     })
 
