@@ -229,16 +229,6 @@ describe('ContentAuthoringView', () => {
       })
     })
 
-    it("hands the node's instruments to the challenge modal, so its exercise picker offers only exercises that suit them", async () => {
-      routeGET({})
-      const wrapper = mountView()
-      await flushPromises()
-
-      await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
-
-      expect(wrapper.getComponent(ChallengeModal).props('instrumentIds')).toEqual(['i-bass'])
-    })
-
     it('starts at every instrument and sends the instruments picked', async () => {
       routeGET({
         '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
@@ -483,6 +473,16 @@ describe('ContentAuthoringView', () => {
       expect(wrapper.get('[data-test="review-state"]').text()).toContain('pending')
       expect(wrapper.text()).toContain('alternate-picking')
       expect(wrapper.text()).toContain('picking-technique')
+    })
+
+    it("hands the lesson's saved instruments to the challenge modal, not unsaved picks, since links are checked against the saved lesson", async () => {
+      routeGET({ '/content-nodes/{content_node_id}': { data: contentNodeFixture, error: undefined, response: { status: 200 } } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+
+      expect(wrapper.getComponent(ChallengeModal).props('instrumentIds')).toEqual(['i-guitar'])
     })
 
     it('disables the content type toggle -- type cannot change after creation', async () => {
