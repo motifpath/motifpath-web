@@ -1,7 +1,57 @@
+import { pickLocalizedName } from '@/shared/utils/localizedName'
+import type { components } from '@/api/generated/core-domain'
+
+type KnowledgeNode = components['schemas']['KnowledgeNode']
+type KnowledgeEdge = components['schemas']['KnowledgeEdge']
+
 export interface TreeNode {
   id: string
   name: string
   parent_id: string | null
+  /** Extra text the picker's search matches besides the name — other languages' names, the key. */
+  searchTerms?: string[]
+  /** The instruments the node is for; empty means every instrument. */
+  instrumentIds?: string[]
+}
+
+/** Knowledge nodes as picker tree nodes, named in `languageCode` (falling back to English). */
+export function toTreeNodes(nodes: KnowledgeNode[], languageCode: string): TreeNode[] {
+  return nodes.map((node) => {
+    const name = pickLocalizedName(node.names, languageCode)
+    return {
+      id: node.node_id,
+      name,
+      parent_id: node.parent_id,
+      searchTerms: Array.from(new Set([name, ...Object.values(node.names), node.key])),
+      instrumentIds: node.instrument_ids,
+    }
+  })
+}
+
+/**
+ * Whether a node may classify content for `contentInstrumentIds` — the rule the
+ * server enforces: a node for every instrument suits anything; an
+ * instrument-specific node suits content for at least one of its instruments,
+ * so never content for every instrument.
+ */
+export function suitsInstruments(node: TreeNode, contentInstrumentIds: string[]): boolean {
+  const nodeInstrumentIds = node.instrumentIds ?? []
+  if (nodeInstrumentIds.length === 0) return true
+  return contentInstrumentIds.some((id) => nodeInstrumentIds.includes(id))
+}
+
+/**
+ * Nodes linked by an applies edge to the picked ones: the concepts the picked
+ * skills apply, or the skills that apply the picked concepts. Suggestions only —
+ * applies never restricts what may be picked.
+ */
+export function appliesSuggestions(edges: KnowledgeEdge[], pickedIds: string[], suggest: 'skills' | 'concepts'): string[] {
+  const picked = new Set(pickedIds)
+  const ids = edges
+    .filter((edge) => edge.type === 'applies')
+    .filter((edge) => picked.has(suggest === 'concepts' ? edge.from_id : edge.to_id))
+    .map((edge) => (suggest === 'concepts' ? edge.to_id : edge.from_id))
+  return Array.from(new Set(ids))
 }
 
 /** A node's ancestor ids, nearest parent first — excludes the node itself. */

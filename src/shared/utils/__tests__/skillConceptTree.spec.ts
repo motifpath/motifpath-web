@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
-import { ancestorIds, descendantIds, mostSpecificIds } from '@/shared/utils/skillConceptTree'
+import {
+  ancestorIds,
+  appliesSuggestions,
+  descendantIds,
+  mostSpecificIds,
+  suitsInstruments,
+  toTreeNodes,
+} from '@/shared/utils/skillConceptTree'
+import { knowledgeNode as fixture } from '@/shared/testUtils/knowledgeNode'
+import type { components } from '@/api/generated/core-domain'
+
+type KnowledgeNode = components['schemas']['KnowledgeNode']
+type KnowledgeEdge = components['schemas']['KnowledgeEdge']
 
 const nodes = [
   { id: 'root-1', name: 'chord-theory', parent_id: null },
@@ -47,5 +59,85 @@ describe('mostSpecificIds', () => {
 
   it('keeps an id whose node is unknown', () => {
     expect(mostSpecificIds(nodes, ['missing'])).toEqual(['missing'])
+  })
+})
+
+function knowledgeNode(overrides: Partial<KnowledgeNode>): KnowledgeNode {
+  return fixture('n-1', { key: 'bends', names: { en: 'Bends', pt_BR: 'Bends (puxadas)' }, ...overrides })
+}
+
+describe('toTreeNodes', () => {
+  it('names each node in the given language and keeps its parent and instruments', () => {
+    const [node] = toTreeNodes(
+      [knowledgeNode({ node_id: 'n-2', parent_id: 'n-1', instrument_ids: ['electric-guitar'] })],
+      'pt_BR',
+    )
+    expect(node).toEqual({
+      id: 'n-2',
+      name: 'Bends (puxadas)',
+      parent_id: 'n-1',
+      searchTerms: ['Bends (puxadas)', 'Bends', 'bends'],
+      instrumentIds: ['electric-guitar'],
+    })
+  })
+
+  it('falls back to English when the node has no name in the given language', () => {
+    const [node] = toTreeNodes([knowledgeNode({ names: { en: 'Bends' } })], 'pt_BR')
+    expect(node!.name).toBe('Bends')
+  })
+
+  it('makes the node findable by its name in every language and by its key', () => {
+    const [node] = toTreeNodes(
+      [knowledgeNode({ key: 'half-step-bend', names: { en: 'Half-step bend', pt_BR: 'Bend de meio tom' } })],
+      'en',
+    )
+    expect(node!.searchTerms).toEqual(['Half-step bend', 'Bend de meio tom', 'half-step-bend'])
+  })
+})
+
+describe('suitsInstruments', () => {
+  const forEvery = { id: 'a', name: 'Reading tab', parent_id: null, instrumentIds: [] }
+  const forElectric = { id: 'b', name: 'Bends', parent_id: null, instrumentIds: ['electric', 'acoustic'] }
+
+  it('a node for every instrument suits any content', () => {
+    expect(suitsInstruments(forEvery, ['bass'])).toBe(true)
+    expect(suitsInstruments(forEvery, [])).toBe(true)
+  })
+
+  it('an instrument-specific node suits content for at least one of its instruments', () => {
+    expect(suitsInstruments(forElectric, ['bass', 'electric'])).toBe(true)
+  })
+
+  it('an instrument-specific node does not suit content for none of its instruments', () => {
+    expect(suitsInstruments(forElectric, ['bass'])).toBe(false)
+  })
+
+  it('an instrument-specific node does not suit content for every instrument', () => {
+    expect(suitsInstruments(forElectric, [])).toBe(false)
+  })
+})
+
+describe('appliesSuggestions', () => {
+  const edges: KnowledgeEdge[] = [
+    { edge_id: 'e-1', from_id: 'skill-1', to_id: 'concept-1', type: 'applies', level: null },
+    { edge_id: 'e-2', from_id: 'skill-1', to_id: 'concept-2', type: 'applies', level: null },
+    { edge_id: 'e-3', from_id: 'skill-2', to_id: 'concept-2', type: 'applies', level: null },
+  ]
+
+  it('suggests the concepts the picked skills apply, once each', () => {
+    expect(appliesSuggestions(edges, ['skill-1', 'skill-2'], 'concepts')).toEqual(['concept-1', 'concept-2'])
+  })
+
+  it('suggests the skills that apply the picked concepts, once each', () => {
+    expect(appliesSuggestions(edges, ['concept-2'], 'skills')).toEqual(['skill-1', 'skill-2'])
+  })
+
+  it('suggests nothing when nothing is picked', () => {
+    expect(appliesSuggestions(edges, [], 'concepts')).toEqual([])
+  })
+
+  it('ignores requires edges', () => {
+    const requires: KnowledgeEdge = { edge_id: 'e-4', from_id: 'skill-3', to_id: 'concept-3', type: 'requires', level: 'fluent' }
+    expect(appliesSuggestions([requires], ['skill-3'], 'concepts')).toEqual([])
   })
 })
