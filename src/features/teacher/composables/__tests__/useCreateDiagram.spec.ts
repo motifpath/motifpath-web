@@ -17,7 +17,7 @@ describe('useCreateDiagram', () => {
 
     const { createDiagram } = useCreateDiagram()
     const request: CreateDiagramRequest = {
-      instrument_id: 'i-1',
+      instrument_ids: ['i-1'],
       names: { en: 'Minor Pentatonic' },
       kind: 'custom',
       positions: [],
@@ -36,7 +36,7 @@ describe('useCreateDiagram', () => {
     const { createDiagram } = useCreateDiagram()
 
     await expect(
-      createDiagram({ instrument_id: 'i-1', names: { en: '' }, kind: 'custom', positions: [], classification: { skill_ids: [], concept_ids: [] } }),
+      createDiagram({ instrument_ids: ['i-1'], names: { en: '' }, kind: 'custom', positions: [], classification: { skill_ids: [], concept_ids: [] } }),
     ).rejects.toThrow('Boom')
   })
 })

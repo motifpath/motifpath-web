@@ -220,7 +220,7 @@ describe('DiagramAuthoringView', () => {
       '/diagrams',
       expect.objectContaining({
         body: expect.objectContaining({
-          instrument_id: 'i-1',
+          instrument_ids: ['i-1'],
           names: { en: 'Minor Pentatonic — Position 1' },
           positions: [expect.objectContaining({ interval: 'R', note_name: 'G', string: 1, fret: 3 })],
         }),

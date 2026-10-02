@@ -2438,9 +2438,15 @@ export interface components {
             diagram_id: string;
             /**
              * Format: uuid
-             * @description The instrument this diagram is authored against.
+             * @description The immutable layout instrument this diagram is authored against.
              */
             instrument_id: string;
+            /**
+             * @description Every instrument for which this diagram is available, including
+             *     instrument_id. Every linked instrument has coordinate geometry
+             *     compatible with the layout instrument.
+             */
+            instrument_ids: string[];
             /**
              * @description The diagram's name in each language it has one for (e.g. {"en":
              *     "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor
@@ -2544,10 +2550,11 @@ export interface components {
          */
         CreateDiagramRequest: {
             /**
-             * Format: uuid
-             * @description The instrument this diagram is authored against. Must reference an existing instrument.
+             * @description The compatible instruments for this diagram. The first is the
+             *     immutable layout instrument; every selected instrument must have
+             *     matching coordinate geometry.
              */
-            instrument_id: string;
+            instrument_ids: string[];
             /**
              * @description The diagram's name in each of its languages. A basic diagram
              *     needs a name in every language MotifPath offers; a custom one
@@ -2624,13 +2631,15 @@ export interface components {
          *     note, and tempo_bpm is set exactly when the sequence is non-empty. Every
          *     per-language text on the diagram — names, positions' custom_label
          *     and note, regions' description — must cover exactly the same
-         *     languages once the update is applied. instrument_id is not
-         *     present here — it cannot be changed after creation, since every
-         *     position's coordinate shape depends on it. Nor are kind and
+         *     languages once the update is applied. instrument_ids may replace the
+         *     compatible instruments only with records that match the diagram's
+         *     immutable layout geometry. Nor are kind and
          *     created_by, which are fixed at creation; a copy saved under a
          *     different kind or creator is a new diagram.
          */
         UpdateDiagramRequest: {
+            /** @description Replaces the compatible instruments for this diagram. */
+            instrument_ids?: string[];
             /**
              * @description The diagram's names, replacing the current set. A basic diagram
              *     must keep a name in every language MotifPath offers. Omitted

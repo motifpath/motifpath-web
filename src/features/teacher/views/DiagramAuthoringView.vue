@@ -182,6 +182,27 @@ const readOnlyReason = computed(() => {
 const selectedInstrument = computed(() =>
   instruments.value.find((i) => i.instrument_id === form.instrumentId.value),
 )
+const compatibleInstruments = computed(() => {
+  const layout = selectedInstrument.value
+  if (!layout || layout.family !== 'fretted') return []
+  return frettedInstruments.value.filter(
+    (instrument) =>
+      instrument.string_count === layout.string_count &&
+      JSON.stringify(instrument.tuning) === JSON.stringify(layout.tuning),
+  )
+})
+
+function chooseLayout(instrumentId: string) {
+  form.instrumentId.value = instrumentId
+  form.instrumentIds.value = [instrumentId]
+}
+
+function toggleCompatibleInstrument(instrumentId: string) {
+  if (instrumentId === form.instrumentId.value) return
+  form.instrumentIds.value = form.instrumentIds.value.includes(instrumentId)
+    ? form.instrumentIds.value.filter((id) => id !== instrumentId)
+    : [...form.instrumentIds.value, instrumentId]
+}
 
 // Only tracks tuning here — never auto-recomputes on instrument change, since that would
 // blindly overwrite interval/note_name an edit-mode load just populated from the server (no
@@ -214,6 +235,7 @@ function diagramForPreview(positions: Diagram['positions'], regions: Diagram['re
   return {
     diagram_id: savedDiagramId.value,
     instrument_id: form.instrumentId.value,
+    instrument_ids: [...form.instrumentIds.value],
     names: request.names,
     languages: Object.keys(request.names).sort(),
     kind: savedOwnership.value?.kind ?? 'custom',
@@ -472,7 +494,7 @@ async function saveAs(names: Record<string, string>) {
                   ? 'bg-accent text-accent-fg'
                   : 'text-ink-muted'
               "
-              @click="form.instrumentId.value = instrument.instrument_id"
+              @click="chooseLayout(instrument.instrument_id)"
             >
               {{ localizedNameInEditor(instrument.names) }}
             </button>
@@ -480,6 +502,23 @@ async function saveAs(names: Record<string, string>) {
           <span v-if="isEditMode || form.hasPositions.value" class="text-sm text-ink-subtle">
             {{ te('diagramAuthoringView.instrumentLockedHint') }}
           </span>
+          <div v-if="selectedInstrument" class="flex flex-col gap-2">
+            <span class="text-sm text-ink-subtle">Compatible instruments</span>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="instrument in compatibleInstruments"
+                :key="instrument.instrument_id"
+                type="button"
+                :data-test="`compatible-instrument-${instrument.instrument_id}`"
+                :aria-pressed="form.instrumentIds.value.includes(instrument.instrument_id)"
+                class="rounded-full border px-3 py-1 text-sm"
+                :class="form.instrumentIds.value.includes(instrument.instrument_id) ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink-muted'"
+                @click="toggleCompatibleInstrument(instrument.instrument_id)"
+              >
+                {{ localizedNameInEditor(instrument.names) }}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2.5">
