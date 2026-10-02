@@ -78,23 +78,6 @@ export function descendantIds(nodes: TreeNode[], id: string): string[] {
   return children.flatMap((child) => [child.id, ...descendantIds(nodes, child.id)])
 }
 
-/**
- * Drops every selected id that is an ancestor of another selected id. Tagging
- * content with a node also tags it with that node's ancestors, so filtering by
- * the whole selection would match everything under the broadest pick — the
- * most specific picks are what narrow the results.
- */
-export function mostSpecificIds(nodes: TreeNode[], ids: string[]): string[] {
-  const byId = new Map(nodes.map((n) => [n.id, n]))
-  const coveredAncestors = new Set(
-    ids.flatMap((id) => {
-      const node = byId.get(id)
-      return node ? ancestorIds(nodes, node) : []
-    }),
-  )
-  return ids.filter((id) => !coveredAncestors.has(id))
-}
-
 export interface TreeRow {
   node: TreeNode
   depth: number
@@ -162,4 +145,47 @@ export function treeRows(
   }
   visit(null, 0)
   return rows
+}
+
+/** Whether `id` and every node under it are selected. */
+function wholeSubtreeSelected(nodes: TreeNode[], id: string, selected: Set<string>): boolean {
+  return selected.has(id) && descendantIds(nodes, id).every((descendant) => selected.has(descendant))
+}
+
+/**
+ * The ids to filter by, for a filter that matches any of them. Picking a node
+ * also picks its ancestors, which would widen the filter to everything under
+ * them — so a picked node is dropped when only some of its subtree is picked.
+ * A node picked with its whole subtree stays, together with the subtree.
+ */
+export function filterIds(nodes: TreeNode[], selectedIds: string[]): string[] {
+  const selected = new Set(selectedIds)
+  return selectedIds.filter(
+    (id) =>
+      wholeSubtreeSelected(nodes, id, selected) ||
+      !descendantIds(nodes, id).some((descendant) => selected.has(descendant)),
+  )
+}
+
+/**
+ * The selection as few entries as it takes to read it: a fully picked subtree
+ * shows as its top node, with `more` counting the nodes under it; a parent
+ * picked only because some children were is left out, since its children's
+ * entries already name it. Entries keep the order of `selectedIds`.
+ */
+export function selectionSummary(nodes: TreeNode[], selectedIds: string[]): { id: string; more: number }[] {
+  const selected = new Set(selectedIds)
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+  return selectedIds
+    .filter((id) => {
+      if (wholeSubtreeSelected(nodes, id, selected)) {
+        const parentId = byId.get(id)?.parent_id
+        return !parentId || !wholeSubtreeSelected(nodes, parentId, selected)
+      }
+      return !descendantIds(nodes, id).some((descendant) => selected.has(descendant))
+    })
+    .map((id) => ({
+      id,
+      more: wholeSubtreeSelected(nodes, id, selected) ? descendantIds(nodes, id).length : 0,
+    }))
 }

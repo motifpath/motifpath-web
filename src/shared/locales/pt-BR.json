@@ -141,7 +141,8 @@
     "nothingSelected": "Nada selecionado ainda.",
     "unsuitedRow": "Não é para os instrumentos deste conteúdo",
     "expandAriaLabel": "Expandir {name}",
-    "collapseAriaLabel": "Recolher {name}"
+    "collapseAriaLabel": "Recolher {name}",
+    "moreAriaLabel": "e mais {count} abaixo"
   },
   "levels": {
     "beginner": "Iniciante",

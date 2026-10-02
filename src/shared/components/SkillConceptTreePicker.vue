@@ -9,6 +9,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import {
   ancestorIds,
   descendantIds,
+  selectionSummary,
   suitsInstruments,
   treeRows,
   type TreeNode,
@@ -166,6 +167,22 @@ const selectedNodes = computed(() =>
   props.selectedIds.map((id) => nodesById.value.get(id)).filter((n): n is TreeNode => !!n),
 )
 
+/** The selection as chips: a fully picked subtree as one entry, the parents picked along with a child left out. */
+const summary = computed(() =>
+  selectionSummary(props.nodes, props.selectedIds).flatMap(({ id, more }) => {
+    const node = nodesById.value.get(id)
+    return node ? [{ node, more }] : []
+  }),
+)
+
+/** Whether the entry's node, or any picked node under it, doesn't fit the content. */
+function entryUnsuited(node: TreeNode): boolean {
+  return [node.id, ...descendantIds(props.nodes, node.id)].some((id) => {
+    const picked = isSelected(id) ? nodesById.value.get(id) : undefined
+    return picked !== undefined && !suits(picked)
+  })
+}
+
 const unsuitedNoteId = useId()
 const hasUnsuitedPick = computed(() => selectedNodes.value.some((node) => !suits(node)))
 
@@ -184,9 +201,15 @@ function toggle(id: string, checked: boolean) {
     return
   }
   if (checked) {
+    // Checking a node means "this and everything under it" — the descendants
+    // that can classify this content — and keeps the ancestor chain intact.
     const node = nodesById.value.get(id)
-    const withAncestors = node ? [id, ...ancestorIds(props.nodes, node)] : [id]
-    emit('update:selectedIds', Array.from(new Set([...props.selectedIds, ...withAncestors])))
+    const subtree = descendantIds(props.nodes, id).filter((descendantId) => {
+      const descendant = nodesById.value.get(descendantId)
+      return descendant !== undefined && allowed(descendant) && suits(descendant)
+    })
+    const ancestors = node ? ancestorIds(props.nodes, node) : []
+    emit('update:selectedIds', Array.from(new Set([...props.selectedIds, id, ...subtree, ...ancestors])))
     return
   }
   // Unchecking a node also drops its descendants — a child can never stay
@@ -207,21 +230,21 @@ function removeSelected(id: string) {
   <div class="flex flex-col gap-2.5">
     <label class="text-sm font-semibold">{{ label }}</label>
 
-    <div v-if="selectedNodes.length > 0" class="flex flex-wrap gap-2">
+    <div v-if="summary.length > 0" class="flex flex-wrap gap-2">
       <span
-        v-for="node in selectedNodes"
+        v-for="{ node, more } in summary"
         :key="node.id"
         data-test="tree-selected-chip"
-        :data-unsuited="suits(node) ? undefined : 'true'"
-        :aria-describedby="suits(node) ? undefined : unsuitedNoteId"
+        :data-unsuited="entryUnsuited(node) ? 'true' : undefined"
+        :aria-describedby="entryUnsuited(node) ? unsuitedNoteId : undefined"
         class="flex items-center gap-1.5 rounded-full py-[5px] pl-3 pr-1.5 text-[0.8125rem] font-semibold"
         :class="
-          suits(node)
-            ? 'bg-accent-muted text-accent-text'
-            : 'border border-dashed border-danger text-danger'
+          entryUnsuited(node)
+            ? 'border border-dashed border-danger text-danger'
+            : 'bg-accent-muted text-accent-text'
         "
       >
-        {{ breadcrumb(node) }}
+        <span>{{ breadcrumb(node) }}<span v-if="more > 0" data-test="tree-chip-more" class="ml-1 opacity-75" :aria-label="t('skillConceptTreePicker.moreAriaLabel', { count: more })">+{{ more }}</span></span>
         <button
           v-if="multiple"
           type="button"
@@ -445,18 +468,18 @@ function removeSelected(id: string) {
           <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
             {{ t('skillConceptTreePicker.selectionHeading', { count: selectedNodes.length }) }}
           </h3>
-          <p v-if="selectedNodes.length === 0" class="text-sm text-ink-subtle">
+          <p v-if="summary.length === 0" class="text-sm text-ink-subtle">
             {{ t('skillConceptTreePicker.nothingSelected') }}
           </p>
           <ul v-else class="flex flex-col gap-1.5 overflow-y-auto">
             <li
-              v-for="node in selectedNodes"
+              v-for="{ node, more } in summary"
               :key="node.id"
               data-test="tree-selection-item"
               class="flex items-start justify-between gap-2 text-sm"
-              :class="{ 'text-danger': !suits(node) }"
+              :class="{ 'text-danger': entryUnsuited(node) }"
             >
-              <span class="min-w-0 break-words">{{ breadcrumb(node) }}</span>
+              <span class="min-w-0 break-words">{{ breadcrumb(node) }}<span v-if="more > 0" class="ml-1 text-ink-subtle" :aria-label="t('skillConceptTreePicker.moreAriaLabel', { count: more })">+{{ more }}</span></span>
               <button
                 type="button"
                 data-test="tree-selection-remove"

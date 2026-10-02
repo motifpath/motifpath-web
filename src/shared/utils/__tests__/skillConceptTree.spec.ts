@@ -4,7 +4,8 @@ import {
   ancestorIds,
   appliesSuggestions,
   descendantIds,
-  mostSpecificIds,
+  filterIds,
+  selectionSummary,
   suitsInstruments,
   toTreeNodes,
   treeRows,
@@ -46,20 +47,6 @@ describe('descendantIds', () => {
 
   it('returns an empty array for a leaf node', () => {
     expect(descendantIds(nodes, 'grandchild-1')).toEqual([])
-  })
-})
-
-describe('mostSpecificIds', () => {
-  it('drops a selected id that is an ancestor of another selected id', () => {
-    expect(mostSpecificIds(nodes, ['root-1', 'child-1', 'grandchild-1'])).toEqual(['grandchild-1'])
-  })
-
-  it('keeps unrelated selections side by side', () => {
-    expect(mostSpecificIds(nodes, ['root-1', 'child-1', 'root-2'])).toEqual(['child-1', 'root-2'])
-  })
-
-  it('keeps an id whose node is unknown', () => {
-    expect(mostSpecificIds(nodes, ['missing'])).toEqual(['missing'])
   })
 })
 
@@ -181,5 +168,51 @@ describe('treeRows', () => {
     const rows = treeRows(tree, { include: (n) => n.id !== 'tech', match: null, expandedIds: new Set(['bends']) })
 
     expect(rowsOf(rows)).toEqual(['Alternate picking', 'Bends', '  Half-step bend', 'Rhythm'])
+  })
+})
+
+describe('subtree selection', () => {
+  const tree = [
+    { id: 'tech', name: 'Technique', parent_id: null },
+    { id: 'bends', name: 'Bends', parent_id: 'tech' },
+    { id: 'half', name: 'Half-step bend', parent_id: 'bends' },
+    { id: 'whole', name: 'Whole-step bend', parent_id: 'bends' },
+    { id: 'alt', name: 'Alternate picking', parent_id: 'tech' },
+  ]
+
+  describe('filterIds', () => {
+    it('drops a parent that was only picked because one of its children was', () => {
+      expect(filterIds(tree, ['half', 'bends', 'tech'])).toEqual(['half'])
+    })
+
+    it('keeps a parent picked with its whole subtree, together with the subtree', () => {
+      expect(filterIds(tree, ['bends', 'half', 'whole', 'tech'])).toEqual(['bends', 'half', 'whole'])
+    })
+
+    it('keeps a picked node that has no picked children', () => {
+      expect(filterIds(tree, ['bends'])).toEqual(['bends'])
+    })
+  })
+
+  describe('selectionSummary', () => {
+    it('collapses a fully picked subtree into its top node, counting the rest', () => {
+      expect(selectionSummary(tree, ['tech', 'bends', 'half', 'whole', 'alt'])).toEqual([{ id: 'tech', more: 4 }])
+    })
+
+    it('shows the picks under a partly picked parent, not the parent itself', () => {
+      expect(selectionSummary(tree, ['tech', 'bends', 'half', 'whole'])).toEqual([{ id: 'bends', more: 2 }])
+      expect(selectionSummary(tree, ['tech', 'bends', 'half'])).toEqual([{ id: 'half', more: 0 }])
+    })
+
+    it('shows a picked node with no picked children on its own', () => {
+      expect(selectionSummary(tree, ['tech', 'bends'])).toEqual([{ id: 'bends', more: 0 }])
+    })
+
+    it('keeps the order the nodes were picked in', () => {
+      expect(selectionSummary(tree, ['tech', 'alt', 'bends', 'half'])).toEqual([
+        { id: 'alt', more: 0 },
+        { id: 'half', more: 0 },
+      ])
+    })
   })
 })

@@ -113,14 +113,57 @@ describe('SkillConceptTreePicker', () => {
       expect(wrapper.find('[data-test="tree-search"]').exists()).toBe(false)
     })
 
-    it('removes a node, and its descendants, from the selection pane', async () => {
+    it('checking a parent selects its whole subtree, and its own ancestors', async () => {
+      const deep: TreeNode[] = [
+        { id: 'tech', name: 'Technique', parent_id: null },
+        { id: 'bends', name: 'Bends', parent_id: 'tech' },
+        { id: 'half', name: 'Half-step bend', parent_id: 'bends' },
+        { id: 'whole', name: 'Whole-step bend', parent_id: 'bends' },
+      ]
+      const wrapper = mount(SkillConceptTreePicker, { props: { label: 'Skill', nodes: deep, selectedIds: [] } })
+      await open(wrapper)
+      await expand(wrapper, 'tech')
+
+      await wrapper.get('[data-test="tree-node-checkbox"][value="bends"]').setValue(true)
+
+      expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['bends', 'half', 'whole', 'tech']])
+    })
+
+    it("leaves out of the subtree the children that don't fit the content's instruments", async () => {
+      const scopedTree: TreeNode[] = [
+        { id: 'muting', name: 'Muting', parent_id: null, instrumentIds: ['electric', 'bass'] },
+        { id: 'palm', name: 'Palm muting', parent_id: 'muting', instrumentIds: ['electric'] },
+        { id: 'thumb', name: 'Thumb muting', parent_id: 'muting', instrumentIds: ['bass'] },
+      ]
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes: scopedTree, selectedIds: [], instrumentIds: ['electric'] },
+      })
+      await open(wrapper)
+
+      await wrapper.get('[data-test="tree-node-checkbox"][value="muting"]').setValue(true)
+
+      expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['muting', 'palm']])
+    })
+
+    it('in single mode, picking a parent picks only that node', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes, selectedIds: [], multiple: false },
+      })
+      await open(wrapper)
+
+      await wrapper.get('[data-test="tree-node-radio"][value="root-1"]').setValue(true)
+
+      expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['root-1']])
+    })
+
+    it('lists a fully selected subtree as one entry in the selection pane, and removes it whole', async () => {
       const wrapper = mount(SkillConceptTreePicker, {
         props: { label: 'Skill', nodes, selectedIds: ['root-1', 'child-1'] },
       })
       await open(wrapper)
 
       const items = wrapper.findAll('[data-test="tree-selection-item"]')
-      expect(items.map((item) => item.text())).toEqual(['chord-theory', 'chord-theory > major-triads'])
+      expect(items.map((item) => item.text())).toEqual(['chord-theory+1'])
       await items[0]!.get('[data-test="tree-selection-remove"]').trigger('click')
 
       expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([[]])
@@ -137,16 +180,36 @@ describe('SkillConceptTreePicker', () => {
   })
 
   describe('chips on the form', () => {
-    it('shows each selected node with its breadcrumb and a remove control in multiple mode', async () => {
+    const family: TreeNode[] = [
+      { id: 'tech', name: 'Technique', parent_id: null },
+      { id: 'bends', name: 'Bends', parent_id: 'tech' },
+      { id: 'half', name: 'Half-step bend', parent_id: 'bends' },
+      { id: 'whole', name: 'Whole-step bend', parent_id: 'bends' },
+      { id: 'alt', name: 'Alternate picking', parent_id: 'tech' },
+    ]
+
+    it('shows a picked node with its breadcrumb, and not the parents picked along with it', async () => {
       const wrapper = mount(SkillConceptTreePicker, {
-        props: { label: 'Skill', nodes, selectedIds: ['root-1', 'child-1'] },
+        props: { label: 'Skill', nodes: family, selectedIds: ['half', 'bends', 'tech'] },
       })
 
       const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
-      expect(chips.map((chip) => chip.text())).toEqual(['chord-theory', 'chord-theory > major-triads'])
+      expect(chips.map((chip) => chip.text())).toEqual(['Technique > Bends > Half-step bend'])
 
-      await chips[1]!.get('[data-test="tree-selected-chip-remove"]').trigger('click')
-      expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['root-1']])
+      await chips[0]!.get('[data-test="tree-selected-chip-remove"]').trigger('click')
+      expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['bends', 'tech']])
+    })
+
+    it('shows a fully picked subtree as one chip that counts the rest, and removes it whole', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes: family, selectedIds: ['bends', 'half', 'whole', 'tech'] },
+      })
+
+      const chips = wrapper.findAll('[data-test="tree-selected-chip"]')
+      expect(chips.map((chip) => chip.text())).toEqual(['Technique > Bends+2'])
+
+      await chips[0]!.get('[data-test="tree-selected-chip-remove"]').trigger('click')
+      expect(wrapper.emitted('update:selectedIds')?.[0]).toEqual([['tech']])
     })
   })
 
