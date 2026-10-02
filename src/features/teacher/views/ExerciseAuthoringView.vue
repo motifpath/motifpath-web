@@ -72,7 +72,7 @@ const {
   suggestedSkillIds,
   suggestedConceptIds,
 } =
-  useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds })
+  useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, {}, { refreshOnReturn: true })
 
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])

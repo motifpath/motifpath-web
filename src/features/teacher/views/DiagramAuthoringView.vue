@@ -107,7 +107,11 @@ const {
   suggestedSkillIds,
   suggestedConceptIds,
 } =
-  useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, { locale: editingLocale })
+  useKnowledgeTrees(
+    { skillIds: form.skillIds, conceptIds: form.conceptIds },
+    { locale: editingLocale },
+    { refreshOnReturn: true },
+  )
 // Classification must suit every instrument the diagram is for; before any are
 // toggled, that is the layout instrument alone.
 const classificationInstrumentIds = computed(() =>

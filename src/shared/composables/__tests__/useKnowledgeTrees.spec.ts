@@ -119,7 +119,7 @@ describe('useKnowledgeTrees', () => {
   it('reloads both trees quietly when the page is shown again, e.g. after adding a node in another tab', async () => {
     respond()
     const scope = effectScope()
-    const trees = scope.run(() => useKnowledgeTrees())!
+    const trees = scope.run(() => useKnowledgeTrees(undefined, {}, { refreshOnReturn: true }))!
     await vi.waitFor(() => expect(trees.skillNodes.value).toHaveLength(2))
 
     skills.push(node('skill-3', 'skill', 'Vibrato', 'Vibrato'))
@@ -134,7 +134,7 @@ describe('useKnowledgeTrees', () => {
   it('keeps the trees it has when a quiet reload fails', async () => {
     respond()
     const scope = effectScope()
-    const trees = scope.run(() => useKnowledgeTrees())!
+    const trees = scope.run(() => useKnowledgeTrees(undefined, {}, { refreshOnReturn: true }))!
     await vi.waitFor(() => expect(trees.conceptNodes.value).toHaveLength(2))
     GET.mockClear()
 
@@ -145,6 +145,35 @@ describe('useKnowledgeTrees', () => {
 
     expect(trees.conceptNodes.value).toHaveLength(2)
     expect(trees.conceptsError.value).toBe(false)
+    scope.stop()
+  })
+
+  it('reloads once when a return to the tab fires both focus and visibilitychange', async () => {
+    respond()
+    const scope = effectScope()
+    scope.run(() => useKnowledgeTrees(undefined, {}, { refreshOnReturn: true }))
+    await vi.waitFor(() => expect(GET).toHaveBeenCalledTimes(2))
+    GET.mockClear()
+
+    window.dispatchEvent(new Event('focus'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(GET).toHaveBeenCalledTimes(2)
+    scope.stop()
+  })
+
+  it('does not reload on a return to the tab unless asked to', async () => {
+    respond()
+    const scope = effectScope()
+    scope.run(() => useKnowledgeTrees())
+    await vi.waitFor(() => expect(GET).toHaveBeenCalledTimes(2))
+    GET.mockClear()
+
+    window.dispatchEvent(new Event('focus'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(GET).not.toHaveBeenCalled()
     scope.stop()
   })
 })

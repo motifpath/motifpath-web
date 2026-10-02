@@ -77,7 +77,7 @@ const {
   suggestedSkillIds,
   suggestedConceptIds,
   nodeName,
-} = useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds })
+} = useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, {}, { refreshOnReturn: true })
 
 const savedContentNodeId = ref('')
 const savedTeacherId = ref('')
