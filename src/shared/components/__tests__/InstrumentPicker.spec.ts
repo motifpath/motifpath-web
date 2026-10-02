@@ -13,7 +13,10 @@ const instruments = [
   { instrument_id: 'i-bass', names: { en: 'Bass' }, languages: ['en'] },
 ]
 
-async function mountPicker(modelValue: string[], props: { disabled?: boolean } = {}) {
+async function mountPicker(
+  modelValue: string[],
+  props: { disabled?: boolean; allowedIds?: string[] | null; limitReason?: string } = {},
+) {
   const wrapper = mount(InstrumentPicker, { props: { modelValue, ...props } })
   await flushPromises()
   return wrapper
@@ -82,5 +85,24 @@ describe('InstrumentPicker', () => {
     await wrapper.get('[data-test="instrument-option-i-guitar"]').trigger('click')
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('limits the choice to the allowed instruments and says why', async () => {
+    const wrapper = await mountPicker(['i-guitar'], { allowedIds: ['i-guitar'], limitReason: 'Not wider than the parent' })
+
+    expect(wrapper.get('[data-test="instrument-every"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-test="instrument-option-i-bass"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[data-test="instrument-option-i-guitar"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-test="instruments-limit-note"]').text()).toBe('Not wider than the parent')
+
+    await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('offers every option and no note without a limit', async () => {
+    const wrapper = await mountPicker([], { allowedIds: null, limitReason: 'Not wider than the parent' })
+
+    expect(wrapper.get('[data-test="instrument-every"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-test="instruments-limit-note"]').exists()).toBe(false)
   })
 })
