@@ -140,4 +140,32 @@ describe('useKnowledgeMap', () => {
     })
     expect(DELETE).toHaveBeenCalledWith('/knowledge-edges/{edge_id}', { params: { path: { edge_id: 'e-1' } } })
   })
+
+  it('ignores an older reload that answers after a newer one', async () => {
+    const other = { ...edge, edge_id: 'e-2', from_id: 'n-bends', to_id: 'n-vibrato' }
+    serveLists([bends], [edge, other])
+    const map = useKnowledgeMap()
+    await flushPromises()
+
+    // The first removal's reload is slow; the second's answers at once.
+    let releaseSlow!: () => void
+    const slow = new Promise<void>((resolve) => (releaseSlow = resolve))
+    let calls = 0
+    GET.mockImplementation((path: string) => {
+      calls++
+      const older = calls <= 2
+      const result = ok(path === '/knowledge-nodes' ? [bends] : older ? [other] : [])
+      return older ? slow.then(() => result) : Promise.resolve(result)
+    })
+    DELETE.mockResolvedValue({ data: undefined, error: undefined, response: { status: 204 } })
+
+    const first = map.deleteEdge('e-1')
+    await flushPromises()
+    const second = map.deleteEdge('e-2')
+    await flushPromises()
+    releaseSlow()
+    await Promise.all([first, second])
+
+    expect(map.edges.value).toEqual([])
+  })
 })

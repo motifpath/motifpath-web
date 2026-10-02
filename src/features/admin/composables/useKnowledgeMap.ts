@@ -47,12 +47,18 @@ export function useKnowledgeMap() {
   const isLoading = ref(true)
   const loadFailed = ref(false)
 
+  // Reloads can overlap (one per write); only the latest one started may
+  // update the map, so a slow older answer never brings back stale links.
+  let latestReload = 0
+
   async function reload() {
+    const reloadNumber = ++latestReload
     isLoading.value = true
     const [nodeResult, edgeResult] = await Promise.all([
       coreApi.GET('/knowledge-nodes', {}),
       coreApi.GET('/knowledge-edges', {}),
     ])
+    if (reloadNumber !== latestReload) return
     loadFailed.value = !nodeResult.data || !edgeResult.data
     if (nodeResult.data && edgeResult.data) {
       nodes.value = nodeResult.data
