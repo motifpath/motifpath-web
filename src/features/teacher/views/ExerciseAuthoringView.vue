@@ -155,15 +155,16 @@ function onStimulusPicked(file: File) {
 // picked again — its own state would otherwise outlive the form's reset answers.
 const stimulusPick = ref(0)
 
-// A diagram is drawn for its instruments, so picking one as the stimulus
-// fills them in — only while none are chosen, never overriding a choice.
+// A diagram is drawn for its instruments, so picking one as the stimulus of a
+// new exercise fills them in while none are chosen. A saved exercise's empty
+// list means "every instrument" on purpose, so it is never overridden.
 const fillInstrumentsFromStimulus = ref(false)
 
 function onStimulusDiagram(diagramRef: DiagramRef) {
   stimulusPick.value++
   form.setStimulusDiagram(diagramRef)
   stimulusPickerOpen.value = false
-  fillInstrumentsFromStimulus.value = form.instrumentIds.value.length === 0
+  fillInstrumentsFromStimulus.value = !isEditMode && form.instrumentIds.value.length === 0
 }
 
 const showsDiagramStimulus = computed(() => form.stimulusSource.value === 'diagram' && form.stimulusDiagram.value !== null)

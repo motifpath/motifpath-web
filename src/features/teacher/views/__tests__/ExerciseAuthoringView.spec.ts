@@ -1121,6 +1121,31 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
       expect(wrapper.get('[data-test="instrument-option-instrument-guitar"]').attributes('aria-pressed')).toBe('true')
     })
 
+    it('keeps an existing exercise for every instrument when a diagram is picked, since that was chosen on purpose', async () => {
+      route.params = { id: 'e-1' }
+      serveDiagrams({
+        exercise_id: 'e-1',
+        title: 'Find the root',
+        prompt: plainTextPrompt('p'),
+        exercise_type: 'image_recognition',
+        skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'roots' } })],
+        options: [],
+        challenge_ids: [],
+        content_node_ids: [],
+        instrument_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+      const wrapper = mountWithStubbedPickers()
+      await flushPromises()
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', picked)
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="instrument-every"]').attributes('aria-pressed')).toBe('true')
+    })
+
     it('keeps the instruments already chosen when a diagram is picked', async () => {
       GET.mockImplementation((path: string) => {
         if (path === '/diagrams/{diagram_id}') return Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
