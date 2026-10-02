@@ -24,8 +24,10 @@ withDefaults(
     suggestedConceptIds?: string[]
     difficultyLevel: DifficultyLevel
     reviewState: ReviewState | null
+    /** The viewer may add missing nodes in the knowledge map, so the pickers link there. */
+    canCreateNodes?: boolean
   }>(),
-  { instrumentIds: null, suggestedSkillIds: () => [], suggestedConceptIds: () => [] },
+  { instrumentIds: null, suggestedSkillIds: () => [], suggestedConceptIds: () => [], canCreateNodes: false },
 )
 const emit = defineEmits<{
   'update:skillIds': [value: string[]]
@@ -66,6 +68,7 @@ const { t } = useTypedT()
       :instrument-ids="instrumentIds"
       :suggested-ids="suggestedConceptIds"
       missing-hint
+      :create-kind="canCreateNodes ? 'concept' : null"
       @update:selected-ids="emit('update:conceptIds', $event)"
       @retry="emit('retryConcepts')"
     />
@@ -79,6 +82,7 @@ const { t } = useTypedT()
       :instrument-ids="instrumentIds"
       :suggested-ids="suggestedSkillIds"
       missing-hint
+      :create-kind="canCreateNodes ? 'skill' : null"
       @update:selected-ids="emit('update:skillIds', $event)"
       @retry="emit('retrySkills')"
     />

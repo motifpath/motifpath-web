@@ -356,6 +356,17 @@ describe('ExerciseAuthoringView', () => {
     expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(true)
   })
 
+  it("sends an admin to the knowledge map for a missing skill", async () => {
+    currentUser.profile.role = 'admin'
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+    const link = wrapper.get('[data-test="tree-missing-hint"]').getComponent(RouterLinkStub)
+    expect(link.props('to')).toEqual({ name: 'admin-knowledge-map', query: { tree: 'skill', new: 'skill' } })
+  })
+
   it('lists skills for any instrument, since exercises are not matched to instruments yet', async () => {
     GET.mockImplementation((path: string, init?: KnowledgeQuery) =>
       Promise.resolve({

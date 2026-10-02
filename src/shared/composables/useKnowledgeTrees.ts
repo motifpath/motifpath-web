@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue'
+import { computed, getCurrentScope, onScopeDispose, type Ref } from 'vue'
 
 import { toApiLanguageCode } from '@/i18n'
 import { useListKnowledgeEdges } from '@/shared/composables/useListKnowledgeEdges'
@@ -23,13 +23,31 @@ export function useKnowledgeTrees(
     isLoading: skillsLoading,
     error: skillsError,
     retry: retrySkills,
+    refresh: refreshSkills,
   } = useListKnowledgeNodes('skill')
   const {
     nodes: concepts,
     isLoading: conceptsLoading,
     error: conceptsError,
     retry: retryConcepts,
+    refresh: refreshConcepts,
   } = useListKnowledgeNodes('concept')
+
+  // Admins add missing nodes in the knowledge map, in another tab; coming
+  // back to this page picks them up without losing the form.
+  function refreshOnReturn() {
+    if (document.visibilityState === 'hidden') return
+    void refreshSkills()
+    void refreshConcepts()
+  }
+  window.addEventListener('focus', refreshOnReturn)
+  document.addEventListener('visibilitychange', refreshOnReturn)
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      window.removeEventListener('focus', refreshOnReturn)
+      document.removeEventListener('visibilitychange', refreshOnReturn)
+    })
+  }
   const applies = picks ? useListKnowledgeEdges('applies').edges : null
 
   const languageCode = computed(() => toApiLanguageCode(locale.value))

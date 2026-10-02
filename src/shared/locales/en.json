@@ -126,6 +126,7 @@
     "empty": "No matching nodes.",
     "closeButton": "Done",
     "missingHint": "Missing one? Ask the team.",
+    "missingHintCreate": "Missing one? Add it in the knowledge map",
     "unsuitedNote": "The items in red aren't for this content's instruments. Remove them before saving.",
     "loadFailed": "Couldn't load the list.",
     "retry": "Try again",

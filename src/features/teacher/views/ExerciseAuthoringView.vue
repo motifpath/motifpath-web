@@ -503,6 +503,7 @@ async function save() {
             :load-failed="conceptsError"
             :suggested-ids="suggestedConceptIds"
             missing-hint
+            :create-kind="currentUser.profile?.role === 'admin' ? 'concept' : null"
             @update:selected-ids="form.conceptIds.value = $event"
             @retry="retryConcepts"
           />
@@ -514,6 +515,7 @@ async function save() {
             :load-failed="skillsError"
             :suggested-ids="suggestedSkillIds"
             missing-hint
+            :create-kind="currentUser.profile?.role === 'admin' ? 'skill' : null"
             @update:selected-ids="form.skillIds.value = $event"
             @retry="retrySkills"
           />

@@ -696,6 +696,7 @@ async function saveAs(names: Record<string, string>) {
             :instrument-ids="classificationInstrumentIds"
             :suggested-ids="suggestedConceptIds"
             missing-hint
+            :create-kind="isAdmin ? 'concept' : null"
             @update:selected-ids="form.conceptIds.value = $event"
             @retry="retryConcepts"
           />
@@ -708,6 +709,7 @@ async function saveAs(names: Record<string, string>) {
             :instrument-ids="classificationInstrumentIds"
             :suggested-ids="suggestedSkillIds"
             missing-hint
+            :create-kind="isAdmin ? 'skill' : null"
             @update:selected-ids="form.skillIds.value = $event"
             @retry="retrySkills"
           />

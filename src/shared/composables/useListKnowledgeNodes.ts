@@ -11,9 +11,10 @@ export function useListKnowledgeNodes(kind: KnowledgeNodeKind) {
     isLoading,
     error,
     retry,
+    refresh,
   } = useApiList<KnowledgeNode>((coreApi) =>
     coreApi.GET('/knowledge-nodes', { params: { query: { kind } } }),
   )
 
-  return { nodes, isLoading, error, retry }
+  return { nodes, isLoading, error, retry, refresh }
 }

@@ -514,6 +514,7 @@ async function onSaveChallenge({
           :suggested-skill-ids="suggestedSkillIds"
           :suggested-concept-ids="suggestedConceptIds"
           :review-state="form.reviewState.value"
+          :can-create-nodes="currentUser.profile?.role === 'admin'"
           @retry-skills="retrySkills"
           @retry-concepts="retryConcepts"
         />

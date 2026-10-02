@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { nextTick, ref } from 'vue'
+import { effectScope, nextTick, ref } from 'vue'
 
 import { i18n } from '@/i18n'
 
@@ -39,7 +39,7 @@ function respond() {
   GET.mockImplementation((path: string, init: { params: { query: Record<string, string> } }) => {
     const query = init.params.query
     if (path === '/knowledge-nodes')
-      return Promise.resolve({ data: query.kind === 'skill' ? skills : concepts })
+      return Promise.resolve({ data: query.kind === 'skill' ? [...skills] : [...concepts] })
     if (path === '/knowledge-edges' && query.type === 'applies')
       return Promise.resolve({ data: applies })
     return Promise.resolve({ error: { message: 'unexpected' } })
@@ -114,5 +114,37 @@ describe('useKnowledgeTrees', () => {
     await vi.waitFor(() => expect(GET).toHaveBeenCalledTimes(2))
 
     expect(GET).not.toHaveBeenCalledWith('/knowledge-edges', expect.anything())
+  })
+
+  it('reloads both trees quietly when the page is shown again, e.g. after adding a node in another tab', async () => {
+    respond()
+    const scope = effectScope()
+    const trees = scope.run(() => useKnowledgeTrees())!
+    await vi.waitFor(() => expect(trees.skillNodes.value).toHaveLength(2))
+
+    skills.push(node('skill-3', 'skill', 'Vibrato', 'Vibrato'))
+    window.dispatchEvent(new Event('focus'))
+    expect(trees.skillsLoading.value).toBe(false)
+
+    await vi.waitFor(() => expect(trees.skillNodes.value).toHaveLength(3))
+    skills.pop()
+    scope.stop()
+  })
+
+  it('keeps the trees it has when a quiet reload fails', async () => {
+    respond()
+    const scope = effectScope()
+    const trees = scope.run(() => useKnowledgeTrees())!
+    await vi.waitFor(() => expect(trees.conceptNodes.value).toHaveLength(2))
+    GET.mockClear()
+
+    GET.mockResolvedValue({ error: { message: 'offline' } })
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.waitFor(() => expect(GET).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(trees.conceptNodes.value).toHaveLength(2)
+    expect(trees.conceptsError.value).toBe(false)
+    scope.stop()
   })
 })

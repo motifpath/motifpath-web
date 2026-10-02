@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const GET = vi.fn()
@@ -465,6 +465,20 @@ describe('SkillConceptTreePicker', () => {
 
       expect(wrapper.find('[data-test="tree-create-name"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="tree-missing-hint"]').text()).toBe('Missing one? Ask the team.')
+    })
+
+    it('lets an admin add a missing node in the knowledge map, in a new tab', async () => {
+      const wrapper = mount(SkillConceptTreePicker, {
+        props: { label: 'Skill', nodes, selectedIds: [], missingHint: true, createKind: 'skill' },
+        global: { stubs: { RouterLink: RouterLinkStub } },
+      })
+      await open(wrapper)
+
+      const hint = wrapper.get('[data-test="tree-missing-hint"]')
+      expect(hint.text()).toBe('Missing one? Add it in the knowledge map')
+      const link = hint.getComponent(RouterLinkStub)
+      expect(link.props('to')).toEqual({ name: 'admin-knowledge-map', query: { tree: 'skill', new: 'skill' } })
+      expect(link.attributes('target')).toBe('_blank')
     })
 
     it('shows no missing-node hint unless asked to', async () => {
