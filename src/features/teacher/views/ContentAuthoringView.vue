@@ -672,6 +672,7 @@ async function onSaveChallenge({
       :allowed-skill-ids="form.skillIds.value"
       :allowed-concept-ids="form.conceptIds.value"
       :exercise-pool="exercisePool"
+      :instrument-ids="form.instrumentIds.value"
       :initial="challengeInitial"
       :saving="challengeSaveBlocked"
       @save="onSaveChallenge"

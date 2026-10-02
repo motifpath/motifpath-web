@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
+import ExercisePickerModal from '@/features/teacher/components/ExercisePickerModal.vue'
 import ChallengeModal from '@/features/teacher/components/ChallengeModal.vue'
 import type { components } from '@/api/generated/core-domain'
 
@@ -69,6 +70,12 @@ async function pickSubjectSkill(wrapper: ReturnType<typeof mount>) {
 }
 
 describe('ChallengeModal', () => {
+  it("hands the lesson's instruments to the exercise picker", () => {
+    const wrapper = mount(ChallengeModal, { props: { ...baseProps, instrumentIds: ['guitar'] } })
+
+    expect(wrapper.getComponent(ExercisePickerModal).props('instrumentIds')).toEqual(['guitar'])
+  })
+
   it('renders nothing while closed', () => {
     const wrapper = mount(ChallengeModal, { props: { ...baseProps, open: false } })
 

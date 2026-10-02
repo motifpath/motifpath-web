@@ -69,6 +69,38 @@ describe('ExercisePickerModal', () => {
     expect(wrapper.text()).not.toContain('Name the chord')
   })
 
+  describe('instrument fit', () => {
+    const scoped: Exercise[] = [
+      makeExercise({ exercise_id: 'e-guitar', title: 'Guitar drill', instrument_ids: ['guitar'] }),
+      makeExercise({ exercise_id: 'e-any', title: 'Interval drill', instrument_ids: [] }),
+      makeExercise({ exercise_id: 'e-piano', title: 'Piano drill', instrument_ids: ['piano'] }),
+    ]
+    const titles = (wrapper: ReturnType<typeof mount>) =>
+      wrapper.findAll('[data-test="exercise-picker-row"]').map((row) => row.find('span').text())
+
+    it("offers only exercises for every instrument or for one of the lesson's instruments", () => {
+      const wrapper = mount(ExercisePickerModal, {
+        props: { open: true, exercises: scoped, linkedExerciseIds: [], instrumentIds: ['guitar', 'bass'] },
+      })
+
+      expect(titles(wrapper)).toEqual(['Guitar drill', 'Interval drill'])
+    })
+
+    it('offers only exercises for every instrument to a lesson for every instrument', () => {
+      const wrapper = mount(ExercisePickerModal, {
+        props: { open: true, exercises: scoped, linkedExerciseIds: [], instrumentIds: [] },
+      })
+
+      expect(titles(wrapper)).toEqual(['Interval drill'])
+    })
+
+    it('offers every exercise when no instruments are given', () => {
+      const wrapper = mount(ExercisePickerModal, { props: { open: true, exercises: scoped, linkedExerciseIds: [] } })
+
+      expect(titles(wrapper)).toEqual(['Guitar drill', 'Interval drill', 'Piano drill'])
+    })
+  })
+
   it('emits close when the close button is clicked', async () => {
     const wrapper = mount(ExercisePickerModal, {
       props: { open: true, exercises, linkedExerciseIds: [] },

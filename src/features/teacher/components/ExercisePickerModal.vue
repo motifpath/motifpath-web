@@ -8,17 +8,38 @@ import type { components } from '@/api/generated/core-domain'
 
 type Exercise = components['schemas']['Exercise']
 
-const props = defineProps<{ open: boolean; exercises: Exercise[]; linkedExerciseIds: string[] }>()
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    exercises: Exercise[]
+    linkedExerciseIds: string[]
+    /**
+     * The instruments of the lesson the exercises are for (empty meaning every
+     * instrument); only exercises that suit it are offered. null offers all.
+     */
+    instrumentIds?: string[] | null
+  }>(),
+  { instrumentIds: null },
+)
 const emit = defineEmits<{ select: [exerciseId: string]; close: [] }>()
 
 const { t } = useTypedT()
 
 const search = ref('')
 
+// An exercise for every instrument suits any lesson; one for specific
+// instruments suits a lesson for at least one of them, never a lesson for
+// every instrument — the server refuses any other link.
+function suitsLesson(exercise: Exercise): boolean {
+  if (props.instrumentIds === null || exercise.instrument_ids.length === 0) return true
+  return exercise.instrument_ids.some((id) => props.instrumentIds!.includes(id))
+}
+
 const availableExercises = computed(() => {
   const query = search.value.trim().toLowerCase()
   return props.exercises.filter((exercise) => {
     if (props.linkedExerciseIds.includes(exercise.exercise_id)) return false
+    if (!suitsLesson(exercise)) return false
     if (!query) return true
     return exercise.title.toLowerCase().includes(query)
   })

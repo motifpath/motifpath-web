@@ -49,6 +49,7 @@ import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 import { i18n } from '@/i18n'
+import ChallengeModal from '@/features/teacher/components/ChallengeModal.vue'
 import ContentAuthoringView from '@/features/teacher/views/ContentAuthoringView.vue'
 
 // Already in the shape PromptEditor's Tiptap round trip emits (paragraphs gain
@@ -226,6 +227,16 @@ describe('ContentAuthoringView', () => {
           instrument_ids: [],
         },
       })
+    })
+
+    it("hands the node's instruments to the challenge modal, so its exercise picker offers only exercises that suit them", async () => {
+      routeGET({})
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+
+      expect(wrapper.getComponent(ChallengeModal).props('instrumentIds')).toEqual(['i-bass'])
     })
 
     it('starts at every instrument and sends the instruments picked', async () => {
@@ -579,7 +590,7 @@ describe('ContentAuthoringView', () => {
       }
       const okResponse = (data: unknown) => ({ data, error: undefined, response: { status: 200 } })
       const noContent = { error: undefined, response: { status: 204 } }
-      const exerciseFixture = (id: string, title: string) => ({ exercise_id: id, title, exercise_type: 'text_response' })
+      const exerciseFixture = (id: string, title: string) => ({ exercise_id: id, title, exercise_type: 'text_response', instrument_ids: [] })
 
       function routeChallenge(linkedExercises: ReturnType<typeof exerciseFixture>[], pool = linkedExercises) {
         routeGET({
