@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { Plus, X } from 'lucide-vue-next'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { ancestorIds, descendantIds, type TreeNode } from '@/shared/utils/skillConceptTree'
+import {
+  ancestorIds,
+  descendantIds,
+  suitsInstruments,
+  type TreeNode,
+} from '@/shared/utils/skillConceptTree'
 
 export type { TreeNode }
-
-interface ParentOption {
-  id: string | null
-  label: string
-}
 
 const props = withDefaults(
   defineProps<{
@@ -24,14 +24,27 @@ const props = withDefaults(
     isLoading?: boolean
     /** Restricts which nodes can be browsed/picked, e.g. to a content node's own linked classification. */
     allowedIds?: string[] | null
-    /** false hides the create-new section, for pickers that only filter by existing nodes. */
-    creatable?: boolean
+    /**
+     * The instruments of the content being classified: only nodes that suit them
+     * are listed, and a picked node that doesn't is flagged. null lists every node.
+     */
+    instrumentIds?: string[] | null
+    /** Nodes listed first under "Suggested" — e.g. the concepts the picked skills apply. */
+    suggestedIds?: string[]
+    /** Shows a hint that missing nodes are added by the team, for authoring pickers. */
+    missingHint?: boolean
   }>(),
-  { multiple: true, isLoading: false, allowedIds: null, creatable: true },
+  {
+    multiple: true,
+    isLoading: false,
+    allowedIds: null,
+    instrumentIds: null,
+    suggestedIds: () => [],
+    missingHint: false,
+  },
 )
 const emit = defineEmits<{
   'update:selectedIds': [ids: string[]]
-  create: [{ name: string; parentId: string | null }]
 }>()
 
 const { t } = useTypedT()
@@ -40,26 +53,41 @@ const labelLower = computed(() => props.label.toLowerCase())
 
 const isOpen = ref(false)
 const search = ref('')
-const createName = ref('')
-const createParentId = ref('')
-const parentQuery = ref('')
-const parentDropdownOpen = ref(false)
-const highlightedParentIndex = ref(-1)
-const parentFieldRef = ref<HTMLElement | null>(null)
-const duplicateName = ref(false)
 
 const nodesById = computed(() => new Map(props.nodes.map((n) => [n.id, n])))
 
-function breadcrumb(node: TreeNode): string {
-  const path = [node.name]
+/** The node and its ancestors, root first. */
+function lineage(node: TreeNode): TreeNode[] {
+  const path = [node]
   let current = node
   while (current.parent_id) {
     const parent = nodesById.value.get(current.parent_id)
     if (!parent) break
-    path.unshift(parent.name)
+    path.unshift(parent)
     current = parent
   }
-  return path.join(' > ')
+  return path
+}
+
+function breadcrumb(node: TreeNode): string {
+  return lineage(node)
+    .map((n) => n.name)
+    .join(' > ')
+}
+
+/** A node matches when it or any ancestor has a name (in any language) or key containing the query. */
+function matches(node: TreeNode, query: string): boolean {
+  return lineage(node).some((n) =>
+    [n.name, ...(n.searchTerms ?? [])].some((term) => term.toLowerCase().includes(query)),
+  )
+}
+
+function suits(node: TreeNode): boolean {
+  return props.instrumentIds === null || suitsInstruments(node, props.instrumentIds)
+}
+
+function pickable(node: TreeNode): boolean {
+  return (!props.allowedIds || props.allowedIds.includes(node.id)) && suits(node)
 }
 
 function openPicker() {
@@ -68,32 +96,25 @@ function openPicker() {
 
 function closePicker() {
   isOpen.value = false
-  closeParentDropdown()
 }
 
-function closeParentDropdown() {
-  parentDropdownOpen.value = false
-  highlightedParentIndex.value = -1
-}
+const query = computed(() => search.value.trim().toLowerCase())
 
-function openParentDropdown() {
-  parentDropdownOpen.value = true
-  highlightedParentIndex.value = -1
-}
+const visibleNodes = computed(() =>
+  props.nodes
+    .filter(pickable)
+    .filter((node) => !query.value || matches(node, query.value))
+    .sort((a, b) => breadcrumb(a).localeCompare(breadcrumb(b))),
+)
 
-function onModalBodyClick(event: MouseEvent) {
-  if (!parentDropdownOpen.value) return
-  if (parentFieldRef.value?.contains(event.target as Node)) return
-  closeParentDropdown()
-}
-
-const visibleNodes = computed(() => {
-  const query = search.value.trim().toLowerCase()
-  return props.nodes
-    .filter((node) => !props.allowedIds || props.allowedIds.includes(node.id))
-    .filter((node) => !query || breadcrumb(node).toLowerCase().includes(query))
-    .sort((a, b) => breadcrumb(a).localeCompare(breadcrumb(b)))
-})
+const suggestedNodes = computed(() =>
+  query.value
+    ? []
+    : props.suggestedIds
+        .map((id) => nodesById.value.get(id))
+        .filter((n): n is TreeNode => !!n && pickable(n))
+        .sort((a, b) => breadcrumb(a).localeCompare(breadcrumb(b))),
+)
 
 const selectedNodes = computed(() =>
   props.selectedIds.map((id) => nodesById.value.get(id)).filter((n): n is TreeNode => !!n),
@@ -131,86 +152,6 @@ function removeSelected(id: string) {
     props.selectedIds.filter((i) => !toRemove.has(i)),
   )
 }
-
-function hasSibling(name: string, parentId: string | null): boolean {
-  const normalized = name.trim().toLowerCase()
-  return props.nodes.some(
-    (n) => (n.parent_id ?? null) === parentId && n.name.trim().toLowerCase() === normalized,
-  )
-}
-
-const parentOptions = computed<ParentOption[]>(() => {
-  const query = parentQuery.value.trim().toLowerCase()
-  const rootOption: ParentOption = { id: null, label: t('skillConceptTreePicker.noParentRoot') }
-  const nodeOptions: ParentOption[] = props.nodes
-    .map((n) => ({ id: n.id, label: breadcrumb(n) }))
-    .filter((option) => !query || option.label.toLowerCase().includes(query))
-    .sort((a, b) => a.label.localeCompare(b.label))
-  return !query || rootOption.label.toLowerCase().includes(query) ? [rootOption, ...nodeOptions] : nodeOptions
-})
-
-watch(parentOptions, (options) => {
-  if (highlightedParentIndex.value >= options.length) {
-    highlightedParentIndex.value = options.length - 1
-  }
-})
-
-function chooseParent(option: ParentOption) {
-  createParentId.value = option.id ?? ''
-  parentQuery.value = option.id ? option.label : ''
-  closeParentDropdown()
-  duplicateName.value = false
-}
-
-function clearParent() {
-  createParentId.value = ''
-  parentQuery.value = ''
-  duplicateName.value = false
-}
-
-function onParentSearchKeydown(event: KeyboardEvent) {
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    if (!parentDropdownOpen.value) {
-      openParentDropdown()
-      return
-    }
-    highlightedParentIndex.value = Math.min(highlightedParentIndex.value + 1, parentOptions.value.length - 1)
-    return
-  }
-  if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    if (!parentDropdownOpen.value) return
-    highlightedParentIndex.value = Math.max(highlightedParentIndex.value - 1, 0)
-    return
-  }
-  if (event.key === 'Enter') {
-    if (!parentDropdownOpen.value || highlightedParentIndex.value < 0) return
-    event.preventDefault()
-    const option = parentOptions.value[highlightedParentIndex.value]
-    if (option) chooseParent(option)
-    return
-  }
-  if (event.key === 'Escape') {
-    if (!parentDropdownOpen.value) return
-    event.preventDefault()
-    closeParentDropdown()
-  }
-}
-
-function submitCreate() {
-  const name = createName.value.trim()
-  if (!name) return
-  if (hasSibling(name, createParentId.value || null)) {
-    duplicateName.value = true
-    return
-  }
-  emit('create', { name, parentId: createParentId.value || null })
-  createName.value = ''
-  createParentId.value = ''
-  parentQuery.value = ''
-  duplicateName.value = false
-}
 </script>
 
 <template>
@@ -222,14 +163,21 @@ function submitCreate() {
         v-for="node in selectedNodes"
         :key="node.id"
         data-test="tree-selected-chip"
-        class="flex items-center gap-1.5 rounded-full bg-accent-muted py-[5px] pl-3 pr-1.5 text-[0.8125rem] font-semibold text-accent-text"
+        :data-unsuited="suits(node) ? undefined : 'true'"
+        :title="suits(node) ? undefined : t('skillConceptTreePicker.unsuitedTitle')"
+        class="flex items-center gap-1.5 rounded-full py-[5px] pl-3 pr-1.5 text-[0.8125rem] font-semibold"
+        :class="
+          suits(node)
+            ? 'bg-accent-muted text-accent-text'
+            : 'border border-dashed border-danger text-danger'
+        "
       >
         {{ breadcrumb(node) }}
         <button
           v-if="multiple"
           type="button"
           data-test="tree-selected-chip-remove"
-          class="flex h-[18px] w-[18px] items-center justify-center rounded-full text-accent-text"
+          class="flex h-[18px] w-[18px] items-center justify-center rounded-full"
           :aria-label="t('skillConceptTreePicker.removeSelectedAriaLabel', { name: node.name })"
           @click="removeSelected(node.id)"
         >
@@ -257,9 +205,11 @@ function submitCreate() {
       panel-class="flex max-h-[80vh] w-[420px] flex-col gap-3 rounded-xl bg-surface-raised p-5 shadow-level2"
       @close="closePicker"
     >
-      <div class="contents" @click="onModalBodyClick">
+      <div class="contents">
         <div class="flex items-center justify-between">
-          <span class="text-base font-bold">{{ t('skillConceptTreePicker.modalTitle', { label: labelLower }) }}</span>
+          <span class="text-base font-bold">{{
+            t('skillConceptTreePicker.modalTitle', { label: labelLower })
+          }}</span>
           <ModalCloseButton @close="closePicker" />
         </div>
 
@@ -271,119 +221,82 @@ function submitCreate() {
           class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
         />
 
-        <div class="flex h-48 flex-col overflow-hidden rounded-md border border-border bg-surface-sunken">
+        <div
+          class="flex h-48 flex-col overflow-hidden rounded-md border border-border bg-surface-sunken"
+        >
           <p v-if="isLoading" data-test="tree-loading" class="p-1.5 text-sm text-ink-subtle">
             {{ t('skillConceptTreePicker.loading') }}
           </p>
-          <p v-else-if="visibleNodes.length === 0" data-test="tree-empty" class="p-1.5 text-sm text-ink-subtle">
-            {{ creatable ? t('skillConceptTreePicker.empty') : t('skillConceptTreePicker.emptyNoCreate') }}
+          <p
+            v-else-if="visibleNodes.length === 0"
+            data-test="tree-empty"
+            class="p-1.5 text-sm text-ink-subtle"
+          >
+            {{ t('skillConceptTreePicker.empty') }}
           </p>
-          <ul v-else class="flex flex-1 flex-col gap-1 overflow-y-auto p-1.5">
-            <li
-              v-for="node in visibleNodes"
-              :key="node.id"
-              data-test="tree-node-row"
-              class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised"
-            >
-              <label class="flex flex-1 cursor-pointer items-center gap-2">
-                <input
-                  v-if="multiple"
-                  data-test="tree-node-checkbox"
-                  type="checkbox"
-                  :value="node.id"
-                  :checked="isSelected(node.id)"
-                  @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
-                />
-                <input
-                  v-else
-                  data-test="tree-node-radio"
-                  type="radio"
-                  :name="`${label}-tree-radio`"
-                  :value="node.id"
-                  :checked="isSelected(node.id)"
-                  @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
-                />
-                {{ breadcrumb(node) }}
-              </label>
-            </li>
-          </ul>
-        </div>
-
-        <div v-if="creatable" class="flex flex-col gap-1.5 border-t border-border pt-2.5">
-          <span class="text-xs font-semibold text-ink-subtle">{{ t('skillConceptTreePicker.createHeading') }}</span>
-          <input
-            v-model="createName"
-            data-test="tree-create-name"
-            type="text"
-            :placeholder="t('skillConceptTreePicker.createNamePlaceholder', { label: labelLower })"
-            class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
-            @input="duplicateName = false"
-          />
-
-          <div ref="parentFieldRef" class="relative">
-            <div class="flex items-center gap-1.5">
-              <input
-                v-model="parentQuery"
-                data-test="tree-create-parent-search"
-                type="text"
-                role="combobox"
-                :aria-expanded="parentDropdownOpen"
-                aria-controls="tree-create-parent-listbox"
-                :placeholder="t('skillConceptTreePicker.parentSearchPlaceholder')"
-                class="flex-1 rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
-                @focus="openParentDropdown"
-                @input="openParentDropdown"
-                @keydown="onParentSearchKeydown"
-              />
-              <button
-                v-if="createParentId"
-                type="button"
-                data-test="tree-create-parent-clear"
-                class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border border-border text-ink-muted"
-                :aria-label="t('skillConceptTreePicker.clearParentAriaLabel')"
-                @click="clearParent"
+          <div v-else class="flex flex-1 flex-col gap-1 overflow-y-auto p-1.5">
+            <template v-if="suggestedNodes.length > 0">
+              <span
+                data-test="tree-suggested-heading"
+                class="px-2 pt-1 text-xs font-semibold text-ink-subtle"
               >
-                <X :size="13" aria-hidden="true" />
-              </button>
-            </div>
-
-            <ul
-              v-if="parentDropdownOpen && parentOptions.length > 0"
-              id="tree-create-parent-listbox"
-              data-test="tree-create-parent-options"
-              role="listbox"
-              class="absolute z-10 mt-1 flex max-h-40 w-full flex-col gap-0.5 overflow-y-auto rounded-md border border-border bg-surface-raised p-1 shadow-level2"
-            >
-              <li v-for="(option, index) in parentOptions" :key="option.id ?? 'root'" role="presentation">
-                <button
-                  type="button"
-                  data-test="tree-create-parent-option"
-                  :data-node-id="option.id ?? 'root'"
-                  role="option"
-                  :aria-selected="index === highlightedParentIndex"
-                  class="w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-surface-sunken"
-                  :class="{ 'bg-surface-sunken': index === highlightedParentIndex }"
-                  @click="chooseParent(option)"
+                {{ t('skillConceptTreePicker.suggested') }}
+              </span>
+              <ul class="flex flex-col gap-1 border-b border-border pb-1.5">
+                <li
+                  v-for="node in suggestedNodes"
+                  :key="node.id"
+                  data-test="tree-suggested-row"
+                  class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised"
                 >
-                  {{ option.label }}
-                </button>
+                  <label class="flex flex-1 cursor-pointer items-center gap-2">
+                    <input
+                      :type="multiple ? 'checkbox' : 'radio'"
+                      :name="multiple ? undefined : `${label}-tree-radio`"
+                      :value="node.id"
+                      :checked="isSelected(node.id)"
+                      @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
+                    />
+                    {{ breadcrumb(node) }}
+                  </label>
+                </li>
+              </ul>
+            </template>
+            <ul class="flex flex-col gap-1">
+              <li
+                v-for="node in visibleNodes"
+                :key="node.id"
+                data-test="tree-node-row"
+                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-raised"
+              >
+                <label class="flex flex-1 cursor-pointer items-center gap-2">
+                  <input
+                    v-if="multiple"
+                    data-test="tree-node-checkbox"
+                    type="checkbox"
+                    :value="node.id"
+                    :checked="isSelected(node.id)"
+                    @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
+                  />
+                  <input
+                    v-else
+                    data-test="tree-node-radio"
+                    type="radio"
+                    :name="`${label}-tree-radio`"
+                    :value="node.id"
+                    :checked="isSelected(node.id)"
+                    @change="toggle(node.id, ($event.target as HTMLInputElement).checked)"
+                  />
+                  {{ breadcrumb(node) }}
+                </label>
               </li>
             </ul>
           </div>
-
-          <button
-            type="button"
-            data-test="tree-create-submit"
-            :disabled="!createName.trim()"
-            class="w-fit rounded-md border border-border bg-surface-sunken px-3 py-2 text-[0.8125rem] font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-            @click="submitCreate"
-          >
-            {{ t('skillConceptTreePicker.createSubmit') }}
-          </button>
-          <p v-if="duplicateName" data-test="tree-create-duplicate" class="text-[0.8125rem] text-danger">
-            {{ t('skillConceptTreePicker.duplicateName', { name: createName.trim() }) }}
-          </p>
         </div>
+
+        <p v-if="missingHint" data-test="tree-missing-hint" class="text-xs text-ink-subtle">
+          {{ t('skillConceptTreePicker.missingHint') }}
+        </p>
 
         <button
           type="button"

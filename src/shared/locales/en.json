@@ -122,16 +122,11 @@
     "modalTitle": "Select {label}",
     "search": "Search by name",
     "loading": "Loading…",
-    "empty": "No matching nodes yet — create one below.",
-    "emptyNoCreate": "No matching nodes.",
-    "createHeading": "Create new",
-    "createNamePlaceholder": "New {label} name",
-    "noParentRoot": "No parent (root)",
-    "parentSearchPlaceholder": "No parent (root) — search to set a parent",
-    "clearParentAriaLabel": "Clear parent",
-    "createSubmit": "Add",
-    "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate.",
-    "closeButton": "Close"
+    "empty": "No matching nodes.",
+    "closeButton": "Close",
+    "suggested": "Suggested",
+    "missingHint": "Missing one? Ask the team.",
+    "unsuitedTitle": "Not for this content's instruments"
   },
   "levels": {
     "beginner": "Beginner",
