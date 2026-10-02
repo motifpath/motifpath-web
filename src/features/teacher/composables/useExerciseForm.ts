@@ -88,6 +88,8 @@ export function useExerciseForm() {
   const prompt = ref<PromptDocument>(EMPTY_PROMPT)
   const exerciseType = ref<ExerciseType>('text_response')
   const skillIds = ref<string[]>([])
+  /** The instruments the exercise is for; empty means every instrument. */
+  const instrumentIds = ref<string[]>([])
   const conceptIds = ref<string[]>([])
   const imageUrl = ref('')
   const audioUrl = ref('')
@@ -291,6 +293,7 @@ export function useExerciseForm() {
       skill_ids: [...skillIds.value],
       concept_ids: [...conceptIds.value],
       language_codes: ['any'],
+      instrument_ids: [...instrumentIds.value],
     }
     if (hasDiagramStimulus.value) {
       if (stimulusDiagram.value) fields.diagram_ref = stimulusDiagram.value
@@ -333,6 +336,7 @@ export function useExerciseForm() {
     exerciseType.value = exercise.exercise_type
     skillIds.value = exercise.skills.map((s) => s.node_id)
     conceptIds.value = exercise.concepts.map((c) => c.node_id)
+    instrumentIds.value = [...exercise.instrument_ids]
     imageUrl.value = exercise.image_url ?? ''
     audioUrl.value = exercise.audio_url ?? ''
     stimulusDiagram.value = exercise.diagram_ref ?? null
@@ -378,6 +382,7 @@ export function useExerciseForm() {
     exerciseType,
     skillIds,
     conceptIds,
+    instrumentIds,
     imageUrl,
     stimulusSource,
     stimulusDiagram,

@@ -110,6 +110,11 @@ async function selectClassification(wrapper: ReturnType<typeof mountView>) {
 
 type KnowledgeQuery = { params?: { query?: { kind?: string } } }
 
+const instruments = [
+  { instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] },
+  { instrument_id: 'i-bass', names: { en: 'Bass' }, languages: ['en'] },
+]
+
 function isSkillsRequest(path: string, init?: KnowledgeQuery): boolean {
   return path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
 }
@@ -394,20 +399,46 @@ describe('ExerciseAuthoringView', () => {
     wrapper.unmount()
   })
 
-  it('lists skills for any instrument, since exercises are not matched to instruments yet', async () => {
-    GET.mockImplementation((path: string, init?: KnowledgeQuery) =>
-      Promise.resolve({
-        data: isSkillsRequest(path, init) ? [knowledgeNode('s-bass', { names: { en: 'slap' }, instrument_ids: ['i-bass'] })] : [],
+  it("lists only the skills that suit the exercise's instruments, following the instrument picks", async () => {
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
+      if (path === '/instruments') return Promise.resolve({ data: instruments, error: undefined, response: { status: 200 } })
+      return Promise.resolve({
+        data: isSkillsRequest(path, init)
+          ? [
+              knowledgeNode('s-all', { names: { en: 'reading-tab' } }),
+              knowledgeNode('s-bass', { names: { en: 'slap' }, instrument_ids: ['i-bass'] }),
+            ]
+          : [],
         error: undefined,
         response: { status: 200 },
-      }),
-    )
+      })
+    })
     const wrapper = mountView()
     await flushPromises()
 
     await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+    expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['reading-tab'])
 
-    expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['slap'])
+    await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+    expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['reading-tab', 'slap'])
+  })
+
+  it('starts at every instrument and sends the instruments picked', async () => {
+    GET.mockImplementation((path: string) =>
+      Promise.resolve({ data: path === '/instruments' ? instruments : [], error: undefined, response: { status: 200 } }),
+    )
+    POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] }, error: undefined, response: { status: 201 } })
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="instrument-every"]').attributes('aria-pressed')).toBe('true')
+
+    await fillMinimalTextResponse(wrapper)
+    await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+    await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST.mock.calls[0]?.[1].body.instrument_ids).toEqual(['i-bass'])
   })
 
   it('says the concepts failed to load, and offers a retry', async () => {
@@ -899,6 +930,7 @@ describe('ExerciseAuthoringView', () => {
               options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
               challenge_ids: ['c-1'],
               content_node_ids: [],
+              instrument_ids: [],
               created_at: '2026-01-01T00:00:00Z',
             },
             error: undefined,
@@ -940,6 +972,7 @@ describe('ExerciseAuthoringView', () => {
 options: [],
           challenge_ids: [],
           content_node_ids: [],
+          instrument_ids: [],
           created_at: '2026-01-01T00:00:00Z',
         },
         error: undefined,
@@ -964,6 +997,7 @@ options: [],
 options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
           challenge_ids: [],
           content_node_ids: [],
+          instrument_ids: [],
           created_at: '2026-01-01T00:00:00Z',
         },
         error: undefined,
@@ -1017,6 +1051,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
               options: [],
               challenge_ids: [],
               content_node_ids: [],
+              instrument_ids: [],
               created_at: '2026-01-01T00:00:00Z',
             },
             error: undefined,
@@ -1075,6 +1110,33 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
     beforeEach(() => {
       clearEmbeddedDiagramCache()
       serveDiagrams()
+    })
+
+    it("fills in the picked diagram's instruments when none are chosen yet", async () => {
+      const wrapper = mountWithStubbedPickers()
+      await flushPromises()
+
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.get('[data-test="instrument-option-instrument-guitar"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('keeps the instruments already chosen when a diagram is picked', async () => {
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') return Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
+        if (path === '/instruments') {
+          return Promise.resolve({ data: [makeFrettedInstrument(), ...instruments], error: undefined, response: { status: 200 } })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      const wrapper = mountWithStubbedPickers()
+      await flushPromises()
+      await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.get('[data-test="instrument-option-i-bass"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.get('[data-test="instrument-option-instrument-guitar"]').attributes('aria-pressed')).toBe('false')
     })
 
     it('picks a diagram as the stimulus, then edits it in the form in place of the image and its regions', async () => {
@@ -1186,6 +1248,7 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         options: [{ option_id: 'o-1', is_correct: true, diagram_position_id: 'p0', fret_cell: { string: 6, fret: 5 } }],
         challenge_ids: [],
         content_node_ids: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
       PUT.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 200 } })

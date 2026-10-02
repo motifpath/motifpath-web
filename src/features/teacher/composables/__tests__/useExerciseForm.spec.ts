@@ -188,6 +188,27 @@ describe('useExerciseForm', () => {
     })
   })
 
+  describe('instrument ids', () => {
+    it('default to every instrument (an empty list) and travel on create and update', () => {
+      const form = useExerciseForm()
+      expect(form.instrumentIds.value).toEqual([])
+      expect(form.toCreateExerciseRequest().instrument_ids).toEqual([])
+
+      form.instrumentIds.value = ['bass']
+
+      expect(form.toCreateExerciseRequest().instrument_ids).toEqual(['bass'])
+      expect(form.toUpdateExerciseRequest().instrument_ids).toEqual(['bass'])
+    })
+
+    it('load from an existing exercise', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', instrument_ids: ['guitar', 'bass'] }))
+
+      expect(form.instrumentIds.value).toEqual(['guitar', 'bass'])
+    })
+  })
+
   describe('toCreateExerciseRequest', () => {
     it('maps a text_response exercise', () => {
       const form = useExerciseForm()
@@ -210,6 +231,7 @@ describe('useExerciseForm', () => {
         concept_ids: ['c-1'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
         language_codes: ['any'],
+        instrument_ids: [],
       })
     })
 
@@ -462,6 +484,7 @@ describe('useExerciseForm', () => {
         concept_ids: ['c-1'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
         language_codes: ['any'],
+        instrument_ids: [],
       })
       expect(request).not.toHaveProperty('exercise_type')
     })
