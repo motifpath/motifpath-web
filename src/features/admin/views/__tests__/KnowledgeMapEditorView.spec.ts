@@ -137,8 +137,9 @@ describe('KnowledgeMapEditorView', () => {
       { edge_id: 'e-requires', from_id: 'vibrato', to_id: 'bends', type: 'requires', level: 'fluent' },
     ]
     GET.mockImplementation((path: string) => {
-      if (path === '/knowledge-nodes') return Promise.resolve(ok(nodes))
-      if (path === '/knowledge-edges') return Promise.resolve(ok(edges))
+      // A real response is freshly parsed every time, never the objects already on screen.
+      if (path === '/knowledge-nodes') return Promise.resolve(ok(structuredClone(nodes)))
+      if (path === '/knowledge-edges') return Promise.resolve(ok(structuredClone(edges)))
       if (path === '/instruments') return Promise.resolve(ok(instruments))
       return Promise.resolve(ok([]))
     })
@@ -333,6 +334,29 @@ describe('KnowledgeMapEditorView', () => {
 
       expect(useToast().toasts.value.map((toast) => toast.kind)).toEqual(['error'])
       expect((wrapper.get('[data-test="kmap-name-pt_BR"]').element as HTMLInputElement).value).toBe('Curvas')
+    })
+
+    it('keeps an unsaved rename while the admin edits links or moves the node', async () => {
+      const wrapper = await mountEditor({ node: 'bends' })
+      await wrapper.get('[data-test="kmap-name-en"]').setValue('Bending notes')
+
+      POST.mockResolvedValueOnce(ok({ edge_id: 'e-new', from_id: 'bends', to_id: 'terms', type: 'requires', level: 'accurate' }, 201))
+      await wrapper.get('[data-test="kmap-add-requires"]').trigger('click')
+      const picker = wrapper.get('[data-test="kmap-node-picker"]')
+      await picker.findAll('[data-test="kmap-tree-select"]').find((row) => row.attributes('data-node-id') === 'terms')!.trigger('click')
+      await flushPromises()
+      expect(POST).toHaveBeenCalled()
+      expect((wrapper.get('[data-test="kmap-name-en"]').element as HTMLInputElement).value).toBe('Bending notes')
+
+      await wrapper.get('[data-test="kmap-move"]').trigger('click')
+      await wrapper.get('[data-test="kmap-move-root"]').trigger('click')
+      PATCH.mockResolvedValueOnce(ok(node('bends', 'skill', 'Bends', null, guitars)))
+      await wrapper.get('[data-test="kmap-move-confirm"]').trigger('click')
+      await flushPromises()
+      expect((wrapper.get('[data-test="kmap-name-en"]').element as HTMLInputElement).value).toBe('Bending notes')
+
+      await select(wrapper, 'lead')
+      expect(wrapper.find('[data-test="kmap-discard-dialog"]').exists()).toBe(true)
     })
 
     it('asks before discarding unsaved changes, and stays when the admin cancels', async () => {

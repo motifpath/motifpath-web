@@ -51,7 +51,6 @@ export function useKnowledgeNodeForm(options: {
     instrumentIds.value = [...(node.value?.instrument_ids ?? parent.value?.instrument_ids ?? [])]
     instrumentsEdited.value = false
   }
-  watch(node, reset, { immediate: true })
 
   // A new node starts on its parent's instruments, and keeps following the
   // parent the admin picks until they choose instruments themselves.
@@ -93,22 +92,24 @@ export function useKnowledgeNodeForm(options: {
     () => descriptionFilled.value.some(Boolean) && !descriptionFilled.value.every(Boolean),
   )
 
-  const updateRequest = computed<UpdateKnowledgeNodeRequest>(() => {
-    const current = node.value
-    if (!current) return {}
+  /** What the form changes relative to `base`'s saved values — empty when nothing differs. */
+  function changesAgainst(base: KnowledgeNode | null): UpdateKnowledgeNodeRequest {
+    if (!base) return {}
     const request: UpdateKnowledgeNodeRequest = {}
     const nextNames = trimmed(names.value)
-    if (OFFERED_LANGUAGE_CODES.some((code) => nextNames[code] !== (current.names[code] ?? ''))) {
+    if (OFFERED_LANGUAGE_CODES.some((code) => nextNames[code] !== (base.names[code] ?? ''))) {
       request.names = nextNames
     }
     const nextDescriptions = trimmed(descriptions.value)
-    const before = perLanguage(current.descriptions)
+    const before = perLanguage(base.descriptions)
     if (OFFERED_LANGUAGE_CODES.some((code) => nextDescriptions[code] !== before[code])) {
       request.descriptions = descriptionFilled.value.some(Boolean) ? nextDescriptions : null
     }
-    if (!sameIds(instrumentIds.value, current.instrument_ids)) request.instrument_ids = [...instrumentIds.value]
+    if (!sameIds(instrumentIds.value, base.instrument_ids)) request.instrument_ids = [...instrumentIds.value]
     return request
-  })
+  }
+
+  const updateRequest = computed(() => changesAgainst(node.value))
 
   const isDirty = computed(() => {
     if (!isCreating.value) return Object.keys(updateRequest.value).length > 0
@@ -119,6 +120,21 @@ export function useKnowledgeNodeForm(options: {
       instrumentsEdited.value
     )
   })
+
+  // A reload of the same node (after any write to the map) must not wipe the
+  // admin's unsaved edits. The form takes the reloaded values when it shows a
+  // different node, held no edits, or already matches them (it was just saved).
+  watch(
+    node,
+    (next, previous) => {
+      const unchanged = (base: KnowledgeNode | null | undefined) =>
+        base !== undefined && Object.keys(changesAgainst(base)).length === 0
+      if (previous === undefined || next?.node_id !== previous?.node_id || unchanged(previous) || unchanged(next)) {
+        reset()
+      }
+    },
+    { immediate: true },
+  )
 
   const canSave = computed(
     () =>

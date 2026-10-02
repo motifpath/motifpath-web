@@ -217,6 +217,18 @@ describe('KnowledgeNodeForm', () => {
       expect(wrapper.emitted('dirty')!.at(-1)).toEqual([false])
     })
 
+    it('keeps unsaved edits when the same node is reloaded, and takes the new values when clean', async () => {
+      const wrapper = await mountForm({ node: node(), parent: lead })
+      await wrapper.get('[data-test="kmap-name-en"]').setValue('Bending notes')
+
+      await wrapper.setProps({ node: node({ instrument_ids: ['i-electric', 'i-acoustic'] }) })
+      expect((wrapper.get('[data-test="kmap-name-en"]').element as HTMLInputElement).value).toBe('Bending notes')
+
+      await wrapper.get('[data-test="kmap-discard"]').trigger('click')
+      await wrapper.setProps({ node: node({ names: { en: 'Bends!', pt_BR: 'Bends' } }) })
+      expect((wrapper.get('[data-test="kmap-name-en"]').element as HTMLInputElement).value).toBe('Bends!')
+    })
+
     it('loads the next node when it changes', async () => {
       const wrapper = await mountForm({ node: node(), parent: lead })
 
