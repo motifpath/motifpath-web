@@ -41,7 +41,7 @@ describe('useExerciseLibrary', () => {
     expect(hasActiveFilters.value).toBe(false)
   })
 
-  it('sends the type, skill, concept, language and creator filters, starting over from the first page', async () => {
+  it('sends the type, skill, concept, language, creator and instrument filters, starting over from the first page', async () => {
     const { filters, exerciseType, hasActiveFilters, isLoading } = useExerciseLibrary()
     await settle(isLoading)
 
@@ -50,6 +50,7 @@ describe('useExerciseLibrary', () => {
     filters.conceptIds = ['c-1']
     filters.language = 'pt_BR'
     filters.teacher = { user_id: 'u-1', display_name: 'Bob' }
+    filters.instrumentId = 'i-bass'
     await settle(isLoading)
 
     expect(lastQuery()).toEqual({
@@ -60,6 +61,7 @@ describe('useExerciseLibrary', () => {
       concept_id: 'c-1',
       language: 'pt_BR',
       created_by: 'u-1',
+      instrument_id: ['i-bass'],
     })
     expect(hasActiveFilters.value).toBe(true)
   })

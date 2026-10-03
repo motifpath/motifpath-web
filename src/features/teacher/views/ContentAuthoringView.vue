@@ -82,12 +82,16 @@ const {
 const savedContentNodeId = ref('')
 const savedTeacherId = ref('')
 const latestPublishedVersion = ref<number | null>(null)
+// The server checks a challenge's exercises against the saved lesson, so the
+// exercise picker follows the saved instruments, not unsaved picks in the form.
+const savedInstrumentIds = ref<string[]>([])
 
 function applySavedContentNode(contentNode: ContentNode) {
   form.loadFromContentNode(contentNode)
   savedContentNodeId.value = contentNode.content_node_id
   savedTeacherId.value = contentNode.teacher.user_id
   latestPublishedVersion.value = contentNode.latest_published_version ?? null
+  savedInstrumentIds.value = [...contentNode.instrument_ids]
 }
 
 watch(
@@ -672,6 +676,7 @@ async function onSaveChallenge({
       :allowed-skill-ids="form.skillIds.value"
       :allowed-concept-ids="form.conceptIds.value"
       :exercise-pool="exercisePool"
+      :instrument-ids="savedInstrumentIds"
       :initial="challengeInitial"
       :saving="challengeSaveBlocked"
       @save="onSaveChallenge"

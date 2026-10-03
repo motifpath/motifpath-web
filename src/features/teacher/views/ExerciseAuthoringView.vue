@@ -22,6 +22,8 @@ import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import { useStimulusDiagram } from '@/features/teacher/composables/useStimulusDiagram'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
+import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
+import LanguageCodesPicker from '@/shared/components/LanguageCodesPicker.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
@@ -154,16 +156,33 @@ function onStimulusPicked(file: File) {
 // picked again — its own state would otherwise outlive the form's reset answers.
 const stimulusPick = ref(0)
 
+// A diagram is drawn for its instruments, so picking one as the stimulus of a
+// new exercise fills them in while none are chosen. A saved exercise's empty
+// list means "every instrument" on purpose, so it is never overridden.
+const fillInstrumentsFromStimulus = ref(false)
+
 function onStimulusDiagram(diagramRef: DiagramRef) {
   stimulusPick.value++
   form.setStimulusDiagram(diagramRef)
   stimulusPickerOpen.value = false
+  fillInstrumentsFromStimulus.value = !isEditMode && form.instrumentIds.value.length === 0
 }
 
 const showsDiagramStimulus = computed(() => form.stimulusSource.value === 'diagram' && form.stimulusDiagram.value !== null)
 // The stimulus's labels, hidden and correct positions are edited in the form, on the diagram itself.
 const stimulus = useStimulusDiagram(() =>
   form.hasDiagramStimulus.value ? (form.stimulusDiagram.value?.diagram_id ?? null) : null,
+)
+
+watch(
+  [() => stimulus.diagram.value, fillInstrumentsFromStimulus],
+  ([diagram, fill]) => {
+    if (!fill || !diagram || diagram.diagram_id !== form.stimulusDiagram.value?.diagram_id) return
+    fillInstrumentsFromStimulus.value = false
+    if (form.instrumentIds.value.length > 0) return
+    form.instrumentIds.value = diagram.instrument_ids.length > 0 ? [...diagram.instrument_ids] : [diagram.instrument_id]
+  },
+  { immediate: true },
 )
 
 function onOptionFile(id: string, file: File) {
@@ -381,6 +400,16 @@ async function save() {
           </span>
         </div>
 
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.instrumentsLabel') }}</span>
+          <InstrumentPicker v-model="form.instrumentIds.value" />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.languagesLabel') }}</span>
+          <LanguageCodesPicker v-model="form.languageCodes.value" />
+        </div>
+
         <div
           v-if="!form.hasCorrectOption.value"
           data-test="no-correct-banner"
@@ -502,6 +531,7 @@ async function save() {
             :is-loading="conceptsLoading"
             :load-failed="conceptsError"
             :suggested-ids="suggestedConceptIds"
+            :instrument-ids="form.instrumentIds.value"
             missing-hint
             :create-kind="currentUser.profile?.role === 'admin' ? 'concept' : null"
             @update:selected-ids="form.conceptIds.value = $event"
@@ -514,6 +544,7 @@ async function save() {
             :is-loading="skillsLoading"
             :load-failed="skillsError"
             :suggested-ids="suggestedSkillIds"
+            :instrument-ids="form.instrumentIds.value"
             missing-hint
             :create-kind="currentUser.profile?.role === 'admin' ? 'skill' : null"
             @update:selected-ids="form.skillIds.value = $event"

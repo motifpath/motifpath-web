@@ -94,6 +94,8 @@
     "titlePlaceholder": "Exercício sem título",
     "titleHint": "Título interno — para a biblioteca de conteúdo, não mostrado aos alunos",
     "promptLabel": "Enunciado mostrado ao aluno",
+    "languagesLabel": "Idiomas",
+    "instrumentsLabel": "Instrumentos",
     "exerciseTypeLabel": "Tipo de exercício",
     "typeLockedHint": "O tipo não pode ser alterado após a criação.",
     "typeUnlockedHint": "Todos os tipos são corrigidos da mesma forma — marque uma ou mais opções como corretas abaixo.",

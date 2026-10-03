@@ -4203,7 +4203,15 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** @description Payload for creating a standalone, reusable exercise. */
+        /**
+         * @description Payload for creating a standalone, reusable exercise.
+         *     Every skill and concept must suit the exercise's instruments: it is
+         *     for every instrument, or for at least one of the exercise's
+         *     instrument_ids. An exercise for every instrument (empty
+         *     instrument_ids) may use only nodes for every instrument. A violation
+         *     is rejected with the offending skill_ids or concept_ids identified —
+         *     the same rule content nodes and diagrams follow.
+         */
         CreateExerciseRequest: {
             /**
              * @description A short, authoring-only name for this exercise (e.g. "Alternate
@@ -4335,6 +4343,15 @@ export interface components {
          *     creation. options fully replaces the exercise's current options, the
          *     same way CreateExerciseRequest.options establishes them initially; a
          *     caller that only wants to change one option must resend the full set.
+         *     Every skill and concept must suit the exercise's instruments: it is
+         *     for every instrument, or for at least one of the exercise's
+         *     instrument_ids. An exercise for every instrument (empty
+         *     instrument_ids) may use only nodes for every instrument. A violation
+         *     is rejected with the offending skill_ids or concept_ids identified —
+         *     the same rule content nodes and diagrams follow.
+         *     The rule is checked against the instruments the exercise has after
+         *     the update — the current ones when instrument_ids is omitted — so
+         *     changing only the instruments can be rejected too.
          */
         UpdateExerciseRequest: {
             /**
@@ -4507,7 +4524,20 @@ export interface components {
              *     from.
              */
             languages: components["schemas"]["Language"][];
-            /** @description The instruments this exercise is for. Empty means every instrument. */
+            /**
+             * @description The instruments this exercise is for. Empty means every
+             *     instrument. An exercise suits a content node when the exercise
+             *     is for every instrument, or the node is for specific instruments
+             *     and the exercise is for at least one of them: a node for guitar
+             *     and bass takes a guitar-only exercise, and a node for every
+             *     instrument takes only exercises for every instrument. The rule
+             *     holds for every link between them (a path exercise, or an
+             *     exercise in one of the node's challenges) and for every write
+             *     that could break it: linking, changing the exercise's
+             *     instruments, and changing the node's instruments. The rule only
+             *     constrains these links; it does not choose a student's exercises
+             *     by the student's own instrument.
+             */
             instrument_ids: components["schemas"]["InstrumentIds"];
             /**
              * @description The user who created the exercise, recorded from the caller of
@@ -5306,6 +5336,20 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundError"];
                 };
             };
+            /**
+             * @description The new instrument_ids would leave an exercise linked to this
+             *     node — as a path exercise or through one of its challenges —
+             *     unsuited to it (see Exercise.instrument_ids). Unlink it first, or
+             *     keep an instrument the exercise is for.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
         };
     };
     publishContentNode: {
@@ -5661,6 +5705,13 @@ export interface operations {
                 created_by?: string;
                 /** @description When given, only exercises of this type are returned. */
                 exercise_type?: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
+                /**
+                 * @description Return only exercises for at least one of these instruments —
+                 *     those that list any of them in instrument_ids, plus those for
+                 *     every instrument (an empty instrument_ids). Repeat the parameter
+                 *     for several instruments. Omit for exercises of every scope.
+                 */
+                instrument_id?: string[];
             };
             header?: never;
             path?: never;
@@ -5677,7 +5728,10 @@ export interface operations {
                     "application/json": components["schemas"]["PagedExercises"];
                 };
             };
-            /** @description limit or offset is out of range. */
+            /**
+             * @description limit or offset is out of range, or an instrument_id is not a
+             *     valid uuid.
+             */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5732,8 +5786,11 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body failed schema validation, or no option has
-             *     is_correct set to true.
+             * @description The request body failed schema validation, no option has
+             *     is_correct set to true, an instrument_ids entry does not
+             *     reference an existing instrument, or a skill or concept does not
+             *     suit the exercise's instruments (see CreateExerciseRequest) —
+             *     reported against skill_ids or concept_ids.
              */
             400: {
                 headers: {
@@ -5906,7 +5963,11 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundError"];
                 };
             };
-            /** @description The exercise is already linked to this challenge. */
+            /**
+             * @description The exercise is already linked to this challenge, or it does not
+             *     suit the instruments of the challenge's content node (see
+             *     Exercise.instrument_ids).
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6068,7 +6129,10 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundError"];
                 };
             };
-            /** @description The exercise is already linked to this content node. */
+            /**
+             * @description The exercise is already linked to this content node, or it does
+             *     not suit the node's instruments (see Exercise.instrument_ids).
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6535,8 +6599,12 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body failed schema validation, or no option has
-             *     is_correct set to true.
+             * @description The request body failed schema validation, no option has
+             *     is_correct set to true, an instrument_ids entry does not
+             *     reference an existing instrument, or a skill or concept does not
+             *     suit the instruments the exercise has after the update (see
+             *     UpdateExerciseRequest) — reported against skill_ids or
+             *     concept_ids.
              */
             400: {
                 headers: {
@@ -6574,6 +6642,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The new instrument_ids would leave the exercise unsuited to a
+             *     content node it is linked to, as a path exercise or through one
+             *     of the node's challenges (see Exercise.instrument_ids). Unlink it
+             *     first, or keep an instrument the node is for.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
                 };
             };
         };
@@ -6936,8 +7018,8 @@ export interface operations {
             /**
              * @description The new parent is the node itself or one of its descendants, so
              *     the move would create a cycle; or the new instrument_ids would
-             *     leave out an instrument of content or a diagram classified under
-             *     this node, or of one of its children.
+             *     leave out an instrument of content, an exercise or a diagram
+             *     classified under this node, or of one of its children.
              */
             409: {
                 headers: {

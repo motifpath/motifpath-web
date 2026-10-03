@@ -29,6 +29,8 @@ const props = defineProps<{
   allowedSkillIds: string[]
   allowedConceptIds: string[]
   exercisePool: Exercise[]
+  /** The lesson's instruments (empty meaning every instrument); the exercise picker offers only exercises that suit them. */
+  instrumentIds?: string[] | null
   /** The challenge being edited, or null when building a new one. */
   initial: ChallengeModalInitial | null
   saving: boolean
@@ -198,6 +200,7 @@ function save() {
       :open="pickerOpen"
       :exercises="exercisePool"
       :linked-exercise-ids="draftExerciseIds"
+      :instrument-ids="instrumentIds ?? null"
       @select="onExercisePicked"
       @close="pickerOpen = false"
     />
