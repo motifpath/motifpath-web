@@ -61,6 +61,7 @@ function diagram(id: string, name: string, root: string, positions: DiagramPosit
   return {
     diagram_id: id,
     instrument_id: guitar.instrument_id,
+    instrument_ids: [guitar.instrument_id],
     names: { en: name },
     languages: ['en'],
     kind: 'custom',

@@ -45,6 +45,7 @@ export function bareDiagram(id: string, positions: DiagramPosition[]): Diagram {
   return {
     diagram_id: id,
     instrument_id: 'instrument-guitar',
+    instrument_ids: ['instrument-guitar'],
     names: { en: id },
     languages: ['en'],
     kind: 'custom',
