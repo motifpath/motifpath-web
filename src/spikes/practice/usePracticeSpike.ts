@@ -11,18 +11,20 @@ import { deriveStates } from '@/spikes/practice/mastery'
 import type { Evidence, KnowledgeState, RecordedTake, Session, TeacherNote } from '@/spikes/practice/model'
 import { composeSession } from '@/spikes/practice/sessionComposer'
 import { simulate } from '@/spikes/practice/simulator'
+import { openSuggestions } from '@/spikes/practice/teacherNotes'
+import type { OpenSuggestions } from '@/spikes/practice/teacherNotes'
 import type { Archetype } from '@/spikes/practice/simulator'
 
 export const SIM_START = new Date('2026-10-01T09:00:00Z')
 export const SIM_DAYS = 21
 const DAY_MS = 86_400_000
-/** A teacher's suggestions steer sessions for this long, then lapse. */
-export const SUGGESTION_LIFETIME_DAYS = 14
-const STORAGE_KEY = 'practice-spike-live-v1'
+const STORAGE_KEY = 'practice-spike-live-v2'
 
 interface LiveData {
   evidence: Evidence[]
   notes: TeacherNote[]
+  /** When the teacher closed a note, by note id. */
+  closed: Record<string, string>
 }
 
 function loadLive(): LiveData {
@@ -32,7 +34,7 @@ function loadLive(): LiveData {
   } catch {
     // Storage unavailable or corrupt: start empty.
   }
-  return { evidence: [], notes: [] }
+  return { evidence: [], notes: [], closed: {} }
 }
 
 const state = reactive({
@@ -67,14 +69,23 @@ const evidence = computed(() => [
 const notes = computed(() =>
   [...simulation.value.notes, ...state.live.notes]
     .filter((n) => before(n.created_at, now.value))
+    .map((n) => ({ ...n, closed_at: state.live.closed[n.teacher_note_id] ?? n.closed_at }))
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
 )
 
-const activeNotes = computed(() =>
-  notes.value.filter((n) => now.value.getTime() - Date.parse(n.created_at) <= SUGGESTION_LIFETIME_DAYS * DAY_MS),
-)
-
 const states = computed(() => deriveStates(items, evidence.value, now.value))
+
+/** What a note still steers: its suggestions not yet met, while it is open and recent. */
+function openFor(note: TeacherNote): OpenSuggestions {
+  return openSuggestions([note], { nodes: graph.nodes, items, states: states.value, now: now.value })
+}
+
+const activeNotes = computed(() =>
+  notes.value.filter((n) => {
+    const open = openFor(n)
+    return open.item_keys.length + open.node_ids.length > 0
+  }),
+)
 
 /**
  * A timestamp for something done live. Screens only see evidence up to "now", so live events
@@ -98,6 +109,7 @@ export function usePracticeSpike() {
     evidence,
     notes,
     activeNotes,
+    openFor,
     states,
     clock,
     newId,
@@ -131,12 +143,15 @@ export function usePracticeSpike() {
       state.live.notes.push(note)
       if (review) state.live.evidence.push(review)
     },
+    closeNote(id: string) {
+      state.live.closed[id] = clock()
+    },
     addTake(take: RecordedTake) {
       state.takes.push(take)
     },
     resetLive() {
       liveSeq = 0
-      state.live = { evidence: [], notes: [] }
+      state.live = { evidence: [], notes: [], closed: {} }
       state.takes = []
     },
   }

@@ -28,6 +28,8 @@ export const REASON_LABEL: Record<Reason, string> = {
   new: 'New',
   warm_up: 'Warm-up',
   application: 'Apply it to music',
+  review_ahead: 'Review ahead — keep it sharp',
+  stretch: 'Stretch — you’re ready for this',
 }
 
 export const BLOCK_LABEL: Record<BlockKind, string> = {

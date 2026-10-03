@@ -133,6 +133,8 @@ export function simulate(archetype: Archetype, options: SimulateOptions): Simula
         summary: `Feels clean to you at ${claimed}, but it's clean around ${Math.round(a.bpm)}. Drop the tempo and keep it relaxed.`,
         needs_work: { skill_ids: ['alternate-picking'], concept_ids: [] },
         suggested_item_keys: [ALTERNATE_PICKING, BLUES_LICK],
+        target_level: 'accurate',
+        closed_at: null,
       }
       notes.push(note)
       evidence.push({ evidence_id: id(), student_id: STUDENT_ID, item_key: drill.item_key, occurred_at: note.created_at, session_id: null, source: 'teacher_reviewed', teacher_note_id: note.teacher_note_id, rating: 'almost', bpm: claimed, changes_per_minute: null, verified: false })

@@ -9,7 +9,8 @@ import { computed, ref } from 'vue'
 import RatingButtons from '@/spikes/practice/components/RatingButtons.vue'
 import { itemByKey, items, STUDENT_ID, TEACHER_ID } from '@/spikes/practice/fixtures/catalog'
 import { graph, nodeName } from '@/spikes/practice/fixtures/graph'
-import type { Rating, RubricCriterion, TeacherNote, TimestampedComment } from '@/spikes/practice/model'
+import type { MasteryLevel, Rating, RubricCriterion, TeacherNote, TimestampedComment } from '@/spikes/practice/model'
+import { isLive } from '@/spikes/practice/teacherNotes'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
 const spike = usePracticeSpike()
@@ -51,6 +52,16 @@ function selectTake(id: string | null) {
 }
 
 const savedAt = ref<number | null>(null)
+const targetLevel = ref<MasteryLevel>('accurate')
+
+/** Where a note stands: still steering sessions, met, closed, or expired. */
+function noteStatus(n: TeacherNote): string {
+  if (n.closed_at) return 'closed by the teacher'
+  if (!isLive(n, spike.now.value)) return 'expired'
+  const open = spike.openFor(n)
+  const names = [...open.item_keys.map((k) => itemByKey(k)?.label ?? k), ...open.node_ids.map(nodeName)]
+  return names.length ? `steering: ${names.join(', ')} (until ${n.target_level})` : `goal met (${n.target_level})`
+}
 
 function save() {
   const note: TeacherNote = {
@@ -68,6 +79,8 @@ function save() {
     summary: summary.value,
     needs_work: { skill_ids: [...needsWork.value], concept_ids: [] },
     suggested_item_keys: [...suggested.value],
+    target_level: targetLevel.value,
+    closed_at: null,
   }
   const review =
     judgedKey.value && rating.value
@@ -187,6 +200,14 @@ const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== n
           </label>
         </div>
       </div>
+      <label class="flex items-center gap-2 text-sm">
+        <span class="font-semibold">Steer sessions until it's</span>
+        <select v-model="targetLevel" class="rounded-lg border border-border bg-surface p-1">
+          <option value="accurate">accurate</option>
+          <option value="fluent">fluent</option>
+          <option value="retained">retained</option>
+        </select>
+      </label>
 
       <button type="button" class="rounded-lg bg-accent p-3 text-accent-fg" @click="save">Save note</button>
       <p v-if="savedAt" class="text-sm text-success">Saved — Ana's next session will bring it up.</p>
@@ -209,6 +230,17 @@ const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== n
           <li v-for="(c, i) in n.comments" :key="i">{{ c.at_seconds }}s — {{ c.text }}</li>
         </ul>
         <p v-if="n.needs_work.skill_ids.length" class="text-xs">Needs work: {{ n.needs_work.skill_ids.map(nodeName).join(', ') }}</p>
+        <p class="flex items-center gap-2 text-xs text-ink-muted">
+          <span>{{ noteStatus(n) }}</span>
+          <button
+            v-if="!n.closed_at && isLive(n, spike.now.value)"
+            type="button"
+            class="rounded border border-border px-2 py-0.5"
+            @click="spike.closeNote(n.teacher_note_id)"
+          >
+            Close
+          </button>
+        </p>
       </article>
       <p v-if="!spike.notes.value.length" class="text-sm text-ink-muted">No notes yet.</p>
     </section>

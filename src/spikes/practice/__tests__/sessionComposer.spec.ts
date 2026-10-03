@@ -92,6 +92,8 @@ function note(overrides: Partial<TeacherNote>): TeacherNote {
     summary: '',
     needs_work: { skill_ids: [], concept_ids: [] },
     suggested_item_keys: [],
+    target_level: 'accurate',
+    closed_at: null,
     ...overrides,
   }
 }
@@ -220,5 +222,89 @@ describe('composeSession — instrument in hand', () => {
       }),
     )
     expect(s.blocks[1]!.entries[0]).toEqual({ item_key: 'flagged', reason: 'teacher_suggested' })
+  })
+})
+
+describe('composeSession — caught up: review ahead, then stretch', () => {
+  // On the path and all seen, fluent, not yet due: nothing due, weak or new.
+  const known = [0, 1, 2, 3].map((i) => cell(i))
+  const dueAt = ['2026-10-25', '2026-10-22', '2026-10-30', '2026-11-05']
+  const states = new Map(
+    known.map((c, i) => [
+      c.item_key,
+      seen(c.item_key, { level: 'fluent', effective_level: 'fluent', due_at: `${dueAt[i]}T09:00:00Z` }),
+    ]),
+  )
+  const stretchNodes: GraphNode[] = [
+    { ...node('power-chords', null), map_level: 'B' },
+    { ...node('top-strings', null), map_level: 'EI' },
+    { ...node('advanced', null), map_level: 'I' },
+    node('blocked', null),
+    { ...node('bass-only', null), instrument_ids: ['bass'] },
+  ]
+  const graph = {
+    nodes: [...nodes, ...stretchNodes],
+    edges: [
+      { from_id: 'power-chords', to_id: 'string-6', type: 'requires' as const, level: 'accurate' as const },
+      { from_id: 'blocked', to_id: 'chords', type: 'requires' as const, level: 'fluent' as const },
+    ],
+  }
+  const offPath = [
+    cell(10, 'top-strings'),
+    cell(11, 'top-strings'),
+    cell(20, 'power-chords'),
+    cell(30, 'blocked'),
+    cell(40, 'bass-only'),
+    cell(50, 'advanced'),
+  ]
+  const items = [...known, ...offPath]
+  const pick = (s: Session, reason: string) =>
+    entries(s)
+      .filter((e) => e.reason === reason)
+      .map((e) => e.item_key)
+
+  it('reviews ahead the items coming due soonest', () => {
+    const s = composeSession(input({ items, states, graph, minutes: 1 }))
+    expect(pick(s, 'review_ahead').sort()).toEqual(['cell-0', 'cell-1', 'cell-2'])
+  })
+
+  it('stretches into ready nodes off the path, those building on what the student has first', () => {
+    const s = composeSession(input({ items, states, graph, minutes: 1 }))
+    expect(pick(s, 'stretch').sort()).toEqual(['cell-10', 'cell-11', 'cell-20'])
+    expect(entries(s)).toContainEqual({ item_key: 'cell-20', reason: 'stretch', node_id: 'power-chords' })
+  })
+
+  it('never stretches into a node whose requirements are not met', () => {
+    const s = composeSession(input({ items, states, graph, minutes: 10 }))
+    expect(pick(s, 'stretch')).not.toContain('cell-30')
+    expect(pick(s, 'stretch')).toContain('cell-50')
+  })
+
+  it('never stretches into a node that is not for the student’s instrument', () => {
+    const s = composeSession(input({ items, states, graph, minutes: 10 }))
+    expect(pick(s, 'stretch')).not.toContain('cell-40')
+  })
+
+  it('lets stretch fill the time once nothing is left to review ahead', () => {
+    const s = composeSession(input({ items, states, graph, minutes: 10 }))
+    expect(pick(s, 'review_ahead')).toHaveLength(4)
+    expect(pick(s, 'stretch')).toHaveLength(4)
+  })
+
+  it('instrument in hand: a focus block with nothing due takes a stretch item', () => {
+    const power = playAlong('power', 'technique', 'power-chords')
+    const s = composeSession(
+      input({
+        items: [...known, playAlong('known-drill', 'technique'), power],
+        states: new Map([...states, ['known-drill', seen('known-drill', { level: 'fluent', fluency: 0.95 })]]),
+        graph,
+        instrument_in_hand: true,
+        minutes: 5,
+      }),
+    )
+    expect(s.blocks).toEqual([
+      { kind: 'warm_up', entries: [{ item_key: 'known-drill', reason: 'warm_up' }] },
+      { kind: 'focus', entries: [{ item_key: 'power', reason: 'stretch', node_id: 'power-chords' }] },
+    ])
   })
 })

@@ -206,6 +206,10 @@ export interface TeacherNote {
   needs_work: { skill_ids: string[]; concept_ids: string[] }
   /** Items the next sessions should bring up first. */
   suggested_item_keys: string[]
+  /** A suggestion ends once its item or node reaches this level, practised since the note. */
+  target_level: Level
+  /** When the teacher closed the note; it no longer steers sessions. */
+  closed_at: string | null
 }
 
 // ── Recorded take ──────────────────────────────────────────────────────────────
@@ -226,11 +230,23 @@ export interface RecordedTake {
 
 export type BlockKind = 'warm_up' | 'focus' | 'application' | 'mental'
 
-export type Reason = 'teacher_suggested' | 'due' | 'weak' | 'new' | 'warm_up' | 'application'
+export type Reason =
+  | 'teacher_suggested'
+  | 'due'
+  | 'weak'
+  | 'new'
+  | 'warm_up'
+  | 'application'
+  /** Caught up: a known item reviewed before it is due. */
+  | 'review_ahead'
+  /** Caught up: a first item of a node whose requirements are met. */
+  | 'stretch'
 
 export interface SessionEntry {
   item_key: string
   reason: Reason
+  /** For a stretch: the node it opens. */
+  node_id?: string
 }
 
 export interface SessionBlock {

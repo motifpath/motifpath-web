@@ -55,3 +55,29 @@ All loops click through end to end with no console errors: mind session → summ
 video review with timestamped comment, rating, needs-work skill and suggestions → home shows the
 note → next session's focus is "Suggested by your teacher"; overconfident and decaying archetypes
 on Progress; decaying at day 30 → 27 items fading, a 5-minute session of 26 due reviews.
+
+## Phase 5 — knowledge-graph model (2026-10-02)
+
+16. **Per-string skills don't exist in the map (M7).** The map tracks `find-notes-root-strings` and
+    `find-notes-top-strings`; the per-string view belongs to the heatmap (item level), not the graph.
+17. **The 80% share rule dilutes wide nodes (M7).** Improving student, day 21: E/A-string cells
+    `fluent`, yet the concept `note-names` (all 72 cells) and the parent `fretboard-fluency` read
+    `new`. Honest for leaf skills — what `requires` usually points at — but a wide concept or a
+    parent shown as "new" after three weeks contradicts the dashboard guidelines. Candidate rules:
+    keep the share for the node level that `requires` checks, but show parents and concepts as
+    coverage + distribution of their children, never a single misleading level. Open for the ADR.
+18. **Requirements on empty nodes can never be met (M8).** `change-chords → play-open-chords` and
+    `hear-intervals → match-pitch` point at nodes with no items: readiness 0/1 for everyone, forever.
+    It informs (never gates), so nothing breaks, but it's a content-coverage signal: the map editor's
+    coverage view should flag "required, nothing to practise".
+19. **A node without `requires` is trivially ready (M9).** `find-notes-top-strings` has no edges, so
+    it's always a stretch candidate. Ranking "builds on something you have" first keeps it behind the
+    power-chord riff, which requires the root-string notes the student already knows.
+20. **"Review ahead, then stretch" in strict order starves stretch (M9).** A caught-up 5-minute mind
+    session holds 27 review-ahead items — all of them. Spike default: share the leftover time
+    half/half, each taking over the other's share when it runs out. The improving student's mind
+    sessions now mix both; the guitar session gets the power-chord riff as a stretch.
+21. **A teacher suggestion can't end on a level the student already had (M5, decided rule).** An
+    already-fluent flagged item, or an overconfident self-claim, would end the suggestion the moment
+    it's written. The rule became: ends once practised *since the note* and at the target level, or
+    the teacher closes it; 30-day safety expiry.

@@ -46,6 +46,8 @@ describe('usePracticeSpike — live activity', () => {
         summary: 'Work on chord changes',
         needs_work: { skill_ids: ['change-chords'], concept_ids: [] },
         suggested_item_keys: [],
+        target_level: 'accurate',
+        closed_at: null,
       },
       null,
     )

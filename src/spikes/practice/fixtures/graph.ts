@@ -1,6 +1,5 @@
 /**
- * A slice of the reviewed knowledge map (motifpath-specs catalogs/knowledge-map.yaml):
- * real keys, names, instruments, calibration levels and edges — only the nodes the
+ * A slice of the reviewed knowledge map installed in every environment: real keys, names, instruments, calibration levels and edges — only the nodes the
  * spike's items touch, their ancestors, and the nodes their `requires` edges point
  * at. Edges to nodes outside the slice are left out.
  */
