@@ -9,9 +9,9 @@ import ChordChangeRunner from '@/spikes/practice/components/ChordChangeRunner.vu
 import ExerciseQuestion from '@/spikes/practice/components/ExerciseQuestion.vue'
 import FretboardQuestion from '@/spikes/practice/components/FretboardQuestion.vue'
 import PlayAlongRunner from '@/spikes/practice/components/PlayAlongRunner.vue'
-import { itemByKey, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
+import { itemByKey } from '@/spikes/practice/fixtures/catalog'
 import { BLOCK_LABEL, REASON_LABEL } from '@/spikes/practice/labels'
-import type { BlockKind, Reason, Session } from '@/spikes/practice/model'
+import type { BlockKind, PracticeResponse, Reason, Session } from '@/spikes/practice/model'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
 const props = defineProps<{ session: Session }>()
@@ -35,19 +35,10 @@ function next() {
   else index.value++
 }
 
-function answered(correct: boolean, latencyMs: number) {
+function answered(response: PracticeResponse) {
   const s = step.value
   if (!s) return
-  spike.addEvidence({
-    evidence_id: spike.newId('ev'),
-    student_id: STUDENT_ID,
-    item_key: s.item.item_key,
-    occurred_at: spike.clock(),
-    session_id: props.session.session_id,
-    source: 'auto_graded',
-    correct,
-    latency_ms: latencyMs,
-  })
+  spike.answer(s.item.item_key, response, props.session.session_id)
   next()
 }
 </script>

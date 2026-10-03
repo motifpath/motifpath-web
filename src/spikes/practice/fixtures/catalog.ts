@@ -5,6 +5,7 @@
 import type { components } from '@/api/generated/core-domain'
 import { fretboardCellItems } from '@/spikes/practice/drillGenerator'
 import { GUITAR_ID } from '@/spikes/practice/fixtures/graph'
+import type { GradeContext } from '@/spikes/practice/graders'
 import type { PracticeItem } from '@/spikes/practice/model'
 
 type Diagram = components['schemas']['Diagram']
@@ -262,6 +263,17 @@ export const items: PracticeItem[] = [
     target_changes_per_minute: 60,
   },
 ]
+
+/** The reference data graders check answers against. */
+export const gradeContext: GradeContext = {
+  tuningOf: (id) => (id === guitar.instrument_id ? (guitar.tuning ?? null) : null),
+  exerciseKey: (id) => {
+    const e = exercises.find((x) => x.exercise_id === id)
+    return e
+      ? { option_ids: e.options.map((o) => o.id), correct_option_ids: e.options.filter((o) => o.correct).map((o) => o.id) }
+      : null
+  },
+}
 
 export function itemByKey(key: string): PracticeItem | undefined {
   return items.find((i) => i.item_key === key)

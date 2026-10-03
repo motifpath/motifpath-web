@@ -55,3 +55,16 @@ describe('simulate', () => {
     expect(a).toEqual(b)
   })
 })
+
+describe('simulate — every answer goes through grading', () => {
+  it('keeps the raw response and the grader on every answer and self-rating', () => {
+    for (const archetype of ['improving', 'plateau', 'decaying', 'overconfident'] as const) {
+      const { evidence } = simulate(archetype, { items, start: START, days: 21, seed: 1 })
+      for (const e of evidence) {
+        if (e.source === 'teacher_reviewed') continue
+        expect(e.grader).toMatch(/\.v\d+$/)
+        expect(e.response).toBeDefined()
+      }
+    }
+  })
+})

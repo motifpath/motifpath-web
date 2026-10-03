@@ -99,17 +99,11 @@ watch(phase, (p) => {
 })
 
 function rate(rating: Rating) {
-  spike.addEvidence({
-    evidence_id: spike.newId('ev'),
-    student_id: STUDENT_ID,
-    item_key: props.item.item_key,
-    occurred_at: spike.clock(),
-    session_id: props.sessionId,
-    source: 'self_assessed',
-    rating,
-    bpm: bpm.value,
-    changes_per_minute: null,
-  })
+  spike.answer(
+    props.item.item_key,
+    { kind: 'self_rating', rating, bpm: bpm.value, changes_per_minute: null },
+    props.sessionId,
+  )
   takes.value.push({ bpm: bpm.value, rating })
   const next = nextBpm(props.item.params, takes.value, bpm.value)
   if (next > bpm.value) message.value = `Clean twice — up to ${next} BPM.`

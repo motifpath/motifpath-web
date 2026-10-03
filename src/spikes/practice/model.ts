@@ -104,9 +104,29 @@ export type ItemKind = PracticeItem['kind']
 /** Items needing the instrument in hand; the rest can be practised anywhere. */
 export const INSTRUMENT_KINDS: readonly ItemKind[] = ['play_along', 'chord_change']
 
-// ── Evidence ───────────────────────────────────────────────────────────────────
+// ── Responses (what the student did, before any grading) ────────────────────────
 
 export type Rating = 'struggled' | 'almost' | 'clean'
+
+/**
+ * The raw answer a client sends. The server grades it against reference data
+ * (tuning, the exercise's correct options); the client only grades for instant
+ * feedback, with the same rules.
+ */
+export type PracticeResponse =
+  /** "Which note is this?": the name picked, any spelling. */
+  | { kind: 'name_the_note'; chosen_note: string; latency_ms: number }
+  /** "Where is this note?": the cell tapped. */
+  | { kind: 'find_the_note'; string: number; fret: number; latency_ms: number }
+  /** An authored exercise: the option picked. */
+  | { kind: 'option_choice'; option_id: string; latency_ms: number }
+  /** A take judged by the student, with its tempo or its change count. */
+  | { kind: 'self_rating'; rating: Rating; bpm: number | null; changes_per_minute: number | null }
+
+/** A grader and the version of its rules, e.g. `fretboard_cell.v1`. */
+export type GraderId = 'fretboard_cell.v1' | 'exercise_option.v1' | 'self_rating.v1'
+
+// ── Evidence ───────────────────────────────────────────────────────────────────
 
 interface EvidenceBase {
   evidence_id: string
@@ -122,6 +142,9 @@ export interface AutoGradedEvidence extends EvidenceBase {
   source: 'auto_graded'
   correct: boolean
   latency_ms: number
+  /** Which rules graded it; the raw response is kept so new rules can regrade. */
+  grader: GraderId
+  response: PracticeResponse
 }
 
 /** The student judged their own take. */
@@ -132,6 +155,8 @@ export interface SelfAssessedEvidence extends EvidenceBase {
   bpm: number | null
   /** Chord change: changes counted in one minute. */
   changes_per_minute: number | null
+  grader: GraderId
+  response: PracticeResponse
 }
 
 /** A teacher judged a take (or a live performance). */
@@ -263,13 +288,39 @@ export interface Session {
   blocks: SessionBlock[]
 }
 
-// ── Answer event (what the client would send) ──────────────────────────────────
+// ── Practice events (what the client sends) ────────────────────────────────────
+
+interface PracticeEventBase {
+  student_id: string
+  session_id: string
+  occurred_at: string
+}
+
+export interface SessionStartedEvent extends PracticeEventBase {
+  event_type: 'practice.session_started'
+  instrument_in_hand: boolean
+  minutes: number
+  /** The composed plan, so "why this item?" survives in the event log. */
+  plan: SessionEntry[]
+}
 
 /**
- * The practice answer event the tracking pipeline would need: today's answer
- * event carries neither correctness, latency, nor any identity for a generated
- * item. Mirrors `Evidence` minus server-assigned ids.
+ * One answer or self-rated take. Carries the raw response, never a verdict: the
+ * server grades it. `event_id` becomes the evidence id, so a redelivered event
+ * can't count twice.
  */
-export type AnswerEventDraft =
-  | Omit<AutoGradedEvidence, 'evidence_id'>
-  | Omit<SelfAssessedEvidence, 'evidence_id'>
+export interface ItemAnsweredEvent extends PracticeEventBase {
+  event_type: 'practice.item_answered'
+  event_id: string
+  item_key: string
+  response: PracticeResponse
+}
+
+export interface SessionEndedEvent extends PracticeEventBase {
+  event_type: 'practice.session_ended'
+  answered_count: number
+  /** The student left before the plan's end. */
+  ended_early: boolean
+}
+
+export type PracticeEvent = SessionStartedEvent | ItemAnsweredEvent | SessionEndedEvent

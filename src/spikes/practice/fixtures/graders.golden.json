@@ -1,0 +1,32 @@
+{
+  "description": "Grader golden cases: an item, the raw response a client sent, and what the grader must return. Language-neutral so a server-side grader can run the same cases.",
+  "context": {
+    "tunings": { "instrument-guitar": ["E2", "A2", "D3", "G3", "B3", "E4"] },
+    "exercise_keys": { "exercise-minor-third": { "option_ids": ["a", "b", "c", "d"], "correct_option_ids": ["b"] } }
+  },
+  "items": {
+    "cell-5-3": { "kind": "fretboard_cell", "item_key": "fretboard_cell:instrument-guitar:5:3", "label": "C — string 5, fret 3", "skill_ids": [], "concept_ids": [], "instrument_id": "instrument-guitar", "string": 5, "fret": 3, "note_name": "C" },
+    "cell-6-1": { "kind": "fretboard_cell", "item_key": "fretboard_cell:instrument-guitar:6:1", "label": "F — string 6, fret 1", "skill_ids": [], "concept_ids": [], "instrument_id": "instrument-guitar", "string": 6, "fret": 1, "note_name": "F" },
+    "cell-6-2": { "kind": "fretboard_cell", "item_key": "fretboard_cell:instrument-guitar:6:2", "label": "F# — string 6, fret 2", "skill_ids": [], "concept_ids": [], "instrument_id": "instrument-guitar", "string": 6, "fret": 2, "note_name": "F#" },
+    "minor-third": { "kind": "exercise", "item_key": "exercise:exercise-minor-third", "label": "From A, which note is the minor third?", "skill_ids": [], "concept_ids": [], "exercise_id": "exercise-minor-third", "estimated_seconds": 20 },
+    "pentatonic-run": { "kind": "play_along", "item_key": "play_along:diagram-pentatonic-run", "label": "Alternate picking", "skill_ids": [], "concept_ids": [], "diagram_id": "diagram-pentatonic-run", "purpose": "technique", "params": { "start_bpm": 70, "target_bpm": 120, "step_bpm": 5, "cleans_to_advance": 2, "loops": 2, "count_in_beats": 4 } },
+    "am-c": { "kind": "chord_change", "item_key": "chord_change:diagram-a-minor:diagram-c-major", "label": "Am ↔ C changes", "skill_ids": [], "concept_ids": [], "from_diagram_id": "diagram-a-minor", "to_diagram_id": "diagram-c-major", "target_changes_per_minute": 60 }
+  },
+  "cases": [
+    { "name": "name the note: right", "item": "cell-5-3", "response": { "kind": "name_the_note", "chosen_note": "C", "latency_ms": 1800 }, "expected": { "grader": "fretboard_cell.v1", "graded": { "source": "auto_graded", "correct": true, "latency_ms": 1800 } } },
+    { "name": "name the note: wrong", "item": "cell-5-3", "response": { "kind": "name_the_note", "chosen_note": "D", "latency_ms": 2500 }, "expected": { "grader": "fretboard_cell.v1", "graded": { "source": "auto_graded", "correct": false, "latency_ms": 2500 } } },
+    { "name": "name the note: a flat spelling of the same pitch is right", "item": "cell-6-2", "response": { "kind": "name_the_note", "chosen_note": "Gb", "latency_ms": 2100 }, "expected": { "grader": "fretboard_cell.v1", "graded": { "source": "auto_graded", "correct": true, "latency_ms": 2100 } } },
+    { "name": "find the note: right fret", "item": "cell-6-1", "response": { "kind": "find_the_note", "string": 6, "fret": 1, "latency_ms": 1500 }, "expected": { "grader": "fretboard_cell.v1", "graded": { "source": "auto_graded", "correct": true, "latency_ms": 1500 } } },
+    { "name": "find the note: same note an octave up on the same string is right", "item": "cell-6-1", "response": { "kind": "find_the_note", "string": 6, "fret": 13, "latency_ms": 1500 }, "expected": { "grader": "fretboard_cell.v1", "graded": { "source": "auto_graded", "correct": true, "latency_ms": 1500 } } },
+    { "name": "find the note: same note on another string is wrong", "item": "cell-6-1", "response": { "kind": "find_the_note", "string": 4, "fret": 3, "latency_ms": 1500 }, "expected": { "grader": "fretboard_cell.v1", "graded": { "source": "auto_graded", "correct": false, "latency_ms": 1500 } } },
+    { "name": "exercise: correct option", "item": "minor-third", "response": { "kind": "option_choice", "option_id": "b", "latency_ms": 4000 }, "expected": { "grader": "exercise_option.v1", "graded": { "source": "auto_graded", "correct": true, "latency_ms": 4000 } } },
+    { "name": "exercise: wrong option", "item": "minor-third", "response": { "kind": "option_choice", "option_id": "a", "latency_ms": 4000 }, "expected": { "grader": "exercise_option.v1", "graded": { "source": "auto_graded", "correct": false, "latency_ms": 4000 } } },
+    { "name": "play-along: a self-rating with its tempo", "item": "pentatonic-run", "response": { "kind": "self_rating", "rating": "clean", "bpm": 90, "changes_per_minute": null }, "expected": { "grader": "self_rating.v1", "graded": { "source": "self_assessed", "rating": "clean", "bpm": 90, "changes_per_minute": null } } },
+    { "name": "chord change: a self-rating with the count", "item": "am-c", "response": { "kind": "self_rating", "rating": "almost", "bpm": null, "changes_per_minute": 42 }, "expected": { "grader": "self_rating.v1", "graded": { "source": "self_assessed", "rating": "almost", "bpm": null, "changes_per_minute": 42 } } },
+    { "name": "rejected: a response that doesn't fit the item", "item": "cell-5-3", "response": { "kind": "option_choice", "option_id": "b", "latency_ms": 900 }, "expected": { "rejected": "response_does_not_fit_item" } },
+    { "name": "rejected: an option the exercise doesn't have", "item": "minor-third", "response": { "kind": "option_choice", "option_id": "z", "latency_ms": 900 }, "expected": { "rejected": "unknown_option" } },
+    { "name": "rejected: a play-along rating without its tempo", "item": "pentatonic-run", "response": { "kind": "self_rating", "rating": "clean", "bpm": null, "changes_per_minute": null }, "expected": { "rejected": "measure_missing" } },
+    { "name": "rejected: a chord-change rating without its count", "item": "am-c", "response": { "kind": "self_rating", "rating": "clean", "bpm": null, "changes_per_minute": null }, "expected": { "rejected": "measure_missing" } },
+    { "name": "rejected: a negative latency", "item": "cell-5-3", "response": { "kind": "name_the_note", "chosen_note": "C", "latency_ms": -5 }, "expected": { "rejected": "invalid_latency" } }
+  ]
+}

@@ -4,7 +4,7 @@ import { onBeforeUnmount, ref } from 'vue'
 
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import RatingButtons from '@/spikes/practice/components/RatingButtons.vue'
-import { diagrams, guitar, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
+import { diagrams, guitar } from '@/spikes/practice/fixtures/catalog'
 import type { ChordChangeItem, Rating } from '@/spikes/practice/model'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
@@ -42,17 +42,11 @@ function stopEarly() {
 onBeforeUnmount(() => clearInterval(timer))
 
 function rate(rating: Rating) {
-  spike.addEvidence({
-    evidence_id: spike.newId('ev'),
-    student_id: STUDENT_ID,
-    item_key: props.item.item_key,
-    occurred_at: spike.clock(),
-    session_id: props.sessionId,
-    source: 'self_assessed',
-    rating,
-    bpm: null,
-    changes_per_minute: count.value,
-  })
+  spike.answer(
+    props.item.item_key,
+    { kind: 'self_rating', rating, bpm: null, changes_per_minute: count.value },
+    props.sessionId,
+  )
   emit('done')
 }
 </script>

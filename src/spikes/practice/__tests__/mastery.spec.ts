@@ -60,6 +60,8 @@ function answer(day: number, correct: boolean, latency_ms = 1500): AutoGradedEvi
     source: 'auto_graded',
     correct,
     latency_ms,
+    grader: 'fretboard_cell.v1',
+    response: { kind: 'name_the_note', chosen_note: correct ? 'E' : 'F', latency_ms },
   }
 }
 
@@ -74,6 +76,8 @@ function self(day: number, rating: Rating, bpm: number | null, item_key = 'drill
     rating,
     bpm,
     changes_per_minute: null,
+    grader: 'self_rating.v1',
+    response: { kind: 'self_rating', rating, bpm, changes_per_minute: null },
   }
 }
 

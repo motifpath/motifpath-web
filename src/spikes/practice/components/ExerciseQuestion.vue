@@ -2,10 +2,10 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { exercises } from '@/spikes/practice/fixtures/catalog'
-import type { ExerciseItem } from '@/spikes/practice/model'
+import type { ExerciseItem, PracticeResponse } from '@/spikes/practice/model'
 
 const props = defineProps<{ item: ExerciseItem }>()
-const emit = defineEmits<{ answered: [correct: boolean, latencyMs: number] }>()
+const emit = defineEmits<{ answered: [response: PracticeResponse] }>()
 
 const exercise = computed(() => exercises.find((e) => e.exercise_id === props.item.exercise_id))
 const shownAt = ref(0)
@@ -17,8 +17,8 @@ const picked = ref<string | null>(null)
 function pick(id: string, correct: boolean) {
   if (picked.value) return
   picked.value = id
-  const latency = Math.round(performance.now() - shownAt.value)
-  setTimeout(() => emit('answered', correct, latency), correct ? 500 : 1400)
+  const latency_ms = Math.round(performance.now() - shownAt.value)
+  setTimeout(() => emit('answered', { kind: 'option_choice', option_id: id, latency_ms }), correct ? 500 : 1400)
 }
 </script>
 

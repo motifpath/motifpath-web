@@ -1,22 +1,23 @@
 <script setup lang="ts">
 /**
  * One fretboard-cell question, alternating between "where is this note?" (tap
- * the fret) and "which note is this?" (pick the name). Reports correctness and
- * the time from showing the question to the answer.
+ * the fret) and "which note is this?" (pick the name). Reports the raw answer
+ * and its latency; right or wrong is shown by the same grader the server runs.
  */
 import { computed, onMounted, ref } from 'vue'
 
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { findTheNoteQuestion, nameTheNoteQuestion } from '@/spikes/practice/drillGenerator'
-import { guitar } from '@/spikes/practice/fixtures/catalog'
+import { gradeContext, guitar } from '@/spikes/practice/fixtures/catalog'
+import { grade } from '@/spikes/practice/graders'
 import { bareDiagram } from '@/spikes/practice/labels'
-import type { FretboardCellItem } from '@/spikes/practice/model'
+import type { FretboardCellItem, PracticeResponse } from '@/spikes/practice/model'
 import { seededRandom } from '@/spikes/practice/random'
 
 const MAX_FRET = 11
 
 const props = defineProps<{ item: FretboardCellItem; variant: 'find' | 'name' }>()
-const emit = defineEmits<{ answered: [correct: boolean, latencyMs: number] }>()
+const emit = defineEmits<{ answered: [response: PracticeResponse] }>()
 
 const find = computed(() => findTheNoteQuestion(props.item, MAX_FRET))
 const name = computed(() => nameTheNoteQuestion(props.item, seededRandom(props.item.fret * 7 + props.item.string)))
@@ -45,16 +46,24 @@ const cells = computed(() =>
   find.value.frets.map((fret) => ({ optionId: `f${fret}`, string: props.item.string, fret })),
 )
 
-function answer(isCorrect: boolean, choice: string) {
+function answer(response: PracticeResponse, choice: string) {
   if (correct.value !== null) return
   picked.value = choice
+  const result = grade(props.item, response, gradeContext)
+  const isCorrect = 'graded' in result && result.graded.source === 'auto_graded' && result.graded.correct
   correct.value = isCorrect
-  const latency = Math.round(performance.now() - shownAt.value)
-  setTimeout(() => emit('answered', isCorrect, latency), isCorrect ? 500 : 1400)
+  setTimeout(() => emit('answered', response), isCorrect ? 500 : 1400)
 }
 
+const latency = () => Math.round(performance.now() - shownAt.value)
+
 function onCell(optionId: string) {
-  answer(optionId === `f${props.item.fret}`, optionId)
+  const fret = Number(optionId.slice(1))
+  answer({ kind: 'find_the_note', string: props.item.string, fret, latency_ms: latency() }, optionId)
+}
+
+function onName(choice: string) {
+  answer({ kind: 'name_the_note', chosen_note: choice, latency_ms: latency() }, choice)
 }
 </script>
 
@@ -88,7 +97,7 @@ function onCell(optionId: string) {
           'bg-success-muted': correct !== null && choice === name.answer,
           'bg-danger-muted': correct === false && choice === picked,
         }"
-        @click="answer(choice === name.answer, choice)"
+        @click="onName(choice)"
       >
         {{ choice }}
       </button>

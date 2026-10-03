@@ -7,20 +7,21 @@ describe('usePracticeSpike — live activity', () => {
   const spike = usePracticeSpike()
   beforeEach(() => spike.resetLive())
 
-  it('counts a live answer toward the derived state', () => {
+  it('counts a live answer toward the derived state, graded from the raw response', () => {
+    const key = 'fretboard_cell:instrument-guitar:4:2'
+    const before = spike.states.value.get(key)!
+    spike.answer(key, { kind: 'find_the_note', string: 4, fret: 2, latency_ms: 1500 }, 's')
+    const after = spike.states.value.get(key)!
+    expect(after.attempts).toBe(before.attempts + 1)
+    expect(after.last_seen_at).not.toBe(before.last_seen_at)
+  })
+
+  it('stores nothing for a response the grader rejects', () => {
     const key = 'fretboard_cell:instrument-guitar:4:2'
     const before = spike.states.value.get(key)!.attempts
-    spike.addEvidence({
-      evidence_id: 'live-1',
-      student_id: STUDENT_ID,
-      item_key: key,
-      occurred_at: spike.clock(),
-      session_id: 's',
-      source: 'auto_graded',
-      correct: true,
-      latency_ms: 1500,
-    })
-    expect(spike.states.value.get(key)!.attempts).toBe(before + 1)
+    const result = spike.answer(key, { kind: 'option_choice', option_id: 'a', latency_ms: 900 }, 's')
+    expect(result).toEqual({ rejected: 'response_does_not_fit_item' })
+    expect(spike.states.value.get(key)!.attempts).toBe(before)
   })
 
   it('keeps live events in the order they happened', () => {

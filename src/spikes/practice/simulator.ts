@@ -3,8 +3,26 @@
  * the derived states tell each story correctly. The student's "true" ability is
  * a curve over the days; answers and self-ratings are drawn from it.
  */
-import { AM_C_CHANGES, ALTERNATE_PICKING, BLUES_LICK, STUDENT_ID, TEACHER_ID } from '@/spikes/practice/fixtures/catalog'
-import type { Evidence, PlayAlongItem, PracticeItem, Rating, TeacherNote } from '@/spikes/practice/model'
+import { noteName } from '@/spikes/practice/drillGenerator'
+import {
+  AM_C_CHANGES,
+  ALTERNATE_PICKING,
+  BLUES_LICK,
+  exercises as exerciseKeys,
+  gradeContext,
+  STUDENT_ID,
+  TEACHER_ID,
+} from '@/spikes/practice/fixtures/catalog'
+import { ingestAnswer } from '@/spikes/practice/ingest'
+import type {
+  Evidence,
+  PlayAlongItem,
+  PracticeItem,
+  PracticeResponse,
+  Rating,
+  TeacherNote,
+} from '@/spikes/practice/model'
+import { parsePitch } from '@/shared/utils/pitch'
 import { seededRandom } from '@/spikes/practice/random'
 import type { Random } from '@/spikes/practice/random'
 import { nextBpm, startingBpm } from '@/spikes/practice/tempoLadder'
@@ -38,13 +56,41 @@ function ability(archetype: Archetype, day: number, reviewed: boolean): Ability 
   const p = Math.min(1, day / 12)
   switch (archetype) {
     case 'improving':
-      return { correct: 0.6 + 0.37 * p, latencyMs: 5000 - 3800 * p, bpm: 70 + 45 * Math.min(1, day / 18), changesPerMinute: 20 + 30 * p, selfBias: 0, practises: true }
+      return {
+        correct: 0.6 + 0.37 * p,
+        latencyMs: 5000 - 3800 * p,
+        bpm: 70 + 45 * Math.min(1, day / 18),
+        changesPerMinute: 20 + 30 * p,
+        selfBias: 0,
+        practises: true,
+      }
     case 'plateau':
-      return { correct: 0.7, latencyMs: 3500, bpm: 82, changesPerMinute: 25, selfBias: 0, practises: true }
+      return {
+        correct: 0.7,
+        latencyMs: 3500,
+        bpm: 82,
+        changesPerMinute: 25,
+        selfBias: 0,
+        practises: true,
+      }
     case 'decaying':
-      return { correct: 0.6 + 0.37 * p, latencyMs: 5000 - 3800 * p, bpm: 70 + 45 * Math.min(1, day / 18), changesPerMinute: 20 + 30 * p, selfBias: 0, practises: day < 10 }
+      return {
+        correct: 0.6 + 0.37 * p,
+        latencyMs: 5000 - 3800 * p,
+        bpm: 70 + 45 * Math.min(1, day / 18),
+        changesPerMinute: 20 + 30 * p,
+        selfBias: 0,
+        practises: day < 10,
+      }
     case 'overconfident':
-      return { correct: 0.6 + 0.3 * p, latencyMs: 5000 - 3000 * p, bpm: 70 + 25 * Math.min(1, day / 18), changesPerMinute: 20 + 20 * p, selfBias: reviewed ? 0 : 20, practises: true }
+      return {
+        correct: 0.6 + 0.3 * p,
+        latencyMs: 5000 - 3000 * p,
+        bpm: 70 + 25 * Math.min(1, day / 18),
+        changesPerMinute: 20 + 20 * p,
+        selfBias: reviewed ? 0 : 20,
+        practises: true,
+      }
   }
 }
 
@@ -74,8 +120,55 @@ export function simulate(archetype: Archetype, options: SimulateOptions): Simula
   const id = () => `${archetype}-e${n++}`
   const at = (day: number, seconds: number) =>
     new Date(options.start.getTime() + day * DAY_MS + 10 * 3_600_000 + seconds * 1000).toISOString()
+  /** Sends the answer the way a client would and keeps the evidence the server grades it into. */
+  const answer = (
+    item_key: string,
+    response: PracticeResponse,
+    occurred_at: string,
+    session_id: string,
+  ) => {
+    const result = ingestAnswer(
+      {
+        event_type: 'practice.item_answered',
+        event_id: id(),
+        student_id: STUDENT_ID,
+        session_id,
+        occurred_at,
+        item_key,
+        response,
+      },
+      options.items,
+      gradeContext,
+    )
+    if ('rejected' in result) throw new Error(`simulated answer rejected: ${result.rejected}`)
+    evidence.push(result)
+  }
+  /** The response a student gives when they get the item right, or wrong. */
+  const responseFor = (
+    item: PracticeItem,
+    correct: boolean,
+    latency_ms: number,
+  ): PracticeResponse => {
+    if (item.kind === 'exercise') {
+      const options = exerciseKeys.find((e) => e.exercise_id === item.exercise_id)!.options
+      return {
+        kind: 'option_choice',
+        option_id: options.find((o) => o.correct === correct)!.id,
+        latency_ms,
+      }
+    }
+    if (item.kind !== 'fretboard_cell') throw new Error(`no simulated answer for ${item.kind}`)
+    const pitch = parsePitch(`${item.note_name}4`)!
+    return {
+      kind: 'name_the_note',
+      chosen_note: correct ? item.note_name : noteName(pitch + 1),
+      latency_ms,
+    }
+  }
 
-  const cells = options.items.filter((i) => i.kind === 'fretboard_cell' && (i.string === 6 || i.string === 5))
+  const cells = options.items.filter(
+    (i) => i.kind === 'fretboard_cell' && (i.string === 6 || i.string === 5),
+  )
   const exercises = options.items.filter((i) => i.kind === 'exercise')
   const drill = options.items.find((i): i is PlayAlongItem => i.item_key === ALTERNATE_PICKING)
   let bestClean: number | null = null
@@ -91,7 +184,7 @@ export function simulate(archetype: Archetype, options: SimulateOptions): Simula
     for (const item of [...cells, ...exercises]) {
       const correct = random() < a.correct
       const latency = Math.round(a.latencyMs * (0.8 + 0.4 * random()))
-      evidence.push({ evidence_id: id(), student_id: STUDENT_ID, item_key: item.item_key, occurred_at: at(day, second), session_id, source: 'auto_graded', correct, latency_ms: latency })
+      answer(item.item_key, responseFor(item, correct, latency), at(day, second), session_id)
       second += 10
     }
 
@@ -102,15 +195,27 @@ export function simulate(archetype: Archetype, options: SimulateOptions): Simula
         const rating = rate(bpm, a.bpm + a.selfBias)
         takes.push({ bpm, rating })
         if (rating === 'clean') bestClean = Math.max(bestClean ?? 0, bpm)
-        evidence.push({ evidence_id: id(), student_id: STUDENT_ID, item_key: drill.item_key, occurred_at: at(day, second), session_id, source: 'self_assessed', rating, bpm, changes_per_minute: null })
+        answer(
+          drill.item_key,
+          { kind: 'self_rating', rating, bpm, changes_per_minute: null },
+          at(day, second),
+          session_id,
+        )
         second += 120
         bpm = nextBpm(drill.params, takes, bpm)
       }
     }
 
     if (day % 3 === 0) {
-      const cpm = Math.round(a.changesPerMinute + (archetype === 'overconfident' && !reviewed ? 12 : 0))
-      evidence.push({ evidence_id: id(), student_id: STUDENT_ID, item_key: AM_C_CHANGES, occurred_at: at(day, second), session_id, source: 'self_assessed', rating: 'clean', bpm: null, changes_per_minute: cpm })
+      const cpm = Math.round(
+        a.changesPerMinute + (archetype === 'overconfident' && !reviewed ? 12 : 0),
+      )
+      answer(
+        AM_C_CHANGES,
+        { kind: 'self_rating', rating: 'clean', bpm: null, changes_per_minute: cpm },
+        at(day, second),
+        session_id,
+      )
     }
 
     if (archetype === 'overconfident' && day === reviewDay && drill) {
@@ -137,7 +242,19 @@ export function simulate(archetype: Archetype, options: SimulateOptions): Simula
         closed_at: null,
       }
       notes.push(note)
-      evidence.push({ evidence_id: id(), student_id: STUDENT_ID, item_key: drill.item_key, occurred_at: note.created_at, session_id: null, source: 'teacher_reviewed', teacher_note_id: note.teacher_note_id, rating: 'almost', bpm: claimed, changes_per_minute: null, verified: false })
+      evidence.push({
+        evidence_id: id(),
+        student_id: STUDENT_ID,
+        item_key: drill.item_key,
+        occurred_at: note.created_at,
+        session_id: null,
+        source: 'teacher_reviewed',
+        teacher_note_id: note.teacher_note_id,
+        rating: 'almost',
+        bpm: claimed,
+        changes_per_minute: null,
+        verified: false,
+      })
       reviewed = true
       bestClean = null
     }

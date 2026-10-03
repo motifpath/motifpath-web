@@ -5,10 +5,18 @@
  */
 import { computed, reactive, watch } from 'vue'
 
-import { items, pathSkillIds, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
+import { gradeContext, items, pathSkillIds, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
 import { graph, GUITAR_ID } from '@/spikes/practice/fixtures/graph'
+import { ingestAnswer } from '@/spikes/practice/ingest'
 import { deriveStates } from '@/spikes/practice/mastery'
-import type { Evidence, KnowledgeState, RecordedTake, Session, TeacherNote } from '@/spikes/practice/model'
+import type {
+  Evidence,
+  KnowledgeState,
+  PracticeResponse,
+  RecordedTake,
+  Session,
+  TeacherNote,
+} from '@/spikes/practice/model'
 import { composeSession } from '@/spikes/practice/sessionComposer'
 import { simulate } from '@/spikes/practice/simulator'
 import { openSuggestions } from '@/spikes/practice/teacherNotes'
@@ -138,6 +146,24 @@ export function usePracticeSpike() {
     },
     addEvidence(e: Evidence) {
       state.live.evidence.push(e)
+    },
+    /** Sends a raw response as a practice.item_answered event; the "server" grades it into evidence. */
+    answer(itemKey: string, response: PracticeResponse, sessionId: string) {
+      const result = ingestAnswer(
+        {
+          event_type: 'practice.item_answered',
+          event_id: newId('ev'),
+          student_id: STUDENT_ID,
+          session_id: sessionId,
+          occurred_at: clock(),
+          item_key: itemKey,
+          response,
+        },
+        items,
+        gradeContext,
+      )
+      if (!('rejected' in result)) state.live.evidence.push(result)
+      return result
     },
     addNote(note: TeacherNote, review: Evidence | null) {
       state.live.notes.push(note)
