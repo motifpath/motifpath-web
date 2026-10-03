@@ -21,7 +21,11 @@ const spike = usePracticeSpike()
 
 const steps = computed(() =>
   props.session.blocks.flatMap((b) =>
-    b.entries.map((e) => ({ block: b.kind as BlockKind, reason: e.reason as Reason, item: itemByKey(e.item_key)! })),
+    b.entries.map((e) => ({
+      block: b.kind as BlockKind,
+      reason: e.reason as Reason,
+      item: itemByKey(e.item_key)!,
+    })),
   ),
 )
 const index = ref(0)
@@ -48,21 +52,34 @@ function answered(response: PracticeResponse) {
     <div class="flex items-center gap-3">
       <button type="button" class="text-sm text-ink-muted" @click="emit('quit')">‹ Leave</button>
       <div class="h-1 flex-1 overflow-hidden rounded-full bg-surface-sunken">
-        <div class="h-1 bg-accent transition-all" :style="{ width: `${(index / steps.length) * 100}%` }" />
+        <div
+          class="h-1 bg-accent transition-all"
+          :style="{ width: `${(index / steps.length) * 100}%` }"
+        />
       </div>
-      <button type="button" class="text-sm text-ink-muted" @click="showPlan = !showPlan">Plan</button>
+      <button type="button" class="text-sm text-ink-muted" @click="showPlan = !showPlan">
+        Plan
+      </button>
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-xs">
       <span class="rounded-full bg-surface-sunken px-2 py-0.5">{{ BLOCK_LABEL[step.block] }}</span>
-      <span v-if="step.reason !== 'warm_up' && step.reason !== 'application'" class="rounded-full bg-accent-muted px-2 py-0.5 text-accent-text">
+      <span
+        v-if="step.reason !== 'warm_up' && step.reason !== 'application'"
+        class="rounded-full bg-accent-muted px-2 py-0.5 text-accent-text"
+      >
         {{ REASON_LABEL[step.reason] }}
       </span>
     </div>
 
     <ol v-if="showPlan" class="rounded-lg border border-border p-3 text-sm">
-      <li v-for="(s, i) in steps" :key="i" :class="{ 'font-semibold': i === index, 'text-ink-subtle': i < index }">
-        {{ BLOCK_LABEL[s.block] }} · {{ s.item.label }} — <span class="text-ink-muted">{{ REASON_LABEL[s.reason] }}</span>
+      <li
+        v-for="(s, i) in steps"
+        :key="i"
+        :class="{ 'font-semibold': i === index, 'text-ink-subtle': i < index }"
+      >
+        {{ BLOCK_LABEL[s.block] }} · {{ s.item.label }} —
+        <span class="text-ink-muted">{{ REASON_LABEL[s.reason] }}</span>
       </li>
     </ol>
 
@@ -73,12 +90,35 @@ function answered(response: PracticeResponse) {
       :variant="index % 2 === 0 ? 'find' : 'name'"
       @answered="answered"
     />
-    <ExerciseQuestion v-else-if="step.item.kind === 'exercise'" :key="`${index}-x`" :item="step.item" @answered="answered" />
-    <PlayAlongRunner v-else-if="step.item.kind === 'play_along'" :key="`${index}-p`" :item="step.item" :session-id="session.session_id" :warm-up="step.block === 'warm_up'" @done="next" />
-    <ChordChangeRunner v-else :key="`${index}-c`" :item="step.item" :session-id="session.session_id" @done="next" />
+    <ExerciseQuestion
+      v-else-if="step.item.kind === 'exercise'"
+      :key="`${index}-x`"
+      :item="step.item"
+      @answered="answered"
+    />
+    <PlayAlongRunner
+      v-else-if="step.item.kind === 'play_along'"
+      :key="`${index}-p`"
+      :item="step.item"
+      :session-id="session.session_id"
+      :warm-up="step.block === 'warm_up'"
+      @done="next"
+    />
+    <ChordChangeRunner
+      v-else
+      :key="`${index}-c`"
+      :item="step.item"
+      :session-id="session.session_id"
+      @done="next"
+    />
   </div>
   <div v-else class="flex flex-col gap-3">
-    <p>Nothing to practise right now — everything you've met is fresh. Come back tomorrow, or pick up the next lesson on your path.</p>
-    <button type="button" class="rounded-lg border border-border p-3" @click="emit('quit')">Back</button>
+    <p>
+      Nothing to practise right now — everything you've met is fresh. Come back tomorrow, or pick up
+      the next lesson on your path.
+    </p>
+    <button type="button" class="rounded-lg border border-border p-3" @click="emit('quit')">
+      Back
+    </button>
   </div>
 </template>

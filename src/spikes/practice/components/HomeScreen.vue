@@ -8,18 +8,25 @@ import { computed, ref } from 'vue'
 
 import LevelChip from '@/spikes/practice/components/LevelChip.vue'
 import TapCheck from '@/spikes/practice/components/TapCheck.vue'
-import { itemByKey } from '@/spikes/practice/fixtures/catalog'
+import { instruments, itemByKey } from '@/spikes/practice/fixtures/catalog'
 import { nodeName } from '@/spikes/practice/fixtures/graph'
 import { LEVEL_LABEL, percent } from '@/spikes/practice/labels'
 import type { NodeProgress, Opportunity } from '@/spikes/practice/summary'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
-const emit = defineEmits<{ start: [instrumentInHand: boolean, minutes: number] }>()
+const emit = defineEmits<{ start: [instrumentInHand: string | null, minutes: number] }>()
 const spike = usePracticeSpike()
 
-const instrument = ref<boolean | null>(null)
+/** The instrument picked for this session: an id, null for "in my head", undefined until picked. */
+const instrument = ref<string | null | undefined>(undefined)
+const mine = computed(() =>
+  spike.instrumentIds.value.map((id) => ({ id, name: instruments[id]?.names.en ?? id })),
+)
+/** Whose skills the page shows; defaults to the first instrument. */
+const shown = ref<string | null>(null)
+const shownId = computed(() => shown.value ?? spike.instrumentIds.value[0]!)
 const tapping = ref(false)
-const summary = computed(() => spike.summary.value)
+const summary = computed(() => spike.summaryFor(shownId.value))
 const latestNote = computed(() => spike.activeNotes.value[0])
 const latestOpen = computed(() => (latestNote.value ? spike.openFor(latestNote.value) : null))
 
@@ -30,8 +37,10 @@ function changes(p: NodeProgress): string[] {
     out.push(`${LEVEL_LABEL[p.from.level ?? 'new']} → ${LEVEL_LABEL[p.to.level]}`)
   if (p.to.met > p.from.met) out.push(`${p.from.met} → ${p.to.met} of ${p.to.total} started`)
   const moved = (a: number | null, b: number | null) => a !== null && b !== null && b - a >= 0.02
-  if (moved(p.from.accuracy, p.to.accuracy)) out.push(`accuracy ${percent(p.from.accuracy!)} → ${percent(p.to.accuracy!)}`)
-  if (moved(p.from.fluency, p.to.fluency)) out.push(`speed ${percent(p.from.fluency!)} → ${percent(p.to.fluency!)}`)
+  if (moved(p.from.accuracy, p.to.accuracy))
+    out.push(`accuracy ${percent(p.from.accuracy!)} → ${percent(p.to.accuracy!)}`)
+  if (moved(p.from.fluency, p.to.fluency))
+    out.push(`speed ${percent(p.from.fluency!)} → ${percent(p.to.fluency!)}`)
   return out
 }
 
@@ -57,17 +66,57 @@ function opportunityText(o: Opportunity): string {
         <p>{{ latestNote.summary }}</p>
         <p class="mt-1 text-xs text-ink-muted">
           Working on:
-          {{ [...latestOpen.node_ids.map(nodeName), ...latestOpen.item_keys.map((k) => itemByKey(k)?.label ?? k)].join(', ') }}
+          {{
+            [
+              ...latestOpen.node_ids.map(nodeName),
+              ...latestOpen.item_keys.map((k) => itemByKey(k)?.label ?? k),
+            ].join(', ')
+          }}
           — until {{ LEVEL_LABEL[latestNote.target_level].toLowerCase() }}
         </p>
       </div>
 
-      <template v-if="instrument === null">
-        <p class="font-semibold">Guitar in hand?</p>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" class="rounded-lg bg-accent p-4 text-accent-fg" @click="instrument = true">🎸 Yes</button>
-          <button type="button" class="rounded-lg border border-border p-4" @click="instrument = false">🧠 No — practise in my head</button>
-        </div>
+      <template v-if="instrument === undefined">
+        <template v-if="mine.length === 1">
+          <p class="font-semibold">{{ mine[0]!.name }} in hand?</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              class="rounded-lg bg-accent p-4 text-accent-fg"
+              @click="instrument = mine[0]!.id"
+            >
+              🎸 Yes
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-border p-4"
+              @click="instrument = null"
+            >
+              🧠 No — practise in my head
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <p class="font-semibold">Which instrument is in your hands?</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              v-for="m in mine"
+              :key="m.id"
+              type="button"
+              class="rounded-lg bg-accent p-4 text-accent-fg"
+              @click="instrument = m.id"
+            >
+              🎸 {{ m.name }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-border p-4"
+              @click="instrument = null"
+            >
+              🧠 None — practise in my head
+            </button>
+          </div>
+        </template>
       </template>
       <template v-else>
         <p class="font-semibold">How long have you got?</p>
@@ -82,12 +131,18 @@ function opportunityText(o: Opportunity): string {
             {{ m }} min
           </button>
         </div>
-        <button type="button" class="text-sm text-ink-muted" @click="instrument = null">‹ change</button>
+        <button type="button" class="text-sm text-ink-muted" @click="instrument = undefined">
+          ‹ change
+        </button>
       </template>
-      <p class="text-sm text-ink-muted">You practised on {{ summary.practice_days_last_7 }} of the last 7 days.</p>
+      <p class="text-sm text-ink-muted">
+        You practised on {{ summary.practice_days_last_7 }} of the last 7 days.
+      </p>
       <TapCheck v-if="tapping" @done="tapping = false" />
       <p v-else class="text-xs text-ink-muted">
-        <template v-if="spike.state.live.tap_ms !== null">Your tap time: {{ spike.state.live.tap_ms }} ms — only the time spent knowing counts. </template>
+        <template v-if="spike.state.live.tap_ms !== null"
+          >Your tap time: {{ spike.state.live.tap_ms }} ms — only the time spent knowing counts.
+        </template>
         <template v-else>Timed drills count your tapping time too. </template>
         <button type="button" class="underline" @click="tapping = true">
           {{ spike.state.live.tap_ms !== null ? 'Redo the tap check' : 'Do a 20-second tap check' }}
@@ -95,25 +150,52 @@ function opportunityText(o: Opportunity): string {
       </p>
     </section>
 
+    <div v-if="mine.length > 1" class="flex gap-2" role="tablist">
+      <button
+        v-for="m in mine"
+        :key="m.id"
+        type="button"
+        role="tab"
+        :aria-selected="shownId === m.id"
+        class="rounded-full border border-border px-3 py-1 text-sm"
+        :class="{ 'bg-accent text-accent-fg': shownId === m.id }"
+        @click="shown = m.id"
+      >
+        {{ m.name }}
+      </button>
+    </div>
+
     <section class="flex flex-col gap-2">
       <h2 class="text-lg font-semibold">Your progress this week</h2>
       <ul v-if="summary.progress.length" class="flex flex-col gap-2">
-        <li v-for="p in summary.progress.slice(0, 5)" :key="p.node_id" class="rounded-lg bg-surface-raised p-3 text-sm">
+        <li
+          v-for="p in summary.progress.slice(0, 5)"
+          :key="p.node_id"
+          class="rounded-lg bg-surface-raised p-3 text-sm"
+        >
           <p class="font-semibold">{{ nodeName(p.node_id) }}</p>
           <p class="text-ink-muted">{{ changes(p).join(' · ') }}</p>
         </li>
       </ul>
-      <p v-else class="text-sm text-ink-muted">A fresh week — every session from here shows up as progress.</p>
+      <p v-else class="text-sm text-ink-muted">
+        A fresh week — every session from here shows up as progress.
+      </p>
     </section>
 
     <section class="flex flex-col gap-2">
       <h2 class="text-lg font-semibold">Your improvement opportunities</h2>
       <ul v-if="summary.opportunities.length" class="flex flex-col gap-1 text-sm">
-        <li v-for="o in summary.opportunities" :key="`${o.kind}-${o.node_id}`" class="rounded-lg border border-border p-2">
+        <li
+          v-for="o in summary.opportunities"
+          :key="`${o.kind}-${o.node_id}`"
+          class="rounded-lg border border-border p-2"
+        >
           {{ opportunityText(o) }}
         </li>
       </ul>
-      <p v-else class="text-sm text-ink-muted">Nothing waiting — practise ahead or explore something new.</p>
+      <p v-else class="text-sm text-ink-muted">
+        Nothing waiting — practise ahead or explore something new.
+      </p>
     </section>
 
     <section class="flex flex-col gap-3">

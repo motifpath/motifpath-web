@@ -21,6 +21,7 @@ const cell: FretboardCellItem = {
   label: 'cell',
   skill_ids: [],
   concept_ids: [],
+  instrument_ids: [],
   instrument_id: 'g',
   string: 6,
   fret: 3,
@@ -33,9 +34,17 @@ const drill: PlayAlongItem = {
   label: 'drill',
   skill_ids: [],
   concept_ids: [],
+  instrument_ids: [],
   diagram_id: 'd',
   purpose: 'technique',
-  params: { start_bpm: 60, target_bpm: 120, step_bpm: 5, cleans_to_advance: 2, loops: 4, count_in_beats: 4 },
+  params: {
+    start_bpm: 60,
+    target_bpm: 120,
+    step_bpm: 5,
+    cleans_to_advance: 2,
+    loops: 4,
+    count_in_beats: 4,
+  },
 }
 
 const changes: ChordChangeItem = {
@@ -44,6 +53,7 @@ const changes: ChordChangeItem = {
   label: 'changes',
   skill_ids: [],
   concept_ids: [],
+  instrument_ids: [],
   from_diagram_id: 'am',
   to_diagram_id: 'c',
   target_changes_per_minute: 60,
@@ -66,7 +76,12 @@ function answer(day: number, correct: boolean, latency_ms = 1500): AutoGradedEvi
   }
 }
 
-function self(day: number, rating: Rating, bpm: number | null, item_key = 'drill'): SelfAssessedEvidence {
+function self(
+  day: number,
+  rating: Rating,
+  bpm: number | null,
+  item_key = 'drill',
+): SelfAssessedEvidence {
   return {
     evidence_id: `e${n++}`,
     student_id: 's',
@@ -82,7 +97,12 @@ function self(day: number, rating: Rating, bpm: number | null, item_key = 'drill
   }
 }
 
-function teacher(day: number, rating: Rating, bpm: number | null, verified: boolean): TeacherReviewedEvidence {
+function teacher(
+  day: number,
+  rating: Rating,
+  bpm: number | null,
+  verified: boolean,
+): TeacherReviewedEvidence {
   return {
     evidence_id: `e${n++}`,
     student_id: 's',
@@ -101,7 +121,13 @@ function teacher(day: number, rating: Rating, bpm: number | null, verified: bool
 describe('deriveState — an item never practised', () => {
   it('is new, with nothing due', () => {
     const s = deriveState(cell, [], new Date(T0))
-    expect(s).toMatchObject({ attempts: 0, level: 'new', effective_level: 'new', box: 0, due_at: null })
+    expect(s).toMatchObject({
+      attempts: 0,
+      level: 'new',
+      effective_level: 'new',
+      box: 0,
+      due_at: null,
+    })
   })
 })
 
@@ -113,7 +139,11 @@ describe('deriveState — spaced repetition', () => {
   })
 
   it('more correct answers before the item is due do not move it up again', () => {
-    const s = deriveState(cell, [answer(0, true), answer(0.01, true), answer(0.02, true)], new Date(T0))
+    const s = deriveState(
+      cell,
+      [answer(0, true), answer(0.01, true), answer(0.02, true)],
+      new Date(T0),
+    )
     expect(s.box).toBe(1)
   })
 
@@ -124,7 +154,11 @@ describe('deriveState — spaced repetition', () => {
   })
 
   it('a wrong answer sends it back to box 1', () => {
-    const s = deriveState(cell, [answer(0, true), answer(1, true), answer(3, false)], new Date(T0 + 3 * DAY))
+    const s = deriveState(
+      cell,
+      [answer(0, true), answer(1, true), answer(3, false)],
+      new Date(T0 + 3 * DAY),
+    )
     expect(s.box).toBe(1)
     expect(s.due_at).toBe(at(4))
   })
@@ -133,7 +167,11 @@ describe('deriveState — spaced repetition', () => {
 describe('deriveState — levels', () => {
   it('accurate needs at least three attempts, mostly right', () => {
     const slow = 6000
-    const s = deriveState(cell, [answer(0, true, slow), answer(1, true, slow), answer(3, true, slow)], new Date(T0 + 3 * DAY))
+    const s = deriveState(
+      cell,
+      [answer(0, true, slow), answer(1, true, slow), answer(3, true, slow)],
+      new Date(T0 + 3 * DAY),
+    )
     expect(s.level).toBe('accurate')
   })
 
@@ -148,7 +186,11 @@ describe('deriveState — levels', () => {
   })
 
   it('reports the median latency of correct answers', () => {
-    const s = deriveState(cell, [answer(0, true, 1000), answer(0.1, true, 3000), answer(0.2, false, 9000)], new Date(T0))
+    const s = deriveState(
+      cell,
+      [answer(0, true, 1000), answer(0.1, true, 3000), answer(0.2, false, 9000)],
+      new Date(T0),
+    )
     expect(s.median_latency_ms).toBe(2000)
   })
 })
@@ -185,7 +227,11 @@ describe('deriveState — self-assessed play-along', () => {
   })
 
   it('a struggle is a miss: back to box 1', () => {
-    const s = deriveState(drill, [self(0, 'clean', 80), self(1, 'struggled', 85)], new Date(T0 + DAY))
+    const s = deriveState(
+      drill,
+      [self(0, 'clean', 80), self(1, 'struggled', 85)],
+      new Date(T0 + DAY),
+    )
     expect(s.box).toBe(1)
   })
 
@@ -197,7 +243,11 @@ describe('deriveState — self-assessed play-along', () => {
 
   it('a struggle above the best clean tempo is exploring the edge, not a miss', () => {
     const base = [self(0, 'clean', 100), self(1, 'clean', 100)]
-    const explored = deriveState(drill, [...base, self(1.01, 'struggled', 110)], new Date(T0 + 2 * DAY))
+    const explored = deriveState(
+      drill,
+      [...base, self(1.01, 'struggled', 110)],
+      new Date(T0 + 2 * DAY),
+    )
     const clean = deriveState(drill, base, new Date(T0 + 2 * DAY))
     expect(explored.box).toBe(clean.box)
     expect(explored.accuracy).toBe(clean.accuracy)
@@ -205,13 +255,21 @@ describe('deriveState — self-assessed play-along', () => {
   })
 
   it('a struggle at or below the best clean tempo is a real miss', () => {
-    const s = deriveState(drill, [self(0, 'clean', 100), self(1, 'clean', 100), self(3, 'struggled', 95)], new Date(T0 + 3 * DAY))
+    const s = deriveState(
+      drill,
+      [self(0, 'clean', 100), self(1, 'clean', 100), self(3, 'struggled', 95)],
+      new Date(T0 + 3 * DAY),
+    )
     expect(s.box).toBe(1)
     expect(s.accuracy).toBeLessThan(1)
   })
 
   it('a teacher rating always counts, whatever the tempo', () => {
-    const s = deriveState(drill, [self(0, 'clean', 100), teacher(1, 'struggled', 110, false)], new Date(T0 + DAY))
+    const s = deriveState(
+      drill,
+      [self(0, 'clean', 100), teacher(1, 'struggled', 110, false)],
+      new Date(T0 + DAY),
+    )
     expect(s.box).toBe(1)
   })
 
@@ -225,26 +283,47 @@ describe('deriveState — self-assessed play-along', () => {
 
 describe('deriveState — teacher review', () => {
   it('verifies the item when the teacher vouches for it', () => {
-    const s = deriveState(drill, [self(0, 'clean', 100), teacher(1, 'clean', 100, true)], new Date(T0 + DAY))
+    const s = deriveState(
+      drill,
+      [self(0, 'clean', 100), teacher(1, 'clean', 100, true)],
+      new Date(T0 + DAY),
+    )
     expect(s.verified).toBe(true)
   })
 
   it('a later review without the vouch withdraws it', () => {
-    const s = deriveState(drill, [teacher(0, 'clean', 100, true), teacher(5, 'almost', 100, false)], new Date(T0 + 5 * DAY))
+    const s = deriveState(
+      drill,
+      [teacher(0, 'clean', 100, true), teacher(5, 'almost', 100, false)],
+      new Date(T0 + 5 * DAY),
+    )
     expect(s.verified).toBe(false)
   })
 
   it('weighs more than a self-rating: one review pulls accuracy further', () => {
     const base = [self(0, 'clean', 100), self(1, 'clean', 100)]
-    const afterSelf = deriveState(drill, [...base, self(2, 'struggled', 100)], new Date(T0 + 2 * DAY))
-    const afterTeacher = deriveState(drill, [...base, teacher(2, 'struggled', 100, false)], new Date(T0 + 2 * DAY))
+    const afterSelf = deriveState(
+      drill,
+      [...base, self(2, 'struggled', 100)],
+      new Date(T0 + 2 * DAY),
+    )
+    const afterTeacher = deriveState(
+      drill,
+      [...base, teacher(2, 'struggled', 100, false)],
+      new Date(T0 + 2 * DAY),
+    )
     expect(afterTeacher.accuracy).toBeLessThan(afterSelf.accuracy)
   })
 
   it('resets self-claimed tempos: the best clean tempo counts only claims since the review', () => {
     const s = deriveState(
       drill,
-      [self(0, 'clean', 115), self(1, 'clean', 118), teacher(2, 'almost', 100, false), self(3, 'clean', 95)],
+      [
+        self(0, 'clean', 115),
+        self(1, 'clean', 118),
+        teacher(2, 'almost', 100, false),
+        self(3, 'clean', 95),
+      ],
       new Date(T0 + 3 * DAY),
     )
     expect(s.best_clean_bpm).toBe(95)

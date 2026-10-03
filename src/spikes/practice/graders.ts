@@ -6,7 +6,13 @@
  * the client.
  */
 import { frettedPitch, parsePitch } from '@/shared/utils/pitch'
-import type { GraderId, ItemKind, PracticeItem, PracticeResponse, Rating } from '@/spikes/practice/model'
+import type {
+  GraderId,
+  ItemKind,
+  PracticeItem,
+  PracticeResponse,
+  Rating,
+} from '@/spikes/practice/model'
 
 export interface GradeContext {
   /** An instrument's tuning, lowest string first; null when unknown. */
@@ -17,7 +23,12 @@ export interface GradeContext {
 
 export type Graded =
   | { source: 'auto_graded'; correct: boolean; latency_ms: number }
-  | { source: 'self_assessed'; rating: Rating; bpm: number | null; changes_per_minute: number | null }
+  | {
+      source: 'self_assessed'
+      rating: Rating
+      bpm: number | null
+      changes_per_minute: number | null
+    }
 
 export type Rejection =
   | 'response_does_not_fit_item'
@@ -49,7 +60,8 @@ export const GRADERS: Record<GraderId, Grader> = {
     item_kinds: ['fretboard_cell'],
     grade(item, response, ctx) {
       if (item.kind !== 'fretboard_cell') return 'response_does_not_fit_item'
-      if (response.kind !== 'name_the_note' && response.kind !== 'find_the_note') return 'response_does_not_fit_item'
+      if (response.kind !== 'name_the_note' && response.kind !== 'find_the_note')
+        return 'response_does_not_fit_item'
       if (!validLatency(response.latency_ms)) return 'invalid_latency'
       const tuning = ctx.tuningOf(item.instrument_id)
       const expected = tuning && frettedPitch(tuning, item.string, item.fret)
@@ -60,7 +72,10 @@ export const GRADERS: Record<GraderId, Grader> = {
       } else {
         // Any octave counts, but only on the string asked about.
         const tapped = frettedPitch(tuning!, response.string, response.fret)
-        correct = response.string === item.string && tapped !== null && pitchClass(tapped) === pitchClass(expected)
+        correct =
+          response.string === item.string &&
+          tapped !== null &&
+          pitchClass(tapped) === pitchClass(expected)
       }
       return { source: 'auto_graded', correct, latency_ms: response.latency_ms }
     },
@@ -69,7 +84,8 @@ export const GRADERS: Record<GraderId, Grader> = {
     name: 'exercise_option',
     item_kinds: ['exercise'],
     grade(item, response, ctx) {
-      if (item.kind !== 'exercise' || response.kind !== 'option_choice') return 'response_does_not_fit_item'
+      if (item.kind !== 'exercise' || response.kind !== 'option_choice')
+        return 'response_does_not_fit_item'
       if (!validLatency(response.latency_ms)) return 'invalid_latency'
       const key = ctx.exerciseKey(item.exercise_id)
       if (key === null) return 'unknown_reference'
@@ -87,8 +103,10 @@ export const GRADERS: Record<GraderId, Grader> = {
     grade(item, response) {
       if (response.kind !== 'self_rating') return 'response_does_not_fit_item'
       if (item.kind === 'play_along' && response.bpm === null) return 'measure_missing'
-      if (item.kind === 'chord_change' && response.changes_per_minute === null) return 'measure_missing'
-      if (item.kind !== 'play_along' && item.kind !== 'chord_change') return 'response_does_not_fit_item'
+      if (item.kind === 'chord_change' && response.changes_per_minute === null)
+        return 'measure_missing'
+      if (item.kind !== 'play_along' && item.kind !== 'chord_change')
+        return 'response_does_not_fit_item'
       return {
         source: 'self_assessed',
         rating: response.rating,
@@ -104,7 +122,11 @@ export function graderFor(kind: ItemKind): GraderId {
   return (Object.keys(GRADERS) as GraderId[]).find((id) => GRADERS[id].item_kinds.includes(kind))!
 }
 
-export function grade(item: PracticeItem, response: PracticeResponse, ctx: GradeContext): GradeResult {
+export function grade(
+  item: PracticeItem,
+  response: PracticeResponse,
+  ctx: GradeContext,
+): GradeResult {
   const grader = graderFor(item.kind)
   const result = GRADERS[grader].grade(item, response, ctx)
   return typeof result === 'string' ? { rejected: result } : { grader, graded: result }

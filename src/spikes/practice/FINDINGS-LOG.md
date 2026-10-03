@@ -8,7 +8,7 @@ Raw notes as they come up; the curated version goes to
 1. **Tempo ladder stalled when sessions warm-started below the best tempo (M6).** With
    `start = best_clean − step`, two cleans per step and four takes a session, a student only
    ever climbed back to their previous best — the "improving" archetype was stuck at 75 BPM for
-   three weeks. Fix: a session starts *at* the best clean tempo; warming up is the warm-up
+   three weeks. Fix: a session starts _at_ the best clean tempo; warming up is the warm-up
    block's job, not the ladder's.
 2. **"Due" and "lapsed" are two different signals (M3, U4).** Fading defined as "overdue by more
    than the item's own wait" left cells untouched for two weeks reading as not fading. Split:
@@ -26,7 +26,7 @@ Raw notes as they come up; the curated version goes to
 6. **Tempo-ladder takes above the best are exploration, not misses (M2, M6).** The ladder pushes
    every session to the edge, so "almost/struggled" at a new tempo dragged accuracy down: an
    improving student clean at 115/120 BPM read as "Learning" (74%). Rule: a self-assessed non-clean
-   take *above* the best clean tempo since the last review doesn't count; at or below it, it's a
+   take _above_ the best clean tempo since the last review doesn't count; at or below it, it's a
    real miss; a teacher rating always counts.
 7. **Warm-up tempo ≠ ladder start (U2).** Warm-up must start comfortably below the best (≈80%),
    outside the ladder; the ladder starts at the best clean tempo (finding 1).
@@ -79,7 +79,7 @@ on Progress; decaying at day 30 → 27 items fading, a 5-minute session of 26 du
     sessions now mix both; the guitar session gets the power-chord riff as a stretch.
 21. **A teacher suggestion can't end on a level the student already had (M5, decided rule).** An
     already-fluent flagged item, or an overconfident self-claim, would end the suggestion the moment
-    it's written. The rule became: ends once practised *since the note* and at the target level, or
+    it's written. The rule became: ends once practised _since the note_ and at the target level, or
     the teacher closes it; 30-day safety expiry.
 22. **Graders work off reference data only (M11).** One interface, three versioned graders
     (fretboard_cell.v1, exercise_option.v1, self_rating.v1), 15 golden cases in language-neutral
@@ -101,6 +101,7 @@ on Progress; decaying at day 30 → 27 items fading, a 5-minute session of 26 du
 26. **Practice days need the student's time zone.** Days are counted by UTC date in the spike.
 
 ### Phase 5 walkthrough (headless Chrome, 2026-10-02)
+
 All four archetypes' homes render from the summary with no console errors. Caught-up improving
 student: mind-3 mixes review ahead / stretch (top-string cells) / weak spots; guitar-15 is warm-up,
 due chord changes, power-chord riff as stretch, blues lick. A live tap goes response → grader →
@@ -135,6 +136,26 @@ base −4…+3% · 10 students −17…+2% · 6×4 sessions (just past the gate)
     the estimator given it.
 
 ### Phase 6 walkthrough
+
 Tap check → 314 ms baseline; a 16-item mind session → "How did it feel?" per timed drill; rating
 "Hard" stored; recalibrate → name_the_note v2 2442 ms from 321 sessions / 41 students (true 2500).
 No console errors.
+
+## Phase 7 — instruments (2026-10-03)
+
+34. **Instrument fit keeps sessions honest (M16).** Items carry instrument_ids (exercises as in PB-86;
+    cells = their instrument; play-alongs/chord changes = their diagrams'). Guitar in hand → no bass
+    item; in your head → every instrument the student plays; theory items (every instrument) everywhere.
+35. **Per-instrument node levels (M17).** Same node, same student: "Notes on the E and A strings" is
+    Fluent on guitar and 0/24 started on bass. Readiness follows the instrument too.
+36. **The graph alone can rank next steps (M18).** Requires depth per instrument replaced the
+    uninstalled B/EI/I/A level; the power-chord riff is still the guitar stretch pick.
+37. **Adding an instrument floods practice in your head.** With bass added, a 5-minute mind session
+    was 24 bass "new" items of 29: the whole bass fretboard is new on her path while guitar is caught
+    up. Candidate: cap new items per session (the 15% share as a ceiling), and balance across the
+    student's instruments.
+38. **Instrument-independent nodes repeat on every instrument tab.** Intervals show under guitar and
+    bass alike. Candidate: an "Any instrument" group on the home.
+39. **Questions must name the instrument when the student has several (U9).** "Where is A on string
+    4?" is ambiguous for a guitar-and-bass student. The start stays two taps: "Which instrument is
+    in your hands?" → minutes.

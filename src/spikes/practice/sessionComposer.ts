@@ -24,7 +24,8 @@ import type {
   TeacherNote,
 } from '@/spikes/practice/model'
 import { seededRandom, shuffled } from '@/spikes/practice/random'
-import { descendantIds, isForInstrument, readiness } from '@/spikes/practice/graph'
+import { descendantIds, isForInstrument, readiness, requiresDepth } from '@/spikes/practice/graph'
+import { fits } from '@/spikes/practice/instruments'
 import { openSuggestions } from '@/spikes/practice/teacherNotes'
 
 export interface ComposeInput {
@@ -34,12 +35,13 @@ export interface ComposeInput {
   items: PracticeItem[]
   states: Map<string, KnowledgeState>
   graph: KnowledgeGraph
-  /** The student's instrument: only nodes for it count. */
-  instrument_id: string
+  /** The student's instruments: from enrolments and their profile. */
+  instrument_ids: string[]
   /** Skills met on the path; their subtrees are fair game. */
   path_skill_ids: string[]
   teacher_notes: TeacherNote[]
-  instrument_in_hand: boolean
+  /** The instrument in the student's hands, or null for practice in their head. */
+  instrument_in_hand: string | null
   minutes: number
   seed: number
 }
@@ -52,9 +54,6 @@ const CATEGORIES: Category[] = ['due', 'weak', 'new']
 export const CAUGHT_UP_MIX = { review_ahead: 0.5, stretch: 0.5 } as const
 type CaughtUp = keyof typeof CAUGHT_UP_MIX
 const CAUGHT_UP: CaughtUp[] = ['review_ahead', 'stretch']
-
-/** Stretch picks easier ground first, by the map's calibration annotation. */
-const MAP_LEVEL_RANK = { B: 0, EI: 1, I: 2, A: 3 } as const
 
 /**
  * The next pick from a set of queues so that picks track the target shares;
@@ -110,6 +109,23 @@ export function composeSession(input: ComposeInput): Session {
   const isEligible = (i: PracticeItem) =>
     isSuggested(i) || i.skill_ids.some((s) => pathSkills.has(s))
   const isSeen = (i: PracticeItem) => (states.get(i.item_key)?.attempts ?? 0) > 0
+  const inHand = input.instrument_in_hand
+  /** The instruments an item is practised on in this session. */
+  const contexts = (i: PracticeItem): string[] =>
+    inHand !== null
+      ? fits(i, inHand)
+        ? [inHand]
+        : []
+      : input.instrument_ids.filter((x) => fits(i, x))
+  /**
+   * In hand: instrument items that suit it. In the head: everything else, for any of
+   * the student's instruments, and items for every instrument whatever they play.
+   */
+  const playable = (i: PracticeItem) =>
+    inHand !== null
+      ? INSTRUMENT_KINDS.includes(i.kind) && fits(i, inHand)
+      : !INSTRUMENT_KINDS.includes(i.kind) &&
+        (i.instrument_ids.length === 0 || contexts(i).length > 0)
 
   const categoryOf = (i: PracticeItem): Category | null => {
     const s = states.get(i.item_key)
@@ -147,33 +163,33 @@ export function composeSession(input: ComposeInput): Session {
 
   const nodesById = new Map(graph.nodes.map((n) => [n.node_id, n]))
   const readinessOf = new Map<string, ReturnType<typeof readiness>>()
-  const ready = (id: string) => {
-    if (!readinessOf.has(id))
-      readinessOf.set(id, readiness(graph, items, states, id, input.instrument_id))
-    const r = readinessOf.get(id)!
-    return r.met === r.total
+  const readinessFor = (id: string, instrument: string) => {
+    const key = `${id}|${instrument}`
+    if (!readinessOf.has(key)) readinessOf.set(key, readiness(graph, items, states, id, instrument))
+    return readinessOf.get(key)!
   }
   /**
-   * Unseen items off the path whose skills are all for the student's instrument
-   * and ready. Nodes that build on something the student meets come first, then
-   * easier ground by the map's calibration, then catalog order.
+   * Unseen items off the path whose skills are all for an instrument the item is
+   * practised on and ready there. Nodes that build on something the student meets
+   * come first, then the nearest to the basics (requires depth), then catalog order.
    */
   const stretch = (pool: PracticeItem[]) =>
     pool
-      .filter(
-        (i) =>
-          !isEligible(i) &&
-          !isSeen(i) &&
-          i.skill_ids.length > 0 &&
-          i.skill_ids.every(
-            (id) => isForInstrument(nodesById.get(id), input.instrument_id) && ready(id),
-          ),
-      )
-      .map((item, order) => {
-        const node = nodesById.get(item.skill_ids[0]!)!
-        const buildsOn = readinessOf.get(node.node_id)!.total > 0 ? 0 : 1
-        const ease = node.map_level === null ? 4 : MAP_LEVEL_RANK[node.map_level]
-        return { item, node_id: node.node_id, rank: [buildsOn, ease, order] }
+      .filter((i) => !isEligible(i) && !isSeen(i) && i.skill_ids.length > 0)
+      .flatMap((item, order) => {
+        const ranks = contexts(item)
+          .filter((c) =>
+            item.skill_ids.every((id) => {
+              const r = readinessFor(id, c)
+              return isForInstrument(nodesById.get(id), c) && r.met === r.total
+            }),
+          )
+          .map((c) => {
+            const node = item.skill_ids[0]!
+            return [readinessFor(node, c).total > 0 ? 0 : 1, requiresDepth(graph, node, c), order]
+          })
+          .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!)
+        return ranks.length ? [{ item, node_id: item.skill_ids[0]!, rank: ranks[0]! }] : []
       })
       .sort((a, b) => a.rank[0]! - b.rank[0]! || a.rank[1]! - b.rank[1]! || a.rank[2]! - b.rank[2]!)
 
@@ -187,11 +203,11 @@ export function composeSession(input: ComposeInput): Session {
   })
 
   const blocks: SessionBlock[] = []
-  const eligible = items.filter(isEligible)
+  const eligible = items.filter((i) => isEligible(i) && playable(i))
   const itemOf = (key: string) => items.find((i) => i.item_key === key)!
 
-  if (!input.instrument_in_hand) {
-    const pool = eligible.filter((i) => !INSTRUMENT_KINDS.includes(i.kind))
+  if (inHand === null) {
+    const pool = eligible
     const q = queues(pool)
     let budget = input.minutes * 60
     const entries: SessionEntry[] = []
@@ -221,7 +237,7 @@ export function composeSession(input: ComposeInput): Session {
     }
     if (!full) {
       const taken = new Set(entries.map((e) => e.item_key))
-      const offPath = items.filter((i) => !isEligible(i) && !INSTRUMENT_KINDS.includes(i.kind))
+      const offPath = items.filter((i) => !isEligible(i) && playable(i))
       const cq = caughtUpQueues([...pool.filter((i) => !taken.has(i.item_key)), ...offPath])
       const done: Record<CaughtUp, number> = { review_ahead: 0, stretch: 0 }
       for (
@@ -239,7 +255,7 @@ export function composeSession(input: ComposeInput): Session {
     }
     blocks.push({ kind: 'mental', entries: shuffled(entries, seededRandom(input.seed)) })
   } else {
-    const pool = eligible.filter((i) => INSTRUMENT_KINDS.includes(i.kind))
+    const pool = eligible
     const technique = pool.filter((i) => i.kind === 'play_along' && i.purpose === 'technique')
     const repertoire = pool.filter((i) => i.kind === 'play_along' && i.purpose === 'repertoire')
     let budget = input.minutes * 60
@@ -278,9 +294,7 @@ export function composeSession(input: ComposeInput): Session {
     // Caught up: alternate reviewing ahead and stretching, after everything regular.
     const offPath = items.filter(
       (i) =>
-        !isEligible(i) &&
-        INSTRUMENT_KINDS.includes(i.kind) &&
-        !(i.kind === 'play_along' && i.purpose === 'repertoire'),
+        !isEligible(i) && playable(i) && !(i.kind === 'play_along' && i.purpose === 'repertoire'),
     )
     const cq = caughtUpQueues([...focusPool, ...offPath])
     const done: Record<CaughtUp, number> = { review_ahead: 0, stretch: 0 }

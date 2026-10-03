@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Evidence, GraphNode, KnowledgeGraph, KnowledgeState, PracticeItem } from '@/spikes/practice/model'
+import type {
+  Evidence,
+  GraphNode,
+  KnowledgeGraph,
+  KnowledgeState,
+  PracticeItem,
+} from '@/spikes/practice/model'
 import { summarize } from '@/spikes/practice/summary'
 import type { SummaryInput } from '@/spikes/practice/summary'
 
@@ -8,8 +14,13 @@ const NOW = new Date('2026-10-20T09:00:00Z')
 const DAY_MS = 86_400_000
 const daysAgo = (d: number) => new Date(NOW.getTime() - d * DAY_MS).toISOString()
 
-function node(id: string, parent: string | null, kind: GraphNode['kind'] = 'skill', instruments: string[] = []): GraphNode {
-  return { node_id: id, key: id, kind, name: id, parent_id: parent, instrument_ids: instruments, map_level: null }
+function node(
+  id: string,
+  parent: string | null,
+  kind: GraphNode['kind'] = 'skill',
+  instruments: string[] = [],
+): GraphNode {
+  return { node_id: id, key: id, kind, name: id, parent_id: parent, instrument_ids: instruments }
 }
 
 const graph: KnowledgeGraph = {
@@ -38,6 +49,7 @@ function cell(key: string, skill: string, concepts: string[] = []): PracticeItem
     skill_ids: [skill],
     concept_ids: concepts,
     instrument_id: 'guitar',
+    instrument_ids: ['guitar'],
     string: 6,
     fret: 0,
     note_name: 'E',
@@ -124,13 +136,21 @@ describe('summarize', () => {
       }),
     )
     expect(s.progress.map((p) => p.node_id)).toEqual(['root-strings', 'note-names', 'top-strings'])
-    expect(s.progress[0]).toMatchObject({ node_id: 'root-strings', from: { accuracy: 0.6 }, to: { accuracy: 0.9 } })
+    expect(s.progress[0]).toMatchObject({
+      node_id: 'root-strings',
+      from: { accuracy: 0.6 },
+      to: { accuracy: 0.9 },
+    })
   })
 
   it('counts newly started items as progress in coverage', () => {
     const s = summarize(input({ states_now: new Map([['p1', state('p1', {})]]) }))
     expect(s.progress).toContainEqual(
-      expect.objectContaining({ node_id: 'power-chords', from: expect.objectContaining({ met: 0 }), to: expect.objectContaining({ met: 1 }) }),
+      expect.objectContaining({
+        node_id: 'power-chords',
+        from: expect.objectContaining({ met: 0 }),
+        to: expect.objectContaining({ met: 1 }),
+      }),
     )
   })
 

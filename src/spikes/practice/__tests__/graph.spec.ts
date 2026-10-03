@@ -1,13 +1,27 @@
 import { describe, expect, it } from 'vitest'
 
-import { descendantIds, nodeLevel, readiness, rollup } from '@/spikes/practice/graph'
-import type { GraphEdge, GraphNode, KnowledgeGraph, KnowledgeState, Level, PracticeItem } from '@/spikes/practice/model'
+import { descendantIds, nodeLevel, readiness, requiresDepth, rollup } from '@/spikes/practice/graph'
+import type {
+  GraphEdge,
+  GraphNode,
+  KnowledgeGraph,
+  KnowledgeState,
+  Level,
+  PracticeItem,
+} from '@/spikes/practice/model'
 
 const GUITAR = 'guitar'
 const BASS = 'bass'
 
 function node(id: string, parent: string | null, instruments: string[] = []): GraphNode {
-  return { node_id: id, key: id, kind: 'skill', name: id, parent_id: parent, instrument_ids: instruments, map_level: null }
+  return {
+    node_id: id,
+    key: id,
+    kind: 'skill',
+    name: id,
+    parent_id: parent,
+    instrument_ids: instruments,
+  }
 }
 
 const nodes: GraphNode[] = [
@@ -27,7 +41,8 @@ function cell(key: string, skill: string): PracticeItem {
     label: key,
     skill_ids: [skill],
     concept_ids: [],
-    instrument_id: 'g',
+    instrument_id: GUITAR,
+    instrument_ids: [GUITAR],
     string: 6,
     fret: 0,
     note_name: 'E',
@@ -57,19 +72,31 @@ function state(key: string, overrides: Partial<KnowledgeState>): KnowledgeState 
 /** States where each listed item shows the given level now. */
 function statesAt(levels: Record<string, Level>): Map<string, KnowledgeState> {
   return new Map(
-    Object.entries(levels).map(([key, level]) => [key, state(key, { level, effective_level: level })]),
+    Object.entries(levels).map(([key, level]) => [
+      key,
+      state(key, { level, effective_level: level }),
+    ]),
   )
 }
 
 describe('descendantIds', () => {
   it('includes the node itself and its whole subtree', () => {
-    expect(descendantIds(nodes, 'fretboard').sort()).toEqual(['fretboard', 'root-strings', 'top-strings'])
+    expect(descendantIds(nodes, 'fretboard').sort()).toEqual([
+      'fretboard',
+      'root-strings',
+      'top-strings',
+    ])
     expect(descendantIds(nodes, 'picking')).toEqual(['picking'])
   })
 })
 
 describe('rollup', () => {
-  const items = [cell('a', 'root-strings'), cell('b', 'root-strings'), cell('c', 'top-strings'), cell('d', 'picking')]
+  const items = [
+    cell('a', 'root-strings'),
+    cell('b', 'root-strings'),
+    cell('c', 'top-strings'),
+    cell('d', 'picking'),
+  ]
   const states = new Map([
     ['a', state('a', { effective_level: 'fluent', fluency: 1 })],
     ['b', state('b', { effective_level: 'learning', fluency: 0.4, fading: true })],
@@ -107,7 +134,10 @@ describe('nodeLevel', () => {
 
   it('uses the level shown now, so a lapsed item pulls its node down', () => {
     const states = new Map(
-      five.map((i) => [i.item_key, state(i.item_key, { level: 'fluent', effective_level: 'accurate' })]),
+      five.map((i) => [
+        i.item_key,
+        state(i.item_key, { level: 'fluent', effective_level: 'accurate' }),
+      ]),
     )
     expect(nodeLevel(nodes, five, states, 'root-strings')).toBe('accurate')
   })
@@ -118,7 +148,14 @@ describe('nodeLevel', () => {
 
   it('rolls a parent up over every item in its subtree, each counted once', () => {
     const items = [...five, cell('t', 'top-strings')]
-    const states = statesAt({ a: 'fluent', b: 'fluent', c: 'fluent', d: 'fluent', e: 'fluent', t: 'learning' })
+    const states = statesAt({
+      a: 'fluent',
+      b: 'fluent',
+      c: 'fluent',
+      d: 'fluent',
+      e: 'fluent',
+      t: 'learning',
+    })
     // 5 of 6 fluent is 83%: the parent is fluent even though one child is learning.
     expect(nodeLevel(nodes, items, states, 'fretboard')).toBe('fluent')
     expect(nodeLevel(nodes, items, states, 'top-strings')).toBe('learning')
@@ -151,7 +188,13 @@ describe('readiness', () => {
   })
 
   it('lists what is missing with the level needed and the level reached', () => {
-    const r = readiness(graph, items, statesAt({ p: 'accurate', r: 'accurate' }), 'pentatonic', GUITAR)
+    const r = readiness(
+      graph,
+      items,
+      statesAt({ p: 'accurate', r: 'accurate' }),
+      'pentatonic',
+      GUITAR,
+    )
     expect(r.missing).toEqual([
       { node_id: 'root-strings', needed: 'fluent', has: 'accurate' },
       { node_id: 'open-chords', needed: 'accurate', has: null },
@@ -159,7 +202,13 @@ describe('readiness', () => {
   })
 
   it('counts a required node with nothing to practise as not met', () => {
-    const r = readiness(graph, items, statesAt({ p: 'retained', r: 'retained' }), 'pentatonic', GUITAR)
+    const r = readiness(
+      graph,
+      items,
+      statesAt({ p: 'retained', r: 'retained' }),
+      'pentatonic',
+      GUITAR,
+    )
     expect(r.met).toBe(2)
     expect(r.missing.map((m) => m.node_id)).toEqual(['open-chords'])
   })
@@ -172,5 +221,67 @@ describe('readiness', () => {
   it('ignores applies links', () => {
     const r = readiness(graph, items, new Map(), 'pentatonic', GUITAR)
     expect(r.missing.map((m) => m.node_id)).not.toContain('top-strings')
+  })
+})
+
+describe('per instrument', () => {
+  const guitarCells = ['g1', 'g2', 'g3', 'g4', 'g5'].map((k) => cell(k, 'root-strings'))
+  const bassCells = ['b1', 'b2', 'b3', 'b4', 'b5'].map((k) => ({
+    ...cell(k, 'root-strings'),
+    instrument_id: BASS,
+    instrument_ids: [BASS],
+  }))
+  const theory: PracticeItem = { ...cell('t', 'root-strings'), instrument_ids: [] }
+  const items = [...guitarCells, ...bassCells]
+  const guitarFluent = statesAt(
+    Object.fromEntries(guitarCells.map((c) => [c.item_key, 'fluent' as Level])),
+  )
+
+  it('keeps a shared node’s level apart for each instrument', () => {
+    expect(nodeLevel(nodes, items, guitarFluent, 'root-strings', GUITAR)).toBe('fluent')
+    expect(nodeLevel(nodes, items, guitarFluent, 'root-strings', BASS)).toBe('new')
+  })
+
+  it('counts items for every instrument toward each instrument’s level', () => {
+    const states = statesAt({ t: 'learning' })
+    expect(nodeLevel(nodes, [theory], states, 'root-strings', BASS)).toBe('learning')
+    expect(nodeLevel(nodes, [theory], states, 'root-strings', GUITAR)).toBe('learning')
+  })
+
+  it('checks requirements against the level for the student’s instrument', () => {
+    const graph: KnowledgeGraph = {
+      nodes,
+      edges: [
+        { from_id: 'pentatonic', to_id: 'root-strings', type: 'requires', level: 'accurate' },
+      ],
+    }
+    expect(readiness(graph, items, guitarFluent, 'pentatonic', GUITAR).met).toBe(1)
+    expect(readiness(graph, items, guitarFluent, 'pentatonic', BASS).met).toBe(0)
+  })
+})
+
+describe('requiresDepth', () => {
+  const graph: KnowledgeGraph = {
+    nodes,
+    edges: [
+      { from_id: 'pentatonic', to_id: 'picking', type: 'requires', level: 'accurate' },
+      { from_id: 'picking', to_id: 'root-strings', type: 'requires', level: 'accurate' },
+      { from_id: 'open-chords', to_id: 'root-strings', type: 'requires', level: 'accurate' },
+      { from_id: 'pentatonic', to_id: 'bass-clef', type: 'requires', level: 'accurate' },
+      { from_id: 'bass-clef', to_id: 'root-strings', type: 'requires', level: 'accurate' },
+      { from_id: 'bass-clef', to_id: 'top-strings', type: 'requires', level: 'accurate' },
+    ],
+  }
+
+  it('is the longest chain of requirements below a node', () => {
+    expect(requiresDepth(graph, 'root-strings', GUITAR)).toBe(0)
+    expect(requiresDepth(graph, 'open-chords', GUITAR)).toBe(1)
+    expect(requiresDepth(graph, 'pentatonic', GUITAR)).toBe(2)
+  })
+
+  it('follows only requirements for the instrument', () => {
+    // bass-clef is for bass only: through it, pentatonic would be 2 deep on bass as well.
+    expect(requiresDepth(graph, 'pentatonic', BASS)).toBe(2)
+    expect(requiresDepth(graph, 'bass-clef', GUITAR)).toBe(0)
   })
 })

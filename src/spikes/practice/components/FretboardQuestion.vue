@@ -8,7 +8,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { findTheNoteQuestion, nameTheNoteQuestion } from '@/spikes/practice/drillGenerator'
-import { gradeContext, guitar } from '@/spikes/practice/fixtures/catalog'
+import { gradeContext, instruments } from '@/spikes/practice/fixtures/catalog'
 import { grade } from '@/spikes/practice/graders'
 import { bareDiagram } from '@/spikes/practice/labels'
 import type { FretboardCellItem, PracticeResponse } from '@/spikes/practice/model'
@@ -20,7 +20,9 @@ const props = defineProps<{ item: FretboardCellItem; variant: 'find' | 'name' }>
 const emit = defineEmits<{ answered: [response: PracticeResponse] }>()
 
 const find = computed(() => findTheNoteQuestion(props.item, MAX_FRET))
-const name = computed(() => nameTheNoteQuestion(props.item, seededRandom(props.item.fret * 7 + props.item.string)))
+const name = computed(() =>
+  nameTheNoteQuestion(props.item, seededRandom(props.item.fret * 7 + props.item.string)),
+)
 
 const shownAt = ref(0)
 onMounted(() => {
@@ -30,10 +32,20 @@ onMounted(() => {
 const picked = ref<string | null>(null)
 const correct = ref<boolean | null>(null)
 
-const target = { position_id: 'target', string: props.item.string, fret: props.item.fret, interval: 'R' as const, note_name: props.item.note_name, shape: 'dot' as const }
+const target = {
+  position_id: 'target',
+  string: props.item.string,
+  fret: props.item.fret,
+  interval: 'R' as const,
+  note_name: props.item.note_name,
+  shape: 'dot' as const,
+}
 
 const questionDiagram = computed(() =>
-  bareDiagram(`q-${props.item.item_key}`, props.variant === 'name' || correct.value !== null ? [target] : []),
+  bareDiagram(
+    `q-${props.item.item_key}`,
+    props.variant === 'name' || correct.value !== null ? [target] : [],
+  ),
 )
 
 const diagramRef = computed(() => ({
@@ -50,7 +62,8 @@ function answer(response: PracticeResponse, choice: string) {
   if (correct.value !== null) return
   picked.value = choice
   const result = grade(props.item, response, gradeContext)
-  const isCorrect = 'graded' in result && result.graded.source === 'auto_graded' && result.graded.correct
+  const isCorrect =
+    'graded' in result && result.graded.source === 'auto_graded' && result.graded.correct
   correct.value = isCorrect
   setTimeout(() => emit('answered', response), isCorrect ? 500 : 1400)
 }
@@ -59,7 +72,10 @@ const latency = () => Math.round(performance.now() - shownAt.value)
 
 function onCell(optionId: string) {
   const fret = Number(optionId.slice(1))
-  answer({ kind: 'find_the_note', string: props.item.string, fret, latency_ms: latency() }, optionId)
+  answer(
+    { kind: 'find_the_note', string: props.item.string, fret, latency_ms: latency() },
+    optionId,
+  )
 }
 
 function onName(choice: string) {
@@ -70,14 +86,17 @@ function onName(choice: string) {
 <template>
   <div class="flex flex-col gap-4">
     <p class="text-lg font-semibold">
-      <template v-if="variant === 'find'">Where is <span class="text-accent-text">{{ item.note_name }}</span> on string {{ item.string }}?</template>
+      <template v-if="variant === 'find'"
+        >Where is <span class="text-accent-text">{{ item.note_name }}</span> on string
+        {{ item.string }}?</template
+      >
       <template v-else>Which note is this?</template>
     </p>
 
     <div class="overflow-x-auto rounded-lg bg-surface-raised p-3">
       <FrettedDiagramView
         :diagram="questionDiagram"
-        :instrument="guitar"
+        :instrument="instruments[item.instrument_id]!"
         :diagram-ref="diagramRef"
         :answer-cells="cells"
         :selected-answer-ids="picked && variant === 'find' ? [picked] : []"

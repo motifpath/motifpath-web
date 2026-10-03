@@ -47,7 +47,8 @@ function fluentMs(item: PracticeItem, e: Evidence, book: ThresholdBook): number 
 /** How far a take got toward the item's goal: tempo or changes per minute. */
 function goalRatio(item: PracticeItem, bpm: number | null, cpm: number | null): number {
   if (item.kind === 'play_along' && bpm !== null) return Math.min(1, bpm / item.params.target_bpm)
-  if (item.kind === 'chord_change' && cpm !== null) return Math.min(1, cpm / item.target_changes_per_minute)
+  if (item.kind === 'chord_change' && cpm !== null)
+    return Math.min(1, cpm / item.target_changes_per_minute)
   return 1
 }
 
@@ -127,14 +128,26 @@ export const EMPTY_FOLD: FoldState = {
 }
 
 const RECENT_LATENCIES = 10
-const maxOf = (a: number | null, b: number | null) => (b === null ? a : a === null ? b : Math.max(a, b))
+const maxOf = (a: number | null, b: number | null) =>
+  b === null ? a : a === null ? b : Math.max(a, b)
 
-export function foldStep(item: PracticeItem, prev: FoldState, e: Evidence, book: ThresholdBook = []): FoldState {
+export function foldStep(
+  item: PracticeItem,
+  prev: FoldState,
+  e: Evidence,
+  book: ThresholdBook = [],
+): FoldState {
   const t = Date.parse(e.occurred_at)
-  const f: FoldState = { ...prev, attempts: prev.attempts + 1, last_at: t, last_seen_at: e.occurred_at }
+  const f: FoldState = {
+    ...prev,
+    attempts: prev.attempts + 1,
+    last_at: t,
+    last_seen_at: e.occurred_at,
+  }
 
   if (e.source === 'auto_graded') {
-    if (e.correct) f.recent_latencies = [...prev.recent_latencies, e.latency_ms].slice(-RECENT_LATENCIES)
+    if (e.correct)
+      f.recent_latencies = [...prev.recent_latencies, e.latency_ms].slice(-RECENT_LATENCIES)
   } else {
     const clean = e.rating === 'clean'
     // A teacher review resets what the student claims: only takes since the latest review count.
@@ -147,7 +160,12 @@ export function foldStep(item: PracticeItem, prev: FoldState, e: Evidence, book:
     const measure = e.bpm ?? e.changes_per_minute
     // The tempo ladder pushes every session to the student's edge: a take that isn't clean
     // above the best clean tempo is exploring, not forgetting, so it doesn't count against them.
-    const exploring = e.source === 'self_assessed' && !clean && measure !== null && f.edge !== null && measure > f.edge
+    const exploring =
+      e.source === 'self_assessed' &&
+      !clean &&
+      measure !== null &&
+      f.edge !== null &&
+      measure > f.edge
     if (clean) {
       if (measure !== null) f.edge = Math.max(f.edge ?? 0, measure)
       f.best_clean_bpm = maxOf(f.best_clean_bpm, e.bpm)
@@ -194,9 +212,20 @@ export function viewState(item: PracticeItem, f: FoldState, now: Date): Knowledg
   }
 }
 
-export function deriveState(item: PracticeItem, evidence: Evidence[], now: Date, book: ThresholdBook = []): KnowledgeState {
-  const ordered = [...evidence].sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at))
-  return viewState(item, ordered.reduce((f, e) => foldStep(item, f, e, book), EMPTY_FOLD), now)
+export function deriveState(
+  item: PracticeItem,
+  evidence: Evidence[],
+  now: Date,
+  book: ThresholdBook = [],
+): KnowledgeState {
+  const ordered = [...evidence].sort(
+    (a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at),
+  )
+  return viewState(
+    item,
+    ordered.reduce((f, e) => foldStep(item, f, e, book), EMPTY_FOLD),
+    now,
+  )
 }
 
 export function deriveStates(
@@ -211,5 +240,10 @@ export function deriveStates(
     if (list) list.push(e)
     else byItem.set(e.item_key, [e])
   }
-  return new Map(items.map((item) => [item.item_key, deriveState(item, byItem.get(item.item_key) ?? [], now, book)]))
+  return new Map(
+    items.map((item) => [
+      item.item_key,
+      deriveState(item, byItem.get(item.item_key) ?? [], now, book),
+    ]),
+  )
 }

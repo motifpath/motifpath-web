@@ -18,7 +18,8 @@ export function ingestAnswer(
   if (!item) return { rejected: 'unknown_item' }
   const result = grade(item, event.response, ctx)
   if ('rejected' in result) return result
-  const graded = result.graded.source === 'auto_graded' ? { ...result.graded, tap_ms: tapMs } : result.graded
+  const graded =
+    result.graded.source === 'auto_graded' ? { ...result.graded, tap_ms: tapMs } : result.graded
   return {
     evidence_id: event.event_id,
     student_id: event.student_id,

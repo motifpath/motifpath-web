@@ -35,6 +35,7 @@ export function fretboardCellItems(
         skill_ids: [options.skillIdFor(string)],
         concept_ids: [],
         instrument_id: instrument.instrument_id,
+        instrument_ids: [instrument.instrument_id],
         string,
         fret,
         note_name: note,

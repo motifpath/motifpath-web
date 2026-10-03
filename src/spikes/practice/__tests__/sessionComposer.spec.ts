@@ -16,9 +16,10 @@ const PAST = '2026-10-10T09:00:00Z'
 const FUTURE = '2026-10-25T09:00:00Z'
 
 const GUITAR = 'guitar'
+const BASS = 'bass'
 
 function node(id: string, parent: string | null): GraphNode {
-  return { node_id: id, key: id, kind: 'skill', name: id, parent_id: parent, instrument_ids: [], map_level: null }
+  return { node_id: id, key: id, kind: 'skill', name: id, parent_id: parent, instrument_ids: [] }
 }
 
 const nodes: GraphNode[] = [
@@ -36,23 +37,36 @@ function cell(i: number, skill = 'string-6'): PracticeItem {
     label: `cell ${i}`,
     skill_ids: [skill],
     concept_ids: [],
-    instrument_id: 'g',
+    instrument_id: GUITAR,
+    instrument_ids: [GUITAR],
     string: 6,
     fret: i,
     note_name: 'E',
   }
 }
 
-function playAlong(key: string, purpose: PlayAlongItem['purpose'], skill = 'picking'): PlayAlongItem {
+function playAlong(
+  key: string,
+  purpose: PlayAlongItem['purpose'],
+  skill = 'picking',
+): PlayAlongItem {
   return {
     kind: 'play_along',
     item_key: key,
     label: key,
     skill_ids: [skill],
     concept_ids: [],
+    instrument_ids: [GUITAR],
     diagram_id: 'd',
     purpose,
-    params: { start_bpm: 60, target_bpm: 120, step_bpm: 5, cleans_to_advance: 2, loops: 4, count_in_beats: 4 },
+    params: {
+      start_bpm: 60,
+      target_bpm: 120,
+      step_bpm: 5,
+      cleans_to_advance: 2,
+      loops: 4,
+      count_in_beats: 4,
+    },
   }
 }
 
@@ -106,10 +120,10 @@ function input(overrides: Partial<ComposeInput>): ComposeInput {
     items: [],
     states: new Map(),
     graph: { nodes, edges: [] },
-    instrument_id: GUITAR,
+    instrument_ids: [GUITAR],
     path_skill_ids: ['fretboard', 'picking', 'chords'],
     teacher_notes: [],
-    instrument_in_hand: false,
+    instrument_in_hand: null,
     minutes: 5,
     seed: 7,
     ...overrides,
@@ -123,7 +137,8 @@ describe('composeSession — away from the instrument', () => {
   const items = Array.from({ length: 30 }, (_, i) => cell(i))
   const states = new Map<string, KnowledgeState>()
   for (let i = 0; i < 10; i++) states.set(`cell-${i}`, seen(`cell-${i}`, { due_at: PAST }))
-  for (let i = 10; i < 20; i++) states.set(`cell-${i}`, seen(`cell-${i}`, { accuracy: 0.5, level: 'learning' }))
+  for (let i = 10; i < 20; i++)
+    states.set(`cell-${i}`, seen(`cell-${i}`, { accuracy: 0.5, level: 'learning' }))
 
   it('is one mental block that fills the time, roughly due 60 / weak 25 / new 15', () => {
     const s = composeSession(input({ items, states, minutes: 2 }))
@@ -137,7 +152,9 @@ describe('composeSession — away from the instrument', () => {
   })
 
   it('never brings the same item twice', () => {
-    const keys = entries(composeSession(input({ items, states, minutes: 5 }))).map((e) => e.item_key)
+    const keys = entries(composeSession(input({ items, states, minutes: 5 }))).map(
+      (e) => e.item_key,
+    )
     expect(new Set(keys).size).toBe(keys.length)
   })
 
@@ -183,7 +200,7 @@ describe('composeSession — instrument in hand', () => {
   ])
 
   it('5 minutes: a warm-up on something known, then one focus item', () => {
-    const s = composeSession(input({ items, states, instrument_in_hand: true, minutes: 5 }))
+    const s = composeSession(input({ items, states, instrument_in_hand: GUITAR, minutes: 5 }))
     expect(s.blocks).toEqual([
       { kind: 'warm_up', entries: [{ item_key: 'known', reason: 'warm_up' }] },
       { kind: 'focus', entries: [{ item_key: 'shaky', reason: 'weak' }] },
@@ -191,12 +208,12 @@ describe('composeSession — instrument in hand', () => {
   })
 
   it('3 minutes: no time for a warm-up — straight to the focus item', () => {
-    const s = composeSession(input({ items, states, instrument_in_hand: true, minutes: 3 }))
+    const s = composeSession(input({ items, states, instrument_in_hand: GUITAR, minutes: 3 }))
     expect(s.blocks).toEqual([{ kind: 'focus', entries: [{ item_key: 'shaky', reason: 'weak' }] }])
   })
 
   it('15 minutes: warm-up, focus, then applying it to music', () => {
-    const s = composeSession(input({ items, states, instrument_in_hand: true, minutes: 15 }))
+    const s = composeSession(input({ items, states, instrument_in_hand: GUITAR, minutes: 15 }))
     expect(s.blocks.map((b) => b.kind)).toEqual(['warm_up', 'focus', 'application'])
     expect(s.blocks[2]!.entries).toEqual([{ item_key: 'riff', reason: 'application' }])
     expect(s.blocks[1]!.entries.map((e) => e.item_key)).toEqual(['shaky', 'fresh'])
@@ -204,7 +221,13 @@ describe('composeSession — instrument in hand', () => {
 
   it('never warms up on something the teacher flagged — that belongs in focus', () => {
     const s = composeSession(
-      input({ items, states, instrument_in_hand: true, minutes: 5, teacher_notes: [note({ suggested_item_keys: ['known'] })] }),
+      input({
+        items,
+        states,
+        instrument_in_hand: GUITAR,
+        minutes: 5,
+        teacher_notes: [note({ suggested_item_keys: ['known'] })],
+      }),
     )
     expect(s.blocks[0]!.entries[0]!.item_key).not.toBe('known')
     expect(s.blocks[1]!.entries[0]).toEqual({ item_key: 'known', reason: 'teacher_suggested' })
@@ -216,7 +239,7 @@ describe('composeSession — instrument in hand', () => {
       input({
         items: [...items, flagged],
         states,
-        instrument_in_hand: true,
+        instrument_in_hand: GUITAR,
         minutes: 5,
         teacher_notes: [note({ needs_work: { skill_ids: ['chords'], concept_ids: [] } })],
       }),
@@ -232,20 +255,29 @@ describe('composeSession — caught up: review ahead, then stretch', () => {
   const states = new Map(
     known.map((c, i) => [
       c.item_key,
-      seen(c.item_key, { level: 'fluent', effective_level: 'fluent', due_at: `${dueAt[i]}T09:00:00Z` }),
+      seen(c.item_key, {
+        level: 'fluent',
+        effective_level: 'fluent',
+        due_at: `${dueAt[i]}T09:00:00Z`,
+      }),
     ]),
   )
   const stretchNodes: GraphNode[] = [
-    { ...node('power-chords', null), map_level: 'B' },
-    { ...node('top-strings', null), map_level: 'EI' },
-    { ...node('advanced', null), map_level: 'I' },
+    node('power-chords', null),
+    node('top-strings', null),
+    node('advanced', null),
     node('blocked', null),
     { ...node('bass-only', null), instrument_ids: ['bass'] },
   ]
   const graph = {
     nodes: [...nodes, ...stretchNodes],
     edges: [
-      { from_id: 'power-chords', to_id: 'string-6', type: 'requires' as const, level: 'accurate' as const },
+      {
+        from_id: 'power-chords',
+        to_id: 'string-6',
+        type: 'requires' as const,
+        level: 'accurate' as const,
+      },
       { from_id: 'blocked', to_id: 'chords', type: 'requires' as const, level: 'fluent' as const },
     ],
   }
@@ -271,7 +303,52 @@ describe('composeSession — caught up: review ahead, then stretch', () => {
   it('stretches into ready nodes off the path, those building on what the student has first', () => {
     const s = composeSession(input({ items, states, graph, minutes: 1 }))
     expect(pick(s, 'stretch').sort()).toEqual(['cell-10', 'cell-11', 'cell-20'])
-    expect(entries(s)).toContainEqual({ item_key: 'cell-20', reason: 'stretch', node_id: 'power-chords' })
+    expect(entries(s)).toContainEqual({
+      item_key: 'cell-20',
+      reason: 'stretch',
+      node_id: 'power-chords',
+    })
+  })
+
+  it('ranks stretch by the graph alone: of two ready next steps, the one nearer what the student has', () => {
+    const deepGraph = {
+      nodes: [...nodes, node('next-step', null), node('two-steps', null), node('one-step', null)],
+      edges: [
+        {
+          from_id: 'next-step',
+          to_id: 'string-6',
+          type: 'requires' as const,
+          level: 'accurate' as const,
+        },
+        {
+          from_id: 'two-steps',
+          to_id: 'next-step',
+          type: 'requires' as const,
+          level: 'accurate' as const,
+        },
+        {
+          from_id: 'one-step',
+          to_id: 'string-6',
+          type: 'requires' as const,
+          level: 'accurate' as const,
+        },
+      ],
+    }
+    // next-step is already mastered, so two-steps is ready too — but sits deeper in the chain.
+    const deepItems = [...known, cell(70, 'two-steps'), cell(72, 'next-step'), cell(73, 'one-step')]
+    const deepStates = new Map([
+      ...states,
+      ['cell-72', seen('cell-72', { level: 'fluent', effective_level: 'fluent' })],
+    ])
+    // Room for one review ahead and one stretch.
+    const s = composeSession(
+      input({ items: deepItems, states: deepStates, graph: deepGraph, minutes: 0.4 }),
+    )
+    expect(
+      entries(s)
+        .filter((e) => e.reason === 'stretch')
+        .map((e) => e.item_key),
+    ).toEqual(['cell-73'])
   })
 
   it('never stretches into a node whose requirements are not met', () => {
@@ -296,15 +373,82 @@ describe('composeSession — caught up: review ahead, then stretch', () => {
     const s = composeSession(
       input({
         items: [...known, playAlong('known-drill', 'technique'), power],
-        states: new Map([...states, ['known-drill', seen('known-drill', { level: 'fluent', fluency: 0.95 })]]),
+        states: new Map([
+          ...states,
+          ['known-drill', seen('known-drill', { level: 'fluent', fluency: 0.95 })],
+        ]),
         graph,
-        instrument_in_hand: true,
+        instrument_in_hand: GUITAR,
         minutes: 5,
       }),
     )
     expect(s.blocks).toEqual([
       { kind: 'warm_up', entries: [{ item_key: 'known-drill', reason: 'warm_up' }] },
-      { kind: 'focus', entries: [{ item_key: 'power', reason: 'stretch', node_id: 'power-chords' }] },
+      {
+        kind: 'focus',
+        entries: [{ item_key: 'power', reason: 'stretch', node_id: 'power-chords' }],
+      },
     ])
+  })
+})
+
+describe('composeSession — instruments', () => {
+  const bassCell: PracticeItem = {
+    kind: 'fretboard_cell',
+    item_key: 'bass-cell',
+    label: 'bass cell',
+    skill_ids: ['string-6'],
+    concept_ids: [],
+    instrument_id: BASS,
+    instrument_ids: [BASS],
+    string: 4,
+    fret: 1,
+    note_name: 'F',
+  }
+  const bassDrill: PlayAlongItem = {
+    ...playAlong('bass-drill', 'technique'),
+    instrument_ids: [BASS],
+  }
+  const theory: PracticeItem = {
+    kind: 'exercise',
+    item_key: 'theory',
+    label: 'theory',
+    skill_ids: ['fretboard'],
+    concept_ids: [],
+    instrument_ids: [],
+    exercise_id: 'x',
+    estimated_seconds: 20,
+  }
+  const keys = (s: Session) => entries(s).map((e) => e.item_key)
+
+  it('with an instrument in hand, never brings an item for another instrument', () => {
+    const s = composeSession(
+      input({
+        items: [playAlong('drill', 'technique'), bassDrill],
+        instrument_in_hand: GUITAR,
+        instrument_ids: [GUITAR, BASS],
+        minutes: 15,
+      }),
+    )
+    expect(keys(s)).toContain('drill')
+    expect(keys(s)).not.toContain('bass-drill')
+  })
+
+  it('in your head, covers every instrument the student plays and none they don’t', () => {
+    const items = [cell(1), bassCell, theory]
+    expect(keys(composeSession(input({ items, instrument_ids: [GUITAR, BASS] }))).sort()).toEqual([
+      'bass-cell',
+      'cell-1',
+      'theory',
+    ])
+    expect(keys(composeSession(input({ items, instrument_ids: [GUITAR] }))).sort()).toEqual([
+      'cell-1',
+      'theory',
+    ])
+  })
+
+  it('keeps items for every instrument, like a theory question, available whatever is in hand', () => {
+    const s = composeSession(input({ items: [theory], instrument_ids: [BASS] }))
+    expect(keys(s)).toEqual(['theory'])
   })
 })

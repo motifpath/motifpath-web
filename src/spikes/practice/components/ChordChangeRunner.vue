@@ -55,28 +55,59 @@ function rate(rating: Rating) {
   <div class="flex flex-col gap-4">
     <div class="flex items-baseline justify-between">
       <p class="text-lg font-semibold">{{ item.label }}</p>
-      <p class="text-sm text-ink-muted">Best {{ best ?? '—' }} · goal {{ item.target_changes_per_minute }}/min</p>
+      <p class="text-sm text-ink-muted">
+        Best {{ best ?? '—' }} · goal {{ item.target_changes_per_minute }}/min
+      </p>
     </div>
     <div class="grid grid-cols-2 gap-2">
-      <div v-for="d in [from, to]" :key="d.diagram_id" class="overflow-x-auto rounded-lg bg-surface-raised p-2">
+      <div
+        v-for="d in [from, to]"
+        :key="d.diagram_id"
+        class="overflow-x-auto rounded-lg bg-surface-raised p-2"
+      >
         <p class="mb-1 text-sm font-semibold">{{ d.names.en }}</p>
-        <FrettedDiagramView :diagram="d" :instrument="guitar" :diagram-ref="{ diagram_id: d.diagram_id, layers: { label: 'note' } }" :region-info="false" compact />
+        <FrettedDiagramView
+          :diagram="d"
+          :instrument="guitar"
+          :diagram-ref="{ diagram_id: d.diagram_id, layers: { label: 'note' } }"
+          :region-info="false"
+          compact
+        />
       </div>
     </div>
 
-    <button v-if="phase === 'ready'" type="button" class="rounded-lg bg-accent p-3 text-accent-fg" @click="start">
+    <button
+      v-if="phase === 'ready'"
+      type="button"
+      class="rounded-lg bg-accent p-3 text-accent-fg"
+      @click="start"
+    >
       Start the minute — switch back and forth, count each change
     </button>
     <template v-else-if="phase === 'running'">
       <p class="text-center text-5xl font-semibold tabular-nums">{{ left }}</p>
-      <button type="button" class="rounded-lg border border-border p-3" @click="stopEarly">Stop</button>
+      <button type="button" class="rounded-lg border border-border p-3" @click="stopEarly">
+        Stop
+      </button>
     </template>
     <template v-else>
       <p class="font-semibold">How many changes did you make?</p>
       <div class="flex items-center justify-center gap-4">
-        <button type="button" class="h-7 w-7 rounded-full border border-border text-xl" @click="count = Math.max(0, count - 1)">−</button>
+        <button
+          type="button"
+          class="h-7 w-7 rounded-full border border-border text-xl"
+          @click="count = Math.max(0, count - 1)"
+        >
+          −
+        </button>
         <span class="w-16 text-center text-3xl font-semibold tabular-nums">{{ count }}</span>
-        <button type="button" class="h-7 w-7 rounded-full border border-border text-xl" @click="count++">+</button>
+        <button
+          type="button"
+          class="h-7 w-7 rounded-full border border-border text-xl"
+          @click="count++"
+        >
+          +
+        </button>
       </div>
       <p class="font-semibold">And how clean were they?</p>
       <RatingButtons @rate="rate" />

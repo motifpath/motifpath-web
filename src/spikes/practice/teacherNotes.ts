@@ -27,7 +27,10 @@ function practisedSince(state: KnowledgeState | undefined, since: string): boole
 }
 
 export function isLive(note: TeacherNote, now: Date): boolean {
-  return note.closed_at === null && now.getTime() - Date.parse(note.created_at) <= SUGGESTION_SAFETY_DAYS * DAY_MS
+  return (
+    note.closed_at === null &&
+    now.getTime() - Date.parse(note.created_at) <= SUGGESTION_SAFETY_DAYS * DAY_MS
+  )
 }
 
 export function openSuggestions(notes: TeacherNote[], ctx: SuggestionContext): OpenSuggestions {
@@ -36,14 +39,16 @@ export function openSuggestions(notes: TeacherNote[], ctx: SuggestionContext): O
   for (const note of notes.filter((n) => isLive(n, ctx.now))) {
     for (const key of note.suggested_item_keys) {
       const state = ctx.states.get(key)
-      const met = practisedSince(state, note.created_at) && atLeast(state!.effective_level, note.target_level)
+      const met =
+        practisedSince(state, note.created_at) && atLeast(state!.effective_level, note.target_level)
       if (!met) items.add(key)
     }
     for (const id of [...note.needs_work.skill_ids, ...note.needs_work.concept_ids]) {
       const practised = itemsUnder(ctx.nodes, ctx.items, id).some((i) =>
         practisedSince(ctx.states.get(i.item_key), note.created_at),
       )
-      const met = practised && atLeast(nodeLevel(ctx.nodes, ctx.items, ctx.states, id), note.target_level)
+      const met =
+        practised && atLeast(nodeLevel(ctx.nodes, ctx.items, ctx.states, id), note.target_level)
       if (!met) nodes.add(id)
     }
   }

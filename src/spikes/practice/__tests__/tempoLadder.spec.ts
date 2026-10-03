@@ -64,7 +64,7 @@ describe('startingBpm', () => {
     expect(startingBpm(params, null)).toBe(70)
   })
 
-  it('starts at the best clean tempo — warming up is the warm-up block\'s job', () => {
+  it("starts at the best clean tempo — warming up is the warm-up block's job", () => {
     expect(startingBpm(params, 100)).toBe(100)
   })
 

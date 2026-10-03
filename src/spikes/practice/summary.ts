@@ -13,7 +13,9 @@ import {
   LEVEL_ORDER,
   nodeLevel,
   readiness,
+  requiresDepth,
 } from '@/spikes/practice/graph'
+import { fits } from '@/spikes/practice/instruments'
 import type {
   Evidence,
   GraphNode,
@@ -85,7 +87,10 @@ export function summarize(input: SummaryInput): StudentSummary {
   const { graph, items, now } = input
   const byId = new Map(graph.nodes.map((n) => [n.node_id, n]))
   const direct = (id: string) =>
-    items.filter((i) => i.skill_ids.includes(id) || i.concept_ids.includes(id))
+    items.filter(
+      (i) =>
+        fits(i, input.instrument_id) && (i.skill_ids.includes(id) || i.concept_ids.includes(id)),
+    )
   const practiceNodes = graph.nodes.filter(
     (n) => isForInstrument(n, input.instrument_id) && direct(n.node_id).length > 0,
   )
@@ -96,7 +101,7 @@ export function summarize(input: SummaryInput): StudentSummary {
     const own = direct(id)
     const seen = own.filter((i) => started(states, i)).map((i) => states.get(i.item_key)!)
     return {
-      level: nodeLevel(graph.nodes, items, states, id),
+      level: nodeLevel(graph.nodes, items, states, id, input.instrument_id),
       met: seen.length,
       total: own.length,
       accuracy: mean(seen.map((s) => s.accuracy)),
@@ -143,8 +148,13 @@ export function summarize(input: SummaryInput): StudentSummary {
       r: readiness(graph, items, input.states_now, n.node_id, input.instrument_id),
     }))
     .filter(({ r }) => r.met === r.total)
-    // Next steps that build on something the student has come first.
-    .sort((a, b) => b.r.total - a.r.total)
+    // Next steps that build on something the student has come first, then the nearest to the basics.
+    .sort(
+      (a, b) =>
+        Number(b.r.total > 0) - Number(a.r.total > 0) ||
+        requiresDepth(graph, a.n.node_id, input.instrument_id) -
+          requiresDepth(graph, b.n.node_id, input.instrument_id),
+    )
     .slice(0, MAX_START_SUGGESTIONS)
   for (const { n } of ready) opportunities.push({ kind: 'start', node_id: n.node_id })
 

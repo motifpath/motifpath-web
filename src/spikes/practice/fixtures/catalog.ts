@@ -4,7 +4,7 @@
  */
 import type { components } from '@/api/generated/core-domain'
 import { fretboardCellItems } from '@/spikes/practice/drillGenerator'
-import { GUITAR_ID } from '@/spikes/practice/fixtures/graph'
+import { BASS_ID, GUITAR_ID } from '@/spikes/practice/fixtures/graph'
 import type { GradeContext } from '@/spikes/practice/graders'
 import { benchmarkThresholds } from '@/spikes/practice/thresholds'
 import type { ThresholdBook } from '@/spikes/practice/thresholds'
@@ -37,16 +37,44 @@ export const pathSkillIds = [
   'hear-intervals',
 ]
 
+export const bass: Instrument = {
+  instrument_id: BASS_ID,
+  names: { en: 'Electric bass' },
+  languages: ['en'],
+  family: 'fretted',
+  string_count: 4,
+  tuning: ['E1', 'A1', 'D2', 'G2'],
+  default_voice_id: 'electric-bass',
+}
+
+export const instruments: Record<string, Instrument> = { [GUITAR_ID]: guitar, [BASS_ID]: bass }
+
+/** Ana's enrolments: her path is for acoustic guitar. */
+export const enrolments = [{ instrument_ids: [GUITAR_ID] }]
+
 // ── Diagrams ───────────────────────────────────────────────────────────────────
 
 const eighth = { num: 1, den: 8 }
 const quarter = { num: 1, den: 4 }
 
-function pos(id: string, string: number, fret: number, interval: DiagramPosition['interval'], note: string): DiagramPosition {
+function pos(
+  id: string,
+  string: number,
+  fret: number,
+  interval: DiagramPosition['interval'],
+  note: string,
+): DiagramPosition {
   return { position_id: id, string, fret, interval, note_name: note, shape: 'dot' }
 }
 
-function diagram(id: string, name: string, root: string, positions: DiagramPosition[], sequence: SequenceStep[], tempo: number): Diagram {
+function diagram(
+  id: string,
+  name: string,
+  root: string,
+  positions: DiagramPosition[],
+  sequence: SequenceStep[],
+  tempo: number,
+): Diagram {
   return {
     diagram_id: id,
     instrument_id: guitar.instrument_id,
@@ -90,7 +118,11 @@ export const pentatonicRun = diagram(
   'A minor pentatonic — up and down',
   'A',
   box,
-  [...box, ...[...box].reverse()].map((p) => ({ position_ids: [p.position_id!], value: eighth, strum: 'none' as const })),
+  [...box, ...[...box].reverse()].map((p) => ({
+    position_ids: [p.position_id!],
+    value: eighth,
+    strum: 'none' as const,
+  })),
   70,
 )
 
@@ -112,7 +144,9 @@ export const bluesLick = diagram(
   'A',
   lickPositions,
   [
-    ...lickPositions.slice(0, 6).map((p) => ({ position_ids: [p.position_id!], value: eighth, strum: 'none' as const })),
+    ...lickPositions
+      .slice(0, 6)
+      .map((p) => ({ position_ids: [p.position_id!], value: eighth, strum: 'none' as const })),
     { position_ids: ['l6'], value: quarter, strum: 'none' },
     { position_ids: ['l7'], value: quarter, strum: 'none' },
   ],
@@ -123,8 +157,18 @@ export const aMinorChord = diagram(
   'diagram-a-minor',
   'A minor (open)',
   'A',
-  [pos('am0', 5, 0, 'R', 'A'), pos('am1', 4, 2, '5', 'E'), pos('am2', 3, 2, 'R', 'A'), pos('am3', 2, 1, 'b3', 'C'), pos('am4', 1, 0, '5', 'E')],
-  Array.from({ length: 4 }, () => ({ position_ids: ['am0', 'am1', 'am2', 'am3', 'am4'], value: quarter, strum: 'down' as const })),
+  [
+    pos('am0', 5, 0, 'R', 'A'),
+    pos('am1', 4, 2, '5', 'E'),
+    pos('am2', 3, 2, 'R', 'A'),
+    pos('am3', 2, 1, 'b3', 'C'),
+    pos('am4', 1, 0, '5', 'E'),
+  ],
+  Array.from({ length: 4 }, () => ({
+    position_ids: ['am0', 'am1', 'am2', 'am3', 'am4'],
+    value: quarter,
+    strum: 'down' as const,
+  })),
   80,
 )
 
@@ -133,8 +177,18 @@ export const cMajorChord = {
     'diagram-c-major',
     'C major (open)',
     'C',
-    [pos('c0', 5, 3, 'R', 'C'), pos('c1', 4, 2, '3', 'E'), pos('c2', 3, 0, '5', 'G'), pos('c3', 2, 1, 'R', 'C'), pos('c4', 1, 0, '3', 'E')],
-    Array.from({ length: 4 }, () => ({ position_ids: ['c0', 'c1', 'c2', 'c3', 'c4'], value: quarter, strum: 'down' as const })),
+    [
+      pos('c0', 5, 3, 'R', 'C'),
+      pos('c1', 4, 2, '3', 'E'),
+      pos('c2', 3, 0, '5', 'G'),
+      pos('c3', 2, 1, 'R', 'C'),
+      pos('c4', 1, 0, '3', 'E'),
+    ],
+    Array.from({ length: 4 }, () => ({
+      position_ids: ['c0', 'c1', 'c2', 'c3', 'c4'],
+      value: quarter,
+      strum: 'down' as const,
+    })),
     80,
   ),
   mode: 'major' as const,
@@ -158,13 +212,20 @@ export const powerChordRiff = diagram(
   'A',
   powerPositions,
   ['p0', 'p1', 'p2', 'p3'].flatMap((id) =>
-    Array.from({ length: 2 }, () => ({ position_ids: [`${id}r`, `${id}5`], value: quarter, strum: 'down' as const })),
+    Array.from({ length: 2 }, () => ({
+      position_ids: [`${id}r`, `${id}5`],
+      value: quarter,
+      strum: 'down' as const,
+    })),
   ),
   80,
 )
 
 export const diagrams: Record<string, Diagram> = Object.fromEntries(
-  [pentatonicRun, bluesLick, aMinorChord, cMajorChord, powerChordRiff].map((d) => [d.diagram_id, d]),
+  [pentatonicRun, bluesLick, aMinorChord, cMajorChord, powerChordRiff].map((d) => [
+    d.diagram_id,
+    d,
+  ]),
 )
 
 // ── Authored exercises (simplified: text options only) ───────────────────────
@@ -200,6 +261,11 @@ export const exercises: SpikeExercise[] = [
 
 // ── Items ──────────────────────────────────────────────────────────────────────
 
+export const bassCellItems = fretboardCellItems(bass, {
+  maxFret: 11,
+  skillIdFor: (s) => (s >= 3 ? 'find-notes-root-strings' : 'find-notes-top-strings'),
+}).map((i) => ({ ...i, label: `${i.label} (bass)`, concept_ids: ['note-names'] }))
+
 export const cellItems = fretboardCellItems(guitar, {
   maxFret: 11,
   skillIdFor: (s) => (s >= 5 ? 'find-notes-root-strings' : 'find-notes-top-strings'),
@@ -215,12 +281,14 @@ export const AM_C_CHANGES = 'chord_change:diagram-a-minor:diagram-c-major'
 
 export const items: PracticeItem[] = [
   ...cellItems,
+  ...bassCellItems,
   ...exercises.map((e) => ({
     kind: 'exercise' as const,
     item_key: `exercise:${e.exercise_id}`,
     label: e.prompt,
     skill_ids: ['hear-intervals'],
     concept_ids: ['interval-names'],
+    instrument_ids: [],
     exercise_id: e.exercise_id,
     estimated_seconds: 20,
   })),
@@ -230,9 +298,17 @@ export const items: PracticeItem[] = [
     label: 'Alternate picking — pentatonic up and down',
     skill_ids: ['alternate-picking'],
     concept_ids: ['pentatonic-shapes'],
+    instrument_ids: [GUITAR_ID],
     diagram_id: pentatonicRun.diagram_id,
     purpose: 'technique',
-    params: { start_bpm: 70, target_bpm: 120, step_bpm: 5, cleans_to_advance: 2, loops: 2, count_in_beats: 4 },
+    params: {
+      start_bpm: 70,
+      target_bpm: 120,
+      step_bpm: 5,
+      cleans_to_advance: 2,
+      loops: 2,
+      count_in_beats: 4,
+    },
   },
   {
     kind: 'play_along',
@@ -240,9 +316,17 @@ export const items: PracticeItem[] = [
     label: 'Blues lick in A',
     skill_ids: ['play-pentatonic-position-1'],
     concept_ids: ['minor-pentatonic'],
+    instrument_ids: [GUITAR_ID],
     diagram_id: bluesLick.diagram_id,
     purpose: 'repertoire',
-    params: { start_bpm: 70, target_bpm: 100, step_bpm: 5, cleans_to_advance: 2, loops: 4, count_in_beats: 4 },
+    params: {
+      start_bpm: 70,
+      target_bpm: 100,
+      step_bpm: 5,
+      cleans_to_advance: 2,
+      loops: 4,
+      count_in_beats: 4,
+    },
   },
   {
     kind: 'play_along',
@@ -250,9 +334,17 @@ export const items: PracticeItem[] = [
     label: 'Power chords A5 – G5 – C5 – D5',
     skill_ids: ['play-power-chords'],
     concept_ids: [],
+    instrument_ids: [GUITAR_ID],
     diagram_id: powerChordRiff.diagram_id,
     purpose: 'technique',
-    params: { start_bpm: 70, target_bpm: 110, step_bpm: 5, cleans_to_advance: 2, loops: 2, count_in_beats: 4 },
+    params: {
+      start_bpm: 70,
+      target_bpm: 110,
+      step_bpm: 5,
+      cleans_to_advance: 2,
+      loops: 2,
+      count_in_beats: 4,
+    },
   },
   {
     kind: 'chord_change',
@@ -260,6 +352,7 @@ export const items: PracticeItem[] = [
     label: 'Am ↔ C changes',
     skill_ids: ['change-chords'],
     concept_ids: ['open-chord-shapes'],
+    instrument_ids: [GUITAR_ID],
     from_diagram_id: aMinorChord.diagram_id,
     to_diagram_id: cMajorChord.diagram_id,
     target_changes_per_minute: 60,
@@ -269,19 +362,30 @@ export const items: PracticeItem[] = [
 /** The team's own times on each timed drill: the first version of every threshold. */
 export const benchmarkBook: ThresholdBook = benchmarkThresholds(
   [
-    { template: 'fretboard_cell:name_the_note', latencies_ms: [1250, 1300, 1350, 1400, 1500], tap_ms: 350 },
-    { template: 'fretboard_cell:find_the_note', latencies_ms: [1500, 1550, 1600, 1650, 1700], tap_ms: 350 },
+    {
+      template: 'fretboard_cell:name_the_note',
+      latencies_ms: [1250, 1300, 1350, 1400, 1500],
+      tap_ms: 350,
+    },
+    {
+      template: 'fretboard_cell:find_the_note',
+      latencies_ms: [1500, 1550, 1600, 1650, 1700],
+      tap_ms: 350,
+    },
   ],
   '2026-09-01T00:00:00Z',
 )
 
 /** The reference data graders check answers against. */
 export const gradeContext: GradeContext = {
-  tuningOf: (id) => (id === guitar.instrument_id ? (guitar.tuning ?? null) : null),
+  tuningOf: (id) => instruments[id]?.tuning ?? null,
   exerciseKey: (id) => {
     const e = exercises.find((x) => x.exercise_id === id)
     return e
-      ? { option_ids: e.options.map((o) => o.id), correct_option_ids: e.options.filter((o) => o.correct).map((o) => o.id) }
+      ? {
+          option_ids: e.options.map((o) => o.id),
+          correct_option_ids: e.options.filter((o) => o.correct).map((o) => o.id),
+        }
       : null
   },
 }

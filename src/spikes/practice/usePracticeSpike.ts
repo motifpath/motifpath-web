@@ -5,8 +5,16 @@
  */
 import { computed, reactive, watch } from 'vue'
 
-import { benchmarkBook, gradeContext, items, pathSkillIds, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
-import { graph, GUITAR_ID } from '@/spikes/practice/fixtures/graph'
+import {
+  benchmarkBook,
+  enrolments,
+  gradeContext,
+  items,
+  pathSkillIds,
+  STUDENT_ID,
+} from '@/spikes/practice/fixtures/catalog'
+import { graph } from '@/spikes/practice/fixtures/graph'
+import { studentInstruments } from '@/spikes/practice/instruments'
 import { ingestAnswer } from '@/spikes/practice/ingest'
 import { deriveStates } from '@/spikes/practice/mastery'
 import type {
@@ -23,7 +31,12 @@ import { composeSession } from '@/spikes/practice/sessionComposer'
 import { simulate } from '@/spikes/practice/simulator'
 import { summarize } from '@/spikes/practice/summary'
 import { simulatePopulation } from '@/spikes/practice/populationSimulator'
-import { activeThreshold, calibrate, sessionObservations, tapBaseline } from '@/spikes/practice/thresholds'
+import {
+  activeThreshold,
+  calibrate,
+  sessionObservations,
+  tapBaseline,
+} from '@/spikes/practice/thresholds'
 import type { Threshold } from '@/spikes/practice/thresholds'
 import { openSuggestions } from '@/spikes/practice/teacherNotes'
 import type { OpenSuggestions } from '@/spikes/practice/teacherNotes'
@@ -32,7 +45,7 @@ import type { Archetype } from '@/spikes/practice/simulator'
 export const SIM_START = new Date('2026-10-01T09:00:00Z')
 export const SIM_DAYS = 21
 const DAY_MS = 86_400_000
-const STORAGE_KEY = 'practice-spike-live-v3'
+const STORAGE_KEY = 'practice-spike-live-v4'
 
 interface LiveData {
   evidence: Evidence[]
@@ -44,9 +57,19 @@ interface LiveData {
   felt: FeltRating[]
   /** Threshold versions calibrated in this browser, on top of the benchmark. */
   thresholds: Threshold[]
+  /** Instruments the student added in their profile, beyond their enrolments. */
+  profile_instrument_ids: string[]
 }
 
-const emptyLive = (): LiveData => ({ evidence: [], notes: [], closed: {}, tap_ms: null, felt: [], thresholds: [] })
+const emptyLive = (): LiveData => ({
+  evidence: [],
+  notes: [],
+  closed: {},
+  tap_ms: null,
+  felt: [],
+  thresholds: [],
+  profile_instrument_ids: [],
+})
 
 function loadLive(): LiveData {
   try {
@@ -78,7 +101,9 @@ watch(
   { deep: true },
 )
 
-const simulation = computed(() => simulate(state.archetype, { items, start: SIM_START, days: SIM_DAYS, seed: 1 }))
+const simulation = computed(() =>
+  simulate(state.archetype, { items, start: SIM_START, days: SIM_DAYS, seed: 1 }),
+)
 const now = computed(() => new Date(SIM_START.getTime() + state.day * DAY_MS))
 const before = (iso: string, t: Date) => Date.parse(iso) <= t.getTime()
 
@@ -108,22 +133,33 @@ function statesAt(t: Date): Map<string, KnowledgeState> {
   )
 }
 
-/** The home screen's one read: derived from the same evidence as everything else. */
-const summary = computed(() =>
-  summarize({
+const instrumentIds = computed(() =>
+  studentInstruments({ enrolments, profile_instrument_ids: state.live.profile_instrument_ids }),
+)
+
+const statesWeekAgo = computed(() => statesAt(new Date(now.value.getTime() - 7 * DAY_MS)))
+
+/** The home screen's one read for an instrument: derived from the same evidence as everything else. */
+function summaryFor(instrumentId: string) {
+  return summarize({
     graph,
     items,
-    instrument_id: GUITAR_ID,
+    instrument_id: instrumentId,
     now: now.value,
     states_now: states.value,
-    states_week_ago: statesAt(new Date(now.value.getTime() - 7 * DAY_MS)),
+    states_week_ago: statesWeekAgo.value,
     evidence: evidence.value,
-  }),
-)
+  })
+}
 
 /** What a note still steers: its suggestions not yet met, while it is open and recent. */
 function openFor(note: TeacherNote): OpenSuggestions {
-  return openSuggestions([note], { nodes: graph.nodes, items, states: states.value, now: now.value })
+  return openSuggestions([note], {
+    nodes: graph.nodes,
+    items,
+    states: states.value,
+    now: now.value,
+  })
 }
 
 const activeNotes = computed(() =>
@@ -160,10 +196,11 @@ export function usePracticeSpike() {
     clock,
     newId,
     statesAt,
-    summary,
+    summaryFor,
+    instrumentIds,
     book,
     felt,
-    compose(instrumentInHand: boolean, minutes: number): Session {
+    compose(instrumentInHand: string | null, minutes: number): Session {
       return composeSession({
         session_id: newId('session'),
         student_id: STUDENT_ID,
@@ -171,7 +208,7 @@ export function usePracticeSpike() {
         items,
         states: states.value,
         graph,
-        instrument_id: GUITAR_ID,
+        instrument_ids: instrumentIds.value,
         path_skill_ids: pathSkillIds,
         teacher_notes: activeNotes.value,
         instrument_in_hand: instrumentInHand,
@@ -213,8 +250,16 @@ export function usePracticeSpike() {
     },
     /** How a timed drill felt in a session; a second answer replaces the first. */
     rateFelt(sessionId: string, template: string, value: Felt) {
-      state.live.felt = state.live.felt.filter((f) => !(f.session_id === sessionId && f.template === template))
-      state.live.felt.push({ student_id: STUDENT_ID, session_id: sessionId, template, felt: value, occurred_at: clock() })
+      state.live.felt = state.live.felt.filter(
+        (f) => !(f.session_id === sessionId && f.template === template),
+      )
+      state.live.felt.push({
+        student_id: STUDENT_ID,
+        session_id: sessionId,
+        template,
+        felt: value,
+        occurred_at: clock(),
+      })
     },
     /**
      * Recalibrates a template from a simulated population whose true fluent time is
@@ -238,6 +283,12 @@ export function usePracticeSpike() {
       const next = calibrate(prior, observations, at)
       if (next !== prior) state.live.thresholds.push(next)
       return next
+    },
+    toggleProfileInstrument(id: string) {
+      const list = state.live.profile_instrument_ids
+      state.live.profile_instrument_ids = list.includes(id)
+        ? list.filter((x) => x !== id)
+        : [...list, id]
     },
     closeNote(id: string) {
       state.live.closed[id] = clock()

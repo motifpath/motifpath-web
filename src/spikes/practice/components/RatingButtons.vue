@@ -4,7 +4,12 @@ import type { Rating } from '@/spikes/practice/model'
 const emit = defineEmits<{ rate: [rating: Rating] }>()
 
 const options: { rating: Rating; label: string; hint: string; cls: string }[] = [
-  { rating: 'struggled', label: 'Struggled', hint: 'mistakes, lost the beat', cls: 'bg-danger-muted' },
+  {
+    rating: 'struggled',
+    label: 'Struggled',
+    hint: 'mistakes, lost the beat',
+    cls: 'bg-danger-muted',
+  },
   { rating: 'almost', label: 'Almost', hint: 'a slip or two', cls: 'bg-warning-muted' },
   { rating: 'clean', label: 'Clean', hint: 'in time, every note', cls: 'bg-success-muted' },
 ]

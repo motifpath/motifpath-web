@@ -46,7 +46,9 @@ describe('ingestAnswer', () => {
   })
 
   it('stores nothing for an item it does not know', () => {
-    expect(ingestAnswer(answered({ item_key: 'fretboard_cell:nope:1:1' }), items, gradeContext)).toEqual({
+    expect(
+      ingestAnswer(answered({ item_key: 'fretboard_cell:nope:1:1' }), items, gradeContext),
+    ).toEqual({
       rejected: 'unknown_item',
     })
   })

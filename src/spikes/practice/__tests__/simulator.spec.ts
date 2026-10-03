@@ -22,14 +22,18 @@ const string6 = cellItems.filter((c) => c.string === 6).map((c) => c.item_key)
 describe('simulate', () => {
   it('improving: most string-6 cells are fluent or better after three weeks', () => {
     const { evidence } = simulate('improving', { items, start: START, days: 21, seed: 1 })
-    const fluent = string6.filter((k) => ['fluent', 'retained'].includes(stateAt(evidence, k, 21).effective_level))
+    const fluent = string6.filter((k) =>
+      ['fluent', 'retained'].includes(stateAt(evidence, k, 21).effective_level),
+    )
     expect(fluent.length).toBeGreaterThanOrEqual(8)
     expect(stateAt(evidence, ALTERNATE_PICKING, 21).best_clean_bpm).toBeGreaterThanOrEqual(100)
   })
 
   it('plateau: practises every day but nothing reaches fluent', () => {
     const { evidence } = simulate('plateau', { items, start: START, days: 21, seed: 1 })
-    const fluent = string6.filter((k) => ['fluent', 'retained'].includes(stateAt(evidence, k, 21).level))
+    const fluent = string6.filter((k) =>
+      ['fluent', 'retained'].includes(stateAt(evidence, k, 21).level),
+    )
     expect(fluent.length).toBeLessThanOrEqual(2)
     expect(stateAt(evidence, ALTERNATE_PICKING, 21).best_clean_bpm ?? 0).toBeLessThan(90)
   })
@@ -41,7 +45,12 @@ describe('simulate', () => {
   })
 
   it('overconfident: the teacher review corrects the self-claimed tempo and leaves it unverified', () => {
-    const { evidence, notes } = simulate('overconfident', { items, start: START, days: 21, seed: 1 })
+    const { evidence, notes } = simulate('overconfident', {
+      items,
+      start: START,
+      days: 21,
+      seed: 1,
+    })
     expect(notes).toHaveLength(1)
     expect(notes[0]!.needs_work.skill_ids).toContain('alternate-picking')
     const s = stateAt(evidence, ALTERNATE_PICKING, 21)

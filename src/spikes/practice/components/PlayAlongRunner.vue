@@ -24,7 +24,9 @@ const base = diagrams[props.item.diagram_id]!
 const best = spike.states.value.get(props.item.item_key)?.best_clean_bpm ?? null
 /** A warm-up plays comfortably below the best clean tempo; the ladder starts at it. */
 const warmUpBpm = (b: number | null) =>
-  b === null ? props.item.params.start_bpm : Math.max(props.item.params.start_bpm, Math.round((b * 0.8) / 5) * 5)
+  b === null
+    ? props.item.params.start_bpm
+    : Math.max(props.item.params.start_bpm, Math.round((b * 0.8) / 5) * 5)
 const bpm = ref(props.warmUp ? warmUpBpm(best) : startingBpm(props.item.params, best))
 const takes = ref<Take[]>([])
 
@@ -32,11 +34,20 @@ const takes = ref<Take[]>([])
 const takeDiagram = {
   ...base,
   sequence: [
-    ...Array.from({ length: props.item.params.count_in_beats }, () => ({ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' as const })),
+    ...Array.from({ length: props.item.params.count_in_beats }, () => ({
+      position_ids: [],
+      value: { num: 1, den: 4 },
+      strum: 'none' as const,
+    })),
     ...Array.from({ length: props.item.params.loops }, () => base.sequence).flat(),
   ],
 }
-const playback = { tempo_bpm: bpm.value, voice_id: null, direction: 'as_authored' as const, loop: false }
+const playback = {
+  tempo_bpm: bpm.value,
+  voice_id: null,
+  direction: 'as_authored' as const,
+  loop: false,
+}
 const player = useDiagramPlayback(() => ({ diagram: takeDiagram, instrument: guitar, playback }))
 
 const phase = ref<'ready' | 'playing' | 'rating'>('ready')
@@ -123,12 +134,16 @@ const diagramRef = { diagram_id: base.diagram_id, layers: { label: 'interval' as
   <div class="flex flex-col gap-4">
     <div class="flex items-baseline justify-between gap-2">
       <p class="text-lg font-semibold">{{ item.label }}</p>
-      <p class="text-2xl font-semibold tabular-nums">{{ bpm }} <span class="text-sm text-ink-muted">BPM</span></p>
+      <p class="text-2xl font-semibold tabular-nums">
+        {{ bpm }} <span class="text-sm text-ink-muted">BPM</span>
+      </p>
     </div>
     <div class="h-1 overflow-hidden rounded-full bg-surface-sunken">
       <div class="h-1 bg-accent transition-all" :style="{ width: `${progressToTarget * 100}%` }" />
     </div>
-    <p class="text-xs text-ink-muted">Goal {{ item.params.target_bpm }} BPM · best clean so far {{ best ?? '—' }}</p>
+    <p class="text-xs text-ink-muted">
+      Goal {{ item.params.target_bpm }} BPM · best clean so far {{ best ?? '—' }}
+    </p>
 
     <div class="relative overflow-x-auto rounded-lg bg-surface-raised p-3">
       <FrettedDiagramView
@@ -149,23 +164,42 @@ const diagramRef = { diagram_id: base.diagram_id, layers: { label: 'interval' as
     <template v-if="phase === 'ready'">
       <p v-if="message" class="text-sm">{{ message }}</p>
       <div class="flex flex-wrap items-center gap-4 text-sm">
-        <label class="flex items-center gap-2"><input v-model="showGuide" type="checkbox" /> Moving guide</label>
-        <label class="flex items-center gap-2"><input v-model="recordTake" type="checkbox" /> Record this take</label>
+        <label class="flex items-center gap-2"
+          ><input v-model="showGuide" type="checkbox" /> Moving guide</label
+        >
+        <label class="flex items-center gap-2"
+          ><input v-model="recordTake" type="checkbox" /> Record this take</label
+        >
       </div>
       <p v-if="recorder.error.value" class="text-sm text-danger">{{ recorder.error.value }}</p>
       <div class="flex gap-2">
-        <button type="button" class="flex-1 rounded-lg bg-accent p-3 text-accent-fg" @click="startTake">
-          {{ takes.length ? 'Next take' : 'Start take' }} · {{ item.params.loops }}× after a {{ item.params.count_in_beats }}-beat count-in
+        <button
+          type="button"
+          class="flex-1 rounded-lg bg-accent p-3 text-accent-fg"
+          @click="startTake"
+        >
+          {{ takes.length ? 'Next take' : 'Start take' }} · {{ item.params.loops }}× after a
+          {{ item.params.count_in_beats }}-beat count-in
         </button>
-        <button v-if="takes.length" type="button" class="rounded-lg border border-border p-3" @click="emit('done')">Done</button>
+        <button
+          v-if="takes.length"
+          type="button"
+          class="rounded-lg border border-border p-3"
+          @click="emit('done')"
+        >
+          Done
+        </button>
       </div>
     </template>
 
     <template v-else-if="phase === 'playing'">
       <p class="text-sm text-ink-muted">
-        <span v-if="recorder.recording.value" class="text-danger">● Recording · </span>Play along — the take ends by itself.
+        <span v-if="recorder.recording.value" class="text-danger">● Recording · </span>Play along —
+        the take ends by itself.
       </p>
-      <button type="button" class="rounded-lg border border-border p-3" @click="endTake">Stop early</button>
+      <button type="button" class="rounded-lg border border-border p-3" @click="endTake">
+        Stop early
+      </button>
     </template>
 
     <template v-else>

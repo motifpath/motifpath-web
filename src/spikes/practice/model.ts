@@ -23,11 +23,11 @@ export type MasteryLevel = components['schemas']['MasteryLevel']
  * A skill or concept. In the spike `node_id` equals `key` for readable fixtures;
  * the API's ids are UUIDs. `instrument_ids` empty means every instrument.
  */
-export interface GraphNode
-  extends Pick<ApiKnowledgeNode, 'node_id' | 'kind' | 'key' | 'parent_id' | 'instrument_ids'> {
+export interface GraphNode extends Pick<
+  ApiKnowledgeNode,
+  'node_id' | 'kind' | 'key' | 'parent_id' | 'instrument_ids'
+> {
   name: string
-  /** The map's calibration annotation (authors only, not installed); ranks stretch picks. */
-  map_level: 'B' | 'EI' | 'I' | 'A' | null
 }
 
 export type GraphEdge = Pick<ApiKnowledgeEdge, 'from_id' | 'to_id' | 'type' | 'level'>
@@ -49,6 +49,8 @@ interface ItemBase {
   label: string
   skill_ids: string[]
   concept_ids: string[]
+  /** The instruments it's practised on; empty for every instrument (a theory question). */
+  instrument_ids: string[]
 }
 
 /** One cell of the fretboard: "what note is here?" / "where is this note?". */
@@ -285,7 +287,8 @@ export interface Session {
   session_id: string
   student_id: string
   started_at: string
-  instrument_in_hand: boolean
+  /** The instrument in the student's hands, or null for practice in their head. */
+  instrument_in_hand: string | null
   minutes: number
   blocks: SessionBlock[]
 }
@@ -300,7 +303,7 @@ interface PracticeEventBase {
 
 export interface SessionStartedEvent extends PracticeEventBase {
   event_type: 'practice.session_started'
-  instrument_in_hand: boolean
+  instrument_in_hand: string | null
   minutes: number
   /** The composed plan, so "why this item?" survives in the event log. */
   plan: SessionEntry[]

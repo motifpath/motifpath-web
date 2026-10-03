@@ -40,7 +40,10 @@ export function processEvidence(
   const late = prev.last_at !== null && Date.parse(e.occurred_at) < prev.last_at
   if (late) {
     const history = [...evidence.values()].filter((x) => x.item_key === e.item_key).sort(byTime)
-    folds.set(e.item_key, history.reduce((f, x) => foldStep(item, f, x, book), EMPTY_FOLD))
+    folds.set(
+      e.item_key,
+      history.reduce((f, x) => foldStep(item, f, x, book), EMPTY_FOLD),
+    )
   } else {
     folds.set(e.item_key, foldStep(item, prev, e, book))
   }

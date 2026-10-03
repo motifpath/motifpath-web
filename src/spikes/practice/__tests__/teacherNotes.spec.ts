@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import type { GraphNode, KnowledgeState, Level, PracticeItem, TeacherNote } from '@/spikes/practice/model'
+import type {
+  GraphNode,
+  KnowledgeState,
+  Level,
+  PracticeItem,
+  TeacherNote,
+} from '@/spikes/practice/model'
 import { openSuggestions } from '@/spikes/practice/teacherNotes'
 
 const NOW = new Date('2026-10-20T09:00:00Z')
@@ -8,8 +14,22 @@ const DAY_MS = 86_400_000
 const daysAgo = (d: number) => new Date(NOW.getTime() - d * DAY_MS).toISOString()
 
 const nodes: GraphNode[] = [
-  { node_id: 'picking', key: 'picking', kind: 'skill', name: 'Picking', parent_id: null, instrument_ids: [], map_level: null },
-  { node_id: 'empty', key: 'empty', kind: 'concept', name: 'Empty', parent_id: null, instrument_ids: [], map_level: null },
+  {
+    node_id: 'picking',
+    key: 'picking',
+    kind: 'skill',
+    name: 'Picking',
+    parent_id: null,
+    instrument_ids: [],
+  },
+  {
+    node_id: 'empty',
+    key: 'empty',
+    kind: 'concept',
+    name: 'Empty',
+    parent_id: null,
+    instrument_ids: [],
+  },
 ]
 
 const item: PracticeItem = {
@@ -18,9 +38,17 @@ const item: PracticeItem = {
   label: 'drill',
   skill_ids: ['picking'],
   concept_ids: [],
+  instrument_ids: [],
   diagram_id: 'd',
   purpose: 'technique',
-  params: { start_bpm: 60, target_bpm: 120, step_bpm: 5, cleans_to_advance: 2, loops: 2, count_in_beats: 4 },
+  params: {
+    start_bpm: 60,
+    target_bpm: 120,
+    step_bpm: 5,
+    cleans_to_advance: 2,
+    loops: 2,
+    count_in_beats: 4,
+  },
 }
 
 /** The drill at a level, last practised a day ago (after the default note). */
@@ -84,7 +112,10 @@ describe('openSuggestions', () => {
   })
 
   it('does not end before the student has practised it since the note', () => {
-    const open = openSuggestions([note({ suggested_item_keys: ['drill'] })], ctx(at('fluent', daysAgo(3))))
+    const open = openSuggestions(
+      [note({ suggested_item_keys: ['drill'] })],
+      ctx(at('fluent', daysAgo(3))),
+    )
     expect(open.item_keys).toEqual(['drill'])
   })
 
@@ -103,7 +134,10 @@ describe('openSuggestions', () => {
   })
 
   it('keeps a node with nothing to practise open until the note ends otherwise', () => {
-    const open = openSuggestions([note({ needs_work: { skill_ids: [], concept_ids: ['empty'] } })], ctx(new Map()))
+    const open = openSuggestions(
+      [note({ needs_work: { skill_ids: [], concept_ids: ['empty'] } })],
+      ctx(new Map()),
+    )
     expect(open.node_ids).toEqual(['empty'])
   })
 
@@ -124,7 +158,10 @@ describe('openSuggestions', () => {
 
   it('lists each open item or node once across notes', () => {
     const open = openSuggestions(
-      [note({ suggested_item_keys: ['drill'] }), note({ teacher_note_id: 'n2', suggested_item_keys: ['drill'] })],
+      [
+        note({ suggested_item_keys: ['drill'] }),
+        note({ teacher_note_id: 'n2', suggested_item_keys: ['drill'] }),
+      ],
       ctx(at('new')),
     )
     expect(open.item_keys).toEqual(['drill'])

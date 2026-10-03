@@ -33,7 +33,10 @@ export function useTakeRecorder() {
         stream?.getTracks().forEach((t) => t.stop())
         recording.value = false
         const blob = new Blob(chunks, { type: r.mimeType })
-        resolve({ url: URL.createObjectURL(blob), seconds: Math.round((performance.now() - startedAt) / 1000) })
+        resolve({
+          url: URL.createObjectURL(blob),
+          seconds: Math.round((performance.now() - startedAt) / 1000),
+        })
       }
       r.stop()
     })

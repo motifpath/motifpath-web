@@ -9,7 +9,13 @@ import { computed, ref } from 'vue'
 import RatingButtons from '@/spikes/practice/components/RatingButtons.vue'
 import { itemByKey, items, STUDENT_ID, TEACHER_ID } from '@/spikes/practice/fixtures/catalog'
 import { graph, nodeName } from '@/spikes/practice/fixtures/graph'
-import type { MasteryLevel, Rating, RubricCriterion, TeacherNote, TimestampedComment } from '@/spikes/practice/model'
+import type {
+  MasteryLevel,
+  Rating,
+  RubricCriterion,
+  TeacherNote,
+  TimestampedComment,
+} from '@/spikes/practice/model'
 import { isLive } from '@/spikes/practice/teacherNotes'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
@@ -42,7 +48,10 @@ const suggestable = items.filter((i) => i.kind !== 'fretboard_cell')
 
 function addComment() {
   if (!commentText.value.trim()) return
-  comments.value.push({ at_seconds: Math.round(video.value?.currentTime ?? 0), text: commentText.value.trim() })
+  comments.value.push({
+    at_seconds: Math.round(video.value?.currentTime ?? 0),
+    text: commentText.value.trim(),
+  })
   commentText.value = ''
 }
 
@@ -59,8 +68,13 @@ function noteStatus(n: TeacherNote): string {
   if (n.closed_at) return 'closed by the teacher'
   if (!isLive(n, spike.now.value)) return 'expired'
   const open = spike.openFor(n)
-  const names = [...open.item_keys.map((k) => itemByKey(k)?.label ?? k), ...open.node_ids.map(nodeName)]
-  return names.length ? `steering: ${names.join(', ')} (until ${n.target_level})` : `goal met (${n.target_level})`
+  const names = [
+    ...open.item_keys.map((k) => itemByKey(k)?.label ?? k),
+    ...open.node_ids.map(nodeName),
+  ]
+  return names.length
+    ? `steering: ${names.join(', ')} (until ${n.target_level})`
+    : `goal met (${n.target_level})`
 }
 
 function save() {
@@ -120,7 +134,12 @@ const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== n
       <div class="flex flex-col gap-1">
         <span class="text-sm font-semibold">About</span>
         <div class="flex flex-wrap gap-2 text-sm">
-          <button type="button" class="rounded-full border border-border px-3 py-1" :class="{ 'bg-accent-muted': takeId === null }" @click="selectTake(null)">
+          <button
+            type="button"
+            class="rounded-full border border-border px-3 py-1"
+            :class="{ 'bg-accent-muted': takeId === null }"
+            @click="selectTake(null)"
+          >
             Live lesson (no video)
           </button>
           <button
@@ -137,30 +156,63 @@ const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== n
       </div>
 
       <template v-if="take">
-        <video ref="video" :src="take.media_url" controls playsinline class="w-full rounded-lg bg-surface-sunken" />
+        <video
+          ref="video"
+          :src="take.media_url"
+          controls
+          playsinline
+          class="w-full rounded-lg bg-surface-sunken"
+        />
         <div class="flex gap-2">
-          <input v-model="commentText" class="flex-1 rounded-lg border border-border bg-surface p-2 text-sm" placeholder="Comment at the current moment…" @keydown.enter="addComment" />
-          <button type="button" class="rounded-lg border border-border px-3 text-sm" @click="addComment">Add</button>
+          <input
+            v-model="commentText"
+            class="flex-1 rounded-lg border border-border bg-surface p-2 text-sm"
+            placeholder="Comment at the current moment…"
+            @keydown.enter="addComment"
+          />
+          <button
+            type="button"
+            class="rounded-lg border border-border px-3 text-sm"
+            @click="addComment"
+          >
+            Add
+          </button>
         </div>
       </template>
       <label v-else class="flex flex-col gap-1 text-sm">
         <span class="font-semibold">Item played (optional)</span>
         <select v-model="itemKey" class="rounded-lg border border-border bg-surface p-2">
           <option :value="null">— none: general impressions —</option>
-          <option v-for="i in suggestable" :key="i.item_key" :value="i.item_key">{{ i.label }}</option>
+          <option v-for="i in suggestable" :key="i.item_key" :value="i.item_key">
+            {{ i.label }}
+          </option>
         </select>
       </label>
       <ul v-if="comments.length" class="text-sm">
-        <li v-for="(c, i) in comments" :key="i"><span class="text-ink-muted">{{ c.at_seconds }}s</span> — {{ c.text }}</li>
+        <li v-for="(c, i) in comments" :key="i">
+          <span class="text-ink-muted">{{ c.at_seconds }}s</span> — {{ c.text }}
+        </li>
       </ul>
 
       <template v-if="judgedKey">
         <span class="text-sm font-semibold">How was it?</span>
         <RatingButtons @rate="rating = $event" />
-        <p v-if="rating" class="text-sm">Rated: <strong>{{ rating }}</strong></p>
+        <p v-if="rating" class="text-sm">
+          Rated: <strong>{{ rating }}</strong>
+        </p>
         <div class="flex flex-wrap items-center gap-4 text-sm">
-          <label class="flex items-center gap-2">Clean at <input v-model.number="bpm" type="number" class="w-20 rounded-lg border border-border bg-surface p-1" /> BPM</label>
-          <label class="flex items-center gap-2"><input v-model="verified" type="checkbox" /> I vouch for it (verified)</label>
+          <label class="flex items-center gap-2"
+            >Clean at
+            <input
+              v-model.number="bpm"
+              type="number"
+              class="w-20 rounded-lg border border-border bg-surface p-1"
+            />
+            BPM</label
+          >
+          <label class="flex items-center gap-2"
+            ><input v-model="verified" type="checkbox" /> I vouch for it (verified)</label
+          >
         </div>
       </template>
 
@@ -182,12 +234,21 @@ const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== n
         </div>
       </div>
 
-      <textarea v-model="summary" rows="2" class="rounded-lg border border-border bg-surface p-2 text-sm" placeholder="Summary for the student" />
+      <textarea
+        v-model="summary"
+        rows="2"
+        class="rounded-lg border border-border bg-surface p-2 text-sm"
+        placeholder="Summary for the student"
+      />
 
       <div class="flex flex-col gap-1 text-sm">
         <span class="font-semibold">Needs work</span>
         <div class="flex flex-wrap gap-2">
-          <label v-for="s in skills" :key="s.node_id" class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
+          <label
+            v-for="s in skills"
+            :key="s.node_id"
+            class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5"
+          >
             <input v-model="needsWork" type="checkbox" :value="s.node_id" /> {{ s.name }}
           </label>
         </div>
@@ -195,7 +256,11 @@ const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== n
       <div class="flex flex-col gap-1 text-sm">
         <span class="font-semibold">Suggested practice</span>
         <div class="flex flex-wrap gap-2">
-          <label v-for="i in suggestable" :key="i.item_key" class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
+          <label
+            v-for="i in suggestable"
+            :key="i.item_key"
+            class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5"
+          >
             <input v-model="suggested" type="checkbox" :value="i.item_key" /> {{ i.label }}
           </label>
         </div>
@@ -209,27 +274,44 @@ const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== n
         </select>
       </label>
 
-      <button type="button" class="rounded-lg bg-accent p-3 text-accent-fg" @click="save">Save note</button>
-      <p v-if="savedAt" class="text-sm text-success">Saved — Ana's next session will bring it up.</p>
+      <button type="button" class="rounded-lg bg-accent p-3 text-accent-fg" @click="save">
+        Save note
+      </button>
+      <p v-if="savedAt" class="text-sm text-success">
+        Saved — Ana's next session will bring it up.
+      </p>
     </section>
 
     <section class="flex flex-col gap-2">
       <h2 class="text-lg font-semibold">Notes so far</h2>
-      <article v-for="n in spike.notes.value" :key="n.teacher_note_id" class="flex flex-col gap-1 rounded-lg bg-surface-raised p-3 text-sm">
+      <article
+        v-for="n in spike.notes.value"
+        :key="n.teacher_note_id"
+        class="flex flex-col gap-1 rounded-lg bg-surface-raised p-3 text-sm"
+      >
         <p class="text-xs text-ink-muted">
-          {{ new Date(n.created_at).toLocaleDateString() }} · {{ n.take_id ? 'video review' : 'live lesson' }}
+          {{ new Date(n.created_at).toLocaleDateString() }} ·
+          {{ n.take_id ? 'video review' : 'live lesson' }}
           <template v-if="n.item_key"> · {{ itemByKey(n.item_key)?.label }}</template>
-          <template v-if="n.rating"> · {{ n.rating }}<template v-if="n.bpm"> at {{ n.bpm }} BPM</template></template>
+          <template v-if="n.rating">
+            · {{ n.rating }}<template v-if="n.bpm"> at {{ n.bpm }} BPM</template></template
+          >
           <template v-if="n.verified"> · ✓ verified</template>
         </p>
         <p>{{ n.summary }}</p>
         <p v-if="Object.keys(n.rubric).length" class="text-xs text-ink-muted">
-          <template v-for="c in CRITERIA" :key="c.key"><template v-if="n.rubric[c.key]">{{ c.label }} {{ n.rubric[c.key] }}/5 · </template></template>
+          <template v-for="c in CRITERIA" :key="c.key"
+            ><template v-if="n.rubric[c.key]"
+              >{{ c.label }} {{ n.rubric[c.key] }}/5 ·
+            </template></template
+          >
         </p>
         <ul v-if="n.comments.length" class="text-xs">
           <li v-for="(c, i) in n.comments" :key="i">{{ c.at_seconds }}s — {{ c.text }}</li>
         </ul>
-        <p v-if="n.needs_work.skill_ids.length" class="text-xs">Needs work: {{ n.needs_work.skill_ids.map(nodeName).join(', ') }}</p>
+        <p v-if="n.needs_work.skill_ids.length" class="text-xs">
+          Needs work: {{ n.needs_work.skill_ids.map(nodeName).join(', ') }}
+        </p>
         <p class="flex items-center gap-2 text-xs text-ink-muted">
           <span>{{ noteStatus(n) }}</span>
           <button

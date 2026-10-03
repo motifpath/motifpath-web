@@ -18,7 +18,10 @@ function pick(id: string, correct: boolean) {
   if (picked.value) return
   picked.value = id
   const latency_ms = Math.round(performance.now() - shownAt.value)
-  setTimeout(() => emit('answered', { kind: 'option_choice', option_id: id, latency_ms }), correct ? 500 : 1400)
+  setTimeout(
+    () => emit('answered', { kind: 'option_choice', option_id: id, latency_ms }),
+    correct ? 500 : 1400,
+  )
 }
 </script>
 
@@ -31,7 +34,10 @@ function pick(id: string, correct: boolean) {
         :key="o.id"
         type="button"
         class="rounded-lg border border-border p-3 text-lg"
-        :class="{ 'bg-success-muted': picked && o.correct, 'bg-danger-muted': picked === o.id && !o.correct }"
+        :class="{
+          'bg-success-muted': picked && o.correct,
+          'bg-danger-muted': picked === o.id && !o.correct,
+        }"
         @click="pick(o.id, o.correct)"
       >
         {{ o.text }}

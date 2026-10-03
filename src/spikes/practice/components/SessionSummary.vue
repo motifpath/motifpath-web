@@ -9,7 +9,11 @@ import type { Felt, KnowledgeState, Session } from '@/spikes/practice/model'
 import { templateOf } from '@/spikes/practice/thresholds'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
-const props = defineProps<{ session: Session; touched: string[]; before: Map<string, KnowledgeState> }>()
+const props = defineProps<{
+  session: Session
+  touched: string[]
+  before: Map<string, KnowledgeState>
+}>()
 const emit = defineEmits<{ close: [] }>()
 
 const spike = usePracticeSpike()
@@ -23,9 +27,13 @@ const rows = computed(() =>
 )
 
 const answers = computed(() =>
-  spike.evidence.value.filter((e) => e.session_id === props.session.session_id && e.source === 'auto_graded'),
+  spike.evidence.value.filter(
+    (e) => e.session_id === props.session.session_id && e.source === 'auto_graded',
+  ),
 )
-const right = computed(() => answers.value.filter((e) => e.source === 'auto_graded' && e.correct).length)
+const right = computed(
+  () => answers.value.filter((e) => e.source === 'auto_graded' && e.correct).length,
+)
 
 /** The timed drills practised in this session: one "how did it feel?" each. */
 const timedTemplates = computed(() => {
@@ -49,7 +57,8 @@ const FELT: { value: Felt; label: string }[] = [
   { value: 'hard', label: 'Hard' },
 ]
 const feltOf = (template: string) =>
-  spike.felt.value.find((f) => f.session_id === props.session.session_id && f.template === template)?.felt
+  spike.felt.value.find((f) => f.session_id === props.session.session_id && f.template === template)
+    ?.felt
 
 const levelUps = computed(
   () => rows.value.filter((r) => r.before && r.after && r.after.box > r.before.box).length,
@@ -80,17 +89,34 @@ const levelUps = computed(
         <span class="flex flex-wrap items-center gap-2">
           <LevelChip v-if="r.before" :level="r.before.effective_level" :fading="r.before.fading" />
           <span>→</span>
-          <LevelChip v-if="r.after" :level="r.after.effective_level" :fading="r.after.fading" :verified="r.after.verified" />
+          <LevelChip
+            v-if="r.after"
+            :level="r.after.effective_level"
+            :fading="r.after.fading"
+            :verified="r.after.verified"
+          />
         </span>
         <span v-if="r.after" class="text-xs text-ink-muted">
-          <template v-if="r.item.kind === 'play_along'">clean {{ r.before?.best_clean_bpm ?? '—' }} → {{ r.after.best_clean_bpm ?? '—' }} BPM</template>
-          <template v-else-if="r.item.kind === 'chord_change'">{{ r.after.best_changes_per_minute ?? '—' }} changes/min</template>
-          <template v-else>speed {{ seconds(r.before?.median_latency_ms ?? null) }} → {{ seconds(r.after.median_latency_ms) }} · fluency {{ percent(r.after.fluency) }}</template>
+          <template v-if="r.item.kind === 'play_along'"
+            >clean {{ r.before?.best_clean_bpm ?? '—' }} →
+            {{ r.after.best_clean_bpm ?? '—' }} BPM</template
+          >
+          <template v-else-if="r.item.kind === 'chord_change'"
+            >{{ r.after.best_changes_per_minute ?? '—' }} changes/min</template
+          >
+          <template v-else
+            >speed {{ seconds(r.before?.median_latency_ms ?? null) }} →
+            {{ seconds(r.after.median_latency_ms) }} · fluency
+            {{ percent(r.after.fluency) }}</template
+          >
           · next review {{ r.after.due_at ? new Date(r.after.due_at).toLocaleDateString() : '—' }}
         </span>
       </li>
     </ul>
-    <section v-if="timedTemplates.length" class="flex flex-col gap-2 rounded-lg bg-surface-raised p-3">
+    <section
+      v-if="timedTemplates.length"
+      class="flex flex-col gap-2 rounded-lg bg-surface-raised p-3"
+    >
       <p class="text-sm font-semibold">How did it feel?</p>
       <div v-for="t in timedTemplates" :key="t" class="flex flex-wrap items-center gap-2 text-sm">
         <span class="w-32 shrink-0">{{ templateLabel(t) }}</span>
@@ -106,6 +132,8 @@ const levelUps = computed(
         </button>
       </div>
     </section>
-    <button type="button" class="rounded-lg bg-accent p-3 text-accent-fg" @click="emit('close')">Done</button>
+    <button type="button" class="rounded-lg bg-accent p-3 text-accent-fg" @click="emit('close')">
+      Done
+    </button>
   </div>
 </template>

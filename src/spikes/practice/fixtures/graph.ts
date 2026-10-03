@@ -15,51 +15,76 @@ const GUITARS = [GUITAR_ID, ELECTRIC_GUITAR_ID]
 const FRETTED = [GUITAR_ID, ELECTRIC_GUITAR_ID, BASS_ID]
 const BASS = [BASS_ID]
 
-function skill(key: string, name: string, parent: string | null, instruments: string[], level: GraphNode['map_level'] = null): GraphNode {
-  return { node_id: key, key, kind: 'skill', name, parent_id: parent, instrument_ids: instruments, map_level: level }
+function skill(key: string, name: string, parent: string | null, instruments: string[]): GraphNode {
+  return { node_id: key, key, kind: 'skill', name, parent_id: parent, instrument_ids: instruments }
 }
 
-function concept(key: string, name: string, parent: string | null, instruments: string[], level: GraphNode['map_level'] = null): GraphNode {
-  return { ...skill(key, name, parent, instruments, level), kind: 'concept' }
+function concept(
+  key: string,
+  name: string,
+  parent: string | null,
+  instruments: string[],
+): GraphNode {
+  return { ...skill(key, name, parent, instruments), kind: 'concept' }
 }
 
 const nodes: GraphNode[] = [
   // Skills
   skill('fretboard-fluency', 'Fretboard fluency', null, FRETTED),
   skill('find-notes', 'Find notes on the fretboard', 'fretboard-fluency', FRETTED),
-  skill('find-notes-root-strings', 'Find notes on the E and A strings', 'find-notes', FRETTED, 'B'),
-  skill('find-notes-top-strings', 'Find notes on the D string and above', 'find-notes', FRETTED, 'EI'),
+  skill('find-notes-root-strings', 'Find notes on the E and A strings', 'find-notes', FRETTED),
+  skill('find-notes-top-strings', 'Find notes on the D string and above', 'find-notes', FRETTED),
   skill('play-scale-positions', 'Play scale positions', 'fretboard-fluency', GUITARS),
   skill('play-pentatonic-positions', 'Play pentatonic positions', 'play-scale-positions', GUITARS),
-  skill('play-pentatonic-position-1', 'Play minor pentatonic position 1', 'play-pentatonic-positions', GUITARS, 'B'),
-  skill('play-all-pentatonic-positions', 'Play all five pentatonic positions', 'play-pentatonic-positions', GUITARS, 'EI'),
+  skill(
+    'play-pentatonic-position-1',
+    'Play minor pentatonic position 1',
+    'play-pentatonic-positions',
+    GUITARS,
+  ),
+  skill(
+    'play-all-pentatonic-positions',
+    'Play all five pentatonic positions',
+    'play-pentatonic-positions',
+    GUITARS,
+  ),
   skill('picking-technique', 'Picking and plucking technique', null, FRETTED),
-  skill('alternate-picking', 'Alternate picking', 'picking-technique', FRETTED, 'B'),
+  skill('alternate-picking', 'Alternate picking', 'picking-technique', FRETTED),
   skill('chords-rhythm', 'Chords and rhythm', null, ALL),
-  skill('play-open-chords', 'Play open chords', 'chords-rhythm', GUITARS, 'B'),
-  skill('change-chords', 'Change chords smoothly', 'chords-rhythm', GUITARS, 'B'),
-  skill('play-power-chords', 'Play power chords', 'chords-rhythm', GUITARS, 'B'),
+  skill('play-open-chords', 'Play open chords', 'chords-rhythm', GUITARS),
+  skill('change-chords', 'Change chords smoothly', 'chords-rhythm', GUITARS),
+  skill('play-power-chords', 'Play power chords', 'chords-rhythm', GUITARS),
   skill('ear', 'Ear', null, ALL),
-  skill('match-pitch', 'Match a pitch', 'ear', ALL, 'B'),
-  skill('hear-intervals', 'Recognise intervals by ear', 'ear', ALL, 'EI'),
+  skill('match-pitch', 'Match a pitch', 'ear', ALL),
+  skill('hear-intervals', 'Recognise intervals by ear', 'ear', ALL),
   skill('improvisation', 'Improvisation', null, ALL),
-  skill('improvise-blues', 'Improvise over a blues', 'improvisation', ALL, 'EI'),
+  skill('improvise-blues', 'Improvise over a blues', 'improvisation', ALL),
   skill('reading', 'Reading', null, ALL),
-  skill('read-bass-clef', 'Read bass clef in first position', 'reading', BASS, 'B'),
+  skill('read-bass-clef', 'Read bass clef in first position', 'reading', BASS),
   // Concepts
   concept('notes-fretboard', 'Notes and the fretboard', null, ALL),
-  concept('note-names', 'Note names', 'notes-fretboard', ALL, 'B'),
+  concept('note-names', 'Note names', 'notes-fretboard', ALL),
   concept('scales', 'Scales', null, ALL),
-  concept('minor-pentatonic', 'Minor pentatonic scale', 'scales', ALL, 'B'),
-  concept('pentatonic-shapes', 'Pentatonic shapes (positions 1–5)', 'minor-pentatonic', GUITARS, 'EI'),
+  concept('minor-pentatonic', 'Minor pentatonic scale', 'scales', ALL),
+  concept('pentatonic-shapes', 'Pentatonic shapes (positions 1–5)', 'minor-pentatonic', GUITARS),
   concept('chords', 'Chords', null, ALL),
-  concept('open-chord-shapes', 'Open chord shapes', 'chords', GUITARS, 'B'),
+  concept('open-chord-shapes', 'Open chord shapes', 'chords', GUITARS),
   concept('intervals', 'Intervals', null, ALL),
-  concept('interval-names', 'Interval names', 'intervals', ALL, 'EI'),
+  concept('interval-names', 'Interval names', 'intervals', ALL),
 ]
 
-const requires = (from: string, to: string, level: MasteryLevel): GraphEdge => ({ from_id: from, to_id: to, type: 'requires', level })
-const applies = (from: string, to: string): GraphEdge => ({ from_id: from, to_id: to, type: 'applies', level: null })
+const requires = (from: string, to: string, level: MasteryLevel): GraphEdge => ({
+  from_id: from,
+  to_id: to,
+  type: 'requires',
+  level,
+})
+const applies = (from: string, to: string): GraphEdge => ({
+  from_id: from,
+  to_id: to,
+  type: 'applies',
+  level: null,
+})
 
 const edges: GraphEdge[] = [
   requires('change-chords', 'play-open-chords', 'accurate'),

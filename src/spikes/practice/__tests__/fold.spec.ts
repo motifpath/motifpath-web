@@ -30,7 +30,8 @@ describe('incremental fold', () => {
       for (const day of [21, 30]) {
         const now = new Date(START.getTime() + day * DAY_MS)
         const batch = deriveStates(items, evidence, now)
-        for (const item of items) expect(stateOf(store, item, now)).toEqual(batch.get(item.item_key))
+        for (const item of items)
+          expect(stateOf(store, item, now)).toEqual(batch.get(item.item_key))
       }
     })
   }
@@ -51,7 +52,9 @@ describe('incremental fold', () => {
     expect(result.action).toBe('rebuilt')
     const now = new Date(START.getTime() + 21 * DAY_MS)
     const item = items.find((i) => i.item_key === late.item_key)!
-    expect(stateOf(result.store, item, now)).toEqual(deriveStates(items, evidence, now).get(item.item_key))
+    expect(stateOf(result.store, item, now)).toEqual(
+      deriveStates(items, evidence, now).get(item.item_key),
+    )
   })
 
   it('folds evidence in order without rebuilding', () => {
@@ -63,6 +66,8 @@ describe('incremental fold', () => {
   it('serves an item never practised as new', () => {
     const now = new Date(START.getTime() + 21 * DAY_MS)
     const item = items.find((i) => i.kind === 'fretboard_cell' && i.string === 1)!
-    expect(stateOf(emptyStore(), item, now)).toEqual(deriveStates(items, [], now).get(item.item_key))
+    expect(stateOf(emptyStore(), item, now)).toEqual(
+      deriveStates(items, [], now).get(item.item_key),
+    )
   })
 })
