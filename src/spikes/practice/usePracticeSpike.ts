@@ -5,12 +5,14 @@
  */
 import { computed, reactive, watch } from 'vue'
 
-import { gradeContext, items, pathSkillIds, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
+import { benchmarkBook, gradeContext, items, pathSkillIds, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
 import { graph, GUITAR_ID } from '@/spikes/practice/fixtures/graph'
 import { ingestAnswer } from '@/spikes/practice/ingest'
 import { deriveStates } from '@/spikes/practice/mastery'
 import type {
   Evidence,
+  Felt,
+  FeltRating,
   KnowledgeState,
   PracticeResponse,
   RecordedTake,
@@ -20,6 +22,9 @@ import type {
 import { composeSession } from '@/spikes/practice/sessionComposer'
 import { simulate } from '@/spikes/practice/simulator'
 import { summarize } from '@/spikes/practice/summary'
+import { simulatePopulation } from '@/spikes/practice/populationSimulator'
+import { activeThreshold, calibrate, sessionObservations, tapBaseline } from '@/spikes/practice/thresholds'
+import type { Threshold } from '@/spikes/practice/thresholds'
 import { openSuggestions } from '@/spikes/practice/teacherNotes'
 import type { OpenSuggestions } from '@/spikes/practice/teacherNotes'
 import type { Archetype } from '@/spikes/practice/simulator'
@@ -27,14 +32,21 @@ import type { Archetype } from '@/spikes/practice/simulator'
 export const SIM_START = new Date('2026-10-01T09:00:00Z')
 export const SIM_DAYS = 21
 const DAY_MS = 86_400_000
-const STORAGE_KEY = 'practice-spike-live-v2'
+const STORAGE_KEY = 'practice-spike-live-v3'
 
 interface LiveData {
   evidence: Evidence[]
   notes: TeacherNote[]
   /** When the teacher closed a note, by note id. */
   closed: Record<string, string>
+  /** The student's tap time from the tap check; null until done. */
+  tap_ms: number | null
+  felt: FeltRating[]
+  /** Threshold versions calibrated in this browser, on top of the benchmark. */
+  thresholds: Threshold[]
 }
+
+const emptyLive = (): LiveData => ({ evidence: [], notes: [], closed: {}, tap_ms: null, felt: [], thresholds: [] })
 
 function loadLive(): LiveData {
   try {
@@ -43,7 +55,7 @@ function loadLive(): LiveData {
   } catch {
     // Storage unavailable or corrupt: start empty.
   }
-  return { evidence: [], notes: [], closed: {} }
+  return emptyLive()
 }
 
 const state = reactive({
@@ -82,13 +94,17 @@ const notes = computed(() =>
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
 )
 
-const states = computed(() => deriveStates(items, evidence.value, now.value))
+const book = computed(() => [...benchmarkBook, ...state.live.thresholds])
+const felt = computed(() => state.live.felt)
+
+const states = computed(() => deriveStates(items, evidence.value, now.value, book.value))
 
 function statesAt(t: Date): Map<string, KnowledgeState> {
   return deriveStates(
     items,
     evidence.value.filter((e) => before(e.occurred_at, t)),
     t,
+    book.value,
   )
 }
 
@@ -145,6 +161,8 @@ export function usePracticeSpike() {
     newId,
     statesAt,
     summary,
+    book,
+    felt,
     compose(instrumentInHand: boolean, minutes: number): Session {
       return composeSession({
         session_id: newId('session'),
@@ -178,6 +196,7 @@ export function usePracticeSpike() {
         },
         items,
         gradeContext,
+        state.live.tap_ms ?? 0,
       )
       if (!('rejected' in result)) state.live.evidence.push(result)
       return result
@@ -185,6 +204,40 @@ export function usePracticeSpike() {
     addNote(note: TeacherNote, review: Evidence | null) {
       state.live.notes.push(note)
       if (review) state.live.evidence.push(review)
+    },
+    /** Saves the tap check's result; returns the baseline, or null with too few taps. */
+    saveTapCheck(latencies: number[]): number | null {
+      const baseline = tapBaseline(latencies)
+      if (baseline !== null) state.live.tap_ms = baseline
+      return baseline
+    },
+    /** How a timed drill felt in a session; a second answer replaces the first. */
+    rateFelt(sessionId: string, template: string, value: Felt) {
+      state.live.felt = state.live.felt.filter((f) => !(f.session_id === sessionId && f.template === template))
+      state.live.felt.push({ student_id: STUDENT_ID, session_id: sessionId, template, felt: value, occurred_at: clock() })
+    },
+    /**
+     * Recalibrates a template from a simulated population whose true fluent time is
+     * `trueFluentMs`, plus this student's own felt-rated sessions; in force from now.
+     */
+    recalibrate(template: string, trueFluentMs: number): Threshold {
+      const at = clock()
+      const prior = activeThreshold(book.value, template, at)!
+      const population = simulatePopulation({
+        students: 40,
+        sessions_per_student: 8,
+        true_fluent_ms: trueFluentMs,
+        overconfident_share: 0.2,
+        felt_noise: 0.15,
+        seed: 11,
+      })
+      const observations = [
+        ...sessionObservations(population.evidence, population.felt, template),
+        ...sessionObservations(evidence.value, state.live.felt, template),
+      ]
+      const next = calibrate(prior, observations, at)
+      if (next !== prior) state.live.thresholds.push(next)
+      return next
     },
     closeNote(id: string) {
       state.live.closed[id] = clock()
@@ -194,7 +247,7 @@ export function usePracticeSpike() {
     },
     resetLive() {
       liveSeq = 0
-      state.live = { evidence: [], notes: [], closed: {} }
+      state.live = emptyLive()
       state.takes = []
     },
   }

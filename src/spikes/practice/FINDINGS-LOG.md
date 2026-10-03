@@ -105,3 +105,36 @@ All four archetypes' homes render from the summary with no console errors. Caugh
 student: mind-3 mixes review ahead / stretch (top-string cells) / weak spots; guitar-15 is warm-up,
 due chord changes, power-chord riff as stretch, blues lick. A live tap goes response → grader →
 feedback → evidence. Closing the overconfident student's note removes it from their home.
+
+## Phase 6 — calibrating timed thresholds (2026-10-03)
+
+Population simulator: 40 students × 8 sessions around a known true fluent time (2500 ms), benchmark
+prior deliberately 2× off; 5 seeds per condition. Errors of the calibrated threshold:
+base −4…+3% · 10 students −17…+2% · 6×4 sessions (just past the gate) −15…−32% · 30% felt noise
+−8…+6% · ⅓ overconfident −4…+3% · ½ overconfident −4…+53% · 90% phones −4…+3%.
+
+27. **Felt ratings are what make calibration work (M14).** Time alone (median of students who answer
+    ≥90% right) lands −35…−51% off: it says how fast knowers are, not where the drill gets hard.
+    Estimator: the net time that best separates sessions felt "hard" from the rest.
+28. **Tap time must come out (M13).** Without subtracting each student's tap time the threshold comes
+    out +12…+29% too lax, worse with phones. A 6-tap check (~20 s) gives the baseline; ingest stamps
+    it on each answer so replays stay stable.
+29. **Small samples drift toward the prior (M12).** Just past the gate (24 sessions) a wrong prior still
+    pulls the result 15–32% off. Gate at more data (e.g. 100 sessions / 20 students) or weight the
+    prior less once both felt classes are well represented.
+30. **Overconfidence biases toward lax (M14).** Up to a third of students rating one step easier is
+    absorbed; half of them pushes the threshold up to +53% too lax. Teacher-reviewed or audio
+    evidence would be the check; meanwhile cap a single recalibration step (e.g. ±25%).
+31. **Versioned thresholds never take back a level (M15).** Each answer is judged by the version in
+    force when it happened; a new version applies forward only and needs no fold rebuild.
+32. **Ask fewer felt questions (U8).** A 3-minute session asked four (two drill types + two exercises).
+    Ask at most one or two per session, for the templates with the least calibration data, and group
+    authored exercises by family; per-exercise data will be too sparse anyway.
+33. **The core assumption is untested.** The simulator assumes a drill feels hard once the student is
+    slower than fluent. Only real students can confirm the felt-vs-time relation; the spike validates
+    the estimator given it.
+
+### Phase 6 walkthrough
+Tap check → 314 ms baseline; a 16-item mind session → "How did it feel?" per timed drill; rating
+"Hard" stored; recalibrate → name_the_note v2 2442 ms from 321 sessions / 41 students (true 2500).
+No console errors.

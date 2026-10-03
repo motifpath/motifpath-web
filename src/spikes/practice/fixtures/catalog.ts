@@ -6,6 +6,8 @@ import type { components } from '@/api/generated/core-domain'
 import { fretboardCellItems } from '@/spikes/practice/drillGenerator'
 import { GUITAR_ID } from '@/spikes/practice/fixtures/graph'
 import type { GradeContext } from '@/spikes/practice/graders'
+import { benchmarkThresholds } from '@/spikes/practice/thresholds'
+import type { ThresholdBook } from '@/spikes/practice/thresholds'
 import type { PracticeItem } from '@/spikes/practice/model'
 
 type Diagram = components['schemas']['Diagram']
@@ -263,6 +265,15 @@ export const items: PracticeItem[] = [
     target_changes_per_minute: 60,
   },
 ]
+
+/** The team's own times on each timed drill: the first version of every threshold. */
+export const benchmarkBook: ThresholdBook = benchmarkThresholds(
+  [
+    { template: 'fretboard_cell:name_the_note', latencies_ms: [1250, 1300, 1350, 1400, 1500], tap_ms: 350 },
+    { template: 'fretboard_cell:find_the_note', latencies_ms: [1500, 1550, 1600, 1650, 1700], tap_ms: 350 },
+  ],
+  '2026-09-01T00:00:00Z',
+)
 
 /** The reference data graders check answers against. */
 export const gradeContext: GradeContext = {

@@ -3,9 +3,10 @@
 import { computed } from 'vue'
 
 import LevelChip from '@/spikes/practice/components/LevelChip.vue'
-import { itemByKey } from '@/spikes/practice/fixtures/catalog'
+import { exercises, itemByKey } from '@/spikes/practice/fixtures/catalog'
 import { percent, seconds } from '@/spikes/practice/labels'
-import type { KnowledgeState, Session } from '@/spikes/practice/model'
+import type { Felt, KnowledgeState, Session } from '@/spikes/practice/model'
+import { templateOf } from '@/spikes/practice/thresholds'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
 const props = defineProps<{ session: Session; touched: string[]; before: Map<string, KnowledgeState> }>()
@@ -25,6 +26,30 @@ const answers = computed(() =>
   spike.evidence.value.filter((e) => e.session_id === props.session.session_id && e.source === 'auto_graded'),
 )
 const right = computed(() => answers.value.filter((e) => e.source === 'auto_graded' && e.correct).length)
+
+/** The timed drills practised in this session: one "how did it feel?" each. */
+const timedTemplates = computed(() => {
+  const out = new Set<string>()
+  for (const e of answers.value) {
+    const item = itemByKey(e.item_key)
+    const template = item && e.source === 'auto_graded' ? templateOf(item, e.response) : null
+    if (template) out.add(template)
+  }
+  return [...out]
+})
+function templateLabel(template: string): string {
+  if (template === 'fretboard_cell:name_the_note') return 'Naming notes'
+  if (template === 'fretboard_cell:find_the_note') return 'Finding notes'
+  const id = template.replace(/^exercise:/, '')
+  return exercises.find((x) => x.exercise_id === id)?.prompt ?? template
+}
+const FELT: { value: Felt; label: string }[] = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'about_right', label: 'About right' },
+  { value: 'hard', label: 'Hard' },
+]
+const feltOf = (template: string) =>
+  spike.felt.value.find((f) => f.session_id === props.session.session_id && f.template === template)?.felt
 
 const levelUps = computed(
   () => rows.value.filter((r) => r.before && r.after && r.after.box > r.before.box).length,
@@ -65,6 +90,22 @@ const levelUps = computed(
         </span>
       </li>
     </ul>
+    <section v-if="timedTemplates.length" class="flex flex-col gap-2 rounded-lg bg-surface-raised p-3">
+      <p class="text-sm font-semibold">How did it feel?</p>
+      <div v-for="t in timedTemplates" :key="t" class="flex flex-wrap items-center gap-2 text-sm">
+        <span class="w-32 shrink-0">{{ templateLabel(t) }}</span>
+        <button
+          v-for="f in FELT"
+          :key="f.value"
+          type="button"
+          class="rounded-full border border-border px-3 py-1"
+          :class="{ 'bg-accent text-accent-fg': feltOf(t) === f.value }"
+          @click="spike.rateFelt(session.session_id, t, f.value)"
+        >
+          {{ f.label }}
+        </button>
+      </div>
+    </section>
     <button type="button" class="rounded-lg bg-accent p-3 text-accent-fg" @click="emit('close')">Done</button>
   </div>
 </template>

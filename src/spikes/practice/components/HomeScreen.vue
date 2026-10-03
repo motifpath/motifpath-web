@@ -7,6 +7,7 @@
 import { computed, ref } from 'vue'
 
 import LevelChip from '@/spikes/practice/components/LevelChip.vue'
+import TapCheck from '@/spikes/practice/components/TapCheck.vue'
 import { itemByKey } from '@/spikes/practice/fixtures/catalog'
 import { nodeName } from '@/spikes/practice/fixtures/graph'
 import { LEVEL_LABEL, percent } from '@/spikes/practice/labels'
@@ -17,6 +18,7 @@ const emit = defineEmits<{ start: [instrumentInHand: boolean, minutes: number] }
 const spike = usePracticeSpike()
 
 const instrument = ref<boolean | null>(null)
+const tapping = ref(false)
 const summary = computed(() => spike.summary.value)
 const latestNote = computed(() => spike.activeNotes.value[0])
 const latestOpen = computed(() => (latestNote.value ? spike.openFor(latestNote.value) : null))
@@ -83,6 +85,14 @@ function opportunityText(o: Opportunity): string {
         <button type="button" class="text-sm text-ink-muted" @click="instrument = null">‹ change</button>
       </template>
       <p class="text-sm text-ink-muted">You practised on {{ summary.practice_days_last_7 }} of the last 7 days.</p>
+      <TapCheck v-if="tapping" @done="tapping = false" />
+      <p v-else class="text-xs text-ink-muted">
+        <template v-if="spike.state.live.tap_ms !== null">Your tap time: {{ spike.state.live.tap_ms }} ms — only the time spent knowing counts. </template>
+        <template v-else>Timed drills count your tapping time too. </template>
+        <button type="button" class="underline" @click="tapping = true">
+          {{ spike.state.live.tap_ms !== null ? 'Redo the tap check' : 'Do a 20-second tap check' }}
+        </button>
+      </p>
     </section>
 
     <section class="flex flex-col gap-2">

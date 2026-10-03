@@ -57,3 +57,38 @@ describe('usePracticeSpike — live activity', () => {
     expect(focus.entries[0]!.reason).toBe('teacher_suggested')
   })
 })
+
+describe('usePracticeSpike — threshold calibration', () => {
+  const spike = usePracticeSpike()
+  beforeEach(() => spike.resetLive())
+  const NAME = 'fretboard_cell:name_the_note'
+  const key = 'fretboard_cell:instrument-guitar:6:1'
+
+  it('starts from the team benchmark for every timed fretboard drill', () => {
+    expect(spike.book.value.map((t) => [t.template, t.version, t.source])).toEqual([
+      [NAME, 1, 'benchmark'],
+      ['fretboard_cell:find_the_note', 1, 'benchmark'],
+    ])
+  })
+
+  it('stamps the tap time from the tap check on every later answer', () => {
+    expect(spike.saveTapCheck([600, 700, 650, 640, 720])).toBe(650)
+    const result = spike.answer(key, { kind: 'name_the_note', chosen_note: 'F', latency_ms: 2000 }, 's')
+    expect(result).toMatchObject({ source: 'auto_graded', tap_ms: 650 })
+  })
+
+  it('keeps how a drill felt, once per drill per session', () => {
+    spike.rateFelt('s', NAME, 'hard')
+    spike.rateFelt('s', NAME, 'about_right')
+    expect(spike.felt.value.filter((f) => f.session_id === 's')).toEqual([
+      expect.objectContaining({ template: NAME, felt: 'about_right' }),
+    ])
+  })
+
+  it('adds a calibrated version from a simulated population, in force from now', () => {
+    const t = spike.recalibrate(NAME, 2500)
+    expect(t).toMatchObject({ template: NAME, version: 2, source: 'calibrated' })
+    expect(Math.abs(t.fluent_ms - 2500) / 2500).toBeLessThan(0.15)
+    expect(spike.book.value.filter((x) => x.template === NAME)).toHaveLength(2)
+  })
+})
