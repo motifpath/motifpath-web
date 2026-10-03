@@ -2,16 +2,17 @@
 /** The call to practise: two taps from here to the first item. */
 import { computed, ref } from 'vue'
 
-import { itemByKey, pathSkillIds, skills } from '@/spikes/practice/fixtures/catalog'
+import { itemByKey, pathSkillIds } from '@/spikes/practice/fixtures/catalog'
+import { graph, nodeName } from '@/spikes/practice/fixtures/graph'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
-import { descendantIds } from '@/spikes/practice/taxonomy'
+import { descendantIds } from '@/spikes/practice/graph'
 
 const emit = defineEmits<{ start: [instrumentInHand: boolean, minutes: number] }>()
 const spike = usePracticeSpike()
 
 const instrument = ref<boolean | null>(null)
 
-const pathSkills = new Set(pathSkillIds.flatMap((id) => descendantIds(skills, id)))
+const pathSkills = new Set(pathSkillIds.flatMap((id) => descendantIds(graph.nodes, id)))
 const fading = computed(
   () =>
     [...spike.states.value.values()].filter(
@@ -19,7 +20,6 @@ const fading = computed(
     ).length,
 )
 const latestNote = computed(() => spike.activeNotes.value[0])
-const skillName = (id: string) => skills.find((s) => s.id === id)?.name ?? id
 
 const practisedDays = computed(() => {
   const days = new Set<string>()
@@ -44,7 +44,7 @@ const practisedDays = computed(() => {
         <p class="font-semibold text-accent-text">From your teacher</p>
         <p>{{ latestNote.summary }}</p>
         <p v-if="latestNote.needs_work.skill_ids.length" class="mt-1 text-xs text-ink-muted">
-          Work on: {{ latestNote.needs_work.skill_ids.map(skillName).join(', ') }}
+          Work on: {{ latestNote.needs_work.skill_ids.map(nodeName).join(', ') }}
           <template v-if="latestNote.suggested_item_keys.length">
             · suggested: {{ latestNote.suggested_item_keys.map((k) => itemByKey(k)?.label ?? k).join(', ') }}
           </template>

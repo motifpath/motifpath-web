@@ -5,7 +5,8 @@
  */
 import { computed, reactive, watch } from 'vue'
 
-import { items, pathSkillIds, skills, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
+import { items, pathSkillIds, STUDENT_ID } from '@/spikes/practice/fixtures/catalog'
+import { graph, GUITAR_ID } from '@/spikes/practice/fixtures/graph'
 import { deriveStates } from '@/spikes/practice/mastery'
 import type { Evidence, KnowledgeState, RecordedTake, Session, TeacherNote } from '@/spikes/practice/model'
 import { composeSession } from '@/spikes/practice/sessionComposer'
@@ -114,7 +115,8 @@ export function usePracticeSpike() {
         now: now.value,
         items,
         states: states.value,
-        taxonomy: skills,
+        graph,
+        instrument_id: GUITAR_ID,
         path_skill_ids: pathSkillIds,
         teacher_notes: activeNotes.value,
         instrument_in_hand: instrumentInHand,

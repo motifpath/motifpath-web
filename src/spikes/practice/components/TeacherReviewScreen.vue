@@ -7,7 +7,8 @@
 import { computed, ref } from 'vue'
 
 import RatingButtons from '@/spikes/practice/components/RatingButtons.vue'
-import { itemByKey, items, skills, STUDENT_ID, TEACHER_ID } from '@/spikes/practice/fixtures/catalog'
+import { itemByKey, items, STUDENT_ID, TEACHER_ID } from '@/spikes/practice/fixtures/catalog'
+import { graph, nodeName } from '@/spikes/practice/fixtures/graph'
 import type { Rating, RubricCriterion, TeacherNote, TimestampedComment } from '@/spikes/practice/model'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
@@ -95,7 +96,7 @@ function save() {
   suggested.value = []
 }
 
-const skillName = (id: string) => skills.find((s) => s.id === id)?.name ?? id
+const skills = graph.nodes.filter((n) => n.kind === 'skill' && n.parent_id !== null)
 </script>
 
 <template>
@@ -173,8 +174,8 @@ const skillName = (id: string) => skills.find((s) => s.id === id)?.name ?? id
       <div class="flex flex-col gap-1 text-sm">
         <span class="font-semibold">Needs work</span>
         <div class="flex flex-wrap gap-2">
-          <label v-for="s in skills" :key="s.id" class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
-            <input v-model="needsWork" type="checkbox" :value="s.id" /> {{ s.name }}
+          <label v-for="s in skills" :key="s.node_id" class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
+            <input v-model="needsWork" type="checkbox" :value="s.node_id" /> {{ s.name }}
           </label>
         </div>
       </div>
@@ -207,7 +208,7 @@ const skillName = (id: string) => skills.find((s) => s.id === id)?.name ?? id
         <ul v-if="n.comments.length" class="text-xs">
           <li v-for="(c, i) in n.comments" :key="i">{{ c.at_seconds }}s — {{ c.text }}</li>
         </ul>
-        <p v-if="n.needs_work.skill_ids.length" class="text-xs">Needs work: {{ n.needs_work.skill_ids.map(skillName).join(', ') }}</p>
+        <p v-if="n.needs_work.skill_ids.length" class="text-xs">Needs work: {{ n.needs_work.skill_ids.map(nodeName).join(', ') }}</p>
       </article>
       <p v-if="!spike.notes.value.length" class="text-sm text-ink-muted">No notes yet.</p>
     </section>

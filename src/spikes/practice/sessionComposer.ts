@@ -15,11 +15,12 @@ import type {
   Session,
   SessionBlock,
   SessionEntry,
-  TaxonomyNode,
+  KnowledgeGraph,
+  GraphNode,
   TeacherNote,
 } from '@/spikes/practice/model'
 import { seededRandom, shuffled } from '@/spikes/practice/random'
-import { descendantIds } from '@/spikes/practice/taxonomy'
+import { descendantIds } from '@/spikes/practice/graph'
 
 export interface ComposeInput {
   session_id: string
@@ -27,7 +28,9 @@ export interface ComposeInput {
   now: Date
   items: PracticeItem[]
   states: Map<string, KnowledgeState>
-  taxonomy: TaxonomyNode[]
+  graph: KnowledgeGraph
+  /** The student's instrument: only nodes for it count. */
+  instrument_id: string
   /** Skills met on the path; their subtrees are fair game. */
   path_skill_ids: string[]
   teacher_notes: TeacherNote[]
@@ -58,15 +61,15 @@ export function costSeconds(item: PracticeItem): number {
   }
 }
 
-function union(tree: TaxonomyNode[], ids: string[]): Set<string> {
+function union(tree: GraphNode[], ids: string[]): Set<string> {
   return new Set(ids.flatMap((id) => descendantIds(tree, id)))
 }
 
 export function composeSession(input: ComposeInput): Session {
   const { items, states, now } = input
-  const pathSkills = union(input.taxonomy, input.path_skill_ids)
+  const pathSkills = union(input.graph.nodes, input.path_skill_ids)
   const flaggedSkills = union(
-    input.taxonomy,
+    input.graph.nodes,
     input.teacher_notes.flatMap((n) => n.needs_work.skill_ids),
   )
   const suggestedKeys = new Set(input.teacher_notes.flatMap((n) => n.suggested_item_keys))

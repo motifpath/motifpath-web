@@ -7,10 +7,11 @@
 import { computed, ref } from 'vue'
 
 import LevelChip from '@/spikes/practice/components/LevelChip.vue'
-import { cellItems, items, skills } from '@/spikes/practice/fixtures/catalog'
+import { cellItems, items } from '@/spikes/practice/fixtures/catalog'
+import { graph } from '@/spikes/practice/fixtures/graph'
 import { LEVEL_CLASS, LEVEL_LABEL, percent, seconds } from '@/spikes/practice/labels'
 import type { KnowledgeState, Level } from '@/spikes/practice/model'
-import { rollup } from '@/spikes/practice/taxonomy'
+import { rollup } from '@/spikes/practice/graph'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
 const spike = usePracticeSpike()
@@ -36,16 +37,16 @@ function stringSpeed(states: Map<string, KnowledgeState>, s: number): number | n
 const tree = computed(() => {
   const out: { id: string; name: string; depth: number }[] = []
   const walk = (parent: string | null, depth: number) => {
-    for (const n of skills.filter((s) => s.parent_id === parent)) {
-      out.push({ id: n.id, name: n.name, depth })
-      walk(n.id, depth + 1)
+    for (const n of graph.nodes.filter((s) => s.parent_id === parent)) {
+      out.push({ id: n.node_id, name: n.name, depth })
+      walk(n.node_id, depth + 1)
     }
   }
   walk(null, 0)
   return out
 })
 
-const rollups = computed(() => new Map(tree.value.map((n) => [n.id, rollup(skills, items, spike.states.value, n.id)])))
+const rollups = computed(() => new Map(tree.value.map((n) => [n.id, rollup(graph.nodes, items, spike.states.value, n.id)])))
 
 const LEVELS: Level[] = ['retained', 'fluent', 'accurate', 'learning', 'new']
 

@@ -9,13 +9,32 @@
  * a **session** is composed from those states by rules; a **teacher note** carries
  * a human review and feeds both evidence and the next sessions.
  */
+import type { components } from '@/api/generated/core-domain'
 
-// ── Taxonomy (same shape as the Skill/Concept tree the API already serves) ──────
+// ── Knowledge graph (the node and edge shapes the API serves) ───────────────────
 
-export interface TaxonomyNode {
-  id: string
+type ApiKnowledgeNode = components['schemas']['KnowledgeNode']
+type ApiKnowledgeEdge = components['schemas']['KnowledgeEdge']
+
+/** The levels a `requires` edge can ask for: a subset of `Level`. */
+export type MasteryLevel = components['schemas']['MasteryLevel']
+
+/**
+ * A skill or concept. In the spike `node_id` equals `key` for readable fixtures;
+ * the API's ids are UUIDs. `instrument_ids` empty means every instrument.
+ */
+export interface GraphNode
+  extends Pick<ApiKnowledgeNode, 'node_id' | 'kind' | 'key' | 'parent_id' | 'instrument_ids'> {
   name: string
-  parent_id: string | null
+  /** The map's calibration annotation (authors only, not installed); ranks stretch picks. */
+  map_level: 'B' | 'EI' | 'I' | 'A' | null
+}
+
+export type GraphEdge = Pick<ApiKnowledgeEdge, 'from_id' | 'to_id' | 'type' | 'level'>
+
+export interface KnowledgeGraph {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
 }
 
 // ── Items ──────────────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import type {
   PlayAlongItem,
   PracticeItem,
   Session,
-  TaxonomyNode,
+  GraphNode,
   TeacherNote,
 } from '@/spikes/practice/model'
 import { composeSession } from '@/spikes/practice/sessionComposer'
@@ -15,12 +15,18 @@ const NOW = new Date('2026-10-20T09:00:00Z')
 const PAST = '2026-10-10T09:00:00Z'
 const FUTURE = '2026-10-25T09:00:00Z'
 
-const taxonomy: TaxonomyNode[] = [
-  { id: 'fretboard', name: 'Fretboard', parent_id: null },
-  { id: 'string-6', name: 'String 6', parent_id: 'fretboard' },
-  { id: 'off-path', name: 'Off path', parent_id: null },
-  { id: 'picking', name: 'Picking', parent_id: null },
-  { id: 'chords', name: 'Chords', parent_id: null },
+const GUITAR = 'guitar'
+
+function node(id: string, parent: string | null): GraphNode {
+  return { node_id: id, key: id, kind: 'skill', name: id, parent_id: parent, instrument_ids: [], map_level: null }
+}
+
+const nodes: GraphNode[] = [
+  node('fretboard', null),
+  node('string-6', 'fretboard'),
+  node('off-path', null),
+  node('picking', null),
+  node('chords', null),
 ]
 
 function cell(i: number, skill = 'string-6'): PracticeItem {
@@ -97,7 +103,8 @@ function input(overrides: Partial<ComposeInput>): ComposeInput {
     now: NOW,
     items: [],
     states: new Map(),
-    taxonomy,
+    graph: { nodes, edges: [] },
+    instrument_id: GUITAR,
     path_skill_ids: ['fretboard', 'picking', 'chords'],
     teacher_notes: [],
     instrument_in_hand: false,

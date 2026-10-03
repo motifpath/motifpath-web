@@ -4,7 +4,8 @@
  */
 import type { components } from '@/api/generated/core-domain'
 import { fretboardCellItems } from '@/spikes/practice/drillGenerator'
-import type { PracticeItem, TaxonomyNode } from '@/spikes/practice/model'
+import { GUITAR_ID } from '@/spikes/practice/fixtures/graph'
+import type { PracticeItem } from '@/spikes/practice/model'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -15,7 +16,7 @@ export const STUDENT_ID = 'student-ana'
 export const TEACHER_ID = 'teacher-bob'
 
 export const guitar: Instrument = {
-  instrument_id: 'instrument-guitar',
+  instrument_id: GUITAR_ID,
   names: { en: '6-string guitar (standard tuning)' },
   languages: ['en'],
   family: 'fretted',
@@ -24,29 +25,14 @@ export const guitar: Instrument = {
   default_voice_id: 'acoustic-guitar',
 }
 
-// ── Taxonomy ───────────────────────────────────────────────────────────────────
-
-export const skills: TaxonomyNode[] = [
-  { id: 'fretboard-knowledge', name: 'Fretboard knowledge', parent_id: null },
-  { id: 'fretboard-notes', name: 'Notes on the fretboard', parent_id: 'fretboard-knowledge' },
-  ...[6, 5, 4, 3, 2, 1].map((s) => ({ id: `string-${s}`, name: `String ${s}`, parent_id: 'fretboard-notes' })),
-  { id: 'guitar-technique', name: 'Guitar technique', parent_id: null },
-  { id: 'picking', name: 'Picking', parent_id: 'guitar-technique' },
-  { id: 'alternate-picking', name: 'Alternate picking', parent_id: 'picking' },
-  { id: 'chord-changes', name: 'Chord changes', parent_id: 'guitar-technique' },
-  { id: 'ear-training', name: 'Ear training', parent_id: null },
-  { id: 'intervals-by-ear', name: 'Intervals by ear', parent_id: 'ear-training' },
+/** Skills the student has met on their path so far (knowledge-map keys). */
+export const pathSkillIds = [
+  'find-notes-root-strings',
+  'alternate-picking',
+  'play-pentatonic-position-1',
+  'change-chords',
+  'hear-intervals',
 ]
-
-export const concepts: TaxonomyNode[] = [
-  { id: 'note-names', name: 'Note names', parent_id: null },
-  { id: 'pentatonic-scale', name: 'Pentatonic scale', parent_id: null },
-  { id: 'open-chords', name: 'Open chords', parent_id: null },
-  { id: 'intervals', name: 'Intervals', parent_id: null },
-]
-
-/** Skills the student has met on their path so far. */
-export const pathSkillIds = ['string-6', 'string-5', 'alternate-picking', 'chord-changes', 'intervals-by-ear']
 
 // ── Diagrams ───────────────────────────────────────────────────────────────────
 
@@ -151,8 +137,31 @@ export const cMajorChord = {
   mode: 'major' as const,
 }
 
+const power = (id: string, fret: number, root: string, fifth: string) => [
+  pos(`${id}r`, 6, fret, 'R', root),
+  pos(`${id}5`, 5, fret + 2, '5', fifth),
+]
+const powerPositions = [
+  ...power('p0', 5, 'A', 'E'),
+  ...power('p1', 3, 'G', 'D'),
+  ...power('p2', 8, 'C', 'G'),
+  ...power('p3', 10, 'D', 'A'),
+]
+
+/** Power chords on the root strings, moved by root name: needs the low-string notes. */
+export const powerChordRiff = diagram(
+  'diagram-power-chord-riff',
+  'Power chords A5 – G5 – C5 – D5',
+  'A',
+  powerPositions,
+  ['p0', 'p1', 'p2', 'p3'].flatMap((id) =>
+    Array.from({ length: 2 }, () => ({ position_ids: [`${id}r`, `${id}5`], value: quarter, strum: 'down' as const })),
+  ),
+  80,
+)
+
 export const diagrams: Record<string, Diagram> = Object.fromEntries(
-  [pentatonicRun, bluesLick, aMinorChord, cMajorChord].map((d) => [d.diagram_id, d]),
+  [pentatonicRun, bluesLick, aMinorChord, cMajorChord, powerChordRiff].map((d) => [d.diagram_id, d]),
 )
 
 // ── Authored exercises (simplified: text options only) ───────────────────────
@@ -188,13 +197,17 @@ export const exercises: SpikeExercise[] = [
 
 // ── Items ──────────────────────────────────────────────────────────────────────
 
-export const cellItems = fretboardCellItems(guitar, { maxFret: 11, skillIdFor: (s) => `string-${s}` }).map((i) => ({
+export const cellItems = fretboardCellItems(guitar, {
+  maxFret: 11,
+  skillIdFor: (s) => (s >= 5 ? 'find-notes-root-strings' : 'find-notes-top-strings'),
+}).map((i) => ({
   ...i,
   concept_ids: ['note-names'],
 }))
 
 export const ALTERNATE_PICKING = 'play_along:diagram-pentatonic-run'
 export const BLUES_LICK = 'play_along:diagram-blues-lick'
+export const POWER_CHORDS = 'play_along:diagram-power-chord-riff'
 export const AM_C_CHANGES = 'chord_change:diagram-a-minor:diagram-c-major'
 
 export const items: PracticeItem[] = [
@@ -203,8 +216,8 @@ export const items: PracticeItem[] = [
     kind: 'exercise' as const,
     item_key: `exercise:${e.exercise_id}`,
     label: e.prompt,
-    skill_ids: ['intervals-by-ear'],
-    concept_ids: ['intervals'],
+    skill_ids: ['hear-intervals'],
+    concept_ids: ['interval-names'],
     exercise_id: e.exercise_id,
     estimated_seconds: 20,
   })),
@@ -213,7 +226,7 @@ export const items: PracticeItem[] = [
     item_key: ALTERNATE_PICKING,
     label: 'Alternate picking — pentatonic up and down',
     skill_ids: ['alternate-picking'],
-    concept_ids: ['pentatonic-scale'],
+    concept_ids: ['pentatonic-shapes'],
     diagram_id: pentatonicRun.diagram_id,
     purpose: 'technique',
     params: { start_bpm: 70, target_bpm: 120, step_bpm: 5, cleans_to_advance: 2, loops: 2, count_in_beats: 4 },
@@ -222,18 +235,28 @@ export const items: PracticeItem[] = [
     kind: 'play_along',
     item_key: BLUES_LICK,
     label: 'Blues lick in A',
-    skill_ids: ['alternate-picking'],
-    concept_ids: ['pentatonic-scale'],
+    skill_ids: ['play-pentatonic-position-1'],
+    concept_ids: ['minor-pentatonic'],
     diagram_id: bluesLick.diagram_id,
     purpose: 'repertoire',
     params: { start_bpm: 70, target_bpm: 100, step_bpm: 5, cleans_to_advance: 2, loops: 4, count_in_beats: 4 },
   },
   {
+    kind: 'play_along',
+    item_key: POWER_CHORDS,
+    label: 'Power chords A5 – G5 – C5 – D5',
+    skill_ids: ['play-power-chords'],
+    concept_ids: [],
+    diagram_id: powerChordRiff.diagram_id,
+    purpose: 'technique',
+    params: { start_bpm: 70, target_bpm: 110, step_bpm: 5, cleans_to_advance: 2, loops: 2, count_in_beats: 4 },
+  },
+  {
     kind: 'chord_change',
     item_key: AM_C_CHANGES,
     label: 'Am ↔ C changes',
-    skill_ids: ['chord-changes'],
-    concept_ids: ['open-chords'],
+    skill_ids: ['change-chords'],
+    concept_ids: ['open-chord-shapes'],
     from_diagram_id: aMinorChord.diagram_id,
     to_diagram_id: cMajorChord.diagram_id,
     target_changes_per_minute: 60,
