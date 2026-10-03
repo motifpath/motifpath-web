@@ -8,10 +8,10 @@ import { computed, ref } from 'vue'
 
 import LevelChip from '@/spikes/practice/components/LevelChip.vue'
 import { cellItems, items } from '@/spikes/practice/fixtures/catalog'
-import { graph } from '@/spikes/practice/fixtures/graph'
+import { graph, GUITAR_ID, nodeName } from '@/spikes/practice/fixtures/graph'
 import { LEVEL_CLASS, LEVEL_LABEL, percent, seconds } from '@/spikes/practice/labels'
 import type { KnowledgeState, Level } from '@/spikes/practice/model'
-import { rollup } from '@/spikes/practice/graph'
+import { nodeLevel, readiness, rollup } from '@/spikes/practice/graph'
 import { usePracticeSpike } from '@/spikes/practice/usePracticeSpike'
 
 const spike = usePracticeSpike()
@@ -45,6 +45,21 @@ const tree = computed(() => {
   walk(null, 0)
   return out
 })
+
+/** Level for practice nodes only (items of their own); readiness wherever requires edges exist. */
+const hasOwnItems = (id: string) => items.some((i) => i.skill_ids.includes(id) || i.concept_ids.includes(id))
+const nodeInfo = computed(
+  () =>
+    new Map(
+      tree.value.map((n) => [
+        n.id,
+        {
+          level: hasOwnItems(n.id) ? nodeLevel(graph.nodes, items, spike.states.value, n.id) : null,
+          readiness: readiness(graph, items, spike.states.value, n.id, GUITAR_ID),
+        },
+      ]),
+    ),
+)
 
 const rollups = computed(() => new Map(tree.value.map((n) => [n.id, rollup(graph.nodes, items, spike.states.value, n.id)])))
 
@@ -165,6 +180,13 @@ const technique = computed(() =>
             </span>
             <span v-else class="text-xs text-ink-subtle">no items yet</span>
           </template>
+          <LevelChip v-if="nodeInfo.get(n.id)?.level" :level="nodeInfo.get(n.id)!.level!" />
+          <span v-if="nodeInfo.get(n.id)?.readiness.total" class="text-xs text-ink-muted">
+            {{ nodeInfo.get(n.id)!.readiness.met }} of {{ nodeInfo.get(n.id)!.readiness.total }} steps there<template
+              v-for="m in nodeInfo.get(n.id)!.readiness.missing"
+              :key="m.node_id"
+            > · next: {{ nodeName(m.node_id) }} ({{ m.needed }}<template v-if="m.has === null">, nothing to practise yet</template>)</template>
+          </span>
         </li>
       </ul>
     </section>

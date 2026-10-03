@@ -19,6 +19,7 @@ import type {
 } from '@/spikes/practice/model'
 import { composeSession } from '@/spikes/practice/sessionComposer'
 import { simulate } from '@/spikes/practice/simulator'
+import { summarize } from '@/spikes/practice/summary'
 import { openSuggestions } from '@/spikes/practice/teacherNotes'
 import type { OpenSuggestions } from '@/spikes/practice/teacherNotes'
 import type { Archetype } from '@/spikes/practice/simulator'
@@ -83,6 +84,27 @@ const notes = computed(() =>
 
 const states = computed(() => deriveStates(items, evidence.value, now.value))
 
+function statesAt(t: Date): Map<string, KnowledgeState> {
+  return deriveStates(
+    items,
+    evidence.value.filter((e) => before(e.occurred_at, t)),
+    t,
+  )
+}
+
+/** The home screen's one read: derived from the same evidence as everything else. */
+const summary = computed(() =>
+  summarize({
+    graph,
+    items,
+    instrument_id: GUITAR_ID,
+    now: now.value,
+    states_now: states.value,
+    states_week_ago: statesAt(new Date(now.value.getTime() - 7 * DAY_MS)),
+    evidence: evidence.value,
+  }),
+)
+
 /** What a note still steers: its suggestions not yet met, while it is open and recent. */
 function openFor(note: TeacherNote): OpenSuggestions {
   return openSuggestions([note], { nodes: graph.nodes, items, states: states.value, now: now.value })
@@ -121,13 +143,8 @@ export function usePracticeSpike() {
     states,
     clock,
     newId,
-    statesAt(t: Date): Map<string, KnowledgeState> {
-      return deriveStates(
-        items,
-        evidence.value.filter((e) => before(e.occurred_at, t)),
-        t,
-      )
-    },
+    statesAt,
+    summary,
     compose(instrumentInHand: boolean, minutes: number): Session {
       return composeSession({
         session_id: newId('session'),

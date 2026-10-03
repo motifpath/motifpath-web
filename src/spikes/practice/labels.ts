@@ -15,7 +15,7 @@ export const LEVEL_LABEL: Record<Level, string> = {
 
 export const LEVEL_CLASS: Record<Level, string> = {
   new: 'bg-surface-sunken text-ink-subtle',
-  learning: 'bg-danger-muted text-ink',
+  learning: 'bg-accent-muted text-ink',
   accurate: 'bg-warning-muted text-ink',
   fluent: 'bg-success-muted text-ink',
   retained: 'bg-success text-success-fg',
