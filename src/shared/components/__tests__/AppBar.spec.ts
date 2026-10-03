@@ -134,6 +134,7 @@ describe('AppBar', () => {
         'Courses',
         'Exercises',
         'Diagrams',
+        'Knowledge map',
       ])
       expect(warn).not.toHaveBeenCalled()
       warn.mockRestore()
@@ -203,6 +204,25 @@ describe('AppBar', () => {
 
     const links = navLinks(wrapper)
     expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Courses', 'Exercises', 'Diagrams'])
+  })
+
+  it('offers admins the Knowledge map tab after the authoring tabs', () => {
+    currentUser.profile = { role: 'admin' }
+    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'admin-knowledge-map' } })
+
+    const links = navLinks(wrapper)
+    expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Courses', 'Exercises', 'Diagrams', 'Knowledge map'])
+    expect(links.find((l) => l.text() === 'Knowledge map')?.classes()).toContain('bg-accent-muted')
+  })
+
+  it('never offers teachers the Knowledge map tab', () => {
+    currentUser.profile = { role: 'teacher' }
+
+    const overview = navLinks(mountBar({ context: 'overview' }))
+    const authoring = navLinks(mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-paths' } }))
+
+    expect(overview.some((l) => l.text() === 'Knowledge map')).toBe(false)
+    expect(authoring.some((l) => l.text() === 'Knowledge map')).toBe(false)
   })
 
   it('highlights the tab matching primaryNavTo as active', () => {

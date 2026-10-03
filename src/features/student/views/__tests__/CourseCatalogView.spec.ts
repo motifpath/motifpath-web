@@ -60,16 +60,22 @@ vi.mock('@/features/student/composables/useEnrollInCourse', () => ({
 }))
 
 const skills = ref([
-  { skill_id: 'chords', name: 'chords', parent_id: null },
-  { skill_id: 'triads', name: 'triads', parent_id: 'chords' },
+  knowledgeNode('chords', { names: { en: 'chords' } }),
+  knowledgeNode('triads', { names: { en: 'triads' }, parent_id: 'chords' }),
+  knowledgeNode('sevenths', { names: { en: 'sevenths' }, parent_id: 'chords' }),
 ])
-vi.mock('@/shared/composables/useListSkills', () => ({
-  useListSkills: () => ({ skills, isLoading: ref(false), error: ref(false), retry: vi.fn() }),
-}))
-vi.mock('@/shared/composables/useListConcepts', () => ({
-  useListConcepts: () => ({ concepts: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+vi.mock('@/shared/composables/useListKnowledgeNodes', () => ({
+  useListKnowledgeNodes: (kind: string) => ({
+    nodes: kind === 'skill' ? skills : ref([]),
+    isLoading: ref(false),
+    error: ref(false),
+    retry: vi.fn(),
+  }),
 }))
 
+vi.mock('@/shared/composables/useListKnowledgeEdges', () => ({
+  useListKnowledgeEdges: () => ({ edges: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
 vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => ({
     instruments: ref([
@@ -93,6 +99,7 @@ vi.mock('@/shared/composables/useToast', () => ({
 
 import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import CourseCatalogView from '@/features/student/views/CourseCatalogView.vue'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 function course(overrides: Partial<CourseCatalogEntry> = {}): CourseCatalogEntry {
   return {
@@ -376,7 +383,9 @@ describe('CourseCatalogView', () => {
   it('filters by the most specific skills picked, not their ancestors too', async () => {
     const wrapper = mountView()
     await wrapper.get('[data-test="advanced-filters"]').trigger('click')
-    const picker = wrapper.findAllComponents({ name: 'SkillConceptTreePicker' })[0]!
+    const picker = wrapper
+      .findAllComponents({ name: 'SkillConceptTreePicker' })
+      .find((candidate) => candidate.props('label') === 'Skill')!
 
     picker.vm.$emit('update:selectedIds', ['chords', 'triads'])
     await flushPromises()

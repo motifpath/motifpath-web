@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, shallowRef, watch, watchEffect } from 'vue'
 import { Layers, Maximize2, Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
+import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
@@ -20,7 +21,6 @@ import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { useDiagramOverlays } from '@/features/teacher/composables/useDiagramOverlays'
 import { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
-import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
 import AppBar from '@/shared/components/AppBar.vue'
 import LocaleScope from '@/shared/components/LocaleScope.vue'
@@ -95,11 +95,28 @@ const { t: te } = useTypedT({ locale: editingLocale })
 const { localizedName: localizedNameInEditor } = useLocalizedName({ locale: editingLocale })
 const { createDiagram } = useCreateDiagram()
 const { updateDiagram } = useUpdateDiagram()
-const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
-  useSkillConceptCreation(form.skillIds, form.conceptIds, {
-    createSkillFailed: t('diagramAuthoringView.createSkillFailed'),
-    createConceptFailed: t('diagramAuthoringView.createConceptFailed'),
-  })
+const {
+  skillNodes,
+  conceptNodes,
+  skillsLoading,
+  conceptsLoading,
+  skillsError,
+  conceptsError,
+  retrySkills,
+  retryConcepts,
+  suggestedSkillIds,
+  suggestedConceptIds,
+} =
+  useKnowledgeTrees(
+    { skillIds: form.skillIds, conceptIds: form.conceptIds },
+    { locale: editingLocale },
+    { refreshOnReturn: true },
+  )
+// Classification must suit every instrument the diagram is for; before any are
+// toggled, that is the layout instrument alone.
+const classificationInstrumentIds = computed(() =>
+  form.instrumentIds.value.length > 0 ? form.instrumentIds.value : [form.instrumentId.value].filter(Boolean),
+)
 
 const savedDiagramId = ref('')
 // Who may save over the diagram being edited follows from the server's copy of it; null
@@ -182,6 +199,27 @@ const readOnlyReason = computed(() => {
 const selectedInstrument = computed(() =>
   instruments.value.find((i) => i.instrument_id === form.instrumentId.value),
 )
+const compatibleInstruments = computed(() => {
+  const layout = selectedInstrument.value
+  if (!layout || layout.family !== 'fretted') return []
+  return frettedInstruments.value.filter(
+    (instrument) =>
+      instrument.string_count === layout.string_count &&
+      JSON.stringify(instrument.tuning) === JSON.stringify(layout.tuning),
+  )
+})
+
+function chooseLayout(instrumentId: string) {
+  form.instrumentId.value = instrumentId
+  form.instrumentIds.value = [instrumentId]
+}
+
+function toggleCompatibleInstrument(instrumentId: string) {
+  if (instrumentId === form.instrumentId.value) return
+  form.instrumentIds.value = form.instrumentIds.value.includes(instrumentId)
+    ? form.instrumentIds.value.filter((id) => id !== instrumentId)
+    : [...form.instrumentIds.value, instrumentId]
+}
 
 // Only tracks tuning here — never auto-recomputes on instrument change, since that would
 // blindly overwrite interval/note_name an edit-mode load just populated from the server (no
@@ -214,6 +252,7 @@ function diagramForPreview(positions: Diagram['positions'], regions: Diagram['re
   return {
     diagram_id: savedDiagramId.value,
     instrument_id: form.instrumentId.value,
+    instrument_ids: [...form.instrumentIds.value],
     names: request.names,
     languages: Object.keys(request.names).sort(),
     kind: savedOwnership.value?.kind ?? 'custom',
@@ -472,7 +511,7 @@ async function saveAs(names: Record<string, string>) {
                   ? 'bg-accent text-accent-fg'
                   : 'text-ink-muted'
               "
-              @click="form.instrumentId.value = instrument.instrument_id"
+              @click="chooseLayout(instrument.instrument_id)"
             >
               {{ localizedNameInEditor(instrument.names) }}
             </button>
@@ -480,6 +519,25 @@ async function saveAs(names: Record<string, string>) {
           <span v-if="isEditMode || form.hasPositions.value" class="text-sm text-ink-subtle">
             {{ te('diagramAuthoringView.instrumentLockedHint') }}
           </span>
+          <div v-if="selectedInstrument" class="flex flex-col gap-2">
+            <span data-test="compatible-instruments-label" class="text-sm text-ink-subtle">{{
+              te('diagramAuthoringView.compatibleInstrumentsLabel')
+            }}</span>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="instrument in compatibleInstruments"
+                :key="instrument.instrument_id"
+                type="button"
+                :data-test="`compatible-instrument-${instrument.instrument_id}`"
+                :aria-pressed="form.instrumentIds.value.includes(instrument.instrument_id)"
+                class="rounded-full border px-3 py-1 text-sm"
+                :class="form.instrumentIds.value.includes(instrument.instrument_id) ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink-muted'"
+                @click="toggleCompatibleInstrument(instrument.instrument_id)"
+              >
+                {{ localizedNameInEditor(instrument.names) }}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div v-if="selectedInstrument" class="flex flex-col gap-2.5">
@@ -634,22 +692,30 @@ async function saveAs(names: Record<string, string>) {
             </span>
           </div>
           <SkillConceptTreePicker
-            :label="te('classificationFields.skillLabel')"
-            :nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
-            :selected-ids="form.skillIds.value"
-            :is-loading="skillsLoading"
-            @update:selected-ids="form.skillIds.value = $event"
-            @create="onCreateSkill"
-          />
-          <SkillConceptTreePicker
             :label="te('classificationFields.conceptLabel')"
-            :nodes="
-              concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))
-            "
+            :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"
+            :load-failed="conceptsError"
+            :instrument-ids="classificationInstrumentIds"
+            :suggested-ids="suggestedConceptIds"
+            missing-hint
+            :create-kind="isAdmin ? 'concept' : null"
             @update:selected-ids="form.conceptIds.value = $event"
-            @create="onCreateConcept"
+            @retry="retryConcepts"
+          />
+          <SkillConceptTreePicker
+            :label="te('classificationFields.skillLabel')"
+            :nodes="skillNodes"
+            :selected-ids="form.skillIds.value"
+            :is-loading="skillsLoading"
+            :load-failed="skillsError"
+            :instrument-ids="classificationInstrumentIds"
+            :suggested-ids="suggestedSkillIds"
+            missing-hint
+            :create-kind="isAdmin ? 'skill' : null"
+            @update:selected-ids="form.skillIds.value = $event"
+            @retry="retrySkills"
           />
         </div>
         </LocaleScope>

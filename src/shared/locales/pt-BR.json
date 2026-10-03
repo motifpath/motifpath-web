@@ -8,7 +8,8 @@
     "paths": "Trilhas",
     "courses": "Cursos",
     "exercises": "Exercícios",
-    "diagrams": "Diagramas"
+    "diagrams": "Diagramas",
+    "knowledgeMap": "Mapa de conhecimento"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
@@ -120,18 +121,30 @@
     "addButton": "Adicionar {label}",
     "changeButton": "Alterar {label}",
     "modalTitle": "Selecionar {label}",
-    "search": "Buscar por nome",
+    "search": "Nome ou chave",
     "loading": "Carregando…",
-    "empty": "Nenhum item encontrado ainda — crie um abaixo.",
-    "emptyNoCreate": "Nenhum item encontrado.",
-    "createHeading": "Criar novo",
-    "createNamePlaceholder": "Nome do novo item ({label})",
-    "noParentRoot": "Sem item pai (raiz)",
-    "parentSearchPlaceholder": "Sem item pai (raiz) — busque para definir um item pai",
-    "clearParentAriaLabel": "Limpar item pai",
-    "createSubmit": "Adicionar",
-    "duplicateName": "Já existe um item chamado \"{name}\" sob esse item pai — selecione-o na lista acima em vez de criar um quase duplicado.",
-    "closeButton": "Fechar"
+    "empty": "Nenhum item encontrado.",
+    "closeButton": "Concluir",
+    "missingHint": "Falta algum? Peça à equipe.",
+    "missingHintCreate": "Falta algum? Adicione no mapa de conhecimento",
+    "unsuitedNote": "Os itens em vermelho não são para os instrumentos deste conteúdo. Remova-os antes de salvar.",
+    "loadFailed": "Não foi possível carregar a lista.",
+    "retry": "Tentar novamente",
+    "searchLabel": "Buscar",
+    "instrumentFilterLabel": "Instrumento",
+    "fitsContent": "Adequados a este conteúdo",
+    "suggestedOnly": "Sugeridos ({count})",
+    "suggestedBadge": "Sugerido",
+    "moreFilters": "Mais filtros",
+    "areaLabel": "Área",
+    "allAreas": "Todas as áreas",
+    "selectedOnly": "Somente selecionados",
+    "selectionHeading": "Selecionados ({count})",
+    "nothingSelected": "Nada selecionado ainda.",
+    "unsuitedRow": "Não é para os instrumentos deste conteúdo",
+    "expandAriaLabel": "Expandir {name}",
+    "collapseAriaLabel": "Recolher {name}",
+    "moreAriaLabel": "e mais {count} abaixo"
   },
   "levels": {
     "beginner": "Iniciante",
@@ -166,6 +179,9 @@
     "draft": "Rascunho",
     "published": "Publicado",
     "retired": "Descontinuado"
+  },
+  "languageCodesPicker": {
+    "any": "Qualquer idioma"
   },
   "instrumentPicker": {
     "every": "Todos os instrumentos",

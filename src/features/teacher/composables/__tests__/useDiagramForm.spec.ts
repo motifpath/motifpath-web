@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { makeFrettedDiagram, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 describe('useDiagramForm', () => {
   it('starts empty with no positions and nothing markable as valid', () => {
@@ -160,7 +161,7 @@ describe('useDiagramForm', () => {
     const request = form.toCreateDiagramRequest()
 
     expect(request).toEqual({
-      instrument_id: 'instrument-guitar',
+      instrument_ids: ['instrument-guitar'],
       names: { en: 'Minor Pentatonic — Position 1' },
       kind: 'custom',
       root_note: 'A',
@@ -225,8 +226,8 @@ describe('useDiagramForm', () => {
       root_note: 'A',
       label_display: 'note',
       classification: {
-        skills: [{ skill_id: 's-1', name: 'Pentatonic scales', parent_id: null }],
-        concepts: [{ concept_id: 'c-1', name: 'Scale construction', parent_id: null }],
+        skills: [knowledgeNode('s-1', { names: { en: 'Pentatonic scales' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Scale construction' } })],
       },
     })
 
@@ -256,6 +257,22 @@ describe('useDiagramForm', () => {
     form.loadFromDiagram(diagram)
 
     expect(form.rootNote.value).toBe('')
+  })
+
+  it("keeps a loaded diagram's compatible instruments, layout first, when the edit is saved", () => {
+    const form = useDiagramForm()
+    form.loadFromDiagram(
+      makeFrettedDiagram({ instrument_id: 'instrument-guitar', instrument_ids: ['instrument-guitar', 'instrument-electric'] }),
+    )
+
+    expect(form.toUpdateDiagramRequest().instrument_ids).toEqual(['instrument-guitar', 'instrument-electric'])
+  })
+
+  it('falls back to the layout instrument alone when a loaded diagram lists no compatible instruments', () => {
+    const form = useDiagramForm()
+    form.loadFromDiagram(makeFrettedDiagram({ instrument_id: 'instrument-guitar', instrument_ids: [] }))
+
+    expect(form.toUpdateDiagramRequest().instrument_ids).toEqual(['instrument-guitar'])
   })
 
   describe('colors', () => {
@@ -371,7 +388,7 @@ describe('useDiagramForm', () => {
 
       expect(request.names).toEqual({ en: 'My Pentatonic' })
       expect(request.kind).toBe('custom')
-      expect(request.instrument_id).toBe('instrument-guitar')
+      expect(request.instrument_ids).toEqual(['instrument-guitar'])
       expect(request.root_note).toBe('A')
       expect(request.color).toBe('#3B82F6')
       expect(request.positions.map((p) => [p.string, p.fret, p.interval])).toEqual(

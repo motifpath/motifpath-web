@@ -8,7 +8,8 @@
     "paths": "Paths",
     "courses": "Courses",
     "exercises": "Exercises",
-    "diagrams": "Diagrams"
+    "diagrams": "Diagrams",
+    "knowledgeMap": "Knowledge map"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
@@ -120,18 +121,30 @@
     "addButton": "Add {label}",
     "changeButton": "Change {label}",
     "modalTitle": "Select {label}",
-    "search": "Search by name",
+    "search": "Name or key",
     "loading": "Loading…",
-    "empty": "No matching nodes yet — create one below.",
-    "emptyNoCreate": "No matching nodes.",
-    "createHeading": "Create new",
-    "createNamePlaceholder": "New {label} name",
-    "noParentRoot": "No parent (root)",
-    "parentSearchPlaceholder": "No parent (root) — search to set a parent",
-    "clearParentAriaLabel": "Clear parent",
-    "createSubmit": "Add",
-    "duplicateName": "A node named \"{name}\" already exists under that parent — pick it from the list above instead of creating a near-duplicate.",
-    "closeButton": "Close"
+    "empty": "No matching nodes.",
+    "closeButton": "Done",
+    "missingHint": "Missing one? Ask the team.",
+    "missingHintCreate": "Missing one? Add it in the knowledge map",
+    "unsuitedNote": "The items in red aren't for this content's instruments. Remove them before saving.",
+    "loadFailed": "Couldn't load the list.",
+    "retry": "Try again",
+    "searchLabel": "Search",
+    "instrumentFilterLabel": "Instrument",
+    "fitsContent": "Fits this content",
+    "suggestedOnly": "Suggested ({count})",
+    "suggestedBadge": "Suggested",
+    "moreFilters": "More filters",
+    "areaLabel": "Area",
+    "allAreas": "All areas",
+    "selectedOnly": "Selected only",
+    "selectionHeading": "Selected ({count})",
+    "nothingSelected": "Nothing selected yet.",
+    "unsuitedRow": "Not for this content's instruments",
+    "expandAriaLabel": "Expand {name}",
+    "collapseAriaLabel": "Collapse {name}",
+    "moreAriaLabel": "and {count} more under it"
   },
   "levels": {
     "beginner": "Beginner",
@@ -166,6 +179,9 @@
     "draft": "Draft",
     "published": "Published",
     "retired": "Retired"
+  },
+  "languageCodesPicker": {
+    "any": "Any language"
   },
   "instrumentPicker": {
     "every": "Every instrument",

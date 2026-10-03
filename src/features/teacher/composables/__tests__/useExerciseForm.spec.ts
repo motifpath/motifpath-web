@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { useExerciseForm } from '@/features/teacher/composables/useExerciseForm'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 import type { components } from '@/api/generated/core-domain'
 
 type Exercise = components['schemas']['Exercise']
@@ -20,6 +21,7 @@ function exercise(overrides: Partial<Exercise>): Exercise {
     content_node_ids: [],
     remediation_targets: [],
     languages: [],
+    instrument_ids: [],
     created_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }
@@ -186,6 +188,56 @@ describe('useExerciseForm', () => {
     })
   })
 
+  describe('language codes', () => {
+    it('default to any language and travel on create and update', () => {
+      const form = useExerciseForm()
+      expect(form.languageCodes.value).toEqual(['any'])
+      expect(form.toCreateExerciseRequest().language_codes).toEqual(['any'])
+
+      form.languageCodes.value = ['pt_BR']
+
+      expect(form.toCreateExerciseRequest().language_codes).toEqual(['pt_BR'])
+      expect(form.toUpdateExerciseRequest().language_codes).toEqual(['pt_BR'])
+    })
+
+    it("load an existing exercise's languages, so saving an edit keeps them", () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', languages: [{ code: 'pt_BR', name: 'Portuguese' }] }))
+
+      expect(form.toUpdateExerciseRequest().language_codes).toEqual(['pt_BR'])
+    })
+
+    it('load an exercise stored without languages as any language, since the API rejects an empty set', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', languages: [] }))
+
+      expect(form.languageCodes.value).toEqual(['any'])
+    })
+  })
+
+  describe('instrument ids', () => {
+    it('default to every instrument (an empty list) and travel on create and update', () => {
+      const form = useExerciseForm()
+      expect(form.instrumentIds.value).toEqual([])
+      expect(form.toCreateExerciseRequest().instrument_ids).toEqual([])
+
+      form.instrumentIds.value = ['bass']
+
+      expect(form.toCreateExerciseRequest().instrument_ids).toEqual(['bass'])
+      expect(form.toUpdateExerciseRequest().instrument_ids).toEqual(['bass'])
+    })
+
+    it('load from an existing exercise', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', instrument_ids: ['guitar', 'bass'] }))
+
+      expect(form.instrumentIds.value).toEqual(['guitar', 'bass'])
+    })
+  })
+
   describe('toCreateExerciseRequest', () => {
     it('maps a text_response exercise', () => {
       const form = useExerciseForm()
@@ -208,6 +260,7 @@ describe('useExerciseForm', () => {
         concept_ids: ['c-1'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
         language_codes: ['any'],
+        instrument_ids: [],
       })
     })
 
@@ -333,13 +386,14 @@ describe('useExerciseForm', () => {
         title: 'Name the chord',
         prompt: plainTextPrompt('Name this chord shape'),
         exercise_type: 'text_response',
-        skills: [{ skill_id: 's-1', name: 'theory', parent_id: null }],
+        skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
         concepts: [],
         options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
         challenge_ids: [],
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -366,6 +420,7 @@ describe('useExerciseForm', () => {
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -391,6 +446,7 @@ describe('useExerciseForm', () => {
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -421,6 +477,7 @@ describe('useExerciseForm', () => {
         content_node_ids: [],
         remediation_targets: [],
         languages: [],
+        instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
       })
 
@@ -456,6 +513,7 @@ describe('useExerciseForm', () => {
         concept_ids: ['c-1'],
         options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
         language_codes: ['any'],
+        instrument_ids: [],
       })
       expect(request).not.toHaveProperty('exercise_type')
     })

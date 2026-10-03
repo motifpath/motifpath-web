@@ -1,4 +1,4 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
@@ -84,11 +84,12 @@ import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.v
 import DiagramAuthoringView from '@/features/teacher/views/DiagramAuthoringView.vue'
 import type { components } from '@/api/generated/core-domain'
 import { useToast } from '@/shared/composables/useToast'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 type Diagram = components['schemas']['Diagram']
 
 async function selectClassification(wrapper: ReturnType<typeof mountView>) {
-  const [skillPicker, conceptPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+  const [conceptPicker, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
   await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
   await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
 }
@@ -190,6 +191,148 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
   })
 
+  it('names the skills and concepts in the editing language, and asks the team for missing ones', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve({
+        data:
+          path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+            ? [knowledgeNode('s-1', { names: { en: 'Bends', pt_BR: 'Puxadas' } })]
+            : [],
+        error: undefined,
+        response: { status: 200 },
+      }),
+    )
+    i18n.global.locale.value = 'pt-BR'
+    try {
+      const wrapper = mountView()
+      await flushPromises()
+
+      const [, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+      expect(skillPicker!.props('nodes').map((node) => node.name)).toEqual(['Puxadas'])
+      expect(skillPicker!.props('missingHint')).toBe(true)
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
+  })
+
+  it('says the skills failed to load, and offers a retry', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve(
+        path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+          ? { data: undefined, error: { message: 'boom' }, response: { status: 500 } }
+          : { data: [], error: undefined, response: { status: 200 } },
+      ),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+
+    const [, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    expect(skillPicker!.props('loadFailed')).toBe(true)
+    GET.mockClear()
+    skillPicker!.vm.$emit('retry')
+
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+  })
+
+  it('asks for the concepts before the skills', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('label'))).toEqual([
+      'Concept',
+      'Skill',
+    ])
+  })
+
+  describe('compatible instruments', () => {
+    const electric = {
+      instrument_id: 'i-4',
+      names: { en: 'Electric guitar', pt_BR: 'Guitarra elétrica' },
+      languages: ['en', 'pt_BR'],
+      family: 'fretted' as const,
+      string_count: 6,
+      tuning: ['E', 'A', 'D', 'G', 'B', 'E'],
+    }
+
+    async function mountWithLayout() {
+      GET.mockResolvedValueOnce({ data: [guitar, bass, electric], error: undefined, response: { status: 200 } })
+      POST.mockResolvedValueOnce({ data: { diagram_id: 'd-new', instrument_id: 'i-1', instrument_ids: ['i-1'], names: { en: 'Shape' }, positions: [], classification: { skills: [], concepts: [] }, created_at: '2026-10-02T00:00:00Z' }, error: undefined, response: { status: 201 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.findAll('[data-test="instrument-option"]')[0]!.trigger('click')
+      return wrapper
+    }
+
+    async function save(wrapper: ReturnType<typeof mountView>) {
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Shape')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+    }
+
+    it('offers only instruments that share the layout geometry, with the layout itself always selected', async () => {
+      const wrapper = await mountWithLayout()
+
+      expect(wrapper.find('[data-test="compatible-instrument-i-1"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('[data-test="compatible-instrument-i-4"]').attributes('aria-pressed')).toBe('false')
+      expect(wrapper.find('[data-test="compatible-instrument-i-3"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="compatible-instrument-i-1"]').trigger('click')
+      expect(wrapper.get('[data-test="compatible-instrument-i-1"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('saves the chosen compatible instruments after the layout instrument', async () => {
+      const wrapper = await mountWithLayout()
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      await save(wrapper)
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ instrument_ids: ['i-1', 'i-4'] }) }),
+      )
+    })
+
+    it('drops a compatible instrument that is toggled off again', async () => {
+      const wrapper = await mountWithLayout()
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      await save(wrapper)
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ instrument_ids: ['i-1'] }) }),
+      )
+    })
+
+    it("lists only the classification nodes that suit the diagram's instruments", async () => {
+      const wrapper = await mountWithLayout()
+      const pickers = () => wrapper.findAllComponents(SkillConceptTreePicker)
+
+      expect(pickers().map((picker) => picker.props('instrumentIds'))).toEqual([['i-1'], ['i-1']])
+
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      expect(pickers().map((picker) => picker.props('instrumentIds'))).toEqual([
+        ['i-1', 'i-4'],
+        ['i-1', 'i-4'],
+      ])
+    })
+
+    it('labels the compatible instruments in the editing language', async () => {
+      i18n.global.locale.value = 'pt-BR'
+      try {
+        const wrapper = await mountWithLayout()
+
+        expect(wrapper.get('[data-test="compatible-instruments-label"]').text()).toBe('Instrumentos compatíveis')
+      } finally {
+        i18n.global.locale.value = 'en'
+      }
+    })
+  })
+
   it('creates a diagram once, from the positions placed on the editor', async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     POST.mockResolvedValueOnce({
@@ -220,7 +363,7 @@ describe('DiagramAuthoringView', () => {
       '/diagrams',
       expect.objectContaining({
         body: expect.objectContaining({
-          instrument_id: 'i-1',
+          instrument_ids: ['i-1'],
           names: { en: 'Minor Pentatonic — Position 1' },
           positions: [expect.objectContaining({ interval: 'R', note_name: 'G', string: 1, fret: 3 })],
         }),
@@ -458,8 +601,8 @@ describe('DiagramAuthoringView', () => {
           names: { en: 'C Major Scale' },
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
           classification: {
-            skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
-            concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
           },
           created_at: '2026-09-22T00:00:00Z',
         },
@@ -476,8 +619,8 @@ describe('DiagramAuthoringView', () => {
           names: { en: 'C Major Scale (updated)' },
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
           classification: {
-            skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
-            concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
           },
           created_at: '2026-09-22T00:00:00Z',
         },
@@ -515,8 +658,8 @@ describe('DiagramAuthoringView', () => {
           label_display: 'note',
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'star', string: 2, fret: 1 }],
           classification: {
-            skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
-            concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
           },
           created_at: '2026-09-22T00:00:00Z',
         },
@@ -550,8 +693,8 @@ describe('DiagramAuthoringView', () => {
             { position_id: 'p-2', interval: '3', note_name: 'E', shape: 'dot', string: 2, fret: 5 },
           ],
           classification: {
-            skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
-            concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
           },
           created_at: '2026-09-22T00:00:00Z',
         },
@@ -587,8 +730,8 @@ describe('DiagramAuthoringView', () => {
           color: '#3B82F6',
           positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', string: 2, fret: 1 }],
           classification: {
-            skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
-            concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
           },
           created_at: '2026-09-22T00:00:00Z',
         },
@@ -616,8 +759,8 @@ describe('DiagramAuthoringView', () => {
       color: null,
       positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
       classification: {
-        skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
-        concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+        skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
       },
       created_at: '2026-09-22T00:00:00Z',
     }
@@ -922,8 +1065,8 @@ describe('DiagramAuthoringView', () => {
       positions: [{ position_id: 'p-1', interval: 'R' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1 }],
       regions: [],
       classification: {
-        skills: [{ skill_id: 's-1', name: 'Scales', parent_id: null }],
-        concepts: [{ concept_id: 'c-1', name: 'Major', parent_id: null }],
+        skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
       },
       created_at: '2026-09-22T00:00:00Z',
     }
@@ -938,7 +1081,7 @@ describe('DiagramAuthoringView', () => {
         { position_id: 'o-1', interval: 'R' as const, note_name: 'A', shape: 'dot' as const, string: 3, fret: 2 },
         { position_id: 'o-2', interval: 'b3' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1 },
       ],
-      classification: { skills: [{ skill_id: 's-2', name: 'Pentatonics', parent_id: null }], concepts: [] },
+      classification: { skills: [knowledgeNode('s-2', { names: { en: 'Pentatonics' } })], concepts: [] },
     }
     const flush = () => new Promise((r) => setTimeout(r, 0))
 

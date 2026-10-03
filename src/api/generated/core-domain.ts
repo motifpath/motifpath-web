@@ -192,7 +192,7 @@ export interface paths {
          * Create a challenge for a content node
          * @description Creates a new challenge attached to the specified content node. A challenge
          *     is the assessment unit for a class — it groups exercises and carries the
-         *     subject (a Skill or Concept reference) and pass threshold used by the
+         *     subject (a skill- or concept-kind KnowledgeNode) and pass threshold used by the
          *     rules-based recommendation engine, plus an optional, purely informational
          *     time threshold.
          *
@@ -611,7 +611,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/skills": {
+    "/knowledge-nodes": {
         parameters: {
             query?: never;
             header?: never;
@@ -619,29 +619,66 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List all known skills
-         * @description Returns every Skill currently known to the system as a flat list
-         *     (id, name, parent_id), sorted by name within each level — the shape
-         *     a client needs both to render the tree for browsing and to resolve
-         *     any node's breadcrumb by walking parent_id. Any authenticated user
-         *     may list skills.
+         * List knowledge nodes
+         * @description Returns every KnowledgeNode (skill or concept) as a flat list,
+         *     sorted by key — the shape a client needs both to render each kind's
+         *     tree and to resolve any node's breadcrumb by walking parent_id.
+         *     Clients sort siblings by the name they display, since names are
+         *     localized. Any authenticated user may list knowledge nodes.
          */
-        get: operations["listSkills"];
+        get: operations["listKnowledgeNodes"];
         put?: never;
         /**
-         * Create a skill node
-         * @description Creates a new skill, either as a root (parent_id omitted) or as a
-         *     child of an existing skill. Only teachers and admins may create a
-         *     skill — the tree is an authoring surface.
+         * Create a knowledge node
+         * @description Creates a skill or concept, either as a root (parent_id omitted) or
+         *     under an existing node of the same kind. Only admins may create a
+         *     node: the team curates the knowledge graph, and teachers classify
+         *     content by picking existing nodes.
          */
-        post: operations["createSkill"];
+        post: operations["createKnowledgeNode"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/concepts": {
+    "/knowledge-nodes/{node_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get a knowledge node
+         * @description Returns one knowledge node. Any authenticated user may read it.
+         */
+        get: operations["getKnowledgeNode"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a knowledge node
+         * @description Deletes a node that nothing depends on. The delete is refused while
+         *     the node has children, takes part in any knowledge edge, classifies
+         *     any content node, exercise or diagram, or is the subject of a
+         *     challenge — remove those first. Only admins may delete a node.
+         */
+        delete: operations["deleteKnowledgeNode"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename, describe or move a knowledge node
+         * @description Changes a node's names, descriptions or parent. A field left out is
+         *     unchanged. kind and key never change. Moving a node takes its whole
+         *     subtree with it, and is refused when the new parent is the node
+         *     itself or one of its descendants. Only admins may update a node.
+         */
+        patch: operations["updateKnowledgeNode"];
+        trace?: never;
+    };
+    "/knowledge-edges": {
         parameters: {
             query?: never;
             header?: never;
@@ -649,26 +686,51 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List all known concepts
-         * @description Returns every Concept currently known to the system as a flat list
-         *     (id, name, parent_id), sorted by name within each level — the shape
-         *     a client needs both to render the tree for browsing and to resolve
-         *     any node's breadcrumb by walking parent_id. Any authenticated user
-         *     may list concepts.
+         * List knowledge edges
+         * @description Returns the knowledge edges matching every filter given, or all of
+         *     them when none is. Any authenticated user may list edges.
          */
-        get: operations["listConcepts"];
+        get: operations["listKnowledgeEdges"];
         put?: never;
         /**
-         * Create a concept node
-         * @description Creates a new concept, either as a root (parent_id omitted) or as a
-         *     child of an existing concept. Only teachers and admins may create a
-         *     concept — the tree is an authoring surface.
+         * Link two knowledge nodes
+         * @description Creates an applies edge (a skill uses a concept) or a requires edge
+         *     (a node needs another at a mastery level). Only admins may create
+         *     an edge.
          */
-        post: operations["createConcept"];
+        post: operations["createKnowledgeEdge"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/knowledge-edges/{edge_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                edge_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a knowledge edge
+         * @description Removes the edge. Only admins may delete an edge.
+         */
+        delete: operations["deleteKnowledgeEdge"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a requires edge's level
+         * @description Changes the mastery level a requires edge asks for. The nodes and
+         *     type of an edge never change — delete it and create another. Only
+         *     admins may update an edge.
+         */
+        patch: operations["updateKnowledgeEdge"];
         trace?: never;
     };
     "/instruments": {
@@ -1880,22 +1942,27 @@ export interface components {
          * @description The three mandatory classification dimensions for a content node.
          *     These dimensions are the minimum semantic layer required for gap
          *     detection and the rules-based recommendation engine to function.
-         *     skill_ids/concept_ids reference existing Skill/Concept tree nodes —
-         *     create one first via POST /skills or POST /concepts if the one you
-         *     need doesn't exist yet.
+         *     skill_ids/concept_ids reference existing KnowledgeNodes of kind
+         *     skill and concept respectively. Only admins create nodes; a teacher
+         *     who needs a missing one asks the team.
+         *     Every node must suit the content's instruments: it is for every
+         *     instrument, or for at least one of the content's instrument_ids.
+         *     Content for every instrument (empty instrument_ids) may use only
+         *     nodes for every instrument. A violation is rejected with the
+         *     offending skill_ids or concept_ids identified.
          */
         ClassificationInput: {
             /**
-             * @description The id(s) of the Skill tree node(s) this content teaches — may
+             * @description The id(s) of the skill node(s) this content teaches — may
              *     be a root, a leaf, or a mix of nodes at different depths,
              *     whichever set actually fits this content's scope. Must not be
-             *     empty; each id must reference an existing skill.
+             *     empty; each id must reference an existing skill-kind node.
              */
             skill_ids: string[];
             /**
-             * @description The id(s) of the Concept tree node(s) this content addresses —
+             * @description The id(s) of the concept node(s) this content addresses —
              *     same depth/mix rules as skill_ids. Must not be empty; each id
-             *     must reference an existing concept.
+             *     must reference an existing concept-kind node.
              */
             concept_ids: string[];
             /**
@@ -1907,17 +1974,17 @@ export interface components {
         };
         /**
          * @description The classification of a content node as returned by the API —
-         *     skills/concepts are embedded in full (id, name, parent_id) rather
-         *     than left as bare ids, so a client can render each one's position
+         *     skills/concepts are embedded as full KnowledgeNodes rather than
+         *     left as bare ids, so a client can render each one's position
          *     in the tree without a follow-up lookup per id. Includes review
          *     state: all classifications start as pending and must be confirmed
          *     by an admin before the content node is considered fully ready.
          */
         Classification: {
-            /** @description The Skill tree node(s) this content teaches, in full. */
-            skills: components["schemas"]["Skill"][];
-            /** @description The Concept tree node(s) this content addresses, in full. */
-            concepts: components["schemas"]["Concept"][];
+            /** @description The skill node(s) this content teaches, in full. */
+            skills: components["schemas"]["KnowledgeNode"][];
+            /** @description The concept node(s) this content addresses, in full. */
+            concepts: components["schemas"]["KnowledgeNode"][];
             /**
              * @description The difficulty level of this content node, ordered beginner <
              *     early_intermediate < intermediate < advanced < expert.
@@ -2066,81 +2133,163 @@ export interface components {
             thumbnail_url?: string;
         };
         /**
-         * @description An observable, practicable skill a content node can teach. Skills
-         *     form a tree — parent_id null means a root skill; any skill may have
-         *     children, to any depth. A node's name is unique among its siblings
-         *     (including other roots), not globally, so two different branches may
-         *     contain a same-named skill.
+         * @description skill — something a student can do, named as an action ("Play open
+         *     chords"). concept — something true or known ("Open chord shapes").
+         *     The naming convention is documented, not enforced.
+         * @enum {string}
          */
-        Skill: {
+        KnowledgeNodeKind: "skill" | "concept";
+        /**
+         * @description The practice mastery scale, ordered accurate < fluent < retained. A
+         *     requires edge asks for its target at this level or above.
+         * @enum {string}
+         */
+        MasteryLevel: "accurate" | "fluent" | "retained";
+        /**
+         * @description A skill or concept in the knowledge graph. Each kind forms
+         *     a strict tree through parent_id — at most one parent, always of the
+         *     same kind — which says where a node lives. What a node uses or needs
+         *     across the tree is a KnowledgeEdge. Content, exercises and diagrams
+         *     link to nodes by id; they are never nodes themselves.
+         */
+        KnowledgeNode: {
             /**
              * Format: uuid
-             * @description Stable identifier for this skill.
+             * @description Stable identifier for this node.
              */
-            skill_id: string;
+            node_id: string;
+            kind: components["schemas"]["KnowledgeNodeKind"];
             /**
-             * @description Short kebab-case tag naming the skill (e.g. triad-shapes,
-             *     sweep-picking).
+             * @description Stable handle for code and seed scripts (e.g.
+             *     play-open-chords) — lowercase kebab-case, unique across both
+             *     kinds, and never changed after creation. Not for display: show
+             *     names instead.
              */
-            name: string;
+            key: string;
+            /** @description The node's name in every language MotifPath offers. */
+            names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description An optional explanation of the node, in every language MotifPath
+             *     offers, or null when there is none.
+             */
+            descriptions: components["schemas"]["LocalizedDescription"] | null;
+            /**
+             * @description The Language.code of every language this node has a name in —
+             *     the keys of names, sorted.
+             */
+            languages: string[];
             /**
              * Format: uuid
-             * @description The parent skill's id, or null if this is a root skill.
+             * @description The parent node's id (always of the same kind), or null for a root.
              */
             parent_id: string | null;
+            /**
+             * @description The instruments this node is for. Empty means every instrument,
+             *     including instruments added later — for nodes that don't depend
+             *     on the instrument, such as a scale or reading a chord chart. A
+             *     physical technique lists the instruments it applies to, even
+             *     when that is every fretted instrument.
+             */
+            instrument_ids: components["schemas"]["InstrumentIds"];
         };
-        /**
-         * @description Payload for creating a new skill node. There is no update or delete
-         *     endpoint yet — re-parenting, renaming, or deleting a skill that
-         *     already has links is a deliberately open question.
-         */
-        CreateSkillRequest: {
-            /** @description Short kebab-case tag naming the skill. */
-            name: string;
+        /** @description Payload for creating a skill or concept. */
+        CreateKnowledgeNodeRequest: {
+            kind: components["schemas"]["KnowledgeNodeKind"];
+            /** @description The node's key — lowercase kebab-case, unique across both kinds. Cannot be changed later. */
+            key: string;
+            /** @description The node's names — one for every language MotifPath offers. */
+            names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description Optional. When given, one description for every language
+             *     MotifPath offers.
+             */
+            descriptions?: components["schemas"]["LocalizedDescription"];
             /**
              * Format: uuid
-             * @description The parent skill's id. Omit to create a root skill. Must
-             *     reference an existing skill if given.
+             * @description The parent node's id. Omit to create a root. Must reference an
+             *     existing node of the same kind.
              */
             parent_id?: string;
+            /** @description The instruments this node is for. Omit or leave empty for every instrument. */
+            instrument_ids?: components["schemas"]["InstrumentIds"];
         };
         /**
-         * @description An intellectual concept a content node can address. Concepts form a
-         *     tree the same way Skills do — parent_id null means a root concept;
-         *     any concept may have children, to any depth. A node's name is unique
-         *     among its siblings (including other roots), not globally.
+         * @description Payload for changing a node. Every field is optional; a field left
+         *     out is unchanged.
          */
-        Concept: {
+        UpdateKnowledgeNodeRequest: {
+            /** @description The node's names, replacing the current set — one for every language MotifPath offers. */
+            names?: components["schemas"]["LocalizedNames"];
+            /**
+             * @description The node's descriptions, replacing the current set — one for
+             *     every language MotifPath offers — or null to remove them.
+             */
+            descriptions?: components["schemas"]["LocalizedDescription"] | null;
             /**
              * Format: uuid
-             * @description Stable identifier for this concept.
+             * @description The new parent's id, which must be an existing node of the same
+             *     kind outside this node's subtree, or null to make the node a
+             *     root.
              */
-            concept_id: string;
-            /**
-             * @description Short kebab-case tag naming the concept (e.g. chord-theory,
-             *     interval-recognition).
-             */
-            name: string;
-            /**
-             * Format: uuid
-             * @description The parent concept's id, or null if this is a root concept.
-             */
-            parent_id: string | null;
+            parent_id?: string | null;
+            /** @description The instruments this node is for, replacing the current set. Empty means every instrument. */
+            instrument_ids?: components["schemas"]["InstrumentIds"];
         };
         /**
-         * @description Payload for creating a new concept node. There is no update or
-         *     delete endpoint yet — re-parenting, renaming, or deleting a concept
-         *     that already has links is a deliberately open question.
+         * @description applies — the skill (from) uses the concept (to); only skill →
+         *     concept, never with a level. requires — from needs to at level or
+         *     above; any kind to any kind, always with a level, and requires edges
+         *     never form a cycle. requires informs practice and recommendations;
+         *     it never locks content or blocks practice. A requires edge counts
+         *     for an instrument only when both of its nodes are for that
+         *     instrument. An applies edge never implies a requirement; the same
+         *     two nodes may carry both.
+         * @enum {string}
          */
-        CreateConceptRequest: {
-            /** @description Short kebab-case tag naming the concept. */
-            name: string;
+        KnowledgeEdgeType: "applies" | "requires";
+        /**
+         * @description A typed link between two knowledge nodes. At most one edge of each
+         *     type links the same two nodes in the same direction.
+         */
+        KnowledgeEdge: {
             /**
              * Format: uuid
-             * @description The parent concept's id. Omit to create a root concept. Must
-             *     reference an existing concept if given.
+             * @description Stable identifier for this edge.
              */
-            parent_id?: string;
+            edge_id: string;
+            /**
+             * Format: uuid
+             * @description The node the edge leaves.
+             */
+            from_id: string;
+            /**
+             * Format: uuid
+             * @description The node the edge arrives at.
+             */
+            to_id: string;
+            type: components["schemas"]["KnowledgeEdgeType"];
+            /** @description The level a requires edge asks for; null for an applies edge. */
+            level: components["schemas"]["MasteryLevel"] | null;
+        };
+        /** @description Payload for linking two knowledge nodes. */
+        CreateKnowledgeEdgeRequest: {
+            /**
+             * Format: uuid
+             * @description The node the edge leaves. For applies, a skill.
+             */
+            from_id: string;
+            /**
+             * Format: uuid
+             * @description The node the edge arrives at. For applies, a concept. Never the same node as from_id.
+             */
+            to_id: string;
+            type: components["schemas"]["KnowledgeEdgeType"];
+            /** @description Required for requires; must be absent for applies. */
+            level?: components["schemas"]["MasteryLevel"];
+        };
+        /** @description Payload for changing the level of a requires edge. */
+        UpdateKnowledgeEdgeRequest: {
+            level: components["schemas"]["MasteryLevel"];
         };
         /**
          * @description An instrument a Diagram can be authored against. family decides the
@@ -2395,33 +2544,34 @@ export interface components {
         };
         /**
          * @description Classification for a new or updated Diagram. Diagrams share the
-         *     exact Skill/Concept tree ContentNode and Exercise use (see
+         *     exact knowledge graph ContentNode and Exercise use (see
          *     ClassificationInput) — not a separate tagging scheme — but carry no
          *     difficulty_level; a diagram is a reusable shape, not a leveled
-         *     piece of content.
+         *     piece of content. Every node must be for every instrument or for
+         *     at least one of the diagram's instruments.
          */
         DiagramClassificationInput: {
             /**
-             * @description The id(s) of the Skill tree node(s) this diagram illustrates.
-             *     Must not be empty; each id must reference an existing skill.
+             * @description The id(s) of the skill node(s) this diagram illustrates.
+             *     Must not be empty; each id must reference an existing skill-kind node.
              */
             skill_ids: string[];
             /**
-             * @description The id(s) of the Concept tree node(s) this diagram addresses.
-             *     Must not be empty; each id must reference an existing concept.
+             * @description The id(s) of the concept node(s) this diagram addresses.
+             *     Must not be empty; each id must reference an existing concept-kind node.
              */
             concept_ids: string[];
         };
         /**
          * @description A Diagram's classification as returned by the API — skills/concepts
-         *     embedded in full (id, name, parent_id), the same convention
+         *     embedded as full KnowledgeNodes, the same convention
          *     Classification uses for ContentNode.
          */
         DiagramClassification: {
-            /** @description The Skill tree node(s) this diagram illustrates, in full. */
-            skills: components["schemas"]["Skill"][];
-            /** @description The Concept tree node(s) this diagram addresses, in full. */
-            concepts: components["schemas"]["Concept"][];
+            /** @description The skill node(s) this diagram illustrates, in full. */
+            skills: components["schemas"]["KnowledgeNode"][];
+            /** @description The concept node(s) this diagram addresses, in full. */
+            concepts: components["schemas"]["KnowledgeNode"][];
         };
         /**
          * @description A prebuilt, reusable diagram — structured position data for a scale,
@@ -2438,9 +2588,15 @@ export interface components {
             diagram_id: string;
             /**
              * Format: uuid
-             * @description The instrument this diagram is authored against.
+             * @description The immutable layout instrument this diagram is authored against.
              */
             instrument_id: string;
+            /**
+             * @description Every instrument for which this diagram is available, including
+             *     instrument_id. Every linked instrument has coordinate geometry
+             *     compatible with the layout instrument.
+             */
+            instrument_ids: string[];
             /**
              * @description The diagram's name in each language it has one for (e.g. {"en":
              *     "A Minor Pentatonic — Position 1", "pt_BR": "Pentatônica menor
@@ -2544,10 +2700,11 @@ export interface components {
          */
         CreateDiagramRequest: {
             /**
-             * Format: uuid
-             * @description The instrument this diagram is authored against. Must reference an existing instrument.
+             * @description The compatible instruments for this diagram. The first is the
+             *     immutable layout instrument; every selected instrument must have
+             *     matching coordinate geometry.
              */
-            instrument_id: string;
+            instrument_ids: string[];
             /**
              * @description The diagram's name in each of its languages. A basic diagram
              *     needs a name in every language MotifPath offers; a custom one
@@ -2624,13 +2781,15 @@ export interface components {
          *     note, and tempo_bpm is set exactly when the sequence is non-empty. Every
          *     per-language text on the diagram — names, positions' custom_label
          *     and note, regions' description — must cover exactly the same
-         *     languages once the update is applied. instrument_id is not
-         *     present here — it cannot be changed after creation, since every
-         *     position's coordinate shape depends on it. Nor are kind and
+         *     languages once the update is applied. instrument_ids may replace the
+         *     compatible instruments only with records that match the diagram's
+         *     immutable layout geometry. Nor are kind and
          *     created_by, which are fixed at creation; a copy saved under a
          *     different kind or creator is a new diagram.
          */
         UpdateDiagramRequest: {
+            /** @description Replaces the compatible instruments for this diagram. */
+            instrument_ids?: string[];
             /**
              * @description The diagram's names, replacing the current set. A basic diagram
              *     must keep a name in every language MotifPath offers. Omitted
@@ -3816,7 +3975,7 @@ export interface components {
         CreateChallengeRequest: {
             /**
              * Format: uuid
-             * @description The Skill this challenge assesses. Must be one of the parent
+             * @description The skill-kind KnowledgeNode this challenge assesses. Must be one of the parent
              *     content node's linked skill_ids. Exactly one of
              *     subject_skill_id/subject_concept_id must be set — the subject is
              *     the minimum required for gap detection, a challenge without one
@@ -3825,7 +3984,7 @@ export interface components {
             subject_skill_id?: string;
             /**
              * Format: uuid
-             * @description The Concept this challenge assesses. Must be one of the parent
+             * @description The concept-kind KnowledgeNode this challenge assesses. Must be one of the parent
              *     content node's linked concept_ids. Exactly one of
              *     subject_skill_id/subject_concept_id must be set.
              */
@@ -3865,7 +4024,7 @@ export interface components {
         };
         /**
          * @description A challenge is the assessment unit for a content node. It groups
-         *     exercises and carries the subject (a Skill or Concept reference) and
+         *     exercises and carries the subject (a skill- or concept-kind KnowledgeNode) and
          *     threshold rules used by the recommendation engine. Its ID is carried
          *     in exercise-family tracking events as challenge_id inside
          *     trigger_context.
@@ -3883,12 +4042,12 @@ export interface components {
             content_node_id: string;
             /**
              * Format: uuid
-             * @description The Skill this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+             * @description The skill-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
              */
             subject_skill_id?: string;
             /**
              * Format: uuid
-             * @description The Concept this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+             * @description The concept-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
              */
             subject_concept_id?: string;
             /** @description Minimum score percentage required to pass. */
@@ -3926,12 +4085,12 @@ export interface components {
         UpdateChallengeRequest: {
             /**
              * Format: uuid
-             * @description The Skill this challenge assesses. Must be one of the parent content node's linked skill_ids.
+             * @description The skill-kind KnowledgeNode this challenge assesses. Must be one of the parent content node's linked skill_ids.
              */
             subject_skill_id?: string;
             /**
              * Format: uuid
-             * @description The Concept this challenge assesses. Must be one of the parent content node's linked concept_ids.
+             * @description The concept-kind KnowledgeNode this challenge assesses. Must be one of the parent content node's linked concept_ids.
              */
             subject_concept_id?: string;
             /**
@@ -4044,7 +4203,15 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** @description Payload for creating a standalone, reusable exercise. */
+        /**
+         * @description Payload for creating a standalone, reusable exercise.
+         *     Every skill and concept must suit the exercise's instruments: it is
+         *     for every instrument, or for at least one of the exercise's
+         *     instrument_ids. An exercise for every instrument (empty
+         *     instrument_ids) may use only nodes for every instrument. A violation
+         *     is rejected with the offending skill_ids or concept_ids identified —
+         *     the same rule content nodes and diagrams follow.
+         */
         CreateExerciseRequest: {
             /**
              * @description A short, authoring-only name for this exercise (e.g. "Alternate
@@ -4065,15 +4232,15 @@ export interface components {
              */
             exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
             /**
-             * @description The id(s) of the Skill tree node(s) this exercise targets,
+             * @description The id(s) of the skill node(s) this exercise targets,
              *     independent of any challenge or content node it may also be
              *     linked to. Must not be empty; each id must reference an
-             *     existing skill.
+             *     existing skill-kind node.
              */
             skill_ids: string[];
             /**
-             * @description The id(s) of the Concept tree node(s) this exercise addresses.
-             *     Must not be empty; each id must reference an existing concept.
+             * @description The id(s) of the concept node(s) this exercise addresses.
+             *     Must not be empty; each id must reference an existing concept-kind node.
              */
             concept_ids: string[];
             /**
@@ -4139,6 +4306,12 @@ export interface components {
              *     can be reused across multiple content nodes.
              */
             language_codes: string[];
+            /**
+             * @description The instruments this exercise is for. Omit or leave empty for
+             *     every instrument (for example, a theory or ear-training
+             *     question).
+             */
+            instrument_ids?: components["schemas"]["InstrumentIds"];
         };
         /**
          * @description One piece of content recommended to a student who answers a
@@ -4170,6 +4343,15 @@ export interface components {
          *     creation. options fully replaces the exercise's current options, the
          *     same way CreateExerciseRequest.options establishes them initially; a
          *     caller that only wants to change one option must resend the full set.
+         *     Every skill and concept must suit the exercise's instruments: it is
+         *     for every instrument, or for at least one of the exercise's
+         *     instrument_ids. An exercise for every instrument (empty
+         *     instrument_ids) may use only nodes for every instrument. A violation
+         *     is rejected with the offending skill_ids or concept_ids identified —
+         *     the same rule content nodes and diagrams follow.
+         *     The rule is checked against the instruments the exercise has after
+         *     the update — the current ones when instrument_ids is omitted — so
+         *     changing only the instruments can be rejected too.
          */
         UpdateExerciseRequest: {
             /**
@@ -4179,15 +4361,15 @@ export interface components {
             title: string;
             prompt: components["schemas"]["PromptDocument"];
             /**
-             * @description The id(s) of the Skill tree node(s) this exercise targets,
+             * @description The id(s) of the skill node(s) this exercise targets,
              *     replacing its current set. Must not be empty; each id must
-             *     reference an existing skill.
+             *     reference an existing skill-kind node.
              */
             skill_ids: string[];
             /**
-             * @description The id(s) of the Concept tree node(s) this exercise addresses,
+             * @description The id(s) of the concept node(s) this exercise addresses,
              *     replacing its current set. Must not be empty; each id must
-             *     reference an existing concept.
+             *     reference an existing concept-kind node.
              */
             concept_ids: string[];
             /**
@@ -4245,9 +4427,15 @@ export interface components {
              *     be empty.
              */
             language_codes: string[];
+            /**
+             * @description The instruments this exercise is for, replacing the current set.
+             *     Omit to keep the current set; send an empty list for every
+             *     instrument.
+             */
+            instrument_ids?: components["schemas"]["InstrumentIds"];
         };
         /**
-         * @description A reusable, standalone practice item classified by Skill/Concept
+         * @description A reusable, standalone practice item classified by skill/concept
          *     tree references and independent of any single challenge. The
          *     exercise_id is the value the SPA supplies in exercise-family
          *     tracking events. An exercise is checked by option selection: the
@@ -4268,10 +4456,10 @@ export interface components {
              * @enum {string}
              */
             exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
-            /** @description The Skill tree node(s) this exercise targets, in full. */
-            skills: components["schemas"]["Skill"][];
-            /** @description The Concept tree node(s) this exercise addresses, in full. */
-            concepts: components["schemas"]["Concept"][];
+            /** @description The skill node(s) this exercise targets, in full. */
+            skills: components["schemas"]["KnowledgeNode"][];
+            /** @description The concept node(s) this exercise addresses, in full. */
+            concepts: components["schemas"]["KnowledgeNode"][];
             /**
              * Format: uri
              * @description The stimulus image for this exercise, present when exercise_type
@@ -4337,6 +4525,21 @@ export interface components {
              */
             languages: components["schemas"]["Language"][];
             /**
+             * @description The instruments this exercise is for. Empty means every
+             *     instrument. An exercise suits a content node when the exercise
+             *     is for every instrument, or the node is for specific instruments
+             *     and the exercise is for at least one of them: a node for guitar
+             *     and bass takes a guitar-only exercise, and a node for every
+             *     instrument takes only exercises for every instrument. The rule
+             *     holds for every link between them (a path exercise, or an
+             *     exercise in one of the node's challenges) and for every write
+             *     that could break it: linking, changing the exercise's
+             *     instruments, and changing the node's instruments. The rule only
+             *     constrains these links; it does not choose a student's exercises
+             *     by the student's own instrument.
+             */
+            instrument_ids: components["schemas"]["InstrumentIds"];
+            /**
              * @description The user who created the exercise, recorded from the caller of
              *     POST /exercises. Absent on exercises created before creators
              *     were recorded.
@@ -4364,7 +4567,7 @@ export interface components {
             practice_session_id: string;
             /**
              * Format: uuid
-             * @description The Skill this session was generated for.
+             * @description The skill-kind KnowledgeNode this session was generated for.
              */
             skill_id: string;
             /**
@@ -4590,6 +4793,13 @@ export interface components {
             [key: string]: string;
         };
         /**
+         * @description A description in one or more languages, keyed by Language.code
+         *     (never "any").
+         */
+        LocalizedDescription: {
+            [key: string]: string;
+        };
+        /**
          * @description A caption in one or more languages, keyed by Language.code (never
          *     "any").
          */
@@ -4747,10 +4957,15 @@ export type SchemaClassification = components['schemas']['Classification'];
 export type SchemaContentNode = components['schemas']['ContentNode'];
 export type SchemaContentNodeVersion = components['schemas']['ContentNodeVersion'];
 export type SchemaUpdateContentNodeRequest = components['schemas']['UpdateContentNodeRequest'];
-export type SchemaSkill = components['schemas']['Skill'];
-export type SchemaCreateSkillRequest = components['schemas']['CreateSkillRequest'];
-export type SchemaConcept = components['schemas']['Concept'];
-export type SchemaCreateConceptRequest = components['schemas']['CreateConceptRequest'];
+export type SchemaKnowledgeNodeKind = components['schemas']['KnowledgeNodeKind'];
+export type SchemaMasteryLevel = components['schemas']['MasteryLevel'];
+export type SchemaKnowledgeNode = components['schemas']['KnowledgeNode'];
+export type SchemaCreateKnowledgeNodeRequest = components['schemas']['CreateKnowledgeNodeRequest'];
+export type SchemaUpdateKnowledgeNodeRequest = components['schemas']['UpdateKnowledgeNodeRequest'];
+export type SchemaKnowledgeEdgeType = components['schemas']['KnowledgeEdgeType'];
+export type SchemaKnowledgeEdge = components['schemas']['KnowledgeEdge'];
+export type SchemaCreateKnowledgeEdgeRequest = components['schemas']['CreateKnowledgeEdgeRequest'];
+export type SchemaUpdateKnowledgeEdgeRequest = components['schemas']['UpdateKnowledgeEdgeRequest'];
 export type SchemaInstrument = components['schemas']['Instrument'];
 export type SchemaCreateInstrumentRequest = components['schemas']['CreateInstrumentRequest'];
 export type SchemaDiagramPosition = components['schemas']['DiagramPosition'];
@@ -4818,6 +5033,7 @@ export type SchemaLocalizedNames = components['schemas']['LocalizedNames'];
 export type SchemaInstrumentIds = components['schemas']['InstrumentIds'];
 export type SchemaLocalizedMarkerLabel = components['schemas']['LocalizedMarkerLabel'];
 export type SchemaLocalizedNote = components['schemas']['LocalizedNote'];
+export type SchemaLocalizedDescription = components['schemas']['LocalizedDescription'];
 export type SchemaLocalizedCaption = components['schemas']['LocalizedCaption'];
 export type SchemaUpdateInstrumentRequest = components['schemas']['UpdateInstrumentRequest'];
 export type SchemaLanguage = components['schemas']['Language'];
@@ -5118,6 +5334,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The new instrument_ids would leave an exercise linked to this
+             *     node — as a path exercise or through one of its challenges —
+             *     unsuited to it (see Exercise.instrument_ids). Unlink it first, or
+             *     keep an instrument the exercise is for.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
                 };
             };
         };
@@ -5475,6 +5705,13 @@ export interface operations {
                 created_by?: string;
                 /** @description When given, only exercises of this type are returned. */
                 exercise_type?: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
+                /**
+                 * @description Return only exercises for at least one of these instruments —
+                 *     those that list any of them in instrument_ids, plus those for
+                 *     every instrument (an empty instrument_ids). Repeat the parameter
+                 *     for several instruments. Omit for exercises of every scope.
+                 */
+                instrument_id?: string[];
             };
             header?: never;
             path?: never;
@@ -5491,7 +5728,10 @@ export interface operations {
                     "application/json": components["schemas"]["PagedExercises"];
                 };
             };
-            /** @description limit or offset is out of range. */
+            /**
+             * @description limit or offset is out of range, or an instrument_id is not a
+             *     valid uuid.
+             */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5546,8 +5786,11 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body failed schema validation, or no option has
-             *     is_correct set to true.
+             * @description The request body failed schema validation, no option has
+             *     is_correct set to true, an instrument_ids entry does not
+             *     reference an existing instrument, or a skill or concept does not
+             *     suit the exercise's instruments (see CreateExerciseRequest) —
+             *     reported against skill_ids or concept_ids.
              */
             400: {
                 headers: {
@@ -5583,7 +5826,7 @@ export interface operations {
     startPracticeSession: {
         parameters: {
             query: {
-                /** @description The Skill to select exercises for. */
+                /** @description The skill-kind KnowledgeNode to select exercises for. */
                 skill_id: string;
                 /**
                  * @description The number of exercises requested. The response may contain fewer
@@ -5720,7 +5963,11 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundError"];
                 };
             };
-            /** @description The exercise is already linked to this challenge. */
+            /**
+             * @description The exercise is already linked to this challenge, or it does not
+             *     suit the instruments of the challenge's content node (see
+             *     Exercise.instrument_ids).
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5882,7 +6129,10 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundError"];
                 };
             };
-            /** @description The exercise is already linked to this content node. */
+            /**
+             * @description The exercise is already linked to this content node, or it does
+             *     not suit the node's instruments (see Exercise.instrument_ids).
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6349,8 +6599,12 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body failed schema validation, or no option has
-             *     is_correct set to true.
+             * @description The request body failed schema validation, no option has
+             *     is_correct set to true, an instrument_ids entry does not
+             *     reference an existing instrument, or a skill or concept does not
+             *     suit the instruments the exercise has after the update (see
+             *     UpdateExerciseRequest) — reported against skill_ids or
+             *     concept_ids.
              */
             400: {
                 headers: {
@@ -6388,6 +6642,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The new instrument_ids would leave the exercise unsuited to a
+             *     content node it is linked to, as a path exercise or through one
+             *     of the node's challenges (see Exercise.instrument_ids). Unlink it
+             *     first, or keep an instrument the node is for.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
                 };
             };
         };
@@ -6459,58 +6727,36 @@ export interface operations {
             };
         };
     };
-    listSkills: {
+    listKnowledgeNodes: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Return only nodes of this kind. Omit for both kinds. */
+                kind?: components["schemas"]["KnowledgeNodeKind"];
+                /**
+                 * @description Return only nodes for at least one of these instruments — those
+                 *     that list any of them in instrument_ids, plus those for every
+                 *     instrument (an empty instrument_ids). Repeat the parameter for
+                 *     several instruments, as an authoring screen does for content
+                 *     meant for more than one. Omit for nodes of every scope.
+                 */
+                instrument_id?: string[];
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description All known skills, possibly empty. */
+            /** @description The matching knowledge nodes, possibly empty. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Skill"][];
+                    "application/json": components["schemas"]["KnowledgeNode"][];
                 };
             };
-            /** @description Missing or invalid Bearer token. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedError"];
-                };
-            };
-        };
-    };
-    createSkill: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateSkillRequest"];
-            };
-        };
-        responses: {
-            /** @description Skill created. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Skill"];
-                };
-            };
-            /** @description The request body failed schema validation, or parent_id does not reference an existing skill. */
+            /** @description kind is not a recognised KnowledgeNodeKind, or an instrument_id is not a UUID. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6528,47 +6774,9 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description The authenticated user does not have permission to create a skill. Only teachers and admins may. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
-                };
-            };
         };
     };
-    listConcepts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description All known concepts, possibly empty. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Concept"][];
-                };
-            };
-            /** @description Missing or invalid Bearer token. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedError"];
-                };
-            };
-        };
-    };
-    createConcept: {
+    createKnowledgeNode: {
         parameters: {
             query?: never;
             header?: never;
@@ -6577,20 +6785,30 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateConceptRequest"];
+                "application/json": components["schemas"]["CreateKnowledgeNodeRequest"];
             };
         };
         responses: {
-            /** @description Concept created. */
+            /** @description Knowledge node created. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Concept"];
+                    "application/json": components["schemas"]["KnowledgeNode"];
                 };
             };
-            /** @description The request body failed schema validation, or parent_id does not reference an existing concept. */
+            /**
+             * @description The request body failed validation — including a key that is not
+             *     lowercase kebab-case, names or descriptions missing a language,
+             *     carrying "any" or an unknown language code, or holding a blank
+             *     value, a parent_id that does not reference an existing node or
+             *     references a node of the other kind, an instrument_ids entry
+             *     that does not reference an existing instrument or repeats, or
+             *     instrument_ids wider than the parent's (a child is never for an
+             *     instrument its parent is not for; a child of a parent for
+             *     specific instruments cannot be for every instrument).
+             */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -6608,13 +6826,429 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description The authenticated user does not have permission to create a concept. Only teachers and admins may. */
+            /** @description The authenticated user does not have permission to create a knowledge node. Only admins may. */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description Another knowledge node already has this key. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    getKnowledgeNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The knowledge node. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeNode"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No knowledge node exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    deleteKnowledgeNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Knowledge node deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to delete a knowledge node. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No knowledge node exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The node is still in use — it has children, takes part in a
+             *     knowledge edge, classifies content, an exercise or a diagram, or
+             *     is a challenge's subject. The message says which.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    updateKnowledgeNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateKnowledgeNodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Knowledge node updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeNode"];
+                };
+            };
+            /**
+             * @description The request body failed validation — including names or
+             *     descriptions missing a language, carrying "any" or an unknown
+             *     language code, or holding a blank value, a parent_id that does
+             *     not reference an existing node or references a node of the other
+             *     kind, an instrument_ids entry that does not reference an
+             *     existing instrument or repeats, or a result where the node is
+             *     wider than its parent — reported against instrument_ids when the
+             *     request changes them, otherwise against parent_id.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to update a knowledge node. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No knowledge node exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The new parent is the node itself or one of its descendants, so
+             *     the move would create a cycle; or the new instrument_ids would
+             *     leave out an instrument of content, an exercise or a diagram
+             *     classified under this node, or of one of its children.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    listKnowledgeEdges: {
+        parameters: {
+            query?: {
+                type?: components["schemas"]["KnowledgeEdgeType"];
+                /** @description Only edges leaving this node. */
+                from_id?: string;
+                /** @description Only edges arriving at this node. */
+                to_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The matching knowledge edges, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEdge"][];
+                };
+            };
+            /** @description type is not a recognised KnowledgeEdgeType, or from_id/to_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createKnowledgeEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateKnowledgeEdgeRequest"];
+            };
+        };
+        responses: {
+            /** @description Knowledge edge created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEdge"];
+                };
+            };
+            /**
+             * @description The request body failed validation — including from_id or to_id
+             *     not referencing an existing node, from_id equal to to_id, an
+             *     applies edge that is not skill → concept, an applies edge with a
+             *     level, or a requires edge without one.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to create a knowledge edge. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description An edge of this type already links these two nodes in this
+             *     direction, or the requires edge would close a cycle of requires
+             *     edges.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    deleteKnowledgeEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                edge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Knowledge edge deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to delete a knowledge edge. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No knowledge edge exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateKnowledgeEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                edge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateKnowledgeEdgeRequest"];
+            };
+        };
+        responses: {
+            /** @description Knowledge edge updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEdge"];
+                };
+            };
+            /** @description The level is not a recognised MasteryLevel, or the edge is an applies edge, which has no level. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to update a knowledge edge. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No knowledge edge exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
                 };
             };
         };
@@ -6928,7 +7562,8 @@ export interface operations {
              *     backwards or past the instrument's strings, per-language text
              *     (custom_label, note, region description) not keyed by exactly
              *     the languages of names, or a skill_ids/concept_ids entry that
-             *     does not reference an existing skill or concept.
+             *     does not reference an existing node of the matching kind or is
+             *     not for any of the diagram's instruments.
              */
             400: {
                 headers: {

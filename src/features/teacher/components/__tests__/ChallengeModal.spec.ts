@@ -1,8 +1,15 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 
+import ExercisePickerModal from '@/features/teacher/components/ExercisePickerModal.vue'
 import ChallengeModal from '@/features/teacher/components/ChallengeModal.vue'
 import type { components } from '@/api/generated/core-domain'
+
+// The picker's instrument filter loads the instrument list when a picker opens.
+vi.mock('@/shared/composables/useListInstruments', () => ({
+  useListInstruments: () => ({ instruments: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
 
 type Exercise = components['schemas']['Exercise']
 
@@ -19,6 +26,7 @@ function makeExercise(overrides: Partial<Exercise>): Exercise {
     content_node_ids: [],
     remediation_targets: [],
     languages: [],
+    instrument_ids: [],
     created_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }
@@ -62,6 +70,12 @@ async function pickSubjectSkill(wrapper: ReturnType<typeof mount>) {
 }
 
 describe('ChallengeModal', () => {
+  it("hands the lesson's instruments to the exercise picker", () => {
+    const wrapper = mount(ChallengeModal, { props: { ...baseProps, instrumentIds: ['guitar'] } })
+
+    expect(wrapper.getComponent(ExercisePickerModal).props('instrumentIds')).toEqual(['guitar'])
+  })
+
   it('renders nothing while closed', () => {
     const wrapper = mount(ChallengeModal, { props: { ...baseProps, open: false } })
 

@@ -7,7 +7,8 @@ export type ExerciseType = NonNullable<ExerciseFilterQuery['exercise_type']>
 
 /**
  * The exercise pool for authoring, one page at a time: narrowed server-side
- * by title, type, skill, concept, language and creator. The pool filters by
+ * by title, type, skill, concept, language, creator and instrument (an
+ * instrument also keeps the exercises for every instrument). The pool filters by
  * a single skill and a single concept, so only the first pick of each is
  * sent.
  */
@@ -17,7 +18,7 @@ export function useExerciseLibrary() {
   const exerciseType = ref<ExerciseType | null>(null)
 
   const exerciseQuery = computed<ExerciseFilterQuery>(() => {
-    const { q, skill_ids, concept_ids, created_by, language } = query.value
+    const { q, skill_ids, concept_ids, created_by, language, instrument_id } = query.value
     return {
       ...(q ? { q } : {}),
       ...(exerciseType.value ? { exercise_type: exerciseType.value } : {}),
@@ -25,6 +26,7 @@ export function useExerciseLibrary() {
       ...(concept_ids?.[0] ? { concept_id: concept_ids[0] } : {}),
       ...(language ? { language } : {}),
       ...(created_by ? { created_by } : {}),
+      ...(instrument_id ? { instrument_id: [instrument_id] } : {}),
     }
   })
 

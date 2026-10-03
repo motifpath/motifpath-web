@@ -197,6 +197,9 @@ export function useDiagramForm() {
   // starts in the author's UI language. Only these languages' names are ever sent.
   const languages = ref<string[]>([toApiLanguageCode(i18n.global.locale.value)])
   const instrumentId = ref('')
+  // The first id is the layout instrument; the rest share its geometry and
+  // make the same diagram available in their libraries.
+  const instrumentIds = ref<string[]>([])
   const positions = ref<LocalPosition[]>([])
   const regions = ref<LocalRegion[]>([])
   const skillIds = ref<string[]>([])
@@ -456,7 +459,7 @@ export function useDiagramForm() {
   /** A new custom diagram from the form; the caller becomes its creator. */
   function toCreateDiagramRequest(): CreateDiagramRequest {
     return {
-      instrument_id: instrumentId.value,
+      instrument_ids: instrumentIds.value.length > 0 ? [...instrumentIds.value] : [instrumentId.value],
       names: filledNames(names.value, languages.value),
       kind: 'custom',
       root_note: rootNote.value.trim() === '' ? null : rootNote.value,
@@ -494,6 +497,7 @@ export function useDiagramForm() {
 
   function toUpdateDiagramRequest(): UpdateDiagramRequest {
     return {
+      ...(instrumentIds.value.length > 0 ? { instrument_ids: [...instrumentIds.value] } : {}),
       names: filledNames(names.value, languages.value),
       ...(rootNote.value.trim() === '' ? {} : { root_note: rootNote.value }),
       label_display: labelDisplay.value,
@@ -520,6 +524,7 @@ export function useDiagramForm() {
     names.value = { ...diagram.names }
     languages.value = inOfferedOrder(diagram.languages?.length ? diagram.languages : Object.keys(diagram.names))
     instrumentId.value = diagram.instrument_id
+    instrumentIds.value = diagram.instrument_ids?.length ? [...diagram.instrument_ids] : [diagram.instrument_id]
     rootNote.value = diagram.root_note ?? ''
     labelDisplay.value = diagram.label_display ?? 'interval'
     color.value = diagram.color ?? null
@@ -531,8 +536,8 @@ export function useDiagramForm() {
     sequence.value = copySteps(diagram.sequence ?? [])
     // A diagram served by an older API has no regions field at all.
     regions.value = (diagram.regions ?? []).map(toLocalRegion)
-    skillIds.value = diagram.classification.skills.map((s) => s.skill_id)
-    conceptIds.value = diagram.classification.concepts.map((c) => c.concept_id)
+    skillIds.value = diagram.classification.skills.map((s) => s.node_id)
+    conceptIds.value = diagram.classification.concepts.map((c) => c.node_id)
   }
 
   /**
@@ -565,6 +570,7 @@ export function useDiagramForm() {
     addLanguage,
     removeLanguage,
     instrumentId,
+    instrumentIds,
     positions,
     regions,
     invalidRegionIds,

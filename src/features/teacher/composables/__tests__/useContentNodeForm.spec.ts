@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 const ARTICLE_BODY: components['schemas']['PromptDocument'] = {
   type: 'doc',
@@ -185,8 +186,8 @@ describe('useContentNodeForm', () => {
         title: 'Alternate picking basics',
         content_type: 'article',
         classification: {
-          skills: [{ skill_id: 's-1', name: 'alternate-picking', parent_id: null }],
-          concepts: [{ concept_id: 'c-1', name: 'picking-technique', parent_id: null }],
+          skills: [knowledgeNode('s-1', { names: { en: 'alternate-picking' } })],
+          concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'picking-technique' } })],
           difficulty_level: 'advanced',
           review_state: 'confirmed',
         },
@@ -307,8 +308,8 @@ describe('useContentNodeForm', () => {
         content_type: 'video',
         media_url: 'https://cdn.example.com/lesson.mp4',
         classification: {
-          skills: [{ skill_id: 's-1', name: 'alternate-picking', parent_id: null }],
-          concepts: [{ concept_id: 'c-1', name: 'picking-technique', parent_id: null }],
+          skills: [knowledgeNode('s-1', { names: { en: 'alternate-picking' } })],
+          concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'picking-technique' } })],
           difficulty_level: 'beginner',
           review_state: 'pending',
         },

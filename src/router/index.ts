@@ -3,6 +3,7 @@ import { createRouter, createWebHistory, RouterView, type RouteRecordRaw } from 
 import { authChecker } from '@/features/auth/authBridge'
 import { ensureAuthLocaleLoaded } from '@/features/auth/locales'
 import { ensureStudentLocaleLoaded } from '@/features/student/locales'
+import { ensureAdminLocaleLoaded } from '@/features/admin/locales'
 import { ensureTeacherLocaleLoaded } from '@/features/teacher/locales'
 import { createAuthGuard, type Role } from '@/router/guards'
 
@@ -299,6 +300,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/features/teacher/views/DiagramAuthoringView.vue'),
       },
     ],
+  },
+  {
+    path: '/admin/knowledge-map',
+    name: 'admin-knowledge-map',
+    meta: { requiresAuth: true, requiresRole: ['admin'] },
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/KnowledgeMapEditorView.vue'),
   },
   {
     path: '/:pathMatch(.*)*',

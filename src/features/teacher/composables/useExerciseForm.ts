@@ -88,6 +88,10 @@ export function useExerciseForm() {
   const prompt = ref<PromptDocument>(EMPTY_PROMPT)
   const exerciseType = ref<ExerciseType>('text_response')
   const skillIds = ref<string[]>([])
+  /** The instruments the exercise is for; empty means every instrument. */
+  const instrumentIds = ref<string[]>([])
+  /** The Language.codes the exercise is in; ['any'] for language-agnostic. */
+  const languageCodes = ref<string[]>(['any'])
   const conceptIds = ref<string[]>([])
   const imageUrl = ref('')
   const audioUrl = ref('')
@@ -285,12 +289,11 @@ export function useExerciseForm() {
   }
 
   function sharedRequestFields() {
-    // No authoring UI exists yet for tagging an exercise's language(s) — default
-    // to language-agnostic until that surface is built.
     const fields: Omit<UpdateExerciseRequest, 'title' | 'prompt' | 'options'> = {
       skill_ids: [...skillIds.value],
       concept_ids: [...conceptIds.value],
-      language_codes: ['any'],
+      language_codes: [...languageCodes.value],
+      instrument_ids: [...instrumentIds.value],
     }
     if (hasDiagramStimulus.value) {
       if (stimulusDiagram.value) fields.diagram_ref = stimulusDiagram.value
@@ -331,8 +334,11 @@ export function useExerciseForm() {
     title.value = exercise.title
     prompt.value = exercise.prompt
     exerciseType.value = exercise.exercise_type
-    skillIds.value = exercise.skills.map((s) => s.skill_id)
-    conceptIds.value = exercise.concepts.map((c) => c.concept_id)
+    skillIds.value = exercise.skills.map((s) => s.node_id)
+    conceptIds.value = exercise.concepts.map((c) => c.node_id)
+    instrumentIds.value = [...exercise.instrument_ids]
+    // The API rejects an empty set, so an exercise stored without any is re-saved as language-agnostic.
+    languageCodes.value = exercise.languages.length > 0 ? exercise.languages.map((l) => l.code) : ['any']
     imageUrl.value = exercise.image_url ?? ''
     audioUrl.value = exercise.audio_url ?? ''
     stimulusDiagram.value = exercise.diagram_ref ?? null
@@ -378,6 +384,8 @@ export function useExerciseForm() {
     exerciseType,
     skillIds,
     conceptIds,
+    instrumentIds,
+    languageCodes,
     imageUrl,
     stimulusSource,
     stimulusDiagram,

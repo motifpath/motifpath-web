@@ -1,6 +1,8 @@
 import { config } from '@vue/test-utils'
 import { vi } from 'vitest'
 
+import adminEn from '@/features/admin/locales/en.json'
+import adminPtBr from '@/features/admin/locales/pt-BR.json'
 import authEn from '@/features/auth/locales/en.json'
 import authPtBr from '@/features/auth/locales/pt-BR.json'
 import studentEn from '@/features/student/locales/en.json'
@@ -19,6 +21,8 @@ i18n.global.mergeLocaleMessage('en', authEn)
 i18n.global.mergeLocaleMessage('pt-BR', authPtBr)
 i18n.global.mergeLocaleMessage('en', teacherEn)
 i18n.global.mergeLocaleMessage('pt-BR', teacherPtBr)
+i18n.global.mergeLocaleMessage('en', adminEn)
+i18n.global.mergeLocaleMessage('pt-BR', adminPtBr)
 
 config.global.plugins.push(i18n)
 

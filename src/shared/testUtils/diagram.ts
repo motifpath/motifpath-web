@@ -23,6 +23,7 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
   return {
     diagram_id: 'diagram-a-minor-pentatonic-1',
     instrument_id: 'instrument-guitar',
+    instrument_ids: ['instrument-guitar'],
     names: { en: 'Minor Pentatonic — Position 1', pt_BR: 'Pentatônica menor — Posição 1' },
     languages: ['en', 'pt_BR'],
     kind: 'custom',

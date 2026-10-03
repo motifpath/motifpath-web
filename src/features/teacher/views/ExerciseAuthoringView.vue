@@ -2,6 +2,7 @@
 import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
@@ -18,10 +19,11 @@ import { useCreateExercise } from '@/features/teacher/composables/useCreateExerc
 import { useExercise } from '@/features/teacher/composables/useExercise'
 import { useExerciseForm, type ExerciseType } from '@/features/teacher/composables/useExerciseForm'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
-import { useSkillConceptCreation } from '@/features/teacher/composables/useSkillConceptCreation'
 import { useStimulusDiagram } from '@/features/teacher/composables/useStimulusDiagram'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
 import AppBar from '@/shared/components/AppBar.vue'
+import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
+import LanguageCodesPicker from '@/shared/components/LanguageCodesPicker.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
@@ -60,11 +62,19 @@ const form = useExerciseForm()
 const { createExercise } = useCreateExercise()
 const { updateExercise } = useUpdateExercise()
 const { upload } = useMediaUpload()
-const { skills, concepts, skillsLoading, conceptsLoading, onCreateSkill, onCreateConcept } =
-  useSkillConceptCreation(form.skillIds, form.conceptIds, {
-    createSkillFailed: t('exerciseAuthoringView.createSkillFailed'),
-    createConceptFailed: t('exerciseAuthoringView.createConceptFailed'),
-  })
+const {
+  skillNodes,
+  conceptNodes,
+  skillsLoading,
+  conceptsLoading,
+  skillsError,
+  conceptsError,
+  retrySkills,
+  retryConcepts,
+  suggestedSkillIds,
+  suggestedConceptIds,
+} =
+  useKnowledgeTrees({ skillIds: form.skillIds, conceptIds: form.conceptIds }, {}, { refreshOnReturn: true })
 
 const savedExerciseId = ref('')
 const linkedChallengeIds = ref<string[]>([])
@@ -146,16 +156,33 @@ function onStimulusPicked(file: File) {
 // picked again — its own state would otherwise outlive the form's reset answers.
 const stimulusPick = ref(0)
 
+// A diagram is drawn for its instruments, so picking one as the stimulus of a
+// new exercise fills them in while none are chosen. A saved exercise's empty
+// list means "every instrument" on purpose, so it is never overridden.
+const fillInstrumentsFromStimulus = ref(false)
+
 function onStimulusDiagram(diagramRef: DiagramRef) {
   stimulusPick.value++
   form.setStimulusDiagram(diagramRef)
   stimulusPickerOpen.value = false
+  fillInstrumentsFromStimulus.value = !isEditMode && form.instrumentIds.value.length === 0
 }
 
 const showsDiagramStimulus = computed(() => form.stimulusSource.value === 'diagram' && form.stimulusDiagram.value !== null)
 // The stimulus's labels, hidden and correct positions are edited in the form, on the diagram itself.
 const stimulus = useStimulusDiagram(() =>
   form.hasDiagramStimulus.value ? (form.stimulusDiagram.value?.diagram_id ?? null) : null,
+)
+
+watch(
+  [() => stimulus.diagram.value, fillInstrumentsFromStimulus],
+  ([diagram, fill]) => {
+    if (!fill || !diagram || diagram.diagram_id !== form.stimulusDiagram.value?.diagram_id) return
+    fillInstrumentsFromStimulus.value = false
+    if (form.instrumentIds.value.length > 0) return
+    form.instrumentIds.value = diagram.instrument_ids.length > 0 ? [...diagram.instrument_ids] : [diagram.instrument_id]
+  },
+  { immediate: true },
 )
 
 function onOptionFile(id: string, file: File) {
@@ -373,6 +400,16 @@ async function save() {
           </span>
         </div>
 
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.instrumentsLabel') }}</span>
+          <InstrumentPicker v-model="form.instrumentIds.value" />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.languagesLabel') }}</span>
+          <LanguageCodesPicker v-model="form.languageCodes.value" />
+        </div>
+
         <div
           v-if="!form.hasCorrectOption.value"
           data-test="no-correct-banner"
@@ -488,20 +525,30 @@ async function save() {
             </span>
           </div>
           <SkillConceptTreePicker
-            :label="t('classificationFields.skillLabel')"
-            :nodes="skills.map((s) => ({ id: s.skill_id, name: s.name, parent_id: s.parent_id }))"
-            :selected-ids="form.skillIds.value"
-            :is-loading="skillsLoading"
-            @update:selected-ids="form.skillIds.value = $event"
-            @create="onCreateSkill"
-          />
-          <SkillConceptTreePicker
             :label="t('classificationFields.conceptLabel')"
-            :nodes="concepts.map((c) => ({ id: c.concept_id, name: c.name, parent_id: c.parent_id }))"
+            :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
             :is-loading="conceptsLoading"
+            :load-failed="conceptsError"
+            :suggested-ids="suggestedConceptIds"
+            :instrument-ids="form.instrumentIds.value"
+            missing-hint
+            :create-kind="currentUser.profile?.role === 'admin' ? 'concept' : null"
             @update:selected-ids="form.conceptIds.value = $event"
-            @create="onCreateConcept"
+            @retry="retryConcepts"
+          />
+          <SkillConceptTreePicker
+            :label="t('classificationFields.skillLabel')"
+            :nodes="skillNodes"
+            :selected-ids="form.skillIds.value"
+            :is-loading="skillsLoading"
+            :load-failed="skillsError"
+            :suggested-ids="suggestedSkillIds"
+            :instrument-ids="form.instrumentIds.value"
+            missing-hint
+            :create-kind="currentUser.profile?.role === 'admin' ? 'skill' : null"
+            @update:selected-ids="form.skillIds.value = $event"
+            @retry="retrySkills"
           />
         </div>
 

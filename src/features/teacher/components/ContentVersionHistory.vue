@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { components } from '@/api/generated/core-domain'
 
@@ -21,12 +22,13 @@ const props = defineProps<{
 defineEmits<{ retry: [] }>()
 
 const { t, locale } = useTypedT()
+const { localizedName } = useLocalizedName()
 
 const dateFormat = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }))
 
 function classificationSummary(version: ContentNodeVersion): string {
   const { skills, concepts } = version.classification_snapshot
-  return [...skills.map((s) => s.name), ...concepts.map((c) => c.name)].join(' · ')
+  return [...skills, ...concepts].map((node) => localizedName(node.names)).join(' · ')
 }
 
 const isLatest = (version: ContentNodeVersion) => version.version_number === props.latestVersion

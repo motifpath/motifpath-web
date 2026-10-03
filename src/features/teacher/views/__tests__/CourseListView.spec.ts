@@ -48,25 +48,15 @@ vi.mock('@/shared/composables/useCourseCreators', () => ({
     }
   },
 }))
-vi.mock('@/shared/composables/useListSkills', () => ({
-  useListSkills: () => ({
-    skills: ref([]),
-    isLoading: ref(false),
-    error: ref(false),
-    retry: vi.fn(),
-  }),
+vi.mock('@/shared/composables/useListKnowledgeNodes', () => ({
+  useListKnowledgeNodes: () => ({ nodes: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
+}))
+vi.mock('@/shared/composables/useListKnowledgeEdges', () => ({
+  useListKnowledgeEdges: () => ({ edges: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => ({
     instruments: ref([{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]),
-    isLoading: ref(false),
-    error: ref(false),
-    retry: vi.fn(),
-  }),
-}))
-vi.mock('@/shared/composables/useListConcepts', () => ({
-  useListConcepts: () => ({
-    concepts: ref([]),
     isLoading: ref(false),
     error: ref(false),
     retry: vi.fn(),
