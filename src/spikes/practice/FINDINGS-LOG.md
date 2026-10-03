@@ -81,3 +81,27 @@ on Progress; decaying at day 30 → 27 items fading, a 5-minute session of 26 du
     already-fluent flagged item, or an overconfident self-claim, would end the suggestion the moment
     it's written. The rule became: ends once practised *since the note* and at the target level, or
     the teacher closes it; 30-day safety expiry.
+22. **Graders work off reference data only (M11).** One interface, three versioned graders
+    (fretboard_cell.v1, exercise_option.v1, self_rating.v1), 15 golden cases in language-neutral
+    JSON (enharmonic spellings, octave on the same string, rejections). Evidence keeps the raw
+    response + grader id, so a rule change can regrade. Simulator and live runners all go through
+    ingest; the client shows feedback with the same grader.
+23. **The fold needs more than KnowledgeState (M10).** Folding one piece at a time equals batch
+    derivation for every archetype and item (property test), once the fold carries: counted
+    attempts, the clean-tempo edge since the last review, the latest review's vouch, best clean
+    tempo/count since review, the last 10 correct latencies, and the latest timestamp (to detect
+    late evidence → rebuild the item from the log). Duplicates are dropped by evidence id. Evidence
+    sharing one timestamp needs a defined tiebreak (arrival sequence) for fold == batch to hold.
+24. **Concepts echo skills on the home (U7).** A concept backed by the same items as a skill
+    repeats its progress line and its opportunities ("Pentatonic shapes" = "Alternate picking").
+    Candidate: progress and opportunities per skill only; concepts appear in the map and as
+    context ("uses: pentatonic shapes").
+25. **Opportunities need a cap (U7).** Nine entries for the improving student — no longer
+    at-a-glance. Candidate: top 3 (one refresh, one strengthen, one start), "see all" for the rest.
+26. **Practice days need the student's time zone.** Days are counted by UTC date in the spike.
+
+### Phase 5 walkthrough (headless Chrome, 2026-10-02)
+All four archetypes' homes render from the summary with no console errors. Caught-up improving
+student: mind-3 mixes review ahead / stretch (top-string cells) / weak spots; guitar-15 is warm-up,
+due chord changes, power-chord riff as stretch, blues lick. A live tap goes response → grader →
+feedback → evidence. Closing the overconfident student's note removes it from their home.
