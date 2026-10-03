@@ -60,6 +60,7 @@ function answer(day: number, correct: boolean, latency_ms = 1500): AutoGradedEvi
     source: 'auto_graded',
     correct,
     latency_ms,
+    tap_ms: 0,
     grader: 'fretboard_cell.v1',
     response: { kind: 'name_the_note', chosen_note: correct ? 'E' : 'F', latency_ms },
   }

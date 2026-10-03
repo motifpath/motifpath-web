@@ -30,6 +30,7 @@ describe('ingestAnswer', () => {
       source: 'auto_graded',
       correct: true,
       latency_ms: 1800,
+      tap_ms: 0,
       grader: 'fretboard_cell.v1',
       response: { kind: 'name_the_note', chosen_note: 'C', latency_ms: 1800 },
     })

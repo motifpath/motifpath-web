@@ -83,6 +83,7 @@ function answerOn(day: number): Evidence {
     source: 'auto_graded',
     correct: true,
     latency_ms: 1000,
+    tap_ms: 0,
     grader: 'fretboard_cell.v1',
     response: { kind: 'name_the_note', chosen_note: 'E', latency_ms: 1000 },
   }

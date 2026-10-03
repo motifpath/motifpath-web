@@ -142,6 +142,8 @@ export interface AutoGradedEvidence extends EvidenceBase {
   source: 'auto_graded'
   correct: boolean
   latency_ms: number
+  /** The student's tap time when it was answered: latency minus this is the time spent knowing. */
+  tap_ms: number
   /** Which rules graded it; the raw response is kept so new rules can regrade. */
   grader: GraderId
   response: PracticeResponse
@@ -321,6 +323,19 @@ export interface SessionEndedEvent extends PracticeEventBase {
   answered_count: number
   /** The student left before the plan's end. */
   ended_early: boolean
+  /** How each timed drill felt, one answer per drill template practised. */
+  felt: { template: string; felt: Felt }[]
+}
+
+/** How a timed drill felt. Calibrates thresholds; never counts toward mastery. */
+export type Felt = 'easy' | 'about_right' | 'hard'
+
+export interface FeltRating {
+  student_id: string
+  session_id: string
+  template: string
+  felt: Felt
+  occurred_at: string
 }
 
 export type PracticeEvent = SessionStartedEvent | ItemAnsweredEvent | SessionEndedEvent

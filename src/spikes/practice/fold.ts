@@ -6,6 +6,7 @@
  */
 import { EMPTY_FOLD, foldStep, viewState } from '@/spikes/practice/mastery'
 import type { FoldState } from '@/spikes/practice/mastery'
+import type { ThresholdBook } from '@/spikes/practice/thresholds'
 import type { Evidence, KnowledgeState, PracticeItem } from '@/spikes/practice/model'
 
 export interface KnowledgeStore {
@@ -27,6 +28,7 @@ export function processEvidence(
   store: KnowledgeStore,
   e: Evidence,
   items: PracticeItem[],
+  book: ThresholdBook = [],
 ): { store: KnowledgeStore; action: FoldAction } {
   if (store.evidence.has(e.evidence_id)) return { store, action: 'duplicate' }
   const item = items.find((i) => i.item_key === e.item_key)
@@ -38,9 +40,9 @@ export function processEvidence(
   const late = prev.last_at !== null && Date.parse(e.occurred_at) < prev.last_at
   if (late) {
     const history = [...evidence.values()].filter((x) => x.item_key === e.item_key).sort(byTime)
-    folds.set(e.item_key, history.reduce((f, x) => foldStep(item, f, x), EMPTY_FOLD))
+    folds.set(e.item_key, history.reduce((f, x) => foldStep(item, f, x, book), EMPTY_FOLD))
   } else {
-    folds.set(e.item_key, foldStep(item, prev, e))
+    folds.set(e.item_key, foldStep(item, prev, e, book))
   }
   return { store: { evidence, folds }, action: late ? 'rebuilt' : 'folded' }
 }

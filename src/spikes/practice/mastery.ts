@@ -7,6 +7,8 @@
  * about accuracy; and how close to the item's speed or tempo goal it was.
  */
 import type { Evidence, KnowledgeState, Level, PracticeItem } from '@/spikes/practice/model'
+import { activeThreshold, templateOf } from '@/spikes/practice/thresholds'
+import type { ThresholdBook } from '@/spikes/practice/thresholds'
 
 const DAY_MS = 86_400_000
 
@@ -14,7 +16,7 @@ const DAY_MS = 86_400_000
 export const BOX_INTERVAL_DAYS = [0, 1, 2, 4, 8, 16, 32]
 const MAX_BOX = BOX_INTERVAL_DAYS.length - 1
 
-/** A fretboard answer this fast or faster counts as fully fluent. */
+/** Without a threshold for the drill: a fretboard answer this fast or faster is fully fluent. */
 export const FRETBOARD_FLUENT_MS = 2000
 
 /** How strongly one piece of evidence pulls the weighted averages, by source. */
@@ -34,7 +36,11 @@ interface Reading {
   fluency: number
 }
 
-function fluentMs(item: PracticeItem): number {
+/** The fluent time for an answer: the drill's threshold in force when it happened, else a default. */
+function fluentMs(item: PracticeItem, e: Evidence, book: ThresholdBook): number {
+  const template = e.source === 'auto_graded' ? templateOf(item, e.response) : null
+  const threshold = template ? activeThreshold(book, template, e.occurred_at) : undefined
+  if (threshold) return threshold.fluent_ms
   return item.kind === 'exercise' ? item.estimated_seconds * 500 : FRETBOARD_FLUENT_MS
 }
 
@@ -45,10 +51,12 @@ function goalRatio(item: PracticeItem, bpm: number | null, cpm: number | null): 
   return 1
 }
 
-function read(item: PracticeItem, e: Evidence): Reading {
+function read(item: PracticeItem, e: Evidence, book: ThresholdBook): Reading {
   if (e.source === 'auto_graded') {
     if (!e.correct) return { outcome: 'miss', accuracy: 0, fluency: 0 }
-    return { outcome: 'hit', accuracy: 1, fluency: Math.min(1, fluentMs(item) / Math.max(1, e.latency_ms)) }
+    // Only the time spent knowing counts, not the time spent tapping.
+    const net = Math.max(1, e.latency_ms - e.tap_ms)
+    return { outcome: 'hit', accuracy: 1, fluency: Math.min(1, fluentMs(item, e, book) / net) }
   }
   const ratio = goalRatio(item, e.bpm, e.changes_per_minute)
   if (e.rating === 'clean') return { outcome: 'hit', accuracy: 1, fluency: ratio }
@@ -121,7 +129,7 @@ export const EMPTY_FOLD: FoldState = {
 const RECENT_LATENCIES = 10
 const maxOf = (a: number | null, b: number | null) => (b === null ? a : a === null ? b : Math.max(a, b))
 
-export function foldStep(item: PracticeItem, prev: FoldState, e: Evidence): FoldState {
+export function foldStep(item: PracticeItem, prev: FoldState, e: Evidence, book: ThresholdBook = []): FoldState {
   const t = Date.parse(e.occurred_at)
   const f: FoldState = { ...prev, attempts: prev.attempts + 1, last_at: t, last_seen_at: e.occurred_at }
 
@@ -148,7 +156,7 @@ export function foldStep(item: PracticeItem, prev: FoldState, e: Evidence): Fold
     if (exploring) return f
   }
 
-  const r = read(item, e)
+  const r = read(item, e, book)
   const w = SOURCE_WEIGHT[e.source]
   f.accuracy = f.counted === 0 ? r.accuracy : f.accuracy + w * (r.accuracy - f.accuracy)
   f.fluency = f.counted === 0 ? r.fluency : f.fluency + w * (r.fluency - f.fluency)
@@ -186,17 +194,22 @@ export function viewState(item: PracticeItem, f: FoldState, now: Date): Knowledg
   }
 }
 
-export function deriveState(item: PracticeItem, evidence: Evidence[], now: Date): KnowledgeState {
+export function deriveState(item: PracticeItem, evidence: Evidence[], now: Date, book: ThresholdBook = []): KnowledgeState {
   const ordered = [...evidence].sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at))
-  return viewState(item, ordered.reduce((f, e) => foldStep(item, f, e), EMPTY_FOLD), now)
+  return viewState(item, ordered.reduce((f, e) => foldStep(item, f, e, book), EMPTY_FOLD), now)
 }
 
-export function deriveStates(items: PracticeItem[], evidence: Evidence[], now: Date): Map<string, KnowledgeState> {
+export function deriveStates(
+  items: PracticeItem[],
+  evidence: Evidence[],
+  now: Date,
+  book: ThresholdBook = [],
+): Map<string, KnowledgeState> {
   const byItem = new Map<string, Evidence[]>()
   for (const e of evidence) {
     const list = byItem.get(e.item_key)
     if (list) list.push(e)
     else byItem.set(e.item_key, [e])
   }
-  return new Map(items.map((item) => [item.item_key, deriveState(item, byItem.get(item.item_key) ?? [], now)]))
+  return new Map(items.map((item) => [item.item_key, deriveState(item, byItem.get(item.item_key) ?? [], now, book)]))
 }
