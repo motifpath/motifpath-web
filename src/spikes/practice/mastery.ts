@@ -75,79 +75,120 @@ function oneLower(level: Level): Level {
   return i <= 1 ? level : LEVEL_ORDER[i - 1]!
 }
 
-export function deriveState(item: PracticeItem, evidence: Evidence[], now: Date): KnowledgeState {
-  const ordered = [...evidence].sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at))
-  let accuracy = 0
-  let fluency = 0
-  let box = 0
-  let due: number | null = null
-  let counted = 0
-  // The best clean tempo (or change rate) claimed since the latest teacher review.
-  let edge: number | null = null
-  ordered.forEach((e) => {
-    const t = Date.parse(e.occurred_at)
-    const measure = e.source === 'auto_graded' ? null : (e.bpm ?? e.changes_per_minute)
-    if (e.source === 'teacher_reviewed') edge = null
+/**
+ * Everything the knowledge state needs from an item's evidence so far, folded
+ * one piece at a time in time order. The state shown at a moment is a view over
+ * this plus "now"; nothing in it depends on the clock.
+ */
+export interface FoldState {
+  attempts: number
+  /** Evidence that moved the averages (exploration takes don't). */
+  counted: number
+  accuracy: number
+  fluency: number
+  box: number
+  /** Next review, epoch ms. */
+  due: number | null
+  /** The best clean tempo or change rate since the latest teacher review: takes above it explore. */
+  edge: number | null
+  /** The latest evidence folded, epoch ms: anything earlier arrives late. */
+  last_at: number | null
+  last_seen_at: string | null
+  /** The latest teacher review's vouch. */
+  verified: boolean
+  best_clean_bpm: number | null
+  best_changes_per_minute: number | null
+  /** The last ten correct answer times. */
+  recent_latencies: number[]
+}
+
+export const EMPTY_FOLD: FoldState = {
+  attempts: 0,
+  counted: 0,
+  accuracy: 0,
+  fluency: 0,
+  box: 0,
+  due: null,
+  edge: null,
+  last_at: null,
+  last_seen_at: null,
+  verified: false,
+  best_clean_bpm: null,
+  best_changes_per_minute: null,
+  recent_latencies: [],
+}
+
+const RECENT_LATENCIES = 10
+const maxOf = (a: number | null, b: number | null) => (b === null ? a : a === null ? b : Math.max(a, b))
+
+export function foldStep(item: PracticeItem, prev: FoldState, e: Evidence): FoldState {
+  const t = Date.parse(e.occurred_at)
+  const f: FoldState = { ...prev, attempts: prev.attempts + 1, last_at: t, last_seen_at: e.occurred_at }
+
+  if (e.source === 'auto_graded') {
+    if (e.correct) f.recent_latencies = [...prev.recent_latencies, e.latency_ms].slice(-RECENT_LATENCIES)
+  } else {
+    const clean = e.rating === 'clean'
+    // A teacher review resets what the student claims: only takes since the latest review count.
+    if (e.source === 'teacher_reviewed') {
+      f.verified = e.verified
+      f.edge = null
+      f.best_clean_bpm = null
+      f.best_changes_per_minute = null
+    }
+    const measure = e.bpm ?? e.changes_per_minute
     // The tempo ladder pushes every session to the student's edge: a take that isn't clean
     // above the best clean tempo is exploring, not forgetting, so it doesn't count against them.
-    const exploring =
-      e.source === 'self_assessed' && e.rating !== 'clean' && measure !== null && edge !== null && measure > edge
-    if (e.source !== 'auto_graded' && e.rating === 'clean' && measure !== null) edge = Math.max(edge ?? 0, measure)
-    if (exploring) return
-    const r = read(item, e)
-    const w = SOURCE_WEIGHT[e.source]
-    accuracy = counted === 0 ? r.accuracy : accuracy + w * (r.accuracy - accuracy)
-    fluency = counted === 0 ? r.fluency : fluency + w * (r.fluency - fluency)
-    counted++
-    if (r.outcome === 'miss') box = 1
-    else if (box === 0) box = 1
-    else if (r.outcome === 'hit' && due !== null && t >= due) box = Math.min(MAX_BOX, box + 1)
-    else return
-    due = t + BOX_INTERVAL_DAYS[box]! * DAY_MS
-  })
+    const exploring = e.source === 'self_assessed' && !clean && measure !== null && f.edge !== null && measure > f.edge
+    if (clean) {
+      if (measure !== null) f.edge = Math.max(f.edge ?? 0, measure)
+      f.best_clean_bpm = maxOf(f.best_clean_bpm, e.bpm)
+      f.best_changes_per_minute = maxOf(f.best_changes_per_minute, e.changes_per_minute)
+    }
+    if (exploring) return f
+  }
 
-  const attempts = ordered.length
-  const level = earnedLevel(attempts, accuracy, fluency, box)
+  const r = read(item, e)
+  const w = SOURCE_WEIGHT[e.source]
+  f.accuracy = f.counted === 0 ? r.accuracy : f.accuracy + w * (r.accuracy - f.accuracy)
+  f.fluency = f.counted === 0 ? r.fluency : f.fluency + w * (r.fluency - f.fluency)
+  f.counted++
+  if (r.outcome === 'miss') f.box = 1
+  else if (f.box === 0) f.box = 1
+  else if (r.outcome === 'hit' && f.due !== null && t >= f.due) f.box = Math.min(MAX_BOX, f.box + 1)
+  else return f
+  f.due = t + BOX_INTERVAL_DAYS[f.box]! * DAY_MS
+  return f
+}
+
+/** The knowledge state an item shows at `now`, from its folded evidence. */
+export function viewState(item: PracticeItem, f: FoldState, now: Date): KnowledgeState {
+  const level = earnedLevel(f.attempts, f.accuracy, f.fluency, f.box)
   // Fading starts the moment a review is due; the shown level drops only once the
   // review is overdue by more than the item's own wait.
-  const overdueMs = due === null ? -1 : now.getTime() - due
-  const fading = overdueMs >= 0
-  const lapsed = overdueMs > BOX_INTERVAL_DAYS[box]! * DAY_MS
-
-  // A teacher review resets what the student claims: only takes since the latest review count.
-  let lastReview = -1
-  ordered.forEach((e, i) => {
-    if (e.source === 'teacher_reviewed') lastReview = i
-  })
-  const sinceReview = ordered.slice(Math.max(0, lastReview))
-  const cleanClaims = sinceReview.filter((e) => e.source !== 'auto_graded' && e.rating === 'clean')
-  const best = (values: (number | null)[]) => {
-    const present = values.filter((v): v is number => v !== null)
-    return present.length ? Math.max(...present) : null
-  }
-  const latestReview = lastReview >= 0 ? ordered[lastReview] : undefined
-
+  const overdueMs = f.due === null ? -1 : now.getTime() - f.due
+  const lapsed = overdueMs > BOX_INTERVAL_DAYS[f.box]! * DAY_MS
   return {
     item_key: item.item_key,
-    attempts,
-    accuracy,
-    fluency,
-    box,
-    last_seen_at: ordered.at(-1)?.occurred_at ?? null,
-    due_at: due === null ? null : new Date(due).toISOString(),
+    attempts: f.attempts,
+    accuracy: f.accuracy,
+    fluency: f.fluency,
+    box: f.box,
+    last_seen_at: f.last_seen_at,
+    due_at: f.due === null ? null : new Date(f.due).toISOString(),
     level,
     effective_level: lapsed ? oneLower(level) : level,
-    fading,
-    verified: latestReview?.source === 'teacher_reviewed' ? latestReview.verified : false,
-    median_latency_ms: median(
-      ordered
-        .filter((e) => e.source === 'auto_graded' && e.correct)
-        .slice(-10)
-        .map((e) => (e.source === 'auto_graded' ? e.latency_ms : 0)),
-    ),
-    best_clean_bpm: best(cleanClaims.map((e) => (e.source === 'auto_graded' ? null : e.bpm))),
-    best_changes_per_minute: best(cleanClaims.map((e) => (e.source === 'auto_graded' ? null : e.changes_per_minute))),
+    fading: overdueMs >= 0,
+    verified: f.verified,
+    median_latency_ms: median(f.recent_latencies),
+    best_clean_bpm: f.best_clean_bpm,
+    best_changes_per_minute: f.best_changes_per_minute,
   }
+}
+
+export function deriveState(item: PracticeItem, evidence: Evidence[], now: Date): KnowledgeState {
+  const ordered = [...evidence].sort((a, b) => Date.parse(a.occurred_at) - Date.parse(b.occurred_at))
+  return viewState(item, ordered.reduce((f, e) => foldStep(item, f, e), EMPTY_FOLD), now)
 }
 
 export function deriveStates(items: PracticeItem[], evidence: Evidence[], now: Date): Map<string, KnowledgeState> {
