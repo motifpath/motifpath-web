@@ -37,6 +37,10 @@ const primaryNavTo = computed(() => {
   return { name: STUDENT_SECTIONS.get(name) ?? 'path' }
 })
 
+// A route can ask to sit close under the app bar (route.meta.compactTop) when its screen needs the
+// height, such as a fretboard that should show with its controls on a phone.
+const contentPaddingClass = computed(() => (route.meta.compactTop ? 'py-3' : 'py-5 sm:py-8'))
+
 const contentWidthClass = computed(() =>
   route.meta.wideContent ? 'max-w-7xl 2xl:max-w-[96rem]' : 'max-w-4xl',
 )
@@ -46,7 +50,7 @@ const contentWidthClass = computed(() =>
   <div class="flex min-h-screen flex-col">
     <AppBar context="student" :compact="isCompact" :primary-nav-to="primaryNavTo" />
 
-    <main class="mx-auto w-full flex-1 px-4 py-5 sm:py-8" :class="contentWidthClass">
+    <main class="mx-auto w-full flex-1 px-4" :class="[contentPaddingClass, contentWidthClass]">
       <RouterView />
     </main>
 

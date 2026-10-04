@@ -69,8 +69,8 @@ onBeforeUnmount(() => run.value?.end())
   <section class="flex flex-col" :class="run && !finished ? 'gap-3' : 'gap-5'" data-test="practice-session">
     <template v-if="!run">
       <header class="flex flex-col gap-1">
-        <h1 class="text-2xl font-semibold">{{ t('practiceSessionView.title') }}</h1>
-        <p class="text-ink-muted">{{ t('practiceSessionView.intro') }}</p>
+        <h1 class="text-xl font-semibold">{{ t('practiceSessionView.title') }}</h1>
+        <p class="text-sm text-ink-muted">{{ t('practiceSessionView.intro') }}</p>
       </header>
 
       <StateLoading v-if="isLoading" :noun="t('practiceSessionView.loadingNoun')" />
@@ -124,7 +124,7 @@ onBeforeUnmount(() => run.value?.end())
     </template>
 
     <div v-else-if="finished" class="flex flex-col items-start gap-3" data-test="session-done">
-      <h1 class="text-2xl font-semibold">{{ t('practiceSessionView.doneTitle') }}</h1>
+      <h1 class="text-xl font-semibold">{{ t('practiceSessionView.doneTitle') }}</h1>
       <p class="text-ink-muted">{{ t('practiceSessionView.doneBody', { count: run.answeredCount.value }) }}</p>
       <div class="flex flex-wrap items-center gap-4">
         <PrimaryButton data-test="practise-again" @click="practiseAgain">{{ t('practiceSessionView.practiseAgain') }}</PrimaryButton>

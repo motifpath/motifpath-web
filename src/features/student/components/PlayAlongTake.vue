@@ -81,7 +81,8 @@ function startTake() {
   phase.value = 'playing'
   // Inside the tap: iOS keeps audio started any later silent.
   player.toggle()
-  stage.value?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' })
+  // To its top, which keeps clear of the sticky app bar through its scroll margin.
+  stage.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
 }
 
 watch(player.state, (state, previous) => {
@@ -194,7 +195,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
             <button
               type="button"
               data-test="item-info"
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink"
               :aria-label="t('playAlongTake.info')"
               @click="infoOpen = true"
             >
@@ -206,18 +207,18 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
               v-if="phase === 'ready'"
               type="button"
               data-test="tempo-down"
-              class="flex h-8 w-9 items-center justify-center rounded-md border border-border text-sm tabular-nums"
+              class="flex h-9 w-9 items-center justify-center rounded-md border border-border text-sm tabular-nums"
               :aria-label="t('playAlongTake.slower', { step: TEMPO_STEP_BPM })"
               @click="changeTempo(-TEMPO_STEP_BPM)"
             >
               −{{ TEMPO_STEP_BPM }}
             </button>
-            <span class="min-w-[4.5rem] text-center text-xl font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: tempo }) }}</span>
+            <span class="min-w-[4.5rem] text-center text-lg font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: tempo }) }}</span>
             <button
               v-if="phase === 'ready'"
               type="button"
               data-test="tempo-up"
-              class="flex h-8 w-9 items-center justify-center rounded-md border border-border text-sm tabular-nums"
+              class="flex h-9 w-9 items-center justify-center rounded-md border border-border text-sm tabular-nums"
               :aria-label="t('playAlongTake.faster', { step: TEMPO_STEP_BPM })"
               @click="changeTempo(TEMPO_STEP_BPM)"
             >
@@ -231,7 +232,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
       </div>
       <PlayAlongInfoModal :open="infoOpen" :reason="item.reason" :diagram="loaded.diagram.value" @close="infoOpen = false" />
 
-      <div ref="stage" data-test="take-stage" class="flex scroll-my-4 flex-col gap-3">
+      <div ref="stage" data-test="take-stage" class="flex scroll-mt-20 flex-col gap-3">
         <div class="relative rounded-lg bg-surface-raised p-2">
           <FrettedDiagramView
             :diagram="loaded.diagram.value"

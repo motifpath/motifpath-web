@@ -287,7 +287,7 @@ describe('PlayAlongTake', () => {
 
     await wrapper.get('[data-test="start-take"]').trigger('click')
 
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' })
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
     expect(scrollIntoView.mock.contexts[0]).toBe(wrapper.get('[data-test="take-stage"]').element)
     Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
   })

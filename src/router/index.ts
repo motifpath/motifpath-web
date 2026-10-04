@@ -15,6 +15,8 @@ declare module 'vue-router' {
     requiresRole?: Role[]
     /** Route wants a wider content column than the app's usual reading width. */
     wideContent?: boolean
+    /** Sit close under the app bar, for a screen that needs the height. */
+    compactTop?: boolean
     /**
      * The route this one replaces while keeping the same form on screen (a new
      * item's first save), so arriving from it keeps the scroll position.
@@ -161,7 +163,7 @@ const routes: RouteRecordRaw[] = [
         path: 'session',
         name: 'practice-session',
         // Open to every role: anyone can practise.
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, compactTop: true },
         component: () => import('@/features/student/views/PracticeSessionView.vue'),
       },
     ],
