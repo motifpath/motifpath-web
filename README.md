@@ -73,7 +73,7 @@ as a sibling and `npm install` already run here:
 ```bash
 cd ../motifpath-core
 make dev                                                        # dependency containers
-devbox services up core-domain event-ingestion aggregation-worker web
+mise run full                                                   # backend + aggregation-worker + web
 ```
 
 `web` runs `npm run dev` for this repo; the backend services rebuild on save.
@@ -92,7 +92,7 @@ Automated tests cover the registration bridge, guard, and views in isolation
 (mocked `coreApi`). This walks the real chain end to end — Clerk → transport →
 CORS → `core-domain` → generated types → store → guard/views.
 
-Run the full stack via `motifpath-core`'s `devbox services up … web` (above).
+Run the full stack via `motifpath-core`'s `mise run full` (above).
 `core-domain`'s `CLERK_SECRET_KEY` must be the **secret** key (`sk_test_…`) from
 the same Clerk instance as `VITE_CLERK_PUBLISHABLE_KEY` here — a `pk_test_…`
 value there makes every authenticated call 401 and sign-in dead-ends at
