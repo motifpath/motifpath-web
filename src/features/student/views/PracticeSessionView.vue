@@ -66,7 +66,7 @@ onBeforeUnmount(() => run.value?.end())
 </script>
 
 <template>
-  <section class="flex flex-col gap-5" data-test="practice-session">
+  <section class="flex flex-col" :class="run && !finished ? 'gap-3' : 'gap-5'" data-test="practice-session">
     <template v-if="!run">
       <header class="flex flex-col gap-1">
         <h1 class="text-2xl font-semibold">{{ t('practiceSessionView.title') }}</h1>
@@ -135,7 +135,7 @@ onBeforeUnmount(() => run.value?.end())
     </div>
 
     <template v-else-if="current">
-      <div class="flex items-center gap-3 border-b border-border pb-2.5">
+      <div class="flex items-center gap-3">
         <div
           class="flex flex-1 gap-1"
           role="progressbar"

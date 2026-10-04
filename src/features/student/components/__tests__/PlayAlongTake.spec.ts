@@ -271,9 +271,25 @@ describe('PlayAlongTake', () => {
     const wrapper = mountTake()
     expect(metronomeOn()).toBe(true)
 
-    await wrapper.get('[data-test="metronome"]').setValue(false)
+    const toggle = wrapper.get('[data-test="metronome"]')
+    expect(toggle.attributes('aria-pressed')).toBe('true')
+
+    await toggle.trigger('click')
 
     expect(metronomeOn()).toBe(false)
+    expect(toggle.attributes('aria-pressed')).toBe('false')
+  })
+
+  it('brings the board and its controls into view when a take starts', async () => {
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: scrollIntoView, configurable: true })
+    const wrapper = mountTake()
+
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' })
+    expect(scrollIntoView.mock.contexts[0]).toBe(wrapper.get('[data-test="take-stage"]').element)
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
   })
 })
 
