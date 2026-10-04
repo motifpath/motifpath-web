@@ -39,12 +39,16 @@ from `main` to `dev` automatically. Review and merge it promptly.
 
 ## Prerequisites
 
-- Node.js 26+
-- npm
+- [mise](https://mise.jdx.dev), activated in your shell — installs the Node.js version pinned in
+  `mise.toml` (npm comes with it). If you set up `motifpath-core` first, you already have it.
+- The other MotifPath repositories cloned **side by side in the same parent directory** —
+  `npm run generate:api` reads `../motifpath-specs`, and the full stack runs from
+  `../motifpath-core`.
 
 ## Setup
 
 ```bash
+mise trust && mise install   # Node.js, at the version in mise.toml
 npm install
 cp .env.example .env.local
 ```
@@ -53,9 +57,10 @@ Fill in `.env.local`:
 
 | Variable | Value |
 |---|---|
-| `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_...` from the Clerk dashboard → API keys (use a **development** instance with Google OAuth enabled) |
+| `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_...` from the Clerk dashboard → API keys — the same **development** instance (Google sign-in enabled) whose secret key `motifpath-core` uses; see [Clerk keys](../motifpath-core/README.md#clerk-keys) |
 | `VITE_CORE_API_URL` | `http://localhost:8080` (default) |
 | `VITE_EVENTS_API_URL` | `http://localhost:8081` (default) |
+| `VITE_CONCIERGE_WHATSAPP_NUMBER` | Optional. The number behind the student "Send to your teacher" button, in international format; leave empty to hide the button |
 
 `.env.local` is gitignored — never commit it.
 
