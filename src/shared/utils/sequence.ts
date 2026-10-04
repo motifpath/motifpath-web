@@ -73,6 +73,12 @@ export function pulse(signature: TimeSignature): NoteValue {
   return isCompound(signature) ? reduce(3, signature.beat_value) : { num: 1, den: signature.beat_value }
 }
 
+/** How many pulses make a bar: 4 in 4/4, 2 in 6/8, 7 in 7/8. */
+export function beatsPerBar(signature: TimeSignature): number {
+  const beat = pulse(signature)
+  return Math.round((signature.beats * beat.den) / (signature.beat_value * beat.num))
+}
+
 /** The length of a written note, dotted (half as long again) or as one note of a tuplet. */
 export function noteValue(base: BaseNoteValue, options: { dotted?: boolean; tuplet?: Tuplet | null } = {}): NoteValue {
   if (options.tuplet) return reduce(TUPLETS[options.tuplet], options.tuplet * base)

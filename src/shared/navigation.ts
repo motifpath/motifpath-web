@@ -4,6 +4,7 @@ type Role = components['schemas']['UserProfile']['role']
 
 export type NavLabelKey =
   | 'nav.student'
+  | 'nav.practice'
   | 'nav.myCourses'
   | 'nav.findCourse'
   | 'nav.findPath'
@@ -23,6 +24,7 @@ export interface NavSection {
 /** The learner sections — every user can learn, whatever their role. */
 export const STUDENT_SECTIONS: NavSection[] = [
   { name: 'path', labelKey: 'nav.student' },
+  { name: 'practice-session', labelKey: 'nav.practice' },
   { name: 'my-courses', labelKey: 'nav.myCourses' },
   { name: 'course-catalog', labelKey: 'nav.findCourse' },
   { name: 'path-catalog', labelKey: 'nav.findPath' },

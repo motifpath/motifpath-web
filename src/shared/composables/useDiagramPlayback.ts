@@ -3,9 +3,11 @@ import type { MaybeRefOrGetter } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { audibleTime, unlockAudioContext } from '@/shared/audio/audioContext'
+import { createClickSink } from '@/shared/audio/clickSink'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
 import type { PlaybackRun } from '@/shared/audio/playbackRun'
 import { playbackSteps, secondsPerWhole } from '@/shared/audio/timeline'
+import { beatsPerBar, pulse } from '@/shared/utils/sequence'
 import { useApi } from '@/shared/composables/useApi'
 import { fetchVoices } from '@/shared/composables/useListVoices'
 import { frettedPitch } from '@/shared/utils/pitch'
@@ -69,9 +71,14 @@ export function isPlayable(source: PlaybackSource): boolean {
  * The voice is the usage's, else the instrument's default; the tempo the
  * student's (`tempo`, never saved), which starts at the usage's, else the
  * diagram's. A new tempo applies from the next step. Positions a usage hides
- * still sound. Playing stops when the owning component goes away.
+ * still sound. Playing stops when the owning component goes away. With
+ * `metronome`, a click sounds on every beat of the run, the first of each bar
+ * accented, read when Play is pressed.
  */
-export function useDiagramPlayback(source: MaybeRefOrGetter<PlaybackSource>) {
+export function useDiagramPlayback(
+  source: MaybeRefOrGetter<PlaybackSource>,
+  options: { metronome?: MaybeRefOrGetter<boolean> } = {},
+) {
   const { coreApi } = useApi()
 
   const state = ref<PlaybackState>('idle')
@@ -158,6 +165,10 @@ export function useDiagramPlayback(source: MaybeRefOrGetter<PlaybackSource>) {
       const [{ loadVoiceSampler }, voice] = await Promise.all([import('@/shared/audio/voiceSampler'), findVoice()])
       const sink = await loadVoiceSampler(audio, voice)
       if (current !== attempt) return
+      const beat = pulse(diagram.time_signature)
+      const metronome = toValue(options.metronome)
+        ? { sink: createClickSink(audio), beat: beat.num / beat.den, beatsPerBar: beatsPerBar(diagram.time_signature) }
+        : undefined
 
       const steps = playbackSteps(diagram.sequence, pitchOf, {
         direction: playback?.direction ?? 'as_authored',
@@ -168,6 +179,7 @@ export function useDiagramPlayback(source: MaybeRefOrGetter<PlaybackSource>) {
         wholeSeconds: secondsPerWhole(tempo.value, diagram.time_signature),
         loop: playback?.loop ?? false,
         startAt: audio.currentTime + START_DELAY_SECONDS,
+        metronome,
       })
       state.value = 'playing'
       frame = requestAnimationFrame(tick)

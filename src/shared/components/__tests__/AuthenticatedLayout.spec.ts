@@ -64,6 +64,7 @@ describe('AuthenticatedLayout', () => {
     ['path', 'My path'],
     ['node', 'My path'],
     ['practice', 'My path'],
+    ['practice-session', 'Practice'],
     ['my-courses', 'My learning'],
     ['course-completed', 'My learning'],
     ['course-catalog', 'Find a course'],
@@ -116,6 +117,16 @@ describe('AuthenticatedLayout', () => {
     const wrapper = mountLayout()
 
     expect(wrapper.get('main').classes()).toContain('2xl:max-w-[96rem]')
+  })
+
+  it("keeps a route marked 'compactTop' close under the app bar, so a screen that needs the height gets it", () => {
+    route.meta = { compactTop: true }
+
+    const classes = mountLayout().get('main').classes()
+
+    expect(classes).toContain('py-3')
+    expect(classes).not.toContain('py-5')
+    expect(classes).not.toContain('sm:py-8')
   })
 
 })

@@ -14,6 +14,7 @@ const audio = vi.hoisted(() => ({
   played: [] as { voiceId: string; midi: number; time: number; duration: number; cancelled: boolean }[],
   stopAll: vi.fn(),
   failLoad: false,
+  clicks: [] as { time: number; accent: boolean }[],
 }))
 
 vi.mock('@/shared/audio/audioContext', () => ({
@@ -23,6 +24,16 @@ vi.mock('@/shared/audio/audioContext', () => ({
     },
   }),
   audibleTime: () => audio.now,
+}))
+
+vi.mock('@/shared/audio/clickSink', () => ({
+  createClickSink: () => ({
+    click(at: { time: number; accent: boolean }) {
+      audio.clicks.push(at)
+      return () => {}
+    },
+    stopAll: vi.fn(),
+  }),
 }))
 
 vi.mock('@/shared/audio/voiceSampler', () => ({
@@ -71,7 +82,7 @@ function frameAt(at: number) {
 }
 
 function setup(
-  options: { diagram?: Diagram; instrument?: Instrument; playback?: Playback | null } = {},
+  options: { diagram?: Diagram; instrument?: Instrument; playback?: Playback | null; metronome?: boolean } = {},
 ) {
   const source = ref({
     diagram: options.diagram ?? makeSequencedFrettedDiagram(),
@@ -79,7 +90,7 @@ function setup(
     playback: options.playback === undefined ? AS_AUTHORED : options.playback,
   })
   const scope = effectScope()
-  const player = scope.run(() => useDiagramPlayback(source))!
+  const player = scope.run(() => useDiagramPlayback(source, { metronome: options.metronome ?? false }))!
   return { player, scope, source }
 }
 
@@ -96,6 +107,7 @@ beforeEach(() => {
   audio.played = []
   audio.stopAll.mockReset()
   audio.failLoad = false
+  audio.clicks = []
   frames = []
   vi.stubGlobal('requestAnimationFrame', (frame: FrameRequestCallback) => frames.push(frame))
   vi.stubGlobal('cancelAnimationFrame', () => {
@@ -176,6 +188,23 @@ describe('useDiagramPlayback — playing', () => {
     const { player } = setup({ playback: { direction: 'reversed', loop: false } })
     await play(player)
     expect(audio.played.map((n) => n.midi)).toEqual([45, 50, 52, 48, 45])
+  })
+
+  it("clicks a metronome on every beat from the first note when asked, the bar's first beat accented", async () => {
+    const { player } = setup({ metronome: true })
+    player.tempo.value = 60
+    await play(player)
+    const start = audio.played[0]!.time
+
+    expect(audio.clicks[0]).toEqual({ time: start, accent: true })
+    expect(audio.clicks[1]).toEqual({ time: start + 1, accent: false })
+  })
+
+  it('plays without a metronome unless asked', async () => {
+    const { player } = setup()
+    await play(player)
+
+    expect(audio.clicks).toEqual([])
   })
 
   it('lights up the positions of the step being heard, then goes idle when the run ends', async () => {

@@ -176,5 +176,90 @@
     "continue": "Continue path",
     "enrolledToast": "You are now enrolled in {title}.",
     "outlineHeading": "Path outline"
+  },
+  "practiceSessionView": {
+    "title": "Practice",
+    "intro": "Pick up your instrument and choose how long you have.",
+    "instrumentLabel": "Instrument in your hands",
+    "minutesLabel": "How long",
+    "minutesOption": "{minutes} min",
+    "start": "Start practising",
+    "starting": "Putting your session together…",
+    "loadingNoun": "instruments",
+    "instrumentsError": "We couldn't load the instruments.",
+    "noInstruments": "There's no instrument to practise with yet.",
+    "planError": "We couldn't put your session together.",
+    "instrumentGone": "That instrument isn't available any more. Pick another one.",
+    "endSession": "End session",
+    "unsupported": "This kind of practice isn't available here yet.",
+    "skip": "Skip",
+    "reasons": {
+      "teacher_suggested": "Your teacher suggested this",
+      "due": "Due for review",
+      "weak": "Still settling in",
+      "new": "New",
+      "warm_up": "Warm-up",
+      "application": "Put it into music",
+      "review_ahead": "Reviewing ahead",
+      "stretch": "A step further"
+    },
+    "doneTitle": "Session done",
+    "doneBody": "Nothing rated this time. Every session still counts. | You rated your takes of {count} item. | You rated your takes of {count} items.",
+    "practiseAgain": "Practise again",
+    "backToPath": "Back to my path",
+    "progressLabel": "Session progress"
+  },
+  "playAlongTake": {
+    "bpm": "{bpm} BPM",
+    "goal": "Goal {target} BPM · best clean {best}",
+    "noBest": "none yet",
+    "warmUpHint": "Warm-up: play it relaxed. It doesn't count toward your progress.",
+    "start": "Start take",
+    "countInHint": "A bar of count-in, then play along.",
+    "playing": "Play along. The take ends by itself.",
+    "stopEarly": "Stop early",
+    "ratePrompt": "How was that take at {bpm} BPM?",
+    "ratings": {
+      "struggled": "Struggled",
+      "almost": "Almost",
+      "clean": "Clean"
+    },
+    "ratingHints": {
+      "struggled": "Fell apart or had to stop",
+      "almost": "Got through with slips",
+      "clean": "No slips"
+    },
+    "up": "Clean twice: up to {bpm} BPM.",
+    "down": "Let's settle it at {bpm} BPM.",
+    "loadError": "The sound didn't load. Check your connection and try again.",
+    "unavailable": "This diagram can't be played here.",
+    "skip": "Skip",
+    "slower": "{step} BPM slower",
+    "faster": "{step} BPM faster",
+    "metronome": "Metronome",
+    "info": "About this practice",
+    "takeOf": "Take {current} of {total}"
+  },
+  "playAlongInfo": {
+    "title": "About this practice",
+    "whyTitle": "Why now",
+    "why": {
+      "teacher_suggested": "Your teacher suggested you practise this.",
+      "due": "You've practised this before, and it's time to review it so it stays with you.",
+      "weak": "You've started this, and it isn't secure yet. A few more takes will settle it.",
+      "new": "Something new from your path, to start building it.",
+      "warm_up": "Something you already play well, to get your hands going. It doesn't count toward your progress.",
+      "application": "Putting what you know into music.",
+      "review_ahead": "Nothing is due right now, so you're reviewing this a little early.",
+      "stretch": "Nothing is due right now, and you're ready for this next step."
+    },
+    "skills": "Skills it works on",
+    "concepts": "Concepts",
+    "howTitle": "How it works",
+    "howTake": "Each take starts with a bar of count-in, then you play along as the notes light up.",
+    "howRate": "Afterwards, rate the take honestly: struggled, almost or clean.",
+    "howLadder": "After two clean takes in a row the tempo goes up 5 BPM; after a struggle it comes down 5.",
+    "howWarmUp": "A warm-up stays at the same tempo and doesn't count toward your progress.",
+    "howTempo": "Too easy or too hard? Change the tempo before the next take."
   }
 }

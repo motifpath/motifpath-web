@@ -3,7 +3,8 @@
  * sampler) ahead of time, on the audio clock, and says which positions are
  * sounding at any moment of that clock. A looping run stays one pass ahead,
  * scheduling the next pass as the current one starts; a tempo change re-times
- * everything after the step now sounding.
+ * everything after the step now sounding. A metronome clicks on the beat grid
+ * of each pass, on the same clock, so it never drifts from the notes.
  */
 import { buildTimeline } from './timeline'
 import type { PlaybackStep, StepSpan } from './timeline'
@@ -13,6 +14,20 @@ export interface NoteSink {
   play(note: { midi: number; time: number; duration: number }): () => void
   /** Silences every note, sounding or scheduled. */
   stopAll(): void
+}
+
+export interface ClickSink {
+  /** Clicks at `time` (audio-clock seconds), louder on an accent; the returned function cancels it. */
+  click(at: { time: number; accent: boolean }): () => void
+  /** Silences every click, sounding or scheduled. */
+  stopAll(): void
+}
+
+/** A metronome over the run: a click every `beat` (a fraction of a whole note), the first of each bar accented. */
+export interface RunMetronome {
+  sink: ClickSink
+  beat: number
+  beatsPerBar: number
 }
 
 export interface PlaybackRun {
@@ -27,6 +42,8 @@ export interface PlaybackRun {
 
 /** How far ahead of the clock a pass starts when the previous one already ended, so it isn't late. */
 const RESUME_LEAD_SECONDS = 0.1
+/** Slack for adding up note lengths in floating point, far below any real note's length. */
+const EPSILON = 1e-9
 
 interface ScheduledStep extends StepSpan {
   pass: number
@@ -35,12 +52,29 @@ interface ScheduledStep extends StepSpan {
 
 export function createPlaybackRun(
   steps: PlaybackStep[],
-  options: { sink: NoteSink; wholeSeconds: number; loop: boolean; startAt: number },
+  options: { sink: NoteSink; wholeSeconds: number; loop: boolean; startAt: number; metronome?: RunMetronome },
 ): PlaybackRun {
-  const { sink, loop, startAt } = options
+  const { sink, loop, startAt, metronome } = options
   let wholeSeconds = options.wholeSeconds
   let scheduled: ScheduledStep[] = []
   let stopped = false
+
+  // Where each step starts within a pass, as a fraction of a whole note.
+  const stepStarts = steps.reduce<number[]>((starts, step, i) => [...starts, starts[i]! + step.value], [0])
+
+  /** Schedules the metronome's clicks that fall within step `stepIndex`, which starts at `time`. */
+  function scheduleClicks(stepIndex: number, time: number): (() => void)[] {
+    if (!metronome) return []
+    const { beat, beatsPerBar } = metronome
+    const from = stepStarts[stepIndex]!
+    const to = stepStarts[stepIndex + 1]!
+    const cancels: (() => void)[] = []
+    for (let n = Math.ceil(from / beat - EPSILON); n * beat < to - EPSILON; n++) {
+      const at = time + (n * beat - from) * wholeSeconds
+      cancels.push(metronome.sink.click({ time: at, accent: n % beatsPerBar === 0 }))
+    }
+    return cancels
+  }
 
   /** Schedules pass `pass` from step `from` at `time`, through the end of that pass. */
   function schedule(pass: number, from: number, time: number) {
@@ -49,6 +83,7 @@ export function createPlaybackRun(
       const cancels = timeline.notes
         .filter((note) => note.stepIndex === span.stepIndex)
         .map((note) => sink.play({ midi: note.midi, time: note.time, duration: note.duration }))
+      cancels.push(...scheduleClicks(span.stepIndex, span.start))
       scheduled.push({ ...span, pass, cancels })
     }
   }
@@ -107,6 +142,7 @@ export function createPlaybackRun(
       for (const step of scheduled) step.cancels.forEach((cancel) => cancel())
       scheduled = []
       sink.stopAll()
+      metronome?.sink.stopAll()
     },
   }
 }

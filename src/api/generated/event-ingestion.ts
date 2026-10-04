@@ -159,7 +159,7 @@ export interface components {
          *     Ingestion Service persists the raw payload to MongoDB and publishes it to the
          *     motifpath.events Kafka topic.
          */
-        TrackingEvent: components["schemas"]["LessonStartedEvent"] | components["schemas"]["LessonResumedEvent"] | components["schemas"]["LessonCompletedEvent"] | components["schemas"]["ExerciseStartedEvent"] | components["schemas"]["ExerciseProgressEvent"] | components["schemas"]["ExerciseAnswerSentEvent"] | components["schemas"]["ExerciseEndedEvent"];
+        TrackingEvent: components["schemas"]["LessonStartedEvent"] | components["schemas"]["LessonResumedEvent"] | components["schemas"]["LessonCompletedEvent"] | components["schemas"]["ExerciseStartedEvent"] | components["schemas"]["ExerciseProgressEvent"] | components["schemas"]["ExerciseAnswerSentEvent"] | components["schemas"]["ExerciseEndedEvent"] | components["schemas"]["PracticeSessionStartedEvent"] | components["schemas"]["PracticeItemAnsweredEvent"] | components["schemas"]["PracticeSessionEndedEvent"] | components["schemas"]["PracticeTapCheckCompletedEvent"];
         /** @description Confirmation returned when a tracking event is successfully accepted. */
         IngestAccepted: {
             /**
@@ -283,7 +283,7 @@ export interface components {
              *     and a new ADR if it introduces a new consumer concern.
              * @enum {string}
              */
-            event_type: "lesson.started" | "lesson.resumed" | "lesson.completed" | "exercise.started" | "exercise.progress" | "exercise.answer_sent" | "exercise.ended";
+            event_type: "lesson.started" | "lesson.resumed" | "lesson.completed" | "exercise.started" | "exercise.progress" | "exercise.answer_sent" | "exercise.ended" | "practice.session_started" | "practice.item_answered" | "practice.session_ended" | "practice.tap_check_completed";
             /**
              * Format: uuid
              * @description ID of the authenticated student who generated this event. Used as the Kafka
@@ -382,19 +382,17 @@ export interface components {
             /**
              * @description What triggered this exercise session. challenge_sequence = part of a
              *     node's challenge; path_exercise = one of a node's static,
-             *     teacher-curated introductory exercises; practice_session = a
-             *     randomized, skill-targeted session started via GET /practice-sessions
-             *     — the primary between-lessons practice loop; free_practice = student
+             *     teacher-curated introductory exercises; free_practice = student
              *     initiated independently, outside any of the above; remediation =
              *     surfaced by the recommendation engine as a remediation target.
              * @enum {string}
              */
-            source: "challenge_sequence" | "path_exercise" | "practice_session" | "free_practice" | "remediation";
+            source: "challenge_sequence" | "path_exercise" | "free_practice" | "remediation";
             /**
              * Format: uuid
              * @description ID of the ContentNode in whose context the exercise was triggered. Present when
              *     source is challenge_sequence, path_exercise, or remediation. Absent for
-             *     practice_session and free_practice, which are not tied to a single node.
+             *     free_practice, which is not tied to a single node.
              */
             content_node_id?: string;
             /**
@@ -403,22 +401,6 @@ export interface components {
              *     challenge_sequence. Enables per-challenge scoring in the Aggregation Worker.
              */
             challenge_id?: string;
-            /**
-             * Format: uuid
-             * @description ID of the Skill this exercise was selected for. Present only when
-             *     source is practice_session — the skill_id passed to
-             *     GET /practice-sessions. Lets the Aggregation Worker compute
-             *     per-skill accuracy for the recommendation engine.
-             */
-            skill_id?: string;
-            /**
-             * Format: uuid
-             * @description ID of the generated practice session this exercise belongs to.
-             *     Present only when source is practice_session. Groups the exercise.*
-             *     events emitted for one GET /practice-sessions call, since the
-             *     session itself is not a stored resource.
-             */
-            practice_session_id?: string;
         };
         ExerciseStartedEvent: components["schemas"]["TrackingEventBase"] & {
             /** @enum {string} */
@@ -517,6 +499,219 @@ export interface components {
              */
             event_type: "exercise.ended";
         };
+        /**
+         * @description Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+         *     tracked. Every answer, rating and review points at one. The prefix is the item kind:
+         *
+         *     - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+         *       The instrument is the one whose fretboard layout the cell belongs to, so instruments
+         *       that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+         *       fret 0 is the open string.
+         *     - exercise:<exercise id> — an authored exercise.
+         *     - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+         *     - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+         *
+         *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+         *     grader, and its golden cases.
+         * @example fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3
+         */
+        PracticeItemKey: string;
+        /**
+         * @description Why the session composer put an item in a session, shown to the student.
+         *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
+         *     practised but not yet secure; new = it has not been practised yet; warm_up = something
+         *     already known, played first with the instrument in hand, below the student's edge and
+         *     outside the evidence: its takes are not sent as practice.item_answered; application = applying the
+         *     skill to music; review_ahead = a known item reviewed before it falls due, when nothing
+         *     else is due; stretch = an unseen item of a node the student is ready to start, when
+         *     nothing else is due.
+         * @enum {string}
+         */
+        PracticePickReason: "teacher_suggested" | "due" | "weak" | "new" | "warm_up" | "application" | "review_ahead" | "stretch";
+        /** @description One item of a composed practice session, in the order it was offered. */
+        PlannedPracticeItem: {
+            item_key: components["schemas"]["PracticeItemKey"];
+            reason: components["schemas"]["PracticePickReason"];
+        };
+        PracticeSessionStartedEvent: components["schemas"]["TrackingEventBase"] & {
+            /** @enum {string} */
+            event_type: "practice.session_started";
+            /**
+             * Format: uuid
+             * @description Identifier of this practice session, carried by every practice.* event the
+             *     session produces. Distinct from session_id, which identifies the browser session.
+             */
+            practice_session_id: string;
+            /**
+             * Format: uuid
+             * @description The instrument in the student's hands for this session. Absent when the session
+             *     is practised in the head, without an instrument.
+             */
+            instrument_id?: string;
+            /** @description The time the student chose for the session, in minutes. */
+            minutes: number;
+            /** @description The session's items, in the order offered, each with why it was picked. */
+            planned_items: components["schemas"]["PlannedPracticeItem"][];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "practice.session_started";
+        };
+        /** @description Answer to a fretboard cell shown on the fretboard: the student names its note. */
+        NameTheNoteResponse: {
+            /**
+             * @description Discriminator. The student named the note of the cell shown. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "name_the_note";
+            /**
+             * @description The note named, as a letter with an optional sharp (#) or flat (b), without an
+             *     octave. Any spelling of the right pitch counts as right (F# and Gb alike).
+             */
+            note_name: string;
+            /** @description Milliseconds from the moment the cell was shown to the answer. */
+            latency_ms: number;
+        };
+        /** @description Answer to a note asked on a given string: the student taps where it is on the fretboard. */
+        FindTheNoteResponse: {
+            /**
+             * @description Discriminator. The student tapped a cell to find the note asked. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "find_the_note";
+            /** @description The string tapped, 1 being the highest-pitched. */
+            string: number;
+            /** @description The fret tapped; 0 is the open string. */
+            fret: number;
+            /** @description Milliseconds from the moment the note was asked to the tap. */
+            latency_ms: number;
+        };
+        /**
+         * @description Answer to an authored exercise: the options the student selected. An exercise with one
+         *     correct option takes one selection; an exercise with several correct options takes
+         *     several, and is right only when the selection matches its correct options exactly.
+         */
+        OptionChoiceResponse: {
+            /**
+             * @description Discriminator. The student selected options of an authored exercise. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "option_choice";
+            /** @description The options selected, in any order. */
+            option_ids: string[];
+            /** @description Milliseconds from the moment the exercise was shown to the answer. */
+            latency_ms: number;
+        };
+        /**
+         * @description The student's own rating of a take they played: a play-along at a tempo, or chord
+         *     changes counted over a minute. A play-along rating carries tempo_bpm and no
+         *     changes_per_minute; a chord-change rating carries changes_per_minute and no tempo_bpm.
+         */
+        SelfRatingResponse: {
+            /**
+             * @description Discriminator. The student rated a take of their own. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "self_rating";
+            /**
+             * @description How the take went, in the student's judgement. struggled = fell apart or needed to
+             *     stop; almost = got through with slips; clean = no slips at this measure.
+             * @enum {string}
+             */
+            rating: "struggled" | "almost" | "clean";
+            /** @description The tempo of the take, in beats per minute. Present for a play-along. */
+            tempo_bpm?: number;
+            /** @description The number of chord changes made in one minute. Present for a chord change. */
+            changes_per_minute?: number;
+        };
+        /**
+         * @description The student's raw answer to one practice item, exactly as given. It never says whether
+         *     the answer was right: the server grades it against reference data, and a client grades
+         *     it only to show instant feedback, with the same rules. Exactly one shape applies,
+         *     discriminated by response_type.
+         */
+        PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"];
+        PracticeItemAnsweredEvent: components["schemas"]["TrackingEventBase"] & {
+            /** @enum {string} */
+            event_type: "practice.item_answered";
+            /**
+             * Format: uuid
+             * @description The practice session this answer belongs to.
+             */
+            practice_session_id: string;
+            item_key: components["schemas"]["PracticeItemKey"];
+            response: components["schemas"]["PracticeResponse"];
+            /**
+             * @description The student's tap time, in milliseconds, from their latest tap check before this
+             *     answer: how long a tap takes them when they already know where to tap. Set by the
+             *     server on timed answers (those with a latency_ms) when the student has done a tap
+             *     check; absent otherwise. A value sent by a client is ignored.
+             */
+            readonly tap_ms?: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "practice.item_answered";
+        };
+        /**
+         * @description How a timed drill felt to the student in a session. Used only to calibrate how fast
+         *     counts as fluent for that drill; it never counts toward the student's own mastery.
+         */
+        FeltRating: {
+            /**
+             * @description The timed drill asked about, such as fretboard_cell:name_the_note or
+             *     fretboard_cell:find_the_note.
+             * @example fretboard_cell:name_the_note
+             */
+            drill_template_key: string;
+            /**
+             * @description The student's answer to "How did it feel?".
+             * @enum {string}
+             */
+            felt: "easy" | "about_right" | "hard";
+        };
+        PracticeSessionEndedEvent: components["schemas"]["TrackingEventBase"] & {
+            /** @enum {string} */
+            event_type: "practice.session_ended";
+            /**
+             * Format: uuid
+             * @description The practice session that ended.
+             */
+            practice_session_id: string;
+            /** @description How many items the student answered in the session. */
+            answered_count: number;
+            /** @description True when the student ended the session before its last planned item. */
+            left_early: boolean;
+            /**
+             * @description The student's answers to "How did it feel?" for at most two of the session's
+             *     timed drills. Empty when the session asked none, or the student skipped them.
+             */
+            felt_ratings: components["schemas"]["FeltRating"][];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "practice.session_ended";
+        };
+        PracticeTapCheckCompletedEvent: components["schemas"]["TrackingEventBase"] & {
+            /** @enum {string} */
+            event_type: "practice.tap_check_completed";
+            /** @description The median time from a fret lighting up to the student's tap, in milliseconds. */
+            median_tap_ms: number;
+            /** @description How many taps the median was taken over. */
+            tap_count: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "practice.tap_check_completed";
+        };
     };
     responses: never;
     parameters: never;
@@ -544,6 +739,19 @@ export type SchemaExerciseStartedEvent = components['schemas']['ExerciseStartedE
 export type SchemaExerciseProgressEvent = components['schemas']['ExerciseProgressEvent'];
 export type SchemaExerciseAnswerSentEvent = components['schemas']['ExerciseAnswerSentEvent'];
 export type SchemaExerciseEndedEvent = components['schemas']['ExerciseEndedEvent'];
+export type SchemaPracticeItemKey = components['schemas']['PracticeItemKey'];
+export type SchemaPracticePickReason = components['schemas']['PracticePickReason'];
+export type SchemaPlannedPracticeItem = components['schemas']['PlannedPracticeItem'];
+export type SchemaPracticeSessionStartedEvent = components['schemas']['PracticeSessionStartedEvent'];
+export type SchemaNameTheNoteResponse = components['schemas']['NameTheNoteResponse'];
+export type SchemaFindTheNoteResponse = components['schemas']['FindTheNoteResponse'];
+export type SchemaOptionChoiceResponse = components['schemas']['OptionChoiceResponse'];
+export type SchemaSelfRatingResponse = components['schemas']['SelfRatingResponse'];
+export type SchemaPracticeResponse = components['schemas']['PracticeResponse'];
+export type SchemaPracticeItemAnsweredEvent = components['schemas']['PracticeItemAnsweredEvent'];
+export type SchemaFeltRating = components['schemas']['FeltRating'];
+export type SchemaPracticeSessionEndedEvent = components['schemas']['PracticeSessionEndedEvent'];
+export type SchemaPracticeTapCheckCompletedEvent = components['schemas']['PracticeTapCheckCompletedEvent'];
 export type $defs = Record<string, never>;
 export interface operations {
     ingestTrackingEvent: {
