@@ -243,5 +243,38 @@ describe('usePracticeSessionRun', () => {
 
     expect(run.tempo.value).toBe(60)
   })
+
+  it('says how far the session has come, item by item', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    expect(run.progress.value).toEqual([0, 0])
+
+    run.rate('clean')
+    expect(run.progress.value).toEqual([0.5, 0])
+
+    run.rate('clean')
+    run.rate('almost')
+    expect(run.progress.value).toEqual([1, 0.25])
+
+    run.end()
+    expect(run.progress.value).toEqual([1, 0.25])
+  })
+
+  it('counts an item moved past as done', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.nextItem()
+
+    expect(run.progress.value).toEqual([1, 0])
+  })
+
+  it('says how many takes the current item has, in all', () => {
+    const run = usePracticeSessionRun(twoItems)
+    expect(run.takesTotal.value).toBe(2)
+
+    run.start()
+    run.nextItem()
+    expect(run.takesTotal.value).toBe(4)
+  })
 })
 

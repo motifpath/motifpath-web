@@ -55,19 +55,7 @@ async function startSession() {
   run.value = session
 }
 
-const reasonKeys = {
-  teacher_suggested: 'practiceSessionView.reasons.teacher_suggested',
-  due: 'practiceSessionView.reasons.due',
-  weak: 'practiceSessionView.reasons.weak',
-  new: 'practiceSessionView.reasons.new',
-  warm_up: 'practiceSessionView.reasons.warm_up',
-  application: 'practiceSessionView.reasons.application',
-  review_ahead: 'practiceSessionView.reasons.review_ahead',
-  stretch: 'practiceSessionView.reasons.stretch',
-} as const
-
 const current = computed(() => run.value?.current.value ?? null)
-const total = computed(() => run.value?.plan.items.length ?? 0)
 const finished = computed(() => run.value?.finished.value ?? false)
 
 function practiseAgain() {
@@ -147,14 +135,26 @@ onBeforeUnmount(() => run.value?.end())
     </div>
 
     <template v-else-if="current">
-      <div class="flex items-center justify-between gap-3 border-b border-border pb-2.5 text-sm">
-        <div class="flex flex-col">
-          <span class="text-xs text-ink-muted">
-            {{ t('practiceSessionView.progress', { current: run.index.value + 1, total }) }}
-          </span>
-          <span class="font-medium">{{ t(reasonKeys[current.reason]) }}</span>
+      <div class="flex items-center gap-3 border-b border-border pb-2.5">
+        <div
+          class="flex flex-1 gap-1"
+          role="progressbar"
+          :aria-label="t('practiceSessionView.progressLabel')"
+          aria-valuemin="0"
+          :aria-valuemax="run.plan.items.length"
+          :aria-valuenow="run.index.value"
+        >
+          <div
+            v-for="(filled, i) in run.progress.value"
+            :key="i"
+            data-test="session-segment"
+            :data-filled="Math.round(filled * 100)"
+            class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken"
+          >
+            <div class="h-full bg-accent transition-all" :style="{ width: `${filled * 100}%` }" />
+          </div>
         </div>
-        <button type="button" data-test="end-session" class="rounded-lg border border-border px-3 py-1.5 text-sm" @click="run.end()">
+        <button type="button" data-test="end-session" class="shrink-0 rounded-lg border border-border px-3 py-1.5 text-sm" @click="run.end()">
           {{ t('practiceSessionView.endSession') }}
         </button>
       </div>
@@ -164,6 +164,7 @@ onBeforeUnmount(() => run.value?.end())
         :item="current"
         :tempo="run.tempo.value"
         :takes-left="run.takesLeft.value"
+        :takes-total="run.takesTotal.value"
         @rate="run.rate($event)"
         @skip="run.nextItem()"
         @tempo="run.setTempo($event)"

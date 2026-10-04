@@ -38,10 +38,10 @@ vi.mock('@/shared/composables/useListInstruments', () => ({
 // The take itself is PlayAlongTake's: here it only reports what it was given and emits.
 const PlayAlongTakeStub = defineComponent({
   name: 'PlayAlongTake',
-  props: { item: { type: Object, required: true }, tempo: Number, takesLeft: Number },
+  props: { item: { type: Object, required: true }, tempo: Number, takesLeft: Number, takesTotal: Number },
   emits: ['rate', 'skip', 'tempo'],
   setup(props) {
-    return () => h('div', { 'data-test': 'take' }, `${props.tempo} BPM · ${props.takesLeft} left`)
+    return () => h('div', { 'data-test': 'take' }, `${props.tempo} BPM · ${props.takesLeft} of ${props.takesTotal} left`)
   },
 })
 
@@ -77,6 +77,11 @@ async function startSession(wrapper: ReturnType<typeof mountView>, composed: Pla
   POST.mockResolvedValueOnce({ data: composed, response: { status: 200 } })
   await wrapper.get('[data-test="start-session"]').trigger('click')
   await flushPromises()
+}
+
+/** How full each item's segment of the session bar is, in percent. */
+function segments(wrapper: ReturnType<typeof mountView>) {
+  return wrapper.findAll('[data-test="session-segment"]').map((segment) => Number(segment.attributes('data-filled')))
 }
 
 function events(eventType: string) {
@@ -121,9 +126,8 @@ describe('PracticeSessionView', () => {
     await startSession(wrapper)
 
     expect(events('practice.session_started')).toHaveLength(1)
-    expect(wrapper.text()).toContain('Item 1 of 2')
-    expect(wrapper.text()).toContain('Warm-up')
-    expect(wrapper.get('[data-test="take"]').text()).toBe('80 BPM · 2 left')
+    expect(segments(wrapper)).toEqual([0, 0])
+    expect(wrapper.get('[data-test="take"]').text()).toBe('80 BPM · 2 of 2 left')
   })
 
   it('records the take’s rating and moves through the items', async () => {
@@ -134,8 +138,7 @@ describe('PracticeSessionView', () => {
     take().vm.$emit('rate', 'clean')
     take().vm.$emit('rate', 'clean')
     await flushPromises()
-    expect(wrapper.text()).toContain('Item 2 of 2')
-    expect(wrapper.text()).toContain('Due for review')
+    expect(segments(wrapper)).toEqual([100, 0])
 
     take().vm.$emit('rate', 'almost')
     await flushPromises()
@@ -149,7 +152,7 @@ describe('PracticeSessionView', () => {
     wrapper.getComponent(PlayAlongTakeStub).vm.$emit('skip')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Item 2 of 2')
+    expect(segments(wrapper)[0]).toBe(100)
   })
 
   it('offers to skip an item it can’t present', async () => {
@@ -159,7 +162,7 @@ describe('PracticeSessionView', () => {
 
     expect(wrapper.text()).toContain("This kind of practice isn't available here yet.")
     await wrapper.get('[data-test="skip-unsupported"]').trigger('click')
-    expect(wrapper.text()).toContain('Item 2 of 2')
+    expect(segments(wrapper)[0]).toBe(100)
   })
 
   it('ends the session early and shows how it went', async () => {
@@ -210,7 +213,7 @@ describe('PracticeSessionView', () => {
 
     expect(wrapper.text()).toContain("We couldn't put your session together.")
     await startSession(wrapper)
-    expect(wrapper.text()).toContain('Item 1 of 2')
+    expect(segments(wrapper)).toEqual([0, 0])
   })
 
   it('asks for another instrument when the chosen one is gone', async () => {
@@ -236,7 +239,7 @@ describe('PracticeSessionView', () => {
     wrapper.getComponent(PlayAlongTakeStub).vm.$emit('tempo', 95)
     await flushPromises()
 
-    expect(wrapper.get('[data-test="take"]').text()).toBe('95 BPM · 2 left')
+    expect(wrapper.get('[data-test="take"]').text()).toBe('95 BPM · 2 of 2 left')
   })
 })
 

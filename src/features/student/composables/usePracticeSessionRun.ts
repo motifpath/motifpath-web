@@ -59,7 +59,16 @@ export function usePracticeSessionRun(plan: Plan) {
     chosenTempo.value = Math.min(MAX_TEMPO_BPM, Math.max(ladderFloor(playAlong.target_tempo_bpm), Math.round(bpm)))
   }
 
-  const takesLeft = computed(() => (current.value ? takesOf(current.value) - takes.value.length : 0))
+  const takesTotal = computed(() => (current.value ? takesOf(current.value) : 0))
+  const takesLeft = computed(() => takesTotal.value - takes.value.length)
+
+  /** How much of each item is played, from 0 to 1: the items moved past in full, the current one by its takes. */
+  const progress = computed(() =>
+    plan.items.map((item, i) => {
+      if (i < index.value) return 1
+      return i === index.value ? takes.value.length / takesOf(item) : 0
+    }),
+  )
 
   const active = () => started.value && !finished.value
 
@@ -91,11 +100,8 @@ export function usePracticeSessionRun(plan: Plan) {
     if (!active()) return
     takes.value = []
     chosenTempo.value = null
-    if (index.value + 1 >= plan.items.length) {
-      finish(false)
-      return
-    }
     index.value++
+    if (index.value >= plan.items.length) finish(false)
   }
 
   /** Records the student's rating of the take just played at the current tempo. */
@@ -123,5 +129,5 @@ export function usePracticeSessionRun(plan: Plan) {
     if (active()) finish(true)
   }
 
-  return { plan, index, current, tempo, takesLeft, answeredCount, finished, start, setTempo, rate, nextItem, end }
+  return { plan, index, current, tempo, takesTotal, takesLeft, progress, answeredCount, finished, start, setTempo, rate, nextItem, end }
 }

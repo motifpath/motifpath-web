@@ -6,11 +6,13 @@
  * tempo (the tempo ladder). A diagram that can't be played here can only be skipped.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { Info } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { withCountIn } from '@/features/student/utils/countIn'
 import { TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
+import PlayAlongInfoModal from '@/features/student/components/PlayAlongInfoModal.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -27,6 +29,8 @@ const props = defineProps<{
   /** The tempo the next take plays at. */
   tempo: number
   takesLeft: number
+  /** The item's takes in all, played and still to play. */
+  takesTotal: number
 }>()
 
 const emit = defineEmits<{ rate: [rating: TakeRating]; skip: []; tempo: [bpm: number] }>()
@@ -150,6 +154,20 @@ const ratings = [
   { rating: 'clean', label: 'playAlongTake.ratings.clean', hint: 'playAlongTake.ratingHints.clean', tone: 'bg-success-muted' },
 ] as const satisfies readonly { rating: TakeRating; label: string; hint: string; tone: string }[]
 
+const reasonKeys = {
+  teacher_suggested: 'practiceSessionView.reasons.teacher_suggested',
+  due: 'practiceSessionView.reasons.due',
+  weak: 'practiceSessionView.reasons.weak',
+  new: 'practiceSessionView.reasons.new',
+  warm_up: 'practiceSessionView.reasons.warm_up',
+  application: 'practiceSessionView.reasons.application',
+  review_ahead: 'practiceSessionView.reasons.review_ahead',
+  stretch: 'practiceSessionView.reasons.stretch',
+} as const
+
+const infoOpen = ref(false)
+const takesPlayed = computed(() => props.takesTotal - props.takesLeft)
+
 const progressToTarget = computed(() => Math.min(1, props.tempo / playAlong.value.target_tempo_bpm))
 const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlongTake.noBest'))
 </script>
@@ -166,10 +184,22 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
     </div>
 
     <template v-else-if="loaded.diagram.value && loaded.instrument.value && loaded.diagramRef.value">
-      <div class="flex items-baseline justify-between gap-2">
-        <p class="text-sm text-ink-muted">{{ t('playAlongTake.takesLeft', { count: takesLeft }) }}</p>
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <span class="rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">{{ t(reasonKeys[item.reason]) }}</span>
+          <button
+            type="button"
+            data-test="item-info"
+            class="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:text-ink"
+            :aria-label="t('playAlongTake.info')"
+            @click="infoOpen = true"
+          >
+            <Info :size="18" aria-hidden="true" />
+          </button>
+        </div>
         <p class="text-2xl font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: tempo }) }}</p>
       </div>
+      <PlayAlongInfoModal :open="infoOpen" :reason="item.reason" :diagram="loaded.diagram.value" @close="infoOpen = false" />
 
       <template v-if="warmUp">
         <p class="text-sm text-ink-muted">{{ t('playAlongTake.warmUpHint') }}</p>
@@ -231,7 +261,24 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
           {{ t('playAlongTake.metronome') }}
         </label>
         <p class="text-xs text-ink-muted">{{ t('playAlongTake.countInHint') }}</p>
-        <PrimaryButton data-test="start-take" @click="startTake">{{ t('playAlongTake.start') }}</PrimaryButton>
+        <div class="flex items-center gap-3">
+          <PrimaryButton data-test="start-take" @click="startTake">{{ t('playAlongTake.start') }}</PrimaryButton>
+          <div
+            data-test="take-dots"
+            class="flex items-center gap-1.5"
+            role="img"
+            :aria-label="t('playAlongTake.takeOf', { current: Math.min(takesPlayed + 1, takesTotal), total: takesTotal })"
+          >
+            <span
+              v-for="n in takesTotal"
+              :key="n"
+              data-test="take-dot"
+              :data-played="n <= takesPlayed"
+              class="h-2.5 w-2.5 rounded-full"
+              :class="n <= takesPlayed ? 'bg-accent' : 'border border-border'"
+            />
+          </div>
+        </div>
       </template>
 
       <template v-else-if="phase === 'playing'">

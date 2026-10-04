@@ -12,6 +12,8 @@ const DIAGRAM_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
 
 const diagram = {
   diagram_id: DIAGRAM_ID,
+  names: { en: 'A minor pentatonic, box 1' },
+  classification: { skills: [], concepts: [] },
   instrument_id: 'guitar',
   time_signature: { beats: 4, beat_value: 4 },
   tempo_bpm: 100,
@@ -67,9 +69,9 @@ function item(reason: Item['reason'] = 'due', best: number | null = 70): Item {
   }
 }
 
-function mountTake(props: Partial<{ item: Item; tempo: number; takesLeft: number }> = {}) {
+function mountTake(props: Partial<{ item: Item; tempo: number; takesLeft: number; takesTotal: number }> = {}) {
   return mount(PlayAlongTake, {
-    props: { item: item(), tempo: 70, takesLeft: 4, ...props },
+    props: { item: item(), tempo: 70, takesLeft: 4, takesTotal: 4, ...props },
     global: { stubs: { FrettedDiagramView: true } },
   })
 }
@@ -101,12 +103,33 @@ describe('PlayAlongTake', () => {
     })
   })
 
-  it('shows the take’s tempo, the goal, the best clean tempo and the takes left', () => {
+  it('shows the take’s tempo, the goal and the best clean tempo', () => {
     const text = mountTake().text()
 
     expect(text).toContain('70 BPM')
     expect(text).toContain('Goal 100 BPM · best clean 70')
-    expect(text).toContain('4 takes left')
+  })
+
+  it('shows the item’s takes as dots, those played filled', () => {
+    const wrapper = mountTake({ takesLeft: 3, takesTotal: 4 })
+
+    const dots = wrapper.findAll('[data-test="take-dot"]')
+    expect(dots).toHaveLength(4)
+    expect(dots.filter((dot) => dot.attributes('data-played') === 'true')).toHaveLength(1)
+    expect(wrapper.get('[data-test="take-dots"]').attributes('aria-label')).toBe('Take 2 of 4')
+  })
+
+  it('says why the item was picked', () => {
+    expect(mountTake().text()).toContain('Due for review')
+  })
+
+  it('explains the item in an information window', async () => {
+    const wrapper = mountTake()
+    expect(wrapper.find('[data-test="modal-panel"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="item-info"]').trigger('click')
+
+    expect(wrapper.get('[data-test="modal-panel"]').text()).toContain('Why now')
   })
 
   it('plays the diagram once, after a bar of count-in, at the take’s tempo', () => {
