@@ -106,6 +106,7 @@ describe('useEmbeddedDiagram', () => {
         names: { en: 'Piano' },
         languages: ['en'],
         family: 'keyboard',
+        icon: 'piano',
         key_range: { lowest: 'A0', highest: 'C8' },
         default_voice_id: 'piano',
       }

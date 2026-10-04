@@ -736,9 +736,10 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Replace an instrument's names and default voice
-         * @description Replaces an instrument's names and, optionally, its default voice —
-         *     the only parts of an instrument that can change after creation.
+         * Replace an instrument's names, default voice and icon
+         * @description Replaces an instrument's names and, optionally, its default voice and
+         *     its icon — the only parts of an instrument that can change after
+         *     creation.
          *     family and the string/key shape (tuning included) are fixed,
          *     because every diagram's positions depend on them. Only admins
          *     may update an instrument, since instruments are shared by every user
@@ -2320,6 +2321,15 @@ export interface components {
             level: components["schemas"]["MasteryLevel"];
         };
         /**
+         * @description Which picture stands for an instrument, as a key a client draws its
+         *     own icon for. Known keys: acoustic_guitar, electric_guitar,
+         *     electric_bass, piano, and the generic fretted and keyboard. The set
+         *     is open: a client that doesn't know a key draws the generic icon of
+         *     the instrument's family.
+         * @example electric_bass
+         */
+        InstrumentIcon: string;
+        /**
          * @description An instrument a Diagram can be authored against. family decides the
          *     shape of every Diagram.positions[].coordinate written for this
          *     instrument — fretted instruments (guitar, bass, ...) share one
@@ -2349,6 +2359,7 @@ export interface components {
              * @enum {string}
              */
             family: "fretted" | "keyboard";
+            icon: components["schemas"]["InstrumentIcon"];
             /**
              * @description Number of strings/courses. Present only when family is fretted;
              *     absent when family is keyboard.
@@ -2381,8 +2392,8 @@ export interface components {
             };
         };
         /**
-         * @description Payload for creating a new instrument. Only its names can change
-         *     afterwards (see updateInstrument); there is no delete endpoint, and
+         * @description Payload for creating a new instrument. Only its names, default voice
+         *     and icon can change afterwards (see updateInstrument); there is no delete endpoint, and
          *     changing family or string/key shape after Diagrams exist against it
          *     is a deliberately open question.
          */
@@ -2398,6 +2409,11 @@ export interface components {
              * @enum {string}
              */
             family: "fretted" | "keyboard";
+            /**
+             * @description The picture that stands for the instrument. Omitted gives the
+             *     generic icon of its family (fretted or keyboard).
+             */
+            icon?: components["schemas"]["InstrumentIcon"];
             /** @description Required when family is fretted; must be absent when family is keyboard. */
             string_count?: number;
             /**
@@ -5012,7 +5028,7 @@ export interface components {
         };
         /**
          * @description Payload for replacing an instrument's names and, optionally, its
-         *     default voice.
+         *     default voice and icon.
          */
         UpdateInstrumentRequest: {
             /**
@@ -5026,6 +5042,11 @@ export interface components {
              *     instrument's family. Omitted leaves it unchanged.
              */
             default_voice_id?: string;
+            /**
+             * @description The picture that stands for the instrument, replacing the current
+             *     one. Omitted leaves it unchanged.
+             */
+            icon?: components["schemas"]["InstrumentIcon"];
         };
         /**
          * @description A language MotifPath content or a user's locale preference can be
@@ -5220,6 +5241,7 @@ export type SchemaKnowledgeEdgeType = components['schemas']['KnowledgeEdgeType']
 export type SchemaKnowledgeEdge = components['schemas']['KnowledgeEdge'];
 export type SchemaCreateKnowledgeEdgeRequest = components['schemas']['CreateKnowledgeEdgeRequest'];
 export type SchemaUpdateKnowledgeEdgeRequest = components['schemas']['UpdateKnowledgeEdgeRequest'];
+export type SchemaInstrumentIcon = components['schemas']['InstrumentIcon'];
 export type SchemaInstrument = components['schemas']['Instrument'];
 export type SchemaCreateInstrumentRequest = components['schemas']['CreateInstrumentRequest'];
 export type SchemaDiagramPosition = components['schemas']['DiagramPosition'];
@@ -7588,8 +7610,8 @@ export interface operations {
             /**
              * @description The request body failed validation — including names missing a
              *     language, carrying "any" or an unknown language code, a name
-             *     that is empty, or a default_voice_id that is not an existing
-             *     voice of the instrument's family.
+             *     that is empty, a default_voice_id that is not an existing voice
+             *     of the instrument's family, or an icon that is not a key.
              */
             400: {
                 headers: {

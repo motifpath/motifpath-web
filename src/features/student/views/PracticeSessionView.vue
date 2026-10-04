@@ -10,17 +10,16 @@ import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import { useComposePracticeSession } from '@/features/student/composables/useComposePracticeSession'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
+import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
-import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 const MINUTE_CHOICES = [5, 10, 15, 20, 30] as const
 
 const { t } = useTypedT()
-const { localizedName } = useLocalizedName()
 const { instruments, isLoading, error: instrumentsError, retry: retryInstruments } = useListInstruments()
 const { compose, isComposing } = useComposePracticeSession()
 
@@ -78,20 +77,7 @@ onBeforeUnmount(() => run.value?.end())
       <p v-else-if="playable.length === 0" class="text-ink-muted">{{ t('practiceSessionView.noInstruments') }}</p>
 
       <div v-else class="flex flex-col gap-5">
-        <label class="flex flex-col gap-1.5">
-          <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
-            {{ t('practiceSessionView.instrumentLabel') }}
-          </span>
-          <select
-            v-model="instrumentId"
-            data-test="instrument"
-            class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
-          >
-            <option v-for="instrument in playable" :key="instrument.instrument_id" :value="instrument.instrument_id">
-              {{ localizedName(instrument.names) }}
-            </option>
-          </select>
-        </label>
+        <InstrumentTilePicker v-model="instrumentId" :instruments="playable" :label="t('practiceSessionView.instrumentLabel')" />
 
         <fieldset class="flex flex-col gap-1.5">
           <legend class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
