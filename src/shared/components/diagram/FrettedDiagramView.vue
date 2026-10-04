@@ -33,6 +33,8 @@ import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
+import { followScrollLeft } from '@/shared/utils/followScroll'
+import type { Span } from '@/shared/utils/followScroll'
 import {
   fretboardGeometry,
   MARKER_RADIUS,
@@ -205,6 +207,57 @@ function y(stringNumber: number): number {
 }
 
 const boardMidY = computed(() => (y(1) + y(layout.value.stringCount)) / 2)
+
+// A readable board wider than its window follows its sequence as it plays: the board starts at
+// the first note, then keeps the sounding note, and the next when both fit, in view.
+const scroller = ref<HTMLElement | null>(null)
+/** Air kept around a followed note: its touch target and a little more. */
+const FOLLOW_MARGIN = TARGET_RADIUS + 8
+
+// A diagram drawn for a preview may come without a sequence.
+const soundingSteps = computed(() => (props.diagram.sequence ?? []).filter((step) => step.position_ids.length > 0))
+
+/** Where the drawn positions among `ids` sit across the board; null when none is drawn. */
+function spanOf(ids: string[]): Span | null {
+  const xs = layout.value.positions.filter((p) => ids.includes(p.positionId)).map((p) => markerX(p.fret))
+  return xs.length > 0 ? { from: Math.min(...xs) - MARKER_RADIUS, to: Math.max(...xs) + MARKER_RADIUS } : null
+}
+
+function follow(sounding: Span | null, next: Span | null, behavior: ScrollBehavior) {
+  if (props.compact || !sounding || !scroller.value) return
+  const view = { left: scrollLeft.value, width: availableWidth.value, contentWidth: viewW.value, margin: FOLLOW_MARGIN }
+  const left = followScrollLeft(view, sounding, next)
+  if (left === null) return
+  scroller.value.scrollTo?.({ left, behavior })
+  scrollLeft.value = left
+}
+
+// The step last followed, so a step the sequence repeats is found after it, not at its first use.
+let followedStep = -1
+
+function sameIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id))
+}
+
+watch(
+  () => props.activePositionIds,
+  (ids) => {
+    if (ids.length === 0) return
+    const steps = soundingSteps.value
+    const after = steps.findIndex((step, i) => i > followedStep && sameIds(step.position_ids, ids))
+    followedStep = after >= 0 ? after : steps.findIndex((step) => sameIds(step.position_ids, ids))
+    const next = followedStep >= 0 ? steps[followedStep + 1] : undefined
+    follow(spanOf(ids), next ? spanOf(next.position_ids) : null, 'smooth')
+  },
+)
+
+function revealFirstNote() {
+  followedStep = -1
+  const [first, second] = soundingSteps.value
+  if (first) follow(spanOf(first.position_ids), second ? spanOf(second.position_ids) : null, 'auto')
+}
+onMounted(revealFirstNote)
+watch(() => props.diagram.diagram_id, revealFirstNote)
 
 const rootColor = computed(() => props.diagramRef.styling?.root_color ?? null)
 const intervalColor = computed(() => props.diagramRef.styling?.interval_color ?? null)
@@ -455,6 +508,7 @@ function noteAlignClass(position: Marker): string {
 <template>
   <div ref="container" class="relative min-w-0" data-region-scope>
     <div
+      ref="scroller"
       data-test="board-scroll"
       :class="compact ? '' : 'overflow-x-auto overflow-y-hidden'"
       @focusin="revealFocused"

@@ -1221,6 +1221,47 @@ describe('FrettedDiagramView', () => {
     const fretWireXs = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
       wrapper.findAll('[data-test="fret-wire"]').map((wire) => Number(wire.attributes('x')) + Number(wire.attributes('width')) / 2)
 
+    describe('following what plays', () => {
+      const scrollTo = vi.fn()
+      afterEach(() => {
+        scrollTo.mockReset()
+        Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo')
+      })
+      const played = (sequence: string[][]) =>
+        makeFrettedDiagram({
+          positions: wide.positions,
+          sequence: sequence.map((ids) => ({ position_ids: ids, value: { num: 1, den: 4 }, strum: 'none' as const })),
+        })
+      const mountPlaying = (width: number, diagram: ReturnType<typeof played>, activePositionIds: string[] = []) => {
+        Object.defineProperty(HTMLElement.prototype, 'scrollTo', { value: scrollTo, configurable: true })
+        return mountAt(width, { diagram, activePositionIds })
+      }
+
+      it('starts a board too wide for its window at the first note of its sequence', async () => {
+        await mountPlaying(300, played([['high'], ['low']]))
+
+        expect(scrollTo).toHaveBeenCalledWith({ left: expect.any(Number), behavior: 'auto' })
+        expect(scrollTo.mock.calls.at(-1)![0].left).toBeGreaterThan(0)
+      })
+
+      it('scrolls smoothly to keep the sounding note in view while it plays', async () => {
+        const wrapper = await mountPlaying(300, played([['low'], ['high']]), ['low'])
+        scrollTo.mockReset()
+
+        await wrapper.setProps({ activePositionIds: ['high'] })
+
+        expect(scrollTo).toHaveBeenCalledWith({ left: expect.any(Number), behavior: 'smooth' })
+        expect(scrollTo.mock.calls[0]![0].left).toBeGreaterThan(0)
+      })
+
+      it('never scrolls a board that fits its window', async () => {
+        const wrapper = await mountPlaying(2000, played([['high'], ['low']]))
+        await wrapper.setProps({ activePositionIds: ['low'] })
+
+        expect(scrollTo).not.toHaveBeenCalled()
+      })
+    })
+
     it('draws the board at its real size, filling the width it is given', async () => {
       const wrapper = await mountAt(600)
 
