@@ -237,6 +237,7 @@
     "skip": "Pular",
     "tempoLabel": "Andamento",
     "slower": "{step} BPM mais lento",
-    "faster": "{step} BPM mais rápido"
+    "faster": "{step} BPM mais rápido",
+    "metronome": "Metrônomo"
   }
 }

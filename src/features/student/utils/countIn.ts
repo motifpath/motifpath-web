@@ -1,5 +1,5 @@
 import type { components } from '@/api/generated/core-domain'
-import { pulse } from '@/shared/utils/sequence'
+import { beatsPerBar, pulse } from '@/shared/utils/sequence'
 
 type Diagram = components['schemas']['Diagram']
 
@@ -11,8 +11,7 @@ type Diagram = components['schemas']['Diagram']
  */
 export function withCountIn(diagram: Diagram): { diagram: Diagram; beats: number } {
   const beat = pulse(diagram.time_signature)
-  // A bar lasts beats/beat_value of a whole note; a beat, beat.num/beat.den.
-  const beats = Math.round((diagram.time_signature.beats * beat.den) / (diagram.time_signature.beat_value * beat.num))
+  const beats = beatsPerBar(diagram.time_signature)
   const rests = Array.from({ length: beats }, () => ({ position_ids: [], value: { ...beat }, strum: 'none' as const }))
   return { diagram: { ...diagram, sequence: [...rests, ...diagram.sequence] }, beats }
 }

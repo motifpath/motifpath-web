@@ -44,9 +44,11 @@ const playback = {
   stop: vi.fn(),
 }
 let playbackSource: () => PlaybackSource
+let metronomeOn: () => boolean
 vi.mock('@/shared/composables/useDiagramPlayback', () => ({
-  useDiagramPlayback: (source: () => PlaybackSource) => {
+  useDiagramPlayback: (source: () => PlaybackSource, options: { metronome: () => boolean }) => {
     playbackSource = source
+    metronomeOn = options.metronome
     return { ...playback, canPlay: ref(true), prefetch: vi.fn() }
   },
 }))
@@ -240,6 +242,15 @@ describe('PlayAlongTake', () => {
     await wrapper.get('[data-test="start-take"]').trigger('click')
 
     expect(wrapper.find('[data-test="tempo-up"]').exists()).toBe(false)
+  })
+
+  it('plays a take with the metronome, unless the student turns it off', async () => {
+    const wrapper = mountTake()
+    expect(metronomeOn()).toBe(true)
+
+    await wrapper.get('[data-test="metronome"]').setValue(false)
+
+    expect(metronomeOn()).toBe(false)
   })
 })
 

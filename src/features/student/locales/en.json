@@ -237,6 +237,7 @@
     "skip": "Skip",
     "tempoLabel": "Tempo",
     "slower": "{step} BPM slower",
-    "faster": "{step} BPM faster"
+    "faster": "{step} BPM faster",
+    "metronome": "Metronome"
   }
 }

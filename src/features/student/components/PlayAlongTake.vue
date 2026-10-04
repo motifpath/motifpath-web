@@ -43,12 +43,18 @@ const loaded = useEmbeddedDiagram(() => ({
 
 const take = computed(() => (loaded.diagram.value ? withCountIn(loaded.diagram.value) : null))
 
-const player = useDiagramPlayback(() => ({
-  // Until the diagram loads nothing is offered to play, so a placeholder source is never played.
-  diagram: take.value?.diagram ?? loaded.diagram.value!,
-  instrument: loaded.instrument.value!,
-  playback: { tempo_bpm: props.tempo, voice_id: null, direction: 'as_authored', loop: false },
-}))
+/** Whether a take clicks the beat, the count-in included. */
+const metronome = ref(true)
+
+const player = useDiagramPlayback(
+  () => ({
+    // Until the diagram loads nothing is offered to play, so a placeholder source is never played.
+    diagram: take.value?.diagram ?? loaded.diagram.value!,
+    instrument: loaded.instrument.value!,
+    playback: { tempo_bpm: props.tempo, voice_id: null, direction: 'as_authored', loop: false },
+  }),
+  { metronome: () => metronome.value },
+)
 
 const phase = ref<'ready' | 'playing' | 'rating'>('ready')
 const loadError = ref(false)
@@ -220,6 +226,10 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
             +{{ TEMPO_STEP_BPM }}
           </button>
         </div>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="metronome" type="checkbox" data-test="metronome" />
+          {{ t('playAlongTake.metronome') }}
+        </label>
         <p class="text-xs text-ink-muted">{{ t('playAlongTake.countInHint') }}</p>
         <PrimaryButton data-test="start-take" @click="startTake">{{ t('playAlongTake.start') }}</PrimaryButton>
       </template>
