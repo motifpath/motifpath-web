@@ -17,7 +17,7 @@ const takesOf = (item: Item) => (item.reason === 'warm_up' ? WARM_UP_TAKES : FOC
 /**
  * Runs one composed practice session of play-alongs: which item is on, at what
  * tempo its next take plays, and how many takes it has left, with the
- * practice.* events the run produces (ADR-046).
+ * practice.* events the run produces.
  *
  * A focus item's tempo follows the tempo ladder from its start tempo; a
  * warm-up plays its takes at its own tempo, outside the ladder, and its takes
@@ -33,7 +33,9 @@ export function usePracticeSessionRun(plan: Plan) {
   const takes = ref<RatedTake[]>([])
   const started = ref(false)
   const finished = ref(false)
-  const answeredItems = new Set<string>()
+  const answeredItems = ref(new Set<string>())
+  /** How many items the student rated a take of; a warm-up never counts. */
+  const answeredCount = computed(() => answeredItems.value.size)
 
   const current = computed<Item | null>(() => (finished.value ? null : (plan.items[index.value] ?? null)))
 
@@ -65,7 +67,7 @@ export function usePracticeSessionRun(plan: Plan) {
     void track({
       event_type: 'practice.session_ended',
       practice_session_id: plan.practice_session_id,
-      answered_count: answeredItems.size,
+      answered_count: answeredCount.value,
       left_early: leftEarly,
       felt_ratings: [],
     })
@@ -89,7 +91,7 @@ export function usePracticeSessionRun(plan: Plan) {
     if (!active() || !item || bpm === null) return
 
     if (item.reason !== 'warm_up') {
-      answeredItems.add(item.item_key)
+      answeredItems.value = new Set(answeredItems.value).add(item.item_key)
       void track({
         event_type: 'practice.item_answered',
         practice_session_id: plan.practice_session_id,
@@ -106,5 +108,5 @@ export function usePracticeSessionRun(plan: Plan) {
     if (active()) finish(true)
   }
 
-  return { index, current, tempo, takesLeft, finished, start, rate, nextItem, end }
+  return { plan, index, current, tempo, takesLeft, answeredCount, finished, start, rate, nextItem, end }
 }

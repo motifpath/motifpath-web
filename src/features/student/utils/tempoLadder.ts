@@ -1,5 +1,5 @@
 /**
- * The tempo ladder of a play-along item (ADR-046): two clean takes in a row at
+ * The tempo ladder of a play-along item: two clean takes in a row at
  * a tempo move it up a step, a struggle moves it down one, anything else holds.
  * It stays between the item's floor and its target.
  */

@@ -153,6 +153,20 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/practice',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
+      {
+        path: 'session',
+        name: 'practice-session',
+        // Open to every role: anyone can practise.
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/PracticeSessionView.vue'),
+      },
+    ],
+  },
+  {
     // Open to every role: anyone who can hear a diagram play. Signed in only,
     // since the voices it credits (GET /voices) are.
     path: '/credits',

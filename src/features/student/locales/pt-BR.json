@@ -176,5 +176,64 @@
     "continue": "Continuar trilha",
     "enrolledToast": "Você está inscrito em {title}.",
     "outlineHeading": "Estrutura da trilha"
+  },
+  "practiceSessionView": {
+    "title": "Praticar",
+    "intro": "Pegue seu instrumento e escolha quanto tempo você tem.",
+    "instrumentLabel": "Instrumento em suas mãos",
+    "minutesLabel": "Quanto tempo",
+    "minutesOption": "{minutes} min",
+    "start": "Começar a praticar",
+    "starting": "Montando sua sessão…",
+    "loadingNoun": "instrumentos",
+    "instrumentsError": "Não conseguimos carregar os instrumentos.",
+    "noInstruments": "Ainda não há instrumento para praticar.",
+    "planError": "Não conseguimos montar sua sessão.",
+    "instrumentGone": "Esse instrumento não está mais disponível. Escolha outro.",
+    "progress": "Item {current} de {total}",
+    "endSession": "Encerrar sessão",
+    "unsupported": "Este tipo de prática ainda não está disponível aqui.",
+    "skip": "Pular",
+    "reasons": {
+      "teacher_suggested": "Sugerido pelo seu professor",
+      "due": "Hora de revisar",
+      "weak": "Ainda se firmando",
+      "new": "Novo",
+      "warm_up": "Aquecimento",
+      "application": "Aplicar na música",
+      "review_ahead": "Revisão antecipada",
+      "stretch": "Um passo além"
+    },
+    "doneTitle": "Sessão concluída",
+    "doneBody": "Nada avaliado desta vez. Toda sessão conta. | Você avaliou suas execuções de {count} item. | Você avaliou suas execuções de {count} itens.",
+    "practiseAgain": "Praticar de novo",
+    "backToPath": "Voltar para minha trilha"
+  },
+  "playAlongTake": {
+    "bpm": "{bpm} BPM",
+    "goal": "Meta {target} BPM · melhor limpa {best}",
+    "noBest": "nenhuma ainda",
+    "warmUpHint": "Aquecimento: toque relaxado. Não conta para o seu progresso.",
+    "takesLeft": "falta {count} execução | faltam {count} execuções",
+    "start": "Começar execução",
+    "countInHint": "Um compasso de contagem, depois toque junto.",
+    "playing": "Toque junto. A execução termina sozinha.",
+    "stopEarly": "Parar antes",
+    "ratePrompt": "Como foi essa execução a {bpm} BPM?",
+    "ratings": {
+      "struggled": "Difícil",
+      "almost": "Quase",
+      "clean": "Limpa"
+    },
+    "ratingHints": {
+      "struggled": "Desandou ou precisei parar",
+      "almost": "Passei com deslizes",
+      "clean": "Sem deslizes"
+    },
+    "up": "Limpa duas vezes: subindo para {bpm} BPM.",
+    "down": "Vamos firmar a {bpm} BPM.",
+    "loadError": "O som não carregou. Verifique sua conexão e tente de novo.",
+    "unavailable": "Este diagrama não pode ser tocado aqui.",
+    "skip": "Pular"
   }
 }
