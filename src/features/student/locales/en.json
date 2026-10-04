@@ -234,6 +234,9 @@
     "down": "Let's settle it at {bpm} BPM.",
     "loadError": "The sound didn't load. Check your connection and try again.",
     "unavailable": "This diagram can't be played here.",
-    "skip": "Skip"
+    "skip": "Skip",
+    "tempoLabel": "Tempo",
+    "slower": "{step} BPM slower",
+    "faster": "{step} BPM faster"
   }
 }

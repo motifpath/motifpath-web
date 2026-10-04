@@ -201,4 +201,47 @@ describe('usePracticeSessionRun', () => {
     run.nextItem()
     expect(track).not.toHaveBeenCalled()
   })
+
+  it('plays the next take at a tempo the student sets, beyond the target too', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.nextItem()
+    run.setTempo(130)
+
+    expect(run.tempo.value).toBe(130)
+    run.rate('clean')
+    expect(tracked('practice.item_answered')[0].response.tempo_bpm).toBe(130)
+    expect(run.tempo.value).toBe(130)
+  })
+
+  it('keeps a tempo the student sets between the ladder floor and the fastest playable tempo', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.nextItem()
+
+    run.setTempo(10)
+    expect(run.tempo.value).toBe(60)
+    run.setTempo(999)
+    expect(run.tempo.value).toBe(300)
+  })
+
+  it('lets a warm-up be played at another tempo too', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.setTempo(90)
+
+    expect(run.tempo.value).toBe(90)
+    run.rate('clean')
+    expect(run.tempo.value).toBe(90)
+  })
+
+  it('starts the next item at its own start tempo, whatever was set before', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.setTempo(100)
+    run.nextItem()
+
+    expect(run.tempo.value).toBe(60)
+  })
 })
+

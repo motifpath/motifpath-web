@@ -1,7 +1,7 @@
 /**
  * The tempo ladder of a play-along item: two clean takes in a row at
  * a tempo move it up a step, a struggle moves it down one, anything else holds.
- * It stays between the item's floor and its target.
+ * It stays between the item's floor and its target, unless the student chose to play faster.
  */
 import { MIN_TEMPO_BPM } from '@/shared/utils/sequence'
 
@@ -28,15 +28,20 @@ export function ladderFloor(target: number): number {
   return Math.min(target, Math.max(MIN_TEMPO_BPM, start))
 }
 
-/** The tempo of the next take, given this item's takes so far, oldest first. */
+/**
+ * The tempo of the next take, given this item's takes so far, oldest first. The ladder never
+ * climbs past the target by itself, but a take the student chose to play faster than the target
+ * holds its tempo, and steps down on a struggle like any other.
+ */
 export function nextTempo(item: { start: number; target: number }, takes: RatedTake[]): number {
-  const clamp = (bpm: number) => Math.min(item.target, Math.max(ladderFloor(item.target), bpm))
   const last = takes.at(-1)
+  const ceiling = Math.max(item.target, last?.bpm ?? item.target)
+  const clamp = (bpm: number) => Math.min(ceiling, Math.max(ladderFloor(item.target), bpm))
   if (!last) return clamp(item.start)
   if (last.rating === 'struggled') return clamp(last.bpm - TEMPO_STEP_BPM)
-  if (last.rating === 'almost') return clamp(last.bpm)
+  if (last.rating === 'almost' || last.bpm >= item.target) return clamp(last.bpm)
 
   let cleanRun = 0
   for (let i = takes.length - 1; i >= 0 && takes[i]!.bpm === last.bpm && takes[i]!.rating === 'clean'; i--) cleanRun++
-  return clamp(cleanRun >= CLEANS_TO_ADVANCE ? last.bpm + TEMPO_STEP_BPM : last.bpm)
+  return clamp(cleanRun >= CLEANS_TO_ADVANCE ? Math.min(item.target, last.bpm + TEMPO_STEP_BPM) : last.bpm)
 }

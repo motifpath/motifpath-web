@@ -234,6 +234,9 @@
     "down": "Vamos firmar a {bpm} BPM.",
     "loadError": "O som não carregou. Verifique sua conexão e tente de novo.",
     "unavailable": "Este diagrama não pode ser tocado aqui.",
-    "skip": "Pular"
+    "skip": "Pular",
+    "tempoLabel": "Andamento",
+    "slower": "{step} BPM mais lento",
+    "faster": "{step} BPM mais rápido"
   }
 }

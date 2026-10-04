@@ -1,9 +1,10 @@
 import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import { nextTempo } from '@/features/student/utils/tempoLadder'
+import { ladderFloor, nextTempo } from '@/features/student/utils/tempoLadder'
 import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
+import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Plan = components['schemas']['PracticeSessionPlan']
 type Item = components['schemas']['PracticeSessionItem']
@@ -20,7 +21,8 @@ const takesOf = (item: Item) => (item.reason === 'warm_up' ? WARM_UP_TAKES : FOC
  * practice.* events the run produces.
  *
  * A focus item's tempo follows the tempo ladder from its start tempo; a
- * warm-up plays its takes at its own tempo, outside the ladder, and its takes
+ * warm-up plays its takes at its own tempo, outside the ladder. The student may
+ * pick another tempo for the next take, past the target too. A warm-up's takes
  * are never sent as practice.item_answered, since they are not evidence. An
  * item moves on after its last take, or when the student moves on; the
  * session ends after the last item, or when the student ends it. Nothing is
@@ -31,6 +33,8 @@ export function usePracticeSessionRun(plan: Plan) {
 
   const index = ref(0)
   const takes = ref<RatedTake[]>([])
+  /** A tempo the student chose for the next take, over the ladder's; forgotten once it's rated. */
+  const chosenTempo = ref<number | null>(null)
   const started = ref(false)
   const finished = ref(false)
   const answeredItems = ref(new Set<string>())
@@ -42,9 +46,18 @@ export function usePracticeSessionRun(plan: Plan) {
   const tempo = computed(() => {
     const playAlong = current.value?.play_along
     if (!playAlong) return null
-    if (current.value!.reason === 'warm_up') return playAlong.start_tempo_bpm
+    if (chosenTempo.value !== null) return chosenTempo.value
+    // A warm-up stays at the tempo of its last take, outside the ladder.
+    if (current.value!.reason === 'warm_up') return takes.value.at(-1)?.bpm ?? playAlong.start_tempo_bpm
     return nextTempo({ start: playAlong.start_tempo_bpm, target: playAlong.target_tempo_bpm }, takes.value)
   })
+
+  /** Plays the next take at a tempo of the student's choosing, from the ladder's floor up to the fastest playable. */
+  function setTempo(bpm: number) {
+    const playAlong = current.value?.play_along
+    if (!playAlong) return
+    chosenTempo.value = Math.min(MAX_TEMPO_BPM, Math.max(ladderFloor(playAlong.target_tempo_bpm), Math.round(bpm)))
+  }
 
   const takesLeft = computed(() => (current.value ? takesOf(current.value) - takes.value.length : 0))
 
@@ -77,6 +90,7 @@ export function usePracticeSessionRun(plan: Plan) {
   function nextItem() {
     if (!active()) return
     takes.value = []
+    chosenTempo.value = null
     if (index.value + 1 >= plan.items.length) {
       finish(false)
       return
@@ -100,6 +114,7 @@ export function usePracticeSessionRun(plan: Plan) {
       })
     }
     takes.value = [...takes.value, { bpm, rating }]
+    chosenTempo.value = null
     if (takesLeft.value <= 0) nextItem()
   }
 
@@ -108,5 +123,5 @@ export function usePracticeSessionRun(plan: Plan) {
     if (active()) finish(true)
   }
 
-  return { plan, index, current, tempo, takesLeft, answeredCount, finished, start, rate, nextItem, end }
+  return { plan, index, current, tempo, takesLeft, answeredCount, finished, start, setTempo, rate, nextItem, end }
 }

@@ -9,6 +9,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { withCountIn } from '@/features/student/utils/countIn'
+import { TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
@@ -28,7 +29,7 @@ const props = defineProps<{
   takesLeft: number
 }>()
 
-const emit = defineEmits<{ rate: [rating: TakeRating]; skip: [] }>()
+const emit = defineEmits<{ rate: [rating: TakeRating]; skip: []; tempo: [bpm: number] }>()
 
 const { t } = useTypedT()
 
@@ -95,9 +96,19 @@ function stopEarly() {
   player.stop()
 }
 
+// Whether the next tempo change comes from the ladder, after a rating, rather than from the student.
+let rated = false
+
 function rate(rating: TakeRating) {
   phase.value = 'ready'
+  rated = true
   emit('rate', rating)
+}
+
+function changeTempo(step: number) {
+  rated = false
+  message.value = null
+  emit('tempo', props.tempo + step)
 }
 
 /** What the ladder did with the last rating, said when the next take's tempo changes. */
@@ -105,6 +116,8 @@ const message = ref<string | null>(null)
 watch(
   () => props.tempo,
   (next, previous) => {
+    if (!rated) return
+    rated = false
     if (next > previous) message.value = t('playAlongTake.up', { bpm: next })
     else if (next < previous) message.value = t('playAlongTake.down', { bpm: next })
   },
@@ -186,6 +199,27 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
       <template v-if="phase === 'ready'">
         <p v-if="loadError" class="text-sm text-danger" role="alert">{{ t('playAlongTake.loadError') }}</p>
         <p v-else-if="message" class="text-sm" aria-live="polite">{{ message }}</p>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-ink-muted">{{ t('playAlongTake.tempoLabel') }}</span>
+          <button
+            type="button"
+            data-test="tempo-down"
+            class="rounded-md border border-border px-3 py-1.5 text-sm tabular-nums"
+            :aria-label="t('playAlongTake.slower', { step: TEMPO_STEP_BPM })"
+            @click="changeTempo(-TEMPO_STEP_BPM)"
+          >
+            −{{ TEMPO_STEP_BPM }}
+          </button>
+          <button
+            type="button"
+            data-test="tempo-up"
+            class="rounded-md border border-border px-3 py-1.5 text-sm tabular-nums"
+            :aria-label="t('playAlongTake.faster', { step: TEMPO_STEP_BPM })"
+            @click="changeTempo(TEMPO_STEP_BPM)"
+          >
+            +{{ TEMPO_STEP_BPM }}
+          </button>
+        </div>
         <p class="text-xs text-ink-muted">{{ t('playAlongTake.countInHint') }}</p>
         <PrimaryButton data-test="start-take" @click="startTake">{{ t('playAlongTake.start') }}</PrimaryButton>
       </template>

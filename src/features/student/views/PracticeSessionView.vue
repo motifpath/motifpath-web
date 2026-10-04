@@ -166,6 +166,7 @@ onBeforeUnmount(() => run.value?.end())
         :takes-left="run.takesLeft.value"
         @rate="run.rate($event)"
         @skip="run.nextItem()"
+        @tempo="run.setTempo($event)"
       />
       <div v-else class="flex flex-col items-start gap-3">
         <p class="text-ink-muted">{{ t('practiceSessionView.unsupported') }}</p>

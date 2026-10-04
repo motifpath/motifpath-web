@@ -177,6 +177,9 @@ describe('PlayAlongTake', () => {
 
     expect(wrapper.text()).toContain('Clean twice: up to 75 BPM.')
 
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    await playTakeToTheEnd()
+    await wrapper.get('[data-test="rate-struggled"]').trigger('click')
     await wrapper.setProps({ tempo: 70 })
     expect(wrapper.text()).toContain("Let's settle it at 70 BPM.")
   })
@@ -214,4 +217,29 @@ describe('PlayAlongTake', () => {
     await wrapper.get('[data-test="skip-item"]').trigger('click')
     expect(wrapper.emitted('skip')).toHaveLength(1)
   })
+
+  it('offers 5 BPM slower or faster for the next take', async () => {
+    const wrapper = mountTake({ tempo: 70 })
+
+    await wrapper.get('[data-test="tempo-up"]').trigger('click')
+    await wrapper.get('[data-test="tempo-down"]').trigger('click')
+
+    expect(wrapper.emitted('tempo')).toEqual([[75], [65]])
+  })
+
+  it('says nothing about the ladder when the student changed the tempo', async () => {
+    const wrapper = mountTake({ tempo: 70 })
+    await wrapper.get('[data-test="tempo-up"]').trigger('click')
+    await wrapper.setProps({ tempo: 75 })
+
+    expect(wrapper.text()).not.toContain('Clean twice')
+  })
+
+  it('offers no tempo change while a take plays', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    expect(wrapper.find('[data-test="tempo-up"]').exists()).toBe(false)
+  })
 })
+

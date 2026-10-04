@@ -39,7 +39,7 @@ vi.mock('@/shared/composables/useListInstruments', () => ({
 const PlayAlongTakeStub = defineComponent({
   name: 'PlayAlongTake',
   props: { item: { type: Object, required: true }, tempo: Number, takesLeft: Number },
-  emits: ['rate', 'skip'],
+  emits: ['rate', 'skip', 'tempo'],
   setup(props) {
     return () => h('div', { 'data-test': 'take' }, `${props.tempo} BPM · ${props.takesLeft} left`)
   },
@@ -228,4 +228,15 @@ describe('PracticeSessionView', () => {
 
     expect(mountView().text()).toContain("We couldn't load the instruments.")
   })
+
+  it('plays the next take at the tempo the student picks', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+
+    wrapper.getComponent(PlayAlongTakeStub).vm.$emit('tempo', 95)
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="take"]').text()).toBe('95 BPM · 2 left')
+  })
 })
+

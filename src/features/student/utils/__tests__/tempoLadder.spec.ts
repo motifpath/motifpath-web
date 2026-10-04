@@ -60,4 +60,16 @@ describe('nextTempo', () => {
   it('never goes above the target', () => {
     expect(nextTempo(item, takes([100, 'clean'], [100, 'clean']))).toBe(100)
   })
+
+  it('holds a tempo the student set above the target after two clean takes', () => {
+    expect(nextTempo(item, takes([110, 'clean'], [110, 'clean']))).toBe(110)
+  })
+
+  it('holds a tempo the student set above the target after an almost', () => {
+    expect(nextTempo(item, takes([110, 'almost']))).toBe(110)
+  })
+
+  it('steps a tempo the student set above the target down after a struggle', () => {
+    expect(nextTempo(item, takes([110, 'struggled']))).toBe(105)
+  })
 })
