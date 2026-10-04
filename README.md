@@ -39,7 +39,7 @@ from `main` to `dev` automatically. Review and merge it promptly.
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 26+
 - npm
 
 ## Setup
