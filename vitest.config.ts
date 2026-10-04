@@ -13,6 +13,12 @@ export default mergeConfig(
       setupFiles: ['./src/shared/testUtils/setupI18n.ts'],
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      // Node 25+ ships a global Web Storage `localStorage` that is undefined
+      // without --localstorage-file and shadows jsdom's; turn it off so tests
+      // get jsdom's implementation.
+      poolOptions: {
+        forks: { execArgv: ['--no-experimental-webstorage'] },
+      },
       coverage: {
         provider: 'v8',
         reporter: ['text', 'html'],

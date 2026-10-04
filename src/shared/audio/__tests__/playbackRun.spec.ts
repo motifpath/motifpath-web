@@ -151,4 +151,117 @@ describe('createPlaybackRun', () => {
     expect(run.activePositionIds(10.5)).toEqual([])
     expect(run.finished(10.5)).toBe(true)
   })
+
+  describe('with a metronome', () => {
+    /** Records the clicks the run schedules, and which were cancelled. */
+    function fakeClicks() {
+      const clicks: { time: number; accent: boolean; cancelled: boolean }[] = []
+      let stoppedAll = false
+      return {
+        sink: {
+          click(at: { time: number; accent: boolean }) {
+            const entry = { ...at, cancelled: false }
+            clicks.push(entry)
+            return () => {
+              entry.cancelled = true
+            }
+          },
+          stopAll() {
+            stoppedAll = true
+          },
+        },
+        live: () => clicks.filter((c) => !c.cancelled).map((c) => [c.time, c.accent]),
+        stoppedAll: () => stoppedAll,
+      }
+    }
+
+    it('clicks every beat of the pass, the first beat of each bar accented', () => {
+      const clicks = fakeClicks()
+      createPlaybackRun(STEPS, {
+        sink: fakeSink().sink,
+        wholeSeconds: 4,
+        loop: false,
+        startAt: 10,
+        metronome: { sink: clicks.sink, beat: 1 / 4, beatsPerBar: 2 },
+      })
+
+      expect(clicks.live()).toEqual([
+        [10, true],
+        [11, false],
+        [12, true],
+      ])
+    })
+
+    it('clicks on the beat grid, not on the notes', () => {
+      const clicks = fakeClicks()
+      const half: PlaybackStep = { value: 1 / 2, positionIds: ['h'], notes: [{ positionId: 'h', midi: 60, offset: 0 }] }
+      createPlaybackRun([half], {
+        sink: fakeSink().sink,
+        wholeSeconds: 4,
+        loop: false,
+        startAt: 0,
+        metronome: { sink: clicks.sink, beat: 1 / 4, beatsPerBar: 4 },
+      })
+
+      expect(clicks.live()).toEqual([
+        [0, true],
+        [1, false],
+      ])
+    })
+
+    it('clicks the next pass of a loop as it is scheduled', () => {
+      const clicks = fakeClicks()
+      const run = createPlaybackRun(STEPS, {
+        sink: fakeSink().sink,
+        wholeSeconds: 4,
+        loop: true,
+        startAt: 10,
+        metronome: { sink: clicks.sink, beat: 1 / 4, beatsPerBar: 3 },
+      })
+      run.update(10)
+
+      expect(clicks.live()).toEqual([
+        [10, true],
+        [11, false],
+        [12, false],
+        [13, true],
+        [14, false],
+        [15, false],
+      ])
+    })
+
+    it('re-times the clicks still to come when the tempo changes', () => {
+      const clicks = fakeClicks()
+      const run = createPlaybackRun(STEPS, {
+        sink: fakeSink().sink,
+        wholeSeconds: 4,
+        loop: false,
+        startAt: 10,
+        metronome: { sink: clicks.sink, beat: 1 / 4, beatsPerBar: 4 },
+      })
+      run.setWholeSeconds(2, 10.5)
+
+      expect(clicks.live()).toEqual([
+        [10, true],
+        [11, false],
+        [11.5, false],
+      ])
+    })
+
+    it('silences the clicks when it stops', () => {
+      const clicks = fakeClicks()
+      const run = createPlaybackRun(STEPS, {
+        sink: fakeSink().sink,
+        wholeSeconds: 4,
+        loop: false,
+        startAt: 10,
+        metronome: { sink: clicks.sink, beat: 1 / 4, beatsPerBar: 4 },
+      })
+      run.stop()
+
+      expect(clicks.live()).toEqual([])
+      expect(clicks.stoppedAll()).toBe(true)
+    })
+  })
 })
+

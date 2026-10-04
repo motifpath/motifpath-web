@@ -11,6 +11,7 @@ export function makeFrettedInstrument(overrides: Partial<Instrument> = {}): Inst
     names: { en: '6-string guitar (standard tuning)', pt_BR: 'Violão de 6 cordas (afinação padrão)' },
     languages: ['en', 'pt_BR'],
     family: 'fretted',
+    icon: 'acoustic_guitar',
     string_count: 6,
     tuning: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'],
     default_voice_id: 'acoustic-guitar',

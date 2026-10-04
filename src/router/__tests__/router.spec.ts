@@ -280,6 +280,15 @@ describe('router', () => {
     expect(router.currentRoute.value.params.learningPathId).toBe('lp-1')
   })
 
+  it('lets a registered student reach the practice session', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/practice/session')
+    expect(router.currentRoute.value.name).toBe('practice-session')
+  })
+
   it('lets a registered student reach a published course detail page', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')
