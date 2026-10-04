@@ -23,9 +23,9 @@ const PIANO = '44444444-4444-4444-8444-444444444444'
 
 const instruments = {
   instruments: ref([
-    { instrument_id: GUITAR, names: { en: 'Guitar' }, family: 'fretted', languages: ['en'] },
-    { instrument_id: PIANO, names: { en: 'Piano' }, family: 'keyboard', languages: ['en'] },
-    { instrument_id: BASS, names: { en: 'Electric bass' }, family: 'fretted', languages: ['en'] },
+    { instrument_id: GUITAR, names: { en: 'Guitar' }, family: 'fretted', icon: 'acoustic_guitar', languages: ['en'] },
+    { instrument_id: PIANO, names: { en: 'Piano' }, family: 'keyboard', icon: 'piano', languages: ['en'] },
+    { instrument_id: BASS, names: { en: 'Electric bass' }, family: 'fretted', icon: 'electric_bass', languages: ['en'] },
   ]),
   isLoading: ref(false),
   error: ref(false),
@@ -96,17 +96,17 @@ describe('PracticeSessionView', () => {
     instruments.error.value = false
   })
 
-  it('offers the instruments a take can be played on, the first chosen', () => {
+  it('offers the instruments a take can be played on as tiles, the first chosen', () => {
     const wrapper = mountView()
 
-    const select = wrapper.get<HTMLSelectElement>('[data-test="instrument"]')
-    expect(select.findAll('option').map((o) => o.text())).toEqual(['Guitar', 'Electric bass'])
-    expect(select.element.value).toBe(GUITAR)
+    const tiles = wrapper.findAll('[data-test="instrument-tile"]')
+    expect(tiles.map((tile) => tile.text())).toEqual(['Guitar', 'Electric bass'])
+    expect(tiles.map((tile) => tile.get<HTMLInputElement>('input').element.checked)).toEqual([true, false])
   })
 
   it('composes a session for the instrument and minutes chosen', async () => {
     const wrapper = mountView()
-    await wrapper.get('[data-test="instrument"]').setValue(BASS)
+    await wrapper.findAll('[data-test="instrument-tile"]')[1]!.get('input').setValue()
     await wrapper.get('[data-test="minutes-15"]').setValue()
 
     await startSession(wrapper)
@@ -223,7 +223,7 @@ describe('PracticeSessionView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain("That instrument isn't available any more. Pick another one.")
-    expect(wrapper.find('[data-test="instrument"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="instrument-tile"]')).toHaveLength(2)
   })
 
   it('says when the instruments can’t be loaded', () => {
