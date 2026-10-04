@@ -250,9 +250,7 @@ export interface paths {
         /**
          * List standalone exercises for authoring
          * @description Returns exercises from the reusable pool, for browsing and picking one
-         *     to edit in an authoring tool — not the randomized, skill-targeted
-         *     selection GET /practice-sessions performs for a student's practice
-         *     attempt.
+         *     to edit in an authoring tool.
          *     Results are paginated (ADR-031): ordered by id and
          *     returned in a {items, total, limit, offset} envelope. An offset
          *     past the end returns an empty items array, not an error.
@@ -274,42 +272,6 @@ export interface paths {
          *     POST /challenges/{challenge_id}/exercises/{exercise_id}.
          */
         post: operations["createExercise"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/practice-sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Start a randomized, skill-targeted practice session
-         * @description Selects up to count exercises linked to skill_id from the reusable
-         *     exercise pool, in random order with each exercise's options also
-         *     shuffled, and returns them grouped under a new practice_session_id.
-         *     A practice session is not a stored resource — nothing is persisted by
-         *     this call, and repeating it returns a different selection and a new
-         *     practice_session_id. The returned exercises include which option(s)
-         *     are correct, on the same client-side-scoring basis as challenge
-         *     exercises.
-         *
-         *     This is the entry point for a student's self-directed practice
-         *     between lessons — for example on a commute or a work break — rather
-         *     than practice tied to a specific content node. The client threads the
-         *     returned practice_session_id through the trigger_context of the
-         *     exercise.* tracking events it emits while attempting the session, so
-         *     the recommendation engine can evaluate outcomes per skill.
-         *
-         *     Any authenticated user may start a practice session.
-         */
-        get: operations["startPracticeSession"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1754,6 +1716,72 @@ export interface paths {
          *     given.
          */
         put: operations["setCurrentPath"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/practice-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compose a practice session for the authenticated student
+         * @description Composes a practice session from what the student knows: the items to practise,
+         *     in order, each with the reason it was picked. Nothing is stored by this call. The
+         *     client starts the session by sending practice.session_started with the returned
+         *     practice_session_id and items, and sends every answer as practice.item_answered,
+         *     except the takes of a warm_up item: a warm-up is played below the student's edge,
+         *     so it is not evidence of what they know.
+         *
+         *     The plan is never empty. When nothing is due, weak or new, the time goes to
+         *     reviewing known items ahead of their due date and to starting nodes the student is
+         *     ready for. Practice is never blocked: requirements and teacher suggestions only
+         *     decide the order.
+         *
+         *     With an instrument in hand, only items that suit that instrument (or every
+         *     instrument) are picked. Without one, items for any of the student's instruments
+         *     that don't need an instrument in hand are picked. Any instrument may be named, not
+         *     only the ones the student is enrolled for.
+         *
+         *     Any authenticated user may practise.
+         */
+        post: operations["createPracticeSessionPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/practice-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the authenticated student's practice summary for the home
+         * @description Everything the practice home shows, in one read, for one of the student's
+         *     instruments: practice days this week, progress this week per skill, the next steps,
+         *     and every practice node grouped by area, with a separate group for nodes that suit
+         *     any instrument. Progress is reported per skill; concepts are context, never progress
+         *     lines. A wide node is shown through its coverage and its children, never as a level
+         *     of its own.
+         *
+         *     Derived from the student's evidence; reading it changes nothing.
+         *
+         *     Any authenticated user may read their own summary.
+         */
+        get: operations["getPracticeSummary"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -4500,7 +4528,7 @@ export interface components {
              * @description The content nodes this exercise is currently linked to as a path
              *     exercise. May be empty. Independent of challenge_ids — an exercise
              *     can be a path exercise on a node, part of a challenge, both, or
-             *     neither (practice-session-only).
+             *     neither (practice only).
              */
             content_node_ids: string[];
             /**
@@ -4550,32 +4578,6 @@ export interface components {
              * @description Timestamp at which the exercise was created.
              */
             created_at: string;
-        };
-        /**
-         * @description A generated, skill-targeted set of exercises for self-directed
-         *     practice, returned by GET /practice-sessions. Not a stored resource —
-         *     exists only in the response that generated it.
-         */
-        PracticeSession: {
-            /**
-             * Format: uuid
-             * @description Identifier for this generated session. Carried as
-             *     practice_session_id in trigger_context on the exercise.* tracking
-             *     events emitted while attempting it, so outcomes can be grouped
-             *     back to the session and skill that produced them.
-             */
-            practice_session_id: string;
-            /**
-             * Format: uuid
-             * @description The skill-kind KnowledgeNode this session was generated for.
-             */
-            skill_id: string;
-            /**
-             * @description The session's exercises, in randomized order, each with its
-             *     options also randomized. May contain fewer than the requested
-             *     count if the linked pool is smaller.
-             */
-            exercises: components["schemas"]["Exercise"][];
         };
         /**
          * @description One selectable answer choice within an exercise. An exercise's
@@ -4762,6 +4764,208 @@ export interface components {
              */
             role: "student" | "teacher";
         };
+        /** @description What the student chose before practising. */
+        CreatePracticeSessionPlanRequest: {
+            /**
+             * Format: uuid
+             * @description The instrument in the student's hands. Null (or omitted) for a session
+             *     practised in the head, without an instrument.
+             */
+            instrument_id?: string | null;
+            /** @description How long the student wants to practise, in minutes. */
+            minutes: number;
+        };
+        /**
+         * @description A composed practice session. Not stored: it exists only in this response and in the
+         *     practice.session_started event the client sends when the student starts it.
+         */
+        PracticeSessionPlan: {
+            /**
+             * Format: uuid
+             * @description New identifier for this session, carried by every practice.* event it produces.
+             */
+            practice_session_id: string;
+            /**
+             * Format: uuid
+             * @description The instrument in hand, or null for a session in the head.
+             */
+            instrument_id: string | null;
+            /** @description The time the session was composed for, in minutes. */
+            minutes: number;
+            /** @description The items to practise, in order. */
+            items: components["schemas"]["PracticeSessionItem"][];
+        };
+        /**
+         * @description One item of a composed session, with what the client needs to present it. Exactly
+         *     one of fretboard_cell, exercise and play_along is present, matching kind.
+         */
+        PracticeSessionItem: {
+            item_key: components["schemas"]["PracticeItemKey"];
+            kind: components["schemas"]["PracticeItemKind"];
+            reason: components["schemas"]["PracticePickReason"];
+            /**
+             * Format: uuid
+             * @description The knowledge node this pick serves, shown with its reason (for example the
+             *     node a stretch item starts). Null when the reason needs none.
+             */
+            node_id: string | null;
+            level: components["schemas"]["KnowledgeLevel"];
+            /** @description About how long the item takes, used to fit the session to its minutes. */
+            estimated_seconds: number;
+            /** @description Present when kind is fretboard_cell. */
+            fretboard_cell?: {
+                /**
+                 * Format: uuid
+                 * @description The instrument whose fretboard layout and tuning the cell belongs to.
+                 */
+                layout_instrument_id: string;
+                /** @description The cell's string, 1 being the highest-pitched. */
+                string: number;
+                /** @description The cell's fret; 0 is the open string. */
+                fret: number;
+                drill: components["schemas"]["FretboardDrill"];
+            };
+            exercise?: components["schemas"]["Exercise"];
+            /** @description Present when kind is play_along. */
+            play_along?: {
+                /**
+                 * Format: uuid
+                 * @description The diagram played along with.
+                 */
+                diagram_id: string;
+                /**
+                 * @description The tempo to play this take at. For a warm-up, about 80% of the student's
+                 *     best clean tempo; otherwise the tempo ladder's current step.
+                 */
+                start_tempo_bpm: number;
+                /** @description The tempo the item aims for, the diagram's own tempo. */
+                target_tempo_bpm: number;
+                /**
+                 * @description The student's best clean tempo since their latest teacher review. Null when
+                 *     they have no clean take yet.
+                 */
+                best_clean_tempo_bpm: number | null;
+            };
+        };
+        /** @description The practice home for one instrument, derived from the student's evidence. */
+        PracticeSummary: {
+            /**
+             * Format: uuid
+             * @description The instrument summarised, or null for nodes that suit any instrument only.
+             */
+            instrument_id: string | null;
+            /**
+             * @description The student's instruments: those of the paths and courses they're enrolled in,
+             *     plus any they added. The home shows one tab per instrument.
+             */
+            student_instrument_ids: string[];
+            /**
+             * @description On how many of the last 7 calendar days, in the given time zone, the student
+             *     practised. Never a streak: a missed day is never a reset.
+             */
+            practice_days_last_7: number;
+            /** @description Skills that improved this week, most improved first. Empty when none did. */
+            progress_this_week: components["schemas"]["SkillProgress"][];
+            /** @description The top three next steps, in order. */
+            next_steps: components["schemas"]["PracticeNextStep"][];
+            /** @description How many next steps there are in all, for "see all". */
+            next_steps_total: number;
+            /**
+             * @description Every practice node, grouped by area, then a group for nodes that suit any
+             *     instrument.
+             */
+            groups: components["schemas"]["PracticeNodeGroup"][];
+        };
+        /**
+         * @description How one skill improved this week, with both values so the student sees where they
+         *     started (for example accuracy 0.72 → 0.86).
+         */
+        SkillProgress: {
+            /**
+             * Format: uuid
+             * @description The skill.
+             */
+            node_id: string;
+            names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description What improved. accuracy and fluency are ratios from 0 to 1 over the skill's
+             *     practised items; best_clean_tempo_bpm is a tempo.
+             * @enum {string}
+             */
+            measure: "accuracy" | "fluency" | "best_clean_tempo_bpm";
+            /** @description The value at the start of the week. */
+            before: number;
+            /** @description The value now. */
+            after: number;
+        };
+        /** @description One suggested next step, framed as an opportunity, never as a failure. */
+        PracticeNextStep: {
+            /**
+             * @description refresh = known items are fading; strengthen = practised but not yet secure;
+             *     ready_to_start = every requirement is met and nothing is practised yet.
+             * @enum {string}
+             */
+            kind: "refresh" | "strengthen" | "ready_to_start";
+            /**
+             * Format: uuid
+             * @description The skill the step is about.
+             */
+            node_id: string;
+            names: components["schemas"]["LocalizedNames"];
+            level?: components["schemas"]["KnowledgeLevel"];
+        };
+        /** @description The practice nodes of one area, or the nodes that suit any instrument. */
+        PracticeNodeGroup: {
+            /**
+             * Format: uuid
+             * @description The area (a top-level node) of this group. Null for the "Any instrument" group.
+             */
+            area_node_id: string | null;
+            /** @description True for the group of nodes that suit any instrument. */
+            any_instrument: boolean;
+            names: components["schemas"]["LocalizedNames"];
+            /** @description The group's nodes, in catalog order. */
+            nodes: components["schemas"]["PracticeNodeProgress"][];
+        };
+        /**
+         * @description Where the student stands on one knowledge node for the summarised instrument. A
+         *     node with items of its own has a level; a wide node (one with child nodes) is shown
+         *     through its coverage and its children, never a level.
+         */
+        PracticeNodeProgress: {
+            /**
+             * Format: uuid
+             * @description The knowledge node.
+             */
+            node_id: string;
+            names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description The highest level at least 80% of the node's items reach. Null for a wide node,
+             *     or a node with nothing to practise.
+             */
+            level: components["schemas"]["KnowledgeLevel"] | null;
+            /** @description True when the node's level rests on items whose review is due. */
+            fading: boolean;
+            /** @description How much of the node's subtree the student has met. */
+            coverage: {
+                /** @description Items in the subtree at accurate or above. */
+                met_count: number;
+                /** @description Items in the subtree that suit the instrument. */
+                item_count: number;
+            };
+            /** @description The node's children, shown with their own levels. Empty for a leaf. */
+            child_node_ids: string[];
+            /**
+             * @description How many of the node's requirements are met for the instrument. Informs, never
+             *     gates.
+             */
+            readiness: {
+                /** @description Requirements whose target has reached the required level. */
+                met_count: number;
+                /** @description Requirements that count for the instrument. */
+                required_count: number;
+            };
+        };
         /**
          * @description Text in one or more languages, keyed by Language.code — for example
          *     {"en": "Guitar", "pt_BR": "Violão"}. "any" is never a key: a name is
@@ -4929,6 +5133,56 @@ export interface components {
             /** @description Human-readable description of what was not found. */
             message: string;
         };
+        /**
+         * @description Stable, readable identifier of a practice item: the smallest thing whose knowledge is
+         *     tracked. Every answer, rating and review points at one. The prefix is the item kind:
+         *
+         *     - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
+         *       The instrument is the one whose fretboard layout the cell belongs to, so instruments
+         *       that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
+         *       fret 0 is the open string.
+         *     - exercise:<exercise id> — an authored exercise.
+         *     - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
+         *     - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+         *
+         *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
+         *     grader, and its golden cases.
+         * @example fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3
+         */
+        PracticeItemKey: string;
+        /**
+         * @description The kind of a practice item, the prefix of its item key. The set is open: a new kind
+         *     is added with its key scheme, grader and golden cases.
+         * @enum {string}
+         */
+        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change";
+        /**
+         * @description Why the session composer put an item in a session, shown to the student.
+         *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
+         *     practised but not yet secure; new = it has not been practised yet; warm_up = something
+         *     already known, played first with the instrument in hand, below the student's edge and
+         *     outside the evidence: its takes are not sent as practice.item_answered; application = applying the
+         *     skill to music; review_ahead = a known item reviewed before it falls due, when nothing
+         *     else is due; stretch = an unseen item of a node the student is ready to start, when
+         *     nothing else is due.
+         * @enum {string}
+         */
+        PracticePickReason: "teacher_suggested" | "due" | "weak" | "new" | "warm_up" | "application" | "review_ahead" | "stretch";
+        /**
+         * @description How well a student knows an item, or a knowledge node, derived from the evidence.
+         *     new = never practised; learning = practised, not yet accurate; accurate = at least 3
+         *     counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+         *     accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+         *     over long reviews.
+         * @enum {string}
+         */
+        KnowledgeLevel: "new" | "learning" | "accurate" | "fluent" | "retained";
+        /**
+         * @description How a fretboard cell is asked. name_the_note = the cell is shown and the student names
+         *     its note; find_the_note = the note and string are named and the student taps the cell.
+         * @enum {string}
+         */
+        FretboardDrill: "name_the_note" | "find_the_note";
     };
     responses: never;
     parameters: {
@@ -5022,13 +5276,20 @@ export type SchemaCreateExerciseRequest = components['schemas']['CreateExerciseR
 export type SchemaRemediationTarget = components['schemas']['RemediationTarget'];
 export type SchemaUpdateExerciseRequest = components['schemas']['UpdateExerciseRequest'];
 export type SchemaExercise = components['schemas']['Exercise'];
-export type SchemaPracticeSession = components['schemas']['PracticeSession'];
 export type SchemaOption = components['schemas']['Option'];
 export type SchemaOptionRegion = components['schemas']['OptionRegion'];
 export type SchemaCreateMediaUploadUrlRequest = components['schemas']['CreateMediaUploadUrlRequest'];
 export type SchemaMediaUploadUrl = components['schemas']['MediaUploadUrl'];
 export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
+export type SchemaCreatePracticeSessionPlanRequest = components['schemas']['CreatePracticeSessionPlanRequest'];
+export type SchemaPracticeSessionPlan = components['schemas']['PracticeSessionPlan'];
+export type SchemaPracticeSessionItem = components['schemas']['PracticeSessionItem'];
+export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
+export type SchemaSkillProgress = components['schemas']['SkillProgress'];
+export type SchemaPracticeNextStep = components['schemas']['PracticeNextStep'];
+export type SchemaPracticeNodeGroup = components['schemas']['PracticeNodeGroup'];
+export type SchemaPracticeNodeProgress = components['schemas']['PracticeNodeProgress'];
 export type SchemaLocalizedNames = components['schemas']['LocalizedNames'];
 export type SchemaInstrumentIds = components['schemas']['InstrumentIds'];
 export type SchemaLocalizedMarkerLabel = components['schemas']['LocalizedMarkerLabel'];
@@ -5044,6 +5305,11 @@ export type SchemaValidationError = components['schemas']['ValidationError'];
 export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError'];
 export type SchemaConflictError = components['schemas']['ConflictError'];
 export type SchemaNotFoundError = components['schemas']['NotFoundError'];
+export type SchemaPracticeItemKey = components['schemas']['PracticeItemKey'];
+export type SchemaPracticeItemKind = components['schemas']['PracticeItemKind'];
+export type SchemaPracticePickReason = components['schemas']['PracticePickReason'];
+export type SchemaKnowledgeLevel = components['schemas']['KnowledgeLevel'];
+export type SchemaFretboardDrill = components['schemas']['FretboardDrill'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
 export type ParameterSearchText = components['parameters']['SearchText'];
@@ -5819,52 +6085,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenError"];
-                };
-            };
-        };
-    };
-    startPracticeSession: {
-        parameters: {
-            query: {
-                /** @description The skill-kind KnowledgeNode to select exercises for. */
-                skill_id: string;
-                /**
-                 * @description The number of exercises requested. The response may contain fewer
-                 *     if the exercise pool linked to skill_id is smaller than count.
-                 */
-                count?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The generated practice session, possibly with fewer exercises than requested. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PracticeSession"];
-                };
-            };
-            /** @description skill_id was omitted, not a valid uuid, or count was outside 1-50. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-            /** @description Missing or invalid Bearer token. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
         };
@@ -9494,6 +9714,115 @@ export interface operations {
              *     caller or is not active, or the given student_path_id does
              *     not belong to the caller or is archived.
              */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    createPracticeSessionPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePracticeSessionPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description The composed session. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeSessionPlan"];
+                };
+            };
+            /** @description The request body failed schema validation, such as minutes outside 1–60. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No instrument exists with the given instrument_id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    getPracticeSummary: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The instrument to summarise. Absent means only nodes and items that suit any
+                 *     instrument.
+                 */
+                instrument_id?: string;
+                /**
+                 * @description The student's IANA time zone, such as America/Sao_Paulo, used to decide which
+                 *     calendar day each practice falls on.
+                 */
+                time_zone?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The student's practice summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeSummary"];
+                };
+            };
+            /** @description instrument_id is not a valid uuid, or time_zone is not a known IANA time zone. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No instrument exists with the given instrument_id. */
             404: {
                 headers: {
                     [name: string]: unknown;
