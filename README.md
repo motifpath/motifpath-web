@@ -39,12 +39,16 @@ from `main` to `dev` automatically. Review and merge it promptly.
 
 ## Prerequisites
 
-- Node.js 26+
-- npm
+- [mise](https://mise.jdx.dev), activated in your shell — installs the Node.js version pinned in
+  `mise.toml` (npm comes with it). If you set up `motifpath-core` first, you already have it.
+- The other MotifPath repositories cloned **side by side in the same parent directory** —
+  `npm run generate:api` reads `../motifpath-specs`, and the full stack runs from
+  `../motifpath-core`.
 
 ## Setup
 
 ```bash
+mise trust && mise install   # Node.js, at the version in mise.toml
 npm install
 cp .env.example .env.local
 ```
@@ -53,9 +57,10 @@ Fill in `.env.local`:
 
 | Variable | Value |
 |---|---|
-| `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_...` from the Clerk dashboard → API keys (use a **development** instance with Google OAuth enabled) |
+| `VITE_CLERK_PUBLISHABLE_KEY` | `pk_test_...` from the Clerk dashboard → API keys — the same **development** instance (Google sign-in enabled) whose secret key `motifpath-core` uses; see [Clerk keys](../motifpath-core/README.md#clerk-keys) |
 | `VITE_CORE_API_URL` | `http://localhost:8080` (default) |
 | `VITE_EVENTS_API_URL` | `http://localhost:8081` (default) |
+| `VITE_CONCIERGE_WHATSAPP_NUMBER` | Optional. The number behind the student "Send to your teacher" button, in international format; leave empty to hide the button |
 
 `.env.local` is gitignored — never commit it.
 
@@ -73,7 +78,7 @@ as a sibling and `npm install` already run here:
 ```bash
 cd ../motifpath-core
 make dev                                                        # dependency containers
-devbox services up core-domain event-ingestion aggregation-worker web
+mise run full                                                   # backend + aggregation-worker + web
 ```
 
 `web` runs `npm run dev` for this repo; the backend services rebuild on save.
@@ -92,7 +97,7 @@ Automated tests cover the registration bridge, guard, and views in isolation
 (mocked `coreApi`). This walks the real chain end to end — Clerk → transport →
 CORS → `core-domain` → generated types → store → guard/views.
 
-Run the full stack via `motifpath-core`'s `devbox services up … web` (above).
+Run the full stack via `motifpath-core`'s `mise run full` (above).
 `core-domain`'s `CLERK_SECRET_KEY` must be the **secret** key (`sk_test_…`) from
 the same Clerk instance as `VITE_CLERK_PUBLISHABLE_KEY` here — a `pk_test_…`
 value there makes every authenticated call 401 and sign-in dead-ends at
