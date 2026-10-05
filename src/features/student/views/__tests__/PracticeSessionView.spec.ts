@@ -1,5 +1,5 @@
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
@@ -87,6 +87,9 @@ function segments(wrapper: ReturnType<typeof mountView>) {
 function events(eventType: string) {
   return track.mock.calls.map(([event]) => event).filter((event) => event.event_type === eventType)
 }
+
+// Every view listens on window for the page closing; unmount each so none outlives its test.
+enableAutoUnmount(afterEach)
 
 describe('PracticeSessionView', () => {
   beforeEach(() => {
@@ -203,6 +206,40 @@ describe('PracticeSessionView', () => {
     wrapper.unmount()
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true })])
+  })
+
+  it('ends a session as left early when the page closes, with keepalive, once', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+
+    window.dispatchEvent(new Event('pagehide'))
+    wrapper.unmount()
+
+    const ended = track.mock.calls.filter(([event]) => event.event_type === 'practice.session_ended')
+    expect(ended).toEqual([[expect.objectContaining({ left_early: true }), { keepalive: true }]])
+  })
+
+  it('sends nothing when the page closes before a session starts or after it is done', async () => {
+    const wrapper = mountView()
+    window.dispatchEvent(new Event('pagehide'))
+    await startSession(wrapper, plan([playAlong(DUE, 'due', 60)]))
+    for (let i = 0; i < 4; i++) wrapper.getComponent(PlayAlongTakeStub).vm.$emit('rate', 'clean')
+    await flushPromises()
+
+    window.dispatchEvent(new Event('pagehide'))
+
+    expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false })])
+  })
+
+  it('stops listening for the page closing once it is left', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+    wrapper.unmount()
+    track.mockReset()
+
+    window.dispatchEvent(new Event('pagehide'))
+
+    expect(track).not.toHaveBeenCalled()
   })
 
   it('says when the session can’t be put together, and tries again', async () => {

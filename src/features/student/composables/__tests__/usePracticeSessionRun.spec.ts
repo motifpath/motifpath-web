@@ -175,6 +175,15 @@ describe('usePracticeSessionRun', () => {
     ])
   })
 
+  it('ends with keepalive when asked, so the end outlives a closing page', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.end({ keepalive: true })
+
+    const ended = track.mock.calls.filter(([event]) => event.event_type === 'practice.session_ended')
+    expect(ended).toEqual([[expect.objectContaining({ left_early: true }), { keepalive: true }]])
+  })
+
   it('ends as finished when the student moves past the last item', () => {
     const run = usePracticeSessionRun(twoItems)
     run.start()

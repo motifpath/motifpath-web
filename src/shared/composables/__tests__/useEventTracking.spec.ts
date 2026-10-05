@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type PostEvents = (
   path: '/events',
-  init: { body: Record<string, unknown> },
+  init: { body: Record<string, unknown>; keepalive?: boolean },
 ) => Promise<{ data?: { event_id: string; received_at: string }; error?: { message: string } }>
 
 const POST = vi.fn<PostEvents>()
@@ -67,6 +67,25 @@ describe('useEventTracking', () => {
     const firstBody = POST.mock.calls[0]?.[1].body
     const secondBody = POST.mock.calls[1]?.[1].body
     expect(firstBody?.session_id).toBe(secondBody?.session_id)
+  })
+
+  it('sends with keepalive when asked, so the request outlives a closing page', async () => {
+    const { track } = useEventTracking()
+
+    await track(
+      { event_type: 'exercise.started', exercise_id: 'ex-1', trigger_context: { source: 'challenge_sequence' } },
+      { keepalive: true },
+    )
+
+    expect(POST.mock.calls[0]?.[1].keepalive).toBe(true)
+  })
+
+  it('sends without keepalive by default', async () => {
+    const { track } = useEventTracking()
+
+    await track({ event_type: 'exercise.started', exercise_id: 'ex-1', trigger_context: { source: 'challenge_sequence' } })
+
+    expect(POST.mock.calls[0]?.[1].keepalive).toBeUndefined()
   })
 
   it('does nothing when there is no registered student to attribute the event to', async () => {
