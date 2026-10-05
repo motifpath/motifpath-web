@@ -84,15 +84,18 @@ export function usePracticeSessionRun(plan: Plan) {
     })
   }
 
-  function finish(leftEarly: boolean) {
+  function finish(leftEarly: boolean, options: { keepalive?: boolean } = {}) {
     finished.value = true
-    void track({
-      event_type: 'practice.session_ended',
-      practice_session_id: plan.practice_session_id,
-      answered_count: answeredCount.value,
-      left_early: leftEarly,
-      felt_ratings: [],
-    })
+    void track(
+      {
+        event_type: 'practice.session_ended',
+        practice_session_id: plan.practice_session_id,
+        answered_count: answeredCount.value,
+        left_early: leftEarly,
+        felt_ratings: [],
+      },
+      options,
+    )
   }
 
   /** Moves to the next item, or finishes the session after the last one. */
@@ -124,9 +127,9 @@ export function usePracticeSessionRun(plan: Plan) {
     if (takesLeft.value <= 0) nextItem()
   }
 
-  /** Ends the session now, before its last item. */
-  function end() {
-    if (active()) finish(true)
+  /** Ends the session now, before its last item; `keepalive` when the page is closing. */
+  function end(options: { keepalive?: boolean } = {}) {
+    if (active()) finish(true, options)
   }
 
   return { plan, index, current, tempo, takesTotal, takesLeft, progress, answeredCount, finished, start, setTempo, rate, nextItem, end }

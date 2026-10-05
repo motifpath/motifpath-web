@@ -3,9 +3,9 @@
  * A practice session with an instrument in hand. The student says which instrument they're
  * holding and how long they have; core composes the session; then each item is played along
  * take by take, until the plan runs out or the student ends it. A session left mid-way, by
- * navigating away, ends as left early.
+ * navigating away or closing or reloading the page, ends as left early.
  */
-import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import { useComposePracticeSession } from '@/features/student/composables/useComposePracticeSession'
@@ -61,7 +61,16 @@ function practiseAgain() {
   run.value = null
 }
 
-onBeforeUnmount(() => run.value?.end())
+// Sent with keepalive so the request outlives the page. A phone that discards a background
+// tab fires nothing; that session counts as abandoned once its events stop.
+function endOnPageClose() {
+  run.value?.end({ keepalive: true })
+}
+onMounted(() => window.addEventListener('pagehide', endOnPageClose))
+onBeforeUnmount(() => {
+  window.removeEventListener('pagehide', endOnPageClose)
+  run.value?.end()
+})
 </script>
 
 <template>

@@ -35,12 +35,15 @@ function currentSessionId(): string {
  * error as `{ error }` rather than throwing, so silence here would otherwise
  * hide a systemic schema mismatch between TrackableEvent and the backend
  * contract forever.
+ *
+ * Pass `{ keepalive: true }` for an event sent as the page closes: the browser
+ * then finishes the request after the page is gone.
  */
 export function useEventTracking() {
   const { eventApi } = useApi()
   const currentUser = useCurrentUserStore()
 
-  async function track(event: TrackableEvent): Promise<void> {
+  async function track(event: TrackableEvent, options: { keepalive?: boolean } = {}): Promise<void> {
     const studentId = currentUser.profile?.user_id
     if (!studentId) return
 
@@ -53,7 +56,10 @@ export function useEventTracking() {
     }
 
     try {
-      const { error } = await eventApi.POST('/events', { body: envelope })
+      const { error } = await eventApi.POST('/events', {
+        body: envelope,
+        ...(options.keepalive ? { keepalive: true } : {}),
+      })
       if (error) {
         console.warn('Tracking event rejected by the Event Ingestion Service:', event.event_type, error)
       }
