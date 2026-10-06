@@ -270,6 +270,69 @@ describe('PlayAlongTake', () => {
     expect(wrapper.emitted('tempo')).toEqual([[75], [65]])
   })
 
+  it('offers every tempo on a slider, from the ladder’s slowest to the fastest playable, in 5 BPM steps', () => {
+    const slider = mountTake({ tempo: 70 }).get<HTMLInputElement>('[data-test="tempo-slider"]')
+
+    expect(slider.attributes()).toMatchObject({ type: 'range', min: '60', max: '300', step: '5' })
+    expect(slider.element.value).toBe('70')
+    expect(slider.attributes('aria-label')).toBe('Tempo')
+  })
+
+  it('shows the tempo as it slides, and chooses it once released', async () => {
+    const wrapper = mountTake({ tempo: 70 })
+    const slider = wrapper.get<HTMLInputElement>('[data-test="tempo-slider"]')
+
+    // Dragging fires input; setValue would fire change too, as releasing does.
+    slider.element.value = '180'
+    await slider.trigger('input')
+    expect(wrapper.get('[data-test="tempo-value"]').text()).toBe('180 BPM')
+    expect(wrapper.emitted('tempo')).toBeUndefined()
+
+    await slider.trigger('change')
+    expect(wrapper.emitted('tempo')).toEqual([[180]])
+  })
+
+  it('offers no slider while a take plays', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    expect(wrapper.find('[data-test="tempo-slider"]').exists()).toBe(false)
+  })
+
+  it('heads the tempo control with what it sets, and marks the slider’s ends', () => {
+    const control = mountTake({ tempo: 90 }).get('[data-test="tempo-control"]')
+
+    expect(control.get('[data-test="tempo-heading"]').text()).toBe('Tempo')
+    expect(control.get('[data-test="tempo-value"]').text()).toBe('90 BPM')
+    expect(control.get('[data-test="tempo-min"]').text()).toBe('60')
+    expect(control.get('[data-test="tempo-max"]').text()).toBe('300')
+  })
+
+  it('restarts a take while it plays, without a rating, back to choosing the tempo', async () => {
+    const wrapper = mountTake({ tempo: 180 })
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    await wrapper.get('[data-test="restart-take"]').trigger('click')
+
+    expect(playback.stop).toHaveBeenCalled()
+    expect(wrapper.find('[data-test="rate-struggled"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tempo-slider"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
+    expect(wrapper.emitted('rate')).toBeUndefined()
+  })
+
+  it('restarts a take stopped early instead of rating it', async () => {
+    const wrapper = mountTake({ tempo: 180 })
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    await wrapper.get('[data-test="stop-early"]').trigger('click')
+
+    await wrapper.get('[data-test="restart-take"]').trigger('click')
+
+    expect(wrapper.find('[data-test="rate-struggled"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tempo-slider"]').exists()).toBe(true)
+    expect(wrapper.emitted('rate')).toBeUndefined()
+  })
+
   it('says nothing about the ladder when the student changed the tempo', async () => {
     const wrapper = mountTake({ tempo: 70 })
     await wrapper.get('[data-test="tempo-up"]').trigger('click')
