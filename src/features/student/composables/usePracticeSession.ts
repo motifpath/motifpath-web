@@ -2,6 +2,8 @@ import { computed, onUnmounted, ref, toValue, watch, type MaybeRefOrGetter } fro
 
 import { useApi } from '@/shared/composables/useApi'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
+import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
+import { isExactMatch } from '@/shared/utils/exerciseOptions'
 import type { components } from '@/api/generated/core-domain'
 
 type Challenge = components['schemas']['Challenge']
@@ -14,22 +16,20 @@ interface Answer {
   isCorrect: boolean
 }
 
-// Correct iff the selected set exactly matches the set of options marked
-// is_correct — an exercise can have more than one correct option, and
-// matching only a subset (or a superset) does not count.
-function isExactMatch(exercise: Exercise, optionIds: string[]): boolean {
-  const correctIds = exercise.options.filter((option) => option.is_correct).map((option) => option.option_id)
-  if (correctIds.length !== optionIds.length) return false
-  const selected = new Set(optionIds)
-  return correctIds.every((id) => selected.has(id))
-}
-
 /**
  * Drives one attempt at a content node's challenge: loads the node's
  * challenge and its exercises, steps through them one at a time (Back
  * re-shows a prior answer rather than clearing it), and reports a score once
  * the last exercise is passed. Only the node's first returned challenge is
- * run — the wireframe assumes one challenge per node. Reloads whenever
+ * run — the wireframe assumes one challenge per node.
+ *
+ * Each exercise's answer is the selection the student moves on with (Next,
+ * or Finish on the last one), sent once per run-through as
+ * practice.item_answered and timed from when the exercise was first shown:
+ * selecting gives no feedback until the end, so earlier selections are
+ * still the student making up their mind, and a selection changed after
+ * going back is not a new answer. Working through it again after a reload
+ * gives new answers. Reloads whenever
  * nodeId changes, since Vue Router reuses a mounted component when only a
  * param on the same route record changes.
  */
@@ -42,9 +42,12 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
   const exercises = ref<Exercise[]>([])
   const currentIndex = ref(0)
   const answers = ref<Record<string, Answer>>({})
-  const attemptCounts = ref<Record<string, number>>({})
   const startedExerciseIds = new Set<string>()
   const endedExerciseIds = new Set<string>()
+  const answeredExerciseIds = new Set<string>()
+  /** When each exercise was first shown, which its answer's latency counts from. */
+  const shownAt = new Map<string, number>()
+  const audioMs = new Map<string, number>()
 
   const currentExercise = computed<Exercise | null>(() => exercises.value[currentIndex.value] ?? null)
   const currentAnswer = computed<Answer | null>(() => {
@@ -91,6 +94,7 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
     const exercise = currentExercise.value
     if (!exercise || startedExerciseIds.has(exercise.exercise_id)) return
     startedExerciseIds.add(exercise.exercise_id)
+    shownAt.set(exercise.exercise_id, Date.now())
     void track({ event_type: 'exercise.started', exercise_id: exercise.exercise_id, trigger_context: triggerContext() })
   }
 
@@ -111,6 +115,26 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
       trigger_context: triggerContext(),
       outcome: answer ? 'completed' : 'abandoned',
       ...(answer ? { final_score: answer.isCorrect ? 100 : 0 } : {}),
+    })
+  }
+
+  function sendAnswer(): void {
+    const exercise = currentExercise.value
+    const answer = exercise ? answers.value[exercise.exercise_id] : undefined
+    if (!exercise || !answer || answeredExerciseIds.has(exercise.exercise_id)) return
+    answeredExerciseIds.add(exercise.exercise_id)
+
+    const audio = audioMs.get(exercise.exercise_id)
+    void track({
+      event_type: 'practice.item_answered',
+      trigger_context: triggerContext(),
+      item_key: `exercise:${exercise.exercise_id}`,
+      response: {
+        response_type: 'option_choice',
+        option_ids: answer.optionIds,
+        latency_ms: Date.now() - (shownAt.get(exercise.exercise_id) ?? Date.now()),
+        ...(audio !== undefined ? { audio_ms: audio } : {}),
+      },
     })
   }
 
@@ -163,9 +187,16 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
       exercises.value = exercisesResult.data
       currentIndex.value = 0
       answers.value = {}
-      attemptCounts.value = {}
       startedExerciseIds.clear()
       endedExerciseIds.clear()
+      answeredExerciseIds.clear()
+      shownAt.clear()
+      audioMs.clear()
+      for (const exercise of exercisesResult.data) {
+        void measureExerciseAudio(exercise).then((ms) => {
+          if (ms !== undefined && myEpoch === loadEpoch) audioMs.set(exercise.exercise_id, ms)
+        })
+      }
       status.value = 'in-progress'
       trackExerciseStart()
     } catch {
@@ -187,8 +218,7 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
       // Deselecting back down to nothing is "unanswered again," not "answered
       // with zero options" — no entry, not an entry with an empty array, so
       // canAdvance/endCurrentExercise's completed-vs-abandoned check both
-      // treat it the same as never having answered. Nothing was actually
-      // submitted, so no answer_sent event either — see below.
+      // treat it the same as never having answered.
       const rest = { ...answers.value }
       delete rest[exercise.exercise_id]
       answers.value = rest
@@ -197,22 +227,12 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
 
     answers.value = {
       ...answers.value,
-      [exercise.exercise_id]: { optionIds, isCorrect: isExactMatch(exercise, optionIds) },
+      [exercise.exercise_id]: { optionIds, isCorrect: isExactMatch(exercise.options, optionIds) },
     }
-
-    const attemptNumber = (attemptCounts.value[exercise.exercise_id] ?? 0) + 1
-    attemptCounts.value = { ...attemptCounts.value, [exercise.exercise_id]: attemptNumber }
-
-    void track({
-      event_type: 'exercise.answer_sent',
-      exercise_id: exercise.exercise_id,
-      trigger_context: triggerContext(),
-      attempt_number: attemptNumber,
-      answer_payload: { option_ids: optionIds },
-    })
   }
 
   function next(): void {
+    sendAnswer()
     endCurrentExercise()
 
     if (isLastExercise.value) {

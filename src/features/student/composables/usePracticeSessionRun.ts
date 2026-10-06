@@ -4,6 +4,8 @@ import type { components } from '@/api/generated/core-domain'
 import { ladderFloor, nextTempo } from '@/features/student/utils/tempoLadder'
 import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
+import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
+import { isExactMatch } from '@/shared/utils/exerciseOptions'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Plan = components['schemas']['PracticeSessionPlan']
@@ -13,12 +15,26 @@ type Item = components['schemas']['PracticeSessionItem']
 const FOCUS_TAKES = 4
 const WARM_UP_TAKES = 2
 
-const takesOf = (item: Item) => (item.reason === 'warm_up' ? WARM_UP_TAKES : FOCUS_TAKES)
+/** Takes of an item; only a play-along is played in takes. */
+function takesOf(item: Item) {
+  if (item.kind !== 'play_along') return 0
+  return item.reason === 'warm_up' ? WARM_UP_TAKES : FOCUS_TAKES
+}
+
+export interface ExerciseAnswer {
+  optionIds: string[]
+  correct: boolean
+}
 
 /**
- * Runs one composed practice session of play-alongs: which item is on, at what
- * tempo its next take plays, and how many takes it has left, with the
- * practice.* events the run produces.
+ * Runs one composed practice session of exercises and play-alongs: which item
+ * is on, at what tempo a play-along's next take plays, and how many takes it
+ * has left, with the practice.* events the run produces.
+ *
+ * An exercise is answered once: the options chosen are sent with the time
+ * since it was shown, and the audio it asks the student to hear when it has
+ * any; the run says whether the answer was right and stays on the exercise
+ * until the student moves on.
  *
  * A focus item's tempo follows the tempo ladder from its start tempo; a
  * warm-up plays its takes at its own tempo, outside the ladder. The student may
@@ -38,10 +54,25 @@ export function usePracticeSessionRun(plan: Plan) {
   const started = ref(false)
   const finished = ref(false)
   const answeredItems = ref(new Set<string>())
-  /** How many items the student rated a take of; a warm-up never counts. */
+  /** How many items the student answered or rated a take of; a warm-up never counts. */
   const answeredCount = computed(() => answeredItems.value.size)
 
   const current = computed<Item | null>(() => (finished.value ? null : (plan.items[index.value] ?? null)))
+
+  /** The answer to the exercise on, once given. */
+  const exerciseAnswer = ref<ExerciseAnswer | null>(null)
+  /** When the item on was shown, which an exercise's latency counts from. */
+  let shownAt = 0
+
+  // Measured up front, so each length is known by the time its exercise is answered.
+  const audioMs = new Map<string, number>()
+  for (const item of plan.items) {
+    const exercise = item.exercise
+    if (item.kind !== 'exercise' || !exercise) continue
+    void measureExerciseAudio(exercise).then((ms) => {
+      if (ms !== undefined) audioMs.set(exercise.exercise_id, ms)
+    })
+  }
 
   const tempo = computed(() => {
     const playAlong = current.value?.play_along
@@ -62,11 +93,17 @@ export function usePracticeSessionRun(plan: Plan) {
   const takesTotal = computed(() => (current.value ? takesOf(current.value) : 0))
   const takesLeft = computed(() => takesTotal.value - takes.value.length)
 
-  /** How much of each item is played, from 0 to 1: the items moved past in full, the current one by its takes. */
+  /**
+   * How much of each item is done, from 0 to 1: the items moved past in full, the current
+   * play-along by its takes, the current exercise once answered.
+   */
   const progress = computed(() =>
     plan.items.map((item, i) => {
       if (i < index.value) return 1
-      return i === index.value ? takes.value.length / takesOf(item) : 0
+      if (i > index.value) return 0
+      if (item.kind === 'exercise') return exerciseAnswer.value ? 1 : 0
+      const total = takesOf(item)
+      return total === 0 ? 0 : takes.value.length / total
     }),
   )
 
@@ -75,6 +112,7 @@ export function usePracticeSessionRun(plan: Plan) {
   function start() {
     if (started.value) return
     started.value = true
+    shownAt = Date.now()
     void track({
       event_type: 'practice.session_started',
       practice_session_id: plan.practice_session_id,
@@ -103,6 +141,8 @@ export function usePracticeSessionRun(plan: Plan) {
     if (!active()) return
     takes.value = []
     chosenTempo.value = null
+    exerciseAnswer.value = null
+    shownAt = Date.now()
     index.value++
     if (index.value >= plan.items.length) finish(false)
   }
@@ -127,10 +167,49 @@ export function usePracticeSessionRun(plan: Plan) {
     if (takesLeft.value <= 0) nextItem()
   }
 
+  /** Answers the exercise on with the options chosen; only the first answer counts. */
+  function answer(optionIds: string[]) {
+    const item = current.value
+    const exercise = item?.exercise
+    if (!active() || !item || item.kind !== 'exercise' || !exercise || exerciseAnswer.value || optionIds.length === 0) return
+
+    exerciseAnswer.value = { optionIds, correct: isExactMatch(exercise.options, optionIds) }
+    answeredItems.value = new Set(answeredItems.value).add(item.item_key)
+    const audio = audioMs.get(exercise.exercise_id)
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: {
+        response_type: 'option_choice',
+        option_ids: optionIds,
+        latency_ms: Date.now() - shownAt,
+        ...(audio !== undefined ? { audio_ms: audio } : {}),
+      },
+    })
+  }
+
   /** Ends the session now, before its last item; `keepalive` when the page is closing. */
   function end(options: { keepalive?: boolean } = {}) {
     if (active()) finish(true, options)
   }
 
-  return { plan, index, current, tempo, takesTotal, takesLeft, progress, answeredCount, finished, start, setTempo, rate, nextItem, end }
+  return {
+    plan,
+    index,
+    current,
+    tempo,
+    takesTotal,
+    takesLeft,
+    progress,
+    answeredCount,
+    exerciseAnswer,
+    finished,
+    start,
+    setTempo,
+    rate,
+    answer,
+    nextItem,
+    end,
+  }
 }

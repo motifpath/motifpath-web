@@ -1,11 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const track = vi.fn()
 vi.mock('@/shared/composables/useEventTracking', () => ({
   useEventTracking: () => ({ track }),
 }))
 
+const measureExerciseAudio = vi.fn()
+vi.mock('@/shared/utils/exerciseAudio', () => ({
+  measureExerciseAudio: (exercise: unknown) => measureExerciseAudio(exercise),
+}))
+
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
 type Plan = components['schemas']['PracticeSessionPlan']
@@ -31,6 +37,36 @@ function playAlong(diagramId: string, reason: Item['reason'], tempos: { start: n
   }
 }
 
+function exerciseItem(exerciseId: string, reason: Item['reason'], fields: Partial<NonNullable<Item['exercise']>> = {}): Item {
+  return {
+    item_key: `exercise:${exerciseId}`,
+    kind: 'exercise',
+    reason,
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 30,
+    exercise: {
+      exercise_id: exerciseId,
+      title: 'Name the interval',
+      prompt: plainTextPrompt('Which interval is this?'),
+      exercise_type: 'text_response',
+      options: [
+        { option_id: 'right', is_correct: true, label: 'Minor third' },
+        { option_id: 'wrong', is_correct: false, label: 'Major third' },
+      ],
+      challenge_ids: [],
+      content_node_ids: [],
+      skills: [],
+      concepts: [],
+      remediation_targets: [],
+      languages: [{ code: 'en', name: 'English' }],
+      instrument_ids: [],
+      created_at: '2026-10-06T00:00:00Z',
+      ...fields,
+    },
+  }
+}
+
 const WARM_UP = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const DUE = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
@@ -48,7 +84,10 @@ function tracked(eventType: string) {
 }
 
 describe('usePracticeSessionRun', () => {
-  beforeEach(() => track.mockReset())
+  beforeEach(() => {
+    track.mockReset()
+    measureExerciseAudio.mockReset().mockResolvedValue(undefined)
+  })
 
   it('sends the plan as practice.session_started when the session starts', () => {
     const run = usePracticeSessionRun(twoItems)
@@ -285,5 +324,167 @@ describe('usePracticeSessionRun', () => {
     run.nextItem()
     expect(run.takesTotal.value).toBe(4)
   })
-})
 
+  describe('an exercise item', () => {
+    const EXERCISE = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+    const LISTENING = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+    const APPLY = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+
+    const mixed = plan([
+      exerciseItem(EXERCISE, 'due'),
+      exerciseItem(LISTENING, 'new', { exercise_type: 'audio_recognition', audio_url: 'https://media.test/third.mp3' }),
+      playAlong(APPLY, 'application', { start: 70, target: 90 }),
+    ])
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-06T10:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('sends the options chosen as practice.item_answered, timed from when the exercise was shown', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      vi.advanceTimersByTime(4200)
+      run.answer(['right'])
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: `exercise:${EXERCISE}`,
+          response: { response_type: 'option_choice', option_ids: ['right'], latency_ms: 4200 },
+        },
+      ])
+    })
+
+    it('times a later exercise from when it was shown, not from the session’s start', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      vi.advanceTimersByTime(5000)
+      run.answer(['right'])
+      vi.advanceTimersByTime(1500)
+      run.nextItem()
+      vi.advanceTimersByTime(3000)
+      run.answer(['right'])
+
+      expect(tracked('practice.item_answered')[1].response.latency_ms).toBe(3000)
+    })
+
+    it('says whether the answer was right, and stays on the exercise until the student moves on', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      expect(run.exerciseAnswer.value).toBeNull()
+
+      run.answer(['wrong'])
+      expect(run.exerciseAnswer.value).toEqual({ optionIds: ['wrong'], correct: false })
+      expect(run.index.value).toBe(0)
+      expect(run.progress.value).toEqual([1, 0, 0])
+
+      run.nextItem()
+      expect(run.index.value).toBe(1)
+      expect(run.exerciseAnswer.value).toBeNull()
+    })
+
+    it('takes only the first answer to an exercise', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      run.answer(['wrong'])
+      run.answer(['right'])
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.exerciseAnswer.value).toEqual({ optionIds: ['wrong'], correct: false })
+    })
+
+    it('ignores an answer with no option chosen', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      run.answer([])
+
+      expect(tracked('practice.item_answered')).toEqual([])
+      expect(run.exerciseAnswer.value).toBeNull()
+    })
+
+    it('ignores an answer while a play-along is on', () => {
+      const run = usePracticeSessionRun(twoItems)
+      run.start()
+      run.answer(['right'])
+
+      expect(tracked('practice.item_answered')).toEqual([])
+    })
+
+    it('sends the length of the audio to hear with an exercise that has audio', async () => {
+      measureExerciseAudio.mockImplementation((exercise: { exercise_id: string }) =>
+        Promise.resolve(exercise.exercise_id === LISTENING ? 2600 : undefined),
+      )
+      const run = usePracticeSessionRun(mixed)
+      await vi.runAllTimersAsync()
+      run.start()
+      run.answer(['right'])
+      run.nextItem()
+      run.answer(['right'])
+
+      const [first, second] = tracked('practice.item_answered')
+      expect(first.response).not.toHaveProperty('audio_ms')
+      expect(second.response).toMatchObject({ audio_ms: 2600 })
+    })
+
+    it('counts an answered exercise among the answered items', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      run.answer(['right'])
+      run.nextItem()
+      run.answer(['wrong'])
+      run.nextItem()
+      run.rate('clean')
+      run.end()
+
+      expect(tracked('practice.session_ended')[0]).toMatchObject({ answered_count: 3 })
+    })
+
+    it('sends the application ending’s rated takes like any other', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      run.nextItem()
+      run.nextItem()
+      run.rate('almost')
+
+      expect(tracked('practice.item_answered')).toEqual([
+        expect.objectContaining({
+          item_key: `play_along:${APPLY}`,
+          response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 70 },
+        }),
+      ])
+    })
+
+    it('ends as left early when the student leaves on an exercise before the last item', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      run.answer(['right'])
+      run.nextItem()
+      run.end()
+
+      expect(tracked('practice.session_ended')).toEqual([
+        expect.objectContaining({ answered_count: 1, left_early: true }),
+      ])
+    })
+
+    it('ends as finished, not left early, when the student moves past the last item', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      run.nextItem()
+      run.nextItem()
+      run.nextItem()
+
+      expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false })])
+    })
+
+    it('has no tempo or takes for an exercise', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+
+      expect(run.tempo.value).toBeNull()
+      expect(run.takesTotal.value).toBe(0)
+    })
+  })
+})

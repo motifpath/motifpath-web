@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 
 const GET = vi.fn()
@@ -10,6 +10,11 @@ vi.mock('@/shared/composables/useApi', () => ({
 const track = vi.fn()
 vi.mock('@/shared/composables/useEventTracking', () => ({
   useEventTracking: () => ({ track }),
+}))
+
+const measureExerciseAudio = vi.fn()
+vi.mock('@/shared/utils/exerciseAudio', () => ({
+  measureExerciseAudio: (exercise: unknown) => measureExerciseAudio(exercise),
 }))
 
 import { usePracticeSession } from '@/features/student/composables/usePracticeSession'
@@ -100,7 +105,15 @@ async function flush(): Promise<void> {
   await Promise.resolve()
 }
 
+function answered() {
+  return track.mock.calls.map(([event]) => event).filter((event) => event.event_type === 'practice.item_answered')
+}
+
 describe('usePracticeSession', () => {
+  beforeEach(() => {
+    track.mockReset()
+    measureExerciseAudio.mockReset().mockResolvedValue(undefined)
+  })
   it('loads the node challenge and its exercises, landing in-progress on the first exercise', async () => {
     mockHappyPath()
 
@@ -168,7 +181,7 @@ describe('usePracticeSession', () => {
     expect(session.currentAnswer.value?.isCorrect).toBe(false)
   })
 
-  it('treats deselecting back down to nothing as unanswered again, and does not send answer_sent for it', async () => {
+  it('treats deselecting back down to nothing as unanswered again, and sends nothing for it', async () => {
     mockHappyPath()
     const session = usePracticeSession('node-1')
     await flush()
@@ -276,7 +289,7 @@ describe('usePracticeSession', () => {
     expect(session.currentAnswer.value).toEqual({ optionIds: ['o4'], isCorrect: true })
   })
 
-  it('tracks exercise.started once on entering an exercise, exercise.answer_sent on selection, and exercise.ended on Next', async () => {
+  it('tracks exercise.started once on entering an exercise and exercise.ended on Next, and never exercise.answer_sent', async () => {
     mockHappyPath()
     const session = usePracticeSession('node-1')
     await flush()
@@ -286,15 +299,6 @@ describe('usePracticeSession', () => {
     )
 
     session.select(['o1'])
-    expect(track).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event_type: 'exercise.answer_sent',
-        exercise_id: 'ex-1',
-        attempt_number: 1,
-        answer_payload: { option_ids: ['o1'] },
-      }),
-    )
-
     session.next()
     expect(track).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -307,6 +311,139 @@ describe('usePracticeSession', () => {
     expect(track).toHaveBeenCalledWith(
       expect.objectContaining({ event_type: 'exercise.started', exercise_id: 'ex-2' }),
     )
+    expect(track).not.toHaveBeenCalledWith(expect.objectContaining({ event_type: 'exercise.answer_sent' }))
+  })
+
+  describe('answers as practice evidence', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-06T10:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('sends nothing while the student is still choosing', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      session.select(['o2'])
+      session.select(['o1'])
+
+      expect(answered()).toEqual([])
+    })
+
+    it('sends the selection the student moves on with as practice.item_answered, with the challenge as its context', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      vi.advanceTimersByTime(2000)
+      session.select(['o2'])
+      vi.advanceTimersByTime(1500)
+      session.select(['o1'])
+      session.next()
+
+      expect(answered()).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          trigger_context: { source: 'challenge_sequence', content_node_id: 'node-1', challenge_id: 'ch-1' },
+          item_key: 'exercise:ex-1',
+          response: { response_type: 'option_choice', option_ids: ['o1'], latency_ms: 3500 },
+        },
+      ])
+    })
+
+    it('sends the last exercise’s answer on Finish', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      session.select(['o1'])
+      session.next()
+      vi.advanceTimersByTime(800)
+      session.select(['o3'])
+      session.next()
+
+      expect(session.status.value).toBe('result')
+      expect(answered().map((event) => [event.item_key, event.response.option_ids, event.response.latency_ms])).toEqual([
+        ['exercise:ex-1', ['o1'], 0],
+        ['exercise:ex-2', ['o3'], 800],
+      ])
+    })
+
+    it('sends no new answer for a selection changed after going back', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      session.select(['o2'])
+      session.next()
+      session.back()
+      session.select(['o1'])
+      session.next()
+
+      expect(answered()).toEqual([expect.objectContaining({ item_key: 'exercise:ex-1', response: expect.objectContaining({ option_ids: ['o2'] }) })])
+    })
+
+    it('sends nothing for an exercise moved past without a selection', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      session.next()
+
+      expect(answered()).toEqual([])
+    })
+
+    it('gives new answers when the challenge is worked through again', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+      session.select(['o2'])
+      session.next()
+
+      await session.retry()
+      session.select(['o1'])
+      session.next()
+
+      expect(answered().map((event) => event.response.option_ids)).toEqual([['o2'], ['o1']])
+    })
+
+    it('sends the length of the audio to hear with an exercise that has audio', async () => {
+      measureExerciseAudio.mockImplementation((exercise: { exercise_id: string }) =>
+        Promise.resolve(exercise.exercise_id === 'ex-2' ? 4100 : undefined),
+      )
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await vi.runAllTimersAsync()
+
+      session.select(['o1'])
+      session.next()
+      session.select(['o4'])
+      session.next()
+
+      const [first, second] = answered()
+      expect(first.response).not.toHaveProperty('audio_ms')
+      expect(second.response).toMatchObject({ audio_ms: 4100 })
+    })
+
+    it('sends nothing for a selection left on the page without moving on', async () => {
+      mockHappyPath()
+      let sessionRef: ReturnType<typeof usePracticeSession> | undefined
+      const TestComponent = defineComponent({
+        setup() {
+          sessionRef = usePracticeSession('node-1')
+          return () => h('div')
+        },
+      })
+      const wrapper = mount(TestComponent)
+      await flush()
+      sessionRef?.select(['o1'])
+
+      wrapper.unmount()
+
+      expect(answered()).toEqual([])
+    })
   })
 
   it('tracks exercise.ended with outcome abandoned when advancing past an unanswered exercise', async () => {

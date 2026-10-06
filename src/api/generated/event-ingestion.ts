@@ -159,7 +159,7 @@ export interface components {
          *     Ingestion Service persists the raw payload to MongoDB and publishes it to the
          *     motifpath.events Kafka topic.
          */
-        TrackingEvent: components["schemas"]["LessonStartedEvent"] | components["schemas"]["LessonResumedEvent"] | components["schemas"]["LessonCompletedEvent"] | components["schemas"]["ExerciseStartedEvent"] | components["schemas"]["ExerciseProgressEvent"] | components["schemas"]["ExerciseAnswerSentEvent"] | components["schemas"]["ExerciseEndedEvent"] | components["schemas"]["PracticeSessionStartedEvent"] | components["schemas"]["PracticeItemAnsweredEvent"] | components["schemas"]["PracticeSessionEndedEvent"] | components["schemas"]["PracticeTapCheckCompletedEvent"];
+        TrackingEvent: components["schemas"]["LessonStartedEvent"] | components["schemas"]["LessonResumedEvent"] | components["schemas"]["LessonCompletedEvent"] | components["schemas"]["ExerciseStartedEvent"] | components["schemas"]["ExerciseProgressEvent"] | components["schemas"]["ExerciseEndedEvent"] | components["schemas"]["PracticeSessionStartedEvent"] | components["schemas"]["PracticeItemAnsweredEvent"] | components["schemas"]["PracticeSessionEndedEvent"] | components["schemas"]["PracticeTapCheckCompletedEvent"];
         /** @description Confirmation returned when a tracking event is successfully accepted. */
         IngestAccepted: {
             /**
@@ -283,7 +283,7 @@ export interface components {
              *     and a new ADR if it introduces a new consumer concern.
              * @enum {string}
              */
-            event_type: "lesson.started" | "lesson.resumed" | "lesson.completed" | "exercise.started" | "exercise.progress" | "exercise.answer_sent" | "exercise.ended" | "practice.session_started" | "practice.item_answered" | "practice.session_ended" | "practice.tap_check_completed";
+            event_type: "lesson.started" | "lesson.resumed" | "lesson.completed" | "exercise.started" | "exercise.progress" | "exercise.ended" | "practice.session_started" | "practice.item_answered" | "practice.session_ended" | "practice.tap_check_completed";
             /**
              * Format: uuid
              * @description ID of the authenticated student who generated this event. Used as the Kafka
@@ -375,7 +375,8 @@ export interface components {
         };
         /**
          * @description Describes the context in which an exercise was initiated. Required on all exercise
-         *     events. Enables downstream analytics to distinguish spontaneous practice from
+         *     events, and on practice.item_answered when the answer is given outside a practice
+         *     session. Enables downstream analytics to distinguish spontaneous practice from
          *     assessment-driven and remediation-driven exercises.
          */
         TriggerContext: {
@@ -440,35 +441,6 @@ export interface components {
              */
             event_type: "exercise.progress";
         };
-        ExerciseAnswerSentEvent: components["schemas"]["TrackingEventBase"] & {
-            /** @enum {string} */
-            event_type: "exercise.answer_sent";
-            /**
-             * Format: uuid
-             * @description ID of the exercise for which the answer was submitted.
-             */
-            exercise_id: string;
-            trigger_context: components["schemas"]["TriggerContext"];
-            /**
-             * @description 1-indexed count of answer submissions for this exercise_id within the current
-             *     exercise attempt. Enables retry-aware scoring in the Aggregation Worker.
-             */
-            attempt_number: number;
-            /**
-             * @description The student's submitted answer. Structure varies by exercise type and is treated
-             *     as opaque by the Event Ingestion Service and Aggregation Worker at MVP.
-             *     Exercise-type-specific payload schemas are a post-MVP concern.
-             */
-            answer_payload?: {
-                [key: string]: unknown;
-            };
-        } & {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            event_type: "exercise.answer_sent";
-        };
         ExerciseEndedEvent: components["schemas"]["TrackingEventBase"] & {
             /** @enum {string} */
             event_type: "exercise.ended";
@@ -518,13 +490,16 @@ export interface components {
         PracticeItemKey: string;
         /**
          * @description Why the session composer put an item in a session, shown to the student.
-         *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
-         *     practised but not yet secure; new = it has not been practised yet; warm_up = something
-         *     already known, played first with the instrument in hand, below the student's edge and
-         *     outside the evidence: its takes are not sent as practice.item_answered; application = applying the
-         *     skill to music; review_ahead = a known item reviewed before it falls due, when nothing
-         *     else is due; stretch = an unseen item of a node the student is ready to start, when
-         *     nothing else is due.
+         *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
+         *     practised, is not due, and is not yet fluent; new = it has not been practised yet;
+         *     warm_up = something already known, played first with the instrument in hand, below the
+         *     student's edge and outside the evidence: its takes are not sent as practice.item_answered;
+         *     application = one play-along at the end of a session of 10 minutes or more, applying a
+         *     skill the session's focus items practised (or, with none, another skill of the student's
+         *     paths), and evidence like any other take; review_ahead = a known item coming due within the
+         *     week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
+         *     node the student is ready to start, the skills of their paths first, when nothing else is due
+         *     or past the new share.
          * @enum {string}
          */
         PracticePickReason: "teacher_suggested" | "due" | "weak" | "new" | "warm_up" | "application" | "review_ahead" | "stretch";
@@ -603,6 +578,15 @@ export interface components {
             option_ids: string[];
             /** @description Milliseconds from the moment the exercise was shown to the answer. */
             latency_ms: number;
+            /**
+             * @description Milliseconds of audio the exercise asks the student to hear once before answering:
+             *     the length of the exercise's sound for a listening exercise, or the lengths of all
+             *     its sound options added together when the options are sounds. Hearing it is not
+             *     part of the time spent knowing the answer, so it is taken off the latency before
+             *     the answer is judged against the drill's fluent time. Replays are not taken off.
+             *     Absent for exercises without audio.
+             */
+            audio_ms?: number;
         };
         /**
          * @description The student's own rating of a take they played: a play-along at a tempo, or chord
@@ -633,14 +617,16 @@ export interface components {
          *     discriminated by response_type.
          */
         PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"];
-        PracticeItemAnsweredEvent: components["schemas"]["TrackingEventBase"] & {
+        PracticeItemAnsweredEvent: components["schemas"]["TrackingEventBase"] & ({
             /** @enum {string} */
             event_type: "practice.item_answered";
             /**
              * Format: uuid
-             * @description The practice session this answer belongs to.
+             * @description The practice session this answer belongs to. Absent when trigger_context is
+             *     present.
              */
-            practice_session_id: string;
+            practice_session_id?: string;
+            trigger_context?: components["schemas"]["TriggerContext"];
             item_key: components["schemas"]["PracticeItemKey"];
             response: components["schemas"]["PracticeResponse"];
             /**
@@ -650,7 +636,7 @@ export interface components {
              *     check; absent otherwise. A value sent by a client is ignored.
              */
             readonly tap_ms?: number;
-        } & {
+        } & (unknown | unknown)) & {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -684,7 +670,10 @@ export interface components {
             practice_session_id: string;
             /** @description How many items the student answered in the session. */
             answered_count: number;
-            /** @description True when the student ended the session before its last planned item. */
+            /**
+             * @description True when the session ended before its last planned item: the student left it
+             *     inside the app, or closed or reloaded the page.
+             */
             left_early: boolean;
             /**
              * @description The student's answers to "How did it feel?" for at most two of the session's
@@ -737,7 +726,6 @@ export type SchemaLessonCompletedEvent = components['schemas']['LessonCompletedE
 export type SchemaTriggerContext = components['schemas']['TriggerContext'];
 export type SchemaExerciseStartedEvent = components['schemas']['ExerciseStartedEvent'];
 export type SchemaExerciseProgressEvent = components['schemas']['ExerciseProgressEvent'];
-export type SchemaExerciseAnswerSentEvent = components['schemas']['ExerciseAnswerSentEvent'];
 export type SchemaExerciseEndedEvent = components['schemas']['ExerciseEndedEvent'];
 export type SchemaPracticeItemKey = components['schemas']['PracticeItemKey'];
 export type SchemaPracticePickReason = components['schemas']['PracticePickReason'];

@@ -1771,8 +1771,8 @@ export interface paths {
         /**
          * Read the authenticated student's practice summary for the home
          * @description Everything the practice home shows, in one read, for one of the student's
-         *     instruments: practice days this week, progress this week per skill, the next steps,
-         *     and every practice node grouped by area, with a separate group for nodes that suit
+         *     instruments: practice days on that instrument in the last 7, progress this week per
+         *     skill, the next steps, and every practice node grouped by area, with a separate group for nodes that suit
          *     any instrument. Progress is reported per skill; concepts are context, never progress
          *     lines. A wide node is shown through its coverage and its children, never as a level
          *     of its own.
@@ -1782,6 +1782,33 @@ export interface paths {
          *     Any authenticated user may read their own summary.
          */
         get: operations["getPracticeSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/practice-overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the authenticated student's practice overview, across instruments
+         * @description The first view of the practice home, before the student picks an instrument: on how
+         *     many of the last 7 days they practised on any instrument and completed a content
+         *     node, and one card per instrument with that instrument's practice days and its top
+         *     next step. Each instrument's full picture is its practice summary.
+         *
+         *     Derived from the student's activity; reading it changes nothing.
+         *
+         *     Any authenticated user may read their own overview.
+         */
+        get: operations["getPracticeOverview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4826,7 +4853,10 @@ export interface components {
              */
             node_id: string | null;
             level: components["schemas"]["KnowledgeLevel"];
-            /** @description About how long the item takes, used to fit the session to its minutes. */
+            /**
+             * @description About how long the item takes, used to fit the session to its minutes. An exercise
+             *     takes its estimated_duration_seconds, or 30 seconds without one.
+             */
             estimated_seconds: number;
             /** @description Present when kind is fretboard_cell. */
             fretboard_cell?: {
@@ -4871,16 +4901,20 @@ export interface components {
              */
             instrument_id: string | null;
             /**
-             * @description The student's instruments: those of the paths and courses they're enrolled in,
-             *     plus any they added. The home shows one tab per instrument.
+             * @description The student's instruments, inferred from the paths and courses they're enrolled
+             *     in; a path or course for every instrument adds none. The home shows one tab per
+             *     instrument.
              */
             student_instrument_ids: string[];
             /**
              * @description On how many of the last 7 calendar days, in the given time zone, the student
-             *     practised. Never a streak: a missed day is never a reset.
+             *     finished a practice session: ended without leaving early, and not abandoned (no
+             *     practice event for the session's planned minutes plus 15) with the summarised
+             *     instrument in hand. A session on another instrument counts on that instrument's
+             *     summary, not this one. Never a streak: a missed day is never a reset.
              */
             practice_days_last_7: number;
-            /** @description Skills that improved this week, most improved first. Empty when none did. */
+            /** @description Skills that improved over the last 7 days, most improved first. Empty when none did. */
             progress_this_week: components["schemas"]["SkillProgress"][];
             /** @description The top three next steps, in order. */
             next_steps: components["schemas"]["PracticeNextStep"][];
@@ -4892,9 +4926,48 @@ export interface components {
              */
             groups: components["schemas"]["PracticeNodeGroup"][];
         };
+        /** @description The practice home's overview, across all of the student's instruments. */
+        PracticeOverview: {
+            /**
+             * @description On how many of the last 7 calendar days, in the given time zone, the student
+             *     finished a practice session on any instrument, or without one: ended without
+             *     leaving early, and not abandoned (no practice event for the session's planned
+             *     minutes plus 15). Never a streak: a missed day is never a reset.
+             */
+            practice_days_last_7: number;
+            /**
+             * @description On how many of the last 7 calendar days, in the given time zone, the student
+             *     completed at least one content node. Never a streak: a missed day is never a
+             *     reset.
+             */
+            learning_days_last_7: number;
+            /**
+             * @description One card per instrument of the student, inferred from the paths and courses
+             *     they're enrolled in, in the order their summaries are tabbed.
+             */
+            instruments: components["schemas"]["PracticeInstrumentCard"][];
+        };
+        /** @description One instrument at a glance, linking to its practice summary. */
+        PracticeInstrumentCard: {
+            /**
+             * Format: uuid
+             * @description The instrument.
+             */
+            instrument_id: string;
+            /**
+             * @description On how many of the last 7 calendar days the student finished a practice session
+             *     with this instrument in hand; the same count as the instrument's practice summary.
+             */
+            practice_days_last_7: number;
+            /**
+             * @description The instrument's first next step, as its practice summary ranks them. Null when
+             *     there is none.
+             */
+            top_next_step: components["schemas"]["PracticeNextStep"] | null;
+        };
         /**
-         * @description How one skill improved this week, with both values so the student sees where they
-         *     started (for example accuracy 0.72 → 0.86).
+         * @description How one skill improved over the last 7 days, with both values so the student sees
+         *     where they started (for example accuracy 0.72 → 0.86).
          */
         SkillProgress: {
             /**
@@ -4909,7 +4982,11 @@ export interface components {
              * @enum {string}
              */
             measure: "accuracy" | "fluency" | "best_clean_tempo_bpm";
-            /** @description The value at the start of the week. */
+            /**
+             * @description The value 7 days ago, at the end of the day before the last 7 calendar days in
+             *     the given time zone. An accuracy or fluency starts from 0 for a skill first
+             *     practised since then; a tempo line needs a clean take on both sides.
+             */
             before: number;
             /** @description The value now. */
             after: number;
@@ -4918,7 +4995,9 @@ export interface components {
         PracticeNextStep: {
             /**
              * @description refresh = known items are fading; strengthen = practised but not yet secure;
-             *     ready_to_start = every requirement is met and nothing is practised yet.
+             *     ready_to_start = every requirement is met, nothing is practised yet, and the node
+             *     connects to what the student is learning: one of their path skills, linked to one
+             *     by applies or part_of, or building on something they have met.
              * @enum {string}
              */
             kind: "refresh" | "strengthen" | "ready_to_start";
@@ -5179,13 +5258,16 @@ export interface components {
         PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change";
         /**
          * @description Why the session composer put an item in a session, shown to the student.
-         *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it is
-         *     practised but not yet secure; new = it has not been practised yet; warm_up = something
-         *     already known, played first with the instrument in hand, below the student's edge and
-         *     outside the evidence: its takes are not sent as practice.item_answered; application = applying the
-         *     skill to music; review_ahead = a known item reviewed before it falls due, when nothing
-         *     else is due; stretch = an unseen item of a node the student is ready to start, when
-         *     nothing else is due.
+         *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
+         *     practised, is not due, and is not yet fluent; new = it has not been practised yet;
+         *     warm_up = something already known, played first with the instrument in hand, below the
+         *     student's edge and outside the evidence: its takes are not sent as practice.item_answered;
+         *     application = one play-along at the end of a session of 10 minutes or more, applying a
+         *     skill the session's focus items practised (or, with none, another skill of the student's
+         *     paths), and evidence like any other take; review_ahead = a known item coming due within the
+         *     week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
+         *     node the student is ready to start, the skills of their paths first, when nothing else is due
+         *     or past the new share.
          * @enum {string}
          */
         PracticePickReason: "teacher_suggested" | "due" | "weak" | "new" | "warm_up" | "application" | "review_ahead" | "stretch";
@@ -5308,6 +5390,8 @@ export type SchemaCreatePracticeSessionPlanRequest = components['schemas']['Crea
 export type SchemaPracticeSessionPlan = components['schemas']['PracticeSessionPlan'];
 export type SchemaPracticeSessionItem = components['schemas']['PracticeSessionItem'];
 export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
+export type SchemaPracticeOverview = components['schemas']['PracticeOverview'];
+export type SchemaPracticeInstrumentCard = components['schemas']['PracticeInstrumentCard'];
 export type SchemaSkillProgress = components['schemas']['SkillProgress'];
 export type SchemaPracticeNextStep = components['schemas']['PracticeNextStep'];
 export type SchemaPracticeNodeGroup = components['schemas']['PracticeNodeGroup'];
@@ -9851,6 +9935,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    getPracticeOverview: {
+        parameters: {
+            query?: {
+                /**
+                 * @description The student's IANA time zone, such as America/Sao_Paulo, used to decide which
+                 *     calendar day each practice and each completion falls on.
+                 */
+                time_zone?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The student's practice overview. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeOverview"];
+                };
+            };
+            /** @description time_zone is not a known IANA time zone. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
         };
