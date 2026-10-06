@@ -208,7 +208,8 @@
     "practiseAgain": "Praticar de novo",
     "backToPath": "Voltar para minha trilha",
     "progressLabel": "Progresso da sessão",
-    "applyIt": "Aplique"
+    "applyIt": "Aplique",
+    "close": "Fechar"
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
@@ -261,7 +262,8 @@
     "howRate": "Depois, avalie a execução com sinceridade: difícil, quase ou limpa.",
     "howLadder": "Após duas execuções limpas seguidas, o andamento sobe 5 BPM; após uma difícil, desce 5.",
     "howWarmUp": "Um aquecimento fica no mesmo andamento e não conta para o seu progresso.",
-    "howTempo": "Fácil ou difícil demais? Mude o andamento antes da próxima execução."
+    "howTempo": "Fácil ou difícil demais? Mude o andamento antes da próxima execução.",
+    "close": "Ocultar a explicação"
   },
   "sessionExercise": {
     "check": "Verificar",

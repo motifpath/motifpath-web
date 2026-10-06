@@ -227,5 +227,8 @@
     "byline": "by {name}",
     "lessons": "{count} lesson | {count} lessons",
     "learningPaths": "{count} learning path | {count} learning paths"
+  },
+  "practiceShell": {
+    "progressLabel": "Progress"
   }
 }

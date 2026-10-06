@@ -119,14 +119,4 @@ describe('AuthenticatedLayout', () => {
     expect(wrapper.get('main').classes()).toContain('2xl:max-w-[96rem]')
   })
 
-  it("keeps a route marked 'compactTop' close under the app bar, so a screen that needs the height gets it", () => {
-    route.meta = { compactTop: true }
-
-    const classes = mountLayout().get('main').classes()
-
-    expect(classes).toContain('py-3')
-    expect(classes).not.toContain('py-5')
-    expect(classes).not.toContain('sm:py-8')
-  })
-
 })

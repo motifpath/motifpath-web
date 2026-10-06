@@ -208,7 +208,8 @@
     "practiseAgain": "Practise again",
     "backToPath": "Back to my path",
     "progressLabel": "Session progress",
-    "applyIt": "Apply it"
+    "applyIt": "Apply it",
+    "close": "Close"
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
@@ -261,7 +262,8 @@
     "howRate": "Afterwards, rate the take honestly: struggled, almost or clean.",
     "howLadder": "After two clean takes in a row the tempo goes up 5 BPM; after a struggle it comes down 5.",
     "howWarmUp": "A warm-up stays at the same tempo and doesn't count toward your progress.",
-    "howTempo": "Too easy or too hard? Change the tempo before the next take."
+    "howTempo": "Too easy or too hard? Change the tempo before the next take.",
+    "close": "Hide the explanation"
   },
   "sessionExercise": {
     "check": "Check",

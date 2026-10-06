@@ -1,6 +1,6 @@
 import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, ref, type Ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 
@@ -15,6 +15,19 @@ vi.mock('@/shared/composables/useApi', () => ({
 const track = vi.fn()
 vi.mock('@/shared/composables/useEventTracking', () => ({
   useEventTracking: () => ({ track }),
+}))
+
+const router = { back: vi.fn(), push: vi.fn() }
+vi.mock('vue-router', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useRouter: () => router,
+}))
+
+let wakeLockActive: Ref<boolean> | null = null
+vi.mock('@/shared/composables/useWakeLock', () => ({
+  useWakeLock: (active: Ref<boolean>) => {
+    wakeLockActive = active
+  },
 }))
 
 const GUITAR = '22222222-2222-4222-8222-222222222222'
@@ -137,6 +150,9 @@ describe('PracticeSessionView', () => {
   beforeEach(() => {
     POST.mockReset()
     track.mockReset()
+    router.back.mockReset()
+    router.push.mockReset()
+    window.history.replaceState({}, '')
     instruments.isLoading.value = false
     instruments.error.value = false
   })
@@ -210,11 +226,65 @@ describe('PracticeSessionView', () => {
     expect(segments(wrapper)[0]).toBe(100)
   })
 
+  it('runs in the Practice Shell: the start is its primary action', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-test="practice-shell"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="start-session"]').attributes()).toHaveProperty('data-primary-action')
+  })
+
+  it('shows where the run is', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+
+    expect(wrapper.get('[data-test="shell-position"]').text()).toBe('1 / 2')
+  })
+
+  it('goes back where the student came from on × before starting', async () => {
+    window.history.replaceState({ back: '/practice' }, '')
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+    expect(router.back).toHaveBeenCalledOnce()
+    expect(events('practice.session_ended')).toEqual([])
+  })
+
+  it('goes to the path on × when the session was opened directly', async () => {
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+    expect(router.push).toHaveBeenCalledWith({ name: 'path' })
+  })
+
+  it('leaves on × once the session is done', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+    expect(router.push).toHaveBeenCalledWith({ name: 'path' })
+    expect(events('practice.session_ended')).toHaveLength(1)
+  })
+
+  it('keeps the screen on while the session runs, and only then', async () => {
+    const wrapper = mountView()
+    expect(wakeLockActive!.value).toBe(false)
+
+    await startSession(wrapper)
+    expect(wakeLockActive!.value).toBe(true)
+
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+    expect(wakeLockActive!.value).toBe(false)
+  })
+
   it('ends the session early and shows how it went', async () => {
     const wrapper = mountView()
     await startSession(wrapper)
 
-    await wrapper.get('[data-test="end-session"]').trigger('click')
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true, answered_count: 0 })])
     expect(wrapper.text()).toContain('Session done')
@@ -234,7 +304,7 @@ describe('PracticeSessionView', () => {
   it('goes back to the choice for another session', async () => {
     const wrapper = mountView()
     await startSession(wrapper)
-    await wrapper.get('[data-test="end-session"]').trigger('click')
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
     await wrapper.get('[data-test="practise-again"]').trigger('click')
 
@@ -379,7 +449,7 @@ describe('PracticeSessionView', () => {
 
       wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
       await flushPromises()
-      await wrapper.get('[data-test="end-session"]').trigger('click')
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
       expect(wrapper.get('[data-test="session-done"]').text()).toContain('You answered or rated 1 item.')
       expect(events('practice.session_ended')).toEqual([expect.objectContaining({ answered_count: 1, left_early: true })])

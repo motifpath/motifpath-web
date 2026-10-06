@@ -289,6 +289,16 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('practice-session')
   })
 
+  it('runs a practice session in the Practice Shell’s layout, with no app bar', async () => {
+    const [layout] = router.resolve('/practice/session').matched
+    // A lazy route component is a loader until the first navigation replaces it with what it loaded.
+    const component = layout!.components!.default
+    const resolved = typeof component === 'function' ? (await (component as () => Promise<{ default: unknown }>)()).default : component
+    const { default: PracticeLayout } = await import('@/shared/components/PracticeLayout.vue')
+
+    expect(resolved).toBe(PracticeLayout)
+  })
+
   it('lets a registered student reach a published course detail page', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')

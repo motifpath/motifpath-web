@@ -1,20 +1,20 @@
 <script setup lang="ts">
 /**
  * What a play-along item is for: what is being practised and why it came up now, the skills and
- * concepts it works on, and how a take, its rating and the tempo work.
+ * concepts it works on, and how a take, its rating and the tempo work. Shown in place, under the
+ * item's header: a practice run never opens a window over itself.
  */
+import { X } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
-import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type Diagram = components['schemas']['Diagram']
 type Reason = components['schemas']['PracticeSessionItem']['reason']
 
-const props = defineProps<{ open: boolean; reason: Reason; diagram: Diagram }>()
+const props = defineProps<{ reason: Reason; diagram: Diagram }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useTypedT()
@@ -37,17 +37,21 @@ const concepts = computed(() => props.diagram.classification?.concepts ?? [])
 </script>
 
 <template>
-  <ModalOverlay
-    :open="open"
-    panel-class="flex max-h-[85vh] w-[min(360px,calc(100vw-2rem))] flex-col gap-4 overflow-y-auto rounded-xl bg-surface-raised p-5 shadow-level2"
-    @close="emit('close')"
-  >
+  <div id="play-along-info" data-test="play-along-info" class="flex flex-col gap-4 rounded-xl bg-surface-raised p-4">
     <div class="flex items-start justify-between gap-3">
       <div class="flex flex-col gap-0.5">
         <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{{ t('playAlongInfo.title') }}</span>
         <span class="text-base font-bold text-ink">{{ localizedName(diagram.names) }}</span>
       </div>
-      <ModalCloseButton @close="emit('close')" />
+      <button
+        type="button"
+        data-test="close-info"
+        class="-mr-2 -mt-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink"
+        :aria-label="t('playAlongInfo.close')"
+        @click="emit('close')"
+      >
+        <X :size="20" aria-hidden="true" />
+      </button>
     </div>
 
     <section class="flex flex-col gap-1">
@@ -83,5 +87,5 @@ const concepts = computed(() => props.diagram.classification?.concepts ?? [])
         <li>{{ t('playAlongInfo.howTempo') }}</li>
       </ul>
     </section>
-  </ModalOverlay>
+  </div>
 </template>
