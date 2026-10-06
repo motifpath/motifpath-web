@@ -133,11 +133,63 @@ describe('usePracticeSessionRun', () => {
     expect(run.takesLeft.value).toBe(1)
   })
 
-  it('moves on after an item’s last take, to the next item’s start tempo and takes', () => {
+  it('is not started until start()', () => {
+    const run = usePracticeSessionRun(twoItems)
+    expect(run.started.value).toBe(false)
+
+    run.start()
+    expect(run.started.value).toBe(true)
+  })
+
+  it('hands over after a play-along’s last take: what was played, how fast, and what’s next', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.setTempo(95)
+    run.rate('clean')
+    run.rate('clean')
+
+    expect(run.handoff.value).toEqual({ done: twoItems.items[0], fastestBpm: 95, next: twoItems.items[1] })
+    expect(run.current.value).toBeNull()
+    expect(run.index.value).toBe(0)
+  })
+
+  it('takes no rating while handing over', () => {
     const run = usePracticeSessionRun(twoItems)
     run.start()
     run.rate('clean')
     run.rate('clean')
+    run.rate('clean')
+
+    expect(tracked('practice.item_answered')).toEqual([])
+  })
+
+  it('never hands over after the last item, nor when an item is skipped', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.nextItem()
+    expect(run.handoff.value).toBeNull()
+
+    for (let i = 0; i < 4; i++) run.rate('clean')
+    expect(run.handoff.value).toBeNull()
+    expect(run.finished.value).toBe(true)
+  })
+
+  it('ends as left early when the student leaves while handing over', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.rate('clean')
+    run.rate('clean')
+    run.end()
+
+    expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true })])
+  })
+
+  it('moves on after an item’s last take and its handoff, to the next item’s start tempo and takes', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.rate('clean')
+    run.rate('clean')
+    run.continueToNext()
 
     expect(run.index.value).toBe(1)
     expect(run.tempo.value).toBe(60)
@@ -196,6 +248,7 @@ describe('usePracticeSessionRun', () => {
     run.start()
     run.rate('clean')
     run.rate('clean')
+    run.continueToNext()
     run.rate('clean')
     run.end()
 
@@ -327,6 +380,8 @@ describe('usePracticeSessionRun', () => {
     expect(run.progress.value).toEqual([0.5, 0])
 
     run.rate('clean')
+    expect(run.progress.value).toEqual([1, 0])
+    run.continueToNext()
     run.rate('almost')
     expect(run.progress.value).toEqual([1, 0.25])
 

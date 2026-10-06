@@ -83,6 +83,10 @@ describe('SessionExercise', () => {
     vi.useRealTimers()
   })
 
+  it('is titled by the exercise’s title', () => {
+    expect(mountExercise({ item: oneCorrect }).get('[data-test="item-title"]').text()).toBe('Name the interval')
+  })
+
   it('shows why the exercise was picked, its prompt and its options', () => {
     const wrapper = mountExercise({ item: oneCorrect })
 

@@ -210,6 +210,22 @@
     "inMyHead": "In my head",
     "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument."
   },
+  "sessionPlan": {
+    "title": "Today's plan",
+    "minutes": "{minutes} min",
+    "start": "Let's go",
+    "playAlong": "Play-along",
+    "cells": "{drill} · {count} note | {drill} · {count} notes",
+    "drills": {
+      "nameTheNote": "Name the note",
+      "findTheNote": "Find the note"
+    },
+    "nextUp": {
+      "played": "You played {name} up to {bpm} BPM.",
+      "next": "Next",
+      "continue": "Continue"
+    }
+  },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
     "goal": "Goal {target} BPM · best clean {best}",
