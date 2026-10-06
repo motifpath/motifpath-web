@@ -39,8 +39,10 @@ const summaryFor = vi.fn((instrumentId: string) => ({
 vi.mock('@/features/student/composables/usePracticeHome', () => ({
   usePracticeOverview: () => overviewState,
   usePracticeSummary: (instrumentId: string) => summaryFor(instrumentId),
+  useFretboardMap: () => ({ item: ref(null), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 
+import FretboardHeatmap from '@/features/student/components/FretboardHeatmap.vue'
 import PracticeDashboard from '@/features/student/components/PracticeDashboard.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 
@@ -209,6 +211,13 @@ describe('PracticeDashboard', () => {
 
     expect(summaryFor).toHaveBeenCalledWith(GUITAR)
     expect(wrapper.get('[data-test="practice-days"]').text()).toContain('2 of the last 7 days')
+  })
+
+  it('shows the instrument’s fretboard map in its tab', async () => {
+    const wrapper = mountHome()
+    await openTab(wrapper, 'Electric bass')
+
+    expect(wrapper.getComponent(FretboardHeatmap).props('instrumentId')).toBe(BASS)
   })
 
   it('shows what improved this week with both values', async () => {

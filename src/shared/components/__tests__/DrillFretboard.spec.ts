@@ -74,4 +74,26 @@ describe('DrillFretboard', () => {
     expect(wrapper.findAll('[data-test="diagram-mark"]').map((mark) => mark.attributes('data-mark'))).toEqual(['wrong', 'right'])
     expect(places(wrapper, '[data-test="cell-mark"]')).toEqual(['6:2', '6:1'])
   })
+
+  it('colours each cell by its level, dashing the fading ones, and names each for screen readers', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: {
+        tuning: STANDARD,
+        maxFret: 11,
+        heat: [
+          { string: 6, fret: 0, level: 'new' as const, fading: false, label: 'String 6, open: New' },
+          { string: 6, fret: 3, level: 'fluent' as const, fading: true, label: 'String 6, fret 3: Fluent, fading' },
+        ],
+        label: 'Fretboard',
+      },
+    })
+
+    const cells = wrapper.findAll('[data-test="heat-cell"]')
+    expect(places(wrapper, '[data-test="heat-cell"]')).toEqual(['6:0', '6:3'])
+    expect(cells.map((cell) => cell.attributes('data-level'))).toEqual(['new', 'fluent'])
+    expect(cells[0]!.attributes('stroke-dasharray')).toBeUndefined()
+    expect(cells[1]!.attributes('stroke-dasharray')).toBeDefined()
+    expect(cells.map((cell) => cell.attributes('aria-label'))).toEqual(['String 6, open: New', 'String 6, fret 3: Fluent, fading'])
+    expect(cells.every((cell) => cell.attributes('role') === 'img')).toBe(true)
+  })
 })
