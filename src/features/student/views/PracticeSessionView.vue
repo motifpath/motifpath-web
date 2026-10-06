@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
  * A practice session, with an instrument in hand or in the head. The student says which
- * instrument they're holding, or none, and how long they have; core composes the session. A tap
- * check comes first when the plan asks for one. Then each exercise and fretboard cell is answered
- * and each play-along played take by take, ending with one that applies what was practised, until
- * the plan runs out or the student ends it. After the last item, the student is asked how the
+ * instrument they're holding, or none, and how long they have; core composes the session, and
+ * today's plan shows what it holds before the student starts it. A tap check comes first when the
+ * plan asks for one. Then each exercise and fretboard cell is answered and each play-along played
+ * take by take, with a card naming what's next after it, ending with one that applies what was
+ * practised, until the plan runs out or the student ends it. After the last item, the student is asked how the
  * drills they practised felt. A session left mid-way, by navigating away or closing or reloading
  * the page, ends as left early.
  *
@@ -15,11 +16,14 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vu
 import { useRoute, useRouter } from 'vue-router'
 
 import FeltQuestions from '@/features/student/components/FeltQuestions.vue'
+import NextUpCard from '@/features/student/components/NextUpCard.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
 import SessionFretboardCell from '@/features/student/components/SessionFretboardCell.vue'
 import TapCheck from '@/features/student/components/TapCheck.vue'
+import TodaysPlan from '@/features/student/components/TodaysPlan.vue'
 import { useComposePracticeSession } from '@/features/student/composables/useComposePracticeSession'
+import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
@@ -76,11 +80,14 @@ async function startSession() {
     composeError.value = outcome.kind
     return
   }
-  const session = usePracticeSessionRun(outcome.plan, { tuningOf })
-  session.start()
-  run.value = session
+  run.value = usePracticeSessionRun(outcome.plan, { tuningOf })
 }
 
+const { labelOf } = usePlanItemNames(() => run.value?.plan.items ?? [])
+
+const started = computed(() => run.value?.started.value ?? false)
+const finished = computed(() => run.value?.finished.value ?? false)
+const running = computed(() => started.value && !finished.value)
 const current = computed(() => run.value?.current.value ?? null)
 const currentCellTuning = computed(() => {
   const cell = current.value?.fretboard_cell
@@ -95,14 +102,12 @@ const tapCheckTuning = computed(() => {
 const showsTapCheck = computed(() => (run.value?.tapCheckPending.value ?? false) && tapCheckTuning.value !== undefined)
 // Without a board to tap on, the tap check is passed over; answers are then judged on their whole time.
 watch(
-  () => (run.value?.tapCheckPending.value ?? false) && tapCheckTuning.value === undefined,
+  () => started.value && (run.value?.tapCheckPending.value ?? false) && tapCheckTuning.value === undefined,
   (cannotShow) => {
     if (cannotShow) run.value!.skipTapCheck()
   },
   { immediate: true },
 )
-const finished = computed(() => run.value?.finished.value ?? false)
-const running = computed(() => run.value !== null && !finished.value)
 
 useWakeLock(running)
 
@@ -198,6 +203,8 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <TodaysPlan v-else-if="!started" :items="run.plan.items" :minutes="run.plan.minutes" :label-of="labelOf" @start="run.start()" />
+
     <section v-else-if="finished" class="flex flex-col gap-3" data-test="session-done">
       <h1 class="text-xl font-semibold">{{ t('practiceSessionView.doneTitle') }}</h1>
       <p class="text-ink-muted">{{ t('practiceSessionView.doneBody', { count: run.answeredCount.value }) }}</p>
@@ -217,6 +224,15 @@ onBeforeUnmount(() => {
       :ratings="run.feltRatings.value"
       @rate="(template, felt) => run!.rateFelt(template, felt)"
       @skip="run.skipFelt()"
+    />
+
+    <NextUpCard
+      v-else-if="run.handoff.value"
+      :done-label="labelOf(run.handoff.value.done)"
+      :fastest-bpm="run.handoff.value.fastestBpm"
+      :next-label="labelOf(run.handoff.value.next)"
+      :next-reason="run.handoff.value.next.reason"
+      @continue="run.continueToNext()"
     />
 
     <TapCheck

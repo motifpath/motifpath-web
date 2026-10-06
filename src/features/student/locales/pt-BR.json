@@ -210,6 +210,22 @@
     "inMyHead": "Na cabeça",
     "nothingInTheHead": "Ainda não há nada para praticar na cabeça. Escolha um instrumento."
   },
+  "sessionPlan": {
+    "title": "O plano de hoje",
+    "minutes": "{minutes} min",
+    "start": "Vamos lá",
+    "playAlong": "Tocar junto",
+    "cells": "{drill} · {count} nota | {drill} · {count} notas",
+    "drills": {
+      "nameTheNote": "Diga a nota",
+      "findTheNote": "Encontre a nota"
+    },
+    "nextUp": {
+      "played": "Você tocou {name} até {bpm} BPM.",
+      "next": "A seguir",
+      "continue": "Continuar"
+    }
+  },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
     "goal": "Meta {target} BPM · melhor limpa {best}",

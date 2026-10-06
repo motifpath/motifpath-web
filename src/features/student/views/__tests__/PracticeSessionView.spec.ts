@@ -8,8 +8,10 @@ type Item = components['schemas']['PracticeSessionItem']
 type Plan = components['schemas']['PracticeSessionPlan']
 
 const POST = vi.fn()
+// Diagrams load to name the plan's play-alongs.
+const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { POST } }),
+  useApi: () => ({ coreApi: { POST, GET } }),
 }))
 
 const track = vi.fn()
@@ -101,7 +103,26 @@ const FeltQuestionsStub = defineComponent({
   },
 })
 
+const TodaysPlanStub = defineComponent({
+  name: 'TodaysPlan',
+  props: { items: { type: Array, required: true }, minutes: { type: Number, required: true }, labelOf: { type: Function, required: true } },
+  emits: ['start'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'plan' }, `${props.minutes} min: ${props.items.length} items`)
+  },
+})
+
+const NextUpCardStub = defineComponent({
+  name: 'NextUpCard',
+  props: { doneLabel: String, fastestBpm: Number, nextLabel: String, nextReason: String },
+  emits: ['continue'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'next-up' }, `${props.doneLabel} up to ${props.fastestBpm} → ${props.nextLabel} (${props.nextReason})`)
+  },
+})
+
 import PracticeSessionView from '@/features/student/views/PracticeSessionView.vue'
+import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const WARM_UP = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -177,14 +198,24 @@ function mountView() {
         SessionFretboardCell: SessionFretboardCellStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
+        TodaysPlan: TodaysPlanStub,
+        NextUpCard: NextUpCardStub,
       },
     },
   })
 }
 
-async function startSession(wrapper: ReturnType<typeof mountView>, composed: Plan = plan()) {
+/** Composes a session, which shows today's plan. */
+async function composeSession(wrapper: ReturnType<typeof mountView>, composed: Plan = plan()) {
   POST.mockResolvedValueOnce({ data: composed, response: { status: 200 } })
   await wrapper.get('[data-test="start-session"]').trigger('click')
+  await flushPromises()
+}
+
+/** Composes a session and starts it from today's plan. */
+async function startSession(wrapper: ReturnType<typeof mountView>, composed: Plan = plan()) {
+  await composeSession(wrapper, composed)
+  wrapper.getComponent(TodaysPlanStub).vm.$emit('start')
   await flushPromises()
 }
 
@@ -211,6 +242,72 @@ describe('PracticeSessionView', () => {
     instruments.isLoading.value = false
     instruments.error.value = false
     instruments.instruments.value = allInstruments
+    clearEmbeddedDiagramCache()
+    GET.mockReset().mockImplementation((_path: string, init: { params: { path: { diagram_id: string } } }) =>
+      Promise.resolve({ data: { diagram_id: init.params.path.diagram_id, names: { en: `Diagram ${init.params.path.diagram_id.slice(0, 4)}` } } }),
+    )
+  })
+
+  describe('today’s plan', () => {
+    it('shows today’s plan once the session is composed, before anything is sent', async () => {
+      const wrapper = mountView()
+      await composeSession(wrapper)
+
+      expect(wrapper.get('[data-test="plan"]').text()).toBe('10 min: 2 items')
+      expect(wrapper.find('[data-test="take"]').exists()).toBe(false)
+      expect(track).not.toHaveBeenCalled()
+      expect(wakeLockActive!.value).toBe(false)
+    })
+
+    it('names the plan’s play-alongs by their diagrams', async () => {
+      const wrapper = mountView()
+      await composeSession(wrapper)
+
+      const labelOf = wrapper.getComponent(TodaysPlanStub).props('labelOf') as (item: Item) => string
+      expect(labelOf(playAlong(DUE, 'due', 60))).toBe('Diagram bbbb')
+    })
+
+    it('starts the session from today’s plan', async () => {
+      const wrapper = mountView()
+      await composeSession(wrapper)
+
+      wrapper.getComponent(TodaysPlanStub).vm.$emit('start')
+      await flushPromises()
+
+      expect(events('practice.session_started')).toHaveLength(1)
+      expect(wrapper.find('[data-test="take"]').exists()).toBe(true)
+      expect(wakeLockActive!.value).toBe(true)
+    })
+
+    it('leaves from today’s plan on × without starting anything', async () => {
+      const wrapper = mountView()
+      await composeSession(wrapper)
+
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+      wrapper.unmount()
+
+      expect(router.push).toHaveBeenCalledWith({ name: 'home' })
+      expect(track).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('next up', () => {
+    it('hands over after a play-along’s last take, then shows the next item on Continue', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper)
+      wrapper.getComponent(PlayAlongTakeStub).vm.$emit('rate', 'clean')
+      wrapper.getComponent(PlayAlongTakeStub).vm.$emit('rate', 'clean')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="take"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="next-up"]').text()).toBe('Diagram aaaa up to 80 → Diagram bbbb (due)')
+
+      wrapper.getComponent(NextUpCardStub).vm.$emit('continue')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="next-up"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="take"]').text()).toBe('60 BPM · 4 of 4 left')
+    })
   })
 
   describe('in the head', () => {
@@ -293,6 +390,14 @@ describe('PracticeSessionView', () => {
       expect(events('practice.tap_check_completed')).toEqual([{ event_type: 'practice.tap_check_completed', median_tap_ms: 320, tap_count: 24 }])
       expect(wrapper.find('[data-test="tap-check"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="cell"]').exists()).toBe(true)
+    })
+
+    it('passes over a tap check it has no board for', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note', '99999999-9999-4999-8999-999999999999')], { tap_check_due: true }))
+
+      expect(wrapper.find('[data-test="tap-check"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="skip-unsupported"]').exists()).toBe(true)
     })
 
     it('goes on to the first item when the tap check is skipped', async () => {
@@ -409,6 +514,8 @@ describe('PracticeSessionView', () => {
     await flushPromises()
     expect(segments(wrapper)).toEqual([100, 0])
 
+    wrapper.getComponent(NextUpCardStub).vm.$emit('continue')
+    await flushPromises()
     take().vm.$emit('rate', 'almost')
     await flushPromises()
     expect(events('practice.item_answered')).toHaveLength(1)

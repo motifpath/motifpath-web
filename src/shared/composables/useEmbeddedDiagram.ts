@@ -25,7 +25,8 @@ export function clearEmbeddedDiagramCache() {
   diagramCache.clear()
 }
 
-function fetchDiagram(coreApi: CoreApi, diagramId: string): Promise<Diagram | null> {
+/** A diagram, fetched once per page load; null when it can't be loaded. */
+export function fetchDiagram(coreApi: CoreApi, diagramId: string): Promise<Diagram | null> {
   const cached = diagramCache.get(diagramId)
   if (cached) return cached
 

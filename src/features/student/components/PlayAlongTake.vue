@@ -19,6 +19,7 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type Item = components['schemas']['PracticeSessionItem']
@@ -37,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{ rate: [rating: TakeRating]; skip: []; tempo: [bpm: number] }>()
 
 const { t } = useTypedT()
+const { localizedName } = useLocalizedName()
 
 const playAlong = computed<PlayAlong>(() => props.item.play_along!)
 const warmUp = computed(() => props.item.reason === 'warm_up')
@@ -178,6 +180,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
     </div>
 
     <template v-else-if="loaded.diagram.value && loaded.instrument.value && loaded.diagramRef.value">
+      <h2 data-test="item-title" class="text-lg font-semibold leading-tight">{{ localizedName(loaded.diagram.value.names) }}</h2>
       <div class="flex flex-col gap-1">
         <div class="flex items-center justify-between gap-2">
           <div class="flex min-w-0 items-center gap-1">

@@ -126,6 +126,10 @@ describe('PlayAlongTake', () => {
     expect(wrapper.get('[data-test="take-dots"]').attributes('aria-label')).toBe('Take 2 of 4')
   })
 
+  it('is titled by its diagram’s name', () => {
+    expect(mountTake().get('[data-test="item-title"]').text()).toBe('A minor pentatonic, box 1')
+  })
+
   it('says why the item was picked', () => {
     expect(mountTake().text()).toContain('Due for review')
   })

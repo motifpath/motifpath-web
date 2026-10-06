@@ -84,6 +84,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col gap-4" data-test="session-exercise">
+    <h2 data-test="item-title" class="-mb-2 text-lg font-semibold leading-tight">{{ exercise.title }}</h2>
     <span data-test="item-reason" class="self-start rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">
       {{ t(pickReasonKeys[item.reason]) }}
     </span>

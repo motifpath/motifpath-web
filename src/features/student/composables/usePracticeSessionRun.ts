@@ -48,6 +48,14 @@ function drillTemplateOf(item: Item): string | null {
   return null
 }
 
+/** A play-along just finished, handing over to the next item. */
+export interface Handoff {
+  done: Item
+  /** The fastest tempo the finished play-along was played at. */
+  fastestBpm: number
+  next: Item
+}
+
 export interface PracticeSessionRunOptions {
   /** The open-string pitches of a fretboard cell's instrument, lowest first; a cell is graded with them. */
   tuningOf?: (instrumentId: string) => string[] | undefined
@@ -75,6 +83,10 @@ export interface PracticeSessionRunOptions {
  * the cell shown, or tapping where the note asked is on its string. It's timed
  * and graded like an exercise.
  *
+ * After a play-along's last take, when another item follows, the run hands
+ * over: it says what was played and how fast, and what's next, and moves on
+ * once the student continues. A skipped item moves on at once.
+ *
  * When the plan asks for a tap check, it comes before the first item: the first
  * item is shown, and timed, once the tap check is completed or skipped. After
  * the last item, the plan's felt questions about the drills the student actually
@@ -95,6 +107,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const answeredCount = computed(() => answeredItems.value.size)
 
   const tapCheckPending = ref(plan.tap_check_due)
+  const handoff = ref<Handoff | null>(null)
   /** After the last item, while the felt questions are asked. */
   const askingFelt = ref(false)
   const practisedTemplates = ref(new Set<string>())
@@ -104,7 +117,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const feltQuestions = computed(() => plan.felt_questions.filter((template) => practisedTemplates.value.has(template)))
 
   const current = computed<Item | null>(() =>
-    finished.value || askingFelt.value || tapCheckPending.value ? null : (plan.items[index.value] ?? null),
+    finished.value || askingFelt.value || tapCheckPending.value || handoff.value ? null : (plan.items[index.value] ?? null),
   )
 
   /** The answer to the exercise on, once given. */
@@ -252,7 +265,17 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     }
     takes.value = [...takes.value, { bpm, rating }]
     chosenTempo.value = null
-    if (takesLeft.value <= 0) nextItem()
+    if (takesLeft.value > 0) return
+    const next = plan.items[index.value + 1]
+    if (next) handoff.value = { done: item, fastestBpm: Math.max(...takes.value.map((take) => take.bpm)), next }
+    else nextItem()
+  }
+
+  /** Moves on from a play-along's handoff to the next item. */
+  function continueToNext() {
+    if (!handoff.value) return
+    handoff.value = null
+    nextItem()
   }
 
   /** Answers the exercise on with the options chosen; only the first answer counts. */
@@ -316,6 +339,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     answeredCount,
     exerciseAnswer,
     cellAnswer,
+    started,
+    handoff,
     tapCheckPending,
     askingFelt,
     feltQuestions,
@@ -331,6 +356,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     rateFelt,
     skipFelt,
     nextItem,
+    continueToNext,
     end,
   }
 }
