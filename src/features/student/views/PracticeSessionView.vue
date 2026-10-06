@@ -38,7 +38,7 @@ watch(
   { immediate: true },
 )
 
-const composeError = ref<'instrument_gone' | 'failed' | null>(null)
+const composeError = ref<'nothing_to_practise' | 'failed' | null>(null)
 const run = shallowRef<ReturnType<typeof usePracticeSessionRun> | null>(null)
 
 async function startSession() {
@@ -105,8 +105,8 @@ onBeforeUnmount(() => {
           </div>
         </fieldset>
 
-        <p v-if="composeError === 'instrument_gone'" class="text-sm text-danger" role="alert">
-          {{ t('practiceSessionView.instrumentGone') }}
+        <p v-if="composeError === 'nothing_to_practise'" class="text-sm text-danger" role="alert">
+          {{ t('practiceSessionView.nothingToPractise') }}
         </p>
         <p v-else-if="composeError === 'failed'" class="text-sm text-danger" role="alert">
           {{ t('practiceSessionView.planError') }}
