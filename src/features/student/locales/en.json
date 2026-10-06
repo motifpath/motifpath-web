@@ -270,5 +270,48 @@
     "right": "Right!",
     "wrong": "Not quite.",
     "next": "Continue"
+  },
+  "practiceHomeView": {
+    "title": "Practice",
+    "start": "Start practising",
+    "overview": "Overview",
+    "tabsLabel": "Practice by instrument",
+    "overviewNoun": "your practice",
+    "overviewError": "We couldn't load your practice.",
+    "summaryNoun": "this instrument's practice",
+    "summaryError": "We couldn't load this instrument's practice.",
+    "noInstruments": "What you're learning suits any instrument, so choose the instrument in your hands when you start. Want an instrument of your own?",
+    "findPath": "Find a path",
+    "practiceDays": "Practice days",
+    "learningDays": "Learning days",
+    "daysOf7": "None of the last 7 days | 1 of the last 7 days | {count} of the last 7 days",
+    "noSuggestion": "Nothing to suggest yet",
+    "progressTitle": "This week",
+    "noProgress": "Nothing has moved yet this week. A session will show it here.",
+    "measures": {
+      "accuracy": "Accuracy",
+      "fluency": "Fluency",
+      "best_clean_tempo_bpm": "Best clean tempo"
+    },
+    "tempoChange": "{before} → {after} BPM",
+    "nextStepsTitle": "Next steps",
+    "steps": {
+      "refresh": "Refresh",
+      "strengthen": "Strengthen",
+      "ready_to_start": "Ready to start"
+    },
+    "seeAll": "See all ({count})",
+    "skillsTitle": "Your skills",
+    "nothingToPractise": "Nothing to practise on this instrument yet.",
+    "anyInstrument": "Any instrument",
+    "fading": "Fading",
+    "coverage": "{met} of {total} met",
+    "levels": {
+      "new": "New",
+      "learning": "Learning",
+      "accurate": "Accurate",
+      "fluent": "Fluent",
+      "retained": "Retained"
+    }
   }
 }

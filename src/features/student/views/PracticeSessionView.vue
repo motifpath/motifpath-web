@@ -10,7 +10,7 @@
  * the student came from. The screen stays on while the session runs.
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
@@ -35,14 +35,18 @@ const { compose, isComposing } = useComposePracticeSession()
 /** Only a fretted instrument's diagrams play along yet. */
 const playable = computed(() => instruments.value.filter((instrument) => instrument.family === 'fretted'))
 
+// The practice home passes the instrument of the tab it was showing, so a start takes two taps.
+const route = useRoute()
+const asked = typeof route.query.instrument === 'string' ? route.query.instrument : null
+
 const instrumentId = ref<string | null>(null)
 const minutes = ref(10)
 watch(
   playable,
   (list) => {
-    if (!list.some((instrument) => instrument.instrument_id === instrumentId.value)) {
-      instrumentId.value = list[0]?.instrument_id ?? null
-    }
+    if (list.some((instrument) => instrument.instrument_id === instrumentId.value)) return
+    const preferred = list.find((instrument) => instrument.instrument_id === asked)
+    instrumentId.value = (preferred ?? list[0])?.instrument_id ?? null
   },
   { immediate: true },
 )
@@ -82,10 +86,10 @@ function practiseAgain() {
 
 const router = useRouter()
 
-/** Back where the student came from, or to their path when the session was opened directly. */
+/** Back where the student came from, or to the practice home when the session was opened directly. */
 function leave() {
   if (window.history.state?.back) router.back()
-  else void router.push({ name: 'path' })
+  else void router.push({ name: 'practice-home' })
 }
 
 function exit() {

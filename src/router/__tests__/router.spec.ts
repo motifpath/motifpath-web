@@ -280,6 +280,18 @@ describe('router', () => {
     expect(router.currentRoute.value.params.learningPathId).toBe('lp-1')
   })
 
+  it('lets a registered student reach the practice home, in the app shell', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/practice')
+    expect(router.currentRoute.value.name).toBe('practice-home')
+    const [layout] = router.currentRoute.value.matched
+    const { default: AuthenticatedLayout } = await import('@/shared/components/AuthenticatedLayout.vue')
+    expect(layout!.components!.default).toBe(AuthenticatedLayout)
+  })
+
   it('lets a registered student reach the practice session', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')

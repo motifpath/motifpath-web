@@ -270,5 +270,48 @@
     "right": "Certo!",
     "wrong": "Não foi dessa vez.",
     "next": "Continuar"
+  },
+  "practiceHomeView": {
+    "title": "Prática",
+    "start": "Começar a praticar",
+    "overview": "Visão geral",
+    "tabsLabel": "Prática por instrumento",
+    "overviewNoun": "sua prática",
+    "overviewError": "Não conseguimos carregar sua prática.",
+    "summaryNoun": "a prática deste instrumento",
+    "summaryError": "Não conseguimos carregar a prática deste instrumento.",
+    "noInstruments": "O que você está aprendendo serve para qualquer instrumento, então escolha o instrumento nas suas mãos ao começar. Quer um instrumento seu?",
+    "findPath": "Encontrar uma trilha",
+    "practiceDays": "Dias de prática",
+    "learningDays": "Dias de estudo",
+    "daysOf7": "Nenhum dos últimos 7 dias | 1 dos últimos 7 dias | {count} dos últimos 7 dias",
+    "noSuggestion": "Nada a sugerir ainda",
+    "progressTitle": "Esta semana",
+    "noProgress": "Nada mudou ainda esta semana. Uma sessão vai aparecer aqui.",
+    "measures": {
+      "accuracy": "Precisão",
+      "fluency": "Fluência",
+      "best_clean_tempo_bpm": "Melhor andamento limpo"
+    },
+    "tempoChange": "{before} → {after} BPM",
+    "nextStepsTitle": "Próximos passos",
+    "steps": {
+      "refresh": "Revisar",
+      "strengthen": "Fortalecer",
+      "ready_to_start": "Pronto para começar"
+    },
+    "seeAll": "Ver todos ({count})",
+    "skillsTitle": "Suas habilidades",
+    "nothingToPractise": "Ainda não há nada para praticar neste instrumento.",
+    "anyInstrument": "Qualquer instrumento",
+    "fading": "Esmaecendo",
+    "coverage": "{met} de {total} dominados",
+    "levels": {
+      "new": "Novo",
+      "learning": "Aprendendo",
+      "accurate": "Preciso",
+      "fluent": "Fluente",
+      "retained": "Retido"
+    }
   }
 }
