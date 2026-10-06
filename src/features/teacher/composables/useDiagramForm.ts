@@ -76,6 +76,9 @@ function makeId(): string {
   return crypto.randomUUID()
 }
 
+/** The most playbacks a diagram may have. */
+export const MAX_PLAYBACKS = 16
+
 /** The tempo a new playback starts at. */
 export const DEFAULT_TEMPO_BPM = 90
 
@@ -284,13 +287,15 @@ export function useDiagramForm() {
     languages.value.filter((code) => (names.value[code] ?? '').trim() === ''),
   )
   // Every piece of text a diagram carries must be written in every one of its languages: the
-  // name, each region's caption, and any custom label or note started in some language.
+  // name, each region's caption, each playback's name, and any custom label or note started in
+  // some language.
   const annotationTexts = computed<LocalizedNames[]>(() => [
     ...regions.value.map((region) => region.description),
+    ...playbacks.value.map((playback) => playback.names),
     ...positions.value.flatMap((position) => [position.customLabel, position.note].filter(hasAnyText)),
   ])
 
-  /** Whether every label, note and region caption is written in each of `codes` — what a copy
+  /** Whether every label, note, region caption and playback name is written in each of `codes` — what a copy
    *  named in those languages needs, since text can't be invented for a language it lacks. */
   function hasTextIn(codes: readonly string[]): boolean {
     return annotationTexts.value.every((text) => codes.every((code) => (text[code] ?? '').trim() !== ''))
@@ -411,8 +416,14 @@ export function useDiagramForm() {
     )
   }
 
-  /** A new playback with no steps after the others, edited from now on; the first one is the default. */
+  const canAddPlayback = computed(() => playbacks.value.length < MAX_PLAYBACKS)
+
+  /**
+   * A new playback with no steps after the others, edited from now on; the first one is the
+   * default. None is added once the diagram has the most it may have.
+   */
   function addPlayback() {
+    if (!canAddPlayback.value) return
     const playback: LocalPlayback = {
       id: makeId(),
       names: defaultPlaybackNames(playbacks.value.length + 1),
@@ -723,6 +734,7 @@ export function useDiagramForm() {
     defaultPlaybackId,
     selectedPlaybackId,
     invalidPlaybackIds,
+    canAddPlayback,
     selectPlayback,
     addPlayback,
     renamePlayback,

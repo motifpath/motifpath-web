@@ -13,7 +13,7 @@
 import { computed, ref } from 'vue'
 import { ChevronLeft, ChevronRight, Circle, Plus, Star, Trash2, X } from 'lucide-vue-next'
 
-import type { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
+import { MAX_PLAYBACKS, type useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import type { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
@@ -232,7 +232,9 @@ const toggleClass = (on: boolean) =>
           <button
             type="button"
             data-test="playback-add"
-            class="flex items-center gap-1 rounded-md border border-dashed border-border bg-surface px-2.5 py-1 text-xs font-semibold text-ink-muted"
+            :disabled="!form.canAddPlayback.value"
+            :title="form.canAddPlayback.value ? undefined : t('diagramSequenceEditor.playbacks.limitReached', { max: MAX_PLAYBACKS })"
+            class="flex items-center gap-1 rounded-md border border-dashed border-border bg-surface px-2.5 py-1 text-xs font-semibold text-ink-muted disabled:opacity-50"
             @click="form.addPlayback()"
           >
             <Plus :size="12" aria-hidden="true" />

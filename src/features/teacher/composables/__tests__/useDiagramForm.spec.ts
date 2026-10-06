@@ -950,6 +950,29 @@ describe('useDiagramForm', () => {
       expect(form.canSave.value).toBe(false)
     })
 
+    it('says a copy needs the playback names in every language it will be named in', () => {
+      const form = useDiagramForm()
+      form.addPosition({ string: 6, fret: 5 })
+      expect(form.hasTextIn(['en', 'pt_BR'])).toBe(true)
+
+      form.addPlayback()
+
+      expect(form.hasTextIn(['en'])).toBe(true)
+      expect(form.hasTextIn(['en', 'pt_BR'])).toBe(false)
+    })
+
+    it('adds no more than 16 playbacks, the most a diagram may have', () => {
+      const form = useDiagramForm()
+      for (let i = 0; i < 16; i++) form.addPlayback()
+      expect(form.canAddPlayback.value).toBe(false)
+
+      form.addPlayback()
+
+      expect(form.playbacks.value).toHaveLength(16)
+      form.removePlayback(form.playbacks.value[0]!.id)
+      expect(form.canAddPlayback.value).toBe(true)
+    })
+
     it("asks for a playback's name in every language of the diagram", () => {
       const form = loadedForm()
 

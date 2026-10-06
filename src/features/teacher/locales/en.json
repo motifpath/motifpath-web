@@ -723,7 +723,8 @@
       "moveEarlier": "Move playback earlier",
       "moveLater": "Move playback later",
       "remove": "Remove playback",
-      "needsSteps": "Add at least one step, or remove this playback, before saving."
+      "needsSteps": "Add at least one step, or remove this playback, before saving.",
+      "limitReached": "A diagram can have at most {max} playbacks."
     }
   },
   "pathStatus": {

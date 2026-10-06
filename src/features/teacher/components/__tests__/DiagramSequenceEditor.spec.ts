@@ -338,6 +338,16 @@ describe('DiagramSequenceEditor', () => {
       expect(wrapper.find('[data-test="playback-needs-steps"]').exists()).toBe(true)
     })
 
+    it('offers no further playback once the diagram has the most it may have, saying why', async () => {
+      const { form, wrapper } = mountEditor(twoPlaybacks())
+      for (let i = 0; i < 14; i++) form.addPlayback()
+      await wrapper.vm.$nextTick()
+
+      const add = wrapper.get('[data-test="playback-add"]')
+      expect(add.attributes('disabled')).toBeDefined()
+      expect(add.attributes('title')).toBe('A diagram can have at most 16 playbacks.')
+    })
+
     it('lists no playbacks for a diagram without any, offering to add one', () => {
       const { wrapper } = mountEditor(makeFrettedDiagram())
 

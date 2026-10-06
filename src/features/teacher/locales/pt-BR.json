@@ -723,7 +723,8 @@
       "moveEarlier": "Mover reprodução para antes",
       "moveLater": "Mover reprodução para depois",
       "remove": "Remover reprodução",
-      "needsSteps": "Adicione pelo menos um passo, ou remova esta reprodução, antes de salvar."
+      "needsSteps": "Adicione pelo menos um passo, ou remova esta reprodução, antes de salvar.",
+      "limitReached": "Um diagrama pode ter no máximo {max} reproduções."
     }
   },
   "pathStatus": {
