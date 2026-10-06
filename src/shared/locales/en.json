@@ -51,7 +51,11 @@
   "exerciseView": {
     "noStimulusImage": "No stimulus image",
     "noStimulusAudio": "No stimulus audio",
-    "diagramChoice": "String {string}, fret {fret}"
+    "diagramChoice": "String {string}, fret {fret}",
+    "markRight": "Right answer",
+    "markWrong": "Your answer, wrong",
+    "choiceMarkedRight": "{choice}, right answer",
+    "choiceMarkedWrong": "{choice}, your answer, wrong"
   },
   "modalCloseButton": {
     "ariaLabel": "Close"

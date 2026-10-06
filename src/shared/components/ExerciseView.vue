@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Volume2 } from 'lucide-vue-next'
+import { Check, Volume2, X } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
+import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import Icon from '@/shared/components/Icon.vue'
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
@@ -43,6 +44,13 @@ const props = withDefaults(
      */
     allowMultiple?: boolean
     direction?: 'column' | 'row'
+    /**
+     * A graded answer, passed only once the caller has graded it: the right options are marked
+     * right and a wrong pick wrong, and the choice is locked. The view still never reads
+     * `is_correct` itself, so without this it stays neutral, for the authoring preview and a
+     * challenge alike.
+     */
+    reveal?: { correctOptionIds: string[] }
   }>(),
   { direction: 'column', allowMultiple: false },
 )
@@ -62,6 +70,7 @@ function isSelected(optionId: string): boolean {
 }
 
 function select(optionId: string): void {
+  if (props.reveal) return
   if (isSelected(optionId)) {
     selected.value = selected.value.filter((id) => id !== optionId)
     return
@@ -75,6 +84,21 @@ function indicatorClasses(optionId: string): string[] {
   const shape = props.allowMultiple ? 'rounded-sm' : 'rounded-full'
   if (!isSelected(optionId)) return [shape, 'border-border']
   return props.allowMultiple ? [shape, 'border-accent', 'bg-accent'] : [shape, 'border-accent']
+}
+
+/** How a graded answer marks an option: right when it is a right one, wrong when picked but not right. */
+function markOf(optionId: string): AnswerMarkKind | undefined {
+  if (!props.reveal) return undefined
+  if (props.reveal.correctOptionIds.includes(optionId)) return 'right'
+  return isSelected(optionId) ? 'wrong' : undefined
+}
+
+/** An option's border and fill: its mark once graded, otherwise whether it is picked. */
+function optionTone(optionId: string, selectedTone: string, idleTone: string): string {
+  const mark = markOf(optionId)
+  if (mark === 'right') return 'border-success bg-success-muted'
+  if (mark === 'wrong') return 'border-danger bg-danger-muted'
+  return isSelected(optionId) ? selectedTone : idleTone
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
@@ -103,6 +127,19 @@ const selectedPositionIds = computed(() =>
   ),
 )
 
+/** A graded answer's marks on the diagram: its cells by option id, or its markers by position id. */
+const answerMarks = computed(() => marksBy(answerCells.value.map((cell) => [cell.optionId, cell.optionId] as const)))
+const positionMarks = computed(() => marksBy([...optionIdByPositionId.value].map(([positionId, optionId]) => [positionId, optionId] as const)))
+
+function marksBy(keyed: (readonly [string, string])[]): Record<string, AnswerMarkKind> {
+  const marks: Record<string, AnswerMarkKind> = {}
+  for (const [key, optionId] of keyed) {
+    const mark = markOf(optionId)
+    if (mark) marks[key] = mark
+  }
+  return marks
+}
+
 function selectPosition(positionId: string): void {
   const optionId = optionIdByPositionId.value.get(positionId)
   if (optionId) select(optionId)
@@ -123,6 +160,14 @@ const audioPlayerEl = ref<HTMLAudioElement | null>(null)
 // isSelected, since selection and playback are click-triggered together but
 // track different things (an answer vs. what's audible right now).
 const playingOptionId = ref<string | null>(null)
+
+function markText(optionId: string): string {
+  return t(markOf(optionId) === 'right' ? 'exerciseView.markRight' : 'exerciseView.markWrong')
+}
+
+function markClass(optionId: string): string {
+  return markOf(optionId) === 'right' ? 'text-success' : 'text-danger'
+}
 
 function selectAndPlay(option: Option): void {
   const el = audioPlayerEl.value
@@ -171,6 +216,8 @@ function selectAndPlay(option: Option): void {
           :answer-cells="answerCells"
           :selected-answer-ids="selected"
           :multiple="allowMultiple"
+          :answer-marks="answerMarks"
+          :position-marks="positionMarks"
           @select="selectPosition"
           @select-answer="select"
         >
@@ -203,6 +250,7 @@ function selectAndPlay(option: Option): void {
           :key="option.option_id"
           data-test="exercise-region"
           :data-selected="isSelected(option.option_id)"
+          :data-mark="markOf(option.option_id)"
           class="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center"
           :style="{
             left: `${(option.region?.x ?? 0) * 100}%`,
@@ -213,7 +261,17 @@ function selectAndPlay(option: Option): void {
           @click="select(option.option_id)"
         >
           <span
-            v-if="isSelected(option.option_id)"
+            v-if="markOf(option.option_id)"
+            data-test="answer-mark"
+            class="flex h-6 w-6 items-center justify-center rounded-full shadow-level2"
+            :class="markOf(option.option_id) === 'right' ? 'bg-success text-success-fg' : 'bg-danger text-danger-fg'"
+          >
+            <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
+            <X v-else :size="16" aria-hidden="true" />
+            <span class="sr-only">{{ markText(option.option_id) }}</span>
+          </span>
+          <span
+            v-else-if="isSelected(option.option_id)"
             data-test="exercise-region-marker"
             class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-raised text-accent shadow-level2"
           >
@@ -244,8 +302,9 @@ function selectAndPlay(option: Option): void {
             :key="option.option_id"
             data-test="exercise-option"
             :data-selected="isSelected(option.option_id)"
+            :data-mark="markOf(option.option_id)"
             class="flex cursor-pointer items-center gap-2 rounded-md border px-[11px] py-[9px]"
-            :class="isSelected(option.option_id) ? 'border-accent bg-accent-muted' : 'border-border bg-transparent'"
+            :class="optionTone(option.option_id, 'border-accent bg-accent-muted', 'border-border bg-transparent')"
             @click="select(option.option_id)"
           >
             <div
@@ -254,6 +313,11 @@ function selectAndPlay(option: Option): void {
               :class="indicatorClasses(option.option_id)"
             />
             <span class="text-[13px] text-ink">{{ option.label }}</span>
+            <span v-if="markOf(option.option_id)" data-test="answer-mark" class="ml-auto" :class="markClass(option.option_id)">
+              <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
+              <X v-else :size="16" aria-hidden="true" />
+              <span class="sr-only">{{ markText(option.option_id) }}</span>
+            </span>
           </div>
         </div>
       </template>
@@ -269,10 +333,21 @@ function selectAndPlay(option: Option): void {
           :key="option.option_id"
           data-test="exercise-option"
           :data-selected="isSelected(option.option_id)"
-          class="cursor-pointer overflow-hidden rounded-md border-2"
-          :class="isSelected(option.option_id) ? 'border-accent' : 'border-border'"
+          :data-mark="markOf(option.option_id)"
+          class="relative cursor-pointer overflow-hidden rounded-md border-2"
+          :class="optionTone(option.option_id, 'border-accent', 'border-border')"
           @click="select(option.option_id)"
         >
+          <span
+            v-if="markOf(option.option_id)"
+            data-test="answer-mark"
+            class="absolute right-1.5 top-1.5 z-[1] flex h-6 w-6 items-center justify-center rounded-full"
+            :class="markOf(option.option_id) === 'right' ? 'bg-success text-success-fg' : 'bg-danger text-danger-fg'"
+          >
+            <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
+            <X v-else :size="16" aria-hidden="true" />
+            <span class="sr-only">{{ markText(option.option_id) }}</span>
+          </span>
           <div
             data-test="exercise-option-media"
             class="flex w-full items-center justify-center overflow-hidden bg-surface-sunken"
@@ -299,12 +374,18 @@ function selectAndPlay(option: Option): void {
           type="button"
           data-test="exercise-option"
           :data-selected="isSelected(option.option_id)"
+          :data-mark="markOf(option.option_id)"
           class="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 px-3 py-3 text-center text-[13px] font-semibold text-ink"
-          :class="isSelected(option.option_id) ? 'border-accent bg-accent-muted' : 'border-border bg-transparent'"
+          :class="optionTone(option.option_id, 'border-accent bg-accent-muted', 'border-border bg-transparent')"
           @click="selectAndPlay(option)"
         >
           <Volume2 :size="16" aria-hidden="true" />
           {{ option.label }}
+          <span v-if="markOf(option.option_id)" data-test="answer-mark" :class="markClass(option.option_id)">
+            <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
+            <X v-else :size="16" aria-hidden="true" />
+            <span class="sr-only">{{ markText(option.option_id) }}</span>
+          </span>
         </button>
         <audio ref="audioPlayerEl" class="hidden" @ended="playingOptionId = null" />
       </div>

@@ -1,32 +1,44 @@
 <script setup lang="ts">
 /**
- * One exercise item of a practice session: the student chooses, checks the answer once,
- * sees whether it was right, and moves on. The parent records the answer; the choice
- * answered with stays shown and can't be changed.
+ * One exercise item of a practice session, answered at its commit point:
+ * with one right option the tap is the answer, since latency counts from the prompt and an extra
+ * tap would read as slowness; with several, the student chooses and then checks. The parent
+ * records the answer. Feedback shows in place: a right answer moves on by itself after a moment
+ * (Continue instead when the student asks for reduced motion); a wrong one reveals the right
+ * option(s) and waits for Continue, so the student sees where the mistake was.
+ *
+ * Number keys 1–9 choose options, so a keyboard can answer too.
  */
-import { computed, ref, watch } from 'vue'
+import { CircleCheck, CircleX } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { ExerciseAnswer } from '@/features/student/composables/usePracticeSessionRun'
 import { pickReasonKeys } from '@/features/student/utils/pickReason'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
+import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Exercise = NonNullable<Item['exercise']>
 
+/** How long a right answer's feedback stays before the session moves on. */
+const AUTO_ADVANCE_MS = 900
+
 const props = defineProps<{
   /** An exercise item. */
   item: Item
-  /** The answer given, once checked. */
+  /** The answer given, once committed. */
   answer: ExerciseAnswer | null
 }>()
 
 const emit = defineEmits<{ answer: [optionIds: string[]]; next: [] }>()
 
 const { t } = useTypedT()
+const { matches: reducedMotion } = useMediaQuery('(prefers-reduced-motion: reduce)')
 
 const exercise = computed<Exercise>(() => props.item.exercise!)
 const allowMultiple = computed(() => hasMultipleCorrectOptions(exercise.value.options))
@@ -41,9 +53,54 @@ watch(
 
 const shown = computed(() => props.answer?.optionIds ?? chosen.value)
 
+/** The right options, handed to the view only once the answer is in. */
+const reveal = computed(() =>
+  props.answer
+    ? { correctOptionIds: exercise.value.options.filter((option) => option.is_correct).map((option) => option.option_id) }
+    : undefined,
+)
+
 function choose(optionIds: string[]) {
-  if (!props.answer) chosen.value = optionIds
+  if (props.answer) return
+  chosen.value = optionIds
+  if (!allowMultiple.value && optionIds.length === 1) emit('answer', optionIds)
 }
+
+let advanceTimer: ReturnType<typeof setTimeout> | undefined
+let movedOn = false
+
+function next() {
+  clearTimeout(advanceTimer)
+  if (movedOn) return
+  movedOn = true
+  emit('next')
+}
+
+watch(
+  () => props.answer,
+  (answer) => {
+    clearTimeout(advanceTimer)
+    movedOn = false
+    // Whether motion is reduced is only known once mounted, so it is read when the moment is up.
+    if (answer?.correct) advanceTimer = setTimeout(() => !reducedMotion.value && next(), AUTO_ADVANCE_MS)
+  },
+  { immediate: true },
+)
+
+function onKeydown(event: KeyboardEvent) {
+  if (props.answer || event.defaultPrevented || !/^[1-9]$/.test(event.key)) return
+  const option = exercise.value.options[Number(event.key) - 1]
+  if (!option) return
+  const id = option.option_id
+  if (!allowMultiple.value) choose([id])
+  else choose(chosen.value.includes(id) ? chosen.value.filter((chosenId) => chosenId !== id) : [...chosen.value, id])
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+  clearTimeout(advanceTimer)
+})
 </script>
 
 <template>
@@ -52,33 +109,45 @@ function choose(optionIds: string[]) {
       {{ t(pickReasonKeys[item.reason]) }}
     </span>
 
-    <div data-test="exercise-options" :inert="answer !== null">
-      <ExerciseView
-        :exercise-type="exercise.exercise_type"
-        :prompt="exercise.prompt"
-        :options="exercise.options"
-        :image-url="exercise.image_url"
-        :diagram-ref="exercise.diagram_ref"
-        :audio-url="exercise.audio_url"
-        :allow-multiple="allowMultiple"
-        :selected-option-ids="shown"
-        @update:selected-option-ids="choose"
-      />
-    </div>
+    <ExerciseView
+      :exercise-type="exercise.exercise_type"
+      :prompt="exercise.prompt"
+      :options="exercise.options"
+      :image-url="exercise.image_url"
+      :diagram-ref="exercise.diagram_ref"
+      :audio-url="exercise.audio_url"
+      :allow-multiple="allowMultiple"
+      :selected-option-ids="shown"
+      :reveal="reveal"
+      @update:selected-option-ids="choose"
+    />
 
-    <div v-if="answer" class="flex flex-wrap items-center gap-3">
-      <p
-        data-test="answer-feedback"
-        role="status"
-        class="rounded-full px-3 py-1 text-sm font-semibold"
-        :class="answer.correct ? 'bg-success-muted text-success' : 'bg-danger-muted text-danger'"
+    <PracticeActionBar>
+      <template v-if="answer">
+        <p
+          data-test="answer-feedback"
+          role="status"
+          class="flex items-center gap-1.5 text-base font-semibold"
+          :class="answer.correct ? 'text-success' : 'text-danger'"
+        >
+          <CircleCheck v-if="answer.correct" :size="22" aria-hidden="true" />
+          <CircleX v-else :size="22" aria-hidden="true" />
+          {{ answer.correct ? t('sessionExercise.right') : t('sessionExercise.wrong') }}
+        </p>
+        <PrimaryButton data-test="next-item" data-primary-action class="ml-auto h-12 px-6" @click="next">
+          {{ t('sessionExercise.next') }}
+        </PrimaryButton>
+      </template>
+      <PrimaryButton
+        v-else-if="allowMultiple"
+        data-test="check-answer"
+        data-primary-action
+        class="h-12 w-full"
+        :disabled="chosen.length === 0"
+        @click="emit('answer', chosen)"
       >
-        {{ answer.correct ? t('sessionExercise.right') : t('sessionExercise.wrong') }}
-      </p>
-      <PrimaryButton data-test="next-item" class="ml-auto" @click="emit('next')">{{ t('sessionExercise.next') }}</PrimaryButton>
-    </div>
-    <PrimaryButton v-else data-test="check-answer" class="self-start" :disabled="chosen.length === 0" @click="emit('answer', chosen)">
-      {{ t('sessionExercise.check') }}
-    </PrimaryButton>
+        {{ t('sessionExercise.check') }}
+      </PrimaryButton>
+    </PracticeActionBar>
   </div>
 </template>

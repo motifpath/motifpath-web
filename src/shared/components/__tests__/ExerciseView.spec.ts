@@ -357,6 +357,85 @@ describe('ExerciseView', () => {
     expect(rows[1]?.attributes('data-selected')).toBe('true')
   })
 
+  describe('a graded answer', () => {
+    function marks(wrapper: ReturnType<typeof mount>, selector = '[data-test="exercise-option"]') {
+      return wrapper.findAll(selector).map((el) => el.attributes('data-mark') ?? null)
+    }
+
+    it('stays neutral until the caller grades it, whatever is selected', () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, selectedOptionIds: ['o2'] },
+      })
+
+      expect(wrapper.find('[data-mark]').exists()).toBe(false)
+    })
+
+    it.each([
+      ['text_response', textOptions],
+      ['audio_recognition', textOptions],
+      ['image_choice', imageOptions],
+      ['audio_selection', audioOptions],
+    ] as const)('reveals the right option and marks a wrong pick for %s', (exerciseType, options) => {
+      const [right, wrong] = options
+      const wrapper = mount(ExerciseView, {
+        props: {
+          exerciseType,
+          prompt: plainTextPrompt('p'),
+          options: [...options],
+          selectedOptionIds: [wrong!.option_id],
+          reveal: { correctOptionIds: [right!.option_id] },
+        },
+      })
+
+      expect(marks(wrapper)).toEqual(['right', 'wrong'])
+      const [rightRow, wrongRow] = wrapper.findAll('[data-test="exercise-option"]')
+      expect(rightRow!.get('[data-test="answer-mark"]').text()).toBe('Right answer')
+      expect(wrongRow!.get('[data-test="answer-mark"]').text()).toBe('Your answer, wrong')
+    })
+
+    it('marks a right pick right, and leaves an option neither right nor picked unmarked', () => {
+      const options: Option[] = [...textOptions, { option_id: 'o3', label: 'Sweep', is_correct: false }]
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options, selectedOptionIds: ['o1'], reveal: { correctOptionIds: ['o1'] } },
+      })
+
+      expect(marks(wrapper)).toEqual(['right', null, null])
+    })
+
+    it('marks the regions of an image', () => {
+      const options: Option[] = [
+        ...regionOptions,
+        { option_id: 'r2', is_correct: false, region: { x: 0.6, y: 0.3, width: 0.1, height: 0.1, shape: 'circle' } },
+      ]
+      const wrapper = mount(ExerciseView, {
+        props: {
+          exerciseType: 'image_recognition',
+          prompt: plainTextPrompt('p'),
+          options,
+          imageUrl: 'https://x/neck.png',
+          selectedOptionIds: ['r2'],
+          reveal: { correctOptionIds: ['r1'] },
+        },
+      })
+
+      expect(marks(wrapper, '[data-test="exercise-region"]')).toEqual(['right', 'wrong'])
+      expect(wrapper.findAll('[data-test="exercise-region"] [data-test="answer-mark"]').map((m) => m.text())).toEqual([
+        'Right answer',
+        'Your answer, wrong',
+      ])
+    })
+
+    it('takes no more choices once graded', async () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, selectedOptionIds: ['o2'], reveal: { correctOptionIds: ['o1'] } },
+      })
+
+      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+
+      expect(wrapper.emitted('update:selectedOptionIds')).toBeUndefined()
+    })
+  })
+
   describe('diagram exercises', () => {
     // The diagram loads itself; these tests only check what ExerciseView hands it and does with its picks.
     const EmbeddedDiagramStub = {
@@ -372,6 +451,8 @@ describe('ExerciseView', () => {
         compact: Boolean,
         // Stands in for the real component's own status: whether it would fall back to its slot.
         unavailable: Boolean,
+        answerMarks: Object,
+        positionMarks: Object,
       },
       emits: ['select', 'selectAnswer'],
       template: '<div data-test="embedded-diagram-stub"><slot v-if="unavailable" name="unavailable" /></div>',
@@ -446,6 +527,31 @@ describe('ExerciseView', () => {
         expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['o-1-5']]])
         expect(wrapper.getComponent(EmbeddedDiagramStub).props('selectedAnswerIds')).toEqual(['o-1-5'])
       })
+    })
+
+    it('marks a graded answer on the diagram’s positions', () => {
+      const diagram = mountStimulus({ selectedOptionIds: ['o-p1'], reveal: { correctOptionIds: ['o-p0', 'o-p5'] } }).getComponent(EmbeddedDiagramStub)
+
+      expect(diagram.props('positionMarks')).toEqual({ p0: 'right', p5: 'right', p1: 'wrong' })
+    })
+
+    it('marks a graded answer on the fretboard cells', () => {
+      const options: Option[] = [
+        { option_id: 'o-6-5', is_correct: true, fret_cell: { string: 6, fret: 5 } },
+        { option_id: 'o-1-5', is_correct: false, fret_cell: { string: 1, fret: 5 } },
+      ]
+      const diagram = mountStimulus({ options, selectedOptionIds: ['o-1-5'], reveal: { correctOptionIds: ['o-6-5'] } }).getComponent(
+        EmbeddedDiagramStub,
+      )
+
+      expect(diagram.props('answerMarks')).toEqual({ 'o-6-5': 'right', 'o-1-5': 'wrong' })
+    })
+
+    it('marks nothing on a diagram before an answer is graded', () => {
+      const diagram = mountStimulus({ selectedOptionIds: ['o-p1'] }).getComponent(EmbeddedDiagramStub)
+
+      expect(diagram.props('positionMarks')).toEqual({})
+      expect(diagram.props('answerMarks')).toEqual({})
     })
 
     it("shows the no-stimulus placeholder when the diagram can't be shown", () => {

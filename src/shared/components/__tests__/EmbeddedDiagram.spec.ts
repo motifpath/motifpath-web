@@ -99,6 +99,18 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.emitted('selectAnswer')).toEqual([['o-1']])
   })
 
+  it('passes the marks of a graded answer through', async () => {
+    serve(makeFrettedDiagram())
+    const wrapper = mount(EmbeddedDiagram, {
+      props: { embed: single, answerMarks: { 'o-1': 'right' }, positionMarks: { p0: 'wrong' } },
+    })
+    await flushPromises()
+
+    const view = wrapper.getComponent(FrettedDiagramView)
+    expect(view.props('answerMarks')).toEqual({ 'o-1': 'right' })
+    expect(view.props('positionMarks')).toEqual({ p0: 'wrong' })
+  })
+
   it('has no caption when none is given', async () => {
     serve(makeFrettedDiagram())
 

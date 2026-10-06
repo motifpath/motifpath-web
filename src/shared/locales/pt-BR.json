@@ -51,7 +51,11 @@
   "exerciseView": {
     "noStimulusImage": "Sem imagem de estímulo",
     "noStimulusAudio": "Sem áudio de estímulo",
-    "diagramChoice": "Corda {string}, casa {fret}"
+    "diagramChoice": "Corda {string}, casa {fret}",
+    "markRight": "Resposta certa",
+    "markWrong": "Sua resposta, errada",
+    "choiceMarkedRight": "{choice}, resposta certa",
+    "choiceMarkedWrong": "{choice}, sua resposta, errada"
   },
   "modalCloseButton": {
     "ariaLabel": "Fechar"
