@@ -21,6 +21,14 @@ describe('useComposePracticeSession', () => {
     expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10 } })
   })
 
+  it('composes a session in the head with no instrument', async () => {
+    POST.mockResolvedValueOnce({ data: { ...plan, instrument_id: null }, response: { status: 200 } })
+
+    await useComposePracticeSession().compose(null, 5)
+
+    expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 5 } })
+  })
+
   it('says composing while the request is in flight', async () => {
     let resolve: (value: unknown) => void = () => {}
     POST.mockReturnValueOnce(new Promise((r) => (resolve = r)))

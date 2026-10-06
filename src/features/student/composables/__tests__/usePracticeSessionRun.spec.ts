@@ -70,8 +70,8 @@ function exerciseItem(exerciseId: string, reason: Item['reason'], fields: Partia
 const WARM_UP = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const DUE = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
-function plan(items: Item[], instrumentId: string | null = GUITAR_ID): Plan {
-  return { practice_session_id: SESSION_ID, instrument_id: instrumentId, minutes: 10, items, felt_questions: [], tap_check_due: false }
+function plan(items: Item[], instrumentId: string | null = GUITAR_ID, fields: Partial<Plan> = {}): Plan {
+  return { practice_session_id: SESSION_ID, instrument_id: instrumentId, minutes: 10, items, felt_questions: [], tap_check_due: false, ...fields }
 }
 
 const twoItems = plan([
@@ -485,6 +485,261 @@ describe('usePracticeSessionRun', () => {
 
       expect(run.tempo.value).toBeNull()
       expect(run.takesTotal.value).toBe(0)
+    })
+  })
+
+  describe('fretboard cells', () => {
+    const LAYOUT = '6ea2d087-ab9c-59dc-9657-8546025414d2'
+    const STANDARD = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
+    const tuningOf = (instrumentId: string) => (instrumentId === LAYOUT ? STANDARD : undefined)
+
+    function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note'): Item {
+      return {
+        item_key: `fretboard_cell:${LAYOUT}:${string}:${fret}`,
+        kind: 'fretboard_cell',
+        reason: 'new',
+        node_id: null,
+        level: 'new',
+        estimated_seconds: 8,
+        fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill },
+      }
+    }
+
+    const inTheHead = (fields: Partial<Plan> = {}) => plan([cell(5, 3, 'name_the_note'), cell(6, 1, 'find_the_note')], null, fields)
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-06T10:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('sends the note named as practice.item_answered, timed from when the cell was shown', () => {
+      const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+      run.start()
+      vi.advanceTimersByTime(1800)
+      run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: `fretboard_cell:${LAYOUT}:5:3`,
+          response: { response_type: 'name_the_note', note_name: 'C', latency_ms: 1800 },
+        },
+      ])
+      expect(run.cellAnswer.value).toEqual({ answer: { response_type: 'name_the_note', note_name: 'C' }, correct: true })
+      expect(run.progress.value).toEqual([1, 0])
+    })
+
+    it('sends the cell tapped to find the note, and says when it is wrong', () => {
+      const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+      run.start()
+      run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+      run.nextItem()
+      vi.advanceTimersByTime(1500)
+      run.answerCell({ response_type: 'find_the_note', string: 6, fret: 2 })
+
+      expect(tracked('practice.item_answered')[1].response).toEqual({ response_type: 'find_the_note', string: 6, fret: 2, latency_ms: 1500 })
+      expect(run.cellAnswer.value?.correct).toBe(false)
+    })
+
+    it('takes only the first answer to a cell', () => {
+      const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+      run.start()
+      run.answerCell({ response_type: 'name_the_note', note_name: 'D' })
+      run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.cellAnswer.value?.correct).toBe(false)
+    })
+
+    it('takes no answer the cell’s drill doesn’t ask for', () => {
+      const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+      run.start()
+      run.answerCell({ response_type: 'find_the_note', string: 5, fret: 3 })
+
+      expect(tracked('practice.item_answered')).toEqual([])
+      expect(run.cellAnswer.value).toBeNull()
+    })
+
+    it('takes no answer to a cell whose instrument’s tuning isn’t known', () => {
+      const run = usePracticeSessionRun(inTheHead())
+      run.start()
+      run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+
+      expect(tracked('practice.item_answered')).toEqual([])
+    })
+
+    describe('tap check', () => {
+      it('is pending before the first item when the plan asks for one', () => {
+        expect(usePracticeSessionRun(inTheHead({ tap_check_due: true }), { tuningOf }).tapCheckPending.value).toBe(true)
+        expect(usePracticeSessionRun(inTheHead(), { tuningOf }).tapCheckPending.value).toBe(false)
+      })
+
+      it('sends a completed tap check with its median and its number of taps', () => {
+        const run = usePracticeSessionRun(inTheHead({ tap_check_due: true }), { tuningOf })
+        run.start()
+        run.completeTapCheck({ medianMs: 320, count: 24 })
+
+        expect(tracked('practice.tap_check_completed')).toEqual([
+          { event_type: 'practice.tap_check_completed', median_tap_ms: 320, tap_count: 24 },
+        ])
+        expect(run.tapCheckPending.value).toBe(false)
+      })
+
+      it('sends nothing for a skipped tap check, and goes on to the first item', () => {
+        const run = usePracticeSessionRun(inTheHead({ tap_check_due: true }), { tuningOf })
+        run.start()
+        run.skipTapCheck()
+
+        expect(tracked('practice.tap_check_completed')).toEqual([])
+        expect(run.tapCheckPending.value).toBe(false)
+        expect(run.current.value?.item_key).toBe(`fretboard_cell:${LAYOUT}:5:3`)
+      })
+
+      it('times the first item from the end of the tap check', () => {
+        const run = usePracticeSessionRun(inTheHead({ tap_check_due: true }), { tuningOf })
+        run.start()
+        vi.advanceTimersByTime(20000)
+        run.completeTapCheck({ medianMs: 320, count: 24 })
+        vi.advanceTimersByTime(1200)
+        run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+
+        expect(tracked('practice.item_answered')[0].response.latency_ms).toBe(1200)
+      })
+
+      it('takes no answer while the tap check is pending', () => {
+        const run = usePracticeSessionRun(inTheHead({ tap_check_due: true }), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+
+        expect(tracked('practice.item_answered')).toEqual([])
+      })
+    })
+
+    describe('felt questions', () => {
+      const asking = { felt_questions: ['fretboard_cell:find_the_note', 'fretboard_cell:name_the_note'] }
+
+      function practiseBoth(run: ReturnType<typeof usePracticeSessionRun>) {
+        run.start()
+        run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+        run.nextItem()
+        run.answerCell({ response_type: 'find_the_note', string: 6, fret: 1 })
+        run.nextItem()
+      }
+
+      it('asks after the last item how the drills practised felt, before the session ends', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        practiseBoth(run)
+
+        expect(run.askingFelt.value).toBe(true)
+        expect(run.feltQuestions.value).toEqual(['fretboard_cell:find_the_note', 'fretboard_cell:name_the_note'])
+        expect(run.finished.value).toBe(false)
+        expect(run.current.value).toBeNull()
+        expect(tracked('practice.session_ended')).toEqual([])
+      })
+
+      it('asks only about the drills the student practised', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+        run.nextItem()
+        run.nextItem()
+
+        expect(run.feltQuestions.value).toEqual(['fretboard_cell:name_the_note'])
+      })
+
+      it('asks about an exercise’s type once one was answered', () => {
+        const withExercise = plan([exerciseItem('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'due')], null, { felt_questions: ['exercise:text_response'] })
+        const run = usePracticeSessionRun(withExercise)
+        run.start()
+        run.answer(['right'])
+        run.nextItem()
+
+        expect(run.feltQuestions.value).toEqual(['exercise:text_response'])
+      })
+
+      it('ends as finished with no question when no drill asked about was practised', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        run.start()
+        run.nextItem()
+        run.nextItem()
+
+        expect(run.askingFelt.value).toBe(false)
+        expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false, felt_ratings: [] })])
+      })
+
+      it('ends the session with the ratings once every question is answered', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        practiseBoth(run)
+        run.rateFelt('fretboard_cell:find_the_note', 'hard')
+        expect(tracked('practice.session_ended')).toEqual([])
+
+        run.rateFelt('fretboard_cell:name_the_note', 'easy')
+
+        expect(run.finished.value).toBe(true)
+        expect(tracked('practice.session_ended')).toEqual([
+          {
+            event_type: 'practice.session_ended',
+            practice_session_id: SESSION_ID,
+            answered_count: 2,
+            left_early: false,
+            felt_ratings: [
+              { drill_template_key: 'fretboard_cell:find_the_note', felt: 'hard' },
+              { drill_template_key: 'fretboard_cell:name_the_note', felt: 'easy' },
+            ],
+          },
+        ])
+      })
+
+      it('ends the session as soon as its only question is answered', () => {
+        const run = usePracticeSessionRun(inTheHead({ felt_questions: ['fretboard_cell:name_the_note'] }), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+        run.nextItem()
+        run.nextItem()
+        run.rateFelt('fretboard_cell:name_the_note', 'about_right')
+
+        expect(tracked('practice.session_ended')[0].felt_ratings).toEqual([{ drill_template_key: 'fretboard_cell:name_the_note', felt: 'about_right' }])
+      })
+
+      it('ignores a rating for a drill it didn’t ask about', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        practiseBoth(run)
+        run.rateFelt('exercise:text_response', 'easy')
+
+        expect(run.finished.value).toBe(false)
+      })
+
+      it('ends the session with the ratings given so far when the questions are skipped', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        practiseBoth(run)
+        run.rateFelt('fretboard_cell:find_the_note', 'hard')
+        run.skipFelt()
+
+        expect(tracked('practice.session_ended')).toEqual([
+          expect.objectContaining({ left_early: false, felt_ratings: [{ drill_template_key: 'fretboard_cell:find_the_note', felt: 'hard' }] }),
+        ])
+      })
+
+      it('ends as finished, not left early, when the student leaves during the questions', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        practiseBoth(run)
+        run.end({ keepalive: true })
+
+        expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false, felt_ratings: [] })])
+        expect(track.mock.calls.at(-1)?.[1]).toEqual({ keepalive: true })
+      })
+
+      it('never asks when the session is left early', () => {
+        const run = usePracticeSessionRun(inTheHead(asking), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'name_the_note', note_name: 'C' })
+        run.end()
+
+        expect(run.askingFelt.value).toBe(false)
+        expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true, felt_ratings: [] })])
+      })
     })
   })
 })

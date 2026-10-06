@@ -237,5 +237,10 @@
   },
   "diagramPlayback": {
     "defaultName": "Reprodução {n}"
+  },
+  "drillFretboard": {
+    "label": "Braço do instrumento",
+    "cell": "Corda {string}, casa {fret}",
+    "openCell": "Corda {string}, solta"
   }
 }

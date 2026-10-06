@@ -8,8 +8,8 @@ type Plan = components['schemas']['PracticeSessionPlan']
 export type ComposeOutcome = { kind: 'composed'; plan: Plan } | { kind: 'nothing_to_practise' } | { kind: 'failed' }
 
 /**
- * Asks core to compose a practice session for the instrument in the student's hands and the
- * minutes they have. Nothing is stored by composing: the session starts when the client sends
+ * Asks core to compose a practice session for the instrument in the student's hands, or for none
+ * when they practise in their head, and the minutes they have. Nothing is stored by composing: the session starts when the client sends
  * its plan as practice.session_started. Core answers not found when it has nothing to offer:
  * nothing the student is learning has items for that instrument, or the instrument is gone.
  */
@@ -17,7 +17,7 @@ export function useComposePracticeSession() {
   const { coreApi } = useApi()
   const isComposing = ref(false)
 
-  async function compose(instrumentId: string, minutes: number): Promise<ComposeOutcome> {
+  async function compose(instrumentId: string | null, minutes: number): Promise<ComposeOutcome> {
     isComposing.value = true
     try {
       const { data, error, response } = await coreApi.POST('/students/me/practice-sessions', {

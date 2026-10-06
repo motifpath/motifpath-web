@@ -13,20 +13,17 @@ import { CircleCheck, CircleX } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import { useAdvanceAfterAnswer } from '@/features/student/composables/useAdvanceAfterAnswer'
 import type { ExerciseAnswer } from '@/features/student/composables/usePracticeSessionRun'
 import { pickReasonKeys } from '@/features/student/utils/pickReason'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Exercise = NonNullable<Item['exercise']>
-
-/** How long a right answer's feedback stays before the session moves on. */
-const AUTO_ADVANCE_MS = 900
 
 const props = defineProps<{
   /** An exercise item. */
@@ -38,7 +35,6 @@ const props = defineProps<{
 const emit = defineEmits<{ answer: [optionIds: string[]]; next: [] }>()
 
 const { t } = useTypedT()
-const { matches: reducedMotion } = useMediaQuery('(prefers-reduced-motion: reduce)')
 
 const exercise = computed<Exercise>(() => props.item.exercise!)
 const allowMultiple = computed(() => hasMultipleCorrectOptions(exercise.value.options))
@@ -66,25 +62,9 @@ function choose(optionIds: string[]) {
   if (!allowMultiple.value && optionIds.length === 1) emit('answer', optionIds)
 }
 
-let advanceTimer: ReturnType<typeof setTimeout> | undefined
-let movedOn = false
-
-function next() {
-  clearTimeout(advanceTimer)
-  if (movedOn) return
-  movedOn = true
-  emit('next')
-}
-
-watch(
+const { next } = useAdvanceAfterAnswer(
   () => props.answer,
-  (answer) => {
-    clearTimeout(advanceTimer)
-    movedOn = false
-    // Whether motion is reduced is only known once mounted, so it is read when the moment is up.
-    if (answer?.correct) advanceTimer = setTimeout(() => !reducedMotion.value && next(), AUTO_ADVANCE_MS)
-  },
-  { immediate: true },
+  () => emit('next'),
 )
 
 function onKeydown(event: KeyboardEvent) {
@@ -99,7 +79,6 @@ function onKeydown(event: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
-  clearTimeout(advanceTimer)
 })
 </script>
 

@@ -36,12 +36,14 @@ const GUITAR = '22222222-2222-4222-8222-222222222222'
 const BASS = '33333333-3333-4333-8333-333333333333'
 const PIANO = '44444444-4444-4444-8444-444444444444'
 
+const STANDARD = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
+const allInstruments = [
+  { instrument_id: GUITAR, names: { en: 'Guitar' }, family: 'fretted', icon: 'acoustic_guitar', languages: ['en'], string_count: 6, tuning: STANDARD },
+  { instrument_id: PIANO, names: { en: 'Piano' }, family: 'keyboard', icon: 'piano', languages: ['en'] },
+  { instrument_id: BASS, names: { en: 'Electric bass' }, family: 'fretted', icon: 'electric_bass', languages: ['en'], string_count: 4, tuning: ['E1', 'A1', 'D2', 'G2'] },
+]
 const instruments = {
-  instruments: ref([
-    { instrument_id: GUITAR, names: { en: 'Guitar' }, family: 'fretted', icon: 'acoustic_guitar', languages: ['en'] },
-    { instrument_id: PIANO, names: { en: 'Piano' }, family: 'keyboard', icon: 'piano', languages: ['en'] },
-    { instrument_id: BASS, names: { en: 'Electric bass' }, family: 'fretted', icon: 'electric_bass', languages: ['en'] },
-  ]),
+  instruments: ref(allInstruments),
   isLoading: ref(false),
   error: ref(false),
   retry: vi.fn(),
@@ -67,6 +69,35 @@ const SessionExerciseStub = defineComponent({
   emits: ['answer', 'next'],
   setup(props) {
     return () => h('div', { 'data-test': 'exercise' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
+  },
+})
+
+// The drill, the tap check and the felt questions are their own components': here they only
+// report what they were given and emit.
+const SessionFretboardCellStub = defineComponent({
+  name: 'SessionFretboardCell',
+  props: { item: { type: Object, required: true }, tuning: { type: Array, required: true }, answer: { type: Object, default: null } },
+  emits: ['answer', 'next'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'cell' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
+  },
+})
+
+const TapCheckStub = defineComponent({
+  name: 'TapCheck',
+  props: { tuning: { type: Array, required: true } },
+  emits: ['complete', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'tap-check' })
+  },
+})
+
+const FeltQuestionsStub = defineComponent({
+  name: 'FeltQuestions',
+  props: { questions: { type: Array, required: true }, ratings: { type: Array, required: true } },
+  emits: ['rate', 'skip'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'felt' }, props.questions.join(','))
   },
 })
 
@@ -120,13 +151,34 @@ function exerciseItem(exerciseId: string): Item {
   }
 }
 
-function plan(items: Item[] = [playAlong(WARM_UP, 'warm_up', 80), playAlong(DUE, 'due', 60)]): Plan {
-  return { practice_session_id: SESSION_ID, instrument_id: GUITAR, minutes: 10, items, felt_questions: [], tap_check_due: false }
+function plan(items: Item[] = [playAlong(WARM_UP, 'warm_up', 80), playAlong(DUE, 'due', 60)], fields: Partial<Plan> = {}): Plan {
+  return { practice_session_id: SESSION_ID, instrument_id: GUITAR, minutes: 10, items, felt_questions: [], tap_check_due: false, ...fields }
+}
+
+function cellItem(string: number, fret: number, drill: 'name_the_note' | 'find_the_note', layout = GUITAR): Item {
+  return {
+    item_key: `fretboard_cell:${layout}:${string}:${fret}`,
+    kind: 'fretboard_cell',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 8,
+    fretboard_cell: { layout_instrument_id: layout, string, fret, drill },
+  }
 }
 
 function mountView() {
   return mount(PracticeSessionView, {
-    global: { stubs: { RouterLink: RouterLinkStub, PlayAlongTake: PlayAlongTakeStub, SessionExercise: SessionExerciseStub } },
+    global: {
+      stubs: {
+        RouterLink: RouterLinkStub,
+        PlayAlongTake: PlayAlongTakeStub,
+        SessionExercise: SessionExerciseStub,
+        SessionFretboardCell: SessionFretboardCellStub,
+        TapCheck: TapCheckStub,
+        FeltQuestions: FeltQuestionsStub,
+      },
+    },
   })
 }
 
@@ -158,6 +210,136 @@ describe('PracticeSessionView', () => {
     route.query = {}
     instruments.isLoading.value = false
     instruments.error.value = false
+    instruments.instruments.value = allInstruments
+  })
+
+  describe('in the head', () => {
+    const headTile = (wrapper: ReturnType<typeof mountView>) => wrapper.get('[data-test="no-instrument-tile"]')
+
+    it('offers to practise in the head, after the instruments', () => {
+      const wrapper = mountView()
+
+      expect(headTile(wrapper).text()).toBe('In my head')
+      expect(headTile(wrapper).get<HTMLInputElement>('input').element.checked).toBe(false)
+    })
+
+    it('composes a session with no instrument', async () => {
+      const wrapper = mountView()
+      await headTile(wrapper).get('input').setValue()
+
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }))
+
+      expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 10 } })
+    })
+
+    it('chooses the head when no instrument can play along', () => {
+      instruments.instruments.value = allInstruments.filter((instrument) => instrument.family === 'keyboard')
+      const wrapper = mountView()
+
+      expect(wrapper.findAll('[data-test="instrument-tile"]')).toHaveLength(0)
+      expect(headTile(wrapper).get<HTMLInputElement>('input').element.checked).toBe(true)
+      expect(wrapper.get('[data-test="start-session"]').attributes('disabled')).toBeUndefined()
+    })
+
+    it('says when there is nothing to practise in the head', async () => {
+      const wrapper = mountView()
+      await headTile(wrapper).get('input').setValue()
+      POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
+      await wrapper.get('[data-test="start-session"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.text()).toContain('There’s nothing to practise in your head yet. Pick an instrument.')
+    })
+  })
+
+  describe('with fretboard cells', () => {
+    it('shows a cell with its instrument’s tuning, and records its answer', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note'), cellItem(6, 1, 'find_the_note')]))
+      const cell = () => wrapper.getComponent(SessionFretboardCellStub)
+
+      expect(cell().props('item')).toMatchObject({ item_key: `fretboard_cell:${GUITAR}:5:3` })
+      expect(cell().props('tuning')).toEqual(STANDARD)
+
+      cell().vm.$emit('answer', { response_type: 'name_the_note', note_name: 'C' })
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: expect.objectContaining({ note_name: 'C' }) })])
+      expect(wrapper.get('[data-test="cell"]').text()).toBe('answered right')
+
+      cell().vm.$emit('next')
+      await flushPromises()
+      expect(cell().props('item')).toMatchObject({ item_key: `fretboard_cell:${GUITAR}:6:1` })
+    })
+
+    it('offers to skip a cell of an instrument it doesn’t know', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note', '99999999-9999-4999-8999-999999999999')]))
+
+      expect(wrapper.find('[data-test="cell"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="skip-unsupported"]').exists()).toBe(true)
+    })
+
+    it('asks for the tap check first when the plan does, on the first cell’s instrument', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(4, 2, 'name_the_note', BASS)], { tap_check_due: true }))
+
+      expect(wrapper.getComponent(TapCheckStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+      expect(wrapper.find('[data-test="cell"]').exists()).toBe(false)
+
+      wrapper.getComponent(TapCheckStub).vm.$emit('complete', { medianMs: 320, count: 24 })
+      await flushPromises()
+
+      expect(events('practice.tap_check_completed')).toEqual([{ event_type: 'practice.tap_check_completed', median_tap_ms: 320, tap_count: 24 }])
+      expect(wrapper.find('[data-test="tap-check"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="cell"]').exists()).toBe(true)
+    })
+
+    it('goes on to the first item when the tap check is skipped', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note')], { tap_check_due: true }))
+
+      wrapper.getComponent(TapCheckStub).vm.$emit('skip')
+      await flushPromises()
+
+      expect(events('practice.tap_check_completed')).toEqual([])
+      expect(wrapper.find('[data-test="cell"]').exists()).toBe(true)
+    })
+
+    it('asks how the drills felt after the last item, then shows the session done', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note')], { felt_questions: ['fretboard_cell:name_the_note'] }))
+      wrapper.getComponent(SessionFretboardCellStub).vm.$emit('answer', { response_type: 'name_the_note', note_name: 'C' })
+      await flushPromises()
+      wrapper.getComponent(SessionFretboardCellStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="felt"]').text()).toBe('fretboard_cell:name_the_note')
+      expect(events('practice.session_ended')).toEqual([])
+
+      wrapper.getComponent(FeltQuestionsStub).vm.$emit('rate', 'fretboard_cell:name_the_note', 'easy')
+      await flushPromises()
+
+      expect(events('practice.session_ended')).toEqual([
+        expect.objectContaining({ left_early: false, felt_ratings: [{ drill_template_key: 'fretboard_cell:name_the_note', felt: 'easy' }] }),
+      ])
+      expect(wrapper.find('[data-test="session-done"]').exists()).toBe(true)
+    })
+
+    it('shows the session done when the felt questions are skipped', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note')], { felt_questions: ['fretboard_cell:name_the_note'] }))
+      wrapper.getComponent(SessionFretboardCellStub).vm.$emit('answer', { response_type: 'name_the_note', note_name: 'C' })
+      await flushPromises()
+      wrapper.getComponent(SessionFretboardCellStub).vm.$emit('next')
+      await flushPromises()
+
+      wrapper.getComponent(FeltQuestionsStub).vm.$emit('skip')
+      await flushPromises()
+
+      expect(events('practice.session_ended')).toEqual([expect.objectContaining({ felt_ratings: [] })])
+      expect(wrapper.find('[data-test="session-done"]').exists()).toBe(true)
+    })
   })
 
   it('offers the instruments a take can be played on as tiles, the first chosen', () => {

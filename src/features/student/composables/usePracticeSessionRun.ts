@@ -1,15 +1,19 @@
 import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import type { components as EventComponents } from '@/api/generated/event-ingestion'
 import { ladderFloor, nextTempo } from '@/features/student/utils/tempoLadder'
 import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
 import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
 import { isExactMatch } from '@/shared/utils/exerciseOptions'
+import { gradeFretboardCell } from '@/shared/utils/fretboardCell'
+import type { CellAnswer } from '@/shared/utils/fretboardCell'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Plan = components['schemas']['PracticeSessionPlan']
 type Item = components['schemas']['PracticeSessionItem']
+type FeltRating = EventComponents['schemas']['FeltRating']
 
 /** Takes of a play-along, as core estimates the session's time with them. */
 const FOCUS_TAKES = 4
@@ -24,6 +28,29 @@ function takesOf(item: Item) {
 export interface ExerciseAnswer {
   optionIds: string[]
   correct: boolean
+}
+
+export interface GradedCellAnswer {
+  answer: CellAnswer
+  correct: boolean
+}
+
+/** A completed tap check: the median time from a fret lighting up to its tap, over how many taps. */
+export interface TapCheckResult {
+  medianMs: number
+  count: number
+}
+
+/** The timed drill an item practises, as felt questions name it; none for a play-along. */
+function drillTemplateOf(item: Item): string | null {
+  if (item.fretboard_cell) return `fretboard_cell:${item.fretboard_cell.drill}`
+  if (item.exercise) return `exercise:${item.exercise.exercise_type}`
+  return null
+}
+
+export interface PracticeSessionRunOptions {
+  /** The open-string pitches of a fretboard cell's instrument, lowest first; a cell is graded with them. */
+  tuningOf?: (instrumentId: string) => string[] | undefined
 }
 
 /**
@@ -43,8 +70,18 @@ export interface ExerciseAnswer {
  * item moves on after its last take, or when the student moves on; the
  * session ends after the last item, or when the student ends it. Nothing is
  * sent before start() or after the end.
+ *
+ * A fretboard cell is answered once, the way its drill asks: naming the note of
+ * the cell shown, or tapping where the note asked is on its string. It's timed
+ * and graded like an exercise.
+ *
+ * When the plan asks for a tap check, it comes before the first item: the first
+ * item is shown, and timed, once the tap check is completed or skipped. After
+ * the last item, the plan's felt questions about the drills the student actually
+ * practised are asked, and the session ends once each has a rating or the
+ * student skips them; a session left early asks none.
  */
-export function usePracticeSessionRun(plan: Plan) {
+export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOptions = {}) {
   const { track } = useEventTracking()
 
   const index = ref(0)
@@ -57,10 +94,23 @@ export function usePracticeSessionRun(plan: Plan) {
   /** How many items the student answered or rated a take of; a warm-up never counts. */
   const answeredCount = computed(() => answeredItems.value.size)
 
-  const current = computed<Item | null>(() => (finished.value ? null : (plan.items[index.value] ?? null)))
+  const tapCheckPending = ref(plan.tap_check_due)
+  /** After the last item, while the felt questions are asked. */
+  const askingFelt = ref(false)
+  const practisedTemplates = ref(new Set<string>())
+  const feltRatings = ref<FeltRating[]>([])
+
+  /** The plan's felt questions about drills the student practised, in the plan's order. */
+  const feltQuestions = computed(() => plan.felt_questions.filter((template) => practisedTemplates.value.has(template)))
+
+  const current = computed<Item | null>(() =>
+    finished.value || askingFelt.value || tapCheckPending.value ? null : (plan.items[index.value] ?? null),
+  )
 
   /** The answer to the exercise on, once given. */
   const exerciseAnswer = ref<ExerciseAnswer | null>(null)
+  /** The answer to the fretboard cell on, once given. */
+  const cellAnswer = ref<GradedCellAnswer | null>(null)
   /** When the item on was shown, which an exercise's latency counts from. */
   let shownAt = 0
 
@@ -102,12 +152,13 @@ export function usePracticeSessionRun(plan: Plan) {
       if (i < index.value) return 1
       if (i > index.value) return 0
       if (item.kind === 'exercise') return exerciseAnswer.value ? 1 : 0
+      if (item.kind === 'fretboard_cell') return cellAnswer.value ? 1 : 0
       const total = takesOf(item)
       return total === 0 ? 0 : takes.value.length / total
     }),
   )
 
-  const active = () => started.value && !finished.value
+  const active = () => started.value && !finished.value && !askingFelt.value
 
   function start() {
     if (started.value) return
@@ -124,13 +175,14 @@ export function usePracticeSessionRun(plan: Plan) {
 
   function finish(leftEarly: boolean, options: { keepalive?: boolean } = {}) {
     finished.value = true
+    askingFelt.value = false
     void track(
       {
         event_type: 'practice.session_ended',
         practice_session_id: plan.practice_session_id,
         answered_count: answeredCount.value,
         left_early: leftEarly,
-        felt_ratings: [],
+        felt_ratings: feltRatings.value,
       },
       options,
     )
@@ -138,13 +190,49 @@ export function usePracticeSessionRun(plan: Plan) {
 
   /** Moves to the next item, or finishes the session after the last one. */
   function nextItem() {
-    if (!active()) return
+    if (!active() || tapCheckPending.value) return
     takes.value = []
     chosenTempo.value = null
     exerciseAnswer.value = null
+    cellAnswer.value = null
     shownAt = Date.now()
     index.value++
-    if (index.value >= plan.items.length) finish(false)
+    if (index.value < plan.items.length) return
+    if (feltQuestions.value.length > 0) askingFelt.value = true
+    else finish(false)
+  }
+
+  /** Counts the item on as answered, and its drill as practised. */
+  function markAnswered(item: Item) {
+    answeredItems.value = new Set(answeredItems.value).add(item.item_key)
+    const template = drillTemplateOf(item)
+    if (template) practisedTemplates.value = new Set(practisedTemplates.value).add(template)
+  }
+
+  /** Sends a completed tap check, then shows the first item. */
+  function completeTapCheck(result: TapCheckResult) {
+    if (!active() || !tapCheckPending.value) return
+    void track({ event_type: 'practice.tap_check_completed', median_tap_ms: Math.round(result.medianMs), tap_count: result.count })
+    skipTapCheck()
+  }
+
+  /** Goes on to the first item without a tap check; answers are then judged on their whole time. */
+  function skipTapCheck() {
+    if (!active() || !tapCheckPending.value) return
+    tapCheckPending.value = false
+    shownAt = Date.now()
+  }
+
+  /** Records how a drill asked about felt; the session ends once every question has a rating. */
+  function rateFelt(template: string, felt: FeltRating['felt']) {
+    if (!askingFelt.value || !feltQuestions.value.includes(template)) return
+    feltRatings.value = [...feltRatings.value.filter((rating) => rating.drill_template_key !== template), { drill_template_key: template, felt }]
+    if (feltRatings.value.length === feltQuestions.value.length) finish(false)
+  }
+
+  /** Ends the session with the felt ratings given so far. */
+  function skipFelt() {
+    if (askingFelt.value) finish(false)
   }
 
   /** Records the student's rating of the take just played at the current tempo. */
@@ -154,7 +242,7 @@ export function usePracticeSessionRun(plan: Plan) {
     if (!active() || !item || bpm === null) return
 
     if (item.reason !== 'warm_up') {
-      answeredItems.value = new Set(answeredItems.value).add(item.item_key)
+      markAnswered(item)
       void track({
         event_type: 'practice.item_answered',
         practice_session_id: plan.practice_session_id,
@@ -174,7 +262,7 @@ export function usePracticeSessionRun(plan: Plan) {
     if (!active() || !item || item.kind !== 'exercise' || !exercise || exerciseAnswer.value || optionIds.length === 0) return
 
     exerciseAnswer.value = { optionIds, correct: isExactMatch(exercise.options, optionIds) }
-    answeredItems.value = new Set(answeredItems.value).add(item.item_key)
+    markAnswered(item)
     const audio = audioMs.get(exercise.exercise_id)
     void track({
       event_type: 'practice.item_answered',
@@ -189,9 +277,32 @@ export function usePracticeSessionRun(plan: Plan) {
     })
   }
 
-  /** Ends the session now, before its last item; `keepalive` when the page is closing. */
+  /** Answers the fretboard cell on, the way its drill asks; only the first answer counts. */
+  function answerCell(answer: CellAnswer) {
+    const item = current.value
+    const cell = item?.fretboard_cell
+    if (!active() || !item || !cell || cellAnswer.value || answer.response_type !== cell.drill) return
+    const tuning = options.tuningOf?.(cell.layout_instrument_id)
+    const correct = tuning ? gradeFretboardCell(tuning, cell, answer) : null
+    if (correct === null) return
+
+    cellAnswer.value = { answer, correct }
+    markAnswered(item)
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { ...answer, latency_ms: Date.now() - shownAt },
+    })
+  }
+
+  /**
+   * Ends the session now; `keepalive` when the page is closing. Before the last item it ends as
+   * left early; during the felt questions, as finished with the ratings given so far.
+   */
   function end(options: { keepalive?: boolean } = {}) {
-    if (active()) finish(true, options)
+    if (askingFelt.value) finish(false, options)
+    else if (active()) finish(true, options)
   }
 
   return {
@@ -204,11 +315,21 @@ export function usePracticeSessionRun(plan: Plan) {
     progress,
     answeredCount,
     exerciseAnswer,
+    cellAnswer,
+    tapCheckPending,
+    askingFelt,
+    feltQuestions,
+    feltRatings,
     finished,
     start,
     setTempo,
     rate,
     answer,
+    answerCell,
+    completeTapCheck,
+    skipTapCheck,
+    rateFelt,
+    skipFelt,
     nextItem,
     end,
   }

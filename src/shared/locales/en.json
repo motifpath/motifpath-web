@@ -237,5 +237,10 @@
   },
   "diagramPlayback": {
     "defaultName": "Playback {n}"
+  },
+  "drillFretboard": {
+    "label": "Fretboard",
+    "cell": "String {string}, fret {fret}",
+    "openCell": "String {string}, open"
   }
 }

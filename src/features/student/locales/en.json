@@ -177,7 +177,7 @@
   },
   "practiceSessionView": {
     "title": "Practice",
-    "intro": "Pick up your instrument and choose how long you have.",
+    "intro": "Choose the instrument in your hands, or practise in your head, and how long you have.",
     "instrumentLabel": "Instrument in your hands",
     "minutesLabel": "How long",
     "minutesOption": "{minutes} min",
@@ -185,7 +185,6 @@
     "starting": "Putting your session together…",
     "loadingNoun": "instruments",
     "instrumentsError": "We couldn't load the instruments.",
-    "noInstruments": "There's no instrument to practise with yet.",
     "planError": "We couldn't put your session together.",
     "nothingToPractise": "There’s nothing to practise on this instrument yet. Pick another one.",
     "endSession": "End session",
@@ -207,7 +206,9 @@
     "backToPath": "Back to my path",
     "progressLabel": "Session progress",
     "applyIt": "Apply it",
-    "close": "Close"
+    "close": "Close",
+    "inMyHead": "In my head",
+    "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument."
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
@@ -268,6 +269,39 @@
     "right": "Right!",
     "wrong": "Not quite.",
     "next": "Continue"
+  },
+  "sessionFretboardCell": {
+    "nameTheNote": "Name this note",
+    "findTheNote": "Find {note} on string {string}",
+    "board": "Fretboard",
+    "notes": "Notes",
+    "markedRight": "right answer",
+    "markedWrong": "your answer, wrong"
+  },
+  "tapCheck": {
+    "title": "Tap check",
+    "intro": "For about 20 seconds, tap each fret as soon as it lights up. It tells us how long a tap takes you, so your answers are timed on what you know, not on your tapping.",
+    "secondsLeft": "{seconds} s left",
+    "board": "Frets to tap",
+    "start": "Start",
+    "skip": "Skip"
+  },
+  "feltQuestions": {
+    "title": "How did it feel?",
+    "easy": "Easy",
+    "aboutRight": "About right",
+    "hard": "Hard",
+    "skip": "Skip",
+    "drills": {
+      "nameTheNote": "Naming notes on the fretboard",
+      "findTheNote": "Finding notes on the fretboard",
+      "textResponse": "Answering questions",
+      "audioRecognition": "Recognising what you hear",
+      "imageRecognition": "Recognising what you see",
+      "imageChoice": "Choosing a picture",
+      "audioSelection": "Choosing a sound",
+      "other": "This drill"
+    }
   },
   "practiceHomeView": {
     "title": "Practice",
