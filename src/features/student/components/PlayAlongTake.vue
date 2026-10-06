@@ -11,7 +11,7 @@ import { Info, Metronome } from 'lucide-vue-next'
 import type { components } from '@/api/generated/core-domain'
 import { withCountIn } from '@/features/student/utils/countIn'
 import { pickReasonKeys } from '@/features/student/utils/pickReason'
-import { TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
+import { ladderFloor, TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import PlayAlongInfo from '@/features/student/components/PlayAlongInfo.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
@@ -20,6 +20,7 @@ import StateLoading from '@/shared/components/StateLoading.vue'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Item = components['schemas']['PracticeSessionItem']
 type PlayAlong = NonNullable<Item['play_along']>
@@ -122,9 +123,27 @@ function rate(rating: TakeRating) {
 }
 
 function changeTempo(step: number) {
+  chooseTempo(props.tempo + step)
+}
+
+function chooseTempo(bpm: number) {
   rated = false
   message.value = null
-  emit('tempo', props.tempo + step)
+  sliding.value = null
+  emit('tempo', bpm)
+}
+
+/** The slider's tempo while it's being dragged; the next take's is chosen once it's released. */
+const sliding = ref<number | null>(null)
+const shownTempo = computed(() => sliding.value ?? props.tempo)
+const slowestTempo = computed(() => ladderFloor(playAlong.value.target_tempo_bpm))
+
+function slide(event: Event) {
+  if (event.target instanceof HTMLInputElement) sliding.value = Number(event.target.value)
+}
+
+function release(event: Event) {
+  if (event.target instanceof HTMLInputElement) chooseTempo(Number(event.target.value))
 }
 
 /** What the ladder did with the last rating, said when the next take's tempo changes. */
@@ -205,7 +224,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
             >
               −{{ TEMPO_STEP_BPM }}
             </button>
-            <span class="min-w-[4.5rem] text-center text-lg font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: tempo }) }}</span>
+            <span data-test="tempo-value" class="min-w-[4.5rem] text-center text-lg font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: shownTempo }) }}</span>
             <button
               v-if="phase === 'ready'"
               type="button"
@@ -218,6 +237,20 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
             </button>
           </div>
         </div>
+        <input
+          v-if="phase === 'ready'"
+          type="range"
+          data-test="tempo-slider"
+          class="h-9 w-full cursor-pointer accent-accent"
+          :min="slowestTempo"
+          :max="MAX_TEMPO_BPM"
+          :step="TEMPO_STEP_BPM"
+          :value="shownTempo"
+          :aria-label="t('playAlongTake.tempoSlider')"
+          :aria-valuetext="t('playAlongTake.bpm', { bpm: shownTempo })"
+          @input="slide"
+          @change="release"
+        />
         <p class="text-xs text-ink-muted">
           {{ warmUp ? t('playAlongTake.warmUpHint') : t('playAlongTake.goal', { target: playAlong.target_tempo_bpm, best }) }}
         </p>

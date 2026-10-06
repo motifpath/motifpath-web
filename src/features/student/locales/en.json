@@ -238,7 +238,8 @@
     "faster": "{step} BPM faster",
     "metronome": "Metronome",
     "info": "About this practice",
-    "takeOf": "Take {current} of {total}"
+    "takeOf": "Take {current} of {total}",
+    "tempoSlider": "Tempo"
   },
   "playAlongInfo": {
     "title": "About this practice",
