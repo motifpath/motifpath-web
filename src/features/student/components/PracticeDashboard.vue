@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * The practice home: an overview across the student's instruments, then a tab per instrument
- * with its summary. Practice and learning days are counts of the last 7, never a streak. The
- * tab last opened is remembered on this device. Starting takes two taps: here, then the
- * session's setup, which already knows the instrument of the tab open. A student whose paths and
+ * The practice dashboard, which the app's home opens on for every signed-in user: an overview
+ * across the student's instruments, then a tab per instrument with its summary. Practice and learning days are counts of the last 7, never a streak. The
+ * tab last opened is remembered on this device. Starting from here opens the session's setup,
+ * which already knows the instrument of the tab open. A student whose paths and
  * courses suit every instrument has no instrument of their own, yet can still practise: they
  * choose the instrument at the start.
  */
@@ -68,7 +68,7 @@ const startTo = computed(() =>
 </script>
 
 <template>
-  <section class="flex flex-col gap-5" data-test="practice-home">
+  <section class="flex flex-col gap-5" data-test="practice-dashboard">
     <header class="flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-xl font-semibold">{{ t('practiceHomeView.title') }}</h1>
       <PrimaryButton v-if="overview" as="RouterLink" data-test="start-practising" :to="startTo" class="flex h-12 items-center px-5">

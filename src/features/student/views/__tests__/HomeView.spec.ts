@@ -26,6 +26,11 @@ vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
 
+const { PracticeDashboard } = vi.hoisted(() => ({
+  PracticeDashboard: { name: 'PracticeDashboard', template: '<div />' },
+}))
+vi.mock('@/features/student/components/PracticeDashboard.vue', () => ({ default: PracticeDashboard }))
+
 import HomeView from '@/features/student/views/HomeView.vue'
 
 function mountView() {
@@ -48,15 +53,23 @@ describe('HomeView', () => {
     expect(link.props('to')).toEqual({ name: 'sign-in' })
   })
 
-  it('links to the learning path when signed in and registered', () => {
+  it('opens on the practice dashboard when signed in and registered', () => {
     auth.isLoaded.value = true
     auth.isSignedIn.value = true
     currentUser.isRegistered = true
     currentUser.state = 'registered'
 
-    const link = mountView().getComponent(RouterLinkStub)
+    const wrapper = mountView()
 
-    expect(link.props('to')).toEqual({ name: 'path' })
+    expect(wrapper.findComponent(PracticeDashboard).exists()).toBe(true)
+    expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
+  })
+
+  it('shows no practice dashboard while signed out', () => {
+    auth.isLoaded.value = true
+    auth.isSignedIn.value = false
+
+    expect(mountView().findComponent(PracticeDashboard).exists()).toBe(false)
   })
 
   it('shows a neutral loading line, with no dead link, while signed in but not yet registered', () => {

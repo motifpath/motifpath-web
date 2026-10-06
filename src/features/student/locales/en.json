@@ -1,7 +1,5 @@
 {
   "home": {
-    "signedInMessage": "You're signed in.",
-    "goToPath": "Go to my path",
     "signedOutMessage": "Sign in to start practising."
   },
   "pathView": {

@@ -41,7 +41,7 @@ vi.mock('@/features/student/composables/usePracticeHome', () => ({
   usePracticeSummary: (instrumentId: string) => summaryFor(instrumentId),
 }))
 
-import PracticeHomeView from '@/features/student/views/PracticeHomeView.vue'
+import PracticeDashboard from '@/features/student/components/PracticeDashboard.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 
 const names = (en: string) => ({ en })
@@ -130,7 +130,7 @@ function summary(overrides: Partial<Summary> = {}): Summary {
 }
 
 function mountHome() {
-  return mount(PracticeHomeView, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  return mount(PracticeDashboard, { global: { stubs: { RouterLink: RouterLinkStub } } })
 }
 
 function tabs(wrapper: ReturnType<typeof mountHome>) {
@@ -150,7 +150,7 @@ function startLink(wrapper: ReturnType<typeof mountHome>) {
 
 enableAutoUnmount(afterEach)
 
-describe('PracticeHomeView', () => {
+describe('PracticeDashboard', () => {
   beforeEach(() => {
     overviewState.item.value = overview()
     overviewState.isLoading.value = false

@@ -153,18 +153,10 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // Practice opens the session setup directly; the dashboard is the home. Old links to
+    // the former practice home keep their chosen instrument.
     path: '/practice',
-    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
-    beforeEnter: () => ensureStudentLocaleLoaded(),
-    children: [
-      {
-        path: '',
-        name: 'practice-home',
-        // Open to every role: anyone can practise.
-        meta: { requiresAuth: true },
-        component: () => import('@/features/student/views/PracticeHomeView.vue'),
-      },
-    ],
+    redirect: (to) => ({ name: 'practice-session', query: to.query }),
   },
   {
     // A practice run takes the whole screen, in the Practice Shell, with no app bar.
