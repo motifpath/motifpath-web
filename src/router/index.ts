@@ -153,6 +153,20 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/practice',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'practice-home',
+        // Open to every role: anyone can practise.
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/PracticeHomeView.vue'),
+      },
+    ],
+  },
+  {
     // A practice run takes the whole screen, in the Practice Shell, with no app bar.
     path: '/practice/session',
     component: () => import('@/shared/components/PracticeLayout.vue'),

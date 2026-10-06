@@ -18,9 +18,11 @@ vi.mock('@/shared/composables/useEventTracking', () => ({
 }))
 
 const router = { back: vi.fn(), push: vi.fn() }
+const route = { query: {} as Record<string, string> }
 vi.mock('vue-router', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useRouter: () => router,
+  useRoute: () => route,
 }))
 
 let wakeLockActive: Ref<boolean> | null = null
@@ -153,6 +155,7 @@ describe('PracticeSessionView', () => {
     router.back.mockReset()
     router.push.mockReset()
     window.history.replaceState({}, '')
+    route.query = {}
     instruments.isLoading.value = false
     instruments.error.value = false
   })
@@ -163,6 +166,29 @@ describe('PracticeSessionView', () => {
     const tiles = wrapper.findAll('[data-test="instrument-tile"]')
     expect(tiles.map((tile) => tile.text())).toEqual(['Guitar', 'Electric bass'])
     expect(tiles.map((tile) => tile.get<HTMLInputElement>('input').element.checked)).toEqual([true, false])
+  })
+
+  it('chooses the instrument the practice home was showing', () => {
+    route.query = { instrument: BASS }
+    const wrapper = mountView()
+
+    const tiles = wrapper.findAll('[data-test="instrument-tile"]')
+    expect(tiles.map((tile) => tile.get<HTMLInputElement>('input').element.checked)).toEqual([false, true])
+  })
+
+  it('chooses the first instrument when the one asked for can’t play along', () => {
+    route.query = { instrument: PIANO }
+    const wrapper = mountView()
+
+    expect(wrapper.findAll('[data-test="instrument-tile"]').map((tile) => tile.get<HTMLInputElement>('input').element.checked)).toEqual([true, false])
+  })
+
+  it('goes to the practice home on × when the session was opened directly', async () => {
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+    expect(router.push).toHaveBeenCalledWith({ name: 'practice-home' })
   })
 
   it('composes a session for the instrument and minutes chosen', async () => {
@@ -250,14 +276,6 @@ describe('PracticeSessionView', () => {
     expect(events('practice.session_ended')).toEqual([])
   })
 
-  it('goes to the path on × when the session was opened directly', async () => {
-    const wrapper = mountView()
-
-    await wrapper.get('[data-test="shell-exit"]').trigger('click')
-
-    expect(router.push).toHaveBeenCalledWith({ name: 'path' })
-  })
-
   it('leaves on × once the session is done', async () => {
     const wrapper = mountView()
     await startSession(wrapper)
@@ -265,7 +283,7 @@ describe('PracticeSessionView', () => {
 
     await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
-    expect(router.push).toHaveBeenCalledWith({ name: 'path' })
+    expect(router.push).toHaveBeenCalledWith({ name: 'practice-home' })
     expect(events('practice.session_ended')).toHaveLength(1)
   })
 
