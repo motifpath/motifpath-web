@@ -189,7 +189,7 @@
     "instrumentsError": "Não conseguimos carregar os instrumentos.",
     "noInstruments": "Ainda não há instrumento para praticar.",
     "planError": "Não conseguimos montar sua sessão.",
-    "instrumentGone": "Esse instrumento não está mais disponível. Escolha outro.",
+    "nothingToPractise": "Ainda não há nada para praticar neste instrumento. Escolha outro.",
     "endSession": "Encerrar sessão",
     "unsupported": "Este tipo de prática ainda não está disponível aqui.",
     "skip": "Pular",

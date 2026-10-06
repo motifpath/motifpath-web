@@ -33,10 +33,10 @@ describe('useComposePracticeSession', () => {
     expect(isComposing.value).toBe(false)
   })
 
-  it('tells an instrument that no longer exists apart', async () => {
+  it('tells nothing to practise on the instrument apart', async () => {
     POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
 
-    await expect(useComposePracticeSession().compose(GUITAR, 10)).resolves.toEqual({ kind: 'instrument_gone' })
+    await expect(useComposePracticeSession().compose(GUITAR, 10)).resolves.toEqual({ kind: 'nothing_to_practise' })
   })
 
   it('fails on any other error, a network one included', async () => {

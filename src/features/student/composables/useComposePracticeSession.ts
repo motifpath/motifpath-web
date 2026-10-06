@@ -5,12 +5,13 @@ import { useApi } from '@/shared/composables/useApi'
 
 type Plan = components['schemas']['PracticeSessionPlan']
 
-export type ComposeOutcome = { kind: 'composed'; plan: Plan } | { kind: 'instrument_gone' } | { kind: 'failed' }
+export type ComposeOutcome = { kind: 'composed'; plan: Plan } | { kind: 'nothing_to_practise' } | { kind: 'failed' }
 
 /**
  * Asks core to compose a practice session for the instrument in the student's hands and the
  * minutes they have. Nothing is stored by composing: the session starts when the client sends
- * its plan as practice.session_started.
+ * its plan as practice.session_started. Core answers not found when it has nothing to offer:
+ * nothing the student is learning has items for that instrument, or the instrument is gone.
  */
 export function useComposePracticeSession() {
   const { coreApi } = useApi()
@@ -23,7 +24,7 @@ export function useComposePracticeSession() {
         body: { instrument_id: instrumentId, minutes },
       })
       if (data) return { kind: 'composed', plan: data }
-      return error && response.status === 404 ? { kind: 'instrument_gone' } : { kind: 'failed' }
+      return error && response.status === 404 ? { kind: 'nothing_to_practise' } : { kind: 'failed' }
     } catch {
       return { kind: 'failed' }
     } finally {

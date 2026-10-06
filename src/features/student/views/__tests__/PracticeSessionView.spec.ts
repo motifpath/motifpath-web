@@ -253,13 +253,13 @@ describe('PracticeSessionView', () => {
     expect(segments(wrapper)).toEqual([0, 0])
   })
 
-  it('asks for another instrument when the chosen one is gone', async () => {
+  it('asks for another instrument when there is nothing to practise on the chosen one', async () => {
     const wrapper = mountView()
     POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
     await wrapper.get('[data-test="start-session"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain("That instrument isn't available any more. Pick another one.")
+    expect(wrapper.text()).toContain('There’s nothing to practise on this instrument yet. Pick another one.')
     expect(wrapper.findAll('[data-test="instrument-tile"]')).toHaveLength(2)
   })
 
