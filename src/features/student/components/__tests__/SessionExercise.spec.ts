@@ -1,7 +1,8 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
+import ExerciseView from '@/shared/components/ExerciseView.vue'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
@@ -45,8 +46,19 @@ const twoCorrect = item('ex-2', [
   { option_id: 'e', is_correct: true, label: 'E' },
 ])
 
-function mountExercise(props: { item: Item; answer?: { optionIds: string[]; correct: boolean } | null }) {
-  return mount(SessionExercise, { props: { answer: null, ...props } })
+let reducedMotion = false
+function stubMatchMedia() {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: query.includes('prefers-reduced-motion') && reducedMotion,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }))
+}
+
+type Answer = { optionIds: string[]; correct: boolean } | null
+
+function mountExercise(props: { item: Item; answer?: Answer }) {
+  return mount(SessionExercise, { props: { answer: null, ...props }, attachTo: document.body })
 }
 
 function option(wrapper: ReturnType<typeof mountExercise>, label: string) {
@@ -55,7 +67,22 @@ function option(wrapper: ReturnType<typeof mountExercise>, label: string) {
   return found
 }
 
+function press(key: string) {
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+}
+
+enableAutoUnmount(afterEach)
+
 describe('SessionExercise', () => {
+  beforeEach(() => {
+    reducedMotion = false
+    stubMatchMedia()
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('shows why the exercise was picked, its prompt and its options', () => {
     const wrapper = mountExercise({ item: oneCorrect })
 
@@ -64,57 +91,151 @@ describe('SessionExercise', () => {
     expect(wrapper.findAll('[data-test="exercise-option"]').map((candidate) => candidate.text())).toEqual(['Minor third', 'Major third'])
   })
 
-  it('checks the answer only once an option is chosen', async () => {
+  describe('with one right option', () => {
+    it('answers with the tap: no Check step', async () => {
+      const wrapper = mountExercise({ item: oneCorrect })
+      expect(wrapper.find('[data-test="check-answer"]').exists()).toBe(false)
+
+      await option(wrapper, 'Major third').trigger('click')
+
+      expect(wrapper.emitted('answer')).toEqual([[['wrong']]])
+    })
+
+    it('answers with a number key, so a keyboard can answer too', () => {
+      const wrapper = mountExercise({ item: oneCorrect })
+
+      press('2')
+
+      expect(wrapper.emitted('answer')).toEqual([[['wrong']]])
+    })
+  })
+
+  describe('with several right options', () => {
+    it('checks the answer only once an option is chosen, from the action bar', async () => {
+      const wrapper = mountExercise({ item: twoCorrect })
+      const check = () => wrapper.get('[data-test="action-bar"] [data-test="check-answer"]')
+      expect(check().attributes('disabled')).toBeDefined()
+      expect(check().attributes()).toHaveProperty('data-primary-action')
+
+      await option(wrapper, 'C').trigger('click')
+      press('3')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.emitted('answer')).toBeUndefined()
+      await check().trigger('click')
+
+      expect(wrapper.emitted('answer')).toEqual([[['c', 'e']]])
+    })
+  })
+
+  describe('a right answer', () => {
+    const answered = { optionIds: ['right'], correct: true }
+
+    it('says so with an icon and words, not colour alone', () => {
+      const wrapper = mountExercise({ item: oneCorrect, answer: answered })
+
+      const feedback = wrapper.get('[data-test="answer-feedback"]')
+      expect(feedback.text()).toBe('Right!')
+      expect(feedback.find('svg').exists()).toBe(true)
+    })
+
+    it('moves on by itself after a moment', () => {
+      const wrapper = mountExercise({ item: oneCorrect, answer: answered })
+
+      vi.advanceTimersByTime(899)
+      expect(wrapper.emitted('next')).toBeUndefined()
+      vi.advanceTimersByTime(1)
+      expect(wrapper.emitted('next')).toHaveLength(1)
+    })
+
+    it('waits for Continue when the student asks for reduced motion', async () => {
+      reducedMotion = true
+      stubMatchMedia()
+      const wrapper = mountExercise({ item: oneCorrect, answer: answered })
+
+      vi.advanceTimersByTime(5000)
+      expect(wrapper.emitted('next')).toBeUndefined()
+      await wrapper.get('[data-test="next-item"]').trigger('click')
+      expect(wrapper.emitted('next')).toHaveLength(1)
+    })
+
+    it('moves on once even when Continue is pressed before the moment passes', async () => {
+      const wrapper = mountExercise({ item: oneCorrect, answer: answered })
+
+      await wrapper.get('[data-test="next-item"]').trigger('click')
+      vi.advanceTimersByTime(2000)
+
+      expect(wrapper.emitted('next')).toHaveLength(1)
+    })
+
+    it('doesn’t move on after the exercise is gone', () => {
+      const wrapper = mountExercise({ item: oneCorrect, answer: answered })
+      const emitted = wrapper.emitted()
+
+      wrapper.unmount()
+      vi.advanceTimersByTime(2000)
+
+      expect(emitted.next).toBeUndefined()
+    })
+  })
+
+  describe('a wrong answer', () => {
+    const answered = { optionIds: ['wrong'], correct: false }
+
+    it('says so, and reveals the right option', () => {
+      const wrapper = mountExercise({ item: oneCorrect, answer: answered })
+
+      expect(wrapper.get('[data-test="answer-feedback"]').text()).toBe('Not quite.')
+      expect(wrapper.getComponent(ExerciseView).props('reveal')).toEqual({ correctOptionIds: ['right'] })
+      expect(option(wrapper, 'Minor third').attributes('data-mark')).toBe('right')
+      expect(option(wrapper, 'Major third').attributes('data-mark')).toBe('wrong')
+    })
+
+    it('waits for Continue, so the student can see where the mistake was', async () => {
+      const wrapper = mountExercise({ item: oneCorrect, answer: answered })
+
+      vi.advanceTimersByTime(5000)
+      expect(wrapper.emitted('next')).toBeUndefined()
+
+      const next = wrapper.get('[data-test="action-bar"] [data-test="next-item"]')
+      expect(next.attributes()).toHaveProperty('data-primary-action')
+      await next.trigger('click')
+      expect(wrapper.emitted('next')).toHaveLength(1)
+    })
+  })
+
+  it('reveals nothing before the answer', () => {
     const wrapper = mountExercise({ item: oneCorrect })
-    expect(wrapper.get('[data-test="check-answer"]').attributes('disabled')).toBeDefined()
 
-    await option(wrapper, 'Major third').trigger('click')
-    await option(wrapper, 'Minor third').trigger('click')
-    await wrapper.get('[data-test="check-answer"]').trigger('click')
-
-    expect(wrapper.emitted('answer')).toEqual([[['right']]])
+    expect(wrapper.getComponent(ExerciseView).props('reveal')).toBeUndefined()
   })
 
-  it('lets every correct option be chosen when there is more than one', async () => {
-    const wrapper = mountExercise({ item: twoCorrect })
-
-    await option(wrapper, 'C').trigger('click')
-    await option(wrapper, 'E').trigger('click')
-    await wrapper.get('[data-test="check-answer"]').trigger('click')
-
-    expect(wrapper.emitted('answer')).toEqual([[['c', 'e']]])
-  })
-
-  it('says a right answer is right, and moves on when asked', async () => {
-    const wrapper = mountExercise({ item: oneCorrect, answer: { optionIds: ['right'], correct: true } })
-
-    expect(wrapper.get('[data-test="answer-feedback"]').text()).toBe('Right!')
-    expect(wrapper.find('[data-test="check-answer"]').exists()).toBe(false)
-    await wrapper.get('[data-test="next-item"]').trigger('click')
-
-    expect(wrapper.emitted('next')).toHaveLength(1)
-  })
-
-  it('says a wrong answer is wrong', () => {
+  it('keeps the options answered with, and takes no more choices or keys', () => {
     const wrapper = mountExercise({ item: oneCorrect, answer: { optionIds: ['wrong'], correct: false } })
 
-    expect(wrapper.get('[data-test="answer-feedback"]').text()).toBe('Not quite.')
-  })
+    press('1')
 
-  it('keeps the options answered with, and no longer takes a choice', () => {
-    const wrapper = mountExercise({ item: oneCorrect, answer: { optionIds: ['wrong'], correct: false } })
-
-    expect(wrapper.get('[data-test="exercise-options"]').attributes('inert')).toBeDefined()
     expect(option(wrapper, 'Major third').attributes('data-selected')).toBe('true')
     expect(option(wrapper, 'Minor third').attributes('data-selected')).toBe('false')
+    expect(wrapper.emitted('answer')).toBeUndefined()
   })
 
   it('starts the next exercise with nothing chosen', async () => {
-    const wrapper = mountExercise({ item: oneCorrect })
-    await option(wrapper, 'Minor third').trigger('click')
+    const wrapper = mountExercise({ item: twoCorrect })
+    await option(wrapper, 'C').trigger('click')
 
+    await wrapper.setProps({ item: oneCorrect })
     await wrapper.setProps({ item: twoCorrect })
 
     expect(wrapper.get('[data-test="check-answer"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('stops listening for keys once it is gone', () => {
+    const wrapper = mountExercise({ item: oneCorrect })
+    const emitted = wrapper.emitted()
+    wrapper.unmount()
+
+    press('1')
+
+    expect(emitted.answer).toBeUndefined()
   })
 })

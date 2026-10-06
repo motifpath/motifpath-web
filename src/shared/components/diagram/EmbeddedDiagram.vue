@@ -17,6 +17,7 @@ import { computed, shallowRef, watch } from 'vue'
 
 import DiagramPlayer, { PLAYER_WIDTH } from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
+import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { isPlayable } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
@@ -34,6 +35,9 @@ const props = withDefaults(
     /** Fretboard cells as answer choices, passed through to the viewer. */
     answerCells?: AnswerCell[]
     selectedAnswerIds?: string[]
+    /** A graded answer's marks, passed through to the viewer. */
+    answerMarks?: Record<string, AnswerMarkKind>
+    positionMarks?: Record<string, AnswerMarkKind>
     multiple?: boolean
     /** The drawing is a picture only, such as an option thumbnail whose card handles the click:
      *  no pointer or keyboard input reaches it, and screen readers skip it. Play and the regions'
@@ -47,6 +51,8 @@ const props = withDefaults(
     selectedPositionIds: () => [],
     answerCells: () => [],
     selectedAnswerIds: () => [],
+    answerMarks: () => ({}),
+    positionMarks: () => ({}),
     multiple: false,
     inert: false,
     compact: false,
@@ -100,6 +106,8 @@ const playable = computed(
         :selected-position-ids="props.selectedPositionIds"
         :answer-cells="props.answerCells"
         :selected-answer-ids="props.selectedAnswerIds"
+        :answer-marks="props.answerMarks"
+        :position-marks="props.positionMarks"
         :multiple="props.multiple"
         :active-position-ids="activePositionIds"
         :compact="props.compact"

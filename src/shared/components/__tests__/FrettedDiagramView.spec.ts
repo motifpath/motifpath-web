@@ -955,6 +955,16 @@ describe('FrettedDiagramView', () => {
       expect(choices[2]!.find('[data-test="diagram-choice-selected"]').exists()).toBe(true)
     })
 
+    it('marks a graded answer: the right choices, and a wrong pick, in place of the check badge', () => {
+      const wrapper = mountChoices({ selectedPositionIds: ['p1'], positionMarks: { p0: 'right', p1: 'wrong' } })
+      const choices = wrapper.findAll('[data-test="diagram-choice"]')
+
+      expect(choices.map((c) => (c.find('[data-test="diagram-mark"]').exists() ? c.get('[data-test="diagram-mark"]').attributes('data-mark') : null))).toEqual(['right', 'wrong', null])
+      expect(wrapper.find('[data-test="diagram-choice-selected"]').exists()).toBe(false)
+      expect(choices[0]!.attributes('aria-label')).toBe('String 6, fret 5, right answer')
+      expect(choices[1]!.attributes('aria-label')).toMatch(/, your answer, wrong$/)
+    })
+
     it('gives each choice a larger invisible tap target than its marker', () => {
       const target = mountChoices().get('[data-test="diagram-choice"] [data-test="diagram-choice-target"]')
 
@@ -1146,6 +1156,25 @@ describe('FrettedDiagramView', () => {
         const selected = wrapper.findAll('[data-test="diagram-cell-selected"]')
         expect(selected).toHaveLength(1)
         expect(wrapper.findAll('[data-test="diagram-cell"]')[0]!.attributes('aria-checked')).toBe('true')
+      })
+
+      it('marks a graded answer: the right cells, and a wrong pick, in place of the check badge', () => {
+        const wrapper = mount(FrettedDiagramView, {
+          props: {
+            diagram: makeFrettedDiagram(),
+            instrument: makeFrettedInstrument(),
+            diagramRef: makeDiagramRef({ layers: { hidden_position_ids: ['p0'] } }),
+            answerCells: cells,
+            selectedAnswerIds: ['o-1-5'],
+            answerMarks: { 'o-6-5': 'right', 'o-1-5': 'wrong' },
+          },
+        })
+        const targets = wrapper.findAll('[data-test="diagram-cell"]')
+
+        expect(targets.map((c) => (c.find('[data-test="diagram-mark"]').exists() ? c.get('[data-test="diagram-mark"]').attributes('data-mark') : null))).toEqual(['right', 'wrong', null])
+        expect(wrapper.find('[data-test="diagram-cell-selected"]').exists()).toBe(false)
+        expect(targets[0]!.attributes('aria-label')).toBe('String 6, fret 5, right answer')
+        expect(targets[1]!.attributes('aria-label')).toBe('String 1, fret 5, your answer, wrong')
       })
     })
   })

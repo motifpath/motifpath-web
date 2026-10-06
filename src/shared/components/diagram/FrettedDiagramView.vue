@@ -52,6 +52,8 @@ import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { effectiveLabelMode, markerTextKind } from '@/shared/utils/diagramLabels'
+import AnswerMark from '@/shared/components/diagram/AnswerMark.vue'
+import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
 import FretboardMarkerShape from '@/shared/components/diagram/FretboardMarkerShape.vue'
 import RegionInfoRail from '@/shared/components/diagram/RegionInfoRail.vue'
@@ -84,6 +86,10 @@ const props = withDefaults(
     /** The fretboard cells a student can pick as answers; none by default. */
     answerCells?: AnswerCell[]
     selectedAnswerIds?: string[]
+    /** A graded answer's marks on the answer cells, by option id; none before grading. */
+    answerMarks?: Record<string, AnswerMarkKind>
+    /** A graded answer's marks on the selectable markers, by position id; none before grading. */
+    positionMarks?: Record<string, AnswerMarkKind>
     /** The positions sounding right now, while the diagram plays. A hidden one stays undrawn. */
     activePositionIds?: string[]
     /** Scale a plain drawing to fit its container, for a thumbnail, instead of drawing it at a
@@ -109,6 +115,8 @@ const props = withDefaults(
     revealHidden: false,
     answerCells: () => [],
     selectedAnswerIds: () => [],
+    answerMarks: () => ({}),
+    positionMarks: () => ({}),
     activePositionIds: () => [],
   },
 )
@@ -433,7 +441,7 @@ function choiceAttrs(position: Marker): Record<string, string | number | boolean
     tabindex: 0,
     role: props.multiple ? 'checkbox' : 'radio',
     'aria-checked': isSelectedChoice(position),
-    'aria-label': t('exerciseView.diagramChoice', { string: position.string, fret: position.fret }),
+    'aria-label': markedLabel(t('exerciseView.diagramChoice', { string: position.string, fret: position.fret }), props.positionMarks[position.positionId]),
     ...(position.note ? { 'data-note-marker': '', 'aria-describedby': noteId(position) } : {}),
   }
 }
@@ -464,8 +472,14 @@ function cellAttrs(cell: AnswerCell): Record<string, string | number | boolean> 
     tabindex: 0,
     role: props.multiple ? 'checkbox' : 'radio',
     'aria-checked': isSelectedAnswer(cell),
-    'aria-label': t('exerciseView.diagramChoice', { string: cell.string, fret: cell.fret }),
+    'aria-label': markedLabel(t('exerciseView.diagramChoice', { string: cell.string, fret: cell.fret }), props.answerMarks[cell.optionId]),
   }
+}
+
+/** A choice's name, with a graded answer's mark said in words. */
+function markedLabel(choice: string, mark: AnswerMarkKind | undefined): string {
+  if (!mark) return choice
+  return t(mark === 'right' ? 'exerciseView.choiceMarkedRight' : 'exerciseView.choiceMarkedWrong', { choice })
 }
 
 /** Where a selected choice's check badge sits, off the marker's top-left. */
@@ -652,7 +666,15 @@ function noteAlignClass(position: Marker): string {
               stroke-width="2"
               :stroke-dasharray="isChoice(position) ? '4 3' : undefined"
             />
-            <g v-if="isSelectedChoice(position)" data-test="diagram-choice-selected">
+            <AnswerMark
+              v-if="positionMarks[position.positionId]"
+              :mark="positionMarks[position.positionId]!"
+              :cx="markerX(position.fret)"
+              :cy="y(position.string)"
+              :ring-radius="MARKER_RADIUS + 2"
+              :badge-offset="BADGE_OFFSET"
+            />
+            <g v-else-if="isSelectedChoice(position)" data-test="diagram-choice-selected">
               <circle
                 :cx="markerX(position.fret)"
                 :cy="y(position.string)"
@@ -698,7 +720,15 @@ function noteAlignClass(position: Marker): string {
               stroke-width="2"
               stroke-dasharray="4 3"
             />
-            <g v-if="isSelectedAnswer(cell)" data-test="diagram-cell-selected">
+            <AnswerMark
+              v-if="answerMarks[cell.optionId]"
+              :mark="answerMarks[cell.optionId]!"
+              :cx="markerX(cell.fret)"
+              :cy="y(cell.string)"
+              :ring-radius="MARKER_RADIUS + 2"
+              :badge-offset="BADGE_OFFSET"
+            />
+            <g v-else-if="isSelectedAnswer(cell)" data-test="diagram-cell-selected">
               <circle
                 :cx="markerX(cell.fret)"
                 :cy="y(cell.string)"
