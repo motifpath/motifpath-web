@@ -1,12 +1,14 @@
 // Regenerates the typed API client in src/api/generated/ from the OpenAPI specs
-// in motifpath-specs. Run via `npm run generate:api` after a spec change.
+// in motifpath-specs, and copies the practice graders' golden cases next to it,
+// so the client's instant feedback is tested against the cases the server runs.
+// Run via `npm run generate:api` after a spec change.
 //
 // The specs repo is expected as a sibling checkout; override with SPECS_DIR.
 // openapi-typescript resolves external $refs (e.g. events.yaml) on its own,
 // so no separate bundle step is needed.
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
@@ -45,4 +47,12 @@ for (const { spec, out } of specs) {
     ['openapi-typescript', specPath, '--output', outPath, '--root-types'],
     { stdio: 'inherit', cwd: repoRoot },
   )
+}
+
+const goldenDir = resolve(specsDir, 'golden/practice-graders')
+const goldenOutDir = resolve(outDir, 'golden/practice-graders')
+mkdirSync(goldenOutDir, { recursive: true })
+for (const file of readdirSync(goldenDir).filter((name) => name.endsWith('.json'))) {
+  console.log(`golden/practice-graders/${file} -> src/api/generated/golden/practice-graders/${file}`)
+  copyFileSync(resolve(goldenDir, file), resolve(goldenOutDir, file))
 }
