@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The Practice Shell: the one layout of every practice run (ADR-049). An exit, the student's
+ * The Practice Shell: the one layout of every practice run. An exit, the student's
  * place in the run and its progress on top; what is played or shown and what the student does
  * below; the action in a PracticeActionBar at the bottom. No other navigation.
  *
