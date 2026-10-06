@@ -5,19 +5,26 @@
  * each play-along played take by take, ending with one that applies what was practised, until
  * the plan runs out or the student ends it. A session left mid-way, by
  * navigating away or closing or reloading the page, ends as left early.
+ *
+ * All of it runs in the Practice Shell: × ends a running session, and otherwise leaves for where
+ * the student came from. The screen stays on while the session runs.
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
 import { useComposePracticeSession } from '@/features/student/composables/useComposePracticeSession'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
+import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
+import PracticeShell from '@/shared/components/PracticeShell.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { useWakeLock } from '@/shared/composables/useWakeLock'
 
 const MINUTE_CHOICES = [5, 10, 15, 20, 30] as const
 
@@ -58,9 +65,32 @@ async function startSession() {
 
 const current = computed(() => run.value?.current.value ?? null)
 const finished = computed(() => run.value?.finished.value ?? false)
+const running = computed(() => run.value !== null && !finished.value)
+
+useWakeLock(running)
+
+const position = computed(() => {
+  const session = run.value
+  if (!session || !running.value) return undefined
+  const total = session.plan.items.length
+  return { current: Math.min(session.index.value + 1, total), total }
+})
 
 function practiseAgain() {
   run.value = null
+}
+
+const router = useRouter()
+
+/** Back where the student came from, or to their path when the session was opened directly. */
+function leave() {
+  if (window.history.state?.back) router.back()
+  else void router.push({ name: 'path' })
+}
+
+function exit() {
+  if (running.value) run.value!.end()
+  else leave()
 }
 
 // Sent with keepalive so the request outlives the page. A phone that discards a background
@@ -76,8 +106,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="flex flex-col" :class="run && !finished ? 'gap-3' : 'gap-5'" data-test="practice-session">
-    <template v-if="!run">
+  <PracticeShell
+    :exit-label="running ? t('practiceSessionView.endSession') : t('practiceSessionView.close')"
+    :position="position"
+    :progress="running ? run!.progress.value : undefined"
+    @exit="exit"
+  >
+    <section v-if="!run" class="flex flex-col gap-5" data-test="practice-session">
       <header class="flex flex-col gap-1">
         <h1 class="text-xl font-semibold">{{ t('practiceSessionView.title') }}</h1>
         <p class="text-sm text-ink-muted">{{ t('practiceSessionView.intro') }}</p>
@@ -98,7 +133,7 @@ onBeforeUnmount(() => {
             <label
               v-for="choice in MINUTE_CHOICES"
               :key="choice"
-              class="cursor-pointer rounded-md border px-3 py-2 text-sm"
+              class="flex h-12 cursor-pointer items-center rounded-md border px-4 text-sm"
               :class="minutes === choice ? 'border-accent bg-accent-muted' : 'border-border'"
             >
               <input v-model="minutes" type="radio" name="minutes" class="sr-only" :value="choice" :data-test="`minutes-${choice}`" />
@@ -114,48 +149,28 @@ onBeforeUnmount(() => {
           {{ t('practiceSessionView.planError') }}
         </p>
 
-        <PrimaryButton data-test="start-session" :disabled="isComposing || !instrumentId" class="self-start" @click="startSession">
-          {{ isComposing ? t('practiceSessionView.starting') : t('practiceSessionView.start') }}
-        </PrimaryButton>
+        <PracticeActionBar>
+          <PrimaryButton data-test="start-session" data-primary-action :disabled="isComposing || !instrumentId" class="h-12 w-full" @click="startSession">
+            {{ isComposing ? t('practiceSessionView.starting') : t('practiceSessionView.start') }}
+          </PrimaryButton>
+        </PracticeActionBar>
       </div>
-    </template>
+    </section>
 
-    <div v-else-if="finished" class="flex flex-col items-start gap-3" data-test="session-done">
+    <section v-else-if="finished" class="flex flex-col gap-3" data-test="session-done">
       <h1 class="text-xl font-semibold">{{ t('practiceSessionView.doneTitle') }}</h1>
       <p class="text-ink-muted">{{ t('practiceSessionView.doneBody', { count: run.answeredCount.value }) }}</p>
-      <div class="flex flex-wrap items-center gap-4">
-        <PrimaryButton data-test="practise-again" @click="practiseAgain">{{ t('practiceSessionView.practiseAgain') }}</PrimaryButton>
+      <PracticeActionBar>
+        <PrimaryButton data-test="practise-again" data-primary-action class="h-12 flex-1" @click="practiseAgain">
+          {{ t('practiceSessionView.practiseAgain') }}
+        </PrimaryButton>
         <RouterLink :to="{ name: 'path' }" class="text-sm font-medium text-accent-text underline">
           {{ t('practiceSessionView.backToPath') }}
         </RouterLink>
-      </div>
-    </div>
+      </PracticeActionBar>
+    </section>
 
-    <template v-else-if="current">
-      <div class="flex items-center gap-3">
-        <div
-          class="flex flex-1 gap-1"
-          role="progressbar"
-          :aria-label="t('practiceSessionView.progressLabel')"
-          aria-valuemin="0"
-          :aria-valuemax="run.plan.items.length"
-          :aria-valuenow="run.index.value"
-        >
-          <div
-            v-for="(filled, i) in run.progress.value"
-            :key="i"
-            data-test="session-segment"
-            :data-filled="Math.round(filled * 100)"
-            class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken"
-          >
-            <div class="h-full bg-accent transition-all" :style="{ width: `${filled * 100}%` }" />
-          </div>
-        </div>
-        <button type="button" data-test="end-session" class="shrink-0 rounded-lg border border-border px-3 py-1.5 text-sm" @click="run.end()">
-          {{ t('practiceSessionView.endSession') }}
-        </button>
-      </div>
-
+    <section v-else-if="current" class="flex flex-col gap-3" data-test="practice-session">
       <h2 v-if="current.reason === 'application'" data-test="apply-it" class="text-lg font-semibold">
         {{ t('practiceSessionView.applyIt') }}
       </h2>
@@ -179,10 +194,12 @@ onBeforeUnmount(() => {
       />
       <div v-else class="flex flex-col items-start gap-3">
         <p class="text-ink-muted">{{ t('practiceSessionView.unsupported') }}</p>
-        <button type="button" data-test="skip-unsupported" class="text-sm font-medium text-accent-text underline" @click="run.nextItem()">
-          {{ t('practiceSessionView.skip') }}
-        </button>
+        <PracticeActionBar>
+          <PrimaryButton data-test="skip-unsupported" data-primary-action class="h-12 w-full" @click="run.nextItem()">
+            {{ t('practiceSessionView.skip') }}
+          </PrimaryButton>
+        </PracticeActionBar>
       </div>
-    </template>
-  </section>
+    </section>
+  </PracticeShell>
 </template>

@@ -13,7 +13,7 @@ import { withCountIn } from '@/features/student/utils/countIn'
 import { pickReasonKeys } from '@/features/student/utils/pickReason'
 import { TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
-import PlayAlongInfoModal from '@/features/student/components/PlayAlongInfoModal.vue'
+import PlayAlongInfo from '@/features/student/components/PlayAlongInfo.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -187,7 +187,9 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
               data-test="item-info"
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink"
               :aria-label="t('playAlongTake.info')"
-              @click="infoOpen = true"
+              :aria-expanded="infoOpen"
+              aria-controls="play-along-info"
+              @click="infoOpen = !infoOpen"
             >
               <Info :size="18" aria-hidden="true" />
             </button>
@@ -220,7 +222,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
           {{ warmUp ? t('playAlongTake.warmUpHint') : t('playAlongTake.goal', { target: playAlong.target_tempo_bpm, best }) }}
         </p>
       </div>
-      <PlayAlongInfoModal :open="infoOpen" :reason="item.reason" :diagram="loaded.diagram.value" @close="infoOpen = false" />
+      <PlayAlongInfo v-if="infoOpen" :reason="item.reason" :diagram="loaded.diagram.value" @close="infoOpen = false" />
 
       <div ref="stage" data-test="take-stage" class="flex scroll-mt-20 flex-col gap-3">
         <div class="relative rounded-lg bg-surface-raised p-2">
@@ -244,7 +246,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
 
         <template v-if="phase === 'ready'">
           <div class="flex items-center gap-3">
-            <PrimaryButton data-test="start-take" @click="startTake">{{ t('playAlongTake.start') }}</PrimaryButton>
+            <PrimaryButton data-test="start-take" data-primary-action @click="startTake">{{ t('playAlongTake.start') }}</PrimaryButton>
             <div
               data-test="take-dots"
               class="flex items-center gap-1.5"

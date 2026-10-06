@@ -123,13 +123,23 @@ describe('PlayAlongTake', () => {
     expect(mountTake().text()).toContain('Due for review')
   })
 
-  it('explains the item in an information window', async () => {
+  it('explains the item in place, and hides it again', async () => {
     const wrapper = mountTake()
-    expect(wrapper.find('[data-test="modal-panel"]').exists()).toBe(false)
+    const info = wrapper.get('[data-test="item-info"]')
+    expect(wrapper.find('[data-test="play-along-info"]').exists()).toBe(false)
+    expect(info.attributes('aria-expanded')).toBe('false')
 
-    await wrapper.get('[data-test="item-info"]').trigger('click')
+    await info.trigger('click')
+    expect(wrapper.get('[data-test="play-along-info"]').text()).toContain('Why now')
+    expect(info.attributes('aria-expanded')).toBe('true')
+    expect(info.attributes('aria-controls')).toBe('play-along-info')
 
-    expect(wrapper.get('[data-test="modal-panel"]').text()).toContain('Why now')
+    await info.trigger('click')
+    expect(wrapper.find('[data-test="play-along-info"]').exists()).toBe(false)
+  })
+
+  it('marks Start take as the primary action, so Enter or a pedal starts it', () => {
+    expect(mountTake().get('[data-test="start-take"]').attributes()).toHaveProperty('data-primary-action')
   })
 
   it('plays the diagram once, after a bar of count-in, at the take’s tempo', () => {

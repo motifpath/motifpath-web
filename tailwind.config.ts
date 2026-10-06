@@ -70,7 +70,11 @@ const config: Config = {
     extend: {
       colors,
       fontSize,
-      spacing: scaleValues<string>(tokens.space),
+      spacing: {
+        ...scaleValues<string>(tokens.space),
+        // The bottom inset of a phone's home indicator, never less than a comfortable gap.
+        safe: 'max(0.75rem, env(safe-area-inset-bottom))',
+      },
       borderRadius: scaleValues<string>(tokens.radius),
       boxShadow,
       fontFamily: {
