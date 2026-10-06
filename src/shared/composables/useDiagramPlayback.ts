@@ -15,6 +15,7 @@ import { frettedPitch } from '@/shared/utils/pitch'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
+type TimeSignature = components['schemas']['TimeSignature']
 type Playback = NonNullable<components['schemas']['DiagramRef']['playback']>
 
 export type PlaybackState = 'idle' | 'loading' | 'playing' | 'error'
@@ -92,7 +93,7 @@ export function useDiagramPlayback(
   const activePositionIds = shallowRef<string[]>([])
 
   const played = computed(() => playedPlayback(toValue(source)))
-  const timeSignature = computed(() => played.value?.time_signature ?? { beats: 4, beat_value: 4 })
+  const timeSignature = computed<TimeSignature>(() => played.value?.time_signature ?? { beats: 4, beat_value: 4 })
 
   const effectiveTempo = computed(
     () => toValue(source).playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
