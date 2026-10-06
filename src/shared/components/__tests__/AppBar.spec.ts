@@ -79,7 +79,7 @@ describe('AppBar', () => {
     expect(links.map((l) => l.text())).toEqual(['My path', 'Practice', 'My learning', 'Find a course', 'Find a path'])
     expect(links.map((l) => l.props('to'))).toEqual([
       { name: 'path' },
-      { name: 'practice-home' },
+      { name: 'practice-session' },
       { name: 'my-courses' },
       { name: 'course-catalog' },
       { name: 'path-catalog' },

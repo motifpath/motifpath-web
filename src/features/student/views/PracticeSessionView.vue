@@ -86,10 +86,10 @@ function practiseAgain() {
 
 const router = useRouter()
 
-/** Back where the student came from, or to the practice home when the session was opened directly. */
+/** Back where the student came from, or to the home when the session was opened directly. */
 function leave() {
   if (window.history.state?.back) router.back()
-  else void router.push({ name: 'practice-home' })
+  else void router.push({ name: 'home' })
 }
 
 function exit() {

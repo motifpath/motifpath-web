@@ -64,7 +64,6 @@ describe('AuthenticatedLayout', () => {
     ['path', 'My path'],
     ['node', 'My path'],
     ['practice', 'My path'],
-    ['practice-home', 'Practice'],
     ['my-courses', 'My learning'],
     ['course-completed', 'My learning'],
     ['course-catalog', 'Find a course'],

@@ -18,13 +18,12 @@ const { isCompact } = useIsCompact()
 // monitor isn't left with the video and its cue pinned to a laptop-sized
 // strip in the middle of the screen.
 const route = useRoute()
-// Which student tab a route sits under: each catalog, "my courses" and the
-// practice home are their own sections (a finished course's screen sits
+// Which student tab a route sits under: each catalog and "my courses" are
+// their own sections (a finished course's screen sits
 // under My courses, and a detail page under the catalog it belongs to);
 // everything else (the path and the lesson/practice screens reached from it)
 // belongs to My path.
 const STUDENT_SECTIONS = new Map([
-  ['practice-home', 'practice-home'],
   ['my-courses', 'my-courses'],
   ['course-completed', 'my-courses'],
   ['course-catalog', 'course-catalog'],

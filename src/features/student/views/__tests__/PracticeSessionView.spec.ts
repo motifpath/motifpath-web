@@ -183,12 +183,12 @@ describe('PracticeSessionView', () => {
     expect(wrapper.findAll('[data-test="instrument-tile"]').map((tile) => tile.get<HTMLInputElement>('input').element.checked)).toEqual([true, false])
   })
 
-  it('goes to the practice home on × when the session was opened directly', async () => {
+  it('goes to the home on × when the session was opened directly', async () => {
     const wrapper = mountView()
 
     await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
-    expect(router.push).toHaveBeenCalledWith({ name: 'practice-home' })
+    expect(router.push).toHaveBeenCalledWith({ name: 'home' })
   })
 
   it('composes a session for the instrument and minutes chosen', async () => {
@@ -283,7 +283,7 @@ describe('PracticeSessionView', () => {
 
     await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
-    expect(router.push).toHaveBeenCalledWith({ name: 'practice-home' })
+    expect(router.push).toHaveBeenCalledWith({ name: 'home' })
     expect(events('practice.session_ended')).toHaveLength(1)
   })
 
