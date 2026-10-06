@@ -177,7 +177,7 @@
   },
   "practiceSessionView": {
     "title": "Praticar",
-    "intro": "Pegue seu instrumento e escolha quanto tempo você tem.",
+    "intro": "Escolha o instrumento nas suas mãos, ou pratique na cabeça, e quanto tempo você tem.",
     "instrumentLabel": "Instrumento em suas mãos",
     "minutesLabel": "Quanto tempo",
     "minutesOption": "{minutes} min",
@@ -185,7 +185,6 @@
     "starting": "Montando sua sessão…",
     "loadingNoun": "instrumentos",
     "instrumentsError": "Não conseguimos carregar os instrumentos.",
-    "noInstruments": "Ainda não há instrumento para praticar.",
     "planError": "Não conseguimos montar sua sessão.",
     "nothingToPractise": "Ainda não há nada para praticar neste instrumento. Escolha outro.",
     "endSession": "Encerrar sessão",
@@ -207,7 +206,9 @@
     "backToPath": "Voltar para minha trilha",
     "progressLabel": "Progresso da sessão",
     "applyIt": "Aplique",
-    "close": "Fechar"
+    "close": "Fechar",
+    "inMyHead": "Na cabeça",
+    "nothingInTheHead": "Ainda não há nada para praticar na cabeça. Escolha um instrumento."
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
@@ -268,6 +269,39 @@
     "right": "Certo!",
     "wrong": "Não foi dessa vez.",
     "next": "Continuar"
+  },
+  "sessionFretboardCell": {
+    "nameTheNote": "Que nota é esta?",
+    "findTheNote": "Encontre {note} na corda {string}",
+    "board": "Braço do instrumento",
+    "notes": "Notas",
+    "markedRight": "resposta certa",
+    "markedWrong": "sua resposta, errada"
+  },
+  "tapCheck": {
+    "title": "Teste de toque",
+    "intro": "Por cerca de 20 segundos, toque em cada casa assim que ela acender. Assim sabemos quanto tempo um toque leva para você, e suas respostas são cronometradas pelo que você sabe, não pelo toque.",
+    "secondsLeft": "faltam {seconds} s",
+    "board": "Casas para tocar",
+    "start": "Começar",
+    "skip": "Pular"
+  },
+  "feltQuestions": {
+    "title": "Como foi?",
+    "easy": "Fácil",
+    "aboutRight": "Na medida",
+    "hard": "Difícil",
+    "skip": "Pular",
+    "drills": {
+      "nameTheNote": "Dizer as notas no braço",
+      "findTheNote": "Encontrar as notas no braço",
+      "textResponse": "Responder perguntas",
+      "audioRecognition": "Reconhecer o que você ouve",
+      "imageRecognition": "Reconhecer o que você vê",
+      "imageChoice": "Escolher uma imagem",
+      "audioSelection": "Escolher um som",
+      "other": "Este exercício"
+    }
   },
   "practiceHomeView": {
     "title": "Prática",

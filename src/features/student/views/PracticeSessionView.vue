@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /**
- * A practice session with an instrument in hand. The student says which instrument they're
- * holding and how long they have; core composes the session; then each exercise is answered and
- * each play-along played take by take, ending with one that applies what was practised, until
- * the plan runs out or the student ends it. A session left mid-way, by
- * navigating away or closing or reloading the page, ends as left early.
+ * A practice session, with an instrument in hand or in the head. The student says which
+ * instrument they're holding, or none, and how long they have; core composes the session. A tap
+ * check comes first when the plan asks for one. Then each exercise and fretboard cell is answered
+ * and each play-along played take by take, ending with one that applies what was practised, until
+ * the plan runs out or the student ends it. After the last item, the student is asked how the
+ * drills they practised felt. A session left mid-way, by navigating away or closing or reloading
+ * the page, ends as left early.
  *
  * All of it runs in the Practice Shell: × ends a running session, and otherwise leaves for where
  * the student came from. The screen stays on while the session runs.
@@ -12,8 +14,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import FeltQuestions from '@/features/student/components/FeltQuestions.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
+import SessionFretboardCell from '@/features/student/components/SessionFretboardCell.vue'
+import TapCheck from '@/features/student/components/TapCheck.vue'
 import { useComposePracticeSession } from '@/features/student/composables/useComposePracticeSession'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
@@ -39,6 +44,7 @@ const playable = computed(() => instruments.value.filter((instrument) => instrum
 const route = useRoute()
 const asked = typeof route.query.instrument === 'string' ? route.query.instrument : null
 
+/** The instrument in the student's hands; null for a session in the head. */
 const instrumentId = ref<string | null>(null)
 const minutes = ref(10)
 watch(
@@ -52,22 +58,49 @@ watch(
 )
 
 const composeError = ref<'nothing_to_practise' | 'failed' | null>(null)
+/** Whether the session that couldn't be composed was in the head, for its message. */
+const composedInHead = ref(false)
 const run = shallowRef<ReturnType<typeof usePracticeSessionRun> | null>(null)
 
+/** The open-string pitches of an instrument, which its fretboard cells are drawn and graded with. */
+function tuningOf(id: string): string[] | undefined {
+  return instruments.value.find((instrument) => instrument.instrument_id === id)?.tuning
+}
+
 async function startSession() {
-  if (!instrumentId.value || isComposing.value) return
+  if (isComposing.value) return
   composeError.value = null
+  composedInHead.value = instrumentId.value === null
   const outcome = await compose(instrumentId.value, minutes.value)
   if (outcome.kind !== 'composed') {
     composeError.value = outcome.kind
     return
   }
-  const session = usePracticeSessionRun(outcome.plan)
+  const session = usePracticeSessionRun(outcome.plan, { tuningOf })
   session.start()
   run.value = session
 }
 
 const current = computed(() => run.value?.current.value ?? null)
+const currentCellTuning = computed(() => {
+  const cell = current.value?.fretboard_cell
+  return cell ? tuningOf(cell.layout_instrument_id) : undefined
+})
+
+/** The tap check is tapped on the board of the plan's first fretboard cell. */
+const tapCheckTuning = computed(() => {
+  const cell = run.value?.plan.items.find((item) => item.fretboard_cell)?.fretboard_cell
+  return cell ? tuningOf(cell.layout_instrument_id) : undefined
+})
+const showsTapCheck = computed(() => (run.value?.tapCheckPending.value ?? false) && tapCheckTuning.value !== undefined)
+// Without a board to tap on, the tap check is passed over; answers are then judged on their whole time.
+watch(
+  () => (run.value?.tapCheckPending.value ?? false) && tapCheckTuning.value === undefined,
+  (cannotShow) => {
+    if (cannotShow) run.value!.skipTapCheck()
+  },
+  { immediate: true },
+)
 const finished = computed(() => run.value?.finished.value ?? false)
 const running = computed(() => run.value !== null && !finished.value)
 
@@ -124,10 +157,14 @@ onBeforeUnmount(() => {
 
       <StateLoading v-if="isLoading" :noun="t('practiceSessionView.loadingNoun')" />
       <StateError v-else-if="instrumentsError" :message="t('practiceSessionView.instrumentsError')" @retry="retryInstruments()" />
-      <p v-else-if="playable.length === 0" class="text-ink-muted">{{ t('practiceSessionView.noInstruments') }}</p>
 
       <div v-else class="flex flex-col gap-5">
-        <InstrumentTilePicker v-model="instrumentId" :instruments="playable" :label="t('practiceSessionView.instrumentLabel')" />
+        <InstrumentTilePicker
+          v-model="instrumentId"
+          :instruments="playable"
+          :label="t('practiceSessionView.instrumentLabel')"
+          :none-label="t('practiceSessionView.inMyHead')"
+        />
 
         <fieldset class="flex flex-col gap-1.5">
           <legend class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
@@ -147,14 +184,14 @@ onBeforeUnmount(() => {
         </fieldset>
 
         <p v-if="composeError === 'nothing_to_practise'" class="text-sm text-danger" role="alert">
-          {{ t('practiceSessionView.nothingToPractise') }}
+          {{ composedInHead ? t('practiceSessionView.nothingInTheHead') : t('practiceSessionView.nothingToPractise') }}
         </p>
         <p v-else-if="composeError === 'failed'" class="text-sm text-danger" role="alert">
           {{ t('practiceSessionView.planError') }}
         </p>
 
         <PracticeActionBar>
-          <PrimaryButton data-test="start-session" data-primary-action :disabled="isComposing || !instrumentId" class="h-12 w-full" @click="startSession">
+          <PrimaryButton data-test="start-session" data-primary-action :disabled="isComposing" class="h-12 w-full" @click="startSession">
             {{ isComposing ? t('practiceSessionView.starting') : t('practiceSessionView.start') }}
           </PrimaryButton>
         </PracticeActionBar>
@@ -174,6 +211,21 @@ onBeforeUnmount(() => {
       </PracticeActionBar>
     </section>
 
+    <FeltQuestions
+      v-else-if="run.askingFelt.value"
+      :questions="run.feltQuestions.value"
+      :ratings="run.feltRatings.value"
+      @rate="(template, felt) => run!.rateFelt(template, felt)"
+      @skip="run.skipFelt()"
+    />
+
+    <TapCheck
+      v-else-if="showsTapCheck && tapCheckTuning"
+      :tuning="tapCheckTuning"
+      @complete="run.completeTapCheck($event)"
+      @skip="run.skipTapCheck()"
+    />
+
     <section v-else-if="current" class="flex flex-col gap-3" data-test="practice-session">
       <h2 v-if="current.reason === 'application'" data-test="apply-it" class="text-lg font-semibold">
         {{ t('practiceSessionView.applyIt') }}
@@ -184,6 +236,14 @@ onBeforeUnmount(() => {
         :item="current"
         :answer="run.exerciseAnswer.value"
         @answer="run.answer($event)"
+        @next="run.nextItem()"
+      />
+      <SessionFretboardCell
+        v-else-if="current.kind === 'fretboard_cell' && current.fretboard_cell && currentCellTuning"
+        :item="current"
+        :tuning="currentCellTuning"
+        :answer="run.cellAnswer.value"
+        @answer="run.answerCell($event)"
         @next="run.nextItem()"
       />
       <PlayAlongTake
