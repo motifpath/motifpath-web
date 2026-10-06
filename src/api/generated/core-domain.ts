@@ -758,7 +758,7 @@ export interface paths {
         /**
          * List the voices diagrams can be played with
          * @description Returns every voice the platform provides — the sampled sounds a
-         *     diagram's sequence can be played with. Any authenticated user may
+         *     diagram's playbacks can be played with. Any authenticated user may
          *     list voices, since students need them to play diagrams.
          */
         get: operations["listVoices"];
@@ -1742,15 +1742,18 @@ export interface paths {
          *     except the takes of a warm_up item: a warm-up is played below the student's edge,
          *     so it is not evidence of what they know.
          *
-         *     The plan is never empty. When nothing is due, weak or new, the time goes to
-         *     reviewing known items ahead of their due date and to starting nodes the student is
-         *     ready for. Practice is never blocked: requirements and teacher suggestions only
-         *     decide the order.
+         *     When nothing is due, weak or new, the time goes to reviewing known items ahead of
+         *     their due date and to starting nodes the student is ready for. Practice is never
+         *     blocked: requirements and teacher suggestions only decide the order. A plan always
+         *     has at least one item; when nothing connected to what the student is learning can be
+         *     practised (for example, they are enrolled in nothing), there is no plan.
          *
          *     With an instrument in hand, only items that suit that instrument (or every
-         *     instrument) are picked. Without one, items for any of the student's instruments
-         *     that don't need an instrument in hand are picked. Any instrument may be named, not
-         *     only the ones the student is enrolled for.
+         *     instrument) are picked, fretboard cells of its layout included. Without one (a session in the head), only items that need no
+         *     instrument in hand are picked: fretboard cells of every fretboard layout among the
+         *     student's instruments, and exercises; never a play-along, so such a session has no
+         *     application ending. Any instrument may be named, not only the ones the student is
+         *     enrolled for.
          *
          *     Any authenticated user may practise.
          */
@@ -1770,7 +1773,7 @@ export interface paths {
         };
         /**
          * Read the authenticated student's practice summary for the home
-         * @description Everything the practice home shows, in one read, for one of the student's
+         * @description Everything the home shows for an instrument, in one read, for one of the student's
          *     instruments: practice days on that instrument in the last 7, progress this week per
          *     skill, the next steps, and every practice node grouped by area, with a separate group for nodes that suit
          *     any instrument. Progress is reported per skill; concepts are context, never progress
@@ -1790,6 +1793,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/students/me/fretboard-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read how well the authenticated student knows each fretboard cell
+         * @description The fretboard of one of the student's instruments as a heatmap: every cell the
+         *     practice catalog generates for that instrument's fretboard layout, with the
+         *     student's level on it and whether it is fading. Instruments that share a layout
+         *     share its cells, so an electric guitar shows the cells practised on an acoustic one.
+         *     A cell never practised is new. Both ways of asking about a cell (name the note,
+         *     find the note) build one level for it.
+         *
+         *     Derived from the student's evidence; reading it changes nothing.
+         *
+         *     Any authenticated user may read their own map.
+         */
+        get: operations["getFretboardMap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/students/me/practice-overview": {
         parameters: {
             query?: never;
@@ -1799,7 +1831,7 @@ export interface paths {
         };
         /**
          * Read the authenticated student's practice overview, across instruments
-         * @description The first view of the practice home, before the student picks an instrument: on how
+         * @description The first view of the home, before the student picks an instrument: on how
          *     many of the last 7 days they practised on any instrument and completed a content
          *     node, and one card per instrument with that instrument's practice days and its top
          *     next step. Each instrument's full picture is its practice summary.
@@ -2729,19 +2761,18 @@ export interface components {
              */
             mode: components["schemas"]["DiagramMode"] | null;
             /**
-             * @description The default tempo the sequence plays at, in beats per minute,
-             *     where one beat is the time signature's pulse. Null exactly when
-             *     sequence is empty.
+             * @description The ways this diagram can sound, in the order its author gave
+             *     them — e.g. a strum, an arpeggio and a fingerstyle pattern of the
+             *     same chord shape. Every playback sounds only this diagram's
+             *     positions. Empty means the diagram has no playback.
              */
-            tempo_bpm: number | null;
-            time_signature: components["schemas"]["TimeSignature"];
+            playbacks: components["schemas"]["DiagramPlayback"][];
             /**
-             * @description The diagram's playback, as an ordered list of steps: which
-             *     positions sound, together or in turn, and for how long. A
-             *     position may sound in any number of steps. Empty means the
-             *     diagram has no playback.
+             * Format: uuid
+             * @description The playback a usage plays when it doesn't choose one. Always
+             *     one of playbacks; null exactly when playbacks is empty.
              */
-            sequence: components["schemas"]["SequenceStep"][];
+            default_playback_id: string | null;
             /**
              * @description Every marked position in this diagram. All positions share the
              *     same coordinate shape, decided by this diagram's instrument's
@@ -2764,10 +2795,10 @@ export interface components {
          * @description Payload for creating a new diagram. Every position's string/fret vs.
          *     key, and every region's coordinates, must match the referenced
          *     instrument's family — the API rejects a request that mixes shapes or
-         *     supplies the wrong shape for the instrument. Every sequence step may
+         *     supplies the wrong shape for the instrument. Every playback step may
          *     only name positions of this request. Every per-language text
-         *     (positions' custom_label and note, regions' description) must be
-         *     keyed by exactly the languages of names.
+         *     (positions' custom_label and note, regions' description, playbacks'
+         *     names) must be keyed by exactly the languages of names.
          */
         CreateDiagramRequest: {
             /**
@@ -2815,19 +2846,20 @@ export interface components {
              */
             mode?: components["schemas"]["DiagramMode"] | null;
             /**
-             * @description The sequence's default tempo in beats per minute. Required when
-             *     sequence is non-empty; must be null or omitted when it is empty.
-             */
-            tempo_bpm?: number | null;
-            /** @description Omitted defaults to 4/4. */
-            time_signature?: components["schemas"]["TimeSignature"];
-            /**
-             * @description The diagram's playback steps, in order. Every position_id a step
+             * @description The diagram's playbacks, in order. Every position_id a step
              *     names must be the position_id of one of this request's
              *     positions, so a position that plays must be given its
              *     position_id by the client. Omitted means no playback.
              */
-            sequence?: components["schemas"]["SequenceStep"][];
+            playbacks?: components["schemas"]["DiagramPlaybackInput"][];
+            /**
+             * Format: uuid
+             * @description Which of playbacks is the default; it must be the playback_id
+             *     of one of them, so the client supplies that playback's id.
+             *     Omitted or null makes the first playback the default. Must be
+             *     omitted or null when there are no playbacks.
+             */
+            default_playback_id?: string | null;
             /**
              * @description Every marked position in this diagram, in the coordinate shape
              *     matching the referenced instrument's family. position_id may be
@@ -2845,13 +2877,14 @@ export interface components {
         /**
          * @description Payload for replacing an existing diagram's names, positions,
          *     regions, classification, root_note, mode, label_display, color,
-         *     tempo_bpm, time_signature, or sequence. The rules of a diagram are
-         *     checked on the result of the update: every sequence step must still
+         *     playbacks, or default_playback_id. The rules of a diagram are
+         *     checked on the result of the update: every playback step must still
          *     name only positions of the diagram (a position that plays can't be
-         *     removed without also resending the sequence), a mode needs a root
-         *     note, and tempo_bpm is set exactly when the sequence is non-empty. Every
-         *     per-language text on the diagram — names, positions' custom_label
-         *     and note, regions' description — must cover exactly the same
+         *     removed without also resending the playbacks), a mode needs a root
+         *     note, and default_playback_id names one of the playbacks exactly
+         *     when there are any. Every per-language text on the diagram — names,
+         *     positions' custom_label and note, regions' description, playbacks'
+         *     names — must cover exactly the same
          *     languages once the update is applied. instrument_ids may replace the
          *     compatible instruments only with records that match the diagram's
          *     immutable layout geometry. Nor are kind and
@@ -2897,19 +2930,21 @@ export interface components {
              */
             mode?: components["schemas"]["DiagramMode"] | null;
             /**
-             * @description The sequence's default tempo, replacing the current value. Null
-             *     clears it, which is only valid when the resulting sequence is
-             *     empty. Omitted leaves it unchanged.
+             * @description The diagram's full list of playbacks, replacing the current one;
+             *     an empty list removes every playback. A playback sent with the
+             *     playback_id of an existing one keeps that id, so usages that
+             *     chose it still find it. Omitted leaves the playbacks unchanged.
              */
-            tempo_bpm?: number | null;
-            /** @description The time signature, replacing the current one. Omitted leaves it unchanged. */
-            time_signature?: components["schemas"]["TimeSignature"];
+            playbacks?: components["schemas"]["DiagramPlaybackInput"][];
             /**
-             * @description The diagram's full list of playback steps, replacing the current
-             *     one; an empty list removes the playback. Omitted leaves the
-             *     sequence unchanged.
+             * Format: uuid
+             * @description Which playback is the default, replacing the current choice; it
+             *     must name one of the resulting playbacks. Omitted keeps the
+             *     current default if it is still one of the playbacks, and
+             *     otherwise makes the first playback the default. Null is only
+             *     valid when the resulting playbacks are empty.
              */
-            sequence?: components["schemas"]["SequenceStep"][];
+            default_playback_id?: string | null;
             /**
              * @description The diagram's full position list, replacing the current set. A
              *     caller that only wants to change one position must resend the
@@ -2966,7 +3001,64 @@ export interface components {
             beat_value: 1 | 2 | 4 | 8 | 16 | 32;
         };
         /**
-         * @description One step of a diagram's playback. Its positions start together (or
+         * @description One named way a diagram sounds: an ordered list of steps over the
+         *     diagram's own positions, with its tempo and time signature. A
+         *     diagram can have several, e.g. a strum and an arpeggio of the same
+         *     chord shape.
+         */
+        DiagramPlayback: {
+            /**
+             * Format: uuid
+             * @description Stable identifier of this playback within its diagram.
+             */
+            playback_id: string;
+            /**
+             * @description The playback's name in each of the diagram's languages (e.g.
+             *     {"en": "Arpeggio", "pt_BR": "Arpejo"}). No two playbacks of one
+             *     diagram share a name in the same language.
+             */
+            names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description The tempo this playback plays at by default, in beats per
+             *     minute, where one beat is the time signature's pulse.
+             */
+            tempo_bpm: number;
+            time_signature: components["schemas"]["TimeSignature"];
+            /**
+             * @description Which positions sound, together or in turn, and for how long,
+             *     in order. A position may sound in any number of steps.
+             */
+            steps: components["schemas"]["SequenceStep"][];
+        };
+        /**
+         * @description A playback as sent when creating or updating a diagram.
+         *     playback_id may be supplied by the client (and must be, for the one
+         *     default_playback_id names) or left for the server to assign.
+         */
+        DiagramPlaybackInput: {
+            /**
+             * Format: uuid
+             * @description The playback's identifier. Omitted means the server assigns a
+             *     new one. No two playbacks of one request may share an id.
+             */
+            playback_id?: string;
+            /**
+             * @description The playback's name in each of the diagram's languages. No two
+             *     playbacks of one diagram share a name in the same language.
+             */
+            names: components["schemas"]["LocalizedNames"];
+            /** @description The playback's default tempo in beats per minute. */
+            tempo_bpm: number;
+            /** @description Omitted defaults to 4/4. */
+            time_signature?: components["schemas"]["TimeSignature"];
+            /**
+             * @description The playback's steps, in order. Every position_id a step names
+             *     must be a position of the diagram.
+             */
+            steps: components["schemas"]["SequenceStep"][];
+        };
+        /**
+         * @description One step of a diagram playback. Its positions start together (or
          *     strummed), sound for the step's value, and the next step starts
          *     when this one ends. A step with no positions is a rest.
          */
@@ -3097,16 +3189,25 @@ export interface components {
                 interval_color?: string | null;
             } | null;
             /**
-             * @description How this usage plays the diagram's sequence. Null means this
-             *     usage offers no Play control. A diagram with an empty sequence
-             *     never plays, whatever this says. Positions this usage hides
-             *     still sound when played, but are never drawn. Ignored for an
-             *     entry of a DiagramStackRef — a stack doesn't play.
+             * @description How this usage plays the diagram. Null means this usage offers
+             *     no Play control. A diagram with no playbacks never plays,
+             *     whatever this says. Positions this usage hides still sound when
+             *     played, but are never drawn. Ignored for an entry of a
+             *     DiagramStackRef — a stack doesn't play.
              */
             playback?: {
                 /**
-                 * @description Overrides the diagram's tempo for this usage. Null (or
-                 *     omitted) uses the diagram's own tempo. A student can still
+                 * Format: uuid
+                 * @description Which of the diagram's playbacks this usage plays. Null (or
+                 *     omitted) plays the diagram's default playback. When saved, it
+                 *     must be one of the diagram's playbacks. If that playback is
+                 *     later removed from the diagram, the usage plays the default
+                 *     playback instead.
+                 */
+                playback_id?: string | null;
+                /**
+                 * @description Overrides the chosen playback's tempo for this usage. Null
+                 *     (or omitted) uses that playback's own tempo. A student can still
                  *     change the tempo while playing; that choice is never saved.
                  */
                 tempo_bpm?: number | null;
@@ -4837,6 +4938,24 @@ export interface components {
             minutes: number;
             /** @description The items to practise, in order. */
             items: components["schemas"]["PracticeSessionItem"][];
+            /**
+             * @description The timed drill templates, at most two, to ask "How did it feel?" about when the
+             *     session ends: those in this plan with the fewest felt-rated sessions so far, fewest
+             *     first. The client asks only about the ones the student actually practised in the
+             *     session. Empty when the plan has no timed drill, as with play-alongs only.
+             * @example [
+             *       "fretboard_cell:find_the_note",
+             *       "exercise:text_response"
+             *     ]
+             */
+            felt_questions: string[];
+            /**
+             * @description True when the plan has a fretboard cell and the student has done no tap check in
+             *     the last 30 days, or never. The client then offers the tap check before the first
+             *     item; the student may skip it, and their answers are then judged on the whole
+             *     latency.
+             */
+            tap_check_due: boolean;
         };
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
@@ -4858,7 +4977,10 @@ export interface components {
              *     takes its estimated_duration_seconds, or 30 seconds without one.
              */
             estimated_seconds: number;
-            /** @description Present when kind is fretboard_cell. */
+            /**
+             * @description Present when kind is fretboard_cell. The drill is the way of asking the cell has
+             *     the fewer right answers so far, name_the_note on a tie.
+             */
             fretboard_cell?: {
                 /**
                  * Format: uuid
@@ -4884,7 +5006,7 @@ export interface components {
                  *     best clean tempo; otherwise the tempo ladder's current step.
                  */
                 start_tempo_bpm: number;
-                /** @description The tempo the item aims for, the diagram's own tempo. */
+                /** @description The tempo the item aims for, the tempo of the diagram's default playback. */
                 target_tempo_bpm: number;
                 /**
                  * @description The student's best clean tempo since their latest teacher review. Null when
@@ -4893,7 +5015,7 @@ export interface components {
                 best_clean_tempo_bpm: number | null;
             };
         };
-        /** @description The practice home for one instrument, derived from the student's evidence. */
+        /** @description The home for one instrument, derived from the student's evidence. */
         PracticeSummary: {
             /**
              * Format: uuid
@@ -4926,7 +5048,37 @@ export interface components {
              */
             groups: components["schemas"]["PracticeNodeGroup"][];
         };
-        /** @description The practice home's overview, across all of the student's instruments. */
+        /** @description How well the student knows each cell of an instrument's fretboard. */
+        FretboardMap: {
+            /**
+             * Format: uuid
+             * @description The instrument asked for.
+             */
+            instrument_id: string;
+            /**
+             * Format: uuid
+             * @description The instrument whose fretboard layout and tuning the cells belong to, shared by
+             *     every instrument of the same geometry. Null for an instrument without one.
+             */
+            layout_instrument_id: string | null;
+            /** @description Every generated cell of the layout, by string then fret. */
+            cells: components["schemas"]["FretboardMapCell"][];
+        };
+        /** @description One fretboard cell and the student's level on it. */
+        FretboardMapCell: {
+            item_key: components["schemas"]["PracticeItemKey"];
+            /** @description The cell's string, 1 being the highest-pitched. */
+            string: number;
+            /** @description The cell's fret; 0 is the open string. */
+            fret: number;
+            level: components["schemas"]["KnowledgeLevel"];
+            /**
+             * @description True when the cell's review is due, so the level shown is slipping; an item
+             *     overdue by more than its wait already shows one level lower.
+             */
+            fading: boolean;
+        };
+        /** @description The home's overview, across all of the student's instruments. */
         PracticeOverview: {
             /**
              * @description On how many of the last 7 calendar days, in the given time zone, the student
@@ -5337,6 +5489,8 @@ export type SchemaPitch = components['schemas']['Pitch'];
 export type SchemaDiagramMode = components['schemas']['DiagramMode'];
 export type SchemaNoteValue = components['schemas']['NoteValue'];
 export type SchemaTimeSignature = components['schemas']['TimeSignature'];
+export type SchemaDiagramPlayback = components['schemas']['DiagramPlayback'];
+export type SchemaDiagramPlaybackInput = components['schemas']['DiagramPlaybackInput'];
 export type SchemaSequenceStep = components['schemas']['SequenceStep'];
 export type SchemaVoice = components['schemas']['Voice'];
 export type SchemaVoiceSample = components['schemas']['VoiceSample'];
@@ -5390,6 +5544,8 @@ export type SchemaCreatePracticeSessionPlanRequest = components['schemas']['Crea
 export type SchemaPracticeSessionPlan = components['schemas']['PracticeSessionPlan'];
 export type SchemaPracticeSessionItem = components['schemas']['PracticeSessionItem'];
 export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
+export type SchemaFretboardMap = components['schemas']['FretboardMap'];
+export type SchemaFretboardMapCell = components['schemas']['FretboardMapCell'];
 export type SchemaPracticeOverview = components['schemas']['PracticeOverview'];
 export type SchemaPracticeInstrumentCard = components['schemas']['PracticeInstrumentCard'];
 export type SchemaSkillProgress = components['schemas']['SkillProgress'];
@@ -9870,7 +10026,10 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description No instrument exists with the given instrument_id. */
+            /**
+             * @description No instrument exists with the given instrument_id, or nothing connected to what
+             *     the student is learning can be practised with the instrument chosen.
+             */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -9911,6 +10070,59 @@ export interface operations {
                 };
             };
             /** @description instrument_id is not a valid uuid, or time_zone is not a known IANA time zone. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No instrument exists with the given instrument_id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    getFretboardMap: {
+        parameters: {
+            query: {
+                /** @description The instrument whose fretboard to show. */
+                instrument_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description The student's fretboard map. Its cells are empty for an instrument whose layout
+             *     has no generated cells, such as one without a fretboard.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FretboardMap"];
+                };
+            };
+            /** @description instrument_id is missing or not a valid uuid. */
             400: {
                 headers: {
                     [name: string]: unknown;
