@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { i18n, OFFERED_LANGUAGE_CODES, toApiLanguageCode } from '@/i18n'
+import { fromApiLanguageCode, i18n, OFFERED_LANGUAGE_CODES, toApiLanguageCode } from '@/i18n'
 import { intervalFromRoot, noteAtFret } from '@/shared/utils/musicTheory'
 import type { FlattenedStack } from '@/shared/utils/flattenDiagramStack'
 import type { components } from '@/api/generated/core-domain'
@@ -10,6 +10,7 @@ type CreateDiagramRequest = components['schemas']['CreateDiagramRequest']
 type UpdateDiagramRequest = components['schemas']['UpdateDiagramRequest']
 type DiagramPosition = components['schemas']['DiagramPosition']
 type DiagramRegion = components['schemas']['DiagramRegion']
+type DiagramPlayback = components['schemas']['DiagramPlayback']
 type DiagramKind = Diagram['kind']
 type DiagramMode = components['schemas']['DiagramMode']
 type SequenceStep = components['schemas']['SequenceStep']
@@ -47,6 +48,8 @@ export type MissingText =
   | { kind: 'regionCaptionTooLong'; region: number }
   | { kind: 'markerLabel'; position: number }
   | { kind: 'markerNote'; position: number }
+  | { kind: 'playbackName'; playback: number }
+  | { kind: 'playbackNameTaken'; playback: number }
 
 export interface LocalRegion {
   id: string
@@ -60,11 +63,23 @@ export interface LocalRegion {
   color: string | null
 }
 
+/** One named way the diagram sounds, as the editor holds it. */
+export interface LocalPlayback {
+  id: string
+  names: LocalizedNames
+  tempoBpm: number
+  timeSignature: TimeSignature
+  steps: SequenceStep[]
+}
+
 function makeId(): string {
   return crypto.randomUUID()
 }
 
-/** The tempo a diagram's sequence starts at when its first note is added. */
+/** The most playbacks a diagram may have. */
+export const MAX_PLAYBACKS = 16
+
+/** The tempo a new playback starts at. */
 export const DEFAULT_TEMPO_BPM = 90
 
 /** The longest region caption the server accepts, in characters. */
@@ -82,6 +97,31 @@ function toLocalPosition(p: DiagramPosition): LocalPosition {
     color: p.color ?? null,
     customLabel: { ...(p.custom_label ?? {}) },
     note: { ...(p.note ?? {}) },
+  }
+}
+
+function toLocalPlayback(p: DiagramPlayback): LocalPlayback {
+  return {
+    id: p.playback_id,
+    names: { ...p.names },
+    tempoBpm: p.tempo_bpm,
+    timeSignature: { ...p.time_signature },
+    steps: copySteps(p.steps),
+  }
+}
+
+/** `id` and `steps` replace the playback's own, as a copy needs. */
+function toPlaybackInput(
+  playback: LocalPlayback,
+  languages: string[],
+  { id = playback.id, steps = playback.steps }: { id?: string; steps?: SequenceStep[] } = {},
+): DiagramPlayback {
+  return {
+    playback_id: id,
+    names: filledNames(playback.names, languages),
+    tempo_bpm: playback.tempoBpm,
+    time_signature: { ...playback.timeSignature },
+    steps: copySteps(steps),
   }
 }
 
@@ -217,24 +257,45 @@ export function useDiagramForm() {
   // clearing is only offered while none is saved.
   const savedColor = ref<string | null>(null)
   const canClearColor = computed(() => savedColor.value === null)
-  // Persisted with the diagram: the key's mode (needs a root note), the default tempo, the meter,
-  // and the steps it plays. The tempo is set exactly while there are steps.
+  // Persisted with the diagram: the key's mode (needs a root note), and the named playbacks it
+  // sounds with, one of them the default exactly while there are any.
   const mode = ref<DiagramMode | null>(null)
-  const tempoBpm = ref<number | null>(null)
-  const timeSignature = ref<TimeSignature>({ beats: 4, beat_value: 4 })
-  const sequence = ref<SequenceStep[]>([])
+  const playbacks = ref<LocalPlayback[]>([])
+  const defaultPlaybackId = ref<string | null>(null)
+  // The playback being edited: the steps, tempo and meter below are its own.
+  const selectedPlaybackId = ref<string | null>(null)
+  const selectedPlayback = computed(() => playbacks.value.find((p) => p.id === selectedPlaybackId.value) ?? null)
+
+  const sequence = computed(() => selectedPlayback.value?.steps ?? [])
+  // Null while no playback is being edited, as there's nothing to play at it.
+  const tempoBpm = computed<number | null>({
+    get: () => selectedPlayback.value?.tempoBpm ?? null,
+    set: (bpm) => {
+      if (selectedPlayback.value && bpm !== null) selectedPlayback.value.tempoBpm = bpm
+    },
+  })
+  const timeSignature = computed<TimeSignature>({
+    get: () => selectedPlayback.value?.timeSignature ?? { beats: 4, beat_value: 4 },
+    set: (signature) => {
+      if (selectedPlayback.value) selectedPlayback.value.timeSignature = { ...signature }
+    },
+  })
+  // A playback needs at least one step to be saved.
+  const invalidPlaybackIds = computed(() => playbacks.value.filter((p) => p.steps.length === 0).map((p) => p.id))
 
   const missingNameLanguages = computed(() =>
     languages.value.filter((code) => (names.value[code] ?? '').trim() === ''),
   )
   // Every piece of text a diagram carries must be written in every one of its languages: the
-  // name, each region's caption, and any custom label or note started in some language.
+  // name, each region's caption, each playback's name, and any custom label or note started in
+  // some language.
   const annotationTexts = computed<LocalizedNames[]>(() => [
     ...regions.value.map((region) => region.description),
+    ...playbacks.value.map((playback) => playback.names),
     ...positions.value.flatMap((position) => [position.customLabel, position.note].filter(hasAnyText)),
   ])
 
-  /** Whether every label, note and region caption is written in each of `codes` — what a copy
+  /** Whether every label, note, region caption and playback name is written in each of `codes` — what a copy
    *  named in those languages needs, since text can't be invented for a language it lacks. */
   function hasTextIn(codes: readonly string[]): boolean {
     return annotationTexts.value.every((text) => codes.every((code) => (text[code] ?? '').trim() !== ''))
@@ -259,6 +320,13 @@ export function useDiagramForm() {
           if (hasAnyText(position.note) && lacks(position.note, code)) {
             missing.push({ kind: 'markerNote', position: index + 1 })
           }
+        })
+        const takenNames = new Set<string>()
+        playbacks.value.forEach((playback, index) => {
+          const name = (playback.names[code] ?? '').trim().toLocaleLowerCase()
+          if (name === '') missing.push({ kind: 'playbackName', playback: index + 1 })
+          else if (takenNames.has(name)) missing.push({ kind: 'playbackNameTaken', playback: index + 1 })
+          takenNames.add(name)
         })
         return [code, missing]
       }),
@@ -292,6 +360,7 @@ export function useDiagramForm() {
       position.note = withoutLanguage(position.note, code)
     })
     regions.value.forEach((region) => (region.description = withoutLanguage(region.description, code)))
+    playbacks.value.forEach((playback) => (playback.names = withoutLanguage(playback.names, code)))
   }
   const hasPositions = computed(() => positions.value.length > 0)
   const hasClassification = computed(() => skillIds.value.length > 0 && conceptIds.value.length > 0)
@@ -321,6 +390,7 @@ export function useDiagramForm() {
       hasName.value &&
       hasCompleteText.value &&
       invalidRegionIds.value.length === 0 &&
+      invalidPlaybackIds.value.length === 0 &&
       hasPositions.value &&
       hasCompletePositions.value &&
       hasClassification.value,
@@ -339,15 +409,79 @@ export function useDiagramForm() {
     return { interval: intervalFromRoot(noteName, rootNote.value), noteName }
   }
 
+  /** "Playback 3" in each of the diagram's languages, for the playback that would be third. */
+  function defaultPlaybackNames(n: number): LocalizedNames {
+    return Object.fromEntries(
+      languages.value.map((code) => [code, i18n.global.t('diagramPlayback.defaultName', { n }, { locale: fromApiLanguageCode(code) })]),
+    )
+  }
+
+  const canAddPlayback = computed(() => playbacks.value.length < MAX_PLAYBACKS)
+
   /**
-   * Replaces the steps, keeping the tempo set exactly while there are any — a
-   * rest included, since a lick can start on one: the first step brings a
-   * default tempo, and an empty sequence keeps none.
+   * A new playback with no steps after the others, edited from now on; the first one is the
+   * default. None is added once the diagram has the most it may have.
    */
+  function addPlayback() {
+    if (!canAddPlayback.value) return
+    const playback: LocalPlayback = {
+      id: makeId(),
+      names: defaultPlaybackNames(playbacks.value.length + 1),
+      tempoBpm: DEFAULT_TEMPO_BPM,
+      timeSignature: { beats: 4, beat_value: 4 },
+      steps: [],
+    }
+    playbacks.value.push(playback)
+    defaultPlaybackId.value ??= playback.id
+    selectedPlaybackId.value = playback.id
+  }
+
+  function selectPlayback(id: string) {
+    if (playbacks.value.some((p) => p.id === id)) selectedPlaybackId.value = id
+  }
+
+  function renamePlayback(id: string, code: string, value: string) {
+    const playback = playbacks.value.find((p) => p.id === id)
+    if (playback) playback.names = { ...playback.names, [code]: value }
+  }
+
+  function movePlayback(id: string, offset: number) {
+    const from = playbacks.value.findIndex((p) => p.id === id)
+    const to = from + offset
+    if (from === -1 || to < 0 || to >= playbacks.value.length) return
+    const reordered = [...playbacks.value]
+    const [moved] = reordered.splice(from, 1)
+    if (!moved) return
+    reordered.splice(to, 0, moved)
+    playbacks.value = reordered
+  }
+
+  function setDefaultPlayback(id: string) {
+    if (playbacks.value.some((p) => p.id === id)) defaultPlaybackId.value = id
+  }
+
+  /** The first remaining playback takes over as the default, and as the one edited, when either goes. */
+  function removePlayback(id: string) {
+    playbacks.value = playbacks.value.filter((p) => p.id !== id)
+    const first = playbacks.value[0]?.id ?? null
+    if (defaultPlaybackId.value === id) defaultPlaybackId.value = first
+    if (selectedPlaybackId.value === id) selectedPlaybackId.value = defaultPlaybackId.value
+  }
+
+  /** Replaces the edited playback's steps; a first step on a diagram with no playback starts one. */
   function setSequence(steps: SequenceStep[]) {
-    sequence.value = steps
-    if (steps.length === 0) tempoBpm.value = null
-    else if (tempoBpm.value === null) tempoBpm.value = DEFAULT_TEMPO_BPM
+    if (!selectedPlayback.value) {
+      if (steps.length === 0) return
+      addPlayback()
+    }
+    selectedPlayback.value!.steps = steps
+  }
+
+  /** Drops every playback, leaving nothing to edit. */
+  function clearPlaybacks() {
+    playbacks.value = []
+    defaultPlaybackId.value = null
+    selectedPlaybackId.value = null
   }
 
   function addPosition(cell: FrettedCell) {
@@ -426,16 +560,19 @@ export function useDiagramForm() {
     regions.value = regions.value.filter((r) => r.id !== id)
   }
 
-  /** A step the position was a note of goes with it once empty; a rest was never a note, so it stays. */
+  /**
+   * A step of any playback the position was a note of goes with it once empty; a rest was never a
+   * note, so it stays.
+   */
   function removePosition(id: string) {
     positions.value = positions.value.filter((p) => p.id !== id)
-    setSequence(
-      sequence.value.flatMap((step) => {
+    playbacks.value.forEach((playback) => {
+      playback.steps = playback.steps.flatMap((step) => {
         if (!step.position_ids.includes(id)) return [step]
         const remaining = step.position_ids.filter((positionId) => positionId !== id)
         return remaining.length > 0 ? [{ ...step, position_ids: remaining }] : []
-      }),
-    )
+      })
+    })
   }
 
   function reorderPositions(fromIndex: number, toIndex: number) {
@@ -466,9 +603,8 @@ export function useDiagramForm() {
       label_display: labelDisplay.value,
       color: color.value,
       mode: mode.value,
-      tempo_bpm: tempoBpm.value,
-      time_signature: { ...timeSignature.value },
-      sequence: copySteps(sequence.value),
+      playbacks: playbacks.value.map((playback) => toPlaybackInput(playback, languages.value)),
+      default_playback_id: defaultPlaybackId.value,
       positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position, languages.value)),
       regions: regions.value.map((region) => toDiagramRegion(region, languages.value)),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
@@ -479,17 +615,24 @@ export function useDiagramForm() {
    * A new diagram of `kind`, named `copyName`, copying everything the form
    * currently shows — how "Save as" creates a copy while leaving the source
    * untouched. Ids are unique across every diagram, so the source's can't be
-   * reused: positions get new ones (the copied sequence names them), and
-   * region ids are left for the server to assign.
+   * reused: positions and playbacks get new ones (the copied playbacks name
+   * the new position ids), and region ids are left for the server to assign.
    */
   function toCopyRequest(copyNames: LocalizedNames, kind: DiagramKind): CreateDiagramRequest {
     const copied = positions.value.filter(hasInterval)
     const newIds = new Map(copied.map((position) => [position.id, makeId()]))
+    const newPlaybackIds = new Map(playbacks.value.map((playback) => [playback.id, makeId()]))
     return {
       ...toCreateDiagramRequest(),
       names: filledNames(copyNames, Object.keys(copyNames)),
       kind,
-      sequence: remapSteps(sequence.value, newIds),
+      playbacks: playbacks.value.map((playback) =>
+        toPlaybackInput(playback, languages.value, {
+          id: newPlaybackIds.get(playback.id),
+          steps: remapSteps(playback.steps, newIds),
+        }),
+      ),
+      default_playback_id: defaultPlaybackId.value === null ? null : (newPlaybackIds.get(defaultPlaybackId.value) ?? null),
       positions: copied.map((position) => toDiagramPosition(position, languages.value, newIds.get(position.id))),
       regions: regions.value.map((region) => toDiagramRegion(region, languages.value, { withId: false })),
     }
@@ -504,15 +647,20 @@ export function useDiagramForm() {
       // An already-set general color can't be cleared through an update, so an unset one is omitted.
       ...(color.value ? { color: color.value } : {}),
       mode: mode.value,
-      tempo_bpm: tempoBpm.value,
-      time_signature: { ...timeSignature.value },
-      // The full list, so an empty one removes every saved step.
-      sequence: copySteps(sequence.value),
+      // The full list, so an empty one removes every saved playback; ids are kept, so uses that
+      // chose a playback still find it.
+      playbacks: playbacks.value.map((playback) => toPlaybackInput(playback, languages.value)),
+      default_playback_id: defaultPlaybackId.value,
       positions: positions.value.filter(hasInterval).map((position) => toDiagramPosition(position, languages.value)),
       // The full list, so an empty one removes every saved region.
       regions: regions.value.map((region) => toDiagramRegion(region, languages.value)),
       classification: { skill_ids: [...skillIds.value], concept_ids: [...conceptIds.value] },
     }
+  }
+
+  /** The playbacks as a served diagram has them, for a preview of the unsaved diagram. */
+  function toDiagramPlaybacks(): DiagramPlayback[] {
+    return playbacks.value.map((playback) => toPlaybackInput(playback, languages.value))
   }
 
   /** Records the server's copy of a just-saved diagram, so later saves are updates against it. */
@@ -530,10 +678,10 @@ export function useDiagramForm() {
     color.value = diagram.color ?? null
     savedColor.value = diagram.color ?? null
     mode.value = diagram.mode ?? null
-    tempoBpm.value = diagram.tempo_bpm ?? null
-    timeSignature.value = { ...(diagram.time_signature ?? { beats: 4, beat_value: 4 }) }
     positions.value = diagram.positions.map(toLocalPosition)
-    sequence.value = copySteps(diagram.sequence ?? [])
+    playbacks.value = (diagram.playbacks ?? []).map(toLocalPlayback)
+    defaultPlaybackId.value = diagram.default_playback_id ?? playbacks.value[0]?.id ?? null
+    selectedPlaybackId.value = defaultPlaybackId.value
     // A diagram served by an older API has no regions field at all.
     regions.value = (diagram.regions ?? []).map(toLocalRegion)
     skillIds.value = diagram.classification.skills.map((s) => s.node_id)
@@ -545,12 +693,12 @@ export function useDiagramForm() {
    * classification replace the form's own, each with a new id. The diagram-level fields
    * (names, languages, instrument, root note, label display, color) stay as they are, and
    * the positions keep the intervals they were merged with rather than being recomputed.
-   * The merged diagram starts without a sequence, tempo or mode: its sources' rhythms don't
-   * combine into one, and they can be in different keys.
+   * The merged diagram starts without playbacks or a mode: its sources' rhythms don't combine
+   * into one, and they can be in different keys.
    */
   function loadFlattened(flattened: FlattenedStack) {
     positions.value = flattened.positions.map((p) => toLocalPosition({ ...p, position_id: undefined }))
-    setSequence([])
+    clearPlaybacks()
     mode.value = null
     regions.value = flattened.regions.map((r) => toLocalRegion({ ...r, region_id: undefined }))
     skillIds.value = [...flattened.skillIds]
@@ -582,6 +730,17 @@ export function useDiagramForm() {
     color,
     canClearColor,
     mode,
+    playbacks,
+    defaultPlaybackId,
+    selectedPlaybackId,
+    invalidPlaybackIds,
+    canAddPlayback,
+    selectPlayback,
+    addPlayback,
+    renamePlayback,
+    movePlayback,
+    setDefaultPlayback,
+    removePlayback,
     tempoBpm,
     timeSignature,
     sequence,
@@ -609,6 +768,7 @@ export function useDiagramForm() {
     toCreateDiagramRequest,
     toCopyRequest,
     toUpdateDiagramRequest,
+    toDiagramPlaybacks,
     loadFromDiagram,
     loadFlattened,
     markSaved,

@@ -75,6 +75,16 @@ describe('DiagramLanguageTabs', () => {
     )
   })
 
+  it("names a playback lacking a name, or sharing another's", () => {
+    const wrapper = mountTabs({
+      missing: { pt_BR: [{ kind: 'playbackName', playback: 1 }, { kind: 'playbackNameTaken', playback: 3 }] },
+    })
+
+    expect(tab(wrapper, 'pt_BR').attributes('title')).toBe(
+      'Portuguese is missing: the name of playback 1, a name for playback 3 that no other playback has',
+    )
+  })
+
   it('holds nothing but tabs in its tab list, so assistive tech reads it as one', () => {
     const wrapper = mountTabs()
 

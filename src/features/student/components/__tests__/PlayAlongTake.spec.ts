@@ -15,9 +15,16 @@ const diagram = {
   names: { en: 'A minor pentatonic, box 1' },
   classification: { skills: [], concepts: [] },
   instrument_id: 'guitar',
-  time_signature: { beats: 4, beat_value: 4 },
-  tempo_bpm: 100,
-  sequence: [{ position_ids: ['p1'], value: { num: 1, den: 4 }, strum: 'none' }],
+  playbacks: [
+    {
+      playback_id: 'pb-default',
+      names: { en: 'Ascending' },
+      time_signature: { beats: 4, beat_value: 4 },
+      tempo_bpm: 100,
+      steps: [{ position_ids: ['p1'], value: { num: 1, den: 4 }, strum: 'none' }],
+    },
+  ],
+  default_playback_id: 'pb-default',
   positions: [],
   regions: [],
 }
@@ -142,12 +149,13 @@ describe('PlayAlongTake', () => {
     expect(mountTake().get('[data-test="start-take"]').attributes()).toHaveProperty('data-primary-action')
   })
 
-  it('plays the diagram once, after a bar of count-in, at the take’s tempo', () => {
+  it('plays the default playback once, after a bar of count-in, at the take’s tempo', () => {
     mountTake({ tempo: 85 })
 
     const source = playbackSource()
-    expect(source.diagram.sequence).toHaveLength(5)
-    expect(source.diagram.sequence.slice(0, 4).every((step) => step.position_ids.length === 0)).toBe(true)
+    const steps = source.diagram.playbacks[0]!.steps
+    expect(steps).toHaveLength(5)
+    expect(steps.slice(0, 4).every((step) => step.position_ids.length === 0)).toBe(true)
     expect(source.playback).toEqual({ tempo_bpm: 85, voice_id: null, direction: 'as_authored', loop: false })
   })
 

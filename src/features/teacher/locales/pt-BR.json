@@ -463,7 +463,9 @@
     "removeTitle": "Remover {language}?",
     "removeBody": "O nome e os demais textos deste diagrama em {language} serão apagados. Os marcadores e as cores continuam como estão.",
     "cancel": "Cancelar",
-    "confirmRemove": "Remover"
+    "confirmRemove": "Remover",
+    "missingPlaybackName": "o nome da reprodução {n}",
+    "playbackNameTaken": "um nome para a reprodução {n} que nenhuma outra reprodução tenha"
   },
   "courseListView": {
     "heading": "Cursos",
@@ -614,7 +616,7 @@
       "legend": "Reprodução",
       "offered": "Deixar os alunos tocarem",
       "tempo": "Andamento (BPM)",
-      "tempoHint": "Em branco, toca no andamento do diagrama.",
+      "tempoHint": "Em branco, toca no andamento da própria reprodução.",
       "tempoInvalid": "Escolha um andamento inteiro de {min} a {max} BPM.",
       "voice": "Som",
       "voiceDefault": "Padrão do instrumento ({name})",
@@ -625,7 +627,9 @@
         "reversed": "Invertido"
       },
       "loop": "Repetir",
-      "voicesError": "Não foi possível carregar os outros sons, então só o padrão do instrumento está disponível."
+      "voicesError": "Não foi possível carregar os outros sons, então só o padrão do instrumento está disponível.",
+      "choice": "Reprodução",
+      "choiceDefault": "Padrão ({name})"
     }
   },
   "mediaPickerModal": {
@@ -708,7 +712,20 @@
     "rests": "Pausas",
     "addRest": "Adicionar pausa de {value}",
     "dragHint": "Arraste um passo para um espaço entre passos para movê-lo, ou sobre outro passo para tocá-los juntos como acorde.",
-    "removeStepNumber": "Remover passo {number}"
+    "removeStepNumber": "Remover passo {number}",
+    "playbacks": {
+      "listAriaLabel": "Reproduções",
+      "add": "Adicionar reprodução",
+      "default": "Reprodução padrão",
+      "makeDefault": "Tornar padrão",
+      "name": "Nome ({language})",
+      "unnamed": "Reprodução {n}",
+      "moveEarlier": "Mover reprodução para antes",
+      "moveLater": "Mover reprodução para depois",
+      "remove": "Remover reprodução",
+      "needsSteps": "Adicione pelo menos um passo, ou remova esta reprodução, antes de salvar.",
+      "limitReached": "Um diagrama pode ter no máximo {max} reproduções."
+    }
   },
   "pathStatus": {
     "draft": "Rascunho",

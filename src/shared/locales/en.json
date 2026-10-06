@@ -234,5 +234,8 @@
   },
   "practiceShell": {
     "progressLabel": "Progress"
+  },
+  "diagramPlayback": {
+    "defaultName": "Playback {n}"
   }
 }

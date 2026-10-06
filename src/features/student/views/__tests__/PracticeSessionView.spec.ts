@@ -121,7 +121,7 @@ function exerciseItem(exerciseId: string): Item {
 }
 
 function plan(items: Item[] = [playAlong(WARM_UP, 'warm_up', 80), playAlong(DUE, 'due', 60)]): Plan {
-  return { practice_session_id: SESSION_ID, instrument_id: GUITAR, minutes: 10, items }
+  return { practice_session_id: SESSION_ID, instrument_id: GUITAR, minutes: 10, items, felt_questions: [], tap_check_due: false }
 }
 
 function mountView() {

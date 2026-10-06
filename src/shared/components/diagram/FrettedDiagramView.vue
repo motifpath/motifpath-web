@@ -33,6 +33,7 @@ import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { computeFrettedDiagramLayout } from '@/shared/utils/frettedDiagramLayout'
+import { resolvePlayback } from '@/shared/utils/diagramPlayback'
 import { followScrollLeft } from '@/shared/utils/followScroll'
 import type { Span } from '@/shared/utils/followScroll'
 import {
@@ -216,14 +217,17 @@ function y(stringNumber: number): number {
 
 const boardMidY = computed(() => (y(1) + y(layout.value.stringCount)) / 2)
 
-// A readable board wider than its window follows its sequence as it plays: the board starts at
+// A readable board wider than its window follows the playback this use plays as it plays: the board starts at
 // the first note, then keeps the sounding note, and the next when both fit, in view.
 const scroller = ref<HTMLElement | null>(null)
 /** Air kept around a followed note: its touch target and a little more. */
 const FOLLOW_MARGIN = TARGET_RADIUS + 8
 
-// A diagram drawn for a preview may come without a sequence.
-const soundingSteps = computed(() => (props.diagram.sequence ?? []).filter((step) => step.position_ids.length > 0))
+// A diagram drawn for a preview may come without playbacks.
+const soundingSteps = computed(() => {
+  const played = props.diagram.playbacks ? resolvePlayback(props.diagram, props.diagramRef.playback?.playback_id) : null
+  return (played?.steps ?? []).filter((step) => step.position_ids.length > 0)
+})
 
 /** Where the drawn positions among `ids` sit across the board; null when none is drawn. */
 function spanOf(ids: string[]): Span | null {
@@ -240,7 +244,7 @@ function follow(sounding: Span | null, next: Span | null, behavior: ScrollBehavi
   scrollLeft.value = left
 }
 
-// The step last followed, so a step the sequence repeats is found after it, not at its first use.
+// The step last followed, so a step the playback repeats is found after it, not at its first use.
 let followedStep = -1
 
 function sameIds(a: string[], b: string[]): boolean {

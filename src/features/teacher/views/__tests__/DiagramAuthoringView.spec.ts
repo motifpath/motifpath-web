@@ -371,7 +371,7 @@ describe('DiagramAuthoringView', () => {
     )
   })
 
-  it('records a sequence by clicking placed markers, rings the selected step, and saves it with its tempo', async () => {
+  it('records a playback by clicking placed markers, rings the selected step, and saves it as the default', async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     POST.mockResolvedValueOnce({ data: undefined, error: { message: 'stop here' }, response: { status: 400 } })
     const wrapper = mountView()
@@ -398,17 +398,23 @@ describe('DiagramAuthoringView', () => {
       '/diagrams',
       expect.objectContaining({
         body: expect.objectContaining({
-          tempo_bpm: 90,
-          sequence: [
-            { position_ids: [second], value: { num: 1, den: 4 }, strum: 'none' },
-            { position_ids: [first], value: { num: 1, den: 4 }, strum: 'none' },
+          playbacks: [
+            expect.objectContaining({
+              names: { en: 'Playback 1' },
+              tempo_bpm: 90,
+              steps: [
+                { position_ids: [second], value: { num: 1, den: 4 }, strum: 'none' },
+                { position_ids: [first], value: { num: 1, den: 4 }, strum: 'none' },
+              ],
+            }),
           ],
+          default_playback_id: expect.any(String),
         }),
       }),
     )
   })
 
-  it('plays the unsaved sequence from the Playback panel, ringing the markers being heard', async () => {
+  it('plays the unsaved playback being edited from the Playback panel, ringing the markers being heard', async () => {
     const tunedGuitar = { ...guitar, tuning: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'], default_voice_id: 'acoustic-guitar' }
     GET.mockResolvedValueOnce({ data: [tunedGuitar], error: undefined, response: { status: 200 } })
     const wrapper = mountView()
@@ -430,6 +436,13 @@ describe('DiagramAuthoringView', () => {
     expect(editor().props('sequenceHighlightIds')).toEqual([first])
     await wrapper.findComponent(DiagramPlayer).vm.$emit('active', [])
     expect(editor().props('sequenceHighlightIds')).toEqual([second])
+
+    await wrapper.get('[data-test="playback-add"]').trigger('click')
+    await editor().vm.$emit('pick-position', second)
+    const player = wrapper.findComponent(DiagramPlayer)
+    const added = player.props('diagram').playbacks[1]
+    expect(added.steps).toEqual([{ position_ids: [second], value: { num: 1, den: 8 }, strum: 'none' }])
+    expect(player.props('playback')).toMatchObject({ playback_id: added.playback_id })
   })
 
   it("saves the general color chosen from the palette and a position's own color", async () => {

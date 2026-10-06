@@ -71,7 +71,7 @@ const WARM_UP = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const DUE = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
 function plan(items: Item[], instrumentId: string | null = GUITAR_ID): Plan {
-  return { practice_session_id: SESSION_ID, instrument_id: instrumentId, minutes: 10, items }
+  return { practice_session_id: SESSION_ID, instrument_id: instrumentId, minutes: 10, items, felt_questions: [], tap_check_due: false }
 }
 
 const twoItems = plan([

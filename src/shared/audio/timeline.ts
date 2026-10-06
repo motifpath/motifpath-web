@@ -1,5 +1,5 @@
 /**
- * When each note of a diagram's sequence sounds. `playbackSteps` settles what
+ * When each note of a diagram playback sounds. `playbackSteps` settles what
  * each step plays — its positions' pitches, in strum order — independent of
  * tempo; `buildTimeline` then lays the steps out in seconds, from any step, so
  * a tempo change can re-time the rest of a run without touching what already

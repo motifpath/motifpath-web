@@ -2,7 +2,7 @@ import { effectScope, nextTick, ref, watch } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
-import { makeFrettedInstrument, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { makeFrettedDiagram, makeFrettedInstrument, makePlayback, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -129,10 +129,10 @@ describe('useDiagramPlayback — whether Play is offered', () => {
   })
 
   it.each([
-    ['the diagram has no sequence', { diagram: makeSequencedFrettedDiagram({ sequence: [], tempo_bpm: null }) }],
+    ['the diagram has no playbacks', { diagram: makeFrettedDiagram() }],
     [
       'every step is a rest',
-      { diagram: makeSequencedFrettedDiagram({ sequence: [{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }] }) },
+      { diagram: makeSequencedFrettedDiagram({}, { steps: [{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }] }) },
     ],
     ['the usage offers no playback', { playback: null }],
     ['no position has a pitch (a tuning without octaves)', { instrument: makeFrettedInstrument({ tuning: ['E', 'A', 'D', 'G', 'B', 'E'] }) }],
@@ -158,7 +158,7 @@ describe('useDiagramPlayback — whether Play is offered', () => {
 })
 
 describe('useDiagramPlayback — playing', () => {
-  it("plays the sequence in the instrument's default voice, at the diagram's tempo, pitched from the tuning", async () => {
+  it("plays the default playback in the instrument's default voice, at that playback's tempo, pitched from the tuning", async () => {
     const { player } = setup()
     await play(player)
 
@@ -307,9 +307,80 @@ describe('useDiagramPlayback — playing', () => {
   it('resets the tempo to the new effective tempo when the diagram changes', async () => {
     const { player, source } = setup()
     player.tempo.value = 60
-    source.value = { ...source.value, diagram: makeSequencedFrettedDiagram({ diagram_id: 'other', tempo_bpm: 120 }) }
+    source.value = { ...source.value, diagram: makeSequencedFrettedDiagram({ diagram_id: 'other' }, { tempo_bpm: 120 }) }
     await nextTick()
     expect(player.tempo.value).toBe(120)
+  })
+})
+
+describe('useDiagramPlayback — which playback a use plays', () => {
+  const strum = makePlayback({
+    playback_id: 'pb-strum',
+    names: { en: 'Strum' },
+    tempo_bpm: 60,
+    steps: [{ position_ids: ['p0', 'p2'], value: { num: 1, den: 4 }, strum: 'none' }],
+  })
+  const arpeggio = makePlayback({
+    playback_id: 'pb-arpeggio',
+    names: { en: 'Arpeggio' },
+    tempo_bpm: 120,
+    time_signature: { beats: 3, beat_value: 4 },
+    steps: [
+      { position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' },
+      { position_ids: ['p2'], value: { num: 1, den: 4 }, strum: 'none' },
+    ],
+  })
+  const diagram = makeFrettedDiagram({ playbacks: [strum, arpeggio], default_playback_id: 'pb-strum' })
+
+  async function heard(playbackId: string | null) {
+    const { player } = setup({ diagram, playback: { ...AS_AUTHORED, playback_id: playbackId }, metronome: true })
+    await play(player)
+    const start = audio.played[0]!.time
+    return {
+      tempo: player.tempo.value,
+      notes: audio.played.map((n) => [n.midi, +(n.time - start).toFixed(3)]),
+      accents: audio.clicks.filter((c) => c.accent).length,
+    }
+  }
+
+  it("plays the diagram's default playback, at its own tempo, when the use chose none", async () => {
+    expect(await heard(null)).toMatchObject({ tempo: 60, notes: [[45, 0], [50, 0]] })
+  })
+
+  it('plays the playback the use chose, at its own tempo and time signature', async () => {
+    const { tempo, notes } = await heard('pb-arpeggio')
+    expect(tempo).toBe(120)
+    expect(notes).toEqual([[45, 0], [50, 0.5]])
+  })
+
+  it('plays the default when the chosen playback is no longer on the diagram', async () => {
+    expect(await heard('pb-removed')).toMatchObject({ tempo: 60, notes: [[45, 0], [50, 0]] })
+  })
+
+  it("counts the metronome's bars in the played playback's time signature", async () => {
+    const waltz = makePlayback({
+      playback_id: 'pb-waltz',
+      tempo_bpm: 120,
+      time_signature: { beats: 3, beat_value: 4 },
+      steps: ['p0', 'p2', 'p3', 'p0'].map((id) => ({ position_ids: [id], value: { num: 1, den: 4 }, strum: 'none' as const })),
+    })
+    const { player } = setup({
+      diagram: makeFrettedDiagram({ playbacks: [strum, waltz], default_playback_id: 'pb-strum' }),
+      playback: { ...AS_AUTHORED, playback_id: 'pb-waltz' },
+      metronome: true,
+    })
+    await play(player)
+    const start = audio.played[0]!.time
+    // 3/4 at 120 BPM: a bar lasts a second and a half, so the second accent falls there.
+    expect(audio.clicks.filter((c) => c.accent).map((c) => +(c.time - start).toFixed(3)).slice(0, 2)).toEqual([0, 1.5])
+  })
+
+  it('offers no Play when the default it falls back to sounds nothing', () => {
+    const silent = makeFrettedDiagram({
+      playbacks: [makePlayback({ playback_id: 'pb-rest', steps: [{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }] })],
+      default_playback_id: 'pb-rest',
+    })
+    expect(setup({ diagram: silent, playback: { ...AS_AUTHORED, playback_id: 'pb-removed' } }).player.canPlay.value).toBe(false)
   })
 })
 

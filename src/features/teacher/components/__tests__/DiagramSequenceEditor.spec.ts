@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import DiagramSequenceEditor from '@/features/teacher/components/DiagramSequenceEditor.vue'
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
-import { makeFrettedDiagram, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { makeFrettedDiagram, makePlayback, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
 
 function mountEditor(diagram = makeSequencedFrettedDiagram()) {
   const form = useDiagramForm()
@@ -39,13 +39,16 @@ describe('DiagramSequenceEditor', () => {
 
   it('draws a bar line where a new bar starts', () => {
     const { wrapper } = mountEditor(
-      makeSequencedFrettedDiagram({
-        sequence: [
-          { position_ids: ['p0'], value: { num: 1, den: 2 }, strum: 'none' },
-          { position_ids: ['p1'], value: { num: 1, den: 2 }, strum: 'none' },
-          { position_ids: ['p2'], value: { num: 1, den: 4 }, strum: 'none' },
-        ],
-      }),
+      makeSequencedFrettedDiagram(
+        {},
+        {
+          steps: [
+            { position_ids: ['p0'], value: { num: 1, den: 2 }, strum: 'none' },
+            { position_ids: ['p1'], value: { num: 1, den: 2 }, strum: 'none' },
+            { position_ids: ['p2'], value: { num: 1, den: 4 }, strum: 'none' },
+          ],
+        },
+      ),
     )
 
     expect(wrapper.findAll('[data-test="sequence-bar-line"]')).toHaveLength(1)
@@ -66,7 +69,7 @@ describe('DiagramSequenceEditor', () => {
   })
 
   it('shows the tempo that is kept when one typed is out of range', async () => {
-    const { form, wrapper } = mountEditor(makeSequencedFrettedDiagram({ tempo_bpm: 300 }))
+    const { form, wrapper } = mountEditor(makeSequencedFrettedDiagram({}, { tempo_bpm: 300 }))
     const tempo = wrapper.get('[data-test="sequence-tempo"]')
 
     await tempo.setValue('500')
@@ -89,14 +92,14 @@ describe('DiagramSequenceEditor', () => {
     expect(wrapper.get('[data-test="sequence-mode"]').attributes('disabled')).toBeDefined()
   })
 
-  it('has no tempo to edit while nothing plays', () => {
+  it('has no tempo to edit while the diagram has no playback', () => {
     const { wrapper } = mountEditor(makeFrettedDiagram())
 
     expect(wrapper.get('[data-test="sequence-tempo"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-test="sequence-empty"]').exists()).toBe(true)
   })
 
-  it('fills an empty sequence from the positions', async () => {
+  it('fills an empty playback from the positions', async () => {
     const { form, wrapper } = mountEditor(makeFrettedDiagram())
 
     await wrapper.get('[data-test="sequence-fill"]').trigger('click')
@@ -240,5 +243,117 @@ describe('DiagramSequenceEditor', () => {
     await wrapper.get('[data-test="sequence-clear"]').trigger('click')
 
     expect(form.sequence.value).toEqual([])
+  })
+
+  describe('playbacks', () => {
+    const strum = makePlayback({
+      playback_id: 'pb-strum',
+      names: { en: 'Strum', pt_BR: 'Batida' },
+      steps: [{ position_ids: ['p0', 'p2'], value: { num: 1, den: 1 }, strum: 'down' }],
+    })
+    const arpeggio = makePlayback({
+      playback_id: 'pb-arpeggio',
+      names: { en: 'Arpeggio', pt_BR: 'Arpejo' },
+      steps: [
+        { position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' },
+        { position_ids: ['p2'], value: { num: 1, den: 4 }, strum: 'none' },
+      ],
+    })
+    const twoPlaybacks = () => makeFrettedDiagram({ playbacks: [strum, arpeggio], default_playback_id: 'pb-strum' })
+    const items = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('[data-test="playback-item"]')
+
+    it('lists the playbacks by name, in order, marking the default and the one being edited', () => {
+      const { wrapper } = mountEditor(twoPlaybacks())
+
+      expect(items(wrapper).map((item) => item.find('[data-test="playback-select"]').text())).toEqual(['Strum', 'Arpeggio'])
+      expect(items(wrapper)[0]!.find('[data-test="playback-default-badge"]').exists()).toBe(true)
+      expect(items(wrapper)[1]!.find('[data-test="playback-default-badge"]').exists()).toBe(false)
+      expect(items(wrapper)[0]!.get('[data-test="playback-select"]').attributes('aria-pressed')).toBe('true')
+      expect(stepTexts(wrapper)).toHaveLength(1)
+    })
+
+    it("shows a playback's steps once it's chosen, and records into it, leaving the others unchanged", async () => {
+      const { editor, form, wrapper } = mountEditor(twoPlaybacks())
+
+      await items(wrapper)[1]!.get('[data-test="playback-select"]').trigger('click')
+      expect(stepTexts(wrapper)).toHaveLength(2)
+      editor.pickPosition('p3')
+
+      expect(form.playbacks.value[1]!.steps).toHaveLength(3)
+      expect(form.playbacks.value[0]!.steps).toEqual(strum.steps)
+    })
+
+    it('adds a playback and edits it', async () => {
+      const { form, wrapper } = mountEditor(twoPlaybacks())
+
+      await wrapper.get('[data-test="playback-add"]').trigger('click')
+
+      expect(items(wrapper)).toHaveLength(3)
+      expect(items(wrapper)[2]!.get('[data-test="playback-select"]').attributes('aria-pressed')).toBe('true')
+      expect(form.selectedPlaybackId.value).toBe(form.playbacks.value[2]!.id)
+    })
+
+    it("renames the edited playback in each of the diagram's languages", async () => {
+      const { form, wrapper } = mountEditor(twoPlaybacks())
+
+      await wrapper.get('[data-test="playback-name-pt_BR"]').setValue('Batida para baixo')
+
+      expect(form.playbacks.value[0]!.names).toEqual({ en: 'Strum', pt_BR: 'Batida para baixo' })
+    })
+
+    it('reorders the edited playback', async () => {
+      const { form, wrapper } = mountEditor(twoPlaybacks())
+      expect(wrapper.get('[data-test="playback-move-earlier"]').attributes('disabled')).toBeDefined()
+
+      await wrapper.get('[data-test="playback-move-later"]').trigger('click')
+
+      expect(form.playbacks.value.map((p) => p.id)).toEqual(['pb-arpeggio', 'pb-strum'])
+    })
+
+    it('makes another playback the default', async () => {
+      const { form, wrapper } = mountEditor(twoPlaybacks())
+      expect(wrapper.find('[data-test="playback-make-default"]').exists()).toBe(false)
+
+      await items(wrapper)[1]!.get('[data-test="playback-select"]').trigger('click')
+      await wrapper.get('[data-test="playback-make-default"]').trigger('click')
+
+      expect(form.defaultPlaybackId.value).toBe('pb-arpeggio')
+      expect(items(wrapper)[1]!.find('[data-test="playback-default-badge"]').exists()).toBe(true)
+    })
+
+    it('removes the edited playback', async () => {
+      const { form, wrapper } = mountEditor(twoPlaybacks())
+
+      await wrapper.get('[data-test="playback-remove"]').trigger('click')
+
+      expect(form.playbacks.value.map((p) => p.id)).toEqual(['pb-arpeggio'])
+      expect(items(wrapper)).toHaveLength(1)
+    })
+
+    it('says a playback with no steps must get one before the diagram can be saved', async () => {
+      const { wrapper } = mountEditor(twoPlaybacks())
+
+      await wrapper.get('[data-test="playback-add"]').trigger('click')
+
+      expect(wrapper.find('[data-test="playback-needs-steps"]').exists()).toBe(true)
+    })
+
+    it('offers no further playback once the diagram has the most it may have, saying why', async () => {
+      const { form, wrapper } = mountEditor(twoPlaybacks())
+      for (let i = 0; i < 14; i++) form.addPlayback()
+      await wrapper.vm.$nextTick()
+
+      const add = wrapper.get('[data-test="playback-add"]')
+      expect(add.attributes('disabled')).toBeDefined()
+      expect(add.attributes('title')).toBe('A diagram can have at most 16 playbacks.')
+    })
+
+    it('lists no playbacks for a diagram without any, offering to add one', () => {
+      const { wrapper } = mountEditor(makeFrettedDiagram())
+
+      expect(items(wrapper)).toHaveLength(0)
+      expect(wrapper.find('[data-test="playback-add"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="playback-remove"]').exists()).toBe(false)
+    })
   })
 })

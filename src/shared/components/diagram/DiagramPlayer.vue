@@ -5,7 +5,7 @@ export const PLAYER_WIDTH = 88
 
 <script setup lang="ts">
 /**
- * Compact Play/Stop and tempo controls for a diagram with a sequence, sized to sit in the
+ * Compact Play/Stop and tempo controls for a diagram with a playback, sized to sit in the
  * diagram's control rail. It reports the positions being heard through `active`, for the diagram
  * to light up. Both controls look like the rail's region information controls. The tempo control, a
  * metronome named with the tempo, opens a panel on demand with a slider and a numeric input; the
