@@ -9,6 +9,8 @@ import {
   makeDiagramRef,
   makeFrettedDiagram,
   makeFrettedInstrument,
+  makePlayback,
+  makeSequencedFrettedDiagram,
 } from '@/shared/testUtils/diagram'
 
 describe('FrettedDiagramView', () => {
@@ -1256,17 +1258,36 @@ describe('FrettedDiagramView', () => {
         scrollTo.mockReset()
         Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo')
       })
+      const steps = (ids: string[][]) => ids.map((position_ids) => ({ position_ids, value: { num: 1, den: 4 }, strum: 'none' as const }))
       const played = (sequence: string[][]) =>
-        makeFrettedDiagram({
-          positions: wide.positions,
-          sequence: sequence.map((ids) => ({ position_ids: ids, value: { num: 1, den: 4 }, strum: 'none' as const })),
-        })
-      const mountPlaying = (width: number, diagram: ReturnType<typeof played>, activePositionIds: string[] = []) => {
+        makeSequencedFrettedDiagram({ positions: wide.positions }, { steps: steps(sequence) })
+      const mountPlaying = (
+        width: number,
+        diagram: ReturnType<typeof played>,
+        activePositionIds: string[] = [],
+        diagramRef = makeDiagramRef(),
+      ) => {
         Object.defineProperty(HTMLElement.prototype, 'scrollTo', { value: scrollTo, configurable: true })
-        return mountAt(width, { diagram, activePositionIds })
+        return mountAt(width, { diagram, activePositionIds, diagramRef })
       }
 
-      it('starts a board too wide for its window at the first note of its sequence', async () => {
+      it('starts a board too wide for its window at the first note of the playback this use plays', async () => {
+        const diagram = makeFrettedDiagram({
+          positions: wide.positions,
+          playbacks: [
+            makePlayback({ playback_id: 'pb-low', steps: steps([['low'], ['high']]) }),
+            makePlayback({ playback_id: 'pb-high', steps: steps([['high'], ['low']]) }),
+          ],
+          default_playback_id: 'pb-low',
+        })
+        const chosen = makeDiagramRef({ playback: { playback_id: 'pb-high', direction: 'as_authored', loop: false } })
+
+        await mountPlaying(300, diagram, [], chosen)
+
+        expect(scrollTo.mock.calls.at(-1)![0].left).toBeGreaterThan(0)
+      })
+
+      it('starts a board too wide for its window at the first note of its default playback', async () => {
         await mountPlaying(300, played([['high'], ['low']]))
 
         expect(scrollTo).toHaveBeenCalledWith({ left: expect.any(Number), behavior: 'auto' })

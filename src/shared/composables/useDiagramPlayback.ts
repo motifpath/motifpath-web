@@ -7,6 +7,7 @@ import { createClickSink } from '@/shared/audio/clickSink'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
 import type { PlaybackRun } from '@/shared/audio/playbackRun'
 import { playbackSteps, secondsPerWhole } from '@/shared/audio/timeline'
+import { resolvePlayback } from '@/shared/utils/diagramPlayback'
 import { beatsPerBar, pulse } from '@/shared/utils/sequence'
 import { useApi } from '@/shared/composables/useApi'
 import { fetchVoices } from '@/shared/composables/useListVoices'
@@ -52,25 +53,31 @@ function positionPitches({ diagram, instrument }: PlaybackSource): Map<string | 
   return new Map(diagram.positions.map((p) => [p.position_id, frettedPitch(tuning, p.string ?? 0, p.fret ?? 0)]))
 }
 
+/** The diagram's playback this usage plays: the one it chose, else the default. */
+function playedPlayback({ diagram, playback }: PlaybackSource) {
+  return resolvePlayback(diagram, playback?.playback_id)
+}
+
 /**
  * Whether a usage offers Play for a diagram: a fretted diagram whose usage enables playback and
- * whose sequence has a step that sounds, so a sequence of rests never plays silence.
+ * whose played playback has a step that sounds, so a playback of rests never plays silence.
  */
 export function isPlayable(source: PlaybackSource): boolean {
   if (source.playback === null || source.instrument.family !== 'fretted') return false
   const pitches = positionPitches(source)
-  return source.diagram.sequence.some((step) => step.position_ids.some((id) => (pitches.get(id) ?? null) !== null))
+  const steps = playedPlayback(source)?.steps ?? []
+  return steps.some((step) => step.position_ids.some((id) => (pitches.get(id) ?? null) !== null))
 }
 
 /**
- * Plays a diagram's sequence and says which positions are sounding, so the
+ * Plays one of a diagram's playbacks (the usage's choice, else the default) and says which positions are sounding, so the
  * view can light them up. Every note is scheduled on the audio clock up
  * front; an animation-frame loop reads what is audible right now (output
  * latency included) rather than trusting timers or note callbacks.
  *
  * The voice is the usage's, else the instrument's default; the tempo the
  * student's (`tempo`, never saved), which starts at the usage's, else the
- * diagram's. A new tempo applies from the next step. Positions a usage hides
+ * played playback's. A new tempo applies from the next step. Positions a usage hides
  * still sound. Playing stops when the owning component goes away. With
  * `metronome`, a click sounds on every beat of the run, the first of each bar
  * accented, read when Play is pressed.
@@ -84,10 +91,12 @@ export function useDiagramPlayback(
   const state = ref<PlaybackState>('idle')
   const activePositionIds = shallowRef<string[]>([])
 
-  const effectiveTempo = computed(() => {
-    const { diagram, playback } = toValue(source)
-    return playback?.tempo_bpm ?? diagram.tempo_bpm ?? FALLBACK_TEMPO_BPM
-  })
+  const played = computed(() => playedPlayback(toValue(source)))
+  const timeSignature = computed(() => played.value?.time_signature ?? { beats: 4, beat_value: 4 })
+
+  const effectiveTempo = computed(
+    () => toValue(source).playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
+  )
   const tempo = ref(effectiveTempo.value)
 
   const pitches = computed(() => positionPitches(toValue(source)))
@@ -160,23 +169,25 @@ export function useDiagramPlayback(
     context = audio
     state.value = 'loading'
 
-    const { diagram, playback } = toValue(source)
+    const { playback } = toValue(source)
+    const steps = played.value?.steps ?? []
+    const signature = timeSignature.value
     try {
       const [{ loadVoiceSampler }, voice] = await Promise.all([import('@/shared/audio/voiceSampler'), findVoice()])
       const sink = await loadVoiceSampler(audio, voice)
       if (current !== attempt) return
-      const beat = pulse(diagram.time_signature)
+      const beat = pulse(signature)
       const metronome = toValue(options.metronome)
-        ? { sink: createClickSink(audio), beat: beat.num / beat.den, beatsPerBar: beatsPerBar(diagram.time_signature) }
+        ? { sink: createClickSink(audio), beat: beat.num / beat.den, beatsPerBar: beatsPerBar(signature) }
         : undefined
 
-      const steps = playbackSteps(diagram.sequence, pitchOf, {
+      const scheduled = playbackSteps(steps, pitchOf, {
         direction: playback?.direction ?? 'as_authored',
         strumSeconds: STRUM_SECONDS,
       })
-      run = createPlaybackRun(steps, {
+      run = createPlaybackRun(scheduled, {
         sink,
-        wholeSeconds: secondsPerWhole(tempo.value, diagram.time_signature),
+        wholeSeconds: secondsPerWhole(tempo.value, signature),
         loop: playback?.loop ?? false,
         startAt: audio.currentTime + START_DELAY_SECONDS,
         metronome,
@@ -200,7 +211,7 @@ export function useDiagramPlayback(
   }
 
   watch(tempo, (bpm) => {
-    if (run && context) run.setWholeSeconds(secondsPerWhole(bpm, toValue(source).diagram.time_signature), context.currentTime)
+    if (run && context) run.setWholeSeconds(secondsPerWhole(bpm, timeSignature.value), context.currentTime)
   })
 
   // Another diagram, or another way of playing it, starts over at its own tempo.

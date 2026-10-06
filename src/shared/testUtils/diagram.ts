@@ -3,6 +3,7 @@ import type { components } from '@/api/generated/core-domain'
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 type DiagramRef = components['schemas']['DiagramRef']
+type DiagramPlayback = components['schemas']['DiagramPlayback']
 
 /** A 6-string guitar `Instrument` fixture, standard tuning. */
 export function makeFrettedInstrument(overrides: Partial<Instrument> = {}): Instrument {
@@ -33,9 +34,8 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
     label_display: 'interval',
     color: null,
     mode: 'minor',
-    tempo_bpm: null,
-    time_signature: { beats: 4, beat_value: 4 },
-    sequence: [],
+    playbacks: [],
+    default_playback_id: null,
     positions: [
       { position_id: 'p0', string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'dot' },
       {
@@ -66,20 +66,35 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
 }
 
 /**
- * The A minor pentatonic with a sequence: the root and minor third as eighths, an eighth rest, then
+ * A playback of the A minor pentatonic: the root and minor third as eighths, an eighth rest, then
  * the root, fourth and fifth strummed down together for a quarter, at 90 BPM in 4/4.
  */
-export function makeSequencedFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
-  return makeFrettedDiagram({
+export function makePlayback(overrides: Partial<DiagramPlayback> = {}): DiagramPlayback {
+  return {
+    playback_id: 'playback-riff',
+    names: { en: 'Riff', pt_BR: 'Riff' },
     tempo_bpm: 90,
-    sequence: [
+    time_signature: { beats: 4, beat_value: 4 },
+    steps: [
       { position_ids: ['p0'], value: { num: 1, den: 8 }, strum: 'none' },
       { position_ids: ['p1'], value: { num: 1, den: 8 }, strum: 'none' },
       { position_ids: [], value: { num: 1, den: 8 }, strum: 'none' },
       { position_ids: ['p0', 'p2', 'p3'], value: { num: 1, den: 4 }, strum: 'down' },
     ],
     ...overrides,
-  })
+  }
+}
+
+/**
+ * The A minor pentatonic with one playback, its default; `playback` overrides that playback's
+ * fields.
+ */
+export function makeSequencedFrettedDiagram(
+  overrides: Partial<Diagram> = {},
+  playback: Partial<DiagramPlayback> = {},
+): Diagram {
+  const only = makePlayback(playback)
+  return makeFrettedDiagram({ playbacks: [only], default_playback_id: only.playback_id, ...overrides })
 }
 
 /** A minimal `DiagramRef` pointing at `diagram-a-minor-pentatonic-1`, default layers/styling. */

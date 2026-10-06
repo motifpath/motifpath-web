@@ -238,8 +238,8 @@ describe('EmbeddedDiagram', () => {
       expect(new Set(iconSizes).size).toBe(1)
     })
 
-    it("makes no room for a player when the diagram's sequence has nothing to sound", async () => {
-      serve(makeSequencedFrettedDiagram({ sequence: [{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }] }))
+    it("makes no room for a player when the diagram's playback has nothing to sound", async () => {
+      serve(makeSequencedFrettedDiagram({}, { steps: [{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }] }))
       const wrapper = mount(EmbeddedDiagram, { props: { embed: playable } })
       await flushPromises()
 
