@@ -6,7 +6,7 @@
  * tempo (the tempo ladder). A diagram that can't be played here can only be skipped.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { Info, Metronome } from 'lucide-vue-next'
+import { Info, Metronome, RotateCcw } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { withCountIn } from '@/features/student/utils/countIn'
@@ -113,6 +113,14 @@ function stopEarly() {
   player.stop()
 }
 
+/** Drops the take without a rating, back to choosing its tempo, as when it started at the wrong one. */
+function restartTake() {
+  // Ready first, so the stop's own idle isn't read as the take ending.
+  phase.value = 'ready'
+  stopCounting()
+  player.stop()
+}
+
 // Whether the next tempo change comes from the ladder, after a rating, rather than from the student.
 let rated = false
 
@@ -213,44 +221,52 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
               <Info :size="18" aria-hidden="true" />
             </button>
           </div>
-          <div class="flex shrink-0 items-center gap-1.5">
-            <button
-              v-if="phase === 'ready'"
-              type="button"
-              data-test="tempo-down"
-              class="flex h-9 w-9 items-center justify-center rounded-md border border-border text-sm tabular-nums"
-              :aria-label="t('playAlongTake.slower', { step: TEMPO_STEP_BPM })"
-              @click="changeTempo(-TEMPO_STEP_BPM)"
-            >
-              −{{ TEMPO_STEP_BPM }}
-            </button>
-            <span data-test="tempo-value" class="min-w-[4.5rem] text-center text-lg font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: shownTempo }) }}</span>
-            <button
-              v-if="phase === 'ready'"
-              type="button"
-              data-test="tempo-up"
-              class="flex h-9 w-9 items-center justify-center rounded-md border border-border text-sm tabular-nums"
-              :aria-label="t('playAlongTake.faster', { step: TEMPO_STEP_BPM })"
-              @click="changeTempo(TEMPO_STEP_BPM)"
-            >
-              +{{ TEMPO_STEP_BPM }}
-            </button>
-          </div>
         </div>
-        <input
-          v-if="phase === 'ready'"
-          type="range"
-          data-test="tempo-slider"
-          class="h-9 w-full cursor-pointer accent-accent"
-          :min="slowestTempo"
-          :max="MAX_TEMPO_BPM"
-          :step="TEMPO_STEP_BPM"
-          :value="shownTempo"
-          :aria-label="t('playAlongTake.tempoSlider')"
-          :aria-valuetext="t('playAlongTake.bpm', { bpm: shownTempo })"
-          @input="slide"
-          @change="release"
-        />
+        <div data-test="tempo-control" class="flex flex-col gap-1 rounded-lg border border-border px-3 py-2">
+          <div class="flex items-baseline justify-between gap-2">
+            <span data-test="tempo-heading" class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{{ t('playAlongTake.tempoSlider') }}</span>
+            <span data-test="tempo-value" class="text-lg font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: shownTempo }) }}</span>
+          </div>
+          <template v-if="phase === 'ready'">
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                data-test="tempo-down"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-sm tabular-nums"
+                :aria-label="t('playAlongTake.slower', { step: TEMPO_STEP_BPM })"
+                @click="changeTempo(-TEMPO_STEP_BPM)"
+              >
+                −{{ TEMPO_STEP_BPM }}
+              </button>
+              <input
+                type="range"
+                data-test="tempo-slider"
+                class="h-9 min-w-0 flex-1 cursor-pointer accent-accent"
+                :min="slowestTempo"
+                :max="MAX_TEMPO_BPM"
+                :step="TEMPO_STEP_BPM"
+                :value="shownTempo"
+                :aria-label="t('playAlongTake.tempoSlider')"
+                :aria-valuetext="t('playAlongTake.bpm', { bpm: shownTempo })"
+                @input="slide"
+                @change="release"
+              />
+              <button
+                type="button"
+                data-test="tempo-up"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-sm tabular-nums"
+                :aria-label="t('playAlongTake.faster', { step: TEMPO_STEP_BPM })"
+                @click="changeTempo(TEMPO_STEP_BPM)"
+              >
+                +{{ TEMPO_STEP_BPM }}
+              </button>
+            </div>
+            <div class="flex justify-between px-11 text-xs tabular-nums text-ink-subtle" aria-hidden="true">
+              <span data-test="tempo-min">{{ slowestTempo }}</span>
+              <span data-test="tempo-max">{{ MAX_TEMPO_BPM }}</span>
+            </div>
+          </template>
+        </div>
         <p class="text-xs text-ink-muted">
           {{ warmUp ? t('playAlongTake.warmUpHint') : t('playAlongTake.goal', { target: playAlong.target_tempo_bpm, best }) }}
         </p>
@@ -317,11 +333,21 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
           <button type="button" data-test="stop-early" class="rounded-lg border border-border px-4 py-2 text-sm" @click="stopEarly">
             {{ t('playAlongTake.stopEarly') }}
           </button>
+          <button type="button" data-test="restart-take" class="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm" @click="restartTake">
+            <RotateCcw :size="16" aria-hidden="true" />
+            {{ t('playAlongTake.restart') }}
+          </button>
           <p class="text-sm text-ink-muted">{{ t('playAlongTake.playing') }}</p>
         </div>
 
         <template v-else>
-          <p class="font-semibold">{{ t('playAlongTake.ratePrompt', { bpm: tempo }) }}</p>
+          <div class="flex items-center justify-between gap-2">
+            <p class="font-semibold">{{ t('playAlongTake.ratePrompt', { bpm: tempo }) }}</p>
+            <button type="button" data-test="restart-take" class="flex shrink-0 items-center gap-1.5 text-sm font-medium text-accent-text underline" @click="restartTake">
+              <RotateCcw :size="14" aria-hidden="true" />
+              {{ t('playAlongTake.restartUnrated') }}
+            </button>
+          </div>
           <div class="grid grid-cols-3 gap-2">
             <button
               v-for="option in ratings"
