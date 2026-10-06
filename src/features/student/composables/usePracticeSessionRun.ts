@@ -65,7 +65,8 @@ export interface PracticeSessionRunOptions {
  *
  * A focus item's tempo follows the tempo ladder from its start tempo; a
  * warm-up plays its takes at its own tempo, outside the ladder. The student may
- * pick another tempo for the next take, past the target too. A warm-up's takes
+ * pick another tempo for the next take, past the target too, and the ladder
+ * never goes below it for the rest of the item. A warm-up's takes
  * are never sent as practice.item_answered, since they are not evidence. An
  * item moves on after its last take, or when the student moves on; the
  * session ends after the last item, or when the student ends it. Nothing is
@@ -88,6 +89,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const takes = ref<RatedTake[]>([])
   /** A tempo the student chose for the next take, over the ladder's; forgotten once it's rated. */
   const chosenTempo = ref<number | null>(null)
+  /** The tempo the student last chose for the item on, below which the ladder never goes. */
+  const chosenFloor = ref<number | null>(null)
   const started = ref(false)
   const finished = ref(false)
   const answeredItems = ref(new Set<string>())
@@ -130,7 +133,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     if (chosenTempo.value !== null) return chosenTempo.value
     // A warm-up stays at the tempo of its last take, outside the ladder.
     if (current.value!.reason === 'warm_up') return takes.value.at(-1)?.bpm ?? playAlong.start_tempo_bpm
-    return nextTempo({ start: playAlong.start_tempo_bpm, target: playAlong.target_tempo_bpm }, takes.value)
+    return nextTempo({ start: playAlong.start_tempo_bpm, target: playAlong.target_tempo_bpm, chosen: chosenFloor.value }, takes.value)
   })
 
   /** Plays the next take at a tempo of the student's choosing, from the ladder's floor up to the fastest playable. */
@@ -138,6 +141,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     const playAlong = current.value?.play_along
     if (!playAlong) return
     chosenTempo.value = Math.min(MAX_TEMPO_BPM, Math.max(ladderFloor(playAlong.target_tempo_bpm), Math.round(bpm)))
+    chosenFloor.value = chosenTempo.value
   }
 
   const takesTotal = computed(() => (current.value ? takesOf(current.value) : 0))
@@ -193,6 +197,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     if (!active() || tapCheckPending.value) return
     takes.value = []
     chosenTempo.value = null
+    chosenFloor.value = null
     exerciseAnswer.value = null
     cellAnswer.value = null
     shownAt = Date.now()

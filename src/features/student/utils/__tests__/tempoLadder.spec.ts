@@ -69,7 +69,13 @@ describe('nextTempo', () => {
     expect(nextTempo(item, takes([110, 'almost']))).toBe(110)
   })
 
-  it('steps a tempo the student set above the target down after a struggle', () => {
-    expect(nextTempo(item, takes([110, 'struggled']))).toBe(105)
+  it('never lowers a tempo the student chose, struggles included', () => {
+    expect(nextTempo({ ...item, chosen: 180 }, takes([180, 'struggled'], [180, 'struggled']))).toBe(180)
+  })
+
+  it('still steps down above a tempo the student chose, but only as far as it', () => {
+    const chosenBelowTarget = { ...item, chosen: 70 }
+    expect(nextTempo(chosenBelowTarget, takes([70, 'clean'], [70, 'clean']))).toBe(75)
+    expect(nextTempo(chosenBelowTarget, takes([70, 'clean'], [70, 'clean'], [75, 'struggled']))).toBe(70)
   })
 })
