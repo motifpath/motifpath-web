@@ -338,6 +338,20 @@ describe('DiagramSequenceEditor', () => {
       expect(wrapper.find('[data-test="playback-needs-steps"]').exists()).toBe(true)
     })
 
+    it('marks a playback with no steps in the list even while another is being edited', async () => {
+      const { wrapper } = mountEditor(twoPlaybacks())
+
+      await wrapper.get('[data-test="playback-add"]').trigger('click')
+      await items(wrapper)[0]!.get('[data-test="playback-select"]').trigger('click')
+
+      expect(wrapper.find('[data-test="playback-needs-steps"]').exists()).toBe(false)
+      const marked = items(wrapper).map((item) => item.find('[data-test="playback-needs-steps-badge"]').exists())
+      expect(marked).toEqual([false, false, true])
+      expect(items(wrapper)[2]!.get('[data-test="playback-needs-steps-badge"]').attributes('aria-label')).toBe(
+        'Add at least one step, or remove this playback, before saving.',
+      )
+    })
+
     it('offers no further playback once the diagram has the most it may have, saying why', async () => {
       const { form, wrapper } = mountEditor(twoPlaybacks())
       for (let i = 0; i < 14; i++) form.addPlayback()

@@ -11,7 +11,7 @@
  * Edits the form and sequence editor it's given; holds no state itself.
  */
 import { computed, ref } from 'vue'
-import { ChevronLeft, ChevronRight, Circle, Plus, Star, Trash2, X } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Circle, Plus, Star, Trash2, TriangleAlert, X } from 'lucide-vue-next'
 
 import { MAX_PLAYBACKS, type useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import type { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
@@ -214,10 +214,24 @@ const toggleClass = (on: boolean) =>
             type="button"
             data-test="playback-select"
             :aria-pressed="playback.id === form.selectedPlaybackId.value"
+            :title="form.invalidPlaybackIds.value.includes(playback.id) ? t('diagramSequenceEditor.playbacks.needsSteps') : undefined"
             class="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold"
-            :class="toggleClass(playback.id === form.selectedPlaybackId.value)"
+            :class="[
+              toggleClass(playback.id === form.selectedPlaybackId.value),
+              { 'border-danger': form.invalidPlaybackIds.value.includes(playback.id) },
+            ]"
             @click="form.selectPlayback(playback.id)"
           >
+            <!-- Marked on the chip, not only in the edited playback's controls, so an empty playback
+                 that isn't selected still explains why Save is disabled. -->
+            <TriangleAlert
+              v-if="form.invalidPlaybackIds.value.includes(playback.id)"
+              data-test="playback-needs-steps-badge"
+              :size="12"
+              class="text-danger"
+              role="img"
+              :aria-label="t('diagramSequenceEditor.playbacks.needsSteps')"
+            />
             <span>{{ playbackLabel(playback.names, index) }}</span>
             <Star
               v-if="playback.id === form.defaultPlaybackId.value"
