@@ -94,7 +94,7 @@ describe('DiagramEmbedPicker', () => {
     })
   })
 
-  it('offers playback settings for a diagram with a sequence', async () => {
+  it('offers playback settings for a diagram with a playback', async () => {
     const sequenced = makeSequencedFrettedDiagram({ diagram_id: 'd-penta' })
     byId['d-penta'] = sequenced
     serve([sequenced])

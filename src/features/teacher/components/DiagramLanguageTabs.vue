@@ -48,6 +48,10 @@ function describeMissing(item: MissingText): string {
       return t('diagramLanguageTabs.missingMarkerLabel', { n: item.position })
     case 'markerNote':
       return t('diagramLanguageTabs.missingMarkerNote', { n: item.position })
+    case 'playbackName':
+      return t('diagramLanguageTabs.missingPlaybackName', { n: item.playback })
+    case 'playbackNameTaken':
+      return t('diagramLanguageTabs.playbackNameTaken', { n: item.playback })
   }
 }
 

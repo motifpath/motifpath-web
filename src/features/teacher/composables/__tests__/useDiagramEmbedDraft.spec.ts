@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramEmbedDraft'
-import { makeFrettedDiagram, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { makeFrettedDiagram, makePlayback, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
 import type { components } from '@/api/generated/core-domain'
 
 type DiagramRef = components['schemas']['DiagramRef']
@@ -118,16 +118,16 @@ describe('useDiagramEmbedDraft', () => {
   })
 
   describe('playback', () => {
-    it('offers Play on a fresh ref to a diagram with a sequence, as authored and once through', () => {
+    it('offers Play on a fresh ref to a diagram with a playback, its default, as authored and once through', () => {
       const draft = useDiagramEmbedDraft(null)
       draft.select(playable)
 
       expect(draft.canConfigurePlayback.value).toBe(true)
       expect(draft.playbackOffered.value).toBe(true)
-      expect(draft.toRef()?.playback).toEqual({ tempo_bpm: null, voice_id: null, direction: 'as_authored', loop: false })
+      expect(draft.toRef()?.playback).toEqual({ playback_id: null, tempo_bpm: null, voice_id: null, direction: 'as_authored', loop: false })
     })
 
-    it('leaves playback alone for a diagram without a sequence, since it never plays', () => {
+    it('leaves playback alone for a diagram without playbacks, since it never plays', () => {
       const draft = useDiagramEmbedDraft(null)
       draft.select(penta)
 
@@ -157,7 +157,7 @@ describe('useDiagramEmbedDraft', () => {
       draft.setPlaybackDirection('reversed')
       draft.setPlaybackLoop(true)
 
-      expect(draft.toRef()?.playback).toEqual({ tempo_bpm: 120, voice_id: 'piano', direction: 'reversed', loop: true })
+      expect(draft.toRef()?.playback).toEqual({ playback_id: null, tempo_bpm: 120, voice_id: 'piano', direction: 'reversed', loop: true })
 
       draft.setPlaybackTempo(null)
       draft.setPlaybackVoice(null)
@@ -184,7 +184,7 @@ describe('useDiagramEmbedDraft', () => {
         playback: { tempo_bpm: 60, voice_id: 'piano', direction: 'reversed', loop: true },
       })
       draft.select(playable)
-      expect(draft.toRef()?.playback).toEqual({ tempo_bpm: 60, voice_id: 'piano', direction: 'reversed', loop: true })
+      expect(draft.toRef()?.playback).toEqual({ playback_id: null, tempo_bpm: 60, voice_id: 'piano', direction: 'reversed', loop: true })
 
       // Written before loop existed: only a direction.
       const older = useDiagramEmbedDraft({
@@ -193,7 +193,7 @@ describe('useDiagramEmbedDraft', () => {
         playback: { direction: 'reversed' } as DiagramRef['playback'],
       })
       older.select(playable)
-      expect(older.toRef()?.playback).toEqual({ tempo_bpm: null, voice_id: null, direction: 'reversed', loop: false })
+      expect(older.toRef()?.playback).toEqual({ playback_id: null, tempo_bpm: null, voice_id: null, direction: 'reversed', loop: false })
     })
 
     it('keeps Play off when reopening a ref that offered none', () => {
@@ -202,6 +202,57 @@ describe('useDiagramEmbedDraft', () => {
 
       expect(draft.playbackOffered.value).toBe(false)
       expect(draft.toRef()?.playback).toBeNull()
+    })
+
+    describe('choosing a playback', () => {
+      const twoPlaybacks = makeFrettedDiagram({
+        diagram_id: 'd-two',
+        playbacks: [makePlayback({ playback_id: 'pb-strum' }), makePlayback({ playback_id: 'pb-arpeggio', names: { en: 'Arpeggio' } })],
+        default_playback_id: 'pb-strum',
+      })
+
+      it('offers a choice only when the diagram has more than one playback', () => {
+        const single = useDiagramEmbedDraft(null)
+        single.select(playable)
+        expect(single.playbackChoices.value).toEqual([])
+
+        const draft = useDiagramEmbedDraft(null)
+        draft.select(twoPlaybacks)
+        expect(draft.playbackChoices.value.map((p) => p.playback_id)).toEqual(['pb-strum', 'pb-arpeggio'])
+      })
+
+      it('writes the chosen playback, and none for the default', () => {
+        const draft = useDiagramEmbedDraft(null)
+        draft.select(twoPlaybacks)
+
+        draft.setPlaybackId('pb-arpeggio')
+        expect(draft.toRef()?.playback?.playback_id).toBe('pb-arpeggio')
+
+        draft.setPlaybackId(null)
+        expect(draft.toRef()?.playback?.playback_id).toBeNull()
+      })
+
+      it('reopens a ref with its chosen playback', () => {
+        const draft = useDiagramEmbedDraft({
+          diagram_id: 'd-two',
+          layers: {},
+          playback: { playback_id: 'pb-arpeggio', direction: 'as_authored', loop: false },
+        })
+        draft.select(twoPlaybacks)
+
+        expect(draft.playbackId.value).toBe('pb-arpeggio')
+      })
+
+      it('reopens a ref whose chosen playback is gone with the default, so it can be saved again', () => {
+        const draft = useDiagramEmbedDraft({
+          diagram_id: 'd-two',
+          layers: {},
+          playback: { playback_id: 'pb-removed', direction: 'as_authored', loop: false },
+        })
+        draft.select(twoPlaybacks)
+
+        expect(draft.toRef()?.playback?.playback_id).toBeNull()
+      })
     })
 
     it('starts a different diagram with fresh playback settings', () => {
@@ -213,7 +264,7 @@ describe('useDiagramEmbedDraft', () => {
       draft.select(playable)
       draft.select(makeSequencedFrettedDiagram({ diagram_id: 'd-other-playable' }))
 
-      expect(draft.toRef()?.playback).toEqual({ tempo_bpm: null, voice_id: null, direction: 'as_authored', loop: false })
+      expect(draft.toRef()?.playback).toEqual({ playback_id: null, tempo_bpm: null, voice_id: null, direction: 'as_authored', loop: false })
     })
   })
 

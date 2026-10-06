@@ -39,7 +39,7 @@ describe('useDiagramSequence', () => {
       expect(sequence.selectedIndex.value).toBe(1)
     })
 
-    it('gives the diagram a 90 BPM tempo with its first note', () => {
+    it('starts a playback at 90 BPM with the first note of a diagram that has none', () => {
       const { form, sequence } = setup()
 
       sequence.pickPosition('p0')
@@ -47,8 +47,8 @@ describe('useDiagramSequence', () => {
       expect(form.tempoBpm.value).toBe(90)
     })
 
-    it('keeps a tempo the diagram already has', () => {
-      const { form, sequence } = setup(makeSequencedFrettedDiagram({ tempo_bpm: 120 }))
+    it('keeps the tempo the playback already has', () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram({}, { tempo_bpm: 120 }))
 
       sequence.pickPosition('p5')
 
@@ -89,7 +89,7 @@ describe('useDiagramSequence', () => {
       expect(sequence.base.value).toBe(8)
     })
 
-    it('starts a sequence with a rest, as a pickup, giving it the default tempo', () => {
+    it('starts a playback with a rest, as a pickup, giving it the default tempo', () => {
       const { form, sequence } = setup()
 
       sequence.addRest(8)
@@ -184,9 +184,7 @@ describe('useDiagramSequence', () => {
 
     it('shows a selected step’s own value on the palette', () => {
       const { sequence } = setup(
-        makeSequencedFrettedDiagram({
-          sequence: [{ position_ids: ['p0'], value: { num: 1, den: 12 }, strum: 'none' }],
-        }),
+        makeSequencedFrettedDiagram({}, { steps: [{ position_ids: ['p0'], value: { num: 1, den: 12 }, strum: 'none' }] }),
       )
 
       sequence.selectStep(0)
@@ -325,18 +323,17 @@ describe('useDiagramSequence', () => {
       expect(ids(form).at(-1)).toEqual(['p0', 'p2', 'p3'])
     })
 
-    it('removes a step, and clears the tempo with the last note', () => {
+    it('removes the last step, leaving the playback empty at its tempo', () => {
       const { form, sequence } = setup(
-        makeSequencedFrettedDiagram({
-          sequence: [{ position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' }],
-        }),
+        makeSequencedFrettedDiagram({}, { steps: [{ position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' }] }),
       )
       sequence.selectStep(0)
 
       sequence.removeStep(0)
 
       expect(form.sequence.value).toEqual([])
-      expect(form.tempoBpm.value).toBeNull()
+      expect(form.playbacks.value).toHaveLength(1)
+      expect(form.tempoBpm.value).toBe(90)
       expect(sequence.selectedIndex.value).toBeNull()
     })
 
@@ -354,13 +351,22 @@ describe('useDiagramSequence', () => {
       expect(sequence.selectedIndex.value).toBeNull()
     })
 
-    it('clears the whole sequence', () => {
+    it("clears the edited playback's steps, keeping the playback", () => {
       const { form, sequence } = setup(makeSequencedFrettedDiagram())
 
       sequence.clear()
 
       expect(form.sequence.value).toEqual([])
-      expect(form.tempoBpm.value).toBeNull()
+      expect(form.playbacks.value).toHaveLength(1)
+    })
+
+    it('sets the tempo of a playback that has no steps yet', () => {
+      const { form, sequence } = setup()
+      form.addPlayback()
+
+      sequence.setTempo(120)
+
+      expect(form.tempoBpm.value).toBe(120)
     })
 
     it('keeps the tempo a whole number within 20–300 BPM', () => {
@@ -374,8 +380,8 @@ describe('useDiagramSequence', () => {
       expect(form.tempoBpm.value).toBe(73)
     })
 
-    it('sets the time signature and the mode', () => {
-      const { form, sequence } = setup()
+    it("sets the edited playback's time signature, and the diagram's mode", () => {
+      const { form, sequence } = setup(makeSequencedFrettedDiagram())
 
       sequence.setTimeSignature({ beats: 7, beat_value: 8 })
       sequence.setMode('lydian')
@@ -397,7 +403,7 @@ describe('useDiagramSequence', () => {
       expect(sequence.chord.value).toBe(false)
     })
 
-    it('has no tempo to set while nothing plays', () => {
+    it('has no tempo to set while the diagram has no playback', () => {
       const { form, sequence } = setup()
 
       sequence.setTempo(120)

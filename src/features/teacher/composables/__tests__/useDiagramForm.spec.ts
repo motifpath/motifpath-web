@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
-import { makeFrettedDiagram, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { makeFrettedDiagram, makePlayback } from '@/shared/testUtils/diagram'
 import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
 describe('useDiagramForm', () => {
@@ -168,9 +168,8 @@ describe('useDiagramForm', () => {
       label_display: 'note',
       color: null,
       mode: null,
-      tempo_bpm: null,
-      time_signature: { beats: 4, beat_value: 4 },
-      sequence: [],
+      playbacks: [],
+      default_playback_id: null,
       positions: [{ position_id: form.positions.value[0].id, string: 6, fret: 5, interval: 'R', note_name: 'A', shape: 'star' }],
       regions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
@@ -200,9 +199,8 @@ describe('useDiagramForm', () => {
       names: { en: 'Renamed' },
       label_display: 'interval',
       mode: null,
-      tempo_bpm: null,
-      time_signature: { beats: 4, beat_value: 4 },
-      sequence: [],
+      playbacks: [],
+      default_playback_id: null,
       positions: [],
       regions: [],
       classification: { skill_ids: ['s-1'], concept_ids: ['c-1'] },
@@ -408,21 +406,29 @@ describe('useDiagramForm', () => {
       expect(new Set(ids).size).toBe(ids.length)
     })
 
-    it('copies the sequence onto the new position ids, with its tempo, time signature and mode', () => {
+    it('copies the playbacks onto the new position ids, under new playback ids, keeping the default and the mode', () => {
       const form = useDiagramForm()
-      form.loadFromDiagram(makeSequencedFrettedDiagram({ time_signature: { beats: 6, beat_value: 8 } }))
+      form.loadFromDiagram(
+        makeFrettedDiagram({
+          playbacks: [makePlayback({ playback_id: 'pb-a' }), makePlayback({ playback_id: 'pb-b', names: { en: 'Other', pt_BR: 'Outra' } })],
+          default_playback_id: 'pb-b',
+        }),
+      )
 
       const request = form.toCopyRequest({ en: 'My Pentatonic' }, 'custom')
 
       const newId = (sourceIndex: number) => request.positions[sourceIndex]?.position_id
-      expect(request.sequence).toEqual([
+      const [first, second] = request.playbacks ?? []
+      expect(first!.steps).toEqual([
         { position_ids: [newId(0)], value: { num: 1, den: 8 }, strum: 'none' },
         { position_ids: [newId(1)], value: { num: 1, den: 8 }, strum: 'none' },
         { position_ids: [], value: { num: 1, den: 8 }, strum: 'none' },
         { position_ids: [newId(0), newId(2), newId(3)], value: { num: 1, den: 4 }, strum: 'down' },
       ])
-      expect(request.tempo_bpm).toBe(90)
-      expect(request.time_signature).toEqual({ beats: 6, beat_value: 8 })
+      expect(first!.tempo_bpm).toBe(90)
+      expect([first!.playback_id, second!.playback_id]).not.toContain('pb-a')
+      expect([first!.playback_id, second!.playback_id]).not.toContain('pb-b')
+      expect(request.default_playback_id).toBe(second!.playback_id)
       expect(request.mode).toBe('minor')
     })
   })
@@ -778,30 +784,195 @@ describe('useDiagramForm', () => {
     })
   })
 
-  describe('playback', () => {
-    it('starts a new diagram with no sequence, no tempo, no mode and 4/4 time', () => {
+  describe('playbacks', () => {
+    const strum = makePlayback({
+      playback_id: 'pb-strum',
+      names: { en: 'Strum', pt_BR: 'Batida' },
+      tempo_bpm: 60,
+      steps: [{ position_ids: ['p0', 'p2'], value: { num: 1, den: 1 }, strum: 'down' }],
+    })
+    const arpeggio = makePlayback({
+      playback_id: 'pb-arpeggio',
+      names: { en: 'Arpeggio', pt_BR: 'Arpejo' },
+      tempo_bpm: 120,
+      time_signature: { beats: 3, beat_value: 4 },
+      steps: [
+        { position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' },
+        { position_ids: ['p2'], value: { num: 1, den: 4 }, strum: 'none' },
+      ],
+    })
+    function loadedForm() {
+      const form = useDiagramForm()
+      form.loadFromDiagram(
+        makeFrettedDiagram({ playbacks: [strum, arpeggio], default_playback_id: 'pb-strum', mode: 'dorian' }),
+      )
+      return form
+    }
+    const playbackNames = (form: ReturnType<typeof useDiagramForm>) => form.playbacks.value.map((p) => p.names.en)
+
+    it('starts a new diagram with no playbacks, no default and no mode', () => {
       const form = useDiagramForm()
       form.addPosition({ string: 6, fret: 5 })
 
       const request = form.toCreateDiagramRequest()
 
-      expect(request.sequence).toEqual([])
-      expect(request.tempo_bpm).toBeNull()
+      expect(request.playbacks).toEqual([])
+      expect(request.default_playback_id).toBeNull()
       expect(request.mode).toBeNull()
-      expect(request.time_signature).toEqual({ beats: 4, beat_value: 4 })
     })
 
-    it("sends a loaded diagram's sequence, tempo, time signature and mode back unchanged", () => {
-      const diagram = makeSequencedFrettedDiagram({ time_signature: { beats: 3, beat_value: 4 }, mode: 'dorian' })
-      const form = useDiagramForm()
-      form.loadFromDiagram(diagram)
+    it("sends a loaded diagram's playbacks, in order, its default and its mode back unchanged", () => {
+      const request = loadedForm().toUpdateDiagramRequest()
 
-      const request = form.toUpdateDiagramRequest()
-
-      expect(request.sequence).toEqual(diagram.sequence)
-      expect(request.tempo_bpm).toBe(90)
-      expect(request.time_signature).toEqual({ beats: 3, beat_value: 4 })
+      expect(request.playbacks).toEqual([strum, arpeggio])
+      expect(request.default_playback_id).toBe('pb-strum')
       expect(request.mode).toBe('dorian')
+    })
+
+    it('edits the default playback of a loaded diagram', () => {
+      const form = loadedForm()
+
+      expect(form.selectedPlaybackId.value).toBe('pb-strum')
+      expect(form.sequence.value).toEqual(strum.steps)
+      expect(form.tempoBpm.value).toBe(60)
+    })
+
+    it("edits the chosen playback's steps, tempo and time signature, leaving the others unchanged", () => {
+      const form = loadedForm()
+      form.selectPlayback('pb-arpeggio')
+
+      expect(form.timeSignature.value).toEqual({ beats: 3, beat_value: 4 })
+      form.setSequence([...form.sequence.value, { position_ids: ['p3'], value: { num: 1, den: 4 }, strum: 'none' }])
+      form.tempoBpm.value = 100
+      form.timeSignature.value = { beats: 6, beat_value: 8 }
+
+      const [sentStrum, sentArpeggio] = form.toUpdateDiagramRequest().playbacks ?? []
+      expect(sentStrum).toEqual(strum)
+      expect(sentArpeggio!.steps).toHaveLength(3)
+      expect(sentArpeggio!.tempo_bpm).toBe(100)
+      expect(sentArpeggio!.time_signature).toEqual({ beats: 6, beat_value: 8 })
+    })
+
+    it("records a diagram's first step into a new default playback, named in each of its languages, at 90 BPM in 4/4", () => {
+      const form = useDiagramForm()
+      form.addLanguage('pt_BR')
+      form.addPosition({ string: 6, fret: 5 })
+
+      form.setSequence([{ position_ids: [form.positions.value[0]!.id], value: { num: 1, den: 4 }, strum: 'none' }])
+
+      const request = form.toCreateDiagramRequest()
+      expect(request.playbacks).toHaveLength(1)
+      expect(request.playbacks![0]).toMatchObject({
+        names: { en: 'Playback 1', pt_BR: 'Reprodução 1' },
+        tempo_bpm: 90,
+        time_signature: { beats: 4, beat_value: 4 },
+      })
+      expect(request.default_playback_id).toBe(request.playbacks![0]!.playback_id)
+    })
+
+    it('adds an empty playback after the others and edits it, keeping the default', () => {
+      const form = loadedForm()
+
+      form.addPlayback()
+
+      expect(playbackNames(form)).toEqual(['Strum', 'Arpeggio', 'Playback 3'])
+      expect(form.selectedPlaybackId.value).toBe(form.playbacks.value[2]!.id)
+      expect(form.sequence.value).toEqual([])
+      expect(form.defaultPlaybackId.value).toBe('pb-strum')
+    })
+
+    it('makes the first playback added the default', () => {
+      const form = useDiagramForm()
+
+      form.addPlayback()
+
+      expect(form.defaultPlaybackId.value).toBe(form.playbacks.value[0]!.id)
+    })
+
+    it('renames a playback in one language', () => {
+      const form = loadedForm()
+
+      form.renamePlayback('pb-arpeggio', 'pt_BR', 'Arpejo ascendente')
+
+      expect(form.playbacks.value[1]!.names).toEqual({ en: 'Arpeggio', pt_BR: 'Arpejo ascendente' })
+    })
+
+    it('reorders playbacks', () => {
+      const form = loadedForm()
+
+      form.movePlayback('pb-arpeggio', -1)
+
+      expect(playbackNames(form)).toEqual(['Arpeggio', 'Strum'])
+      expect(form.defaultPlaybackId.value).toBe('pb-strum')
+    })
+
+    it('chooses another default', () => {
+      const form = loadedForm()
+
+      form.setDefaultPlayback('pb-arpeggio')
+
+      expect(form.toUpdateDiagramRequest().default_playback_id).toBe('pb-arpeggio')
+    })
+
+    it('makes the first remaining playback the default, and edits it, when the default is removed', () => {
+      const form = loadedForm()
+      form.addPlayback()
+      form.selectPlayback('pb-strum')
+
+      form.removePlayback('pb-strum')
+
+      expect(playbackNames(form)).toEqual(['Arpeggio', 'Playback 3'])
+      expect(form.defaultPlaybackId.value).toBe('pb-arpeggio')
+      expect(form.selectedPlaybackId.value).toBe('pb-arpeggio')
+    })
+
+    it('leaves no default once the last playback is removed', () => {
+      const form = useDiagramForm()
+      form.addPlayback()
+
+      form.removePlayback(form.playbacks.value[0]!.id)
+
+      expect(form.toCreateDiagramRequest()).toMatchObject({ playbacks: [], default_playback_id: null })
+      expect(form.selectedPlaybackId.value).toBeNull()
+    })
+
+    it("can't save while a playback has no steps", () => {
+      const form = loadedForm()
+      form.setName('en', 'Pentatonic')
+      form.setName('pt_BR', 'Pentatônica')
+      form.skillIds.value = ['s']
+      form.conceptIds.value = ['c']
+      expect(form.canSave.value).toBe(true)
+
+      form.addPlayback()
+
+      expect(form.invalidPlaybackIds.value).toEqual([form.playbacks.value[2]!.id])
+      expect(form.canSave.value).toBe(false)
+    })
+
+    it("asks for a playback's name in every language of the diagram", () => {
+      const form = loadedForm()
+
+      form.renamePlayback('pb-arpeggio', 'pt_BR', ' ')
+
+      expect(form.missingText.value.pt_BR).toContainEqual({ kind: 'playbackName', playback: 2 })
+      expect(form.missingText.value.en).not.toContainEqual({ kind: 'playbackName', playback: 2 })
+    })
+
+    it('flags two playbacks sharing a name in one language', () => {
+      const form = loadedForm()
+
+      form.renamePlayback('pb-arpeggio', 'en', ' strum ')
+
+      expect(form.missingText.value.en).toContainEqual({ kind: 'playbackNameTaken', playback: 2 })
+    })
+
+    it("drops a removed language's playback names", () => {
+      const form = loadedForm()
+
+      form.removeLanguage('pt_BR')
+
+      expect(form.playbacks.value.map((p) => p.names)).toEqual([{ en: 'Strum' }, { en: 'Arpeggio' }])
     })
 
     it('keeps the positions in the order they were served', () => {
@@ -812,53 +983,25 @@ describe('useDiagramForm', () => {
       expect(form.positions.value.map((p) => p.id)).toEqual(['p5', 'p4', 'p3', 'p2', 'p1', 'p0'])
     })
 
-    it('removes a deleted position from every step, and drops the steps it leaves empty but keeps rests', () => {
+    it('removes a deleted position from every step of every playback, dropping the steps it leaves empty but keeping rests', () => {
       const form = useDiagramForm()
-      form.loadFromDiagram(makeSequencedFrettedDiagram())
+      form.loadFromDiagram(
+        makeFrettedDiagram({ playbacks: [makePlayback({ playback_id: 'pb-a' }), arpeggio], default_playback_id: 'pb-a' }),
+      )
 
       form.removePosition('p0')
 
-      expect(form.toUpdateDiagramRequest().sequence).toEqual([
+      const [riff, arp] = form.toUpdateDiagramRequest().playbacks ?? []
+      expect(riff!.steps).toEqual([
         { position_ids: ['p1'], value: { num: 1, den: 8 }, strum: 'none' },
         { position_ids: [], value: { num: 1, den: 8 }, strum: 'none' },
         { position_ids: ['p2', 'p3'], value: { num: 1, den: 4 }, strum: 'down' },
       ])
+      expect(arp!.steps).toEqual([{ position_ids: ['p2'], value: { num: 1, den: 4 }, strum: 'none' }])
     })
 
-    it('keeps the rests and the tempo when deleting positions leaves only rests', () => {
-      const form = useDiagramForm()
-      form.loadFromDiagram(
-        makeSequencedFrettedDiagram({
-          sequence: [
-            { position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' },
-            { position_ids: [], value: { num: 1, den: 4 }, strum: 'none' },
-          ],
-        }),
-      )
-
-      form.toggleCell({ string: 6, fret: 5 })
-
-      const request = form.toUpdateDiagramRequest()
-      expect(request.sequence).toEqual([{ position_ids: [], value: { num: 1, den: 4 }, strum: 'none' }])
-      expect(request.tempo_bpm).toBe(90)
-    })
-
-    it('clears the tempo once deleting positions leaves no step at all', () => {
-      const form = useDiagramForm()
-      form.loadFromDiagram(
-        makeSequencedFrettedDiagram({ sequence: [{ position_ids: ['p0'], value: { num: 1, den: 4 }, strum: 'none' }] }),
-      )
-
-      form.toggleCell({ string: 6, fret: 5 })
-
-      const request = form.toUpdateDiagramRequest()
-      expect(request.sequence).toEqual([])
-      expect(request.tempo_bpm).toBeNull()
-    })
-
-    it('starts a merged stack with no sequence, tempo or mode, since its sources can differ in all three', () => {
-      const form = useDiagramForm()
-      form.loadFromDiagram(makeSequencedFrettedDiagram())
+    it('starts a merged stack with no playbacks or mode, since its sources can differ in both', () => {
+      const form = loadedForm()
 
       form.loadFlattened({
         positions: [{ interval: 'R', note_name: 'A', shape: 'dot', string: 6, fret: 5 }],
@@ -868,9 +1011,10 @@ describe('useDiagramForm', () => {
       })
 
       const request = form.toUpdateDiagramRequest()
-      expect(request.sequence).toEqual([])
-      expect(request.tempo_bpm).toBeNull()
+      expect(request.playbacks).toEqual([])
+      expect(request.default_playback_id).toBeNull()
       expect(request.mode).toBeNull()
+      expect(form.selectedPlaybackId.value).toBeNull()
     })
   })
 

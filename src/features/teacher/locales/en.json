@@ -463,7 +463,9 @@
     "removeTitle": "Remove {language}?",
     "removeBody": "This diagram's name and other text in {language} will be deleted. Its markers and colors stay as they are.",
     "cancel": "Cancel",
-    "confirmRemove": "Remove"
+    "confirmRemove": "Remove",
+    "missingPlaybackName": "the name of playback {n}",
+    "playbackNameTaken": "a name for playback {n} that no other playback has"
   },
   "courseListView": {
     "heading": "Courses",
@@ -614,7 +616,7 @@
       "legend": "Playback",
       "offered": "Let students play it",
       "tempo": "Tempo (BPM)",
-      "tempoHint": "Blank plays at the diagram's tempo.",
+      "tempoHint": "Blank plays at the playback's own tempo.",
       "tempoInvalid": "Pick a whole tempo from {min} to {max} BPM.",
       "voice": "Sound",
       "voiceDefault": "Instrument default ({name})",
@@ -625,7 +627,9 @@
         "reversed": "Reversed"
       },
       "loop": "Loop",
-      "voicesError": "We couldn't load the other sounds, so only the instrument's default is offered."
+      "voicesError": "We couldn't load the other sounds, so only the instrument's default is offered.",
+      "choice": "Playback",
+      "choiceDefault": "Default ({name})"
     }
   },
   "mediaPickerModal": {
@@ -708,7 +712,19 @@
     "rests": "Rests",
     "addRest": "Add {value} rest",
     "dragHint": "Drag a step into a gap to move it, or onto another step to play them together as a chord.",
-    "removeStepNumber": "Remove step {number}"
+    "removeStepNumber": "Remove step {number}",
+    "playbacks": {
+      "listAriaLabel": "Playbacks",
+      "add": "Add playback",
+      "default": "Default playback",
+      "makeDefault": "Make default",
+      "name": "Name ({language})",
+      "unnamed": "Playback {n}",
+      "moveEarlier": "Move playback earlier",
+      "moveLater": "Move playback later",
+      "remove": "Remove playback",
+      "needsSteps": "Add at least one step, or remove this playback, before saving."
+    }
   },
   "pathStatus": {
     "draft": "Draft",

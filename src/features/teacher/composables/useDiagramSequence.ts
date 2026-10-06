@@ -12,7 +12,7 @@ type TimeSignature = components['schemas']['TimeSignature']
 type Strum = NonNullable<SequenceStep['strum']>
 
 /**
- * Editing a diagram's playback steps in the form it's given: the note value
+ * Editing the steps of the playback the form is editing: the note value
  * being written (a plain note, dotted, or one note of a triplet or
  * quintuplet), which step is selected, and whether clicks on the fretboard
  * add steps (recording) — each as a new step after the selected one, or, as a
@@ -139,7 +139,7 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     insertStep({ position_ids: [], value, strum: 'none' })
   }
 
-  /** Every position once, lowest pitch first — a scale run to start from. Only for an empty sequence. */
+  /** Every position once, lowest pitch first — a scale run to start from. Only for an empty playback. */
   function fillFromPositions() {
     if (form.sequence.value.length > 0) return
     const ids = inPitchOrder(form.positions.value.map((position) => position.id))
@@ -196,9 +196,9 @@ export function useDiagramSequence(form: ReturnType<typeof useDiagramForm>) {
     selectAt(null)
   }
 
-  /** A whole number of BPM within the range a diagram accepts; there's no tempo without steps. */
+  /** A whole number of BPM within the range a playback accepts; there's no tempo without a playback. */
   function setTempo(bpm: number) {
-    if (form.sequence.value.length === 0 || !Number.isFinite(bpm)) return
+    if (form.selectedPlaybackId.value === null || !Number.isFinite(bpm)) return
     form.tempoBpm.value = Math.min(MAX_TEMPO_BPM, Math.max(MIN_TEMPO_BPM, Math.round(bpm)))
   }
 

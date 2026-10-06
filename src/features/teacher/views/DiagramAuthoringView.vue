@@ -264,9 +264,8 @@ function diagramForPreview(positions: Diagram['positions'], regions: Diagram['re
     label_display: form.labelDisplay.value,
     color: form.color.value,
     mode: request.mode ?? null,
-    tempo_bpm: request.tempo_bpm ?? null,
-    time_signature: request.time_signature ?? { beats: 4, beat_value: 4 },
-    sequence: request.sequence ?? [],
+    playbacks: form.toDiagramPlaybacks(),
+    default_playback_id: request.default_playback_id ?? null,
     positions,
     regions,
     classification: { skills: [], concepts: [] },
@@ -288,8 +287,13 @@ const overlayPreviewDiagram = computed<Diagram | null>(() => {
 
 const previewDiagramRef: DiagramRef = { diagram_id: '', layers: { intervals: true } }
 
-// The author hears the sequence as it stands, once through in order; the editor rings what sounds.
-const EDITOR_PLAYBACK: NonNullable<DiagramRef['playback']> = { direction: 'as_authored', loop: false }
+// The author hears the playback being edited as it stands, once through in order; the editor rings
+// what sounds.
+const editorPlayback = computed<NonNullable<DiagramRef['playback']>>(() => ({
+  playback_id: form.selectedPlaybackId.value,
+  direction: 'as_authored',
+  loop: false,
+}))
 const playingPositionIds = shallowRef<string[]>([])
 
 const overlaying = ref(false)
@@ -662,7 +666,7 @@ async function saveAs(names: Record<string, string>) {
                   v-if="previewDiagram"
                   :diagram="previewDiagram"
                   :instrument="selectedInstrument"
-                  :playback="EDITOR_PLAYBACK"
+                  :playback="editorPlayback"
                   @active="playingPositionIds = $event"
                 />
               </template>

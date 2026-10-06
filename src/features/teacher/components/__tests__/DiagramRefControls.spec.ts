@@ -11,7 +11,7 @@ import { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramE
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { clearVoiceCache } from '@/shared/composables/useListVoices'
-import { makeFrettedDiagram, makeFrettedInstrument, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { makeFrettedDiagram, makeFrettedInstrument, makePlayback, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
 import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
@@ -51,7 +51,7 @@ beforeEach(() => {
 })
 
 describe('DiagramRefControls playback', () => {
-  it('shows no playback settings for a diagram without a sequence', async () => {
+  it('shows no playback settings for a diagram without playbacks', async () => {
     const { wrapper } = mountControls(makeFrettedDiagram())
     await flushPromises()
 
@@ -73,7 +73,7 @@ describe('DiagramRefControls playback', () => {
     expect(wrapper.find('[data-test="embed-picker-playback-tempo"]').exists()).toBe(false)
   })
 
-  it('shows the diagram’s own tempo as the placeholder, and writes an override or clears it', async () => {
+  it('shows the playback’s own tempo as the placeholder, and writes an override or clears it', async () => {
     const { wrapper, draft } = mountControls(playable)
     await flushPromises()
 
@@ -85,6 +85,37 @@ describe('DiagramRefControls playback', () => {
 
     await tempo.setValue('')
     expect(draft.toRef()?.playback?.tempo_bpm).toBeNull()
+  })
+
+  it('offers no playback choice for a diagram with only one', async () => {
+    const { wrapper } = mountControls(playable)
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="embed-picker-playback-choice"]').exists()).toBe(false)
+  })
+
+  it('chooses one of several playbacks, the default first, and shows its tempo as the placeholder', async () => {
+    const diagram = makeFrettedDiagram({
+      playbacks: [
+        makePlayback({ playback_id: 'pb-strum', names: { en: 'Strum' }, tempo_bpm: 60 }),
+        makePlayback({ playback_id: 'pb-arpeggio', names: { en: 'Arpeggio' }, tempo_bpm: 120 }),
+      ],
+      default_playback_id: 'pb-strum',
+    })
+    const { wrapper, draft } = mountControls(diagram)
+    await flushPromises()
+
+    const choice = wrapper.get<HTMLSelectElement>('[data-test="embed-picker-playback-choice"]')
+    expect(choice.findAll('option').map((o) => o.text())).toEqual(['Default (Strum)', 'Strum', 'Arpeggio'])
+    expect(wrapper.get('[data-test="embed-picker-playback-tempo"]').attributes('placeholder')).toBe('60')
+
+    await choice.setValue('pb-arpeggio')
+
+    expect(draft.toRef()?.playback?.playback_id).toBe('pb-arpeggio')
+    expect(wrapper.get('[data-test="embed-picker-playback-tempo"]').attributes('placeholder')).toBe('120')
+
+    await choice.setValue('')
+    expect(draft.toRef()?.playback?.playback_id).toBeNull()
   })
 
   it('flags a tempo outside the allowed range', async () => {
@@ -145,7 +176,7 @@ describe('DiagramRefControls playback', () => {
     await flushPromises()
 
     const player = wrapper.getComponent(DiagramPlayer)
-    expect(player.props('playback')).toEqual({ tempo_bpm: 60, voice_id: null, direction: 'reversed', loop: true })
+    expect(player.props('playback')).toEqual({ playback_id: null, tempo_bpm: 60, voice_id: null, direction: 'reversed', loop: true })
 
     player.vm.$emit('active', ['p1'])
     await flushPromises()

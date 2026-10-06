@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * Authoring a diagram's playback: its tempo, time signature and mode, and the
- * steps it plays — each step a note, a chord or a rest of one note value,
+ * Authoring a diagram's playbacks: the list of them (added, renamed in each of
+ * the diagram's languages, reordered, removed, one chosen as the default), and
+ * for the one being edited its tempo and time signature and the steps it plays — each step a note, a chord or a rest of one note value,
  * with a bar line wherever a new bar starts. Steps are added by recording
  * clicks on the fretboard above (the caller routes them to `editor`), or all
  * at once from the placed positions. A step dragged into a gap between steps
@@ -10,11 +11,13 @@
  * Edits the form and sequence editor it's given; holds no state itself.
  */
 import { computed, ref } from 'vue'
-import { ChevronLeft, ChevronRight, Circle, Trash2, X } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, Circle, Plus, Star, Trash2, X } from 'lucide-vue-next'
 
 import type { useDiagramForm } from '@/features/teacher/composables/useDiagramForm'
 import type { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
+import { languageLabelKey } from '@/shared/utils/languageLabels'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import NoteValueIcon from '@/shared/components/NoteValueIcon.vue'
 import { BASE_NOTE_VALUES, barStarts, describeNoteValue } from '@/shared/utils/sequence'
@@ -34,6 +37,7 @@ const props = defineProps<{
 
 const { t } = useTypedT()
 const { intervalLabel } = useIntervalLabel()
+const { localizedName } = useLocalizedName()
 
 const MODES: DiagramMode[] = ['major', 'minor', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'locrian']
 const BEAT_COUNTS = Array.from({ length: 16 }, (_, i) => i + 1)
@@ -42,6 +46,25 @@ const TUPLET_OPTIONS = [3, 5] as const
 const STRUMS: Strum[] = ['none', 'down', 'up']
 
 const steps = computed(() => props.form.sequence.value)
+const editedPlayback = computed(
+  () => props.form.playbacks.value.find((p) => p.id === props.form.selectedPlaybackId.value) ?? null,
+)
+const editedIndex = computed(() => props.form.playbacks.value.findIndex((p) => p.id === props.form.selectedPlaybackId.value))
+
+function languageLabel(code: string): string {
+  const key = languageLabelKey(code)
+  return key === null ? code : t(key)
+}
+
+function playbackLabel(names: Record<string, string>, index: number): string {
+  return localizedName(names).trim() || t('diagramSequenceEditor.playbacks.unnamed', { n: index + 1 })
+}
+
+function onPlaybackName(code: string, event: Event) {
+  if (event.target instanceof HTMLInputElement && editedPlayback.value) {
+    props.form.renamePlayback(editedPlayback.value.id, code, event.target.value)
+  }
+}
 const bars = computed(() => barStarts(steps.value, props.form.timeSignature.value))
 // Each step with the note it's written as, when one note, dot or tuplet writes its value.
 const stepViews = computed(() => steps.value.map((step) => ({ step, written: describeNoteValue(step.value) })))
@@ -183,7 +206,108 @@ const toggleClass = (on: boolean) =>
       <h3 class="text-sm font-semibold text-ink">{{ t('diagramSequenceEditor.heading') }}</h3>
       <p class="text-xs text-ink-subtle">{{ t('diagramSequenceEditor.hint') }}</p>
     </div>
-    <!-- Controls to hear the sequence as it stands. -->
+
+    <div class="flex flex-col gap-2" data-test="playback-list">
+      <ul class="flex flex-wrap items-center gap-1.5" :aria-label="t('diagramSequenceEditor.playbacks.listAriaLabel')">
+        <li v-for="(playback, index) in form.playbacks.value" :key="playback.id" data-test="playback-item">
+          <button
+            type="button"
+            data-test="playback-select"
+            :aria-pressed="playback.id === form.selectedPlaybackId.value"
+            class="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold"
+            :class="toggleClass(playback.id === form.selectedPlaybackId.value)"
+            @click="form.selectPlayback(playback.id)"
+          >
+            <span>{{ playbackLabel(playback.names, index) }}</span>
+            <Star
+              v-if="playback.id === form.defaultPlaybackId.value"
+              data-test="playback-default-badge"
+              :size="12"
+              fill="currentColor"
+              :aria-label="t('diagramSequenceEditor.playbacks.default')"
+            />
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            data-test="playback-add"
+            class="flex items-center gap-1 rounded-md border border-dashed border-border bg-surface px-2.5 py-1 text-xs font-semibold text-ink-muted"
+            @click="form.addPlayback()"
+          >
+            <Plus :size="12" aria-hidden="true" />
+            {{ t('diagramSequenceEditor.playbacks.add') }}
+          </button>
+        </li>
+      </ul>
+
+      <div v-if="editedPlayback" class="flex flex-wrap items-end gap-2" data-test="playback-controls">
+        <label
+          v-for="code in form.languages.value"
+          :key="code"
+          class="flex flex-col gap-1 text-xs text-ink-subtle"
+        >
+          {{ t('diagramSequenceEditor.playbacks.name', { language: languageLabel(code) }) }}
+          <input
+            :data-test="`playback-name-${code}`"
+            type="text"
+            :value="editedPlayback.names[code] ?? ''"
+            :class="[fieldClass, 'w-40']"
+            @input="onPlaybackName(code, $event)"
+          />
+        </label>
+        <button
+          v-if="editedPlayback.id !== form.defaultPlaybackId.value"
+          type="button"
+          data-test="playback-make-default"
+          class="flex items-center gap-1 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink"
+          @click="form.setDefaultPlayback(editedPlayback.id)"
+        >
+          <Star :size="12" aria-hidden="true" />
+          {{ t('diagramSequenceEditor.playbacks.makeDefault') }}
+        </button>
+        <button
+          type="button"
+          data-test="playback-move-earlier"
+          :aria-label="t('diagramSequenceEditor.playbacks.moveEarlier')"
+          :title="t('diagramSequenceEditor.playbacks.moveEarlier')"
+          :disabled="editedIndex === 0"
+          class="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-ink-muted disabled:opacity-50"
+          @click="form.movePlayback(editedPlayback.id, -1)"
+        >
+          <ChevronLeft :size="14" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="playback-move-later"
+          :aria-label="t('diagramSequenceEditor.playbacks.moveLater')"
+          :title="t('diagramSequenceEditor.playbacks.moveLater')"
+          :disabled="editedIndex === form.playbacks.value.length - 1"
+          class="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-ink-muted disabled:opacity-50"
+          @click="form.movePlayback(editedPlayback.id, 1)"
+        >
+          <ChevronRight :size="14" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          data-test="playback-remove"
+          class="flex items-center gap-1 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink-muted"
+          @click="form.removePlayback(editedPlayback.id)"
+        >
+          <Trash2 :size="12" aria-hidden="true" />
+          {{ t('diagramSequenceEditor.playbacks.remove') }}
+        </button>
+      </div>
+      <p
+        v-if="editedPlayback && form.invalidPlaybackIds.value.includes(editedPlayback.id)"
+        data-test="playback-needs-steps"
+        class="text-xs text-danger-text"
+      >
+        {{ t('diagramSequenceEditor.playbacks.needsSteps') }}
+      </p>
+    </div>
+
+    <!-- Controls to hear the edited playback as it stands. -->
     <slot name="player" />
 
     <div class="flex flex-wrap items-end gap-4">
@@ -196,7 +320,7 @@ const toggleClass = (on: boolean) =>
           max="300"
           step="1"
           :value="form.tempoBpm.value ?? ''"
-          :disabled="steps.length === 0"
+          :disabled="form.selectedPlaybackId.value === null"
           :class="[fieldClass, 'w-24']"
           @change="onTempo"
         />

@@ -6,8 +6,9 @@
  * can be shown again. With `answers` (an exercise stimulus), a click can
  * also mark a position as a correct answer instead.
  *
- * A diagram with a sequence also gets its playback settings (offer Play,
- * tempo, voice, direction, loop), and the preview plays with them.
+ * A diagram with playbacks also gets its playback settings (offer Play, which
+ * playback when it has several, tempo, voice, direction, loop), and the
+ * preview plays with them.
  *
  * Edits the draft it's given; the caller reads the ref from it.
  */
@@ -23,6 +24,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import type { DiagramLabelMode } from '@/shared/utils/diagramLabels'
 import { intervalLabelKey } from '@/shared/utils/intervalLabels'
 import { MAX_TEMPO_BPM, MIN_TEMPO_BPM } from '@/shared/utils/sequence'
+import { resolvePlayback } from '@/shared/utils/diagramPlayback'
 import type { IntervalCode } from '@/shared/utils/intervalLabels'
 import type { components } from '@/api/generated/core-domain'
 
@@ -64,6 +66,17 @@ const defaultVoiceLabel = computed(() => {
     ? t('diagramEmbedPicker.playback.voiceDefault', { name: localizedName(found.names) })
     : t('diagramEmbedPicker.playback.voiceDefaultUnnamed')
 })
+
+// The playback this usage plays, whose own tempo applies unless overridden.
+const chosenPlayback = computed(() => resolvePlayback(props.diagram, props.draft.playbackId.value))
+const defaultPlaybackLabel = computed(() => {
+  const fallback = resolvePlayback(props.diagram, null)
+  return t('diagramEmbedPicker.playback.choiceDefault', { name: fallback ? localizedName(fallback.names) : '' })
+})
+
+function onPlaybackChoice(event: Event) {
+  if (event.target instanceof HTMLSelectElement) props.draft.setPlaybackId(event.target.value || null)
+}
 
 function onPlaybackOffered(event: Event) {
   if (event.target instanceof HTMLInputElement) props.draft.setPlaybackOffered(event.target.checked)
@@ -179,6 +192,21 @@ function intervalLabel(code: IntervalCode): string {
         {{ t('diagramEmbedPicker.playback.offered') }}
       </label>
       <div v-if="draft.playbackOffered.value" class="flex flex-wrap items-start gap-4">
+        <div v-if="draft.playbackChoices.value.length > 0" class="flex flex-col gap-1">
+          <label for="embed-picker-playback-choice" class="text-xs text-ink-subtle">{{ t('diagramEmbedPicker.playback.choice') }}</label>
+          <select
+            id="embed-picker-playback-choice"
+            data-test="embed-picker-playback-choice"
+            :value="draft.playbackId.value ?? ''"
+            class="rounded-md border border-border bg-surface px-2 py-1.5 text-sm"
+            @change="onPlaybackChoice"
+          >
+            <option value="">{{ defaultPlaybackLabel }}</option>
+            <option v-for="playback in draft.playbackChoices.value" :key="playback.playback_id" :value="playback.playback_id">
+              {{ localizedName(playback.names) }}
+            </option>
+          </select>
+        </div>
         <div class="flex flex-col gap-1">
           <label for="embed-picker-playback-tempo" class="text-xs text-ink-subtle">{{ t('diagramEmbedPicker.playback.tempo') }}</label>
           <input
@@ -190,7 +218,7 @@ function intervalLabel(code: IntervalCode): string {
             :max="MAX_TEMPO_BPM"
             step="1"
             :value="draft.playbackTempo.value ?? ''"
-            :placeholder="diagram.tempo_bpm != null ? String(diagram.tempo_bpm) : undefined"
+            :placeholder="chosenPlayback ? String(chosenPlayback.tempo_bpm) : undefined"
             :aria-invalid="draft.playbackTempoInvalid.value ? 'true' : undefined"
             aria-describedby="embed-picker-playback-tempo-hint"
             class="w-24 rounded-md border border-border bg-surface px-2 py-1.5 text-sm"

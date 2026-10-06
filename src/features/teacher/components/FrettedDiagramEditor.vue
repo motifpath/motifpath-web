@@ -58,7 +58,7 @@ const props = withDefaults(
     language?: string
     /** Highlighted regions drawn behind the markers, so the author sees them where they place positions. */
     regions?: LocalRegion[]
-    /** Clicks pick placed markers for the sequence rather than placing or removing positions. */
+    /** Clicks pick placed markers for the playback being edited rather than placing or removing positions. */
     recording?: boolean
     /** The positions of the selected sequence step, ringed on the board. */
     sequenceHighlightIds?: string[]
