@@ -262,6 +262,32 @@ describe('usePracticeSessionRun', () => {
     expect(run.tempo.value).toBe(130)
   })
 
+  it('never lowers a tempo the student chose, after any rating', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.nextItem()
+    run.setTempo(180)
+
+    run.rate('struggled')
+    expect(run.tempo.value).toBe(180)
+    run.rate('struggled')
+    expect(run.tempo.value).toBe(180)
+    expect(tracked('practice.item_answered').map((event) => event.response.tempo_bpm)).toEqual([180, 180])
+  })
+
+  it('lets the student lower a tempo they chose, which the ladder then keeps', () => {
+    const run = usePracticeSessionRun(twoItems)
+    run.start()
+    run.nextItem()
+    run.setTempo(180)
+    run.rate('clean')
+
+    run.setTempo(150)
+    run.rate('struggled')
+
+    expect(run.tempo.value).toBe(150)
+  })
+
   it('keeps a tempo the student sets between the ladder floor and the fastest playable tempo', () => {
     const run = usePracticeSessionRun(twoItems)
     run.start()

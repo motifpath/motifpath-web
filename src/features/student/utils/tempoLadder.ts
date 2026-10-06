@@ -1,7 +1,8 @@
 /**
  * The tempo ladder of a play-along item: two clean takes in a row at
  * a tempo move it up a step, a struggle moves it down one, anything else holds.
- * It stays between the item's floor and its target, unless the student chose to play faster.
+ * It stays between the item's floor and its target, unless the student chose to play faster,
+ * and never goes below a tempo the student chose: only the student lowers that.
  */
 import { MIN_TEMPO_BPM } from '@/shared/utils/sequence'
 
@@ -29,14 +30,16 @@ export function ladderFloor(target: number): number {
 }
 
 /**
- * The tempo of the next take, given this item's takes so far, oldest first. The ladder never
- * climbs past the target by itself, but a take the student chose to play faster than the target
- * holds its tempo, and steps down on a struggle like any other.
+ * The tempo of the next take, given this item's takes so far, oldest first, and the tempo the
+ * student last chose for it, if any. The ladder never climbs past the target by itself, but a take
+ * the student chose to play faster than the target holds its tempo. A struggle steps down, but
+ * never below the tempo the student chose.
  */
-export function nextTempo(item: { start: number; target: number }, takes: RatedTake[]): number {
+export function nextTempo(item: { start: number; target: number; chosen?: number | null }, takes: RatedTake[]): number {
   const last = takes.at(-1)
   const ceiling = Math.max(item.target, last?.bpm ?? item.target)
-  const clamp = (bpm: number) => Math.min(ceiling, Math.max(ladderFloor(item.target), bpm))
+  const floor = Math.max(ladderFloor(item.target), item.chosen ?? 0)
+  const clamp = (bpm: number) => Math.min(ceiling, Math.max(floor, bpm))
   if (!last) return clamp(item.start)
   if (last.rating === 'struggled') return clamp(last.bpm - TEMPO_STEP_BPM)
   if (last.rating === 'almost' || last.bpm >= item.target) return clamp(last.bpm)
