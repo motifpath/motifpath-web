@@ -10,6 +10,7 @@ import { Info, Metronome } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { withCountIn } from '@/features/student/utils/countIn'
+import { pickReasonKeys } from '@/features/student/utils/pickReason'
 import { TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import PlayAlongInfoModal from '@/features/student/components/PlayAlongInfoModal.vue'
@@ -159,17 +160,6 @@ const ratings = [
   { rating: 'clean', label: 'playAlongTake.ratings.clean', hint: 'playAlongTake.ratingHints.clean', tone: 'bg-success-muted' },
 ] as const satisfies readonly { rating: TakeRating; label: string; hint: string; tone: string }[]
 
-const reasonKeys = {
-  teacher_suggested: 'practiceSessionView.reasons.teacher_suggested',
-  due: 'practiceSessionView.reasons.due',
-  weak: 'practiceSessionView.reasons.weak',
-  new: 'practiceSessionView.reasons.new',
-  warm_up: 'practiceSessionView.reasons.warm_up',
-  application: 'practiceSessionView.reasons.application',
-  review_ahead: 'practiceSessionView.reasons.review_ahead',
-  stretch: 'practiceSessionView.reasons.stretch',
-} as const
-
 const infoOpen = ref(false)
 const takesPlayed = computed(() => props.takesTotal - props.takesLeft)
 
@@ -191,7 +181,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
       <div class="flex flex-col gap-1">
         <div class="flex items-center justify-between gap-2">
           <div class="flex min-w-0 items-center gap-1">
-            <span class="truncate rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">{{ t(reasonKeys[item.reason]) }}</span>
+            <span class="truncate rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">{{ t(pickReasonKeys[item.reason]) }}</span>
             <button
               type="button"
               data-test="item-info"

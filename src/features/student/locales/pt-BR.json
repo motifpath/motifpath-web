@@ -204,10 +204,11 @@
       "stretch": "Um passo além"
     },
     "doneTitle": "Sessão concluída",
-    "doneBody": "Nada avaliado desta vez. Toda sessão conta. | Você avaliou suas execuções de {count} item. | Você avaliou suas execuções de {count} itens.",
+    "doneBody": "Nada respondido ou avaliado desta vez. Toda sessão conta. | Você respondeu ou avaliou {count} item. | Você respondeu ou avaliou {count} itens.",
     "practiseAgain": "Praticar de novo",
     "backToPath": "Voltar para minha trilha",
-    "progressLabel": "Progresso da sessão"
+    "progressLabel": "Progresso da sessão",
+    "applyIt": "Aplique"
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
@@ -261,5 +262,11 @@
     "howLadder": "Após duas execuções limpas seguidas, o andamento sobe 5 BPM; após uma difícil, desce 5.",
     "howWarmUp": "Um aquecimento fica no mesmo andamento e não conta para o seu progresso.",
     "howTempo": "Fácil ou difícil demais? Mude o andamento antes da próxima execução."
+  },
+  "sessionExercise": {
+    "check": "Verificar",
+    "right": "Certo!",
+    "wrong": "Não foi dessa vez.",
+    "next": "Próximo"
   }
 }

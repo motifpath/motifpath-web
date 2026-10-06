@@ -204,10 +204,11 @@
       "stretch": "A step further"
     },
     "doneTitle": "Session done",
-    "doneBody": "Nothing rated this time. Every session still counts. | You rated your takes of {count} item. | You rated your takes of {count} items.",
+    "doneBody": "Nothing answered or rated this time. Every session still counts. | You answered or rated {count} item. | You answered or rated {count} items.",
     "practiseAgain": "Practise again",
     "backToPath": "Back to my path",
-    "progressLabel": "Session progress"
+    "progressLabel": "Session progress",
+    "applyIt": "Apply it"
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",
@@ -261,5 +262,11 @@
     "howLadder": "After two clean takes in a row the tempo goes up 5 BPM; after a struggle it comes down 5.",
     "howWarmUp": "A warm-up stays at the same tempo and doesn't count toward your progress.",
     "howTempo": "Too easy or too hard? Change the tempo before the next take."
+  },
+  "sessionExercise": {
+    "check": "Check",
+    "right": "Right!",
+    "wrong": "Not quite.",
+    "next": "Next"
   }
 }

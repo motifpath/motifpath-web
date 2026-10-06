@@ -1,13 +1,15 @@
 <script setup lang="ts">
 /**
  * A practice session with an instrument in hand. The student says which instrument they're
- * holding and how long they have; core composes the session; then each item is played along
- * take by take, until the plan runs out or the student ends it. A session left mid-way, by
+ * holding and how long they have; core composes the session; then each exercise is answered and
+ * each play-along played take by take, ending with one that applies what was practised, until
+ * the plan runs out or the student ends it. A session left mid-way, by
  * navigating away or closing or reloading the page, ends as left early.
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
+import SessionExercise from '@/features/student/components/SessionExercise.vue'
 import { useComposePracticeSession } from '@/features/student/composables/useComposePracticeSession'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
@@ -154,8 +156,19 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
+      <h2 v-if="current.reason === 'application'" data-test="apply-it" class="text-lg font-semibold">
+        {{ t('practiceSessionView.applyIt') }}
+      </h2>
+
+      <SessionExercise
+        v-if="current.kind === 'exercise' && current.exercise"
+        :item="current"
+        :answer="run.exerciseAnswer.value"
+        @answer="run.answer($event)"
+        @next="run.nextItem()"
+      />
       <PlayAlongTake
-        v-if="current.kind === 'play_along' && current.play_along && run.tempo.value !== null"
+        v-else-if="current.kind === 'play_along' && current.play_along && run.tempo.value !== null"
         :item="current"
         :tempo="run.tempo.value"
         :takes-left="run.takesLeft.value"

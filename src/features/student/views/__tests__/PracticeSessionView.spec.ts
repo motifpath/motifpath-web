@@ -45,6 +45,16 @@ const PlayAlongTakeStub = defineComponent({
   },
 })
 
+// The exercise itself is SessionExercise's: here it only reports what it was given and emits.
+const SessionExerciseStub = defineComponent({
+  name: 'SessionExercise',
+  props: { item: { type: Object, required: true }, answer: { type: Object, default: null } },
+  emits: ['answer', 'next'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'exercise' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
+  },
+})
+
 import PracticeSessionView from '@/features/student/views/PracticeSessionView.vue'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
@@ -63,13 +73,45 @@ function playAlong(diagramId: string, reason: Item['reason'], start: number): It
   }
 }
 
+const EXERCISE = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+const APPLY = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+
+function exerciseItem(exerciseId: string): Item {
+  return {
+    item_key: `exercise:${exerciseId}`,
+    kind: 'exercise',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 30,
+    exercise: {
+      exercise_id: exerciseId,
+      title: 'Name the interval',
+      prompt: { type: 'doc', content: [] },
+      exercise_type: 'text_response',
+      options: [
+        { option_id: 'right', is_correct: true, label: 'Minor third' },
+        { option_id: 'wrong', is_correct: false, label: 'Major third' },
+      ],
+      challenge_ids: [],
+      content_node_ids: [],
+      skills: [],
+      concepts: [],
+      remediation_targets: [],
+      languages: [{ code: 'en', name: 'English' }],
+      instrument_ids: [],
+      created_at: '2026-10-06T00:00:00Z',
+    },
+  }
+}
+
 function plan(items: Item[] = [playAlong(WARM_UP, 'warm_up', 80), playAlong(DUE, 'due', 60)]): Plan {
   return { practice_session_id: SESSION_ID, instrument_id: GUITAR, minutes: 10, items }
 }
 
 function mountView() {
   return mount(PracticeSessionView, {
-    global: { stubs: { RouterLink: RouterLinkStub, PlayAlongTake: PlayAlongTakeStub } },
+    global: { stubs: { RouterLink: RouterLinkStub, PlayAlongTake: PlayAlongTakeStub, SessionExercise: SessionExerciseStub } },
   })
 }
 
@@ -159,9 +201,9 @@ describe('PracticeSessionView', () => {
   })
 
   it('offers to skip an item it can’t present', async () => {
-    const exercise = { ...playAlong(DUE, 'new', 60), kind: 'exercise' as const, play_along: undefined }
+    const cell = { ...playAlong(DUE, 'new', 60), kind: 'fretboard_cell' as const, play_along: undefined }
     const wrapper = mountView()
-    await startSession(wrapper, plan([exercise, playAlong(WARM_UP, 'due', 60)]))
+    await startSession(wrapper, plan([cell, playAlong(WARM_UP, 'due', 60)]))
 
     expect(wrapper.text()).toContain("This kind of practice isn't available here yet.")
     await wrapper.get('[data-test="skip-unsupported"]').trigger('click')
@@ -176,7 +218,7 @@ describe('PracticeSessionView', () => {
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true, answered_count: 0 })])
     expect(wrapper.text()).toContain('Session done')
-    expect(wrapper.text()).toContain('Nothing rated this time.')
+    expect(wrapper.text()).toContain('Nothing answered or rated this time.')
   })
 
   it('shows the session done after its last take', async () => {
@@ -186,7 +228,7 @@ describe('PracticeSessionView', () => {
     await flushPromises()
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false, answered_count: 1 })])
-    expect(wrapper.text()).toContain('You rated your takes of 1 item.')
+    expect(wrapper.text()).toContain('You answered or rated 1 item.')
   })
 
   it('goes back to the choice for another session', async () => {
@@ -278,5 +320,69 @@ describe('PracticeSessionView', () => {
 
     expect(wrapper.get('[data-test="take"]').text()).toBe('95 BPM · 2 of 2 left')
   })
-})
 
+  describe('with exercises', () => {
+    const mixed = () => plan([exerciseItem(EXERCISE), playAlong(APPLY, 'application', 70)])
+
+    it('shows an exercise item as an exercise, unanswered', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, mixed())
+
+      expect(wrapper.getComponent(SessionExerciseStub).props('item')).toMatchObject({ item_key: `exercise:${EXERCISE}` })
+      expect(wrapper.get('[data-test="exercise"]').text()).toBe('unanswered')
+      expect(wrapper.find('[data-test="take"]').exists()).toBe(false)
+    })
+
+    it('sends the answer, shows whether it was right, and fills the item’s segment', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, mixed())
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['wrong'])
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({
+          item_key: `exercise:${EXERCISE}`,
+          response: expect.objectContaining({ response_type: 'option_choice', option_ids: ['wrong'] }),
+        }),
+      ])
+      expect(wrapper.get('[data-test="exercise"]').text()).toBe('answered wrong')
+      expect(segments(wrapper)).toEqual([100, 0])
+    })
+
+    it('moves on to the next item when the student asks', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, mixed())
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
+      await flushPromises()
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="take"]').text()).toBe('70 BPM · 4 of 4 left')
+    })
+
+    it('heads the application ending “Apply it”, and only that item', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, mixed())
+      expect(wrapper.find('[data-test="apply-it"]').exists()).toBe(false)
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="apply-it"]').text()).toBe('Apply it')
+    })
+
+    it('counts answered exercises in how the session went', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, mixed())
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
+      await flushPromises()
+      await wrapper.get('[data-test="end-session"]').trigger('click')
+
+      expect(wrapper.get('[data-test="session-done"]').text()).toContain('You answered or rated 1 item.')
+      expect(events('practice.session_ended')).toEqual([expect.objectContaining({ answered_count: 1, left_early: true })])
+    })
+  })
+})
