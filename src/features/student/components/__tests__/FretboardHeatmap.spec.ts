@@ -38,6 +38,7 @@ vi.mock('@/features/student/composables/usePracticeHome', () => ({
 }))
 
 import FretboardHeatmap from '@/features/student/components/FretboardHeatmap.vue'
+import { MIN_COLUMN_GAP_WITH_NUT } from '@/shared/utils/fretboardGeometry'
 
 /** Every cell of a 6-string layout at frets 0–11, new unless listed. */
 function map(overrides: Record<string, { level: Level; fading?: boolean }> = {}, instrumentId = GUITAR): FretboardMap {
@@ -86,13 +87,22 @@ describe('FretboardHeatmap', () => {
     expect(cellAt(wrapper, 1, 0).attributes('data-level')).toBe('new')
   })
 
-  it('marks a fading cell and names its place, level and fading for screen readers', async () => {
+  it('draws the board as diagrams do: wood grain, at a readable size that scrolls on a narrow screen', async () => {
     const wrapper = mount(FretboardHeatmap, { props: { instrumentId: GUITAR } })
     await flushPromises()
 
-    expect(cellAt(wrapper, 6, 5).attributes('stroke-dasharray')).toBeDefined()
+    expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(true)
+    expect(Number(wrapper.get('[data-test="fretboard-heatmap"] svg').attributes('width'))).toBeGreaterThanOrEqual(11 * MIN_COLUMN_GAP_WITH_NUT)
+    expect(wrapper.get('[data-test="heatmap-scroll"]').classes()).toContain('overflow-x-auto')
+  })
+
+  it('rings a fading cell with a dashed line and names its place, level and fading for screen readers', async () => {
+    const wrapper = mount(FretboardHeatmap, { props: { instrumentId: GUITAR } })
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-test="fading-ring"]').map((ring) => `${ring.attributes('data-string')}:${ring.attributes('data-fret')}`)).toEqual(['6:5'])
+    expect(wrapper.get('[data-test="fading-ring"]').attributes('stroke-dasharray')).toBeDefined()
     expect(cellAt(wrapper, 6, 5).attributes('aria-label')).toBe('String 6, fret 5: Fluent, fading')
-    expect(cellAt(wrapper, 6, 3).attributes('stroke-dasharray')).toBeUndefined()
     expect(cellAt(wrapper, 6, 3).attributes('aria-label')).toBe('String 6, fret 3: Accurate')
     expect(cellAt(wrapper, 4, 0).attributes('aria-label')).toBe('String 4, open: New')
   })

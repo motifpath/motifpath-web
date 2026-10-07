@@ -2,8 +2,7 @@
 /**
  * A bare fretboard for timed drills: no diagram on it, only a cell lit for the student to name or
  * tap, the string a question is about, taps on the strings that take them, and a graded answer's
- * marks. It also shows how well the student knows each cell, each fret space coloured by level.
- * It always fits its container from the nut to its last fret, so a timed answer never waits
+ * marks. It always fits its container from the nut to its last fret, so a timed answer never waits
  * on scrolling. Each cell that takes a tap is named by where it is, never by its note.
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
@@ -15,19 +14,9 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import { boardTopFor, fretLineX, MARKER_RADIUS, markerCenterX, ROW_GAP, stringLineY } from '@/shared/utils/fretboardGeometry'
 import type { BoardFrame } from '@/shared/utils/fretboardGeometry'
 import type { CellPlace } from '@/shared/utils/fretboardCell'
-import { LEVEL_FILLS } from '@/shared/utils/knowledgeLevels'
-import type { KnowledgeLevel } from '@/shared/utils/knowledgeLevels'
 
 export interface CellMark extends CellPlace {
   mark: AnswerMarkKind
-}
-
-/** A cell coloured by how well the student knows it; fading when its review is due. */
-export interface HeatCell extends CellPlace {
-  level: KnowledgeLevel
-  fading: boolean
-  /** Names the cell and its level for screen readers. */
-  label: string
 }
 
 const props = withDefaults(
@@ -47,9 +36,8 @@ const props = withDefaults(
     /** Takes no more taps, once an answer is in. */
     locked?: boolean
     marks?: CellMark[]
-    heat?: HeatCell[]
   }>(),
-  { lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [], heat: () => [] },
+  { lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [] },
 )
 
 const emit = defineEmits<{ tap: [place: CellPlace] }>()
@@ -64,8 +52,6 @@ const MARGIN_BOTTOM = 52
 /** The width assumed until the container has been measured. */
 const NOMINAL_WIDTH = 360
 const BADGE_OFFSET = 15
-/** The gap kept around a coloured cell, so neighbours stay apart. */
-const HEAT_INSET = 2
 
 const container = ref<HTMLElement | null>(null)
 const width = ref(NOMINAL_WIDTH)
@@ -105,12 +91,6 @@ function target(place: CellPlace) {
   return { x: left, y: cy(place.string) - ROW_GAP / 2, width: right - left, height: ROW_GAP }
 }
 
-/** A coloured cell's tile: its fret space, inset so neighbours stay apart. */
-function heatTile(place: CellPlace) {
-  const space = target(place)
-  return { x: space.x + HEAT_INSET, y: space.y + HEAT_INSET, width: space.width - 2 * HEAT_INSET, height: space.height - 2 * HEAT_INSET }
-}
-
 const tapCells = computed(() =>
   props.tapStrings.flatMap((string) => Array.from({ length: props.maxFret + 1 }, (_, fret) => ({ string, fret }))),
 )
@@ -141,22 +121,6 @@ function tap(place: CellPlace) {
           />
         </template>
       </FretboardBoard>
-
-      <rect
-        v-for="cell in heat"
-        :key="`heat-${cell.string}:${cell.fret}`"
-        data-test="heat-cell"
-        :data-string="cell.string"
-        :data-fret="cell.fret"
-        :data-level="cell.level"
-        v-bind="heatTile(cell)"
-        rx="4"
-        role="img"
-        :aria-label="cell.label"
-        :class="[LEVEL_FILLS[cell.level], cell.fading ? 'stroke-warning' : 'stroke-border']"
-        :stroke-width="cell.fading ? 2 : 1"
-        :stroke-dasharray="cell.fading ? '4 3' : undefined"
-      />
 
       <circle
         v-if="lit"
