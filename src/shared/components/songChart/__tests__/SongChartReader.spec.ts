@@ -29,8 +29,8 @@ const stubs = {
   DiagramPlayer: { props: ['playback'], template: '<div data-test="voicing-player" :data-playback-id="playback?.playback_id" />' },
 }
 
-function mountReader(chart = makeLearnerSongChart()): VueWrapper {
-  return mount(SongChartReader, { props: { chart, instrument }, global: { stubs }, attachTo: document.body })
+function mountReader(chart = makeLearnerSongChart(), readerInstrument: typeof instrument | null = instrument): VueWrapper {
+  return mount(SongChartReader, { props: { chart, instrument: readerInstrument }, global: { stubs }, attachTo: document.body })
 }
 
 /** The chord shown over each word, in order: [chord, word]. */
@@ -200,6 +200,13 @@ describe('SongChartReader', () => {
       const wrapper = mountReader(chart)
 
       expect(wrapper.findAll('button[data-test="chord-symbol"]').map((b) => b.text())).toEqual(['C'])
+    })
+
+    it('shows every chord as text when there is no instrument to draw voicings on', () => {
+      const wrapper = mountReader(makeLearnerSongChart(), null)
+
+      expect(wrapper.findAll('button[data-test="chord-symbol"]')).toHaveLength(0)
+      expect(wrapper.findAll('[data-test="chord-symbol"]').map((c) => c.text())).toEqual(['G', 'C', 'G'])
     })
   })
 

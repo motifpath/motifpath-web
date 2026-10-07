@@ -88,5 +88,12 @@
     "saveFailed": "Couldn't save. Check your connection and try again.",
     "discardTitle": "Discard your changes?",
     "discardMessage": "What you changed in this node hasn't been saved."
+  },
+  "songChartPreview": {
+    "loadingNoun": "song chart",
+    "notFoundHeading": "Song chart not found",
+    "notFoundMessage": "No song chart has this link. It may have been deleted.",
+    "loadFailed": "Couldn't load the song chart.",
+    "note": "Preview of the draft, as a learner would read it. Nothing you do here is recorded."
   }
 }

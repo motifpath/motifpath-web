@@ -3,7 +3,7 @@
  * A song chart as a learner reads it: its sections of lyrics with each chord over the word it
  * falls on, its comments, and a "played it" control per section. A chord with voicings to show
  * opens its voicing sheet when tapped; a no-chord marking, or a chord with nothing to show, is
- * plain text. Lines wrap between words, so a chord never leaves its word on a narrow screen.
+ * plain text, as is every chord when there's no instrument to draw voicings on. Lines wrap between words, so a chord never leaves its word on a narrow screen.
  */
 import { computed, ref } from 'vue'
 import { Check } from 'lucide-vue-next'
@@ -22,8 +22,8 @@ type ChordVoicing = components['schemas']['ChordVoicing']
 
 const props = defineProps<{
   chart: LearnerSongChart
-  /** The instrument the chart's voicings are drawn and played on. */
-  instrument: Instrument
+  /** The instrument the chart's voicings are drawn and played on; without one, chords are text. */
+  instrument: Instrument | null
 }>()
 
 const { t } = useTypedT()
@@ -33,6 +33,7 @@ const chordsById = computed(() => new Map(props.chart.chords.map((c) => [c.chord
 
 /** The chord and voicing an anchor's sheet opens on; null when it has none to show. */
 function sheetFor(anchor: Anchor): { chord: ChordDefinition; voicing: ChordVoicing } | null {
+  if (!props.instrument) return null
   const chord = anchor.chordDefinitionId ? chordsById.value.get(anchor.chordDefinitionId) : undefined
   const voicing = chord ? openingVoicing(chord, anchor) : null
   return chord && voicing ? { chord, voicing } : null
@@ -120,7 +121,7 @@ const details = computed(() => {
     </section>
 
     <ChordVoicingSheet
-      v-if="open"
+      v-if="open && instrument"
       :written-symbol="open.anchor.writtenSymbol"
       :chord="open.chord"
       :opening-voicing="open.voicing"

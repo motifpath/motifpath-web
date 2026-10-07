@@ -330,6 +330,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/admin/views/KnowledgeMapEditorView.vue'),
   },
   {
+    path: '/admin/song-charts/:songChartId/preview',
+    name: 'admin-song-chart-preview',
+    meta: { requiresAuth: true, requiresRole: ['admin'] },
+    props: true,
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/SongChartPreviewView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/shared/components/NotFoundView.vue'),
