@@ -82,12 +82,13 @@ const unparsed = (warning: NonNullable<ChordSymbolReading['warning']>): ChordSym
 
 /**
  * Reads a chord symbol exactly as an author wrote it: its root, quality and slash bass, or why
- * it isn't a chord. Nothing is trimmed, and any whitespace leaves it unparsed. ♭ and ♯ read as
- * b and #, and a bass with the root's own pitch class is dropped.
+ * it isn't a chord. Nothing is trimmed, and any whitespace leaves it unparsed. Whitespace is the
+ * Unicode White_Space property, as Go's unicode.IsSpace reads it; `\s` would differ on U+0085 and
+ * U+FEFF. ♭ and ♯ read as b and #, and a bass with the root's own pitch class is dropped.
  */
 export function readChordSymbol(raw: string): ChordSymbolReading {
   if (raw === 'N.C.' || raw === 'NC') return { status: 'no_chord', parsed: null, warning: null }
-  if (/\s/.test(raw)) return unparsed('unparsed_symbol')
+  if (/\p{White_Space}/u.test(raw)) return unparsed('unparsed_symbol')
   const text = raw.replaceAll('♭', 'b').replaceAll('♯', '#')
 
   const root = readLeadingNote(text)
