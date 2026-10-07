@@ -482,6 +482,9 @@ export interface components {
          *     - exercise:<exercise id> — an authored exercise.
          *     - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
          *     - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+         *     - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+         *       family, or finding one of its degrees. One diagram is one item: the same shape in
+         *       another key has other positions, so it is another item.
          *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
@@ -611,12 +614,56 @@ export interface components {
             changes_per_minute?: number;
         };
         /**
+         * @description Answer to a diagram shape shown without its name: the student picks which member of its
+         *     family it is (a CAGED shape, a pentatonic box, a triad quality).
+         */
+        NameTheShapeResponse: {
+            /**
+             * @description Discriminator. The student named the shape shown. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "name_the_shape";
+            /**
+             * @description The member of the shape's family the student picked, by its key in the practice
+             *     drill catalog (for example "A" for the CAGED A shape, "2" for pentatonic box 2,
+             *     "minor" for a minor triad).
+             */
+            shape: string;
+            /** @description Milliseconds from the moment the shape was shown to the answer. */
+            latency_ms: number;
+        };
+        /**
+         * @description A diagram position's interval code, as in Position.interval. In a find the degree
+         *     response, the degree that was asked: one of the shape's intervals other than R, since
+         *     the root is shown.
+         * @enum {string}
+         */
+        ShapeInterval: "R" | "b2" | "2" | "#2" | "b3" | "3" | "4" | "#4" | "b5" | "5" | "#5" | "b6" | "6" | "bb7" | "b7" | "7" | "b9" | "9" | "#9" | "11" | "#11" | "b13" | "13";
+        /**
+         * @description Answer to a degree asked on a diagram shape shown with its root marked and its other
+         *     positions unlabelled: the student taps the position that is the asked degree.
+         */
+        FindTheDegreeResponse: {
+            /**
+             * @description Discriminator. The student tapped a position to find the degree asked. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "find_the_degree";
+            interval: components["schemas"]["ShapeInterval"];
+            /** @description The string tapped, 1 being the highest-pitched. */
+            string: number;
+            /** @description The fret tapped; 0 is the open string. */
+            fret: number;
+            /** @description Milliseconds from the moment the degree was asked to the tap. */
+            latency_ms: number;
+        };
+        /**
          * @description The student's raw answer to one practice item, exactly as given. It never says whether
          *     the answer was right: the server grades it against reference data, and a client grades
          *     it only to show instant feedback, with the same rules. Exactly one shape applies,
          *     discriminated by response_type.
          */
-        PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"];
+        PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"] | components["schemas"]["NameTheShapeResponse"] | components["schemas"]["FindTheDegreeResponse"];
         PracticeItemAnsweredEvent: components["schemas"]["TrackingEventBase"] & ({
             /** @enum {string} */
             event_type: "practice.item_answered";
@@ -735,6 +782,9 @@ export type SchemaNameTheNoteResponse = components['schemas']['NameTheNoteRespon
 export type SchemaFindTheNoteResponse = components['schemas']['FindTheNoteResponse'];
 export type SchemaOptionChoiceResponse = components['schemas']['OptionChoiceResponse'];
 export type SchemaSelfRatingResponse = components['schemas']['SelfRatingResponse'];
+export type SchemaNameTheShapeResponse = components['schemas']['NameTheShapeResponse'];
+export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
+export type SchemaFindTheDegreeResponse = components['schemas']['FindTheDegreeResponse'];
 export type SchemaPracticeResponse = components['schemas']['PracticeResponse'];
 export type SchemaPracticeItemAnsweredEvent = components['schemas']['PracticeItemAnsweredEvent'];
 export type SchemaFeltRating = components['schemas']['FeltRating'];
