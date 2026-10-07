@@ -29,6 +29,7 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
     names: { en: 'Minor Pentatonic — Position 1', pt_BR: 'Pentatônica menor — Posição 1' },
     languages: ['en', 'pt_BR'],
     kind: 'custom',
+    purpose: 'general',
     created_by: { user_id: 'user-teacher', display_name: 'Bob Ferreira' },
     root_note: 'A',
     label_display: 'interval',

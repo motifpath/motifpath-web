@@ -778,7 +778,7 @@ describe('DiagramAuthoringView', () => {
       created_at: '2026-09-22T00:00:00Z',
     }
 
-    async function openDiagram(owner: Pick<Diagram, 'kind' | 'created_by'>) {
+    async function openDiagram(owner: Pick<Diagram, 'kind' | 'created_by'> & Partial<Pick<Diagram, 'purpose'>>) {
       route.params = { id: 'd-1' }
       GET.mockResolvedValueOnce({ data: { ...scale, ...owner }, error: undefined, response: { status: 200 } })
       GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
@@ -942,6 +942,102 @@ describe('DiagramAuthoringView', () => {
       expect(wrapper.find('[data-test="save-as-name-en"]').exists()).toBe(true)
       expect(router.replace).not.toHaveBeenCalled()
       expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
+    })
+
+    describe('a chord voicing diagram', () => {
+      const chordVoicing = {
+        kind: 'basic' as const,
+        purpose: 'chord_voicing' as const,
+        created_by: { user_id: 'u-catalog', display_name: 'Chord catalog' },
+      }
+
+      function signInAsAdmin() {
+        currentUser.profile.role = 'admin'
+        currentUser.profile.user_id = 'u-admin'
+      }
+
+      it('opens read-only for an admin, says it comes from the chord catalog, and offers Save as', async () => {
+        signInAsAdmin()
+        const wrapper = await openDiagram(chordVoicing)
+
+        expect(appBarShowsSave(wrapper)).toBe(false)
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('chord catalog')
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('Save as')
+        expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      })
+
+      it('opens read-only for a teacher, and says it comes from the chord catalog', async () => {
+        const wrapper = await openDiagram(chordVoicing)
+
+        expect(appBarShowsSave(wrapper)).toBe(false)
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('chord catalog')
+        expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      })
+
+      it("opens a teacher's copy editable", async () => {
+        const wrapper = await openDiagram(chordVoicing)
+        POST.mockResolvedValueOnce({
+          data: {
+            ...scale,
+            diagram_id: 'd-copy',
+            names: { en: 'My A minor' },
+            kind: 'custom',
+            purpose: 'general',
+            created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          },
+          error: undefined,
+          response: { status: 201 },
+        })
+
+        await wrapper.get('[data-test="save-as"]').trigger('click')
+        await wrapper.get('[data-test="save-as-name-en"]').setValue('My A minor')
+        await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('My A minor')
+        expect(appBarShowsSave(wrapper)).toBe(true)
+        expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+      })
+
+      it("opens an admin's template editable", async () => {
+        signInAsAdmin()
+        const wrapper = await openDiagram(chordVoicing)
+        POST.mockResolvedValueOnce({
+          data: {
+            ...scale,
+            diagram_id: 'd-tpl',
+            names: { en: 'A minor (open)', pt_BR: 'Lá menor (aberto)' },
+            kind: 'basic',
+            purpose: 'general',
+            created_by: { user_id: 'u-admin', display_name: 'Marina Alves' },
+          },
+          error: undefined,
+          response: { status: 201 },
+        })
+
+        await wrapper.get('[data-test="save-as-template"]').trigger('click')
+        await wrapper.get('[data-test="save-as-name-en"]').setValue('A minor (open)')
+        await wrapper.get('[data-test="save-as-name-pt_BR"]').setValue('Lá menor (aberto)')
+        await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('A minor (open)')
+        expect(appBarShowsSave(wrapper)).toBe(true)
+        expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+      })
+
+      it('stays read-only when the copy fails to save', async () => {
+        const wrapper = await openDiagram(chordVoicing)
+        POST.mockResolvedValueOnce({ data: undefined, error: { message: 'Could not save' }, response: { status: 500 } })
+
+        await wrapper.get('[data-test="save-as"]').trigger('click')
+        await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
+        expect(appBarShowsSave(wrapper)).toBe(false)
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('chord catalog')
+      })
     })
 
     it("names the diagram one language at a time, from each language's tab", async () => {

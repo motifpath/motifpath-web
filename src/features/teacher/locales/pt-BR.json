@@ -190,6 +190,7 @@
     "colorCannotClearHint": "Uma cor salva pode ser trocada, mas ainda não pode ser removida.",
     "readOnlyTemplate": "Este é um modelo, então só um administrador pode alterá-lo. Use Salvar como para criar sua própria cópia.",
     "readOnlyOtherTeacher": "Este diagrama pertence a outro professor. Use Salvar como para criar sua própria cópia.",
+    "readOnlyChordVoicing": "Esta digitação vem do catálogo de acordes, então não pode ser alterada aqui. Use Salvar como para criar sua própria cópia.",
     "saveAsButton": "Salvar como…",
     "saveAsTemplateButton": "Salvar como modelo…",
     "copyName": "{name} (cópia)",

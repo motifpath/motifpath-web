@@ -190,6 +190,7 @@
     "colorCannotClearHint": "A saved color can be changed but not removed yet.",
     "readOnlyTemplate": "This is a template, so only an admin can change it. Use Save as to make your own copy.",
     "readOnlyOtherTeacher": "This diagram belongs to another teacher. Use Save as to make your own copy.",
+    "readOnlyChordVoicing": "This fingering comes from the chord catalog, so it can't be changed here. Use Save as to make your own copy.",
     "saveAsButton": "Save as…",
     "saveAsTemplateButton": "Save as template…",
     "copyName": "{name} (copy)",
