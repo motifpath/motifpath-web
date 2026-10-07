@@ -34,7 +34,7 @@ function stubMatchMedia() {
   }))
 }
 
-function mountCell(props: { item: Item; answer?: GradedCellAnswer | null }) {
+function mountCell(props: { item: Item; answer?: GradedCellAnswer | null; instrumentName?: string }) {
   return mount(SessionFretboardCell, { props: { tuning: STANDARD, answer: null, ...props }, attachTo: document.body })
 }
 
@@ -56,6 +56,14 @@ describe('SessionFretboardCell', () => {
   })
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('names the instrument the cell is on, when the session mixes instruments', () => {
+    expect(mountCell({ item: naming, instrumentName: 'Electric bass' }).get('[data-test="item-instrument"]').text()).toBe('Electric bass')
+  })
+
+  it('names no instrument when the session has one', () => {
+    expect(mountCell({ item: naming }).find('[data-test="item-instrument"]').exists()).toBe(false)
   })
 
   it('shows why the cell was picked', () => {

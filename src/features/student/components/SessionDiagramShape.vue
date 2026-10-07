@@ -36,6 +36,8 @@ const props = defineProps<{
   item: Item
   /** The answer given, graded, once committed. */
   answer: GradedShapeAnswer | null
+  /** The instrument the shape is drawn on, named only in a session mixing instruments. */
+  instrumentName?: string
 }>()
 
 const emit = defineEmits<{ answer: [answer: ShapeAnswer, board: ShapeBoard]; next: [] }>()
@@ -144,6 +146,8 @@ const { next } = useAdvanceAfterAnswer(
     <span data-test="item-reason" class="self-start rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">
       {{ t(pickReasonKeys[item.reason]) }}
     </span>
+
+    <p v-if="instrumentName" data-test="item-instrument" class="text-sm font-medium text-ink-muted">{{ instrumentName }}</p>
 
     <div v-if="status === 'loading'" data-test="shape-loading">
       <StateLoading />
