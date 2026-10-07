@@ -35,6 +35,31 @@ function mountPlan() {
 }
 
 describe('TodaysPlan', () => {
+  it('groups diagram shapes by drill too, counted as shapes', () => {
+    const shape = (diagramId: string, drill: 'name_the_shape' | 'find_the_degree') =>
+      item(`diagram_shape:${diagramId}`, 'diagram_shape', 'new', {
+        diagram_shape: {
+          diagram_id: diagramId,
+          layout_instrument_id: LAYOUT,
+          drill,
+          shape_family: 'caged-grip',
+          shape: 'A',
+          options: [],
+          asked_interval: drill === 'find_the_degree' ? '3' : null,
+        },
+      })
+    const shapes = [shape('d1', 'name_the_shape'), cell(5, 3, 'name_the_note'), shape('d2', 'find_the_degree'), shape('d3', 'name_the_shape')]
+    const shapeLabel = (planItem: Item) =>
+      planItem.diagram_shape ? (planItem.diagram_shape.drill === 'name_the_shape' ? 'Name the shape' : 'Find the degree') : labelOf(planItem)
+    const wrapper = mount(TodaysPlan, { props: { items: shapes, minutes: 5, labelOf: shapeLabel } })
+
+    expect(wrapper.findAll('[data-test="plan-row-name"]').map((row) => row.text())).toEqual([
+      'Name the shape · 2 shapes',
+      'Name the note · 1 note',
+      'Find the degree · 1 shape',
+    ])
+  })
+
   it('lists what the session holds in order, the fretboard cells grouped by drill', () => {
     const wrapper = mountPlan()
 

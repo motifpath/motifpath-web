@@ -19,6 +19,15 @@ describe('FeltQuestions', () => {
     expect(wrapper.findAll('[data-test="felt-question"]')[0]!.findAll('button').map((button) => button.text())).toEqual(['Easy', 'About right', 'Hard'])
   })
 
+  it('names both diagram shape drills', () => {
+    const wrapper = mountQuestions(['diagram_shape:name_the_shape', 'diagram_shape:find_the_degree'])
+
+    expect(wrapper.findAll('[data-test="felt-question"] legend').map((legend) => legend.text())).toEqual([
+      'Naming shapes',
+      'Finding degrees in shapes',
+    ])
+  })
+
   it('names a drill it has no words for plainly', () => {
     expect(mountQuestions(['chord_change:switch']).get('legend').text()).toBe('This drill')
   })

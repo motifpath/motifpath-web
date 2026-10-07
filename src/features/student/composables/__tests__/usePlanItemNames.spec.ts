@@ -120,6 +120,33 @@ describe('usePlanItemNames', () => {
     expect(labelOf(playAlong)).toBe('Play-along')
   })
 
+  it('never names a diagram shape by its diagram, which would give the shape away, but by its drill', async () => {
+    const shape: Item = {
+      item_key: `diagram_shape:${DIAGRAM}`,
+      kind: 'diagram_shape',
+      reason: 'new',
+      node_id: null,
+      level: 'new',
+      estimated_seconds: 10,
+      diagram_shape: {
+        diagram_id: DIAGRAM,
+        layout_instrument_id: DIAGRAM,
+        drill: 'name_the_shape',
+        shape_family: 'caged-grip',
+        shape: 'A',
+        options: [],
+        asked_interval: null,
+      },
+    }
+    const { nameOf, labelOf } = setUp([shape])
+    await flushPromises()
+
+    expect(GET).not.toHaveBeenCalled()
+    expect(nameOf(shape)).toBeNull()
+    expect(labelOf(shape)).toBe('Name the shape')
+    expect(labelOf({ ...shape, diagram_shape: { ...shape.diagram_shape!, drill: 'find_the_degree', asked_interval: '3' } })).toBe('Find the degree')
+  })
+
   it('labels a named item by its name', async () => {
     const { labelOf } = setUp([exercise, playAlong])
     await flushPromises()

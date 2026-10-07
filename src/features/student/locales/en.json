@@ -216,9 +216,12 @@
     "start": "Let's go",
     "playAlong": "Play-along",
     "cells": "{drill} · {count} note | {drill} · {count} notes",
+    "shapes": "{drill} · {count} shape | {drill} · {count} shapes",
     "drills": {
       "nameTheNote": "Name the note",
-      "findTheNote": "Find the note"
+      "findTheNote": "Find the note",
+      "nameTheShape": "Name the shape",
+      "findTheDegree": "Find the degree"
     },
     "nextUp": {
       "played": "You played {name} up to {bpm} BPM.",
@@ -297,6 +300,12 @@
     "markedRight": "right answer",
     "markedWrong": "your answer, wrong"
   },
+  "sessionDiagramShape": {
+    "nameTheShape": "Which shape is this?",
+    "findTheDegree": "Tap the {degree} in this shape",
+    "shapes": "Shapes",
+    "unavailable": "This shape can't be shown right now."
+  },
   "tapCheck": {
     "title": "Tap check",
     "intro": "For about 20 seconds, tap each fret as soon as it lights up. It tells us how long a tap takes you, so your answers are timed on what you know, not on your tapping.",
@@ -319,6 +328,8 @@
       "imageRecognition": "Recognising what you see",
       "imageChoice": "Choosing a picture",
       "audioSelection": "Choosing a sound",
+      "nameTheShape": "Naming shapes",
+      "findTheDegree": "Finding degrees in shapes",
       "other": "This drill"
     }
   },
