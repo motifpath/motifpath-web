@@ -35,3 +35,7 @@ pnpm-debug.log*
 
 # Local implementation plans (ADR-022) — never committed
 plans/
+
+# Storybook
+storybook-static/
+*storybook.log

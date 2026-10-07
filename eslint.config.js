@@ -11,7 +11,7 @@ export default defineConfigWithVueTs(
 
   {
     name: 'app/files-to-ignore',
-    ignores: ['**/dist/**', '**/coverage/**', 'src/api/generated/**'],
+    ignores: ['**/dist/**', '**/coverage/**', '**/storybook-static/**', 'src/api/generated/**'],
   },
 
   js.configs.recommended,
