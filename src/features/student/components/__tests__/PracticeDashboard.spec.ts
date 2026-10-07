@@ -52,6 +52,11 @@ function overview(overrides: Partial<Overview> = {}): Overview {
   return {
     practice_days_last_7: 2,
     learning_days_last_7: 3,
+    minutes_practised_last_7: 0,
+    minutes_practised_previous_7: 0,
+    day_streak_current: 0,
+    day_streak_best: 0,
+    skills_up_last_7: 0,
     instruments: [
       { instrument_id: GUITAR, practice_days_last_7: 2, top_next_step: { kind: 'refresh', node_id: 'n-1', names: names('Open chords') } },
       { instrument_id: BASS, practice_days_last_7: 0, top_next_step: null },
