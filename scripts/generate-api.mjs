@@ -1,6 +1,7 @@
 // Regenerates the typed API client in src/api/generated/ from the OpenAPI specs
-// in motifpath-specs, and copies the practice graders' golden cases next to it,
-// so the client's instant feedback is tested against the cases the server runs.
+// in motifpath-specs, and copies the shared golden cases (practice graders, chord
+// symbols) next to it, so the client's instant feedback is tested against the
+// cases the server runs.
 // Run via `npm run generate:api` after a spec change.
 //
 // The specs repo is expected as a sibling checkout; override with SPECS_DIR.
@@ -49,10 +50,12 @@ for (const { spec, out } of specs) {
   )
 }
 
-const goldenDir = resolve(specsDir, 'golden/practice-graders')
-const goldenOutDir = resolve(outDir, 'golden/practice-graders')
-mkdirSync(goldenOutDir, { recursive: true })
-for (const file of readdirSync(goldenDir).filter((name) => name.endsWith('.json'))) {
-  console.log(`golden/practice-graders/${file} -> src/api/generated/golden/practice-graders/${file}`)
-  copyFileSync(resolve(goldenDir, file), resolve(goldenOutDir, file))
+for (const suite of ['practice-graders', 'chord-symbols']) {
+  const goldenDir = resolve(specsDir, 'golden', suite)
+  const goldenOutDir = resolve(outDir, 'golden', suite)
+  mkdirSync(goldenOutDir, { recursive: true })
+  for (const file of readdirSync(goldenDir).filter((name) => name.endsWith('.json'))) {
+    console.log(`golden/${suite}/${file} -> src/api/generated/golden/${suite}/${file}`)
+    copyFileSync(resolve(goldenDir, file), resolve(goldenOutDir, file))
+  }
 }

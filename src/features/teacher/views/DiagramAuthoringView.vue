@@ -121,11 +121,11 @@ const classificationInstrumentIds = computed(() =>
 const savedDiagramId = ref('')
 // Who may save over the diagram being edited follows from the server's copy of it; null
 // until it has been saved once, since a brand new diagram is always the caller's own.
-const savedOwnership = ref<Pick<Diagram, 'kind' | 'created_by'> | null>(null)
+const savedOwnership = ref<Pick<Diagram, 'kind' | 'purpose' | 'created_by'> | null>(null)
 
 function adoptSaved(diagram: Diagram) {
   savedDiagramId.value = diagram.diagram_id
-  savedOwnership.value = { kind: diagram.kind, created_by: diagram.created_by }
+  savedOwnership.value = { kind: diagram.kind, purpose: diagram.purpose, created_by: diagram.created_by }
 }
 
 watch(
@@ -191,6 +191,7 @@ const saveAsInitialNames = computed(() =>
 )
 const readOnlyReason = computed(() => {
   if (canSaveInPlace.value || mergedIntoSaved.value || !savedOwnership.value) return ''
+  if (savedOwnership.value.purpose === 'chord_voicing') return te('diagramAuthoringView.readOnlyChordVoicing')
   return savedOwnership.value.kind === 'basic'
     ? te('diagramAuthoringView.readOnlyTemplate')
     : te('diagramAuthoringView.readOnlyOtherTeacher')
@@ -256,6 +257,7 @@ function diagramForPreview(positions: Diagram['positions'], regions: Diagram['re
     names: request.names,
     languages: Object.keys(request.names).sort(),
     kind: savedOwnership.value?.kind ?? 'custom',
+    purpose: savedOwnership.value?.purpose ?? 'general',
     created_by: savedOwnership.value?.created_by ?? {
       user_id: currentUser.profile?.user_id ?? '',
       display_name: currentUser.profile?.display_name ?? '',

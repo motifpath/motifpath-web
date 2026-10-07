@@ -802,6 +802,10 @@ export interface paths {
          *     alphabetically first language it has — then by id; an offset past
          *     the end returns an empty items array. Every filter below is
          *     optional and they combine with AND.
+         *
+         *     Chord voicings from the chord catalog are left out unless purpose
+         *     asks for them, so they don't crowd the diagrams authors browse;
+         *     total counts only the diagrams that match.
          */
         get: operations["listDiagrams"];
         put?: never;
@@ -836,7 +840,8 @@ export interface paths {
         /**
          * List the creators of the diagrams the caller can see
          * @description Returns every distinct user who created at least one diagram the
-         *     caller can see in GET /diagrams, so a picker can offer a complete
+         *     caller can see in GET /diagrams with its default purpose (general),
+         *     so a picker can offer a complete
          *     creator filter (its created_by parameter) without paging. A teacher
          *     gets the creators of basic diagrams, plus themselves once they have
          *     a custom diagram of their own — never another teacher who has only
@@ -883,11 +888,68 @@ export interface paths {
          * Update a diagram's name, positions, or classification
          * @description Only an admin may update a basic diagram. A custom diagram may be
          *     updated only by its creator or by an admin. An update never changes
-         *     a diagram's kind or created_by. Updating a diagram
+         *     a diagram's kind, purpose or created_by. A chord_voicing diagram
+         *     can't be updated here by anyone: its fingering changes only through
+         *     the chord catalog, where it is checked against its chord. Saving a
+         *     copy of it (createDiagram) gives an ordinary general diagram that
+         *     can be edited. Updating a diagram
          *     that is already referenced by one or more diagram_refs changes what
          *     every one of them renders — there is no versioning or copy-on-write.
          */
         patch: operations["updateDiagram"];
+        trace?: never;
+    };
+    "/chords": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find a chord in the chord catalog by its symbol
+         * @description Parses a chord symbol as an author writes it and returns the chord
+         *     catalog's chord for it, with that chord's voicings, so an author
+         *     can pick a fingering for a chord they typed. Parsing is
+         *     deterministic: every supported spelling of a chord ("Bbmaj7",
+         *     "B♭M7", "BbΔ7") finds the same chord, and a symbol that can't be
+         *     parsed is reported as unparsed, never reinterpreted as something
+         *     close to it. "N.C." and "NC" are read as no chord.
+         *
+         *     A parsed symbol finds its chord by root and bass pitch class, not
+         *     spelling: "A#m" finds the catalog's "Bbm", and the response keeps
+         *     the symbol as written. Only teachers and admins search the
+         *     catalog; students see chord voicings only where content embeds
+         *     them.
+         */
+        get: operations["searchChords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/chords/{chord_definition_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a chord from the chord catalog with its voicings
+         * @description Returns one chord of the chord catalog and its active voicings,
+         *     best first. Only teachers and admins may read the catalog.
+         */
+        get: operations["getChord"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/learning-paths": {
@@ -2721,6 +2783,21 @@ export interface components {
              * @enum {string}
              */
             kind: "basic" | "custom";
+            /**
+             * @description What the diagram is for. chord_voicing marks a diagram that is
+             *     the fingering of a voicing in the chord catalog: it is listed
+             *     only when GET /diagrams asks for it, found through the chord
+             *     catalog instead, and its positions and playbacks can't be
+             *     changed through updateDiagram, so a fingering can't drift from
+             *     the chord it is validated against. Every other diagram is
+             *     general. Set by the server, never by a request: a diagram is
+             *     chord_voicing exactly when the chord catalog installed it as a
+             *     voicing, and a diagram created through createDiagram, including
+             *     a copy saved from a chord_voicing diagram, is general. A
+             *     diagram's purpose doesn't change how it renders or plays.
+             * @enum {string}
+             */
+            purpose: "general" | "chord_voicing";
             created_by: components["schemas"]["UserRef"];
             /**
              * @description The root note this diagram was authored against (e.g. "A"),
@@ -3121,6 +3198,225 @@ export interface components {
             url: string;
         };
         /**
+         * @description The kind of chord, independent of its root. Each quality has one
+         *     formula (see ChordDefinition.formula) and one canonical suffix in
+         *     a chord symbol: major "", minor "m", power "5", diminished "dim",
+         *     augmented "aug", sus2 "sus2", sus4 "sus4", major_6 "6", minor_6
+         *     "m6", dominant_7 "7", major_7 "maj7", minor_7 "m7", minor_major_7
+         *     "mMaj7", half_diminished_7 "m7b5", diminished_7 "dim7",
+         *     dominant_7_sus4 "7sus4", add_9 "add9", minor_add_9 "madd9",
+         *     dominant_9 "9", major_9 "maj9", minor_9 "m9", dominant_11 "11",
+         *     minor_11 "m11", dominant_13 "13", dominant_7_flat_5 "7b5",
+         *     dominant_7_sharp_5 "7#5", dominant_7_flat_9 "7b9",
+         *     dominant_7_sharp_9 "7#9".
+         * @enum {string}
+         */
+        ChordQuality: "major" | "minor" | "power" | "diminished" | "augmented" | "sus2" | "sus4" | "major_6" | "minor_6" | "dominant_7" | "major_7" | "minor_7" | "minor_major_7" | "half_diminished_7" | "diminished_7" | "dominant_7_sus4" | "add_9" | "minor_add_9" | "dominant_9" | "major_9" | "minor_9" | "dominant_11" | "minor_11" | "dominant_13" | "dominant_7_flat_5" | "dominant_7_sharp_5" | "dominant_7_flat_9" | "dominant_7_sharp_9";
+        /**
+         * @description An interval of a chord formula, as the same canonical code a
+         *     diagram position uses (R is the root).
+         * @enum {string}
+         */
+        ChordInterval: "R" | "2" | "b3" | "3" | "4" | "b5" | "5" | "#5" | "6" | "bb7" | "b7" | "7" | "b9" | "9" | "#9" | "11" | "13";
+        /** @description What a chord symbol means, once parsed. */
+        ParsedChordSymbol: {
+            /** @description The root as written, with ♭ and ♯ read as b and */
+            root: string;
+            /** @description The root's pitch class, C = 0 through B = 11. */
+            root_pitch_class: number;
+            quality: components["schemas"]["ChordQuality"];
+            /**
+             * @description The slash bass as written (e.g. "F#" in "D/F#"); null when the
+             *     symbol has no slash, or when its bass is the root itself.
+             */
+            bass: string | null;
+            /** @description The bass's pitch class; null exactly when bass is null. */
+            bass_pitch_class: number | null;
+            /**
+             * @description The symbol in the catalog's own spelling: the root and bass as
+             *     written, then the quality's canonical suffix (e.g. "Bbmaj7" for
+             *     "B♭Δ7", "F#m7b5" for "F♯ø").
+             */
+            canonical_symbol: string;
+        };
+        /**
+         * @description The result of reading one chord symbol: whether it parsed, what it
+         *     means, and the catalog's chord for it.
+         */
+        ChordSearchResult: {
+            /** @description The symbol exactly as it was sent. */
+            written_symbol: string;
+            /**
+             * @description parsed: the symbol names a chord (see parsed). unparsed: it
+             *     doesn't, in any spelling the parser supports, and it stays
+             *     text. no_chord: it is a no-chord marking ("N.C.", "NC").
+             * @enum {string}
+             */
+            status: "parsed" | "unparsed" | "no_chord";
+            /** @description The parsed meaning; null unless status is parsed. */
+            parsed: components["schemas"]["ParsedChordSymbol"] | null;
+            /**
+             * @description Why a symbol didn't parse; null unless status is unparsed.
+             *     unsupported_quality: the root reads as a note but the rest
+             *     isn't one of the supported qualities (e.g. "C7#11").
+             *     unparsed_symbol: anything else (e.g. "H7", "cm", "C/").
+             * @enum {string|null}
+             */
+            warning: "unparsed_symbol" | "unsupported_quality" | null;
+            /**
+             * @description The catalog's chord with the same root, quality and bass
+             *     pitch classes, with its active voicings; null when the symbol
+             *     didn't parse or the catalog has no such chord.
+             */
+            chord: components["schemas"]["ChordDefinition"] | null;
+            /**
+             * @description For a slash chord the catalog doesn't have (chord is null),
+             *     the catalog's chord with the same root and quality and no
+             *     bass, so the chord can still be played without its bass note.
+             *     Null otherwise.
+             */
+            chord_without_bass: components["schemas"]["ChordDefinition"] | null;
+        };
+        /**
+         * @description A chord of the chord catalog: what it is musically, independent of
+         *     any fingering. A chord has many voicings, each one fingering of it.
+         */
+        ChordDefinition: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this chord, the same in every environment.
+             */
+            chord_definition_id: string;
+            /** @description The chord's symbol in the catalog's spelling (e.g. "Bbmaj7", "D/F#"). */
+            canonical_symbol: string;
+            /** @description The root as the catalog spells it. */
+            root: string;
+            /** @description The root's pitch class, C = 0 through B = 11. */
+            root_pitch_class: number;
+            quality: components["schemas"]["ChordQuality"];
+            /**
+             * @description The chord's tones as intervals above the root, starting with R
+             *     (e.g. ["R", "3", "5", "7"] for maj7). Every voicing sounds
+             *     exactly these pitch classes, less the ones it declares omitted.
+             */
+            formula: components["schemas"]["ChordInterval"][];
+            /** @description The slash bass as the catalog spells it; null for a chord with no slash bass. */
+            bass: string | null;
+            /**
+             * @description Other spellings of this chord that the parser accepts, for
+             *     display in a picker (e.g. ["BbM7", "BbΔ7", "B♭maj7"]). Not
+             *     exhaustive: searchChords accepts every supported spelling.
+             */
+            aliases: string[];
+            /**
+             * @description The chord's active voicings, best first (by recommended_rank,
+             *     then id). May be empty.
+             */
+            voicings: components["schemas"]["ChordVoicing"][];
+        };
+        /**
+         * @description One playable fingering of a chord. Its positions, playbacks and
+         *     sound are those of its diagram, which it references and never
+         *     copies; the diagram's purpose is chord_voicing. Every voicing was
+         *     checked before it entered the catalog: its diagram sounds exactly
+         *     the chord's pitch classes, less the declared omissions, its lowest
+         *     sounded string is the bass of a slash chord, and its tuning is its
+         *     instrument's.
+         */
+        ChordVoicing: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this voicing, the same in every environment.
+             */
+            chord_voicing_id: string;
+            /**
+             * Format: uuid
+             * @description The chord this voicing plays.
+             */
+            chord_definition_id: string;
+            /**
+             * Format: uuid
+             * @description The diagram that holds this voicing's positions and playbacks.
+             */
+            diagram_id: string;
+            /**
+             * Format: uuid
+             * @description The layout instrument of the voicing's diagram.
+             */
+            instrument_id: string;
+            /**
+             * @description The open-string pitches the voicing was checked against, lowest
+             *     string first, joined by "-" (e.g. "E2-A2-D3-G3-B3-E4").
+             */
+            tuning_fingerprint: string;
+            /** @description The frets the voicing's fretted notes span; open strings don't count. */
+            fret_window: {
+                /** @description The lowest fretted fret, or 0 when every sounded string is open. */
+                lowest_fret: number;
+                /** @description The highest fretted fret, or 0 when every sounded string is open. */
+                highest_fret: number;
+            };
+            /**
+             * @description Which finger frets each fretted position. Open strings have no
+             *     entry. A barre is the same finger on several positions.
+             */
+            fingering: {
+                /** @description A fretted position of the voicing's diagram. */
+                position_id: string;
+                /**
+                 * @description The fretting-hand finger, 1 (index) to 4 (little), or the thumb.
+                 * @enum {string}
+                 */
+                finger: "1" | "2" | "3" | "4" | "thumb";
+            }[];
+            /** @description Strings that must not sound, numbered from 1, the highest-pitched; empty when none. */
+            muted_strings: number[];
+            /**
+             * @description Tones of the chord's formula this voicing leaves out on
+             *     purpose (e.g. ["5"] in a shell voicing); empty when none.
+             */
+            omitted_intervals: components["schemas"]["ChordInterval"][];
+            /**
+             * @description How hard the voicing is to fret cleanly.
+             * @enum {string}
+             */
+            difficulty: "beginner" | "intermediate" | "advanced";
+            /** @description What the voicing asks of the fretting hand; empty when nothing in particular. */
+            technique_tags: ("open" | "barre" | "partial_barre" | "stretch" | "thumb")[];
+            /**
+             * @description The shape the voicing belongs to; null when it fits none.
+             * @enum {string|null}
+             */
+            shape_family: "open" | "e_shape" | "a_shape" | "d_shape" | "shell" | "drop_2" | "drop_3" | null;
+            /**
+             * @description Whether the shape keeps its fingering when moved along the neck
+             *     (no open strings among its sounded notes).
+             */
+            is_movable: boolean;
+            /**
+             * @description 1 is the voicing offered first for its chord. Ranks are unique
+             *     within a chord.
+             */
+            recommended_rank: number;
+            /**
+             * @description withdrawn voicings stay for the content that embeds their
+             *     diagram but are no longer offered. Only active voicings are
+             *     listed in a ChordDefinition.
+             * @enum {string}
+             */
+            catalog_status: "active" | "withdrawn";
+            /** @description Where the voicing came from. */
+            provenance: {
+                /**
+                 * @description hand_authored voicings are written one by one; template voicings are generated from a movable shape.
+                 * @enum {string}
+                 */
+                source: "hand_authored" | "template";
+                /** @description The shape template that generated the voicing; null for a hand-authored one. */
+                template_key: string | null;
+            };
+        };
+        /**
          * @description A usage of one Diagram — its render config, never a stored variant
          *     of the diagram itself. The same Diagram can be pointed at by any
          *     number of DiagramRefs with different configs.
@@ -3199,10 +3495,13 @@ export interface components {
                 /**
                  * Format: uuid
                  * @description Which of the diagram's playbacks this usage plays. Null (or
-                 *     omitted) plays the diagram's default playback. When saved, it
-                 *     must be one of the diagram's playbacks. If that playback is
-                 *     later removed from the diagram, the usage plays the default
-                 *     playback instead.
+                 *     omitted) plays the diagram's default playback. When a usage
+                 *     chooses it, it must be one of the diagram's playbacks. If that
+                 *     playback is later removed from the diagram, the usage keeps
+                 *     the id and plays the default playback instead; saving the
+                 *     usage again with the same id is still accepted, so an edit
+                 *     elsewhere in the usage (or in the document that embeds it)
+                 *     isn't blocked by the removal.
                  */
                 playback_id?: string | null;
                 /**
@@ -4950,16 +5249,17 @@ export interface components {
              */
             felt_questions: string[];
             /**
-             * @description True when the plan has a fretboard cell and the student has done no tap check in
-             *     the last 30 days, or never. The client then offers the tap check before the first
-             *     item; the student may skip it, and their answers are then judged on the whole
-             *     latency.
+             * @description True when the plan has a fretboard cell or a diagram shape and the student has
+             *     done no tap check in the last 30 days, or never. The client then offers the tap
+             *     check before the first item; the student may skip it, and their answers are then
+             *     judged on the whole latency.
              */
             tap_check_due: boolean;
         };
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
-         *     one of fretboard_cell, exercise and play_along is present, matching kind.
+         *     one of fretboard_cell, exercise, play_along and diagram_shape is present, matching
+         *     kind.
          */
         PracticeSessionItem: {
             item_key: components["schemas"]["PracticeItemKey"];
@@ -5013,6 +5313,37 @@ export interface components {
                  *     they have no clean take yet.
                  */
                 best_clean_tempo_bpm: number | null;
+            };
+            /**
+             * @description Present when kind is diagram_shape. The client loads the diagram to draw it, with
+             *     its labels hidden. The drill is the way of asking the shape has the fewer right
+             *     answers so far, name_the_shape on a tie.
+             */
+            diagram_shape?: {
+                /**
+                 * Format: uuid
+                 * @description The catalog diagram whose shape is asked.
+                 */
+                diagram_id: string;
+                drill: components["schemas"]["DiagramShapeDrill"];
+                /** @description The shape's family in the practice drill catalog, such as caged-grip. */
+                shape_family: string;
+                /**
+                 * @description For name_the_shape: every member of the shape's family, in the catalog's
+                 *     order, whichever of them exist at this root. The names never mention the root,
+                 *     so the root shown never gives the answer away. Empty for find_the_degree.
+                 */
+                options: {
+                    /** @description The member's key, sent back as the answer. */
+                    shape: string;
+                    /** @description The member's name in the student's language, such as "A shape". */
+                    name: string;
+                }[];
+                /**
+                 * @description For find_the_degree: the degree to tap, picked at random among the shape's
+                 *     intervals other than its root. Null for name_the_shape.
+                 */
+                asked_interval: components["schemas"]["ShapeInterval"] | null;
             };
         };
         /** @description The home for one instrument, derived from the student's evidence. */
@@ -5396,6 +5727,9 @@ export interface components {
          *     - exercise:<exercise id> — an authored exercise.
          *     - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
          *     - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
+         *     - diagram_shape:<diagram id> — a catalog shape recalled in the head: naming it among its
+         *       family, or finding one of its degrees. One diagram is one item: the same shape in
+         *       another key has other positions, so it is another item.
          *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
@@ -5407,7 +5741,7 @@ export interface components {
          *     is added with its key scheme, grader and golden cases.
          * @enum {string}
          */
-        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change";
+        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape";
         /**
          * @description Why the session composer put an item in a session, shown to the student.
          *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
@@ -5438,6 +5772,20 @@ export interface components {
          * @enum {string}
          */
         FretboardDrill: "name_the_note" | "find_the_note";
+        /**
+         * @description How a diagram shape is asked. name_the_shape = the shape is shown without its name and the
+         *     student picks it among its family's members; find_the_degree = the shape is shown with its
+         *     root marked and its other positions unlabelled, and the student taps the asked degree.
+         * @enum {string}
+         */
+        DiagramShapeDrill: "name_the_shape" | "find_the_degree";
+        /**
+         * @description A diagram position's interval code, as in Position.interval. In a find the degree
+         *     response, the degree that was asked: one of the shape's intervals other than R, since
+         *     the root is shown.
+         * @enum {string}
+         */
+        ShapeInterval: "R" | "b2" | "2" | "#2" | "b3" | "3" | "4" | "#4" | "b5" | "5" | "#5" | "b6" | "6" | "bb7" | "b7" | "7" | "b9" | "9" | "#9" | "11" | "#11" | "b13" | "13";
     };
     responses: never;
     parameters: {
@@ -5494,6 +5842,12 @@ export type SchemaDiagramPlaybackInput = components['schemas']['DiagramPlaybackI
 export type SchemaSequenceStep = components['schemas']['SequenceStep'];
 export type SchemaVoice = components['schemas']['Voice'];
 export type SchemaVoiceSample = components['schemas']['VoiceSample'];
+export type SchemaChordQuality = components['schemas']['ChordQuality'];
+export type SchemaChordInterval = components['schemas']['ChordInterval'];
+export type SchemaParsedChordSymbol = components['schemas']['ParsedChordSymbol'];
+export type SchemaChordSearchResult = components['schemas']['ChordSearchResult'];
+export type SchemaChordDefinition = components['schemas']['ChordDefinition'];
+export type SchemaChordVoicing = components['schemas']['ChordVoicing'];
 export type SchemaDiagramRef = components['schemas']['DiagramRef'];
 export type SchemaDiagramStackRef = components['schemas']['DiagramStackRef'];
 export type SchemaCreateLearningPathRequest = components['schemas']['CreateLearningPathRequest'];
@@ -5572,6 +5926,8 @@ export type SchemaPracticeItemKind = components['schemas']['PracticeItemKind'];
 export type SchemaPracticePickReason = components['schemas']['PracticePickReason'];
 export type SchemaKnowledgeLevel = components['schemas']['KnowledgeLevel'];
 export type SchemaFretboardDrill = components['schemas']['FretboardDrill'];
+export type SchemaDiagramShapeDrill = components['schemas']['DiagramShapeDrill'];
+export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
 export type ParameterSearchText = components['parameters']['SearchText'];
@@ -7970,6 +8326,12 @@ export interface operations {
                 skill_id?: string;
                 /** @description When given, only diagrams with this exact concept id among their linked concepts are returned. */
                 concept_id?: string;
+                /**
+                 * @description Restricts the results to diagrams of this purpose (see
+                 *     Diagram.purpose). Omitted, it is general, so chord voicings are
+                 *     listed only when asked for; any lists both.
+                 */
+                purpose?: "general" | "chord_voicing" | "any";
             };
             header?: never;
             path?: never;
@@ -7986,7 +8348,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedDiagrams"];
                 };
             };
-            /** @description limit, offset, kind, language, name or root_note is out of range. */
+            /** @description limit, offset, kind, language, name, root_note or purpose is out of range. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -8229,6 +8591,129 @@ export interface operations {
                 };
             };
             /** @description No diagram exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The diagram is a chord_voicing diagram, which only the chord
+             *     catalog can change.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    searchChords: {
+        parameters: {
+            query: {
+                /** @description The chord symbol as written, e.g. "Bbmaj7", "F#m7♭5", "D/F#". */
+                symbol: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /**
+             * @description The symbol was read. Whether it parsed, and whether the catalog
+             *     has its chord, is in the result.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChordSearchResult"];
+                };
+            };
+            /** @description symbol is missing, empty or longer than 32 characters. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    getChord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                chord_definition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chord and its active voicings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChordDefinition"];
+                };
+            };
+            /** @description chord_definition_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No chord exists with the given ID. */
             404: {
                 headers: {
                     [name: string]: unknown;
