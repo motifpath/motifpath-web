@@ -216,9 +216,12 @@
     "start": "Vamos lá",
     "playAlong": "Tocar junto",
     "cells": "{drill} · {count} nota | {drill} · {count} notas",
+    "shapes": "{drill} · {count} forma | {drill} · {count} formas",
     "drills": {
       "nameTheNote": "Diga a nota",
-      "findTheNote": "Encontre a nota"
+      "findTheNote": "Encontre a nota",
+      "nameTheShape": "Diga a forma",
+      "findTheDegree": "Encontre o grau"
     },
     "nextUp": {
       "played": "Você tocou {name} até {bpm} BPM.",
@@ -297,6 +300,12 @@
     "markedRight": "resposta certa",
     "markedWrong": "sua resposta, errada"
   },
+  "sessionDiagramShape": {
+    "nameTheShape": "Que forma é esta?",
+    "findTheDegree": "Toque a {degree} nesta forma",
+    "shapes": "Formas",
+    "unavailable": "Não foi possível mostrar esta forma agora."
+  },
   "tapCheck": {
     "title": "Teste de toque",
     "intro": "Por cerca de 20 segundos, toque em cada casa assim que ela acender. Assim sabemos quanto tempo um toque leva para você, e suas respostas são cronometradas pelo que você sabe, não pelo toque.",
@@ -319,6 +328,8 @@
       "imageRecognition": "Reconhecer o que você vê",
       "imageChoice": "Escolher uma imagem",
       "audioSelection": "Escolher um som",
+      "nameTheShape": "Dizer as formas",
+      "findTheDegree": "Encontrar graus nas formas",
       "other": "Este exercício"
     }
   },

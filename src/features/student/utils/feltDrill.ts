@@ -4,6 +4,8 @@ import type { MessageKey } from '@/i18n'
 const feltDrillKeys: Record<string, MessageKey> = {
   'fretboard_cell:name_the_note': 'feltQuestions.drills.nameTheNote',
   'fretboard_cell:find_the_note': 'feltQuestions.drills.findTheNote',
+  'diagram_shape:name_the_shape': 'feltQuestions.drills.nameTheShape',
+  'diagram_shape:find_the_degree': 'feltQuestions.drills.findTheDegree',
   'exercise:text_response': 'feltQuestions.drills.textResponse',
   'exercise:audio_recognition': 'feltQuestions.drills.audioRecognition',
   'exercise:image_recognition': 'feltQuestions.drills.imageRecognition',

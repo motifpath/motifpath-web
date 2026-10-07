@@ -7,6 +7,8 @@ import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder
 import { useEventTracking } from '@/shared/composables/useEventTracking'
 import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
 import { isExactMatch } from '@/shared/utils/exerciseOptions'
+import { gradeDiagramShape } from '@/shared/utils/diagramShape'
+import type { ShapeAnswer, ShapeReference } from '@/shared/utils/diagramShape'
 import { gradeFretboardCell } from '@/shared/utils/fretboardCell'
 import type { CellAnswer } from '@/shared/utils/fretboardCell'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
@@ -35,6 +37,14 @@ export interface GradedCellAnswer {
   correct: boolean
 }
 
+export interface GradedShapeAnswer {
+  answer: ShapeAnswer
+  correct: boolean
+}
+
+/** What a shape's loaded diagram tells about it: its positions, on an instrument of so many strings. */
+export type ShapeBoard = Pick<ShapeReference, 'positions' | 'stringCount'>
+
 /** A completed tap check: the median time from a fret lighting up to its tap, over how many taps. */
 export interface TapCheckResult {
   medianMs: number
@@ -44,6 +54,7 @@ export interface TapCheckResult {
 /** The timed drill an item practises, as felt questions name it; none for a play-along. */
 function drillTemplateOf(item: Item): string | null {
   if (item.fretboard_cell) return `fretboard_cell:${item.fretboard_cell.drill}`
+  if (item.diagram_shape) return `diagram_shape:${item.diagram_shape.drill}`
   if (item.exercise) return `exercise:${item.exercise.exercise_type}`
   return null
 }
@@ -82,7 +93,9 @@ export interface PracticeSessionRunOptions {
  *
  * A fretboard cell is answered once, the way its drill asks: naming the note of
  * the cell shown, or tapping where the note asked is on its string. It's timed
- * and graded like an exercise.
+ * and graded like an exercise. So is a diagram shape: naming which member of its
+ * family it is, or tapping the degree asked on it, graded against the positions
+ * of its diagram, once that's loaded.
  *
  * After a play-along's last take, when another item follows, the run hands
  * over: it says what was played and how fast, and what's next, and moves on
@@ -127,6 +140,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const exerciseAnswer = ref<ExerciseAnswer | null>(null)
   /** The answer to the fretboard cell on, once given. */
   const cellAnswer = ref<GradedCellAnswer | null>(null)
+  /** The answer to the diagram shape on, once given. */
+  const shapeAnswer = ref<GradedShapeAnswer | null>(null)
   /** When the item on was shown, which an exercise's latency counts from. */
   let shownAt = 0
 
@@ -170,6 +185,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       if (i > index.value) return 0
       if (item.kind === 'exercise') return exerciseAnswer.value ? 1 : 0
       if (item.kind === 'fretboard_cell') return cellAnswer.value ? 1 : 0
+      if (item.kind === 'diagram_shape') return shapeAnswer.value ? 1 : 0
       const total = takesOf(item)
       return total === 0 ? 0 : takes.value.length / total
     }),
@@ -213,6 +229,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     chosenFloor.value = null
     exerciseAnswer.value = null
     cellAnswer.value = null
+    shapeAnswer.value = null
     shownAt = Date.now()
     index.value++
     if (index.value < plan.items.length) return
@@ -325,6 +342,29 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   }
 
   /**
+   * Answers the diagram shape on, the way its drill asks, graded on the board its diagram draws;
+   * only the first answer counts, and a degree to find must be the one asked.
+   */
+  function answerShape(answer: ShapeAnswer, board: ShapeBoard) {
+    const item = current.value
+    const shape = item?.diagram_shape
+    if (!active() || !item || !shape || shapeAnswer.value || answer.response_type !== shape.drill) return
+    if (answer.response_type === 'find_the_degree' && answer.interval !== shape.asked_interval) return
+    const members = shape.options.map((option) => option.shape)
+    const correct = gradeDiagramShape({ ...board, shape: shape.shape, members }, answer)
+    if (correct === null) return
+
+    shapeAnswer.value = { answer, correct }
+    markAnswered(item)
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { ...answer, latency_ms: Date.now() - shownAt },
+    })
+  }
+
+  /**
    * Ends the session now; `keepalive` when the page is closing. Before the last item it ends as
    * left early; during the felt questions, as finished with the ratings given so far.
    */
@@ -344,6 +384,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     answeredCount,
     exerciseAnswer,
     cellAnswer,
+    shapeAnswer,
     started,
     handoff,
     tapCheckPending,
@@ -356,6 +397,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     rate,
     answer,
     answerCell,
+    answerShape,
     completeTapCheck,
     skipTapCheck,
     rateFelt,

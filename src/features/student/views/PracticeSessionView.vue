@@ -3,7 +3,7 @@
  * A practice session, with an instrument in hand or in the head. The student says which
  * instrument they're holding, or none, and how long they have; core composes the session, and
  * today's plan shows what it holds before the student starts it. A tap check comes first when the
- * plan asks for one. Then each exercise and fretboard cell is answered and each play-along played
+ * plan asks for one. Then each exercise, fretboard cell and diagram shape is answered and each play-along played
  * take by take, with a card naming what's next after it, ending with one that applies what was
  * practised, until the plan runs out or the student ends it. After the last item, the student is asked how the
  * drills they practised felt. A session left mid-way, by navigating away or closing or reloading
@@ -18,6 +18,7 @@ import { useRoute, useRouter } from 'vue-router'
 import FeltQuestions from '@/features/student/components/FeltQuestions.vue'
 import NextUpCard from '@/features/student/components/NextUpCard.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
+import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
 import SessionFretboardCell from '@/features/student/components/SessionFretboardCell.vue'
 import TapCheck from '@/features/student/components/TapCheck.vue'
@@ -94,10 +95,13 @@ const currentCellTuning = computed(() => {
   return cell ? tuningOf(cell.layout_instrument_id) : undefined
 })
 
-/** The tap check is tapped on the board of the plan's first fretboard cell. */
+/** The tap check is tapped on the board of the plan's first fretboard cell, or else of its first diagram shape. */
 const tapCheckTuning = computed(() => {
-  const cell = run.value?.plan.items.find((item) => item.fretboard_cell)?.fretboard_cell
-  return cell ? tuningOf(cell.layout_instrument_id) : undefined
+  const items = run.value?.plan.items ?? []
+  const layout =
+    items.find((item) => item.fretboard_cell)?.fretboard_cell?.layout_instrument_id ??
+    items.find((item) => item.diagram_shape)?.diagram_shape?.layout_instrument_id
+  return layout ? tuningOf(layout) : undefined
 })
 const showsTapCheck = computed(() => (run.value?.tapCheckPending.value ?? false) && tapCheckTuning.value !== undefined)
 // Without a board to tap on, the tap check is passed over; answers are then judged on their whole time.
@@ -260,6 +264,13 @@ onBeforeUnmount(() => {
         :tuning="currentCellTuning"
         :answer="run.cellAnswer.value"
         @answer="run.answerCell($event)"
+        @next="run.nextItem()"
+      />
+      <SessionDiagramShape
+        v-else-if="current.kind === 'diagram_shape' && current.diagram_shape"
+        :item="current"
+        :answer="run.shapeAnswer.value"
+        @answer="(answer, board) => run!.answerShape(answer, board)"
         @next="run.nextItem()"
       />
       <PlayAlongTake

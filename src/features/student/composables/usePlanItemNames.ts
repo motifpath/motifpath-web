@@ -13,7 +13,8 @@ type LocalizedNames = components['schemas']['LocalizedNames']
 /**
  * What each item of a session plan is called, so the student always knows what they're
  * practising: an exercise by its title, a play-along by its diagram's name once the diagram has
- * loaded. A fretboard cell has no name of its own; its drill says what it is.
+ * loaded. A fretboard cell has no name of its own; its drill says what it is. Nor has a diagram
+ * shape: its diagram's name would give away the shape to name.
  */
 export function usePlanItemNames(items: MaybeRefOrGetter<Item[]>) {
   const { coreApi } = useApi()
@@ -34,19 +35,22 @@ export function usePlanItemNames(items: MaybeRefOrGetter<Item[]>) {
     { immediate: true },
   )
 
-  /** The item's name; null for a fretboard cell, or a play-along whose diagram isn't loaded. */
+  /** The item's name; null for a fretboard cell, a diagram shape, or a play-along whose diagram isn't loaded. */
   function nameOf(item: Item): string | null {
     if (item.exercise) return item.exercise.title
     const names = item.play_along && diagramNames.value[item.play_along.diagram_id]
     return names ? localizedName(names) : null
   }
 
-  /** What to call the item on screen: its name, its drill for a fretboard cell, or its kind until named. */
+  /** What to call the item on screen: its name, its drill for a fretboard cell or a shape, or its kind until named. */
   function labelOf(item: Item): string {
     const name = nameOf(item)
     if (name) return name
     if (item.fretboard_cell) {
       return item.fretboard_cell.drill === 'name_the_note' ? t('sessionPlan.drills.nameTheNote') : t('sessionPlan.drills.findTheNote')
+    }
+    if (item.diagram_shape) {
+      return item.diagram_shape.drill === 'name_the_shape' ? t('sessionPlan.drills.nameTheShape') : t('sessionPlan.drills.findTheDegree')
     }
     return t('sessionPlan.playAlong')
   }

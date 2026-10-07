@@ -11,6 +11,7 @@ vi.mock('@/shared/utils/exerciseAudio', () => ({
 }))
 
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
+import type { ShapeBoard } from '@/features/student/composables/usePracticeSessionRun'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
@@ -566,6 +567,137 @@ describe('usePracticeSessionRun', () => {
 
       expect(run.tempo.value).toBeNull()
       expect(run.takesTotal.value).toBe(0)
+    })
+  })
+
+  describe('diagram shapes', () => {
+    const LAYOUT = '6ea2d087-ab9c-59dc-9657-8546025414d2'
+    const CAGED_A = '928330d5-903e-572c-9d41-5fde99d51ed1'
+    const MEMBERS = ['C', 'A', 'G', 'E', 'D']
+    /** "C major — CAGED A, shift 3" on a six-string guitar. */
+    const board: ShapeBoard = {
+      stringCount: 6,
+      positions: [
+        { string: 5, fret: 3, interval: 'R' },
+        { string: 4, fret: 5, interval: '5' },
+        { string: 3, fret: 5, interval: 'R' },
+        { string: 2, fret: 5, interval: '3' },
+        { string: 1, fret: 3, interval: '5' },
+      ],
+    }
+
+    function shape(drill: 'name_the_shape' | 'find_the_degree'): Item {
+      const naming = drill === 'name_the_shape'
+      return {
+        item_key: `diagram_shape:${CAGED_A}`,
+        kind: 'diagram_shape',
+        reason: 'new',
+        node_id: null,
+        level: 'new',
+        estimated_seconds: 10,
+        diagram_shape: {
+          diagram_id: CAGED_A,
+          layout_instrument_id: LAYOUT,
+          drill,
+          shape_family: 'caged-grip',
+          shape: 'A',
+          options: naming ? MEMBERS.map((member) => ({ shape: member, name: `${member} shape` })) : [],
+          asked_interval: naming ? null : '3',
+        },
+      }
+    }
+
+    const inTheHead = (fields: Partial<Plan> = {}) => plan([shape('name_the_shape'), shape('find_the_degree')], null, fields)
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-07T10:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('sends the shape named as practice.item_answered, timed from when it was shown', () => {
+      const run = usePracticeSessionRun(inTheHead())
+      run.start()
+      vi.advanceTimersByTime(2600)
+      run.answerShape({ response_type: 'name_the_shape', shape: 'E' }, board)
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: `diagram_shape:${CAGED_A}`,
+          response: { response_type: 'name_the_shape', shape: 'E', latency_ms: 2600 },
+        },
+      ])
+      expect(run.shapeAnswer.value).toEqual({ answer: { response_type: 'name_the_shape', shape: 'E' }, correct: false })
+      expect(run.progress.value).toEqual([1, 0])
+    })
+
+    it('sends the degree asked and the cell tapped, right on any of the shape’s positions of it', () => {
+      const run = usePracticeSessionRun(inTheHead())
+      run.start()
+      run.answerShape({ response_type: 'name_the_shape', shape: 'A' }, board)
+      expect(run.shapeAnswer.value?.correct).toBe(true)
+      run.nextItem()
+      vi.advanceTimersByTime(2400)
+      run.answerShape({ response_type: 'find_the_degree', interval: '3', string: 2, fret: 5 }, board)
+
+      expect(tracked('practice.item_answered')[1].response).toEqual({
+        response_type: 'find_the_degree',
+        interval: '3',
+        string: 2,
+        fret: 5,
+        latency_ms: 2400,
+      })
+      expect(run.shapeAnswer.value?.correct).toBe(true)
+    })
+
+    it('takes only the first answer to a shape', () => {
+      const run = usePracticeSessionRun(inTheHead())
+      run.start()
+      run.answerShape({ response_type: 'name_the_shape', shape: 'E' }, board)
+      run.answerShape({ response_type: 'name_the_shape', shape: 'A' }, board)
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.shapeAnswer.value?.correct).toBe(false)
+    })
+
+    it('takes no answer the shape’s drill doesn’t ask for, nor a degree other than the one asked', () => {
+      const run = usePracticeSessionRun(inTheHead())
+      run.start()
+      run.answerShape({ response_type: 'find_the_degree', interval: '3', string: 2, fret: 5 }, board)
+      run.answerShape({ response_type: 'name_the_shape', shape: 'A' }, board)
+      run.nextItem()
+      run.answerShape({ response_type: 'find_the_degree', interval: '5', string: 4, fret: 5 }, board)
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.shapeAnswer.value).toBeNull()
+    })
+
+    it('takes no answer that isn’t one to the shape: a member its family lacks, or a tap off the instrument', () => {
+      const run = usePracticeSessionRun(inTheHead())
+      run.start()
+      run.answerShape({ response_type: 'name_the_shape', shape: '3' }, board)
+      expect(run.shapeAnswer.value).toBeNull()
+      run.answerShape({ response_type: 'name_the_shape', shape: 'A' }, board)
+      run.nextItem()
+      run.answerShape({ response_type: 'find_the_degree', interval: '3', string: 7, fret: 5 }, board)
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.shapeAnswer.value).toBeNull()
+    })
+
+    it('asks how each shape drill practised felt', () => {
+      const run = usePracticeSessionRun(
+        inTheHead({ felt_questions: ['diagram_shape:name_the_shape', 'diagram_shape:find_the_degree', 'fretboard_cell:name_the_note'] }),
+      )
+      run.start()
+      run.answerShape({ response_type: 'name_the_shape', shape: 'A' }, board)
+      run.nextItem()
+      run.answerShape({ response_type: 'find_the_degree', interval: '3', string: 2, fret: 5 }, board)
+      run.nextItem()
+
+      expect(run.feltQuestions.value).toEqual(['diagram_shape:name_the_shape', 'diagram_shape:find_the_degree'])
     })
   })
 

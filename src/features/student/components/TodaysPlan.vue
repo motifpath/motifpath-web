@@ -30,7 +30,9 @@ const rows = computed(() => planRows(props.items))
 
 function rowName(row: PlanRow): string {
   const label = props.labelOf(row.item)
-  return row.cellCount === undefined ? label : t('sessionPlan.cells', { drill: label, count: row.cellCount })
+  if (row.cellCount !== undefined) return t('sessionPlan.cells', { drill: label, count: row.cellCount })
+  if (row.shapeCount !== undefined) return t('sessionPlan.shapes', { drill: label, count: row.shapeCount })
+  return label
 }
 </script>
 

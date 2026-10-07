@@ -85,6 +85,15 @@ const SessionFretboardCellStub = defineComponent({
   },
 })
 
+const SessionDiagramShapeStub = defineComponent({
+  name: 'SessionDiagramShape',
+  props: { item: { type: Object, required: true }, answer: { type: Object, default: null } },
+  emits: ['answer', 'next'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'shape' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
+  },
+})
+
 const TapCheckStub = defineComponent({
   name: 'TapCheck',
   props: { tuning: { type: Array, required: true } },
@@ -188,6 +197,30 @@ function cellItem(string: number, fret: number, drill: 'name_the_note' | 'find_t
   }
 }
 
+const SHAPE = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+
+function shapeItem(layout = GUITAR): Item {
+  return {
+    item_key: `diagram_shape:${SHAPE}`,
+    kind: 'diagram_shape',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 10,
+    diagram_shape: {
+      diagram_id: SHAPE,
+      layout_instrument_id: layout,
+      drill: 'name_the_shape',
+      shape_family: 'caged-grip',
+      shape: 'A',
+      options: ['C', 'A', 'G', 'E', 'D'].map((member) => ({ shape: member, name: `${member} shape` })),
+      asked_interval: null,
+    },
+  }
+}
+
+const SHAPE_BOARD = { stringCount: 6, positions: [{ string: 5, fret: 3, interval: 'R' }] }
+
 function mountView() {
   return mount(PracticeSessionView, {
     global: {
@@ -196,6 +229,7 @@ function mountView() {
         PlayAlongTake: PlayAlongTakeStub,
         SessionExercise: SessionExerciseStub,
         SessionFretboardCell: SessionFretboardCellStub,
+        SessionDiagramShape: SessionDiagramShapeStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
@@ -346,6 +380,41 @@ describe('PracticeSessionView', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('There’s nothing to practise in your head yet. Pick an instrument.')
+    })
+  })
+
+  describe('with diagram shapes', () => {
+    it('shows a shape, and records its answer graded on the board it was drawn on', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([shapeItem(), cellItem(5, 3, 'name_the_note')]))
+      const shape = () => wrapper.getComponent(SessionDiagramShapeStub)
+
+      expect(shape().props('item')).toMatchObject({ item_key: `diagram_shape:${SHAPE}` })
+
+      shape().vm.$emit('answer', { response_type: 'name_the_shape', shape: 'E' }, SHAPE_BOARD)
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: expect.objectContaining({ shape: 'E' }) })])
+      expect(wrapper.get('[data-test="shape"]').text()).toBe('answered wrong')
+
+      shape().vm.$emit('next')
+      await flushPromises()
+      expect(wrapper.find('[data-test="cell"]').exists()).toBe(true)
+    })
+
+    it('asks for the tap check first on the shape’s instrument when the plan has no fretboard cell', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([shapeItem(BASS)], { tap_check_due: true }))
+
+      expect(wrapper.getComponent(TapCheckStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+      expect(wrapper.find('[data-test="shape"]').exists()).toBe(false)
+    })
+
+    it('takes the tap check on the first fretboard cell’s instrument when there is one', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([shapeItem(GUITAR), cellItem(4, 2, 'name_the_note', BASS)], { tap_check_due: true }))
+
+      expect(wrapper.getComponent(TapCheckStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
     })
   })
 
