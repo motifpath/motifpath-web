@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /**
  * One instrument's practice summary: on how many days the student practised it, what improved
- * this week with where it started, what to do next, and every skill by area with its level.
+ * this week with where it started, what to do next, how well they know each cell of its fretboard,
+ * and every skill by area with its level.
  */
 import type { components } from '@/api/generated/core-domain'
 import DayMarks from '@/features/student/components/DayMarks.vue'
+import FretboardHeatmap from '@/features/student/components/FretboardHeatmap.vue'
 import { usePracticeSummary } from '@/features/student/composables/usePracticeHome'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
@@ -98,6 +100,8 @@ function progressValues(line: SkillProgress): string {
         {{ t('practiceHomeView.seeAll', { count: summary.next_steps_total }) }}
       </a>
     </section>
+
+    <FretboardHeatmap :instrument-id="instrumentId" />
 
     <section id="practice-skills" class="flex scroll-mt-20 flex-col gap-4">
       <h2 class="text-base font-semibold">{{ t('practiceHomeView.skillsTitle') }}</h2>

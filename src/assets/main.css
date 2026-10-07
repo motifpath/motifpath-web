@@ -38,6 +38,12 @@
   --color-fretboard-grain: 110 72 40;
   --color-fretboard-metal: 244 242 236;
   --color-fretboard-metal-shadow: 132 130 124;
+  /* Knowledge levels on the fretboard map — feature-scoped like the wood. Four hues apart, not
+     one ramp, so the levels read at a glance; the same values clear both themes' wood. */
+  --color-level-learning: 235 104 52;
+  --color-level-accurate: 74 58 167;
+  --color-level-fluent: 27 175 122;
+  --color-level-retained: 42 120 214;
   --color-fretboard-inlay: 250 245 230;
   --color-fretboard-string: 92 90 86;
   /* A sounding position's dashed ring. */

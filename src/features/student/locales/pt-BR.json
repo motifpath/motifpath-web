@@ -363,6 +363,14 @@
       "accurate": "Preciso",
       "fluent": "Fluente",
       "retained": "Retido"
+    },
+    "fretboard": {
+      "title": "Mapa do braço",
+      "label": "Mapa do braço, cada casa colorida conforme o quanto você a conhece",
+      "noun": "o mapa do braço",
+      "error": "Não foi possível carregar o mapa do braço.",
+      "cell": "{place}: {level}",
+      "cellFading": "{place}: {level}, esmaecendo"
     }
   }
 }

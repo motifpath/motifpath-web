@@ -363,6 +363,14 @@
       "accurate": "Accurate",
       "fluent": "Fluent",
       "retained": "Retained"
+    },
+    "fretboard": {
+      "title": "Your fretboard",
+      "label": "Your fretboard, each cell coloured by how well you know it",
+      "noun": "your fretboard",
+      "error": "Couldn’t load your fretboard.",
+      "cell": "{place}: {level}",
+      "cellFading": "{place}: {level}, fading"
     }
   }
 }

@@ -3,6 +3,7 @@ import { useApiItem } from '@/shared/composables/useApiItem'
 
 type Overview = components['schemas']['PracticeOverview']
 type Summary = components['schemas']['PracticeSummary']
+type FretboardMap = components['schemas']['FretboardMap']
 
 /** The student's own time zone, which decides the calendar day each practice falls on. */
 function timeZone(): string {
@@ -21,4 +22,9 @@ export function usePracticeSummary(instrumentId: string) {
   return useApiItem<Summary>((coreApi) =>
     coreApi.GET('/students/me/practice-summary', { params: { query: { instrument_id: instrumentId, time_zone: timeZone() } } }),
   )
+}
+
+/** How well the student knows each cell of an instrument's fretboard, loaded on setup. */
+export function useFretboardMap(instrumentId: string) {
+  return useApiItem<FretboardMap>((coreApi) => coreApi.GET('/students/me/fretboard-map', { params: { query: { instrument_id: instrumentId } } }))
 }
