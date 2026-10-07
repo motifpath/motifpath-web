@@ -380,6 +380,7 @@ describe('PracticeSessionView', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('There’s nothing to practise in your head yet. Pick an instrument.')
+      expect(wrapper.find('[data-test="practise-in-head"]').exists()).toBe(false)
     })
   })
 
@@ -741,14 +742,21 @@ describe('PracticeSessionView', () => {
     expect(segments(wrapper)).toEqual([0, 0])
   })
 
-  it('asks for another instrument when there is nothing to practise on the chosen one', async () => {
+  it('offers a session in the head when there is nothing to play on the chosen instrument', async () => {
     const wrapper = mountView()
     POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
     await wrapper.get('[data-test="start-session"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('There’s nothing to practise on this instrument yet. Pick another one.')
+    expect(wrapper.get('[role="alert"]').text()).toBe('There’s nothing to play on this instrument yet. You can practise in your head instead.')
     expect(wrapper.findAll('[data-test="instrument-tile"]')).toHaveLength(2)
+
+    POST.mockResolvedValueOnce({ data: plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }), response: { status: 200 } })
+    await wrapper.get('[data-test="practise-in-head"]').trigger('click')
+    await flushPromises()
+
+    expect(POST).toHaveBeenLastCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 10 } })
+    expect(wrapper.find('[data-test="plan"]').exists()).toBe(true)
   })
 
   it('says when the instruments can’t be loaded', () => {

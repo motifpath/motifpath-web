@@ -12,6 +12,7 @@
  * All of it runs in the Practice Shell: × ends a running session, and otherwise leaves for where
  * the student came from. The screen stays on while the session runs.
  */
+import { Brain } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -122,6 +123,12 @@ const position = computed(() => {
   return { current: Math.min(session.index.value + 1, total), total }
 })
 
+/** In hand is for playing; with nothing to play there yet, the same minutes go to recall in the head. */
+function practiseInTheHead() {
+  instrumentId.value = null
+  void startSession()
+}
+
 function practiseAgain() {
   run.value = null
 }
@@ -192,9 +199,22 @@ onBeforeUnmount(() => {
           </div>
         </fieldset>
 
-        <p v-if="composeError === 'nothing_to_practise'" class="text-sm text-danger" role="alert">
-          {{ composedInHead ? t('practiceSessionView.nothingInTheHead') : t('practiceSessionView.nothingToPractise') }}
+        <p v-if="composeError === 'nothing_to_practise' && composedInHead" class="text-sm text-danger" role="alert">
+          {{ t('practiceSessionView.nothingInTheHead') }}
         </p>
+        <div v-else-if="composeError === 'nothing_to_practise'" class="flex flex-col items-start gap-2">
+          <p class="text-sm text-danger" role="alert">{{ t('practiceSessionView.nothingToPlay') }}</p>
+          <button
+            type="button"
+            data-test="practise-in-head"
+            :disabled="isComposing"
+            class="flex h-12 items-center gap-2 rounded-md border border-border px-4 text-sm font-semibold hover:border-accent"
+            @click="practiseInTheHead"
+          >
+            <Brain :size="20" :stroke-width="1.5" aria-hidden="true" />
+            {{ t('practiceSessionView.practiseInTheHead') }}
+          </button>
+        </div>
         <p v-else-if="composeError === 'failed'" class="text-sm text-danger" role="alert">
           {{ t('practiceSessionView.planError') }}
         </p>
