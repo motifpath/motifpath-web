@@ -5316,7 +5316,8 @@ export interface components {
             };
             /**
              * @description Present when kind is diagram_shape. The client loads the diagram to draw it, with
-             *     its labels hidden. The drill is the way of asking the shape has the fewer right
+             *     its labels hidden, and gives instant feedback from it and from shape, graded the
+             *     way the server grades. The drill is the way of asking the shape has the fewer right
              *     answers so far, name_the_shape on a tie.
              */
             diagram_shape?: {
@@ -5325,13 +5326,25 @@ export interface components {
                  * @description The catalog diagram whose shape is asked.
                  */
                 diagram_id: string;
+                /**
+                 * Format: uuid
+                 * @description The instrument whose fretboard layout and tuning the diagram is drawn on, so a
+                 *     tap check can be shown before the diagram has loaded.
+                 */
+                layout_instrument_id: string;
+                /**
+                 * @description The member of its family this diagram is, by its key in the practice drill
+                 *     catalog: the right answer to name_the_shape, one of the options' shape.
+                 */
+                shape: string;
                 drill: components["schemas"]["DiagramShapeDrill"];
                 /** @description The shape's family in the practice drill catalog, such as caged-grip. */
                 shape_family: string;
                 /**
                  * @description For name_the_shape: every member of the shape's family, in the catalog's
-                 *     order, whichever of them exist at this root. The names never mention the root,
-                 *     so the root shown never gives the answer away. Empty for find_the_degree.
+                 *     order (at least two), including members that have no shape at this root, so
+                 *     the choices never narrow the answer down. The names never mention the root, so
+                 *     the root shown never gives the answer away either. Empty for find_the_degree.
                  */
                 options: {
                     /** @description The member's key, sent back as the answer. */
