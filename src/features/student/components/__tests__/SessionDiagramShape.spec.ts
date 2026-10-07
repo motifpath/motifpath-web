@@ -70,7 +70,7 @@ function shapeItem(drill: 'name_the_shape' | 'find_the_degree'): Item {
 const naming = shapeItem('name_the_shape')
 const finding = shapeItem('find_the_degree')
 
-function mountShape(props: { item: Item; answer?: GradedShapeAnswer | null }) {
+function mountShape(props: { item: Item; answer?: GradedShapeAnswer | null; instrumentName?: string }) {
   return mount(SessionDiagramShape, { props: { answer: null, ...props }, attachTo: document.body })
 }
 
@@ -91,6 +91,14 @@ describe('SessionDiagramShape', () => {
     mountShape({ item: naming })
 
     expect(embeddedWith).toHaveBeenCalledWith({ kind: 'single', ref: { diagram_id: CAGED_A, layers: { intervals: false, label: 'none' } } })
+  })
+
+  it('names the instrument the shape is drawn on, when the session mixes instruments', () => {
+    expect(mountShape({ item: naming, instrumentName: 'Electric bass' }).get('[data-test="item-instrument"]').text()).toBe('Electric bass')
+  })
+
+  it('names no instrument when the session has one', () => {
+    expect(mountShape({ item: naming }).find('[data-test="item-instrument"]').exists()).toBe(false)
   })
 
   it('shows why the shape was picked', () => {

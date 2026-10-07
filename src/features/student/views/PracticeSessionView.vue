@@ -16,6 +16,7 @@ import { Brain } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import type { components } from '@/api/generated/core-domain'
 import FeltQuestions from '@/features/student/components/FeltQuestions.vue'
 import NextUpCard from '@/features/student/components/NextUpCard.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
@@ -34,12 +35,16 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useWakeLock } from '@/shared/composables/useWakeLock'
+
+type Item = components['schemas']['PracticeSessionItem']
 
 const MINUTE_CHOICES = [5, 10, 15, 20, 30] as const
 
 const { t } = useTypedT()
+const { localizedName } = useLocalizedName()
 const { instruments, isLoading, error: instrumentsError, retry: retryInstruments } = useListInstruments()
 const { compose, isComposing } = useComposePracticeSession()
 
@@ -94,6 +99,21 @@ const current = computed(() => run.value?.current.value ?? null)
 const currentCellTuning = computed(() => {
   const cell = current.value?.fretboard_cell
   return cell ? tuningOf(cell.layout_instrument_id) : undefined
+})
+
+/** The instrument whose fretboard a cell or a shape is on. */
+function fretboardOf(item: Item): string | undefined {
+  return item.fretboard_cell?.layout_instrument_id ?? item.diagram_shape?.layout_instrument_id
+}
+
+/** In a session mixing instruments, each fretboard question names its own; otherwise none does. */
+const currentInstrumentName = computed(() => {
+  const items = run.value?.plan.items ?? []
+  const fretboards = new Set(items.map(fretboardOf).filter((id) => id !== undefined))
+  const id = current.value ? fretboardOf(current.value) : undefined
+  if (fretboards.size < 2 || !id) return undefined
+  const instrument = instruments.value.find((candidate) => candidate.instrument_id === id)
+  return instrument ? localizedName(instrument.names) : undefined
 })
 
 /** The tap check is tapped on the board of the plan's first fretboard cell, or else of its first diagram shape. */
@@ -282,6 +302,7 @@ onBeforeUnmount(() => {
         v-else-if="current.kind === 'fretboard_cell' && current.fretboard_cell && currentCellTuning"
         :item="current"
         :tuning="currentCellTuning"
+        :instrument-name="currentInstrumentName"
         :answer="run.cellAnswer.value"
         @answer="run.answerCell($event)"
         @next="run.nextItem()"
@@ -290,6 +311,7 @@ onBeforeUnmount(() => {
         v-else-if="current.kind === 'diagram_shape' && current.diagram_shape"
         :item="current"
         :answer="run.shapeAnswer.value"
+        :instrument-name="currentInstrumentName"
         @answer="(answer, board) => run!.answerShape(answer, board)"
         @next="run.nextItem()"
       />

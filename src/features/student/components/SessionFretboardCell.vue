@@ -35,6 +35,8 @@ const props = defineProps<{
   tuning: string[]
   /** The answer given, graded, once committed. */
   answer: GradedCellAnswer | null
+  /** The instrument the cell is on, named only in a session mixing instruments. */
+  instrumentName?: string
 }>()
 
 const emit = defineEmits<{ answer: [answer: CellAnswer]; next: [] }>()
@@ -104,6 +106,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       {{ t(pickReasonKeys[item.reason]) }}
     </span>
 
+    <p v-if="instrumentName" data-test="item-instrument" class="text-sm font-medium text-ink-muted">{{ instrumentName }}</p>
     <p data-test="cell-prompt" class="text-lg font-semibold">{{ prompt }}</p>
 
     <DrillFretboard

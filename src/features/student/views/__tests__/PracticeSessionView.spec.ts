@@ -78,7 +78,7 @@ const SessionExerciseStub = defineComponent({
 // report what they were given and emit.
 const SessionFretboardCellStub = defineComponent({
   name: 'SessionFretboardCell',
-  props: { item: { type: Object, required: true }, tuning: { type: Array, required: true }, answer: { type: Object, default: null } },
+  props: { item: { type: Object, required: true }, tuning: { type: Array, required: true }, answer: { type: Object, default: null }, instrumentName: { type: String, default: undefined } },
   emits: ['answer', 'next'],
   setup(props) {
     return () => h('div', { 'data-test': 'cell' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
@@ -87,7 +87,7 @@ const SessionFretboardCellStub = defineComponent({
 
 const SessionDiagramShapeStub = defineComponent({
   name: 'SessionDiagramShape',
-  props: { item: { type: Object, required: true }, answer: { type: Object, default: null } },
+  props: { item: { type: Object, required: true }, answer: { type: Object, default: null }, instrumentName: { type: String, default: undefined } },
   emits: ['answer', 'next'],
   setup(props) {
     return () => h('div', { 'data-test': 'shape' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
@@ -437,6 +437,27 @@ describe('PracticeSessionView', () => {
       cell().vm.$emit('next')
       await flushPromises()
       expect(cell().props('item')).toMatchObject({ item_key: `fretboard_cell:${GUITAR}:6:1` })
+    })
+
+    it('names each fretboard question’s instrument in a session mixing layouts', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note', GUITAR), shapeItem(BASS)]))
+
+      expect(wrapper.getComponent(SessionFretboardCellStub).props('instrumentName')).toBe('Guitar')
+
+      wrapper.getComponent(SessionFretboardCellStub).vm.$emit('answer', { response_type: 'name_the_note', note_name: 'C' })
+      await flushPromises()
+      wrapper.getComponent(SessionFretboardCellStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.getComponent(SessionDiagramShapeStub).props('instrumentName')).toBe('Electric bass')
+    })
+
+    it('names no instrument when every fretboard question is on the same one', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note', GUITAR), shapeItem(GUITAR)]))
+
+      expect(wrapper.getComponent(SessionFretboardCellStub).props('instrumentName')).toBeUndefined()
     })
 
     it('offers to skip a cell of an instrument it doesn’t know', async () => {
