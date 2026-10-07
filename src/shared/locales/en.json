@@ -242,5 +242,27 @@
     "label": "Fretboard",
     "cell": "String {string}, fret {fret}",
     "openCell": "String {string}, open"
+  },
+  "songChart": {
+    "key": "Key {key}",
+    "capo": "Capo {fret}",
+    "tempo": "{bpm} BPM",
+    "markPlayed": "Played it",
+    "played": "Played",
+    "voicings": "Voicings",
+    "voicingTab": "Voicing {n}",
+    "playbacks": "Playbacks",
+    "closeSheet": "Close",
+    "voicingUnavailable": "This voicing can't be shown.",
+    "missingBass": "Showing {chord}: the bass {bass} isn't in these voicings.",
+    "sectionKind": {
+      "verse": "Verse",
+      "chorus": "Chorus",
+      "bridge": "Bridge",
+      "intro": "Intro",
+      "outro": "Outro",
+      "instrumental": "Instrumental",
+      "other": "Song"
+    }
   }
 }
