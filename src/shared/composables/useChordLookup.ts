@@ -1,7 +1,7 @@
 import { reactive } from 'vue'
 
-import { chordCheck, localChordCheck } from '@/features/admin/utils/chordCheck'
-import type { ChordCheck } from '@/features/admin/utils/chordCheck'
+import { chordCheck, localChordCheck } from '@/shared/utils/chordCheck'
+import type { ChordCheck } from '@/shared/utils/chordCheck'
 import { useApi } from '@/shared/composables/useApi'
 
 // A symbol's check doesn't change while the editor is open, so each symbol is asked about once
