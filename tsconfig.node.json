@@ -9,5 +9,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "tailwind.config.ts", ".storybook/main.ts"]
+  "include": ["vite.config.ts", "vite.spike.config.ts", "src/spikes/commit-point/clips.ts", "src/spikes/commit-point/wav.ts", "vitest.config.ts", "tailwind.config.ts", ".storybook/main.ts"]
 }
