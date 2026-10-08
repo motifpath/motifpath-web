@@ -122,7 +122,23 @@
     "sectionLabel": "Rótulo",
     "sectionLabelPlaceholder": "ex.: Estrofe 1",
     "addSection": "Adicionar seção",
-    "addComment": "Adicionar comentário"
+    "addComment": "Adicionar comentário",
+    "chord": "Acorde",
+    "chordPlaceholder": "ex.: Am7",
+    "putChord": "Pôr acorde",
+    "changeChord": "Trocar acorde",
+    "removeChord": "Tirar acorde",
+    "selectToPut": "Selecione uma palavra ou sílaba para pôr um acorde nela.",
+    "bestVoicing": "Melhor forma (os alunos a veem primeiro)",
+    "chordsToFix": "Acordes que impedem a publicação:",
+    "chordCheck": {
+      "ok": "No catálogo de acordes.",
+      "no_chord": "Sem acorde aqui.",
+      "not_a_chord": "Não é um acorde.",
+      "unsupported": "Um tipo de acorde que o catálogo não tem.",
+      "not_in_catalog": "Não está no catálogo de acordes.",
+      "without_bass": "Mostrado sem o baixo; o catálogo não tem este baixo."
+    }
   },
   "songChartEditorView": {
     "untitled": "Nova cifra",

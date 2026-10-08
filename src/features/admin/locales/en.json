@@ -122,7 +122,23 @@
     "sectionLabel": "Label",
     "sectionLabelPlaceholder": "e.g. Verse 1",
     "addSection": "Add section",
-    "addComment": "Add comment"
+    "addComment": "Add comment",
+    "chord": "Chord",
+    "chordPlaceholder": "e.g. Am7",
+    "putChord": "Put chord",
+    "changeChord": "Change chord",
+    "removeChord": "Remove chord",
+    "selectToPut": "Select a word or syllable to put a chord on it.",
+    "bestVoicing": "Best voicing (learners see it first)",
+    "chordsToFix": "Chords that block publishing:",
+    "chordCheck": {
+      "ok": "In the chord catalog.",
+      "no_chord": "No chord here.",
+      "not_a_chord": "Not a chord.",
+      "unsupported": "A kind of chord the catalog doesn't have.",
+      "not_in_catalog": "Not in the chord catalog.",
+      "without_bass": "Shown without its bass; the catalog doesn't have this bass."
+    }
   },
   "songChartEditorView": {
     "untitled": "New song chart",
