@@ -2,6 +2,8 @@ import type { components } from '@/api/generated/core-domain'
 import { makeFrettedDiagram, makePlayback } from '@/shared/testUtils/diagram'
 
 type LearnerSongChart = components['schemas']['LearnerSongChart']
+type SongChart = components['schemas']['SongChart']
+type SongChartDraft = components['schemas']['SongChartDraft']
 type ChordDefinition = components['schemas']['ChordDefinition']
 type ChordVoicing = components['schemas']['ChordVoicing']
 type Diagram = components['schemas']['Diagram']
@@ -120,5 +122,67 @@ export function makeLearnerSongChart(overrides: Partial<LearnerSongChart> = {}):
     chords: [chordG, chordC],
     diagrams: [gOpen, gEShape, cOpen, cBarre].map(makeVoicingDiagram),
     ...overrides,
+  }
+}
+
+const ana = { user_id: 'u-ana', display_name: 'Ana' }
+
+/** A song chart as admins see it: a draft of "Asa Branca", never published. */
+export function makeSongChart(
+  id: string,
+  draft: Partial<SongChartDraft> = {},
+  overrides: Partial<Omit<SongChart, 'draft'>> = {},
+): SongChart {
+  const learner = makeLearnerSongChart()
+  return {
+    song_chart_id: id,
+    status: 'draft',
+    draft: {
+      title: learner.title,
+      artist: learner.artist,
+      language: learner.language,
+      concert_key: learner.concert_key,
+      capo_fret: learner.capo_fret,
+      tempo_bpm: learner.tempo_bpm,
+      time_signature: learner.time_signature,
+      rights_confirmed: false,
+      body: learner.body,
+      rights_confirmation: null,
+      warnings: [],
+      updated_by: ana,
+      updated_at: '2026-10-07T12:00:00Z',
+      ...draft,
+    },
+    published_revision: null,
+    withdrawal: null,
+    created_by: ana,
+    created_at: '2026-10-07T12:00:00Z',
+    ...overrides,
+  }
+}
+
+/** A published revision summary, published by Ana. */
+export function makeRevisionSummary(revision: number, title = 'Asa Branca') {
+  return { revision_number: revision, title, language: 'pt_BR', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
+}
+
+/** A published revision of "Asa Branca", published and confirmed by Ana. */
+export function makeRevision(revision: number): components['schemas']['SongChartRevision'] {
+  const learner = makeLearnerSongChart()
+  return {
+    song_chart_id: learner.song_chart_id,
+    revision_number: revision,
+    title: learner.title,
+    artist: learner.artist,
+    language: learner.language,
+    concert_key: learner.concert_key,
+    capo_fret: learner.capo_fret,
+    tempo_bpm: learner.tempo_bpm,
+    time_signature: learner.time_signature,
+    tuning_fingerprint: learner.tuning_fingerprint,
+    body: learner.body,
+    rights_confirmation: { confirmed_by: ana, confirmed_at: '2026-10-07T12:00:00Z' },
+    published_by: ana,
+    published_at: '2026-10-07T12:00:00Z',
   }
 }

@@ -330,6 +330,28 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/admin/views/KnowledgeMapEditorView.vue'),
   },
   {
+    path: '/admin/song-charts',
+    name: 'admin-song-charts',
+    meta: { requiresAuth: true, requiresRole: ['admin'] },
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/SongChartListView.vue'),
+  },
+  {
+    path: '/admin/song-charts/new',
+    name: 'admin-song-chart-new',
+    meta: { requiresAuth: true, requiresRole: ['admin'] },
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/SongChartEditorView.vue'),
+  },
+  {
+    path: '/admin/song-charts/:songChartId',
+    name: 'admin-song-chart',
+    meta: { requiresAuth: true, requiresRole: ['admin'] },
+    props: true,
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/SongChartEditorView.vue'),
+  },
+  {
     path: '/admin/song-charts/:songChartId/preview',
     name: 'admin-song-chart-preview',
     meta: { requiresAuth: true, requiresRole: ['admin'] },

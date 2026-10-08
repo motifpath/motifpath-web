@@ -137,6 +137,7 @@ describe('AppBar', () => {
         'Exercises',
         'Diagrams',
         'Knowledge map',
+        'Song charts',
       ])
       expect(warn).not.toHaveBeenCalled()
       warn.mockRestore()
@@ -213,8 +214,15 @@ describe('AppBar', () => {
     const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'admin-knowledge-map' } })
 
     const links = navLinks(wrapper)
-    expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Courses', 'Exercises', 'Diagrams', 'Knowledge map'])
+    expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Courses', 'Exercises', 'Diagrams', 'Knowledge map', 'Song charts'])
     expect(links.find((l) => l.text() === 'Knowledge map')?.classes()).toContain('bg-accent-muted')
+  })
+
+  it('highlights the Song charts tab on the song chart pages', () => {
+    currentUser.profile = { role: 'admin' }
+    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'admin-song-charts' } })
+
+    expect(navLinks(wrapper).find((l) => l.text() === 'Song charts')?.classes()).toContain('bg-accent-muted')
   })
 
   it('never offers teachers the Knowledge map tab', () => {
@@ -225,6 +233,8 @@ describe('AppBar', () => {
 
     expect(overview.some((l) => l.text() === 'Knowledge map')).toBe(false)
     expect(authoring.some((l) => l.text() === 'Knowledge map')).toBe(false)
+    expect(overview.some((l) => l.text() === 'Song charts')).toBe(false)
+    expect(authoring.some((l) => l.text() === 'Song charts')).toBe(false)
   })
 
   it('highlights the tab matching primaryNavTo as active', () => {

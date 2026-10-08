@@ -10,7 +10,8 @@
     "courses": "Courses",
     "exercises": "Exercises",
     "diagrams": "Diagrams",
-    "knowledgeMap": "Knowledge map"
+    "knowledgeMap": "Knowledge map",
+    "songCharts": "Song charts"
   },
   "appBar": {
     "menuAriaLabel": "Menu",

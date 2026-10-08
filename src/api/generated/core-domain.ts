@@ -1167,6 +1167,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/song-charts/chordpro/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read ChordPro text as a song chart, without saving it
+         * @description Reads ChordPro text the same way importSongChartChordPro does and
+         *     returns what it describes: the song's details the text sets, the
+         *     lyrics with their chords as a SongChartDocument, and what was
+         *     skipped. Nothing is stored. The song chart editor loads the result,
+         *     and the author saves it with createSongChart or
+         *     updateSongChartDraft. Chord anchors carry only their written
+         *     symbols; they are resolved to catalog chords when the chart is
+         *     saved. Only admins author song charts.
+         */
+        post: operations["readSongChartChordPro"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/song-charts/{song_chart_id}/chordpro": {
         parameters: {
             query?: never;
@@ -4078,6 +4105,27 @@ export interface components {
             /** @description What the import skipped, in line order; empty when it read everything. */
             import_warnings: components["schemas"]["ChordProImportWarning"][];
         };
+        /**
+         * @description What a ChordPro text describes, read without saving anything. Each
+         *     detail is null when the text doesn't set it.
+         */
+        SongChartChordProReading: {
+            /** @description The title the text sets with {title} or {t}. */
+            title: string | null;
+            /** @description The artist the text sets with {artist}. */
+            artist: string | null;
+            /** @description The key the text sets with {key}. */
+            concert_key: string | null;
+            /** @description The capo fret the text sets with {capo}. */
+            capo_fret: number | null;
+            /** @description The tempo the text sets with {tempo}. */
+            tempo_bpm: number | null;
+            /** @description The meter the text sets with {time}. */
+            time_signature: components["schemas"]["TimeSignature"] | null;
+            body: components["schemas"]["SongChartDocument"];
+            /** @description What the reading skipped, in line order; empty when it read everything. */
+            import_warnings: components["schemas"]["ChordProImportWarning"][];
+        };
         /** @description A part of a ChordPro text the import skipped. */
         ChordProImportWarning: {
             /** @description The line of the text it is on, numbered from 1. */
@@ -6611,6 +6659,7 @@ export type SchemaSongChartRevision = components['schemas']['SongChartRevision']
 export type SchemaLearnerSongChart = components['schemas']['LearnerSongChart'];
 export type SchemaSongChartNotPublishableError = components['schemas']['SongChartNotPublishableError'];
 export type SchemaSongChartChordProImport = components['schemas']['SongChartChordProImport'];
+export type SchemaSongChartChordProReading = components['schemas']['SongChartChordProReading'];
 export type SchemaChordProImportWarning = components['schemas']['ChordProImportWarning'];
 export type SchemaWithdrawSongChartRequest = components['schemas']['WithdrawSongChartRequest'];
 export type SchemaRightsConfirmation = components['schemas']['RightsConfirmation'];
@@ -10032,6 +10081,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    readSongChartChordPro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/plain": string;
+            };
+        };
+        responses: {
+            /** @description What the text describes, and what the reading skipped. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChartChordProReading"];
+                };
+            };
+            /** @description The text is empty or too long, or has no lyric line at all. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
                 };
             };
         };
