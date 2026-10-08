@@ -445,6 +445,16 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it.each(['student', 'teacher', 'admin'] as const)('lets a registered %s read a song chart from its link', async (role) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge(role)
+
+    await router.push('/songs/chart-1')
+
+    expect(router.currentRoute.value.name).toBe('song-chart')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 

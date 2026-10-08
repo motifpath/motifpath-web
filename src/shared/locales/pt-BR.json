@@ -269,5 +269,12 @@
     "view": "Visualização",
     "boxView": "Diagrama",
     "neckView": "Braço"
+  },
+  "songChartPage": {
+    "close": "Fechar",
+    "loadingNoun": "cifra",
+    "unavailableHeading": "Esta cifra não está disponível",
+    "unavailableMessage": "Ela pode ter sido retirada, ou o link pode estar errado.",
+    "loadFailed": "Não foi possível carregar a cifra."
   }
 }

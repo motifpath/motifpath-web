@@ -330,6 +330,15 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/admin/views/KnowledgeMapEditorView.vue'),
   },
   {
+    // A song chart a learner opens from a link takes the whole screen, with only a close control.
+    // Open to every role: anyone signed in reads a published chart.
+    path: '/songs/:songChartId',
+    name: 'song-chart',
+    meta: { requiresAuth: true },
+    props: true,
+    component: () => import('@/features/student/views/SongChartView.vue'),
+  },
+  {
     path: '/admin/song-charts',
     name: 'admin-song-charts',
     meta: { requiresAuth: true, requiresRole: ['admin'] },
