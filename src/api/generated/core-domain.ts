@@ -952,6 +952,264 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/song-charts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List song charts for authoring and review
+         * @description Returns song charts, most recently updated first, then by id, in
+         *     the {items, total, limit, offset} envelope. Only admins may list
+         *     song charts; learners reach a chart only through the content that
+         *     embeds it. Every filter is optional and they combine with AND.
+         */
+        get: operations["listSongCharts"];
+        put?: never;
+        /**
+         * Start a new song chart
+         * @description Creates a song chart with its first draft. A chart is lyrics with
+         *     chords anchored to the words they fall on, plus the song's key,
+         *     capo and tempo. Only admins author song charts. The new chart is
+         *     unpublished: learners can't read it until an admin publishes it.
+         *
+         *     Every chord anchor's written symbol is read by the same parser as
+         *     searchChords. The server sets each anchor's chordDefinitionId from
+         *     the result and ignores the value sent. A symbol that can't be
+         *     resolved is kept as written and reported in draft.warnings; it
+         *     doesn't stop the draft from being saved.
+         */
+        post: operations["createSongChart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/song-charts/{song_chart_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get a song chart with its draft
+         * @description Returns a song chart as its authors see it: its draft, the draft's
+         *     warnings and rights confirmation, and a summary of the revision
+         *     learners are served, if any. Only admins may read a chart this
+         *     way.
+         */
+        get: operations["getSongChart"];
+        /**
+         * Replace a song chart's draft
+         * @description Replaces the draft's metadata, body and rights confirmation. Chord
+         *     anchors are resolved as on createSongChart. When rights_confirmed
+         *     turns true, the server records the caller and the time as the
+         *     confirmation; when it turns false, the confirmation is cleared.
+         *     Editing the draft never changes what learners are served: a
+         *     published chart keeps serving its published revision until the
+         *     draft is published again.
+         */
+        put: operations["updateSongChartDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/song-charts/{song_chart_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish a song chart's draft
+         * @description Publishes the draft as a new immutable revision, numbered one past
+         *     the chart's last, and learners are served it from then on. The
+         *     chart becomes published, also when it was withdrawn. The revision
+         *     records who published it and the rights confirmation it was
+         *     published with. The draft stays as it is, for the next change.
+         *
+         *     Any admin may publish, with no second reviewer. The draft must be
+         *     publishable as it stands: its rights are confirmed, and every chord
+         *     anchor is either a no-chord marking or resolves to a catalog chord
+         *     with a voicing to show. Anything else is refused with the full list
+         *     of what blocks it. A slash chord whose bass the catalog doesn't
+         *     have (bass_not_in_catalog) doesn't block: the learner is shown the
+         *     voicings of the chord without its bass.
+         */
+        post: operations["publishSongChart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/song-charts/{song_chart_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop serving a published song chart
+         * @description Takes a published chart away from learners at once, for its rights
+         *     or any other reason. Its revisions are kept for audit. Content that
+         *     embeds the chart shows it as not available. Any admin may withdraw
+         *     a chart. A withdrawn chart is served again once it is published
+         *     again.
+         */
+        post: operations["withdrawSongChart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/song-charts/{song_chart_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List a song chart's published revisions
+         * @description Returns every revision the chart has been published as, newest
+         *     first, with who published each and its rights confirmation. A
+         *     chart that was
+         *     never published returns an empty array. Revisions never change
+         *     once published. Only admins may list them.
+         */
+        get: operations["listSongChartRevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/song-charts/{song_chart_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Preview a song chart's draft as a learner would read it
+         * @description Returns the draft in the shape learners are served, with its
+         *     chords and voicings, so authors and reviewers see exactly what a
+         *     learner would. The rights check doesn't apply: the preview is
+         *     never shown to learners. A chord anchor that doesn't resolve has
+         *     no entry in chords. Only admins may preview.
+         */
+        get: operations["previewSongChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/song-charts/{song_chart_id}/published": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Read a published song chart
+         * @description Returns the chart's latest published revision for reading, with
+         *     every chord it uses and that chord's voicings, so the reader needs
+         *     no further call. Any signed-in user may read a published chart. A
+         *     chart that was never published, or was withdrawn, answers exactly
+         *     as one that doesn't exist.
+         */
+        get: operations["getPublishedSongChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/song-charts/{song_chart_id}/chordpro": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Export a song chart's draft as ChordPro
+         * @description Writes the draft as ChordPro text, in the subset that
+         *     importSongChartChordPro reads: metadata directives, section
+         *     environments, comments, and chords inline in the lyrics as
+         *     written by the author. Only admins may export.
+         */
+        get: operations["exportSongChartChordPro"];
+        /**
+         * Replace a song chart's draft from ChordPro
+         * @description Reads ChordPro text into the draft, replacing its body and every
+         *     metadata field the text sets; fields the text doesn't set keep
+         *     their draft values. Chord anchors are resolved as on
+         *     updateSongChartDraft. ChordPro is only an exchange format: the
+         *     draft stores the document it produces, never the text.
+         *
+         *     Supported: the title (t), artist, key, capo, tempo and time
+         *     directives, start_of_ and end_of_
+         *     verse, chorus and bridge (with sov, eov, soc, eoc, sob, eob),
+         *     comment (c), and inline [chord] symbols. Lines outside any section
+         *     environment form an unlabelled section. Anything else (another
+         *     directive, a malformed directive, a chord bracket that isn't
+         *     closed) is skipped and reported in import_warnings with its line
+         *     number, never dropped silently.
+         */
+        put: operations["importSongChartChordPro"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/learning-paths": {
         parameters: {
             query?: never;
@@ -1895,8 +2153,10 @@ export interface paths {
          * Read the authenticated student's practice overview, across instruments
          * @description The first view of the home, before the student picks an instrument: on how
          *     many of the last 7 days they practised on any instrument and completed a content
-         *     node, and one card per instrument with that instrument's practice days and its top
-         *     next step. Each instrument's full picture is its practice summary.
+         *     node, how many minutes they practised this week and the week before, their current
+         *     and best day streak, how many skills improved this week, and one card per
+         *     instrument with that instrument's practice days and its top next step. Each
+         *     instrument's full picture is its practice summary.
          *
          *     Derived from the student's activity; reading it changes nothing.
          *
@@ -3415,6 +3675,445 @@ export interface components {
                 /** @description The shape template that generated the voicing; null for a hand-authored one. */
                 template_key: string | null;
             };
+        };
+        /**
+         * @description Where a chart stands with learners. draft: never published.
+         *     published: learners are served its latest published revision.
+         *     withdrawn: taken away from learners until it is published again.
+         * @enum {string}
+         */
+        SongChartStatus: "draft" | "published" | "withdrawn";
+        /**
+         * @description The body of a song chart: lyrics with chords anchored to the words
+         *     they fall on, as ProseMirror JSON from the song chart editor. It is
+         *     its own document type, not a PromptDocument: it holds only
+         *     sections, lyric lines and comments, and its only mark is the
+         *     chordAnchor. Lines are kept as written; the reader lays chords out
+         *     over the words itself, so the document never holds spaces that
+         *     exist only to line chords up.
+         */
+        SongChartDocument: {
+            /**
+             * @description Discriminates this object as a song chart document's root node.
+             * @enum {string}
+             */
+            type: "doc";
+            /** @description The chart's sections, in the order they are played. */
+            content: components["schemas"]["SongChartSection"][];
+        };
+        /**
+         * @description A section of a song (a verse, a chorus, ...), holding its lines.
+         *     Sections are numbered from 0 in document order; the reader reports
+         *     a section the learner marks as played by that number.
+         */
+        SongChartSection: {
+            /**
+             * @description Discriminates this node as a section.
+             * @enum {string}
+             */
+            type: "section";
+            attrs: {
+                /**
+                 * @description What part of the song this is. other is a section with no standard kind.
+                 * @enum {string}
+                 */
+                kind: "verse" | "chorus" | "bridge" | "intro" | "outro" | "instrumental" | "other";
+                /**
+                 * @description The section's heading as the author wrote it (e.g. "Verse 2",
+                 *     "Refrão"); null shows no heading.
+                 */
+                label: string | null;
+            };
+            /** @description The section's lines and comments, in order. */
+            content: (components["schemas"]["SongChartLyricLine"] | components["schemas"]["SongChartComment"])[];
+        };
+        /**
+         * @description One line of lyrics. Its text runs may carry a chordAnchor; a chord
+         *     with no lyric under it (an instrumental bar, a chord at the end of a
+         *     line) anchors to a single space.
+         */
+        SongChartLyricLine: {
+            /**
+             * @description Discriminates this node as a lyric line.
+             * @enum {string}
+             */
+            type: "lyricLine";
+            /** @description The line's text runs, in order. */
+            content: components["schemas"]["SongChartText"][];
+        };
+        /**
+         * @description A performance note between lines (e.g. "Repeat twice", "Slower").
+         *     Shown to the learner; carries no chords.
+         */
+        SongChartComment: {
+            /**
+             * @description Discriminates this node as a comment.
+             * @enum {string}
+             */
+            type: "comment";
+            /** @description The comment's text. */
+            content: {
+                /**
+                 * @description Discriminates this node as text.
+                 * @enum {string}
+                 */
+                type: "text";
+                /** @description The comment's text. */
+                text: string;
+            }[];
+        };
+        /**
+         * @description A run of lyric text. With a chordAnchor mark, the chord is played
+         *     at the start of the run.
+         */
+        SongChartText: {
+            /**
+             * @description Discriminates this node as text.
+             * @enum {string}
+             */
+            type: "text";
+            /** @description The literal text. */
+            text: string;
+            /** @description The run's chord anchor; absent when no chord falls on it. */
+            marks?: components["schemas"]["SongChartChordAnchor"][];
+        };
+        /**
+         * @description A chord played at the start of the text run it marks. attrs keys are
+         *     camelCase, the rich-text editor's convention.
+         */
+        SongChartChordAnchor: {
+            /**
+             * @description Discriminates this mark as a chord anchor.
+             * @enum {string}
+             */
+            type: "chordAnchor";
+            attrs: {
+                /**
+                 * @description Identifies the anchor, unique within its document. It keeps
+                 *     two neighbouring runs with the same chord as two anchors, and
+                 *     warnings point at an anchor by it.
+                 */
+                anchorId: string;
+                /**
+                 * @description The chord symbol as the author wrote it. This is what the
+                 *     learner sees, whatever it resolves to.
+                 */
+                writtenSymbol: string;
+                /**
+                 * Format: uuid
+                 * @description The catalog chord the symbol resolves to, set by the server
+                 *     whenever the document is saved; a value sent by a client is
+                 *     ignored. null when the symbol is a no-chord marking or
+                 *     doesn't resolve. For a slash chord the catalog doesn't have,
+                 *     it is the chord without the bass.
+                 */
+                chordDefinitionId: string | null;
+                /**
+                 * Format: uuid
+                 * @description The voicing the author picked for this anchor, offered first
+                 *     to the learner; null offers the chord's top-ranked voicing.
+                 *     Must be a voicing of the chord the symbol resolves to.
+                 */
+                chordVoicingId: string | null;
+            };
+        };
+        /** @description The fields of a song chart's draft that authors write. */
+        SongChartDraftInput: {
+            /** @description The song's title as shown to learners. */
+            title: string;
+            /** @description The performer or composer the song is known by. */
+            artist: string;
+            /** @description The Language.code of the lyrics (not "any"). */
+            language: string;
+            /**
+             * @description The key the song sounds in, regardless of capo (e.g. "G", "F#m");
+             *     null when not stated.
+             */
+            concert_key: string | null;
+            /**
+             * @description The fret the capo goes on; 0 means no capo. Chord symbols are
+             *     written as fingered with the capo on.
+             */
+            capo_fret: number;
+            /** @description Beats per minute; null when not stated. */
+            tempo_bpm: number | null;
+            /** @description The song's meter; null when not stated. */
+            time_signature: components["schemas"]["TimeSignature"] | null;
+            /**
+             * @description Whether an admin confirms that the song's rights were checked.
+             *     Rights are cleared outside MotifPath; this only records that
+             *     they were. Required to be true before the draft can be
+             *     published.
+             */
+            rights_confirmed: boolean;
+            body: components["schemas"]["SongChartDocument"];
+        };
+        SongChartDraft: components["schemas"]["SongChartDraftInput"] & {
+            /** @description Who confirmed the rights and when; null exactly when rights_confirmed is false. */
+            rights_confirmation: components["schemas"]["RightsConfirmation"] | null;
+            /**
+             * @description Every chord anchor the server couldn't fully resolve, in
+             *     document order; empty when every anchor resolved.
+             */
+            warnings: components["schemas"]["SongChartAnchorWarning"][];
+            updated_by: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @description When the draft was last changed.
+             */
+            updated_at: string;
+        };
+        /**
+         * @description A chord anchor whose symbol didn't fully resolve to a playable
+         *     catalog chord.
+         */
+        SongChartAnchorWarning: {
+            /** @description The anchor's anchorId. */
+            anchor_id: string;
+            /** @description The section the anchor is in, numbered from 0. */
+            section_index: number;
+            /** @description The line within that section, numbered from 0, comments included. */
+            line_index: number;
+            /** @description The anchor's symbol as written. */
+            written_symbol: string;
+            /**
+             * @description unparsed_symbol and unsupported_quality: the symbol isn't a
+             *     supported chord (as in searchChords). chord_not_in_catalog: it
+             *     parses, but the catalog has no such chord, or no voicing of it.
+             *     voicing_unavailable: the picked voicing has been withdrawn
+             *     from the catalog. bass_not_in_catalog: a slash chord the catalog
+             *     doesn't have; the learner is shown the chord without its bass.
+             * @enum {string}
+             */
+            warning: "unparsed_symbol" | "unsupported_quality" | "chord_not_in_catalog" | "voicing_unavailable" | "bass_not_in_catalog";
+            /**
+             * @description Whether the warning stops the draft from being published. Only
+             *     bass_not_in_catalog doesn't.
+             */
+            blocks_publication: boolean;
+        };
+        /**
+         * @description A song chart as admins see it: its draft and what learners are
+         *     served.
+         */
+        SongChart: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this chart.
+             */
+            song_chart_id: string;
+            status: components["schemas"]["SongChartStatus"];
+            /**
+             * @description The latest published revision, the one learners are served while
+             *     the chart is published; null when the chart was never published.
+             */
+            published_revision: components["schemas"]["SongChartRevisionSummary"] | null;
+            /** @description Who withdrew the chart, when and why; null unless status is withdrawn. */
+            withdrawal: components["schemas"]["SongChartWithdrawal"] | null;
+            draft: components["schemas"]["SongChartDraft"];
+            created_by: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @description When the chart was created.
+             */
+            created_at: string;
+        };
+        /** @description Who withdrew a song chart, when and why. */
+        SongChartWithdrawal: {
+            withdrawn_by: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @description When the chart was withdrawn.
+             */
+            withdrawn_at: string;
+            /** @description Why it was withdrawn, as the admin wrote it. */
+            reason: string;
+        };
+        /** @description A song chart in a list, without its body. */
+        SongChartSummary: {
+            /**
+             * Format: uuid
+             * @description Stable identifier for this chart.
+             */
+            song_chart_id: string;
+            /** @description The draft's title. */
+            title: string;
+            /** @description The draft's artist. */
+            artist: string;
+            /** @description The draft's Language.code. */
+            language: string;
+            status: components["schemas"]["SongChartStatus"];
+            /** @description Whether the draft's rights are confirmed. */
+            rights_confirmed: boolean;
+            /** @description The latest published revision's number; null when never published. */
+            published_revision_number: number | null;
+            updated_by: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @description When the draft was last changed.
+             */
+            updated_at: string;
+        };
+        PagedSongCharts: components["schemas"]["PageMeta"] & {
+            /** @description The charts on this page, most recently updated first, then by id. */
+            items: components["schemas"]["SongChartSummary"][];
+        };
+        /** @description Which revision learners are served, and who published it. */
+        SongChartRevisionSummary: {
+            /** @description The revision's number, 1 for the chart's first publication. */
+            revision_number: number;
+            /** @description The revision's title. */
+            title: string;
+            /** @description The revision's Language.code. */
+            language: string;
+            published_by: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @description When the revision was published.
+             */
+            published_at: string;
+        };
+        /**
+         * @description A published revision of a song chart. A revision never changes: a
+         *     correction is published as a new revision.
+         */
+        SongChartRevision: {
+            /**
+             * Format: uuid
+             * @description The chart this is a revision of.
+             */
+            song_chart_id: string;
+            /** @description The revision's number, 1 for the chart's first publication. */
+            revision_number: number;
+            /** @description The song's title in this revision. */
+            title: string;
+            /** @description The song's artist in this revision. */
+            artist: string;
+            /** @description The Language.code of this revision's lyrics. */
+            language: string;
+            /** @description The key the song sounds in; null when not stated. */
+            concert_key: string | null;
+            /** @description The fret the capo goes on; 0 means no capo. */
+            capo_fret: number;
+            /** @description Beats per minute; null when not stated. */
+            tempo_bpm: number | null;
+            /** @description The song's meter; null when not stated. */
+            time_signature: components["schemas"]["TimeSignature"] | null;
+            /**
+             * @description The open-string pitches the chords are written for, lowest
+             *     string first (e.g. "E2-A2-D3-G3-B3-E4", standard guitar tuning).
+             */
+            tuning_fingerprint: string;
+            body: components["schemas"]["SongChartDocument"];
+            rights_confirmation: components["schemas"]["RightsConfirmation"];
+            published_by: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @description When the revision was published.
+             */
+            published_at: string;
+        };
+        /**
+         * @description A song chart as a learner reads it: the lyrics with their chords,
+         *     and every chord it uses with that chord's voicings and their
+         *     diagrams, so the reader needs no further call. It carries nothing
+         *     about who wrote or published the chart, or about its rights.
+         */
+        LearnerSongChart: {
+            /**
+             * Format: uuid
+             * @description The chart's identifier.
+             */
+            song_chart_id: string;
+            /**
+             * @description The published revision being read; tracking events carry it.
+             *     null in a preview of the draft.
+             */
+            revision_number: number | null;
+            /** @description The song's title. */
+            title: string;
+            /** @description The song's artist. */
+            artist: string;
+            /** @description The Language.code of the lyrics. */
+            language: string;
+            /** @description The key the song sounds in; null when not stated. */
+            concert_key: string | null;
+            /** @description The fret the capo goes on; 0 means no capo. */
+            capo_fret: number;
+            /** @description Beats per minute; null when not stated. */
+            tempo_bpm: number | null;
+            /** @description The song's meter; null when not stated. */
+            time_signature: components["schemas"]["TimeSignature"] | null;
+            /** @description The open-string pitches the chords are written for, lowest string first. */
+            tuning_fingerprint: string;
+            body: components["schemas"]["SongChartDocument"];
+            /**
+             * @description Every catalog chord an anchor resolves to, once each. A chord's
+             *     voicings are its active voicings, best first, plus any voicing
+             *     an anchor picked that has since been withdrawn, last.
+             */
+            chords: components["schemas"]["ChordDefinition"][];
+            /** @description The diagram of every voicing in chords, once each. */
+            diagrams: components["schemas"]["Diagram"][];
+        };
+        /**
+         * @description Returned when a song chart's draft can't be published as it stands,
+         *     with everything that stops it.
+         */
+        SongChartNotPublishableError: {
+            /** @description Human-readable summary of the refusal. */
+            message: string;
+            /**
+             * @description rights_not_confirmed: no admin has confirmed the song's rights
+             *     were checked. unresolved_chords: at least one anchor has a
+             *     warning that blocks publication (see anchor_warnings).
+             */
+            reasons: ("rights_not_confirmed" | "unresolved_chords")[];
+            /** @description The anchors whose warnings block publication; empty unless reasons has unresolved_chords. */
+            anchor_warnings: components["schemas"]["SongChartAnchorWarning"][];
+        };
+        /** @description The result of importing ChordPro text into a song chart's draft. */
+        SongChartChordProImport: {
+            song_chart: components["schemas"]["SongChart"];
+            /** @description What the import skipped, in line order; empty when it read everything. */
+            import_warnings: components["schemas"]["ChordProImportWarning"][];
+        };
+        /** @description A part of a ChordPro text the import skipped. */
+        ChordProImportWarning: {
+            /** @description The line of the text it is on, numbered from 1. */
+            line: number;
+            /**
+             * @description unsupported_directive: a directive outside the supported subset
+             *     (e.g. {define}). malformed_directive: a line starting with "{"
+             *     that isn't a whole directive. unclosed_chord: a "[" with no "]"
+             *     on its line; the line is read as plain text.
+             *     unbalanced_section: an end_of_ with no matching start_of_, or a
+             *     start_of_ inside another section; the section is closed there.
+             *     empty_section: a section environment with no lines; it is
+             *     dropped.
+             * @enum {string}
+             */
+            kind: "unsupported_directive" | "malformed_directive" | "unclosed_chord" | "unbalanced_section" | "empty_section";
+            /** @description The skipped text, as written. */
+            text: string;
+        };
+        /** @description Payload for withdrawing a published song chart. */
+        WithdrawSongChartRequest: {
+            /** @description Why the chart is withdrawn, kept with the chart for audit. */
+            reason: string;
+        };
+        /**
+         * @description An admin's statement that a song's rights were checked. Rights are
+         *     cleared outside MotifPath; this records only who confirmed it, and
+         *     when.
+         */
+        RightsConfirmation: {
+            confirmed_by: components["schemas"]["UserRef"];
+            /**
+             * Format: date-time
+             * @description When the rights were confirmed.
+             */
+            confirmed_at: string;
         };
         /**
          * @description A usage of one Diagram — its render config, never a stored variant
@@ -5438,6 +6137,36 @@ export interface components {
              */
             learning_days_last_7: number;
             /**
+             * @description Whole minutes practised in sessions that started on the last 7 calendar days,
+             *     today included, in the given time zone, on any instrument or without one. Each
+             *     session counts from its start to its last practice event, including a session
+             *     left early or abandoned. The sum is rounded down to whole minutes.
+             */
+            minutes_practised_last_7: number;
+            /**
+             * @description The same measure as minutes_practised_last_7, for the 7 calendar days before
+             *     those, so the home can show the change against the week before.
+             */
+            minutes_practised_previous_7: number;
+            /**
+             * @description How many consecutive calendar days, in the given time zone, were practice days
+             *     (the same days practice_days_last_7 counts), ending today, or ending yesterday
+             *     while the student has not practised yet today. 0 when neither today nor
+             *     yesterday was a practice day.
+             */
+            day_streak_current: number;
+            /**
+             * @description The longest run of consecutive practice days the student has ever had, in the
+             *     given time zone. Never less than day_streak_current.
+             */
+            day_streak_best: number;
+            /**
+             * @description How many skills, counted once per instrument, have at least one improved measure
+             *     in that instrument's progress this week (accuracy, fluency or best clean tempo
+             *     higher now than 7 days ago). Concepts are not counted.
+             */
+            skills_up_last_7: number;
+            /**
              * @description One card per instrument of the student, inferred from the paths and courses
              *     they're enrolled in, in the order their summaries are tabbed.
              */
@@ -5808,6 +6537,8 @@ export interface components {
         Offset: number;
         /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
         SearchText: string;
+        /** @description The ID of the song chart. */
+        SongChartId: string;
     };
     requestBodies: never;
     headers: never;
@@ -5861,6 +6592,28 @@ export type SchemaParsedChordSymbol = components['schemas']['ParsedChordSymbol']
 export type SchemaChordSearchResult = components['schemas']['ChordSearchResult'];
 export type SchemaChordDefinition = components['schemas']['ChordDefinition'];
 export type SchemaChordVoicing = components['schemas']['ChordVoicing'];
+export type SchemaSongChartStatus = components['schemas']['SongChartStatus'];
+export type SchemaSongChartDocument = components['schemas']['SongChartDocument'];
+export type SchemaSongChartSection = components['schemas']['SongChartSection'];
+export type SchemaSongChartLyricLine = components['schemas']['SongChartLyricLine'];
+export type SchemaSongChartComment = components['schemas']['SongChartComment'];
+export type SchemaSongChartText = components['schemas']['SongChartText'];
+export type SchemaSongChartChordAnchor = components['schemas']['SongChartChordAnchor'];
+export type SchemaSongChartDraftInput = components['schemas']['SongChartDraftInput'];
+export type SchemaSongChartDraft = components['schemas']['SongChartDraft'];
+export type SchemaSongChartAnchorWarning = components['schemas']['SongChartAnchorWarning'];
+export type SchemaSongChart = components['schemas']['SongChart'];
+export type SchemaSongChartWithdrawal = components['schemas']['SongChartWithdrawal'];
+export type SchemaSongChartSummary = components['schemas']['SongChartSummary'];
+export type SchemaPagedSongCharts = components['schemas']['PagedSongCharts'];
+export type SchemaSongChartRevisionSummary = components['schemas']['SongChartRevisionSummary'];
+export type SchemaSongChartRevision = components['schemas']['SongChartRevision'];
+export type SchemaLearnerSongChart = components['schemas']['LearnerSongChart'];
+export type SchemaSongChartNotPublishableError = components['schemas']['SongChartNotPublishableError'];
+export type SchemaSongChartChordProImport = components['schemas']['SongChartChordProImport'];
+export type SchemaChordProImportWarning = components['schemas']['ChordProImportWarning'];
+export type SchemaWithdrawSongChartRequest = components['schemas']['WithdrawSongChartRequest'];
+export type SchemaRightsConfirmation = components['schemas']['RightsConfirmation'];
 export type SchemaDiagramRef = components['schemas']['DiagramRef'];
 export type SchemaDiagramStackRef = components['schemas']['DiagramStackRef'];
 export type SchemaCreateLearningPathRequest = components['schemas']['CreateLearningPathRequest'];
@@ -5944,6 +6697,7 @@ export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
 export type ParameterSearchText = components['parameters']['SearchText'];
+export type ParameterSongChartId = components['parameters']['SongChartId'];
 export type $defs = Record<string, never>;
 export interface operations {
     registerUser: {
@@ -8727,6 +9481,677 @@ export interface operations {
                 };
             };
             /** @description No chord exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listSongCharts: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+                /**
+                 * @description Case- and accent-insensitive substring match against the
+                 *     draft's title and artist.
+                 */
+                q?: string;
+                /** @description Restricts the results to charts with this status. */
+                status?: components["schemas"]["SongChartStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of song charts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedSongCharts"];
+                };
+            };
+            /** @description A query parameter is out of range or not one of its allowed values. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    createSongChart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SongChartDraftInput"];
+            };
+        };
+        responses: {
+            /** @description The new song chart, with its draft. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChart"];
+                };
+            };
+            /**
+             * @description The request body failed schema validation: a missing or
+             *     out-of-range field, a language that doesn't exist, a body that
+             *     isn't a valid SongChartDocument, a chordVoicingId that isn't a
+             *     voicing of the chord its symbol names.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    getSongChart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The song chart. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChart"];
+                };
+            };
+            /** @description song_chart_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    updateSongChartDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SongChartDraftInput"];
+            };
+        };
+        responses: {
+            /** @description The song chart, with its updated draft. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChart"];
+                };
+            };
+            /** @description The request body failed schema validation, as on createSongChart. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    publishSongChart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new revision. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChartRevision"];
+                };
+            };
+            /** @description song_chart_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The draft can't be published as it stands. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChartNotPublishableError"];
+                };
+            };
+        };
+    };
+    withdrawSongChart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawSongChartRequest"];
+            };
+        };
+        responses: {
+            /** @description The withdrawn song chart. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChart"];
+                };
+            };
+            /** @description The request body failed schema validation. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The chart is not published. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    listSongChartRevisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chart's revisions, newest first, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChartRevision"][];
+                };
+            };
+            /** @description song_chart_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    previewSongChart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft as a learner would read it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerSongChart"];
+                };
+            };
+            /** @description song_chart_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    getPublishedSongChart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The chart's latest published revision, with its chords and voicings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerSongChart"];
+                };
+            };
+            /** @description song_chart_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No song chart exists with the given ID, or it isn't published. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    exportSongChartChordPro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft as ChordPro text, UTF-8. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description song_chart_id is not a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    importSongChartChordPro: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the song chart. */
+                song_chart_id: components["parameters"]["SongChartId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/plain": string;
+            };
+        };
+        responses: {
+            /** @description The song chart with its imported draft, and what the import skipped. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SongChartChordProImport"];
+                };
+            };
+            /**
+             * @description The text is empty or too long, or what it describes isn't a
+             *     valid draft (for example a capo outside 0–12, or no lyric
+             *     line at all).
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is not an admin. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No song chart exists with the given ID. */
             404: {
                 headers: {
                     [name: string]: unknown;

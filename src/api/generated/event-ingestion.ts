@@ -159,7 +159,7 @@ export interface components {
          *     Ingestion Service persists the raw payload to MongoDB and publishes it to the
          *     motifpath.events Kafka topic.
          */
-        TrackingEvent: components["schemas"]["LessonStartedEvent"] | components["schemas"]["LessonResumedEvent"] | components["schemas"]["LessonCompletedEvent"] | components["schemas"]["ExerciseStartedEvent"] | components["schemas"]["ExerciseProgressEvent"] | components["schemas"]["ExerciseEndedEvent"] | components["schemas"]["PracticeSessionStartedEvent"] | components["schemas"]["PracticeItemAnsweredEvent"] | components["schemas"]["PracticeSessionEndedEvent"] | components["schemas"]["PracticeTapCheckCompletedEvent"];
+        TrackingEvent: components["schemas"]["LessonStartedEvent"] | components["schemas"]["LessonResumedEvent"] | components["schemas"]["LessonCompletedEvent"] | components["schemas"]["ExerciseStartedEvent"] | components["schemas"]["ExerciseProgressEvent"] | components["schemas"]["ExerciseEndedEvent"] | components["schemas"]["PracticeSessionStartedEvent"] | components["schemas"]["PracticeItemAnsweredEvent"] | components["schemas"]["PracticeSessionEndedEvent"] | components["schemas"]["PracticeTapCheckCompletedEvent"] | components["schemas"]["SongChartOpenedEvent"] | components["schemas"]["SongChartChordViewedEvent"] | components["schemas"]["SongChartSectionCompletedEvent"];
         /** @description Confirmation returned when a tracking event is successfully accepted. */
         IngestAccepted: {
             /**
@@ -283,7 +283,7 @@ export interface components {
              *     and a new ADR if it introduces a new consumer concern.
              * @enum {string}
              */
-            event_type: "lesson.started" | "lesson.resumed" | "lesson.completed" | "exercise.started" | "exercise.progress" | "exercise.ended" | "practice.session_started" | "practice.item_answered" | "practice.session_ended" | "practice.tap_check_completed";
+            event_type: "lesson.started" | "lesson.resumed" | "lesson.completed" | "exercise.started" | "exercise.progress" | "exercise.ended" | "practice.session_started" | "practice.item_answered" | "practice.session_ended" | "practice.tap_check_completed" | "song_chart.opened" | "song_chart.chord_viewed" | "song_chart.section_completed";
             /**
              * Format: uuid
              * @description ID of the authenticated student who generated this event. Used as the Kafka
@@ -748,6 +748,66 @@ export interface components {
              */
             event_type: "practice.tap_check_completed";
         };
+        /**
+         * @description The song chart revision a song_chart event happened in. Required on every song_chart
+         *     event, so a reading is tied to the exact lyrics and chords the student saw.
+         */
+        SongChartContext: {
+            /**
+             * Format: uuid
+             * @description ID of the song chart being read.
+             */
+            song_chart_id: string;
+            /** @description The published revision being read, as returned with the chart. */
+            revision_number: number;
+        };
+        SongChartOpenedEvent: components["schemas"]["TrackingEventBase"] & {
+            /** @enum {string} */
+            event_type: "song_chart.opened";
+            song_chart_context: components["schemas"]["SongChartContext"];
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "song_chart.opened";
+        };
+        SongChartChordViewedEvent: components["schemas"]["TrackingEventBase"] & {
+            /** @enum {string} */
+            event_type: "song_chart.chord_viewed";
+            song_chart_context: components["schemas"]["SongChartContext"];
+            /** @description The anchorId of the chord the student tapped. */
+            anchor_id: string;
+            /**
+             * Format: uuid
+             * @description The catalog chord the tapped anchor resolves to.
+             */
+            chord_definition_id: string;
+            /**
+             * Format: uuid
+             * @description The voicing the sheet opened on.
+             */
+            chord_voicing_id: string;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "song_chart.chord_viewed";
+        };
+        SongChartSectionCompletedEvent: components["schemas"]["TrackingEventBase"] & {
+            /** @enum {string} */
+            event_type: "song_chart.section_completed";
+            song_chart_context: components["schemas"]["SongChartContext"];
+            /** @description The section marked as played, numbered from 0 in document order. */
+            section_index: number;
+        } & {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "song_chart.section_completed";
+        };
     };
     responses: never;
     parameters: never;
@@ -790,6 +850,10 @@ export type SchemaPracticeItemAnsweredEvent = components['schemas']['PracticeIte
 export type SchemaFeltRating = components['schemas']['FeltRating'];
 export type SchemaPracticeSessionEndedEvent = components['schemas']['PracticeSessionEndedEvent'];
 export type SchemaPracticeTapCheckCompletedEvent = components['schemas']['PracticeTapCheckCompletedEvent'];
+export type SchemaSongChartContext = components['schemas']['SongChartContext'];
+export type SchemaSongChartOpenedEvent = components['schemas']['SongChartOpenedEvent'];
+export type SchemaSongChartChordViewedEvent = components['schemas']['SongChartChordViewedEvent'];
+export type SchemaSongChartSectionCompletedEvent = components['schemas']['SongChartSectionCompletedEvent'];
 export type $defs = Record<string, never>;
 export interface operations {
     ingestTrackingEvent: {

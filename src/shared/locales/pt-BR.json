@@ -242,5 +242,27 @@
     "label": "Braço do instrumento",
     "cell": "Corda {string}, casa {fret}",
     "openCell": "Corda {string}, solta"
+  },
+  "songChart": {
+    "key": "Tom {key}",
+    "capo": "Capotraste {fret}",
+    "tempo": "{bpm} BPM",
+    "markPlayed": "Toquei",
+    "played": "Tocado",
+    "voicings": "Formas",
+    "voicingTab": "Forma {n}",
+    "playbacks": "Execuções",
+    "closeSheet": "Fechar",
+    "voicingUnavailable": "Não foi possível mostrar esta forma.",
+    "missingBass": "Mostrando {chord}: o baixo {bass} não está nestas formas.",
+    "sectionKind": {
+      "verse": "Estrofe",
+      "chorus": "Refrão",
+      "bridge": "Ponte",
+      "intro": "Introdução",
+      "outro": "Final",
+      "instrumental": "Instrumental",
+      "other": "Música"
+    }
   }
 }

@@ -88,5 +88,12 @@
     "saveFailed": "Não foi possível salvar. Verifique sua conexão e tente novamente.",
     "discardTitle": "Descartar suas alterações?",
     "discardMessage": "O que você alterou neste nó não foi salvo."
+  },
+  "songChartPreview": {
+    "loadingNoun": "cifra",
+    "notFoundHeading": "Cifra não encontrada",
+    "notFoundMessage": "Nenhuma cifra tem este link. Ela pode ter sido excluída.",
+    "loadFailed": "Não foi possível carregar a cifra.",
+    "note": "Prévia do rascunho, como um aluno a leria. Nada do que você fizer aqui é registrado."
   }
 }
