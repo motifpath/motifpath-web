@@ -115,5 +115,13 @@
     "noMatchesMessage": "Try another title or artist, or another status.",
     "emptyHeading": "No song charts yet",
     "emptyMessage": "Start one by writing it or importing ChordPro."
+  },
+  "songChartEditor": {
+    "lyricsLabel": "Lyrics and chords",
+    "sectionKind": "Section",
+    "sectionLabel": "Label",
+    "sectionLabelPlaceholder": "e.g. Verse 1",
+    "addSection": "Add section",
+    "addComment": "Add comment"
   }
 }

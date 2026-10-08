@@ -115,5 +115,13 @@
     "noMatchesMessage": "Tente outro título ou artista, ou outra situação.",
     "emptyHeading": "Nenhuma cifra ainda",
     "emptyMessage": "Comece escrevendo uma ou importando ChordPro."
+  },
+  "songChartEditor": {
+    "lyricsLabel": "Letra e acordes",
+    "sectionKind": "Seção",
+    "sectionLabel": "Rótulo",
+    "sectionLabelPlaceholder": "ex.: Estrofe 1",
+    "addSection": "Adicionar seção",
+    "addComment": "Adicionar comentário"
   }
 }
