@@ -163,7 +163,7 @@ export function makeSongChart(
 
 /** A published revision summary, published by Ana. */
 export function makeRevisionSummary(revision: number, title = 'Asa Branca') {
-  return { revision_number: revision, title, language: 'pt_BR', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
+  return { revision_number: revision, title, artist: 'Luiz Gonzaga', language: 'pt_BR', concert_key: 'G', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
 }
 
 /** A published revision of "Asa Branca", published and confirmed by Ana. */

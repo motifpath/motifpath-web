@@ -16,6 +16,7 @@ vi.mock('@/shared/composables/useIsCompact', () => ({
 }))
 
 import SongChartListView from '@/features/admin/views/SongChartListView.vue'
+import { makeRevisionSummary } from '@/shared/testUtils/songChart'
 
 function chart(id: string, title: string, artist: string, status: SongChartSummary['status'], revision: number | null): SongChartSummary {
   return {
@@ -26,6 +27,7 @@ function chart(id: string, title: string, artist: string, status: SongChartSumma
     status,
     rights_confirmed: status !== 'draft',
     published_revision_number: revision,
+    published_revision: revision === null ? null : makeRevisionSummary(revision, title),
     updated_by: { user_id: 'u-ana', display_name: 'Ana' },
     updated_at: '2026-10-07T12:00:00Z',
   }
