@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, h, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import CuePanel from '@/features/student/components/CuePanel.vue'
@@ -15,6 +15,8 @@ import StateEmpty from '@/shared/components/StateEmpty.vue'
 import StateError from '@/shared/components/StateError.vue'
 import StateLoading from '@/shared/components/StateLoading.vue'
 import StateLocked from '@/shared/components/StateLocked.vue'
+import SongChartScreen from '@/shared/components/songChart/SongChartScreen.vue'
+import { SONG_CHART_OPENER } from '@/shared/components/songChart/songChartOpener'
 import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -68,6 +70,15 @@ const playbackFailed = ref(false)
 // on this, not itself, so the player and its aside slot — the aria-live
 // region a cue lives in — stay mounted across the reset.
 const playerKey = ref(0)
+
+// A song chart a cue embeds opens over the lesson, with the video paused, so closing it returns
+// to the same moment instead of reloading the video.
+const player = ref<{ pause: () => void } | null>(null)
+const openSongChartId = ref<string | null>(null)
+provide(SONG_CHART_OPENER, (songChartId) => {
+  player.value?.pause()
+  openSongChartId.value = songChartId
+})
 const finishing = ref(false)
 
 // Completion is final (there is no event to un-complete a step), so
@@ -230,6 +241,7 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
            nothing between cues, via the empty:hidden rule below. -->
       <div v-show="!playbackFailed" data-test="lesson">
         <LessonPlayer
+          ref="player"
           :reset-token="playerKey"
           :src="mediaUrl"
           @time="playbackSeconds = $event"
@@ -286,6 +298,10 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
          the height, so its control bar —
          fullscreen button last, in the corner — sits where the floating
          button would; the button floats higher there to leave it reachable. -->
+    <div v-if="openSongChartId" data-test="song-chart-overlay" class="fixed inset-0 z-50 overflow-y-auto bg-surface">
+      <SongChartScreen :song-chart-id="openSongChartId" @close="openSongChartId = null" />
+    </div>
+
     <SendToTeacher
       v-if="canAskTeacher"
       :reference="lessonReference(nodeId)"

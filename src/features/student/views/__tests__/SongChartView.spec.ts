@@ -20,7 +20,7 @@ const chartOf = vi.fn((songChartId: string) => {
   void songChartId
   return state
 })
-vi.mock('@/features/student/composables/usePublishedSongChart', () => ({
+vi.mock('@/shared/composables/usePublishedSongChart', () => ({
   usePublishedSongChart: (songChartId: string) => chartOf(songChartId),
 }))
 

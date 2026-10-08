@@ -962,9 +962,15 @@ export interface paths {
         /**
          * List song charts for authoring and review
          * @description Returns song charts, most recently updated first, then by id, in
-         *     the {items, total, limit, offset} envelope. Only admins may list
-         *     song charts; learners reach a chart only through the content that
-         *     embeds it. Every filter is optional and they combine with AND.
+         *     the {items, total, limit, offset} envelope. Every filter is
+         *     optional and they combine with AND.
+         *
+         *     What a caller may list depends on their role. Admins list every
+         *     chart, to author and publish them. Teachers list only the charts
+         *     learners can read, to embed them in lesson content with a songChart
+         *     node (see PromptNode): a teacher must ask for status=published, and
+         *     is refused any other status or none. Students may not list song
+         *     charts; they reach a chart through the content that embeds it.
          */
         get: operations["listSongCharts"];
         put?: never;
@@ -3974,6 +3980,12 @@ export interface components {
             rights_confirmed: boolean;
             /** @description The latest published revision's number; null when never published. */
             published_revision_number: number | null;
+            /**
+             * @description The latest published revision, as learners read it; null when
+             *     the chart was never published. A teacher picking a chart to
+             *     embed sees this, not the draft.
+             */
+            published_revision: components["schemas"]["SongChartRevisionSummary"] | null;
             updated_by: components["schemas"]["UserRef"];
             /**
              * Format: date-time
@@ -3991,8 +4003,12 @@ export interface components {
             revision_number: number;
             /** @description The revision's title. */
             title: string;
+            /** @description The revision's artist. */
+            artist: string;
             /** @description The revision's Language.code. */
             language: string;
+            /** @description The key the revision's song sounds in; null when not stated. */
+            concert_key: string | null;
             published_by: components["schemas"]["UserRef"];
             /**
              * Format: date-time
@@ -5378,10 +5394,17 @@ export interface components {
              *     content; the exercise-prompt authoring toolbar does not offer
              *     audio/video, but does offer diagram — a diagram can be embedded
              *     inline in any PromptDocument, including an exercise's own
-             *     prompt.
+             *     prompt. songChart embeds a published song chart, and is
+             *     available only in lesson content: an article's body and
+             *     rich_text expanded content. Its attrs hold songChartId, the
+             *     chart's id (a UUID). It always shows the chart's latest
+             *     published revision; a chart withdrawn after it was embedded
+             *     shows to nobody. A songChart node naming a chart that doesn't
+             *     exist, or was never published, is refused when the content is
+             *     saved.
              * @enum {string}
              */
-            type: "heading" | "paragraph" | "text" | "bulletList" | "orderedList" | "listItem" | "table" | "tableRow" | "tableHeader" | "tableCell" | "image" | "audio" | "video" | "diagram";
+            type: "heading" | "paragraph" | "text" | "bulletList" | "orderedList" | "listItem" | "table" | "tableRow" | "tableHeader" | "tableCell" | "image" | "audio" | "video" | "diagram" | "songChart";
             /**
              * @description Type-specific attributes for this node. Absent when the node
              *     type has none set.
@@ -9549,7 +9572,8 @@ export interface operations {
                 offset?: components["parameters"]["Offset"];
                 /**
                  * @description Case- and accent-insensitive substring match against the
-                 *     draft's title and artist.
+                 *     draft's title and artist, and against the latest published
+                 *     revision's title and artist.
                  */
                 q?: string;
                 /** @description Restricts the results to charts with this status. */
@@ -9588,7 +9612,10 @@ export interface operations {
                     "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
-            /** @description The caller is not an admin. */
+            /**
+             * @description The caller is a student, or a teacher who didn't ask for
+             *     status=published.
+             */
             403: {
                 headers: {
                     [name: string]: unknown;

@@ -77,6 +77,38 @@ vi.mock('@/features/student/composables/useLessonTracking', () => ({
   useLessonTracking: (source: unknown) => useLessonTracking(source),
 }))
 
+// The card loads its own chart and has its own tests; here it is a button that opens its chart the
+// way the lesson says, so the lesson's handling of it can be checked.
+vi.mock('@/shared/components/songChart/SongChartCard.vue', async () => {
+  const { defineComponent, h, inject } = await import('vue')
+  const { SONG_CHART_OPENER } = await import('@/shared/components/songChart/songChartOpener')
+  return {
+    default: defineComponent({
+      name: 'SongChartCard',
+      props: { songChartId: { type: String, required: true } },
+      setup(props) {
+        const open = inject(SONG_CHART_OPENER, null)
+        return () => h('button', { 'data-test': 'song-chart-card', onClick: () => open?.(props.songChartId) })
+      },
+    }),
+  }
+})
+// The reader page has its own tests; here only whether the lesson shows it, and closes it.
+vi.mock('@/shared/components/songChart/SongChartScreen.vue', async () => {
+  const { defineComponent, h } = await import('vue')
+  return {
+    default: defineComponent({
+      name: 'SongChartScreen',
+      props: { songChartId: { type: String, required: true } },
+      emits: ['close'],
+      setup: (props, { emit }) => () =>
+        h('div', { 'data-test': 'song-chart-screen', 'data-song-chart-id': props.songChartId }, [
+          h('button', { 'data-test': 'close-song-chart', onClick: () => emit('close') }),
+        ]),
+    }),
+  }
+})
+
 import NodeView from '@/features/student/views/NodeView.vue'
 
 function setLesson(next: {
@@ -663,5 +695,54 @@ describe('NodeView', () => {
         expect(wrapper.findComponent({ name: 'SendToTeacher' }).exists()).toBe(false)
       },
     )
+  })
+
+  describe('a song chart in a cue', () => {
+    function songChartCue(): ExpandedContent {
+      return {
+        ...makeTimedCue('cue-chart', 30, 60),
+        content_type: 'rich_text',
+        media_url: undefined,
+        rich_content: { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-asa-branca' } }] },
+      }
+    }
+
+    async function atTheCue() {
+      setLesson({ cues: [songChartCue()] })
+      const wrapper = await mountView()
+      await playTo(wrapper, 31)
+      const pause = vi.fn()
+      Object.assign(wrapper.get('media-player').element, { pause })
+      return { wrapper, pause }
+    }
+
+    it('shows the card while the cue is on', async () => {
+      const { wrapper } = await atTheCue()
+
+      expect(wrapper.find('[data-test="song-chart-card"]').exists()).toBe(true)
+    })
+
+    it('pauses the video and opens the reader over the lesson when the card is tapped', async () => {
+      const { wrapper, pause } = await atTheCue()
+
+      await wrapper.get('[data-test="song-chart-card"]').trigger('click')
+
+      expect(pause).toHaveBeenCalled()
+      expect(wrapper.get('[data-test="song-chart-screen"]').attributes('data-song-chart-id')).toBe('chart-asa-branca')
+      expect(push).not.toHaveBeenCalled()
+    })
+
+    it('returns to the lesson, still paused, when the reader closes', async () => {
+      const { wrapper } = await atTheCue()
+      await wrapper.get('[data-test="song-chart-card"]').trigger('click')
+      const play = vi.fn()
+      Object.assign(wrapper.get('media-player').element, { play })
+
+      await wrapper.get('[data-test="close-song-chart"]').trigger('click')
+
+      expect(wrapper.find('[data-test="song-chart-screen"]').exists()).toBe(false)
+      expect(wrapper.find('media-player').exists()).toBe(true)
+      expect(play).not.toHaveBeenCalled()
+    })
   })
 })

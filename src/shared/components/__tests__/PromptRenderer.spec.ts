@@ -8,6 +8,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
 import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import SongChartCard from '@/shared/components/songChart/SongChartCard.vue'
 import { makeDiagramRef, makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import type { components } from '@/api/generated/core-domain'
 
@@ -265,6 +266,35 @@ describe('PromptRenderer', () => {
     const img = wrapper.get('img')
     expect(img.attributes('src')).toBe('https://cdn.example.com/circle-of-fifths.png')
     expect(img.attributes('alt')).toBe('Circle of fifths diagram')
+  })
+
+  describe('an embedded song chart', () => {
+    // The card loads its chart itself; its own spec covers that.
+    const stubs = { SongChartCard: true }
+
+    it('shows the card of the chart its node names, between the text around it', () => {
+      const wrapper = mount(PromptRenderer, {
+        props: {
+          document: doc([
+            { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] },
+            { type: 'songChart', attrs: { songChartId: 'chart-asa-branca' } },
+            { type: 'paragraph', content: [{ type: 'text', text: 'After' }] },
+          ]),
+        },
+        global: { stubs },
+      })
+
+      expect(wrapper.getComponent(SongChartCard).props('songChartId')).toBe('chart-asa-branca')
+      const html = wrapper.html()
+      expect(html.indexOf('Before')).toBeLessThan(html.indexOf('song-chart-card-stub'))
+      expect(html.indexOf('song-chart-card-stub')).toBeLessThan(html.indexOf('After'))
+    })
+
+    it('shows nothing for a song chart node without a chart', () => {
+      const wrapper = mount(PromptRenderer, { props: { document: doc([{ type: 'songChart', attrs: {} }]) }, global: { stubs } })
+
+      expect(wrapper.findComponent(SongChartCard).exists()).toBe(false)
+    })
   })
 
   describe('an inline diagram', () => {
