@@ -202,6 +202,7 @@ describe('ExpandedContentModal', () => {
     expect((wrapper.get('[data-test="popup-kind"]').element as HTMLSelectElement).value).toBe('rich_text')
     expect((wrapper.get('[data-test="popup-trigger-seconds"]').element as HTMLInputElement).value).toBe('5')
     expect(wrapper.findComponent(PromptEditor).props('modelValue')).toEqual(BODY)
+    expect(wrapper.findComponent(PromptEditor).props('songCharts')).toBe(true)
 
     await wrapper.get('[data-test="popup-hide-seconds"]').setValue('12')
     await wrapper.get('[data-test="popup-save"]').trigger('click')

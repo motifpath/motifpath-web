@@ -499,7 +499,7 @@ async function onSaveChallenge({
 
       <div v-else class="flex flex-col gap-2">
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.articleBodyLabel') }}</label>
-        <PromptEditor v-model="form.richContent.value" />
+        <PromptEditor v-model="form.richContent.value" song-charts />
       </div>
 
       <div class="flex flex-col gap-2 border-t border-border pt-4">

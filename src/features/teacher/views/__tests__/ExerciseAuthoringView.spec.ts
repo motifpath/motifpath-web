@@ -92,6 +92,7 @@ async function pickStimulus(wrapper: ReturnType<typeof mountView>, file: File) {
 
 async function fillMinimalTextResponse(wrapper: ReturnType<typeof mountView>) {
   await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Name the chord')
+  expect(wrapper.findComponent(PromptEditor).props('songCharts')).toBe(false)
   await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Name this chord shape'))
   await wrapper.get('[data-test="add-option"]').trigger('click')
   await wrapper.get('input[placeholder="Option text"]').setValue('G major')

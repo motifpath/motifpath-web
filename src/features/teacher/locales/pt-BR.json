@@ -78,7 +78,10 @@
     "insertDiagram": "Inserir um diagrama",
     "editDiagram": "Editar diagrama",
     "removeDiagram": "Remover diagrama",
-    "diagramUnavailable": "Este diagrama não pode ser exibido. Edite-o para escolher outro, ou remova-o."
+    "diagramUnavailable": "Este diagrama não pode ser exibido. Edite-o para escolher outro, ou remova-o.",
+    "insertSongChart": "Inserir cifra",
+    "songChart": "Cifra",
+    "removeSongChart": "Remover cifra"
   },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marcada como correta",
@@ -631,7 +634,10 @@
       "voicesError": "Não foi possível carregar os outros sons, então só o padrão do instrumento está disponível.",
       "choice": "Reprodução",
       "choiceDefault": "Padrão ({name})"
-    }
+    },
+    "sourceLabel": "Escolher de",
+    "sourceDiagrams": "Diagramas",
+    "sourceChords": "Acordes"
   },
   "mediaPickerModal": {
     "title": "Escolha uma imagem ou um diagrama",
@@ -731,5 +737,16 @@
   "pathStatus": {
     "draft": "Rascunho",
     "published": "Publicada"
+  },
+  "chordVoicingPicker": {
+    "symbolLabel": "Acorde",
+    "symbolPlaceholder": "ex.: G7"
+  },
+  "songChartPicker": {
+    "title": "Inserir uma cifra",
+    "searchPlaceholder": "Título ou artista",
+    "loadingNoun": "cifras",
+    "loadFailed": "Não foi possível carregar as cifras.",
+    "none": "Nenhuma cifra publicada encontrada."
   }
 }

@@ -243,7 +243,7 @@ const inputClass = 'w-full rounded-md border border-border bg-surface-raised px-
 
       <div v-if="isRichText" class="flex flex-col gap-1">
         <span class="text-xs text-ink-subtle">{{ t('expandedContentModal.richContentLabel') }}</span>
-        <PromptEditor v-model="richContent" />
+        <PromptEditor v-model="richContent" song-charts />
       </div>
       <div v-else-if="isDiagram" class="flex flex-col gap-2">
         <p v-if="existingStack" data-test="popup-diagram-stack-note" class="text-sm text-ink-muted">

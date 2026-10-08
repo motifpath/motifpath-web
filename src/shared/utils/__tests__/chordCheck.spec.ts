@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
-import { chordCheck, localChordCheck } from '@/features/admin/utils/chordCheck'
+import { chordCheck, localChordCheck } from '@/shared/utils/chordCheck'
 import { chordC, makeChord } from '@/shared/testUtils/songChart'
 
 type ChordSearchResult = components['schemas']['ChordSearchResult']

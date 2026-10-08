@@ -12,6 +12,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
+import SongChartPickerModal from '@/features/teacher/components/SongChartPickerModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { coloredTextPrompt, plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -451,6 +452,41 @@ describe('PromptEditor', () => {
       await nextTick()
 
       expect(diagramNodes(lastEmittedDocument(wrapper))).toHaveLength(0)
+    })
+  })
+
+  describe('song charts', () => {
+    // The picker and the card load charts themselves; their own specs cover that.
+    const stubs = { teleport: true, SongChartPickerModal: true, SongChartCard: { props: ['songChartId'], template: '<div data-test="song-chart-card" :data-song-chart-id="songChartId" />' } }
+
+    it('offers no song chart where song charts have no place, such as an exercise prompt', async () => {
+      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') }, global: { stubs } })
+      await nextTick()
+
+      expect(wrapper.find('[data-test="prompt-toolbar-song-chart"]').exists()).toBe(false)
+    })
+
+    it('inserts the picked song chart', async () => {
+      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Play along'), songCharts: true }, global: { stubs } })
+      await nextTick()
+
+      await wrapper.get('[data-test="prompt-toolbar-song-chart"]').trigger('click')
+      expect(wrapper.getComponent(SongChartPickerModal).props('open')).toBe(true)
+      wrapper.getComponent(SongChartPickerModal).vm.$emit('pick', 'chart-asa-branca')
+      await nextTick()
+
+      const nodes = lastEmittedDocument(wrapper).content
+      expect(nodes.find((n) => n.type === 'songChart')?.attrs).toEqual({ songChartId: 'chart-asa-branca' })
+      expect(wrapper.getComponent(SongChartPickerModal).props('open')).toBe(false)
+    })
+
+    it('shows an embedded song chart as its card', async () => {
+      const modelValue: PromptDocument = { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-asa-branca' } }] }
+      const wrapper = mount(PromptEditor, { props: { modelValue, songCharts: true }, global: { stubs } })
+      await nextTick()
+      await nextTick()
+
+      expect(wrapper.get('[data-test="song-chart-card"]').attributes('data-song-chart-id')).toBe('chart-asa-branca')
     })
   })
 })

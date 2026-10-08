@@ -86,11 +86,14 @@ import {
   Strikethrough,
   Table2,
   Trash2,
+  Music,
 } from 'lucide-vue-next'
 import { ref, watch } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
+import SongChartPickerModal from '@/features/teacher/components/SongChartPickerModal.vue'
+import { PromptSongChartNode } from '@/features/teacher/components/promptSongChartNode'
 import { PromptDiagramNode } from '@/features/teacher/components/promptDiagramNode'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import { parseDiagramEmbed } from '@/shared/utils/diagramEmbed'
@@ -100,7 +103,14 @@ import type { components } from '@/api/generated/core-domain'
 type PromptDocument = components['schemas']['PromptDocument']
 type DiagramRef = components['schemas']['DiagramRef']
 
-const props = defineProps<{ modelValue: PromptDocument }>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: PromptDocument
+    /** Whether the document may embed song charts: only lesson content does, never an exercise. */
+    songCharts?: boolean
+  }>(),
+  { songCharts: false },
+)
 const emit = defineEmits<{ 'update:modelValue': [document: PromptDocument] }>()
 
 const { upload } = useMediaUpload()
@@ -144,6 +154,7 @@ const editor = useEditor({
     StyledTableCell,
     TiptapImage,
     PromptDiagramNode.configure({ onEdit: editDiagram }),
+    PromptSongChartNode,
   ],
   onUpdate: ({ editor: current }) => {
     emit('update:modelValue', toWireDocument(current.getJSON()))
@@ -280,6 +291,14 @@ function setBackgroundColor(color: string | null) {
 function pickImage() {
   imageInput.value?.click()
 }
+// The song chart picker inserts the picked chart at the cursor.
+const songChartPickerOpen = ref(false)
+
+function insertSongChart(songChartId: string) {
+  editor.value?.chain().focus().insertContent({ type: 'songChart', attrs: { songChartId } }).run()
+  songChartPickerOpen.value = false
+}
+
 // The diagram picker either inserts a new diagram at the cursor or, opened
 // from a diagram's own edit button, replaces that one's ref in place.
 const diagramPickerOpen = ref(false)
@@ -553,6 +572,17 @@ async function onImagePicked(event: Event) {
         >
           <Guitar :size="16" aria-hidden="true" />
         </button>
+        <button
+          v-if="songCharts"
+          type="button"
+          data-test="prompt-toolbar-song-chart"
+          class="rounded p-1.5 text-ink-muted"
+          :title="t('promptEditor.insertSongChart')"
+          :aria-label="t('promptEditor.insertSongChart')"
+          @click="songChartPickerOpen = true"
+        >
+          <Music :size="16" aria-hidden="true" />
+        </button>
         <input
           ref="imageInput"
           type="file"
@@ -687,6 +717,12 @@ async function onImagePicked(event: Event) {
       :editing="editingDiagramPos !== null"
       @apply="applyDiagram"
       @close="diagramPickerOpen = false"
+    />
+    <SongChartPickerModal
+      v-if="songCharts"
+      :open="songChartPickerOpen"
+      @pick="insertSongChart"
+      @close="songChartPickerOpen = false"
     />
   </div>
 </template>

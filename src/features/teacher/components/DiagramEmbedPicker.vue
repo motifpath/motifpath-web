@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * Chooses a prebuilt diagram to embed — inline in rich text, as a cue, or as
- * an exercise stimulus — and how it shows: what its markers read (label
+ * an exercise stimulus — from the diagram library or, as a chord's voicing,
+ * from the chord catalog — and how it shows: what its markers read (label
  * mode) and which positions are hidden, one by one in the preview or an
  * interval at a time. The preview draws it as a student will see it, with
  * hidden positions faded so they can be shown again. An exercise stimulus's
@@ -13,6 +14,7 @@
  */
 import { computed, ref, watch } from 'vue'
 
+import ChordVoicingPickerList from '@/features/teacher/components/ChordVoicingPickerList.vue'
 import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.vue'
 import DiagramRefControls from '@/features/teacher/components/DiagramRefControls.vue'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
@@ -38,6 +40,8 @@ const { localizedName } = useLocalizedName()
 
 const draft = useDiagramEmbedDraft(props.initial)
 const step = ref<'list' | 'initial' | 'configure'>(props.initial ? 'initial' : 'list')
+/** Where a new diagram is picked from: the diagram library, or a chord's voicings in the chord catalog. */
+const source = ref<'diagrams' | 'chords'>('diagrams')
 const { instruments } = useListInstruments()
 
 const initialLoad = props.initial ? useDiagram(props.initial.diagram_id) : null
@@ -95,7 +99,32 @@ watch(
       </div>
     </template>
 
-    <DiagramPickerList v-else-if="step === 'list'" @select="choose" />
+    <template v-else-if="step === 'list'">
+      <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1" role="group" :aria-label="t('diagramEmbedPicker.sourceLabel')">
+        <button
+          type="button"
+          data-test="embed-picker-source-diagrams"
+          :aria-pressed="source === 'diagrams'"
+          class="rounded-md px-3 py-1 text-xs font-semibold"
+          :class="source === 'diagrams' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="source = 'diagrams'"
+        >
+          {{ t('diagramEmbedPicker.sourceDiagrams') }}
+        </button>
+        <button
+          type="button"
+          data-test="embed-picker-source-chords"
+          :aria-pressed="source === 'chords'"
+          class="rounded-md px-3 py-1 text-xs font-semibold"
+          :class="source === 'chords' ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="source = 'chords'"
+        >
+          {{ t('diagramEmbedPicker.sourceChords') }}
+        </button>
+      </div>
+      <ChordVoicingPickerList v-if="source === 'chords'" @select="choose" />
+      <DiagramPickerList v-else @select="choose" />
+    </template>
 
     <div v-else-if="step === 'configure' && draft.diagram.value" data-test="embed-picker-config" class="flex flex-col gap-3">
       <div class="flex items-center justify-between gap-2">

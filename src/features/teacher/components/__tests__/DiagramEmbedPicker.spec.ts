@@ -218,4 +218,40 @@ describe('DiagramEmbedPicker', () => {
     expect(wrapper.find('[data-test="embed-picker-tool-correct"]').exists()).toBe(false)
     expect(lastChange(wrapper)?.correct_position_ids).toBeUndefined()
   })
+
+  describe('Chords', () => {
+    // The chord list has its own tests; here it hands back a voicing's diagram when picked.
+    const voicingDiagram = makeFrettedDiagram({ diagram_id: 'd-g-open', names: { en: 'G — open' }, purpose: 'chord_voicing' })
+    const stubs = {
+      ChordVoicingPickerList: {
+        emits: ['select'],
+        setup: (_: unknown, { emit }: { emit: (event: 'select', diagram: Diagram) => void }) => ({ pick: () => emit('select', voicingDiagram) }),
+        template: '<button data-test="pick-voicing" @click="pick" />',
+      },
+    }
+
+    it('offers chords from the catalog beside the diagrams', async () => {
+      serve([penta])
+      const wrapper = mount(DiagramEmbedPicker, { props: { initial: null }, global: { stubs } })
+      await flushPromises()
+
+      await wrapper.get('[data-test="embed-picker-source-chords"]').trigger('click')
+
+      expect(wrapper.find('[data-test="pick-voicing"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="diagram-option"]').exists()).toBe(false)
+    })
+
+    it("embeds the picked voicing's diagram, configured like any diagram", async () => {
+      serve([penta])
+      const wrapper = mount(DiagramEmbedPicker, { props: { initial: null }, global: { stubs } })
+      await flushPromises()
+      await wrapper.get('[data-test="embed-picker-source-chords"]').trigger('click')
+
+      await wrapper.get('[data-test="pick-voicing"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="embed-picker-name"]').text()).toBe('G — open')
+      expect(lastChange(wrapper)?.diagram_id).toBe('d-g-open')
+    })
+  })
 })

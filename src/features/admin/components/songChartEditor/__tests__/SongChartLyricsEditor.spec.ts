@@ -8,7 +8,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import type { components } from '@/api/generated/core-domain'
 import SongChartLyricsEditor from '@/features/admin/components/songChartEditor/SongChartLyricsEditor.vue'
-import { clearChordLookups } from '@/features/admin/composables/useChordLookup'
+import { clearChordLookups } from '@/shared/composables/useChordLookup'
 import { chordC, chordG, gEShape, makeAnchor, makeLearnerSongChart, makeLyricLine, makeSection } from '@/shared/testUtils/songChart'
 
 /** The catalog has G and C; anything else that parses isn't in it. */

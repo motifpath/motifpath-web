@@ -17,7 +17,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { SECTION_KINDS, songChartExtensions } from '@/features/admin/components/songChartEditor/extensions'
-import { useChordLookup } from '@/features/admin/composables/useChordLookup'
+import { useChordLookup } from '@/shared/composables/useChordLookup'
 import { toSavedDocument } from '@/features/admin/utils/songChartEditorDocument'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { voicingNames } from '@/shared/utils/songChartReading'

@@ -78,7 +78,10 @@
     "insertDiagram": "Insert a diagram",
     "editDiagram": "Edit diagram",
     "removeDiagram": "Remove diagram",
-    "diagramUnavailable": "This diagram can't be shown. Edit it to choose another, or remove it."
+    "diagramUnavailable": "This diagram can't be shown. Edit it to choose another, or remove it.",
+    "insertSongChart": "Insert song chart",
+    "songChart": "Song chart",
+    "removeSongChart": "Remove song chart"
   },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marked correct",
@@ -631,7 +634,10 @@
       "voicesError": "We couldn't load the other sounds, so only the instrument's default is offered.",
       "choice": "Playback",
       "choiceDefault": "Default ({name})"
-    }
+    },
+    "sourceLabel": "Pick from",
+    "sourceDiagrams": "Diagrams",
+    "sourceChords": "Chords"
   },
   "mediaPickerModal": {
     "title": "Choose an image or a diagram",
@@ -731,5 +737,16 @@
   "pathStatus": {
     "draft": "Draft",
     "published": "Published"
+  },
+  "chordVoicingPicker": {
+    "symbolLabel": "Chord",
+    "symbolPlaceholder": "e.g. G7"
+  },
+  "songChartPicker": {
+    "title": "Insert a song chart",
+    "searchPlaceholder": "Title or artist",
+    "loadingNoun": "song charts",
+    "loadFailed": "Couldn't load the song charts.",
+    "none": "No published song chart matches."
   }
 }

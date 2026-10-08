@@ -82,9 +82,9 @@ export function makeVoicingDiagram(voicing: ChordVoicing): Diagram {
 }
 
 export const gOpen = makeVoicing('g-open', 'chord-g')
-export const gEShape = makeVoicing('g-e-shape-3', 'chord-g', { recommended_rank: 2, shape_family: 'e_shape' })
+export const gEShape = makeVoicing('g-e-shape-3', 'chord-g', { recommended_rank: 2, shape_family: 'e_shape', fret_window: { lowest_fret: 3, highest_fret: 5 } })
 export const cOpen = makeVoicing('c-open', 'chord-c')
-export const cBarre = makeVoicing('c-a-shape-3', 'chord-c', { recommended_rank: 2, shape_family: 'a_shape' })
+export const cBarre = makeVoicing('c-a-shape-3', 'chord-c', { recommended_rank: 2, shape_family: 'a_shape', fret_window: { lowest_fret: 3, highest_fret: 5 } })
 export const chordG = makeChord('chord-g', 'G', [gOpen, gEShape], { root_pitch_class: 7 })
 export const chordC = makeChord('chord-c', 'C', [cOpen, cBarre])
 
