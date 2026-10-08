@@ -14,6 +14,7 @@ export type NavLabelKey =
   | 'nav.exercises'
   | 'nav.diagrams'
   | 'nav.knowledgeMap'
+  | 'nav.songCharts'
 
 export interface NavSection {
   /** Route name the section links to. */
@@ -40,7 +41,10 @@ export const TEACHER_SECTIONS: NavSection[] = [
 ]
 
 /** The sections that change what everyone else authors against, for admins only. */
-export const ADMIN_SECTIONS: NavSection[] = [{ name: 'admin-knowledge-map', labelKey: 'nav.knowledgeMap' }]
+export const ADMIN_SECTIONS: NavSection[] = [
+  { name: 'admin-knowledge-map', labelKey: 'nav.knowledgeMap' },
+  { name: 'admin-song-charts', labelKey: 'nav.songCharts' },
+]
 
 /** The authoring sections role can reach: the teacher ones, plus the admin ones for an admin. */
 export function authoringSectionsFor(role: Role | undefined): NavSection[] {

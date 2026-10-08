@@ -95,5 +95,25 @@
     "notFoundMessage": "Nenhuma cifra tem este link. Ela pode ter sido excluída.",
     "loadFailed": "Não foi possível carregar a cifra.",
     "note": "Prévia do rascunho, como um aluno a leria. Nada do que você fizer aqui é registrado."
+  },
+  "songChartList": {
+    "heading": "Cifras",
+    "newChart": "Nova cifra",
+    "searchLabel": "Buscar",
+    "searchPlaceholder": "Título ou artista",
+    "statusLabel": "Situação",
+    "allStatuses": "Todas",
+    "status": {
+      "draft": "Rascunho",
+      "published": "Publicada",
+      "withdrawn": "Retirada"
+    },
+    "publishedAt": "Publicada · revisão {revision}",
+    "loadingNoun": "cifras",
+    "loadFailed": "Não foi possível carregar as cifras.",
+    "noMatchesHeading": "Nenhuma cifra encontrada",
+    "noMatchesMessage": "Tente outro título ou artista, ou outra situação.",
+    "emptyHeading": "Nenhuma cifra ainda",
+    "emptyMessage": "Comece escrevendo uma ou importando ChordPro."
   }
 }

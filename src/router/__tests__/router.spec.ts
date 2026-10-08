@@ -420,6 +420,29 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it.each([
+    ['/admin/song-charts', 'admin-song-charts'],
+    ['/admin/song-charts/chart-1/preview', 'admin-song-chart-preview'],
+  ])('lets a registered admin reach %s', async (path, name) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('admin')
+
+    await router.push(path)
+
+    expect(router.currentRoute.value.name).toBe(name)
+  })
+
+  it.each(['teacher', 'student'] as const)('sends a registered %s away from the song charts to home', async (role) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge(role)
+
+    await router.push('/admin/song-charts')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
   it('resolves an unknown path to the not-found route', async () => {
     await router.push('/no/such/page')
 

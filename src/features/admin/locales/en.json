@@ -95,5 +95,25 @@
     "notFoundMessage": "No song chart has this link. It may have been deleted.",
     "loadFailed": "Couldn't load the song chart.",
     "note": "Preview of the draft, as a learner would read it. Nothing you do here is recorded."
+  },
+  "songChartList": {
+    "heading": "Song charts",
+    "newChart": "New song chart",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Title or artist",
+    "statusLabel": "Status",
+    "allStatuses": "All",
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "withdrawn": "Withdrawn"
+    },
+    "publishedAt": "Published · revision {revision}",
+    "loadingNoun": "song charts",
+    "loadFailed": "Couldn't load the song charts.",
+    "noMatchesHeading": "No song chart matches",
+    "noMatchesMessage": "Try another title or artist, or another status.",
+    "emptyHeading": "No song charts yet",
+    "emptyMessage": "Start one by writing it or importing ChordPro."
   }
 }

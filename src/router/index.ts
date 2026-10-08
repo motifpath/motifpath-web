@@ -330,6 +330,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/admin/views/KnowledgeMapEditorView.vue'),
   },
   {
+    path: '/admin/song-charts',
+    name: 'admin-song-charts',
+    meta: { requiresAuth: true, requiresRole: ['admin'] },
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/SongChartListView.vue'),
+  },
+  {
     path: '/admin/song-charts/:songChartId/preview',
     name: 'admin-song-chart-preview',
     meta: { requiresAuth: true, requiresRole: ['admin'] },
