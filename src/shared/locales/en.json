@@ -248,11 +248,9 @@
     "key": "Key {key}",
     "capo": "Capo {fret}",
     "tempo": "{bpm} BPM",
-    "markPlayed": "Played it",
+    "markPlayed": "I played it",
     "played": "Played",
     "voicings": "Voicings",
-    "voicingTab": "Voicing {n}",
-    "playbacks": "Playbacks",
     "closeSheet": "Close",
     "voicingUnavailable": "This voicing can't be shown.",
     "missingBass": "Showing {chord}: the bass {bass} isn't in these voicings.",
@@ -264,6 +262,12 @@
       "outro": "Outro",
       "instrumental": "Instrumental",
       "other": "Song"
-    }
+    },
+    "openVoicing": "Open",
+    "foldCard": "Fold",
+    "unfoldCard": "Unfold",
+    "view": "View",
+    "boxView": "Box",
+    "neckView": "Neck"
   }
 }

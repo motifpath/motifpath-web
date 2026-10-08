@@ -249,10 +249,8 @@
     "capo": "Capotraste {fret}",
     "tempo": "{bpm} BPM",
     "markPlayed": "Toquei",
-    "played": "Tocado",
+    "played": "Tocada",
     "voicings": "Formas",
-    "voicingTab": "Forma {n}",
-    "playbacks": "Execuções",
     "closeSheet": "Fechar",
     "voicingUnavailable": "Não foi possível mostrar esta forma.",
     "missingBass": "Mostrando {chord}: o baixo {bass} não está nestas formas.",
@@ -264,6 +262,12 @@
       "outro": "Final",
       "instrumental": "Instrumental",
       "other": "Música"
-    }
+    },
+    "openVoicing": "Solta",
+    "foldCard": "Recolher",
+    "unfoldCard": "Expandir",
+    "view": "Visualização",
+    "boxView": "Diagrama",
+    "neckView": "Braço"
   }
 }
