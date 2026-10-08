@@ -422,6 +422,8 @@ describe('router', () => {
 
   it.each([
     ['/admin/song-charts', 'admin-song-charts'],
+    ['/admin/song-charts/new', 'admin-song-chart-new'],
+    ['/admin/song-charts/chart-1', 'admin-song-chart'],
     ['/admin/song-charts/chart-1/preview', 'admin-song-chart-preview'],
   ])('lets a registered admin reach %s', async (path, name) => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })

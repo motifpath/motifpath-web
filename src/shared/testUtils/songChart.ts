@@ -165,3 +165,24 @@ export function makeSongChart(
 export function makeRevisionSummary(revision: number, title = 'Asa Branca') {
   return { revision_number: revision, title, language: 'pt_BR', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
 }
+
+/** A published revision of "Asa Branca", published and confirmed by Ana. */
+export function makeRevision(revision: number): components['schemas']['SongChartRevision'] {
+  const learner = makeLearnerSongChart()
+  return {
+    song_chart_id: learner.song_chart_id,
+    revision_number: revision,
+    title: learner.title,
+    artist: learner.artist,
+    language: learner.language,
+    concert_key: learner.concert_key,
+    capo_fret: learner.capo_fret,
+    tempo_bpm: learner.tempo_bpm,
+    time_signature: learner.time_signature,
+    tuning_fingerprint: learner.tuning_fingerprint,
+    body: learner.body,
+    rights_confirmation: { confirmed_by: ana, confirmed_at: '2026-10-07T12:00:00Z' },
+    published_by: ana,
+    published_at: '2026-10-07T12:00:00Z',
+  }
+}
