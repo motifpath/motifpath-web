@@ -1,9 +1,49 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const GET = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { GET }, eventApi: {} }),
+}))
 
 import type { components } from '@/api/generated/core-domain'
 import SongChartLyricsEditor from '@/features/admin/components/songChartEditor/SongChartLyricsEditor.vue'
-import { makeAnchor, makeLearnerSongChart, makeLyricLine, makeSection } from '@/shared/testUtils/songChart'
+import { clearChordLookups } from '@/features/admin/composables/useChordLookup'
+import { chordC, chordG, gEShape, makeAnchor, makeLearnerSongChart, makeLyricLine, makeSection } from '@/shared/testUtils/songChart'
+
+/** The catalog has G and C; anything else that parses isn't in it. */
+function serveCatalog() {
+  GET.mockImplementation((_path: string, init: { params: { query: { symbol: string } } }) => {
+    const symbol = init.params.query.symbol
+    const chord = symbol === 'G' ? chordG : symbol === 'C' ? chordC : null
+    return Promise.resolve({ data: { written_symbol: symbol, status: 'parsed', parsed: null, warning: null, chord, chord_without_bass: null } })
+  })
+}
+
+beforeEach(() => {
+  GET.mockReset()
+  serveCatalog()
+  clearChordLookups()
+})
+
+const plainLine: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Ciranda', null])])] }
+
+/** The anchors of the last emitted document, as [written symbol, text, picked voicing]. */
+function emittedChords(wrapper: ReturnType<typeof mountEditor>): Array<[string, string, string | null]> {
+  return lastEmitted(wrapper).content.flatMap((s) =>
+    s.content.flatMap((line) =>
+      line.type === 'lyricLine'
+        ? line.content.flatMap((r) => (r.marks ?? []).map((m): [string, string, string | null] => [m.attrs.writtenSymbol, r.text, m.attrs.chordVoicingId]))
+        : [],
+    ),
+  )
+}
+
+async function writeChord(wrapper: ReturnType<typeof mountEditor>, symbol: string) {
+  await wrapper.get('[data-test="chord-symbol-input"]').setValue(symbol)
+  await wrapper.get('[data-test="put-chord"]').trigger('click')
+  await flushPromises()
+}
 
 type SongChartDocument = components['schemas']['SongChartDocument']
 
@@ -82,5 +122,78 @@ describe('SongChartLyricsEditor', () => {
 
     expect(wrapper.findAll('section[data-kind="verse"]')).toHaveLength(1)
     expect(wrapper.findAll('p[data-lyric-line]')).toHaveLength(1)
+  })
+
+  describe('chords', () => {
+    it('puts a chord on the selected text', async () => {
+      const wrapper = mountEditor(plainLine)
+      await flushPromises()
+      await wrapper.get('.ProseMirror').trigger('keydown', { key: 'a', ctrlKey: true })
+
+      await writeChord(wrapper, 'D')
+
+      expect(emittedChords(wrapper)).toEqual([['D', 'Ciranda', null]])
+    })
+
+    it('changes the chord at the cursor, clearing a voicing picked for the old one', async () => {
+      const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Quando', makeAnchor('a1', 'G', { chordVoicingId: gEShape.chord_voicing_id })])])] }
+      const wrapper = mountEditor(doc)
+      await flushPromises()
+
+      const input = wrapper.get('[data-test="chord-symbol-input"]').element
+      expect(input instanceof HTMLInputElement && input.value).toBe('G')
+      await writeChord(wrapper, 'C')
+
+      expect(emittedChords(wrapper)).toEqual([['C', 'Quando', null]])
+    })
+
+    it('removes the chord at the cursor', async () => {
+      const wrapper = mountEditor()
+      await flushPromises()
+
+      await wrapper.get('[data-test="remove-chord"]').trigger('click')
+      await flushPromises()
+
+      expect(emittedChords(wrapper).map(([symbol]) => symbol)).toEqual(['C', 'G'])
+    })
+
+    it.each([
+      ['H7', 'not_a_chord', 'true'],
+      ['C#7', 'not_in_catalog', 'true'],
+      ['N.C.', 'no_chord', 'false'],
+    ])('marks %s as it is written', async (symbol, kind, blocks) => {
+      const wrapper = mountEditor(plainLine)
+      await flushPromises()
+
+      await wrapper.get('[data-test="chord-symbol-input"]').setValue(symbol)
+      await flushPromises()
+
+      const status = wrapper.get('[data-test="chord-status"]')
+      expect(status.attributes('data-kind')).toBe(kind)
+      expect(status.attributes('data-blocks')).toBe(blocks)
+    })
+
+    it('lists the chords in the lyrics that block publishing', async () => {
+      const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['La ', makeAnchor('a1', 'H7')], ['lo', makeAnchor('a2', 'G')])])] }
+      const wrapper = mountEditor(doc)
+      await flushPromises()
+
+      expect(wrapper.findAll('[data-test="chord-to-fix"]').map((c) => c.attributes('data-symbol'))).toEqual(['H7'])
+    })
+
+    it("offers the chord's voicings, the best one used until another is picked", async () => {
+      const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Quando', makeAnchor('a1', 'G')])])] }
+      const wrapper = mountEditor(doc)
+      await flushPromises()
+
+      const options = wrapper.findAll('[data-test="voicing-option"]')
+      expect(options.map((o) => o.attributes('data-voicing-id'))).toEqual(['', ...chordG.voicings.map((v) => v.chord_voicing_id)])
+      expect(options[0]!.attributes('aria-checked')).toBe('true')
+
+      await options[2]!.trigger('click')
+      await flushPromises()
+
+      expect(emittedChords(wrapper)).toEqual([['G', 'Quando', gEShape.chord_voicing_id]])
+    })
   })
 })

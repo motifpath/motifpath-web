@@ -4,19 +4,26 @@
  * lines with each chord over its word or syllable, and comment lines. It emits the chart document
  * each edit leaves (lines and sections with nothing in them left out), and shows a document given
  * from outside, such as an import, in place of what it held.
+ *
+ * A chord is put on the selected text, or changed or removed at the cursor. Each symbol is
+ * checked as it is written, the same way the server reads it, and the chords that stop the chart
+ * from being published are listed. A chord the catalog has offers its voicings; until the author
+ * picks one, learners see the best one first.
  */
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import type { JSONContent } from '@tiptap/core'
-import { MessageSquare, Plus } from 'lucide-vue-next'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import type { Editor, JSONContent } from '@tiptap/core'
+import { MessageSquare, Music, Plus, X } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { SECTION_KINDS, songChartExtensions } from '@/features/admin/components/songChartEditor/extensions'
+import { useChordLookup } from '@/features/admin/composables/useChordLookup'
 import { toSavedDocument } from '@/features/admin/utils/songChartEditorDocument'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type SongChartDocument = components['schemas']['SongChartDocument']
 type SectionKind = (typeof SECTION_KINDS)[number]
+type Anchor = components['schemas']['SongChartChordAnchor']['attrs']
 
 const model = defineModel<SongChartDocument>({ required: true })
 
@@ -40,7 +47,8 @@ const editor = useEditor({
     lastEmitted = JSON.stringify(doc)
     model.value = doc
   },
-  onTransaction: () => readSection(),
+  onCreate: ({ editor: e }) => readPosition(e),
+  onTransaction: ({ editor: e }) => readPosition(e),
 })
 
 watch(model, (doc) => {
@@ -49,9 +57,14 @@ watch(model, (doc) => {
   editor.value.commands.setContent(editable(doc), { emitUpdate: false })
 })
 
+/** Reads what's at the cursor: its section, and the chord it's on. */
+function readPosition(e: Editor) {
+  readSection(e)
+  readChord(e)
+}
+
 /** The section the cursor is in: its depth in the document, and its node. */
-function currentSection() {
-  const e = editor.value
+function currentSection(e: Editor | undefined = editor.value) {
   if (!e) return null
   const { $from } = e.state.selection
   for (let depth = $from.depth; depth > 0; depth--) {
@@ -60,8 +73,8 @@ function currentSection() {
   return null
 }
 
-function readSection() {
-  const section = currentSection()
+function readSection(e: Editor) {
+  const section = currentSection(e)
   if (!section) return
   const kind = section.node.attrs.kind
   sectionKind.value = SECTION_KINDS.find((k) => k === kind) ?? 'other'
@@ -94,6 +107,105 @@ function addComment() {
   if (!section || !e) return
   const at = section.$from.after(section.depth + 1)
   e.chain().insertContentAt(at, { type: 'comment' }).setTextSelection(at + 1).focus().run()
+}
+
+// ── Chords ───────────────────────────────────────────────────────────────────
+
+const { lookUp, checkOf } = useChordLookup()
+const chordSymbol = ref('')
+const chordAtCursor = ref<Anchor | null>(null)
+const hasSelection = ref(false)
+
+function text(value: unknown): string | null {
+  return typeof value === 'string' ? value : null
+}
+
+/**
+ * The attributes of the chord the cursor is on, or null. A cursor just before a chord's word is
+ * on that chord too: the chord sits at the start of its word, where an author clicks.
+ */
+function chordAttrsAtCursor(e: Editor): Record<string, unknown> | null {
+  if (e.isActive('chordAnchor')) return e.getAttributes('chordAnchor')
+  const { selection } = e.state
+  if (!selection.empty) return null
+  const mark = selection.$from.nodeAfter?.marks.find((m) => m.type.name === 'chordAnchor')
+  return mark ? mark.attrs : null
+}
+
+function readChord(e: Editor) {
+  hasSelection.value = !e.state.selection.empty
+  const before = chordAtCursor.value
+  const attrs = chordAttrsAtCursor(e)
+  if (attrs) {
+    chordAtCursor.value = {
+      anchorId: text(attrs.anchorId) ?? '',
+      writtenSymbol: text(attrs.writtenSymbol) ?? '',
+      chordDefinitionId: text(attrs.chordDefinitionId),
+      chordVoicingId: text(attrs.chordVoicingId),
+    }
+    if (before?.anchorId !== chordAtCursor.value.anchorId) chordSymbol.value = chordAtCursor.value.writtenSymbol
+  } else {
+    chordAtCursor.value = null
+    if (before) chordSymbol.value = ''
+  }
+}
+
+/** Every chord written in the lyrics, once each. */
+const writtenSymbols = computed(() => {
+  const symbols = model.value.content.flatMap((s) =>
+    s.content.flatMap((line) => (line.type === 'lyricLine' ? line.content.flatMap((r) => (r.marks ?? []).map((m) => m.attrs.writtenSymbol)) : [])),
+  )
+  return [...new Set(symbols)]
+})
+
+watch(
+  [chordSymbol, writtenSymbols],
+  ([symbol, symbols]) => {
+    if (symbol.trim()) lookUp(symbol.trim())
+    symbols.forEach(lookUp)
+  },
+  { immediate: true },
+)
+
+const typedCheck = computed(() => (chordSymbol.value.trim() ? checkOf(chordSymbol.value.trim()) : null))
+const chordsToFix = computed(() => writtenSymbols.value.filter((symbol) => checkOf(symbol)?.blocks))
+const voicingsAtCursor = computed(() => (chordAtCursor.value ? (checkOf(chordAtCursor.value.writtenSymbol)?.chord?.voicings ?? []) : []))
+
+function nextAnchorId(): string {
+  const used = model.value.content.flatMap((s) =>
+    s.content.flatMap((line) => (line.type === 'lyricLine' ? line.content.flatMap((r) => (r.marks ?? []).map((m) => m.attrs.anchorId)) : [])),
+  )
+  const highest = Math.max(0, ...used.map((id) => Number(/^a(\d+)$/.exec(id)?.[1] ?? 0)))
+  return `a${highest + 1}`
+}
+
+function putChord() {
+  const e = editor.value
+  const symbol = chordSymbol.value.trim()
+  if (!e || !symbol) return
+  const current = chordAtCursor.value
+  if (current) {
+    e.chain()
+      .focus()
+      .extendMarkRange('chordAnchor')
+      .setMark('chordAnchor', {
+        ...current,
+        writtenSymbol: symbol,
+        chordDefinitionId: symbol === current.writtenSymbol ? current.chordDefinitionId : null,
+        chordVoicingId: symbol === current.writtenSymbol ? current.chordVoicingId : null,
+      })
+      .run()
+  } else if (hasSelection.value) {
+    e.chain().focus().setMark('chordAnchor', { anchorId: nextAnchorId(), writtenSymbol: symbol, chordDefinitionId: null, chordVoicingId: null }).run()
+  }
+}
+
+function removeChord() {
+  editor.value?.chain().focus().extendMarkRange('chordAnchor').unsetMark('chordAnchor').run()
+}
+
+function pickVoicing(voicingId: string | null) {
+  editor.value?.chain().focus().extendMarkRange('chordAnchor').updateAttributes('chordAnchor', { chordVoicingId: voicingId }).run()
 }
 
 onBeforeUnmount(() => editor.value?.destroy())
@@ -141,6 +253,86 @@ onBeforeUnmount(() => editor.value?.destroy())
       >
         <MessageSquare :size="14" aria-hidden="true" />{{ t('songChartEditor.addComment') }}
       </button>
+    </div>
+    <div class="flex flex-col gap-2 rounded-md border border-border bg-surface-sunken p-2">
+      <div class="flex flex-wrap items-end gap-2">
+        <label class="flex flex-col gap-1 text-xs font-semibold text-ink-subtle">
+          {{ t('songChartEditor.chord') }}
+          <input
+            v-model="chordSymbol"
+            data-test="chord-symbol-input"
+            type="text"
+            maxlength="32"
+            :placeholder="t('songChartEditor.chordPlaceholder')"
+            class="w-28 rounded-md border border-border bg-surface px-2 py-1 font-mono text-sm text-ink"
+            @keydown.enter.prevent="putChord"
+          />
+        </label>
+        <button
+          type="button"
+          data-test="put-chord"
+          class="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink disabled:opacity-50"
+          :disabled="!chordSymbol.trim() || (!hasSelection && !chordAtCursor)"
+          @click="putChord"
+        >
+          <Music :size="14" aria-hidden="true" />{{ chordAtCursor ? t('songChartEditor.changeChord') : t('songChartEditor.putChord') }}
+        </button>
+        <button
+          v-if="chordAtCursor"
+          type="button"
+          data-test="remove-chord"
+          class="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink"
+          @click="removeChord"
+        >
+          <X :size="14" aria-hidden="true" />{{ t('songChartEditor.removeChord') }}
+        </button>
+        <p
+          v-if="typedCheck"
+          data-test="chord-status"
+          :data-kind="typedCheck.kind"
+          :data-blocks="String(typedCheck.blocks)"
+          class="text-xs"
+          :class="typedCheck.blocks ? 'text-danger' : 'text-ink-muted'"
+        >
+          {{ t(`songChartEditor.chordCheck.${typedCheck.kind}`) }}
+          <span v-if="typedCheck.blocks">({{ t('songChartEditorView.blocksPublishing') }})</span>
+        </p>
+        <p v-else-if="!hasSelection && !chordAtCursor" class="text-xs text-ink-subtle">{{ t('songChartEditor.selectToPut') }}</p>
+      </div>
+
+      <div v-if="voicingsAtCursor.length" role="radiogroup" :aria-label="t('songChart.voicings')" class="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          role="radio"
+          data-test="voicing-option"
+          data-voicing-id=""
+          :aria-checked="chordAtCursor?.chordVoicingId === null"
+          class="rounded-md border px-2.5 py-1 text-xs"
+          :class="chordAtCursor?.chordVoicingId === null ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink'"
+          @click="pickVoicing(null)"
+        >
+          {{ t('songChartEditor.bestVoicing') }}
+        </button>
+        <button
+          v-for="(v, i) in voicingsAtCursor"
+          :key="v.chord_voicing_id"
+          type="button"
+          role="radio"
+          data-test="voicing-option"
+          :data-voicing-id="v.chord_voicing_id"
+          :aria-checked="chordAtCursor?.chordVoicingId === v.chord_voicing_id"
+          class="rounded-md border px-2.5 py-1 text-xs"
+          :class="chordAtCursor?.chordVoicingId === v.chord_voicing_id ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink'"
+          @click="pickVoicing(v.chord_voicing_id)"
+        >
+          {{ t('songChart.voicingTab', { n: i + 1 }) }}
+        </button>
+      </div>
+
+      <p v-if="chordsToFix.length" class="text-xs text-danger">
+        {{ t('songChartEditor.chordsToFix') }}
+        <span v-for="symbol in chordsToFix" :key="symbol" data-test="chord-to-fix" :data-symbol="symbol" class="ml-1 font-mono font-semibold">{{ symbol }}</span>
+      </p>
     </div>
     <EditorContent :editor="editor" class="rounded-md border border-border bg-surface-raised px-4 py-3" />
   </div>
