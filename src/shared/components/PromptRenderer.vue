@@ -3,6 +3,7 @@ import { createCommentVNode, h } from 'vue'
 import type { FunctionalComponent, VNode } from 'vue'
 
 import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import SongChartCard from '@/shared/components/songChart/SongChartCard.vue'
 import { parseDiagramEmbed } from '@/shared/utils/diagramEmbed'
 import type { components } from '@/api/generated/core-domain'
 
@@ -175,6 +176,11 @@ function renderNode(node: PromptNode): VNode {
       // A diagram node has no text of its own, so a malformed one leaves nothing behind.
       const embed = parseDiagramEmbed(node.attrs?.diagramRef, node.attrs?.diagramStackRef)
       return embed ? h(EmbeddedDiagram, { embed, class: 'my-1' }) : createCommentVNode('diagram')
+    }
+    case 'songChart': {
+      // A song chart node has no text of its own either; a malformed one leaves nothing behind.
+      const songChartId = attrString(node.attrs, 'songChartId')
+      return songChartId ? h(SongChartCard, { songChartId, class: 'my-1' }) : createCommentVNode('songChart')
     }
     default:
       // An unrecognized node type (schema drift between backend and

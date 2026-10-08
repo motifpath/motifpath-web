@@ -5,7 +5,7 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
-import { usePublishedSongChart } from '@/features/student/composables/usePublishedSongChart'
+import { usePublishedSongChart } from '@/shared/composables/usePublishedSongChart'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { makeLearnerSongChart } from '@/shared/testUtils/songChart'
 

@@ -77,6 +77,14 @@ const VIDEO_MIN_PX = 320
 
 const playerEl = ref<HTMLElement | null>(null)
 
+/** Pauses the video where it is, for something the lesson opens over it. */
+function pause(): void {
+  const player = playerEl.value
+  if (player && 'pause' in player && typeof player.pause === 'function') player.pause()
+}
+
+defineExpose({ pause })
+
 function asideMaxPx(): number {
   const playerWidth = playerEl.value?.getBoundingClientRect().width
   if (!playerWidth) return ASIDE_MAX_PX

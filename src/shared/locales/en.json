@@ -268,7 +268,8 @@
     "unfoldCard": "Unfold",
     "view": "View",
     "boxView": "Box",
-    "neckView": "Neck"
+    "neckView": "Neck",
+    "openChart": "Open the song"
   },
   "songChartPage": {
     "close": "Close",
