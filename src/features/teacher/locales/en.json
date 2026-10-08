@@ -631,7 +631,10 @@
       "voicesError": "We couldn't load the other sounds, so only the instrument's default is offered.",
       "choice": "Playback",
       "choiceDefault": "Default ({name})"
-    }
+    },
+    "sourceLabel": "Pick from",
+    "sourceDiagrams": "Diagrams",
+    "sourceChords": "Chords"
   },
   "mediaPickerModal": {
     "title": "Choose an image or a diagram",
@@ -731,5 +734,9 @@
   "pathStatus": {
     "draft": "Draft",
     "published": "Published"
+  },
+  "chordVoicingPicker": {
+    "symbolLabel": "Chord",
+    "symbolPlaceholder": "e.g. G7"
   }
 }

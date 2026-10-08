@@ -631,7 +631,10 @@
       "voicesError": "Não foi possível carregar os outros sons, então só o padrão do instrumento está disponível.",
       "choice": "Reprodução",
       "choiceDefault": "Padrão ({name})"
-    }
+    },
+    "sourceLabel": "Escolher de",
+    "sourceDiagrams": "Diagramas",
+    "sourceChords": "Acordes"
   },
   "mediaPickerModal": {
     "title": "Escolha uma imagem ou um diagrama",
@@ -731,5 +734,9 @@
   "pathStatus": {
     "draft": "Rascunho",
     "published": "Publicada"
+  },
+  "chordVoicingPicker": {
+    "symbolLabel": "Acorde",
+    "symbolPlaceholder": "ex.: G7"
   }
 }
