@@ -306,6 +306,7 @@ describe('ContentAuthoringView', () => {
 
       expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(false)
       expect(wrapper.findComponent(PromptEditor).exists()).toBe(true)
+      expect(wrapper.findComponent(PromptEditor).props('songCharts')).toBe(true)
     })
 
     it('posts an article with rich_content and no media_url', async () => {
