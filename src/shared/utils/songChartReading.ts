@@ -43,3 +43,18 @@ export function missingBass(anchor: Anchor, chord: ChordDefinition): string | nu
   if (chord.bass !== null) return null
   return readChordSymbol(anchor.writtenSymbol).parsed?.bass ?? null
 }
+
+/**
+ * Each voicing's name, by where it sits on the neck: `open` for an open voicing, else the fret it
+ * starts on ("3fr"). Voicings that sit at the same place are numbered after the first ("3fr · 2"),
+ * so each name is its own.
+ */
+export function voicingNames(voicings: ChordVoicing[], open: string): string[] {
+  const seen = new Map<string, number>()
+  return voicings.map((v) => {
+    const base = v.fret_window.lowest_fret === 0 ? open : `${v.fret_window.lowest_fret}fr`
+    const count = (seen.get(base) ?? 0) + 1
+    seen.set(base, count)
+    return count === 1 ? base : `${base} · ${count}`
+  })
+}

@@ -20,6 +20,7 @@ import { SECTION_KINDS, songChartExtensions } from '@/features/admin/components/
 import { useChordLookup } from '@/features/admin/composables/useChordLookup'
 import { toSavedDocument } from '@/features/admin/utils/songChartEditorDocument'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { voicingNames } from '@/shared/utils/songChartReading'
 
 type SongChartDocument = components['schemas']['SongChartDocument']
 type SectionKind = (typeof SECTION_KINDS)[number]
@@ -170,6 +171,7 @@ watch(
 const typedCheck = computed(() => (chordSymbol.value.trim() ? checkOf(chordSymbol.value.trim()) : null))
 const chordsToFix = computed(() => writtenSymbols.value.filter((symbol) => checkOf(symbol)?.blocks))
 const voicingsAtCursor = computed(() => (chordAtCursor.value ? (checkOf(chordAtCursor.value.writtenSymbol)?.chord?.voicings ?? []) : []))
+const voicingNamesAtCursor = computed(() => voicingNames(voicingsAtCursor.value, t('songChart.openVoicing')))
 
 function nextAnchorId(): string {
   const used = model.value.content.flatMap((s) =>
@@ -325,7 +327,7 @@ onBeforeUnmount(() => editor.value?.destroy())
           :class="chordAtCursor?.chordVoicingId === v.chord_voicing_id ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink'"
           @click="pickVoicing(v.chord_voicing_id)"
         >
-          {{ t('songChart.voicingTab', { n: i + 1 }) }}
+          {{ voicingNamesAtCursor[i] }}
         </button>
       </div>
 

@@ -7,13 +7,13 @@ type LearnerSongChart = components['schemas']['LearnerSongChart']
 type Anchor = components['schemas']['SongChartChordAnchor']['attrs']
 
 /**
- * What a learner does in a song chart, sent as tracking events: the chart opening, each chord
- * sheet opened, and each section marked as played, once per section. A preview of a draft has
- * no revision, so it sends nothing; its sections can still be marked as played.
+ * What a learner does in a song chart, sent as tracking events: the chart opening, each chord's
+ * voicings opened, and the song marked as played, once per opening. A preview of a draft has no
+ * revision, so it sends nothing; it can still be marked as played.
  */
 export function useSongChartTracking(chart: () => LearnerSongChart) {
   const { track } = useEventTracking()
-  const playedSections = ref(new Set<number>())
+  const played = ref(false)
 
   function context() {
     const { song_chart_id, revision_number } = chart()
@@ -37,16 +37,12 @@ export function useSongChartTracking(chart: () => LearnerSongChart) {
     })
   }
 
-  function markPlayed(sectionIndex: number) {
-    if (playedSections.value.has(sectionIndex)) return
-    playedSections.value = new Set(playedSections.value).add(sectionIndex)
+  function markPlayed() {
+    if (played.value) return
+    played.value = true
     const song_chart_context = context()
-    if (song_chart_context) void track({ event_type: 'song_chart.section_completed', song_chart_context, section_index: sectionIndex })
+    if (song_chart_context) void track({ event_type: 'song_chart.completed', song_chart_context })
   }
 
-  function isPlayed(sectionIndex: number): boolean {
-    return playedSections.value.has(sectionIndex)
-  }
-
-  return { chordViewed, markPlayed, isPlayed }
+  return { chordViewed, markPlayed, played }
 }

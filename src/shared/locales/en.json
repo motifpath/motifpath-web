@@ -248,11 +248,9 @@
     "key": "Key {key}",
     "capo": "Capo {fret}",
     "tempo": "{bpm} BPM",
-    "markPlayed": "Played it",
+    "markPlayed": "I played it",
     "played": "Played",
     "voicings": "Voicings",
-    "voicingTab": "Voicing {n}",
-    "playbacks": "Playbacks",
     "closeSheet": "Close",
     "voicingUnavailable": "This voicing can't be shown.",
     "missingBass": "Showing {chord}: the bass {bass} isn't in these voicings.",
@@ -264,6 +262,19 @@
       "outro": "Outro",
       "instrumental": "Instrumental",
       "other": "Song"
-    }
+    },
+    "openVoicing": "Open",
+    "foldCard": "Fold",
+    "unfoldCard": "Unfold",
+    "view": "View",
+    "boxView": "Box",
+    "neckView": "Neck"
+  },
+  "songChartPage": {
+    "close": "Close",
+    "loadingNoun": "song chart",
+    "unavailableHeading": "This song chart isn't available",
+    "unavailableMessage": "It may have been taken down, or the link may be wrong.",
+    "loadFailed": "Couldn't load the song chart."
   }
 }

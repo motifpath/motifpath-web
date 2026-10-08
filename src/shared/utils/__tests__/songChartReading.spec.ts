@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { makeAnchor, makeChord, makeLyricLine, makeVoicing } from '@/shared/testUtils/songChart'
-import { lineSegments, missingBass, openingVoicing } from '@/shared/utils/songChartReading'
+import { lineSegments, missingBass, openingVoicing, voicingNames } from '@/shared/utils/songChartReading'
 
 const anchor = makeAnchor
 const line = makeLyricLine
@@ -79,5 +79,17 @@ describe('missingBass', () => {
 
   it('is null for a chord written without a bass', () => {
     expect(missingBass(anchor('a1', 'C'), makeChord('chord-c', 'C', []))).toBeNull()
+  })
+})
+
+describe('voicingNames', () => {
+  const at = (id: string, lowest: number) => makeVoicing(id, 'chord-g', { fret_window: { lowest_fret: lowest, highest_fret: lowest + 3 } })
+
+  it('names a voicing by where it sits: open, or the fret it starts on', () => {
+    expect(voicingNames([at('g-open', 0), at('g-3', 3), at('g-10', 10)], 'Open')).toEqual(['Open', '3fr', '10fr'])
+  })
+
+  it('numbers voicings that sit at the same place, so each name is its own', () => {
+    expect(voicingNames([at('g-open', 0), at('g-3a', 3), at('g-3b', 3)], 'Open')).toEqual(['Open', '3fr', '3fr · 2'])
   })
 })

@@ -1,15 +1,17 @@
 <script setup lang="ts">
 /**
- * A song chart as a learner reads it: its sections of lyrics with each chord over the word it
- * falls on, its comments, and a "played it" control per section. A chord with voicings to show
- * opens its voicing sheet when tapped; a no-chord marking, or a chord with nothing to show, is
- * plain text, as is every chord when there's no instrument to draw voicings on. Lines wrap between words, so a chord never leaves its word on a narrow screen.
+ * A song chart as a learner reads it: its sections, headed by their label (or their kind), with
+ * each chord over the word it falls on, and "I played it" for the whole song. A chord with
+ * voicings to show is highlighted when tapped and opens its voicing card over the chart; tapping
+ * another chord moves the card. A no-chord marking, a chord with nothing to show, and every chord
+ * when there's no instrument to draw voicings on, are plain text. Lines wrap between words, so a
+ * chord never leaves its word on a narrow screen.
  */
-import { computed, ref } from 'vue'
 import { Check } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import ChordVoicingSheet from '@/shared/components/songChart/ChordVoicingSheet.vue'
+import VoicingCard from '@/shared/components/songChart/VoicingCard.vue'
 import { useSongChartTracking } from '@/shared/composables/useSongChartTracking'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { lineSegments, missingBass, openingVoicing } from '@/shared/utils/songChartReading'
@@ -27,12 +29,12 @@ const props = defineProps<{
 }>()
 
 const { t } = useTypedT()
-const { chordViewed, markPlayed, isPlayed } = useSongChartTracking(() => props.chart)
+const { chordViewed, markPlayed, played } = useSongChartTracking(() => props.chart)
 
 const chordsById = computed(() => new Map(props.chart.chords.map((c) => [c.chord_definition_id, c])))
 
-/** The chord and voicing an anchor's sheet opens on; null when it has none to show. */
-function sheetFor(anchor: Anchor): { chord: ChordDefinition; voicing: ChordVoicing } | null {
+/** The chord and voicing an anchor's card opens on; null when it has none to show. */
+function cardFor(anchor: Anchor): { chord: ChordDefinition; voicing: ChordVoicing } | null {
   if (!props.instrument) return null
   const chord = anchor.chordDefinitionId ? chordsById.value.get(anchor.chordDefinitionId) : undefined
   const voicing = chord ? openingVoicing(chord, anchor) : null
@@ -41,11 +43,11 @@ function sheetFor(anchor: Anchor): { chord: ChordDefinition; voicing: ChordVoici
 
 const open = ref<{ anchor: Anchor; chord: ChordDefinition; voicing: ChordVoicing } | null>(null)
 
-function openSheet(anchor: Anchor) {
-  const sheet = sheetFor(anchor)
-  if (!sheet) return
-  open.value = { anchor, ...sheet }
-  chordViewed(anchor, sheet.chord.chord_definition_id, sheet.voicing.chord_voicing_id)
+function openCard(anchor: Anchor) {
+  const card = cardFor(anchor)
+  if (!card) return
+  open.value = { anchor, ...card }
+  chordViewed(anchor, card.chord.chord_definition_id, card.voicing.chord_voicing_id)
 }
 
 const details = computed(() => {
@@ -59,58 +61,41 @@ const details = computed(() => {
 </script>
 
 <template>
-  <article class="flex flex-col gap-6">
+  <article class="flex flex-col gap-5 pb-28">
     <header class="flex flex-col gap-1">
       <h1 class="text-2xl font-bold text-ink">{{ chart.title }}</h1>
-      <p class="text-sm text-ink-muted">{{ chart.artist }}</p>
-      <p v-if="details" class="text-sm text-ink-muted">{{ details }}</p>
+      <p class="text-sm text-ink-muted">{{ chart.artist }}<span v-if="details"> · {{ details }}</span></p>
     </header>
 
-    <section
-      v-for="(section, sectionIndex) in chart.body.content"
-      :key="sectionIndex"
-      class="flex flex-col gap-3"
-      :aria-label="section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`)"
-    >
-      <div class="flex items-center justify-between gap-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-ink-muted">
-          {{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}
-        </h2>
-        <button
-          type="button"
-          data-test="section-played"
-          :aria-pressed="isPlayed(sectionIndex)"
-          class="flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-semibold"
-          :class="isPlayed(sectionIndex) ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink'"
-          @click="markPlayed(sectionIndex)"
-        >
-          <Check v-if="isPlayed(sectionIndex)" :size="14" aria-hidden="true" />
-          {{ isPlayed(sectionIndex) ? t('songChart.played') : t('songChart.markPlayed') }}
-        </button>
-      </div>
+    <section v-for="(section, sectionIndex) in chart.body.content" :key="sectionIndex" class="flex flex-col gap-1">
+      <h2 data-test="section-heading" class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+        {{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}
+      </h2>
 
       <template v-for="(line, lineIndex) in section.content" :key="lineIndex">
         <p v-if="line.type === 'comment'" class="text-sm italic text-ink-muted">
           {{ line.content.map((c) => c.text).join('') }}
         </p>
-        <p v-else class="flex flex-wrap items-end text-base leading-tight text-ink">
+        <p v-else class="flex flex-wrap items-end text-lg leading-tight text-ink">
           <span
             v-for="(segment, i) in lineSegments(line)"
             :key="i"
             :data-test="segment.anchor ? 'chord-segment' : undefined"
-            class="inline-flex flex-col whitespace-pre"
+            class="inline-flex flex-col whitespace-pre pt-1"
           >
             <template v-if="segment.anchor">
               <button
-                v-if="sheetFor(segment.anchor)"
+                v-if="cardFor(segment.anchor)"
                 type="button"
                 data-test="chord-symbol"
-                class="self-start text-sm font-bold text-accent-text hover:underline"
-                @click="openSheet(segment.anchor)"
+                :aria-pressed="open?.anchor.anchorId === segment.anchor.anchorId"
+                class="mb-1 self-start rounded-md px-1 text-sm font-bold"
+                :class="open?.anchor.anchorId === segment.anchor.anchorId ? 'bg-accent text-accent-fg' : 'text-accent-text underline underline-offset-4'"
+                @click="openCard(segment.anchor)"
               >
                 {{ segment.anchor.writtenSymbol }}
               </button>
-              <span v-else data-test="chord-symbol" class="self-start text-sm font-bold text-ink-muted">
+              <span v-else data-test="chord-symbol" class="mb-1 self-start px-1 text-sm font-bold text-ink-muted">
                 {{ segment.anchor.writtenSymbol }}
               </span>
             </template>
@@ -120,15 +105,31 @@ const details = computed(() => {
       </template>
     </section>
 
-    <ChordVoicingSheet
-      v-if="open && instrument"
-      :written-symbol="open.anchor.writtenSymbol"
-      :chord="open.chord"
-      :opening-voicing="open.voicing"
-      :diagrams="chart.diagrams"
-      :instrument="instrument"
-      :missing-bass="missingBass(open.anchor, open.chord)"
-      @close="open = null"
-    />
+    <div v-if="open && instrument" class="fixed bottom-24 right-4 z-10">
+      <VoicingCard
+        :key="open.anchor.anchorId"
+        :written-symbol="open.anchor.writtenSymbol"
+        :chord="open.chord"
+        :opening-voicing="open.voicing"
+        :diagrams="chart.diagrams"
+        :instrument="instrument"
+        :missing-bass="missingBass(open.anchor, open.chord)"
+        @close="open = null"
+      />
+    </div>
+
+    <div class="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface px-4 py-4">
+      <button
+        type="button"
+        data-test="played-it"
+        :aria-pressed="played"
+        class="mx-auto flex w-full max-w-[430px] items-center justify-center gap-2 rounded-full px-6 py-3.5 text-base font-semibold"
+        :class="played ? 'bg-success-muted text-ink' : 'bg-accent text-accent-fg'"
+        @click="markPlayed"
+      >
+        <Check v-if="played" :size="18" aria-hidden="true" />
+        {{ played ? t('songChart.played') : t('songChart.markPlayed') }}
+      </button>
+    </div>
   </article>
 </template>
