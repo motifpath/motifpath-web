@@ -7,7 +7,10 @@ and how it behaves; Figma is where the visual language is explored, not a spec t
 ```bash
 npm run storybook        # catalog on http://localhost:6006
 npm run build-storybook  # static build, as CI runs it
+npm run test:storybook   # every story as a test, in headless Chromium
 ```
+
+The first `test:storybook` on a machine needs `npx playwright install chromium`.
 
 ## What enters the library
 
@@ -47,13 +50,14 @@ story done:
   the same ones the unit tests use. Add to them rather than inlining a payload in a story.
 - **No story calls Clerk or the real API.** Clerk is replaced by a signed-in stub
   (`.storybook/mocks/useAuth.ts`). API calls are answered by a mock API
-  ([MSW](https://mswjs.io)), and a call no handler covers is reported as an error, so a story can't
-  sit in a loading state by accident.
+  ([MSW](https://mswjs.io)), and a call no handler covers fails the story test, so a story can't
+  sit in a loading state by accident or reach a real backend.
 
 The mock API's default answers live in `src/shared/testUtils/msw/`: `fixtures.ts` holds the payloads,
 `handlers.ts` names one handler per endpoint (`instruments`, `creators`, `voices`, `diagram`,
-`knowledgeNodes`, `knowledgeEdges`, `practiceOverview`, `practiceSummary`). A story replaces only the
-endpoints its state is about:
+`knowledgeNodes`, `knowledgeEdges`, `practiceOverview`, `practiceSummary`, `publishedSongChart`,
+`events`). A story replaces only the endpoints its state is about, with `respondWith`, `pending`,
+`failing` or `notFound`:
 
 ```ts
 import { failing, pending, respondWith } from '@/shared/testUtils/msw/handlers'
@@ -68,6 +72,32 @@ with its payload in `fixtures.ts`, typed from the generated API types.
 
 A state that only shows after an interaction (an open listbox, a focused field) gets a `play` function
 that performs it, as `TeacherFilterPicker`'s stories do.
+
+## Stories are tests
+
+`npm run test:storybook` (Storybook's Vitest addon) renders every story in Chromium. A story fails
+when it throws, when its `play` function fails, when it calls an endpoint with no mock handler, or
+when [axe](https://github.com/dequelabs/axe-core) finds an accessibility violation
+(`a11y: { test: 'error' }`). CI runs it and the Storybook build on every PR.
+
+Fix a violation in the component. When the story is what's wrong, fix the story: wrap a list item in
+the list its caller provides, label a control the way its callers do. Waive a rule only when neither
+can be fixed yet, on the narrowest scope that works, with the reason beside it:
+
+```ts
+export const Decorative: Story = {
+  parameters: {
+    a11y: {
+      // The illustration's text is decorative and hidden from assistive technology.
+      config: { rules: [{ id: 'color-contrast', enabled: false }] },
+    },
+  },
+}
+```
+
+One waiver is global for now: text in `ink-subtle` (set on it or inherited) skips `color-contrast`,
+because the token measures 2.8:1 until the signed-off darker value lands. That change removes the
+waiver from `.storybook/preview.ts`.
 
 ## Story-first, per slice
 
