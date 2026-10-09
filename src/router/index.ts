@@ -6,6 +6,7 @@ import { ensureStudentLocaleLoaded } from '@/features/student/locales'
 import { ensureAdminLocaleLoaded } from '@/features/admin/locales'
 import { ensureTeacherLocaleLoaded } from '@/features/teacher/locales'
 import { createAuthGuard, type Role } from '@/router/guards'
+import { installOverlayHistory } from '@/shared/composables/useOverlayHistory'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -385,4 +386,6 @@ export const router = createRouter({
   },
 })
 
+// First, so it sees every navigation from its start.
+installOverlayHistory(router)
 router.beforeEach(createAuthGuard(authChecker))

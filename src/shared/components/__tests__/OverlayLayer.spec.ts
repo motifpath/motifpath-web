@@ -1,14 +1,18 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
-import { createRouter, createWebHistory, RouterView } from 'vue-router'
+import { createRouter, createWebHistory, onBeforeRouteUpdate, RouterView } from 'vue-router'
 
 import OverlayLayer from '@/shared/components/OverlayLayer.vue'
+import { installOverlayHistory } from '@/shared/composables/useOverlayHistory'
 
 let wrappers: VueWrapper[] = []
-afterEach(() => {
+afterEach(async () => {
   wrappers.forEach((wrapper) => wrapper.unmount())
   wrappers = []
+  // A layer unmounted while open takes its history entry off a moment later; let that finish
+  // here rather than inside the next test.
+  await new Promise((resolve) => setTimeout(resolve, 30))
 })
 
 /** A page with a trigger button and a layer it opens, attached to the document so focus is real. */
@@ -111,10 +115,10 @@ describe('OverlayLayer', () => {
   describe('Back', () => {
     it('adds a history entry when it opens, so Back closes the layer before it leaves the page', async () => {
       const wrapper = mountPage()
-      const before = window.history.length
+      expect(window.history.state?.overlay).toBeFalsy()
 
       await openFromTrigger(wrapper)
-      expect(window.history.length).toBe(before + 1)
+      expect(window.history.state?.overlay).toBeTruthy()
 
       // The browser has already stepped back to the page's entry when popstate fires.
       window.history.replaceState(null, '')
@@ -142,17 +146,30 @@ describe('OverlayLayer', () => {
       return new Promise((resolve) => setTimeout(resolve, 30))
     }
 
+    let routeUpdates = 0
+
     async function mountRoutedPage() {
+      routeUpdates = 0
       const routes = [
-        { path: '/page', name: 'page', component: defineComponent({
-          components: { OverlayLayer },
-          setup: () => ({ open: ref(false) }),
-          template: `<div><button data-test="trigger" @click="open = true">Open</button>
-            <OverlayLayer :open="open" @close="open = false"><div data-test="panel"><button>In</button></div></OverlayLayer></div>`,
-        }) },
+        {
+          path: '/page',
+          name: 'page',
+          component: defineComponent({
+            components: { OverlayLayer },
+            setup: () => {
+              onBeforeRouteUpdate(() => {
+                routeUpdates++
+              })
+              return { open: ref(false) }
+            },
+            template: `<div><button data-test="trigger" @click="open = true">Open</button>
+              <OverlayLayer :open="open" @close="open = false"><div data-test="panel"><button>In</button></div></OverlayLayer></div>`,
+          }),
+        },
         { path: '/other', name: 'other', component: { render: () => h('p', { 'data-test': 'other' }) } },
       ]
       const router = createRouter({ history: createWebHistory(), routes })
+      installOverlayHistory(router)
       await router.push('/page')
       await router.isReady()
       const wrapper = mount({ render: () => h(RouterView) }, { global: { plugins: [router] }, attachTo: document.body })
@@ -194,6 +211,36 @@ describe('OverlayLayer', () => {
 
       expect(router.currentRoute.value.name).toBe('other')
       expect(wrapper.find('[data-test="other"]').exists()).toBe(true)
+    })
+
+    it("stepping over the layer's own entry is not a navigation: the page's route guards don't run", async () => {
+      const { wrapper } = await mountRoutedPage()
+      await wrapper.get('[data-test="trigger"]').trigger('click')
+      await nextTick()
+      await wrapper.get('[data-test="panel"]').trigger('keydown', { key: 'Escape' })
+      await settle()
+
+      await wrapper.get('[data-test="trigger"]').trigger('click')
+      await nextTick()
+      window.history.back()
+      await settle()
+
+      expect(routeUpdates).toBe(0)
+    })
+
+    it("closing the layer as part of a navigation leaves the layer's entry behind instead of stepping back over the new page", async () => {
+      const { wrapper, router } = await mountRoutedPage()
+      await wrapper.get('[data-test="trigger"]').trigger('click')
+      await nextTick()
+      const back = vi.spyOn(window.history, 'back')
+
+      await wrapper.get('[data-test="panel"]').trigger('keydown', { key: 'Escape' })
+      void router.push('/other')
+      await settle()
+
+      expect(back).not.toHaveBeenCalled()
+      expect(router.currentRoute.value.name).toBe('other')
+      back.mockRestore()
     })
   })
 })
