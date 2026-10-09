@@ -4,33 +4,21 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
+import BrandMark from '@/shared/components/BrandMark.vue'
 import Icon from '@/shared/components/Icon.vue'
-import {
-  type NavSection,
-  STUDENT_SECTIONS,
-  TEACHER_SECTIONS,
-  authoringSectionsFor,
-  sectionsFor,
-} from '@/shared/navigation'
+import { type NavSection, TEACHER_SECTIONS, authoringSectionsFor } from '@/shared/navigation'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const props = withDefaults(
   defineProps<{
-    /**
-     * Which sections the bar offers. `overview` is for pages outside any
-     * section (e.g. home): every section the viewer's role can reach, none
-     * highlighted.
-     */
-    context: 'student' | 'teacher' | 'overview'
-    /** Mobile layout: hamburger + nav-only drawer instead of the inline nav pill. */
+    /** Mobile layout: hamburger + nav-only drawer instead of the inline tabs. */
     compact?: boolean
     /**
-     * Student: destination of the single nav pill ("My path"). Teacher: which
-     * of the three permanent tabs (Content/Paths/Exercises) is active, and
-     * the breadcrumb root when breadcrumbLabel is set.
+     * Which authoring tab (Content/Paths/…) is active, and the breadcrumb root when
+     * breadcrumbLabel is set.
      */
     primaryNavTo?: RouteLocationRaw
-    /** When set in teacher context, renders as a breadcrumb: Exercises › label. */
+    /** When set, renders as a breadcrumb: Exercises › label. */
     breadcrumbLabel?: string
     showSave?: boolean
     saveDisabled?: boolean
@@ -44,36 +32,22 @@ const { t } = useTypedT()
 
 const currentUser = useCurrentUserStore()
 
-const isStudent = computed(() => props.context === 'student')
-const isOverview = computed(() => props.context === 'overview')
-const hasCrumb = computed(() => props.context === 'teacher' && !!props.breadcrumbLabel)
+const hasCrumb = computed(() => !!props.breadcrumbLabel)
 
-// Permanent top-level sections, resolved against `primaryNavTo`'s route name
-// (never route-inferred, same explicit-prop style as breadcrumbLabel) so a
-// view's existing `primary-nav-to="{ name: 'teacher-exercises' }"` keeps
-// working unchanged and also drives which tab renders active / which section
-// a breadcrumb drills down from.
-const navItems = computed<NavSection[]>(() => {
-  if (isOverview.value) return currentUser.profile ? sectionsFor(currentUser.profile.role) : []
-  return isStudent.value ? STUDENT_SECTIONS : authoringSectionsFor(currentUser.profile?.role)
-})
+// Permanent authoring sections, resolved against `primaryNavTo`'s route name (never
+// route-inferred, same explicit-prop style as breadcrumbLabel), which also drives which tab
+// renders active and which section a breadcrumb drills down from.
+const navItems = computed<NavSection[]>(() => authoringSectionsFor(currentUser.profile?.role))
 const primaryNavToName = computed(() => (props.primaryNavTo as { name?: string } | undefined)?.name)
-const fallbackSection = computed(
-  () =>
-    (isStudent.value ? STUDENT_SECTIONS : TEACHER_SECTIONS).find((section) =>
-      isStudent.value ? section.name === 'path' : section.name === 'teacher-exercises',
-    )!,
-)
-// The section the page belongs to; an overview page belongs to none.
-const activeSection = computed<NavSection | null>(() => {
-  if (isOverview.value) return null
+const fallbackSection = computed(() => TEACHER_SECTIONS.find((section) => section.name === 'teacher-exercises')!)
+const activeSection = computed<NavSection>(() => {
   const match = navItems.value.find((item) => item.name === primaryNavToName.value)
   if (!match && import.meta.env.DEV) {
     // Falling back silently would highlight the wrong tab and mislabel the
     // breadcrumb root with no visible sign anything's wrong — surface it
     // loudly in development instead of shipping a plausible-looking bug.
     console.warn(
-      `AppBar: primaryNavTo route name "${String(primaryNavToName.value)}" is not one of the known ${props.context} ` +
+      `AppBar: primaryNavTo route name "${String(primaryNavToName.value)}" is not one of the known authoring ` +
         `sections (${navItems.value.map((item) => item.name).join(', ')}); falling back to "${fallbackSection.value.name}".`,
     )
   }
@@ -105,26 +79,7 @@ function closeDrawer(): void {
     </button>
 
     <RouterLink :to="{ name: 'home' }" data-test="app-bar-home" class="flex items-center gap-2.5">
-      <div class="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-accent-muted">
-        <svg width="16" height="16" viewBox="200 100 860 860" role="img" :aria-label="t('appBar.brand')">
-          <defs>
-            <linearGradient id="app-bar-mark" x1="309" y1="190" x2="938" y2="890" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#a14cff" />
-              <stop offset=".27" stop-color="#8134ff" />
-              <stop offset=".62" stop-color="#6421fa" />
-              <stop offset="1" stop-color="#4714df" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M346 203C314 203 290 218 279 243c-4 9-6 19-6 30v526c0 41 32 74 73 74h85c40 0 80-11 108-33 20-16 19-38 8-57-8-16-23-32-41-49l-53-50c-32-31-47-58-40-84 8-30 38-58 81-82l46-27c36-21 49-45 41-71-3-13-10-23-21-34L397 225c-14-14-32-22-51-22Z"
-            fill="url(#app-bar-mark)"
-          />
-          <path
-            d="M689 873c38-24 49-54 35-85-13-30-42-55-83-80l-71-44c-50-31-77-58-73-86 4-29 29-55 69-84 34-24 63-50 89-77l191-193c18-18 41-25 64-25 42 0 76 33 76 77v522c0 42-33 75-75 75H689Z"
-            fill="url(#app-bar-mark)"
-          />
-        </svg>
-      </div>
+      <BrandMark />
       <span class="text-[15px] font-bold text-ink">{{ t('appBar.brand') }}</span>
     </RouterLink>
 
@@ -137,14 +92,14 @@ function closeDrawer(): void {
           :key="item.name"
           :to="{ name: item.name }"
           class="rounded-full px-3.5 py-1.5 text-sm font-semibold"
-          :class="item.name === activeSection?.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
+          :class="item.name === activeSection.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
           >{{ t(item.labelKey) }}</RouterLink
         >
       </div>
 
       <div v-else class="flex items-center gap-1.5 text-[13px]">
         <RouterLink :to="primaryNavTo ?? { name: fallbackSection.name }" class="text-ink-muted">{{
-          t((activeSection ?? fallbackSection).labelKey)
+          t(activeSection.labelKey)
         }}</RouterLink>
         <Icon name="chevron-right" :size="14" class="text-ink-subtle" />
         <span class="rounded-full bg-accent-muted px-3.5 py-1.5 text-sm font-semibold text-accent-text">{{
@@ -191,7 +146,7 @@ function closeDrawer(): void {
           :key="item.name"
           :to="{ name: item.name }"
           class="mx-3 rounded-[10px] px-3.5 py-3 text-sm font-semibold"
-          :class="item.name === activeSection?.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
+          :class="item.name === activeSection.name ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
           @click="closeDrawer"
           >{{ t(item.labelKey) }}</RouterLink
         >

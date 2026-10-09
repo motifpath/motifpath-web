@@ -31,7 +31,7 @@ function statusText(chart: SongChartSummary): string {
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar context="teacher" :compact="isCompact" :primary-nav-to="{ name: 'admin-song-charts' }" />
+    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'admin-song-charts' }" />
 
     <div class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
       <div class="flex items-center justify-between">

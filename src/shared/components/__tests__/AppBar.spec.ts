@@ -25,7 +25,6 @@ function mockMatchMedia(prefersDark = false): void {
 }
 
 interface Props {
-  context: 'student' | 'teacher' | 'overview'
   compact?: boolean
   primaryNavTo?: { name: string }
   breadcrumbLabel?: string
@@ -40,9 +39,9 @@ function navLinks(wrapper: VueWrapper) {
   return wrapper.findAllComponents(RouterLinkStub).filter((l) => l.attributes('data-test') !== 'app-bar-home')
 }
 
-function mountBar(props: Props) {
+function mountBar(props: Props = {}) {
   return mount(AppBar, {
-    props: { primaryNavTo: { name: 'path' }, ...props },
+    props: { primaryNavTo: { name: 'teacher-exercises' }, ...props },
     global: {
       plugins: [createPinia()],
       stubs: { RouterLink: RouterLinkStub, AccountMenu: true },
@@ -53,41 +52,27 @@ function mountBar(props: Props) {
 describe('AppBar', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    currentUser.profile = { role: 'student' }
+    currentUser.profile = { role: 'teacher' }
     window.localStorage.clear()
     document.documentElement.classList.remove('dark')
     mockMatchMedia()
   })
 
   it('renders the wordmark', () => {
-    const wrapper = mountBar({ context: 'student' })
+    const wrapper = mountBar()
 
     expect(wrapper.text()).toContain('MotifPath')
   })
 
   it('sticks to the top of the viewport, so it stays reachable on a long scrolling page', () => {
-    const wrapper = mountBar({ context: 'student' })
+    const wrapper = mountBar()
 
     expect(wrapper.classes()).toContain('sticky')
     expect(wrapper.classes()).toContain('top-0')
   })
 
-  it('shows the five student tabs (My path, Practice, My learning, Find a course, Find a path)', () => {
-    const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'path' } })
-
-    const links = navLinks(wrapper)
-    expect(links.map((l) => l.text())).toEqual(['My path', 'Practice', 'My learning', 'Find a course', 'Find a path'])
-    expect(links.map((l) => l.props('to'))).toEqual([
-      { name: 'path' },
-      { name: 'practice-session' },
-      { name: 'my-courses' },
-      { name: 'course-catalog' },
-      { name: 'path-catalog' },
-    ])
-  })
-
   it('links the wordmark to home', () => {
-    const wrapper = mountBar({ context: 'student' })
+    const wrapper = mountBar()
 
     const home = wrapper.get('[data-test="app-bar-home"]')
     expect(home.text()).toContain('MotifPath')
@@ -95,94 +80,15 @@ describe('AppBar', () => {
     expect(homeLink?.props().to).toEqual({ name: 'home' })
   })
 
-  it('shows an admin every student tab, since an admin can use the learner side too', () => {
-    currentUser.profile = { role: 'admin' }
-
-    const links = navLinks(mountBar({ context: 'student' }))
-
-    expect(links.map((l) => l.text())).toEqual(['My path', 'Practice', 'My learning', 'Find a course', 'Find a path'])
-  })
-
-  it('shows a teacher every student tab too, since everyone can learn', () => {
-    currentUser.profile = { role: 'teacher' }
-
-    const links = navLinks(mountBar({ context: 'student' }))
-
-    expect(links.map((l) => l.text())).toEqual(['My path', 'Practice', 'My learning', 'Find a course', 'Find a path'])
-  })
-
-  describe('overview context, for pages outside any section', () => {
-    it("shows a student's sections with none highlighted", () => {
-      const links = navLinks(mountBar({ context: 'overview' }))
-
-      expect(links.map((l) => l.text())).toEqual(['My path', 'Practice', 'My learning', 'Find a course', 'Find a path'])
-      expect(links.some((l) => l.classes().includes('bg-accent-muted'))).toBe(false)
-    })
-
-    it('shows an admin the learner and authoring sections, without warning about an active tab', () => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      currentUser.profile = { role: 'admin' }
-
-      const links = navLinks(mountBar({ context: 'overview' }))
-
-      expect(links.map((l) => l.text())).toEqual([
-        'My path',
-        'Practice',
-        'My learning',
-        'Find a course',
-        'Find a path',
-        'Content',
-        'Paths',
-        'Courses',
-        'Exercises',
-        'Diagrams',
-        'Knowledge map',
-        'Song charts',
-      ])
-      expect(warn).not.toHaveBeenCalled()
-      warn.mockRestore()
-    })
-
-    it('offers the same sections in the compact drawer', async () => {
-      currentUser.profile = { role: 'teacher' }
-      const wrapper = mountBar({ context: 'overview', compact: true })
-
-      await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
-
-      const drawerLinks = wrapper.get('[data-test="app-bar-drawer"]').findAllComponents(RouterLinkStub)
-      expect(drawerLinks).toHaveLength(10)
-    })
-  })
-
-  it('highlights the student tab matching primaryNavTo as active', () => {
-    const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'course-catalog' } })
-
-    const links = navLinks(wrapper)
-    expect(links.find((l) => l.text() === 'Find a course')?.classes()).toContain('bg-accent-muted')
-    expect(links.find((l) => l.text() === 'My path')?.classes()).not.toContain('bg-accent-muted')
-  })
-
-  it('shows the five student tabs in the compact drawer', async () => {
-    const wrapper = mountBar({ context: 'student', primaryNavTo: { name: 'my-courses' }, compact: true })
-
-    await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
-
-    const drawerLinks = wrapper.get('[data-test="app-bar-drawer"]').findAllComponents(RouterLinkStub)
-    expect(drawerLinks.map((link: { text: () => string }) => link.text())).toEqual(['My path', 'Practice', 'My learning', 'Find a course', 'Find a path'])
-    expect(drawerLinks[2]!.classes()).toContain('bg-accent-muted')
-  })
-
-  it("shows an 'Exercises' link for teacher context with no breadcrumb", () => {
-    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-exercises' } })
+  it("shows an 'Exercises' link with no breadcrumb", () => {
+    const wrapper = mountBar({ primaryNavTo: { name: 'teacher-exercises' } })
 
     const links = navLinks(wrapper)
     expect(links.some((l) => l.text() === 'Exercises')).toBe(true)
-    expect(wrapper.text()).not.toContain('My path')
   })
 
-  it('shows a breadcrumb (Exercises root + label) for teacher context with a breadcrumb label', () => {
+  it('shows a breadcrumb (Exercises root + label) with a breadcrumb label', () => {
     const wrapper = mountBar({
-      context: 'teacher',
       primaryNavTo: { name: 'teacher-exercises' },
       breadcrumbLabel: 'New exercise',
     })
@@ -193,7 +99,6 @@ describe('AppBar', () => {
 
   it('shows a Content-rooted breadcrumb when primaryNavTo points at the content section', () => {
     const wrapper = mountBar({
-      context: 'teacher',
       primaryNavTo: { name: 'teacher-content' },
       breadcrumbLabel: 'New content',
     })
@@ -203,7 +108,7 @@ describe('AppBar', () => {
   })
 
   it('shows all five teacher tabs (Content, Paths, Courses, Exercises, Diagrams) with no breadcrumb', () => {
-    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-exercises' } })
+    const wrapper = mountBar({ primaryNavTo: { name: 'teacher-exercises' } })
 
     const links = navLinks(wrapper)
     expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Courses', 'Exercises', 'Diagrams'])
@@ -211,7 +116,7 @@ describe('AppBar', () => {
 
   it('offers admins the Knowledge map tab after the authoring tabs', () => {
     currentUser.profile = { role: 'admin' }
-    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'admin-knowledge-map' } })
+    const wrapper = mountBar({ primaryNavTo: { name: 'admin-knowledge-map' } })
 
     const links = navLinks(wrapper)
     expect(links.map((l) => l.text())).toEqual(['Content', 'Paths', 'Courses', 'Exercises', 'Diagrams', 'Knowledge map', 'Song charts'])
@@ -220,7 +125,7 @@ describe('AppBar', () => {
 
   it('highlights the Song charts tab on the song chart pages', () => {
     currentUser.profile = { role: 'admin' }
-    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'admin-song-charts' } })
+    const wrapper = mountBar({ primaryNavTo: { name: 'admin-song-charts' } })
 
     expect(navLinks(wrapper).find((l) => l.text() === 'Song charts')?.classes()).toContain('bg-accent-muted')
   })
@@ -228,17 +133,14 @@ describe('AppBar', () => {
   it('never offers teachers the Knowledge map tab', () => {
     currentUser.profile = { role: 'teacher' }
 
-    const overview = navLinks(mountBar({ context: 'overview' }))
-    const authoring = navLinks(mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-paths' } }))
+    const authoring = navLinks(mountBar({ primaryNavTo: { name: 'teacher-paths' } }))
 
-    expect(overview.some((l) => l.text() === 'Knowledge map')).toBe(false)
     expect(authoring.some((l) => l.text() === 'Knowledge map')).toBe(false)
-    expect(overview.some((l) => l.text() === 'Song charts')).toBe(false)
     expect(authoring.some((l) => l.text() === 'Song charts')).toBe(false)
   })
 
   it('highlights the tab matching primaryNavTo as active', () => {
-    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-paths' } })
+    const wrapper = mountBar({ primaryNavTo: { name: 'teacher-paths' } })
 
     const links = navLinks(wrapper)
     const pathsTab = links.find((l) => l.text() === 'Paths')
@@ -250,7 +152,7 @@ describe('AppBar', () => {
   it('falls back to the Exercises tab and warns when primaryNavTo names an unknown teacher section', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-reports' } })
+    const wrapper = mountBar({ primaryNavTo: { name: 'teacher-reports' } })
 
     const links = navLinks(wrapper)
     const exercisesTab = links.find((l) => l.text() === 'Exercises')
@@ -261,7 +163,7 @@ describe('AppBar', () => {
   })
 
   it('shows all five teacher tabs in the compact drawer', async () => {
-    const wrapper = mountBar({ context: 'teacher', primaryNavTo: { name: 'teacher-content' }, compact: true })
+    const wrapper = mountBar({ primaryNavTo: { name: 'teacher-content' }, compact: true })
 
     await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
 
@@ -270,34 +172,32 @@ describe('AppBar', () => {
   })
 
   it('hides the hamburger and shows inline nav when not compact', () => {
-    const wrapper = mountBar({ context: 'student' })
+    const wrapper = mountBar()
 
     expect(wrapper.find('[data-test="app-bar-menu"]').exists()).toBe(false)
     expect(navLinks(wrapper)).not.toHaveLength(0)
   })
 
   it('shows the hamburger and hides inline nav when compact', () => {
-    const wrapper = mountBar({ context: 'student', compact: true })
+    const wrapper = mountBar({ compact: true })
 
     expect(wrapper.find('[data-test="app-bar-menu"]').exists()).toBe(true)
     expect(navLinks(wrapper)).toHaveLength(0)
   })
 
   it('opens a nav-only drawer with the primary nav link when the hamburger is clicked', async () => {
-    const wrapper = mountBar({ context: 'student', compact: true })
+    const wrapper = mountBar({ compact: true })
 
     expect(wrapper.find('[data-test="app-bar-drawer"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
 
     expect(wrapper.find('[data-test="app-bar-drawer"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="app-bar-drawer"]').findComponent(RouterLinkStub).text()).toBe(
-      'My path',
-    )
+    expect(wrapper.get('[data-test="app-bar-drawer"]').findComponent(RouterLinkStub).text()).toBe('Content')
   })
 
   it('closes the drawer when its nav link is clicked', async () => {
-    const wrapper = mountBar({ context: 'student', compact: true })
+    const wrapper = mountBar({ compact: true })
     await wrapper.get('[data-test="app-bar-menu"]').trigger('click')
 
     await wrapper.get('[data-test="app-bar-drawer"]').findComponent(RouterLinkStub).trigger('click')
@@ -306,14 +206,14 @@ describe('AppBar', () => {
   })
 
   it('does not render the Save button by default', () => {
-    const wrapper = mountBar({ context: 'teacher' })
+    const wrapper = mountBar()
 
     expect(wrapper.find('[data-test="app-bar-save"]').exists()).toBe(false)
   })
 
   it('renders the Save button and calls onSave when clicked', async () => {
     const onSave = vi.fn()
-    const wrapper = mountBar({ context: 'teacher', showSave: true, onSave })
+    const wrapper = mountBar({ showSave: true, onSave })
 
     await wrapper.get('[data-test="app-bar-save"]').trigger('click')
 
@@ -321,20 +221,20 @@ describe('AppBar', () => {
   })
 
   it('disables the Save button when saveDisabled is true', () => {
-    const wrapper = mountBar({ context: 'teacher', showSave: true, saveDisabled: true })
+    const wrapper = mountBar({ showSave: true, saveDisabled: true })
 
     expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
   })
 
   it('does not disable the Save button by default', () => {
-    const wrapper = mountBar({ context: 'teacher', showSave: true })
+    const wrapper = mountBar({ showSave: true })
 
     expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
   })
 
   it('renders page-specific save actions in the bar, just before Save', () => {
     const wrapper = mount(AppBar, {
-      props: { context: 'teacher', primaryNavTo: { name: 'path' }, showSave: true },
+      props: { primaryNavTo: { name: 'path' }, showSave: true },
       slots: { actions: '<button data-test="page-action">Save as…</button>' },
       global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub, AccountMenu: true } },
     })
@@ -346,7 +246,7 @@ describe('AppBar', () => {
 
   it('renders page-specific save actions even when there is no plain Save', () => {
     const wrapper = mount(AppBar, {
-      props: { context: 'teacher', primaryNavTo: { name: 'path' } },
+      props: { primaryNavTo: { name: 'path' } },
       slots: { actions: '<button data-test="page-action">Save as…</button>' },
       global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub, AccountMenu: true } },
     })
@@ -356,19 +256,19 @@ describe('AppBar', () => {
   })
 
   it('renders a "Saved" indicator when justSaved is true', () => {
-    const wrapper = mountBar({ context: 'teacher', justSaved: true })
+    const wrapper = mountBar({ justSaved: true })
 
     expect(wrapper.text()).toContain('Saved')
   })
 
   it('has no theme toggle of its own: Appearance lives in the account menu', () => {
-    const wrapper = mountBar({ context: 'student' })
+    const wrapper = mountBar()
 
     expect(wrapper.find('[data-test="app-bar-theme-toggle"]').exists()).toBe(false)
   })
 
   it('renders the account menu', () => {
-    const wrapper = mountBar({ context: 'student' })
+    const wrapper = mountBar()
 
     // AccountMenu owns the avatar/menu/sign-out behavior itself and is
     // tested in isolation — see AccountMenu.spec.ts.

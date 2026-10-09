@@ -234,7 +234,6 @@ const bodyReady = computed(() => !isLoading.value && !loadError.value)
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
     <AppBar
-      context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-courses' }"
       :breadcrumb-label="breadcrumbLabel"

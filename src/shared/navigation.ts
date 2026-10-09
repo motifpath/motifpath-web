@@ -50,11 +50,6 @@ export function destinationOf(routeName: string | undefined): DestinationId | nu
 }
 
 export type NavLabelKey =
-  | 'nav.student'
-  | 'nav.practice'
-  | 'nav.myCourses'
-  | 'nav.findCourse'
-  | 'nav.findPath'
   | 'nav.content'
   | 'nav.paths'
   | 'nav.courses'
@@ -68,15 +63,6 @@ export interface NavSection {
   name: string
   labelKey: NavLabelKey
 }
-
-/** The learner sections — every user can learn, whatever their role. */
-export const STUDENT_SECTIONS: NavSection[] = [
-  { name: 'path', labelKey: 'nav.student' },
-  { name: 'practice-session', labelKey: 'nav.practice' },
-  { name: 'my-courses', labelKey: 'nav.myCourses' },
-  { name: 'course-catalog', labelKey: 'nav.findCourse' },
-  { name: 'path-catalog', labelKey: 'nav.findPath' },
-]
 
 /** The authoring sections, for teachers and admins. */
 export const TEACHER_SECTIONS: NavSection[] = [
@@ -96,9 +82,4 @@ export const ADMIN_SECTIONS: NavSection[] = [
 /** The authoring sections role can reach: the teacher ones, plus the admin ones for an admin. */
 export function authoringSectionsFor(role: Role | undefined): NavSection[] {
   return role === 'admin' ? [...TEACHER_SECTIONS, ...ADMIN_SECTIONS] : TEACHER_SECTIONS
-}
-
-/** Every section role can reach, for navigation outside a section's own layout. */
-export function sectionsFor(role: Role): NavSection[] {
-  return role === 'student' ? STUDENT_SECTIONS : [...STUDENT_SECTIONS, ...authoringSectionsFor(role)]
 }

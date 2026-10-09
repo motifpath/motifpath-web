@@ -421,7 +421,6 @@ async function onSaveChallenge({
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
     <AppBar
-      context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-content' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"

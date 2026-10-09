@@ -38,7 +38,7 @@ const { instrumentsLabel } = useInstrumentNames()
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar context="teacher" :compact="isCompact" :primary-nav-to="{ name: 'teacher-content' }" />
+    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'teacher-content' }" />
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">

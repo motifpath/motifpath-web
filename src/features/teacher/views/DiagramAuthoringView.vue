@@ -386,7 +386,6 @@ async function saveAs(names: Record<string, string>) {
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
     <AppBar
-      context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-diagrams' }"
       :breadcrumb-label="

@@ -1,9 +1,7 @@
 {
   "nav": {
     "home": "Home",
-    "student": "My path",
     "practice": "Practice",
-    "myCourses": "My learning",
     "findCourse": "Find a course",
     "findPath": "Find a path",
     "content": "Content",

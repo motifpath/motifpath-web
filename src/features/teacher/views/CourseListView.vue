@@ -52,7 +52,7 @@ function statusLabel(tab: CourseStatus | null): string {
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar context="teacher" :compact="isCompact" :primary-nav-to="{ name: 'teacher-courses' }" />
+    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'teacher-courses' }" />
 
     <div
       v-if="!canAuthor"

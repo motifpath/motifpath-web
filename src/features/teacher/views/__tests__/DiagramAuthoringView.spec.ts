@@ -125,10 +125,10 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
   })
 
-  it('renders the AppBar in teacher context with a New diagram breadcrumb', () => {
+  it('renders the authoring AppBar with a New diagram breadcrumb', () => {
     const wrapper = mountView()
 
-    expect(wrapper.findComponent({ name: 'AppBar' }).props('context')).toBe('teacher')
+    expect(wrapper.findComponent({ name: 'AppBar' }).exists()).toBe(true)
     expect(wrapper.text()).toContain('New diagram')
   })
 
