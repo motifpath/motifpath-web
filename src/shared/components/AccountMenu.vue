@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, GraduationCap, Languages, LogOut, PencilRuler } from 'lucide-vue-next'
+import { Check, CircleUserRound, GraduationCap, Languages, LogOut, PencilRuler } from 'lucide-vue-next'
 import { computed, inject, ref, useId } from 'vue'
 import { routeLocationKey } from 'vue-router'
 
@@ -22,9 +22,17 @@ const LANGUAGES: { code: SupportedLocale; labelKey: MessageKey }[] = [
 // The short name, for the Language row's value.
 const SHORT_LANGUAGE: Record<SupportedLocale, MessageKey> = { en: 'localeSwitcher.en', 'pt-BR': 'localeSwitcher.ptBr' }
 
+withDefaults(
+  defineProps<{
+    /** `avatar`: the app bar and the rail. `row`: an "Account" row at the foot of the sidebar. */
+    entry?: 'avatar' | 'row'
+  }>(),
+  { entry: 'avatar' },
+)
+
 const { displayInitial, email, signOut } = useAuth()
 const { t } = useTypedT()
-const { isCompact } = useSizeClass()
+const { sizeClass, isCompact } = useSizeClass()
 const currentUser = useCurrentUserStore()
 const themeStore = useThemeStore()
 
@@ -35,7 +43,8 @@ const position = ref<{ top?: string; bottom?: string; left?: string; right?: str
 const languageTitleId = useId()
 
 const role = computed(() => currentUser.profile?.role)
-const canTeach = computed(() => role.value === 'teacher' || role.value === 'admin')
+// On a desktop the sidebar shows Teach on its own row, so the menu leaves it out.
+const canTeach = computed(() => (role.value === 'teacher' || role.value === 'admin') && sizeClass.value !== 'expanded')
 // Learning is open to every role and only authoring is role-gated, so a page that requires a role
 // is inside Teach. Read without `useRoute()` so the menu also renders where no router is set up.
 const route = inject(routeLocationKey, null)
@@ -97,10 +106,18 @@ function chooseLanguage(code: SupportedLocale) {
       :aria-label="t('appBar.accountMenuAriaLabel')"
       aria-haspopup="dialog"
       :aria-expanded="open ? 'true' : 'false'"
-      class="flex h-12 w-12 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      :class="
+        entry === 'row'
+          ? 'flex min-h-12 w-full items-center gap-3 rounded-full px-3 text-sm font-medium text-ink hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus'
+          : 'flex h-12 w-12 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus'
+      "
       @click="show"
     >
-      <UserAvatar :initial="displayInitial" />
+      <template v-if="entry === 'row'">
+        <CircleUserRound :size="22" class="shrink-0 text-ink-muted" aria-hidden="true" />
+        {{ t('accountMenu.label') }}
+      </template>
+      <UserAvatar v-else :initial="displayInitial" />
     </button>
 
     <OverlayLayer

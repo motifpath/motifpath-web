@@ -36,7 +36,12 @@ type Role = 'student' | 'teacher' | 'admin'
 
 let wrappers: VueWrapper[] = []
 
-function mountMenu({ width = 390, role = 'student' as Role, routeMeta = {} as Record<string, unknown> } = {}) {
+function mountMenu({
+  width = 390,
+  role = 'student' as Role,
+  routeMeta = {} as Record<string, unknown>,
+  props = {} as Record<string, unknown>,
+} = {}) {
   mockViewport(width)
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -49,6 +54,7 @@ function mountMenu({ width = 390, role = 'student' as Role, routeMeta = {} as Re
     registered_at: '2026-01-01T00:00:00Z',
   }
   const wrapper = mount(AccountMenu, {
+    props,
     attachTo: document.body,
     global: {
       plugins: [pinia],
@@ -84,6 +90,16 @@ describe('AccountMenu', () => {
     expect(avatar.text()).toBe('A')
     expect(avatar.attributes('aria-haspopup')).toBe('dialog')
     expect(avatar.attributes('aria-expanded')).toBe('false')
+  })
+
+  it('can open from an "Account" row, for the foot of the sidebar', async () => {
+    const { wrapper } = mountMenu({ width: 1280, props: { entry: 'row' } })
+
+    const row = wrapper.get('[data-test="account-menu-avatar"]')
+    expect(row.text()).toBe('Account')
+    expect(row.attributes('aria-haspopup')).toBe('dialog')
+    await open(wrapper)
+    expect(wrapper.get('[data-test="account-menu"]').attributes('data-presentation')).toBe('menu')
   })
 
   it('on a phone, opens as a bottom sheet', async () => {
@@ -209,6 +225,20 @@ describe('AccountMenu', () => {
       await open(wrapper)
 
       expect(wrapper.find('[data-test="account-back-to-learning"]').exists()).toBe(false)
+    })
+
+    it.each(['teacher', 'admin'] as const)('is left to the sidebar on a desktop, for a %s', async (role) => {
+      const { wrapper } = mountMenu({ role, width: 1280 })
+      await open(wrapper)
+
+      expect(wrapper.find('[data-test="account-teach"]').exists()).toBe(false)
+    })
+
+    it('stays in the menu on a tablet, whose rail has no Teach', async () => {
+      const { wrapper } = mountMenu({ role: 'teacher', width: 720 })
+      await open(wrapper)
+
+      expect(wrapper.find('[data-test="account-teach"]').exists()).toBe(true)
     })
 
     it.each(['teacher', 'admin'] as const)('takes a %s to authoring', async (role) => {

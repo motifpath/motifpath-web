@@ -38,6 +38,19 @@ export const LanguageCompact: Story = { play: openLanguage, globals: { viewport:
 /** A menu anchored to the avatar on Medium and Expanded. */
 export const MenuExpanded: Story = { play: openMenu, globals: { role: 'admin', viewport: { value: 'expanded' } } }
 
+/** The rail has no Teach, so on Medium it stays in the menu. */
+export const TeacherMedium: Story = { play: openMenu, globals: { role: 'teacher', viewport: { value: 'medium' } } }
+
+/** The "Account" row at the foot of the sidebar; on a desktop Teach is the sidebar's, not the menu's. */
+export const AccountRowExpanded: Story = {
+  play: openMenu,
+  globals: { role: 'teacher', viewport: { value: 'expanded' } },
+  render: () => ({
+    components: { AccountMenu },
+    template: '<div class="flex h-[30rem] w-64 flex-col justify-end"><AccountMenu entry="row" /></div>',
+  }),
+}
+
 export const LongPortuguese: Story = {
   play: openMenu,
   globals: { role: 'teacher', locale: 'pt-BR', viewport: { value: 'compact' } },
