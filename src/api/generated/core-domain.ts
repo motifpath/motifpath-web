@@ -417,9 +417,10 @@ export interface paths {
          *     - **video**: `trigger_at_seconds` is required. `hide_at_seconds` must be
          *       provided and must be greater than `trigger_at_seconds`. `trigger_at_paragraph`
          *       and `duration_ms` must be absent.
-         *     - **article**: `trigger_at_paragraph` is required (1-based index). `duration_ms`
-         *       must be provided (minimum 1 ms). `trigger_at_seconds` and `hide_at_seconds`
-         *       must be absent.
+         *     - **article**: `trigger_at_paragraph` is required (1-based index). The item
+         *       stays under its paragraph, so `duration_ms` is deprecated: it is optional,
+         *       clients ignore it, and when present it must be at least 1.
+         *       `trigger_at_seconds` and `hide_at_seconds` must be absent.
          *
          *     These timing rules apply the same way regardless of content_type.
          *
@@ -1902,7 +1903,10 @@ export interface paths {
          *     - completed — the student has finished this content node.
          *     - in_progress — the student has started but not finished this content node.
          *     - not_started — the student has not yet reached this content node.
-         *     - locked — the student must complete an earlier node before accessing this one.
+         *     - locked — not available yet. lock_reason says why: previous_step
+         *       (complete an earlier node first) or language (no version in the
+         *       caller's locale; the student can open it in one of
+         *       available_languages, and finishing it unlocks the next item).
          *
          *     Accessible by authenticated users with role student, teacher, or admin,
          *     returning the caller's own current StudentPath in every case. Returns
@@ -4568,10 +4572,29 @@ export interface components {
             /**
              * @description The student's current progress state for this item. completed — finished.
              *     in_progress — started but not finished. not_started — not yet reached.
-             *     locked — a preceding item must be completed first.
+             *     locked — not available yet; lock_reason says why.
              * @enum {string}
              */
             status: "completed" | "in_progress" | "not_started" | "locked";
+            /**
+             * @description Why the item is locked. Present only when status is locked.
+             *     previous_step — an earlier item isn't completed yet.
+             *     language — every earlier item is completed, but this item (its
+             *     content node or a required exercise) has no version in the
+             *     caller's locale. The student can open it in one of
+             *     available_languages, and finishing it completes the item and
+             *     unlocks the next. Only the item at current_position can have
+             *     this reason: when both reasons apply, it is previous_step.
+             * @enum {string}
+             */
+            lock_reason?: "previous_step" | "language";
+            /**
+             * @description The languages the student can open this item in. Present only
+             *     when lock_reason is language. Holds the content node's languages
+             *     when the node lacks the caller's locale, and otherwise the
+             *     languages of the first required exercise that lacks it.
+             */
+            available_languages?: components["schemas"]["Language"][];
             /** @description Optional label grouping this item with its immediate neighbors under a named section in the student's path view. Consecutive items that share the same label render together under that heading; items with no label, or a different label than their neighbor, render ungrouped. Names a competency or skill area, not a time period. */
             section_label?: string;
         };
@@ -5016,7 +5039,8 @@ export interface components {
          * @description Payload for attaching an expositive item to a content node. The
          *     trigger and hide fields used depend on the parent content node type:
          *     video nodes use trigger_at_seconds + hide_at_seconds; article nodes use
-         *     trigger_at_paragraph + duration_ms. Mixing fields across groups is invalid.
+         *     trigger_at_paragraph (and the deprecated, optional duration_ms). Mixing
+         *     fields across groups is invalid.
          *     These timing fields apply identically regardless of content_type —
          *     timing is a property of when the item appears, independent of what
          *     it contains.
@@ -5075,8 +5099,10 @@ export interface components {
              */
             trigger_at_paragraph?: number;
             /**
-             * @description Article nodes only. How long to display this item in milliseconds
-             *     after it is triggered. Must be absent for video nodes.
+             * @deprecated
+             * @description Deprecated and optional: an article item stays under its paragraph,
+             *     and clients ignore this value. Article nodes only; must be absent
+             *     for video nodes.
              */
             duration_ms?: number;
             /** @description Optional caption displayed alongside the item. */
@@ -5136,7 +5162,11 @@ export interface components {
             hide_at_seconds?: number;
             /** @description Article nodes only. 1-based paragraph index at which this item is shown. */
             trigger_at_paragraph?: number;
-            /** @description Article nodes only. Display duration in milliseconds. */
+            /**
+             * @deprecated
+             * @description Deprecated: an article item stays under its paragraph, and clients
+             *     ignore this value. Present only on items created with it.
+             */
             duration_ms?: number;
             /** @description Optional caption displayed alongside the item. */
             caption?: string;
@@ -5197,7 +5227,11 @@ export interface components {
             hide_at_seconds?: number;
             /** @description Article nodes only. Must be absent for video nodes. */
             trigger_at_paragraph?: number;
-            /** @description Article nodes only. Must be absent for video nodes. */
+            /**
+             * @deprecated
+             * @description Deprecated and optional: clients ignore it. Article nodes only;
+             *     must be absent for video nodes.
+             */
             duration_ms?: number;
             /** @description Optional caption displayed alongside the item. */
             caption?: string;
@@ -6237,6 +6271,18 @@ export interface components {
              *     higher now than 7 days ago). Concepts are not counted.
              */
             skills_up_last_7: number;
+            /**
+             * @description How many distinct song charts the student has ever marked as played with the
+             *     reader's "I played it", on any instrument. Marking the same chart again counts
+             *     once, and a chart withdrawn later still counts.
+             */
+            songs_played_total: number;
+            /**
+             * @description How many of the songs counted in songs_played_total were first marked as played on
+             *     the last 7 calendar days, today included, in the given time zone. Never more than
+             *     songs_played_total.
+             */
+            songs_played_last_7: number;
             /**
              * @description One card per instrument of the student, inferred from the paths and courses
              *     they're enrolled in, in the order their summaries are tabbed.

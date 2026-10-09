@@ -537,7 +537,10 @@ export interface components {
              */
             event_type: "practice.session_started";
         };
-        /** @description Answer to a fretboard cell shown on the fretboard: the student names its note. */
+        /**
+         * @description Answer to a fretboard cell shown on the fretboard: the student names its note, picking it
+         *     among four choices.
+         */
         NameTheNoteResponse: {
             /**
              * @description Discriminator. The student named the note of the cell shown. (enum property replaced by openapi-typescript)
@@ -549,6 +552,16 @@ export interface components {
              *     octave. Any spelling of the right pitch counts as right (F# and Gb alike).
              */
             note_name: string;
+            /**
+             * @description The four notes the student picked from, in the order shown: the cell's note and
+             *     three near notes (a semitone below, a semitone above, and the note at the same fret
+             *     on an adjacent string, or a note a tone away when that one repeats). They must be
+             *     four different pitches and include both the cell's note and the note named; otherwise
+             *     the answer is rejected. Kept with the evidence, so a wrong pick among four can be
+             *     weighed against the chance of guessing it. Absent only for an answer given on the
+             *     earlier twelve-note keypad.
+             */
+            choices?: string[];
             /** @description Milliseconds from the moment the cell was shown to the answer. */
             latency_ms: number;
         };
@@ -579,15 +592,20 @@ export interface components {
             response_type: "option_choice";
             /** @description The options selected, in any order. */
             option_ids: string[];
-            /** @description Milliseconds from the moment the exercise was shown to the answer. */
+            /**
+             * @description Milliseconds from the moment the exercise was shown to the answer. When the options
+             *     are sounds, it runs instead from the end of the last clip the student played to
+             *     Check: listening is not answering. A clip still playing at Check ends there, so the
+             *     latency is 0; with no clip played, it runs from the moment the exercise was shown.
+             */
             latency_ms: number;
             /**
-             * @description Milliseconds of audio the exercise asks the student to hear once before answering:
-             *     the length of the exercise's sound for a listening exercise, or the lengths of all
-             *     its sound options added together when the options are sounds. Hearing it is not
-             *     part of the time spent knowing the answer, so it is taken off the latency before
-             *     the answer is judged against the drill's fluent time. Replays are not taken off.
-             *     Absent for exercises without audio.
+             * @description Milliseconds of audio a listening exercise asks the student to hear once before
+             *     answering: the length of its sound. Hearing it is not part of the time spent knowing
+             *     the answer, so it is taken off the latency before the answer is judged against the
+             *     drill's fluent time. Replays are not taken off. Absent for exercises without audio,
+             *     and for exercises whose options are sounds, whose latency already starts after the
+             *     last clip played.
              */
             audio_ms?: number;
         };
@@ -658,12 +676,33 @@ export interface components {
             latency_ms: number;
         };
         /**
+         * @description Sent instead of an answer when an item couldn't be answered: its sound or image failed to
+         *     load and the student skipped it, or it can't be shown on this device. It fits every item
+         *     kind. It is never graded and yields no evidence, so it changes no accuracy, response time,
+         *     level or review schedule; the event is kept so items that fail can be found. The item's
+         *     options stay locked while its stimulus is missing, so it never carries a guess.
+         */
+        NotAnsweredResponse: {
+            /**
+             * @description Discriminator. The item was skipped without an answer. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "not_answered";
+            /**
+             * @description Why the item wasn't answered. failed_to_load = its sound or image didn't load, and
+             *     the student skipped it instead of trying again; unavailable = it can't be shown on
+             *     this device, so skipping was the only way on.
+             * @enum {string}
+             */
+            reason: "failed_to_load" | "unavailable";
+        };
+        /**
          * @description The student's raw answer to one practice item, exactly as given. It never says whether
          *     the answer was right: the server grades it against reference data, and a client grades
          *     it only to show instant feedback, with the same rules. Exactly one shape applies,
          *     discriminated by response_type.
          */
-        PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"] | components["schemas"]["NameTheShapeResponse"] | components["schemas"]["FindTheDegreeResponse"];
+        PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"] | components["schemas"]["NameTheShapeResponse"] | components["schemas"]["FindTheDegreeResponse"] | components["schemas"]["NotAnsweredResponse"];
         PracticeItemAnsweredEvent: components["schemas"]["TrackingEventBase"] & ({
             /** @enum {string} */
             event_type: "practice.item_answered";
@@ -715,7 +754,10 @@ export interface components {
              * @description The practice session that ended.
              */
             practice_session_id: string;
-            /** @description How many items the student answered in the session. */
+            /**
+             * @description How many items the student answered in the session. Items sent as not answered
+             *     (skipped because they couldn't be shown) are not counted.
+             */
             answered_count: number;
             /**
              * @description True when the session ended before its last planned item: the student left it
@@ -843,6 +885,7 @@ export type SchemaSelfRatingResponse = components['schemas']['SelfRatingResponse
 export type SchemaNameTheShapeResponse = components['schemas']['NameTheShapeResponse'];
 export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
 export type SchemaFindTheDegreeResponse = components['schemas']['FindTheDegreeResponse'];
+export type SchemaNotAnsweredResponse = components['schemas']['NotAnsweredResponse'];
 export type SchemaPracticeResponse = components['schemas']['PracticeResponse'];
 export type SchemaPracticeItemAnsweredEvent = components['schemas']['PracticeItemAnsweredEvent'];
 export type SchemaFeltRating = components['schemas']['FeltRating'];
