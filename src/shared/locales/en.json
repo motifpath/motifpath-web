@@ -1,5 +1,6 @@
 {
   "nav": {
+    "home": "Home",
     "student": "My path",
     "practice": "Practice",
     "myCourses": "My learning",
@@ -11,7 +12,10 @@
     "exercises": "Exercises",
     "diagrams": "Diagrams",
     "knowledgeMap": "Knowledge map",
-    "songCharts": "Song charts"
+    "songCharts": "Song charts",
+    "myPath": "My path",
+    "learning": "Learning",
+    "discover": "Discover"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
