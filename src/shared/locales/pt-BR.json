@@ -1,8 +1,7 @@
 {
   "nav": {
-    "student": "Minha trilha",
+    "home": "Início",
     "practice": "Praticar",
-    "myCourses": "Meu aprendizado",
     "findCourse": "Encontrar um curso",
     "findPath": "Encontrar uma trilha",
     "content": "Conteúdo",
@@ -11,7 +10,11 @@
     "exercises": "Exercícios",
     "diagrams": "Diagramas",
     "knowledgeMap": "Mapa de conhecimento",
-    "songCharts": "Cifras"
+    "songCharts": "Cifras",
+    "myPath": "Trilha",
+    "learning": "Aprender",
+    "discover": "Explorar",
+    "ariaLabel": "Principal"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
@@ -296,5 +299,10 @@
     "roleAdmin": "Admin",
     "en": "English",
     "ptBr": "Português (Brasil)"
+  },
+  "discoverSwitch": {
+    "label": "Catálogo",
+    "courses": "Cursos",
+    "paths": "Trilhas"
   }
 }

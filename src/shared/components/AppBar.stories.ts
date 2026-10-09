@@ -5,12 +5,12 @@ import AppBar from './AppBar.vue'
 const meta = {
   title: 'Shells/AppBar',
   component: AppBar,
-  args: { context: 'student', primaryNavTo: { name: 'path' } },
+  args: { primaryNavTo: { name: 'teacher-exercises' } },
+  globals: { role: 'teacher' },
   parameters: {
     docs: {
       description: {
-        component:
-          'Today’s app bar. On Compact it collapses to a hamburger + drawer, which costs an extra tap to switch section — the bottom navigation is meant to replace it there.',
+        component: 'The authoring (Teach) app bar: the authoring sections as tabs, or a hamburger + drawer on Compact.',
       },
     },
   },
@@ -19,17 +19,15 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Student: Story = {}
-export const StudentCompact: Story = { args: { compact: true } }
-export const Overview: Story = { args: { context: 'overview', primaryNavTo: undefined }, globals: { role: 'admin' } }
-export const Teacher: Story = { args: { context: 'teacher', primaryNavTo: { name: 'teacher-exercises' } }, globals: { role: 'teacher' } }
+export const Teacher: Story = {}
+export const TeacherCompact: Story = { args: { compact: true }, globals: { viewport: { value: 'compact' } } }
+/** Admins also get Knowledge map and Song charts. */
+export const Admin: Story = { args: { primaryNavTo: { name: 'admin-knowledge-map' } }, globals: { role: 'admin' } }
 export const TeacherEditingWithSave: Story = {
   args: {
-    context: 'teacher',
-    primaryNavTo: { name: 'teacher-exercises' },
     breadcrumbLabel: 'Major triads — region 1',
     showSave: true,
     justSaved: true,
   },
-  globals: { role: 'teacher' },
 }
+export const LongPortuguese: Story = { globals: { locale: 'pt-BR', role: 'admin' } }

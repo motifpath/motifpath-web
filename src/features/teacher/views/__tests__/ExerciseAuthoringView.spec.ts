@@ -140,10 +140,10 @@ describe('ExerciseAuthoringView', () => {
     GET.mockResolvedValue({ data: [], error: undefined, response: { status: 200 } })
   })
 
-  it('renders the AppBar in teacher context with a New exercise breadcrumb', () => {
+  it('renders the authoring AppBar with a New exercise breadcrumb', () => {
     const wrapper = mountView()
 
-    expect(wrapper.findComponent({ name: 'AppBar' }).props('context')).toBe('teacher')
+    expect(wrapper.findComponent({ name: 'AppBar' }).exists()).toBe(true)
     expect(wrapper.text()).toContain('New exercise')
   })
 

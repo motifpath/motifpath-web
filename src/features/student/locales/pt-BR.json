@@ -74,7 +74,6 @@
     "clearHintAfter": "para revisar e alterar a resposta de um exercício anterior."
   },
   "courseCatalogView": {
-    "heading": "Encontre um curso",
     "errorMessage": "Não foi possível carregar o catálogo de cursos.",
     "emptyHeading": "Nenhum curso ainda",
     "emptyMessage": "Novos cursos aparecerão aqui assim que forem publicados.",
@@ -143,7 +142,6 @@
     "prompt": "Minha dúvida ou gravação:"
   },
   "pathCatalogView": {
-    "heading": "Encontre uma trilha",
     "errorMessage": "Não foi possível carregar o catálogo de trilhas.",
     "emptyHeading": "Nenhuma trilha ainda",
     "emptyMessage": "Novas trilhas aparecerão aqui assim que forem publicadas.",

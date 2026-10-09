@@ -316,7 +316,7 @@ function removeEdge(edgeId: string) {
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar context="teacher" :compact="isCompact" :primary-nav-to="{ name: 'admin-knowledge-map' }" />
+    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'admin-knowledge-map' }" />
 
     <div class="flex flex-1 flex-col gap-4 px-4 pb-10 pt-6 sm:px-[48px] sm:pt-8">
       <h1 class="text-lg font-bold text-ink sm:text-xl">{{ t('knowledgeMap.heading') }}</h1>

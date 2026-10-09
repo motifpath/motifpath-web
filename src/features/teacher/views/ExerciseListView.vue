@@ -47,7 +47,7 @@ const exerciseTypeLabels = computed<Record<ExerciseType, string>>(() => ({
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar context="teacher" :compact="isCompact" :primary-nav-to="{ name: 'teacher-exercises' }" />
+    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'teacher-exercises' }" />
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">

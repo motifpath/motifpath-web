@@ -304,6 +304,13 @@ describe('CourseCatalogView', () => {
     expect(cards[1]!.text()).toContain('Advanced')
   })
 
+  it('sits under Discover: the title, then the Courses | Paths switch', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('h1').text()).toBe('Discover')
+    expect(wrapper.findComponent({ name: 'DiscoverSwitch' }).exists()).toBe(true)
+  })
+
   it('starts with a compact heading and only the catalog search visible', () => {
     const wrapper = mountView()
 

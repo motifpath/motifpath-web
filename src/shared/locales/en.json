@@ -1,8 +1,7 @@
 {
   "nav": {
-    "student": "My path",
+    "home": "Home",
     "practice": "Practice",
-    "myCourses": "My learning",
     "findCourse": "Find a course",
     "findPath": "Find a path",
     "content": "Content",
@@ -11,7 +10,11 @@
     "exercises": "Exercises",
     "diagrams": "Diagrams",
     "knowledgeMap": "Knowledge map",
-    "songCharts": "Song charts"
+    "songCharts": "Song charts",
+    "myPath": "My path",
+    "learning": "Learning",
+    "discover": "Discover",
+    "ariaLabel": "Main"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
@@ -296,5 +299,10 @@
     "roleAdmin": "Admin",
     "en": "English",
     "ptBr": "Português (Brasil)"
+  },
+  "discoverSwitch": {
+    "label": "Catalog",
+    "courses": "Courses",
+    "paths": "Paths"
   }
 }

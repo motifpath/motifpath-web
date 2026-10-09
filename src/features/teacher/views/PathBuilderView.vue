@@ -242,7 +242,6 @@ async function unpublish() {
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
     <AppBar
-      context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-paths' }"
       :breadcrumb-label="isEditMode ? title || t('pathBuilderView.editBreadcrumb') : t('pathBuilderView.newBreadcrumb')"

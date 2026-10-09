@@ -15,6 +15,7 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import DiscoverSwitch from '@/shared/components/DiscoverSwitch.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -95,7 +96,10 @@ async function enroll(course: CourseCatalogEntry) {
 
 <template>
   <section class="flex flex-col gap-6">
-    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('courseCatalogView.heading') }}</h1>
+    <div class="flex flex-col gap-3">
+      <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('nav.discover') }}</h1>
+      <DiscoverSwitch class="max-w-xs" />
+    </div>
 
     <CourseFilters
       v-model:search-text="searchText"

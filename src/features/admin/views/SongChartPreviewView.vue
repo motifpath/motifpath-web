@@ -21,7 +21,7 @@ const { chart, instrument, isLoading, error, notFound, retry } = useSongChartPre
 
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar context="teacher" :compact="isCompact" />
+    <AppBar :compact="isCompact" />
 
     <main class="mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-4 px-4 pb-10 pt-6">
       <div v-if="isLoading" data-test="preview-loading">

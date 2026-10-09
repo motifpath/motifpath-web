@@ -324,7 +324,6 @@ async function save() {
 <template>
   <div class="flex min-h-screen flex-col bg-surface">
     <AppBar
-      context="teacher"
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-exercises' }"
       :breadcrumb-label="isEditMode ? form.title.value || t('exerciseAuthoringView.editExerciseBreadcrumb') : t('exerciseAuthoringView.newExerciseBreadcrumb')"
