@@ -44,7 +44,7 @@ vi.mock('@/features/student/composables/useSetCurrentPath', () => ({
   useSetCurrentPath: () => ({ setCurrentPath }),
 }))
 
-const toast = { success: vi.fn(), error: vi.fn() }
+const toast = { success: vi.fn(), error: vi.fn(), neutral: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
 }))
@@ -362,7 +362,7 @@ describe('MyCoursesView', () => {
     expect(card(wrapper, 'Open chords warm-up').find('[data-test="switch"]').exists()).toBe(true)
   })
 
-  it('switches to a course and opens its path', async () => {
+  it('switches to a course at once and stays, so the list shows it as current', async () => {
     enrollments.enrollments.value = [enrollment()]
     setCurrentPath.mockResolvedValueOnce(currentPath({}))
     const wrapper = mountView()
@@ -371,10 +371,11 @@ describe('MyCoursesView', () => {
     await flushPromises()
 
     expect(setCurrentPath).toHaveBeenCalledWith({ courseEnrollmentId: 'e-1' })
-    expect(push).toHaveBeenCalledWith({ name: 'path' })
+    expect(current.retry).toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
   })
 
-  it('switches to a standalone path and opens it', async () => {
+  it('switches to a standalone path', async () => {
     standalone.paths.value = [standalonePath()]
     setCurrentPath.mockResolvedValueOnce(
       currentPath({ student_path_id: 'sp-1', course_enrollment_id: null }),
@@ -385,7 +386,82 @@ describe('MyCoursesView', () => {
     await flushPromises()
 
     expect(setCurrentPath).toHaveBeenCalledWith({ studentPathId: 'sp-1' })
-    expect(push).toHaveBeenCalledWith({ name: 'path' })
+  })
+
+  describe('Undo, as the switch is reversible and gets no confirm', () => {
+    function undoAction() {
+      const [message, options] = toast.neutral.mock.calls[0]
+      return { message: message as string, action: (options as { action: { label: string; run: () => void } }).action }
+    }
+
+    it('says which course is now current and offers Undo', async () => {
+      enrollments.enrollments.value = [enrollment(), enrollment({ course_enrollment_id: 'e-0', course_title: 'Major triads' })]
+      current.data.value = currentPath({ course_enrollment_id: 'e-0' })
+      setCurrentPath.mockResolvedValue(currentPath({}))
+      const wrapper = mountView()
+
+      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+      await flushPromises()
+
+      const { message, action } = undoAction()
+      expect(message).toBe('Fingerstyle journey is now your current course.')
+      expect(action.label).toBe('Undo')
+    })
+
+    it('switches back to the course that was current before', async () => {
+      enrollments.enrollments.value = [enrollment(), enrollment({ course_enrollment_id: 'e-0', course_title: 'Major triads' })]
+      current.data.value = currentPath({ course_enrollment_id: 'e-0' })
+      setCurrentPath.mockResolvedValue(currentPath({}))
+      const wrapper = mountView()
+      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+      await flushPromises()
+      current.retry.mockClear()
+
+      undoAction().action.run()
+      await flushPromises()
+
+      expect(setCurrentPath).toHaveBeenLastCalledWith({ courseEnrollmentId: 'e-0' })
+      expect(current.retry).toHaveBeenCalled()
+    })
+
+    it('switches back to a standalone path that was current before', async () => {
+      enrollments.enrollments.value = [enrollment()]
+      current.data.value = currentPath({ student_path_id: 'sp-0', course_enrollment_id: null })
+      setCurrentPath.mockResolvedValue(currentPath({}))
+      const wrapper = mountView()
+      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+      await flushPromises()
+
+      undoAction().action.run()
+      await flushPromises()
+
+      expect(setCurrentPath).toHaveBeenLastCalledWith({ studentPathId: 'sp-0' })
+    })
+
+    it('offers no Undo when nothing was current before', async () => {
+      enrollments.enrollments.value = [enrollment()]
+      setCurrentPath.mockResolvedValue(currentPath({}))
+      const wrapper = mountView()
+
+      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+      await flushPromises()
+
+      expect(toast.neutral).toHaveBeenCalledWith('Fingerstyle journey is now your current course.', {})
+    })
+
+    it('reports an Undo the server refused', async () => {
+      enrollments.enrollments.value = [enrollment()]
+      current.data.value = currentPath({ course_enrollment_id: 'e-0' })
+      setCurrentPath.mockResolvedValueOnce(currentPath({})).mockRejectedValueOnce(new Error('That course is no longer active'))
+      const wrapper = mountView()
+      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+      await flushPromises()
+
+      undoAction().action.run()
+      await flushPromises()
+
+      expect(toast.error).toHaveBeenCalledWith('That course is no longer active')
+    })
   })
 
   it('disables every switch while one is in flight', async () => {
@@ -401,7 +477,7 @@ describe('MyCoursesView', () => {
     }
   })
 
-  it('reports a refused switch and stays on the page', async () => {
+  it('reports a refused switch', async () => {
     enrollments.enrollments.value = [enrollment()]
     setCurrentPath.mockRejectedValueOnce(new Error('That course is no longer active'))
     const wrapper = mountView()

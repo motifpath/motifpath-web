@@ -107,7 +107,9 @@
     "findPath": "Encontrar uma trilha",
     "browsePathCatalog": "Ver o catálogo de trilhas",
     "pathProgress": "{completed} de {count} lição | {completed} de {count} lições",
-    "open": "Abrir"
+    "open": "Abrir",
+    "switchedToast": "{title} agora é o seu curso atual.",
+    "undo": "Desfazer"
   },
   "courseDetailView": {
     "errorMessage": "Não foi possível carregar este curso.",

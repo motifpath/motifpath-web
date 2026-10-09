@@ -107,7 +107,9 @@
     "findPath": "Find a path",
     "browsePathCatalog": "Browse the path catalog",
     "pathProgress": "{completed} of {count} lesson | {completed} of {count} lessons",
-    "open": "Open"
+    "open": "Open",
+    "switchedToast": "{title} is now your current course.",
+    "undo": "Undo"
   },
   "courseDetailView": {
     "errorMessage": "We couldn't load this course.",

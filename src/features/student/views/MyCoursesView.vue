@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Check } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
@@ -29,7 +29,6 @@ const STATUS_ORDER: Record<EnrollmentStatus, number> = { active: 0, completed: 1
 
 const { t } = useTypedT()
 const toast = useToast()
-const router = useRouter()
 
 const enrollmentsState = useMyCourseEnrollments()
 const standaloneState = useMyStandalonePaths()
@@ -92,15 +91,42 @@ function assignedBySomeoneElse(path: StudentPath): boolean {
 
 const switching = ref(false)
 
-async function switchTo(target: CurrentPathTarget) {
+// What is current now, as a target to come back to; null when nothing is.
+function currentTarget(): CurrentPathTarget | null {
+  const data = currentState.data.value
+  if (!data) return null
+  return data.course_enrollment_id
+    ? { courseEnrollmentId: data.course_enrollment_id }
+    : { studentPathId: data.student_path_id }
+}
+
+async function makeCurrent(target: CurrentPathTarget) {
+  await setCurrentPath(target)
+  await currentState.retry()
+}
+
+// Switching is reversible, so it happens at once with an Undo, never behind a confirm.
+async function switchTo(target: CurrentPathTarget, title: string) {
+  const previous = currentTarget()
   switching.value = true
   try {
-    await setCurrentPath(target)
-    await router.push({ name: 'path' })
+    await makeCurrent(target)
+    toast.neutral(
+      t('myCoursesView.switchedToast', { title }),
+      previous ? { action: { label: t('myCoursesView.undo'), run: () => void undo(previous) } } : {},
+    )
   } catch (e) {
     toast.error(e instanceof Error ? e.message : String(e))
   } finally {
     switching.value = false
+  }
+}
+
+async function undo(previous: CurrentPathTarget) {
+  try {
+    await makeCurrent(previous)
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : String(e))
   }
 }
 </script>
@@ -180,7 +206,7 @@ async function switchTo(target: CurrentPathTarget) {
                   v-else-if="enrollment.status === 'active'"
                   data-test="switch"
                   :disabled="switching"
-                  @click="switchTo({ courseEnrollmentId: enrollment.course_enrollment_id })"
+                  @click="switchTo({ courseEnrollmentId: enrollment.course_enrollment_id }, enrollment.course_title)"
                 >
                   {{ t('myCoursesView.switch') }}
                 </PrimaryButton>
@@ -227,7 +253,7 @@ async function switchTo(target: CurrentPathTarget) {
                   v-else
                   data-test="switch"
                   :disabled="switching"
-                  @click="switchTo({ studentPathId: path.student_path_id })"
+                  @click="switchTo({ studentPathId: path.student_path_id }, path.title)"
                 >
                   {{ t('myCoursesView.switch') }}
                 </PrimaryButton>
