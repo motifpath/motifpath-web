@@ -55,6 +55,31 @@ jobs:
       - name: Run Vitest
         run: npm run test
 
+  storybook:
+    name: Storybook (build, story tests, a11y)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install Chromium for the story tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      # Every story renders in Chromium against the mock API: a story that
+      # throws, fails its play function, calls an unmocked endpoint or breaks
+      # an accessibility rule fails the run.
+      - name: Run story tests
+        run: npm run test:storybook
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -82,6 +107,6 @@ jobs:
   all-checks:
     name: All checks passed
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test, build]
+    needs: [lint, typecheck, test, storybook, build]
     steps:
       - run: echo "All CI checks passed"
