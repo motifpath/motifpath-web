@@ -27,4 +27,13 @@ describe('ProgressMeter', () => {
 
     expect(wrapper.text()).toBe('0 of 0 steps complete')
   })
+
+  it('names the progressbar with its caption', () => {
+    const wrapper = mount(ProgressMeter, { props: { completed: 1, total: 3 }, attachTo: document.body })
+
+    const bar = wrapper.get('[role="progressbar"]')
+    const caption = document.getElementById(bar.attributes('aria-labelledby') ?? '')
+    expect(caption?.textContent).toBe('1 of 3 steps complete')
+    wrapper.unmount()
+  })
 })
