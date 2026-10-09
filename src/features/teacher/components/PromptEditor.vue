@@ -718,8 +718,9 @@ async function onImagePicked(event: Event) {
       @apply="applyDiagram"
       @close="diagramPickerOpen = false"
     />
+    <!-- Created only while open: the picker loads the published song charts as soon as it exists. -->
     <SongChartPickerModal
-      v-if="songCharts"
+      v-if="songCharts && songChartPickerOpen"
       :open="songChartPickerOpen"
       @pick="insertSongChart"
       @close="songChartPickerOpen = false"

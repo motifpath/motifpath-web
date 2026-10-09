@@ -7,8 +7,9 @@ vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
   useMediaUpload: () => ({ upload }),
 }))
 // An inline diagram's preview loads through the API; these tests only need it to stay loading.
+const GET = vi.fn<(path: string) => Promise<never>>(() => new Promise(() => {}))
 vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { GET: () => new Promise(() => {}) }, eventApi: {} }),
+  useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
 import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
@@ -466,6 +467,19 @@ describe('PromptEditor', () => {
       expect(wrapper.find('[data-test="prompt-toolbar-song-chart"]').exists()).toBe(false)
     })
 
+    it('loads no song charts until the teacher opens the picker', async () => {
+      GET.mockClear()
+      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Play along'), songCharts: true }, global: { stubs: { teleport: true } } })
+      await nextTick()
+
+      expect(GET.mock.calls.some(([path]) => path === '/song-charts')).toBe(false)
+
+      await wrapper.get('[data-test="prompt-toolbar-song-chart"]').trigger('click')
+      await nextTick()
+
+      expect(GET.mock.calls.some(([path]) => path === '/song-charts')).toBe(true)
+    })
+
     it('inserts the picked song chart', async () => {
       const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Play along'), songCharts: true }, global: { stubs } })
       await nextTick()
@@ -477,7 +491,7 @@ describe('PromptEditor', () => {
 
       const nodes = lastEmittedDocument(wrapper).content
       expect(nodes.find((n) => n.type === 'songChart')?.attrs).toEqual({ songChartId: 'chart-asa-branca' })
-      expect(wrapper.getComponent(SongChartPickerModal).props('open')).toBe(false)
+      expect(wrapper.findComponent(SongChartPickerModal).exists()).toBe(false)
     })
 
     it('shows an embedded song chart as its card', async () => {
