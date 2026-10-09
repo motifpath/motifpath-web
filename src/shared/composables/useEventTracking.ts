@@ -26,15 +26,40 @@ function currentSessionId(): string {
   return sessionId
 }
 
+// Waits before each resend of an event that failed to send. Kept short: a
+// caller may await delivery (a lesson's completion, before the path shows the
+// step done), so the whole retry window stays under four seconds.
+const RETRY_DELAYS_MS = [500, 1000, 2000]
+
+/**
+ * Whether an HTTP error is worth sending again: a server error, a timeout or
+ * rate limiting. Any other 4xx means the envelope itself was refused, and
+ * sending it again would only repeat that.
+ */
+function isRetryable(status: number): boolean {
+  return status >= 500 || status === 408 || status === 429
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 /**
  * Posts student tracking events to the Event Ingestion Service. A no-op
  * until the student's profile has resolved, since every event requires a
- * student_id to attribute it to. Delivery failures never throw — this is
- * fire-and-forget telemetry that must never block the practice flow — but a
- * rejected envelope (4xx) is still logged: openapi-fetch resolves an HTTP
- * error as `{ error }` rather than throwing, so silence here would otherwise
- * hide a systemic schema mismatch between TrackableEvent and the backend
- * contract forever.
+ * student_id to attribute it to.
+ *
+ * A send that fails on the network, a server error, a timeout or rate limiting
+ * is repeated a few times with growing waits. Every attempt carries the same
+ * envelope (event_id, occurred_at), and ingestion stores an event_id only
+ * once, so a resend after a lost response never double-counts. An event still
+ * pending when the page closes is lost.
+ *
+ * Delivery failures never throw — this is telemetry that must never block the
+ * practice flow — but they are logged: a rejected envelope (any other 4xx) at
+ * once, since openapi-fetch resolves an HTTP error as `{ error }` rather than
+ * throwing and silence would hide a schema mismatch with the backend contract
+ * forever; an event that never got through, after the last attempt.
  *
  * Pass `{ keepalive: true }` for an event sent as the page closes: the browser
  * then finishes the request after the page is gone.
@@ -55,17 +80,25 @@ export function useEventTracking() {
       occurred_at: new Date().toISOString(),
     }
 
-    try {
-      const { error } = await eventApi.POST('/events', {
-        body: envelope,
-        ...(options.keepalive ? { keepalive: true } : {}),
-      })
-      if (error) {
-        console.warn('Tracking event rejected by the Event Ingestion Service:', event.event_type, error)
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      if (attempt > 0) await wait(RETRY_DELAYS_MS[attempt - 1]!)
+
+      try {
+        const { error, response } = await eventApi.POST('/events', {
+          body: envelope,
+          ...(options.keepalive ? { keepalive: true } : {}),
+        })
+        if (!error) return
+        if (!isRetryable(response.status)) {
+          console.warn('Tracking event rejected by the Event Ingestion Service:', event.event_type, error)
+          return
+        }
+      } catch {
+        // Network/transport failure: worth another attempt.
       }
-    } catch {
-      // Network/transport failure — not surfaced, see doc comment above.
     }
+
+    console.warn('Tracking event not delivered after retrying:', event.event_type)
   }
 
   return { track }

@@ -1,10 +1,14 @@
 import { reactive } from 'vue'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 type PostEvents = (
   path: '/events',
   init: { body: Record<string, unknown>; keepalive?: boolean },
-) => Promise<{ data?: { event_id: string; received_at: string }; error?: { message: string } }>
+) => Promise<{
+  data?: { event_id: string; received_at: string }
+  error?: { message: string }
+  response: { status: number }
+}>
 
 const POST = vi.fn<PostEvents>()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -18,10 +22,24 @@ vi.mock('@/stores/currentUser', () => ({
 
 import { useEventTracking } from '@/shared/composables/useEventTracking'
 
+function accepted() {
+  return { data: { event_id: 'e-1', received_at: '2026-09-15T00:00:00Z' }, error: undefined, response: { status: 202 } }
+}
+
+function failedWith(status: number) {
+  return { data: undefined, error: { message: 'boom' }, response: { status } }
+}
+
+const startedEvent = {
+  event_type: 'exercise.started',
+  exercise_id: 'ex-1',
+  trigger_context: { source: 'challenge_sequence' },
+} as const
+
 describe('useEventTracking', () => {
   beforeEach(() => {
     POST.mockReset()
-    POST.mockResolvedValue({ data: { event_id: 'e-1', received_at: '2026-09-15T00:00:00Z' }, error: undefined })
+    POST.mockResolvedValue(accepted())
     currentUser.profile = { user_id: 'student-1' }
   })
 
@@ -102,7 +120,7 @@ describe('useEventTracking', () => {
   })
 
   it('does not throw when the event fails to post', async () => {
-    POST.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' } })
+    POST.mockResolvedValueOnce(failedWith(400))
     const { track } = useEventTracking()
 
     await expect(
@@ -115,7 +133,7 @@ describe('useEventTracking', () => {
   })
 
   it('warns when the server rejects the event, since openapi-fetch resolves HTTP errors rather than throwing', async () => {
-    POST.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' } })
+    POST.mockResolvedValueOnce(failedWith(400))
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const { track } = useEventTracking()
 
@@ -129,16 +147,100 @@ describe('useEventTracking', () => {
     warn.mockRestore()
   })
 
-  it('does not throw when the network request itself rejects', async () => {
+})
+
+describe('useEventTracking retries', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    POST.mockReset()
+    POST.mockResolvedValue(accepted())
+    currentUser.profile = { user_id: 'student-1' }
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  async function trackAndSettle(options: { keepalive?: boolean } = {}): Promise<void> {
+    const { track } = useEventTracking()
+    const sent = track(startedEvent, options)
+    await vi.runAllTimersAsync()
+    await sent
+  }
+
+  it('resends the same event after a network failure, so ingestion stores it once', async () => {
     POST.mockRejectedValueOnce(new Error('network down'))
+
+    await trackAndSettle()
+
+    expect(POST).toHaveBeenCalledTimes(2)
+    const first = POST.mock.calls[0]![1].body
+    const second = POST.mock.calls[1]![1].body
+    expect(second).toEqual(first)
+  })
+
+  it.each([500, 503, 408, 429])('resends after a %i response', async (status) => {
+    POST.mockResolvedValueOnce(failedWith(status))
+
+    await trackAndSettle()
+
+    expect(POST).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([400, 401, 403, 404, 422])('never resends after a %i response, and warns', async (status) => {
+    POST.mockResolvedValueOnce(failedWith(status))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await trackAndSettle()
+
+    expect(POST).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('rejected'), 'exercise.started', { message: 'boom' })
+    warn.mockRestore()
+  })
+
+  it('waits longer before each resend', async () => {
+    POST.mockRejectedValue(new Error('network down'))
     const { track } = useEventTracking()
 
-    await expect(
-      track({
-        event_type: 'exercise.started',
-        exercise_id: 'ex-1',
-        trigger_context: { source: 'challenge_sequence' },
-      }),
-    ).resolves.toBeUndefined()
+    const sent = track(startedEvent)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(POST).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(499)
+    expect(POST).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(POST).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(999)
+    expect(POST).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(POST).toHaveBeenCalledTimes(3)
+
+    await vi.advanceTimersByTimeAsync(1999)
+    expect(POST).toHaveBeenCalledTimes(3)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(POST).toHaveBeenCalledTimes(4)
+
+    await sent
+  })
+
+  it('gives up after four attempts without throwing, and warns once', async () => {
+    POST.mockRejectedValue(new Error('network down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await expect(trackAndSettle()).resolves.toBeUndefined()
+
+    expect(POST).toHaveBeenCalledTimes(4)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not delivered'), 'exercise.started')
+    warn.mockRestore()
+  })
+
+  it('keeps keepalive on every resend', async () => {
+    POST.mockRejectedValueOnce(new Error('network down'))
+
+    await trackAndSettle({ keepalive: true })
+
+    expect(POST.mock.calls.map(([, init]) => init.keepalive)).toEqual([true, true])
   })
 })
