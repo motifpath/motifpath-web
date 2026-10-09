@@ -99,6 +99,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'nodes/:nodeId/practice',
         name: 'practice',
+        // A practice run shows no navigation; its own bar holds Back and Next at the foot of a phone.
+        meta: { hidesBottomBar: true },
         props: true,
         component: () => import('@/features/student/views/PracticeView.vue'),
       },

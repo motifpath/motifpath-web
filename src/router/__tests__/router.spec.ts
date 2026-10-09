@@ -303,6 +303,10 @@ describe('router', () => {
     expect(router.resolve('/path/nodes/node-abc').meta.hidesBottomBar).toBe(true)
   })
 
+  it('gives a node’s practice the phone’s full height too: a practice run shows no navigation', () => {
+    expect(router.resolve('/path/nodes/node-abc/practice').meta.hidesBottomBar).toBe(true)
+  })
+
   it('keeps the bottom navigation bar on My path itself', () => {
     expect(router.resolve('/path').meta.hidesBottomBar).toBeFalsy()
   })
