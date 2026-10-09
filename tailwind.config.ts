@@ -43,8 +43,8 @@ const colors: Record<string, string> = Object.fromEntries(
 )
 
 // brand.ground is a fixed, theme-independent value (unlike the semantic
-// color roles above) — a scrim/overlay stays the same dark tint in both
-// themes, so it skips the custom-property indirection.
+// color roles above), for dark media stages that stay dark in both themes,
+// so it skips the custom-property indirection. Overlays use the `scrim` role.
 colors['brand-ground'] = tokens.brand.ground.$value
 
 // WhatsApp's own brand green, for the WhatsApp mark only. A third party's

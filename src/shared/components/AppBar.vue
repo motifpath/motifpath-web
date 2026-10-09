@@ -192,7 +192,7 @@ function closeDrawer(): void {
 
     <template v-if="compact && drawerOpen">
       <div
-        class="fixed inset-x-0 bottom-0 top-16 z-30 bg-brand-ground/45"
+        class="fixed inset-x-0 bottom-0 top-16 z-30 bg-scrim/40"
         @click="closeDrawer"
       />
       <div
