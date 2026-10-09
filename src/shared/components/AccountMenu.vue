@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Check, Languages, LogOut, PencilRuler } from 'lucide-vue-next'
-import { computed, ref, useId } from 'vue'
+import { Check, GraduationCap, Languages, LogOut, PencilRuler } from 'lucide-vue-next'
+import { computed, inject, ref, useId } from 'vue'
+import { routeLocationKey } from 'vue-router'
 
 import { useAuth } from '@/features/auth/composables/useAuth'
 import type { MessageKey, SupportedLocale } from '@/i18n'
@@ -35,6 +36,10 @@ const languageTitleId = useId()
 
 const role = computed(() => currentUser.profile?.role)
 const canTeach = computed(() => role.value === 'teacher' || role.value === 'admin')
+// Learning is open to every role and only authoring is role-gated, so a page that requires a role
+// is inside Teach. Read without `useRoute()` so the menu also renders where no router is set up.
+const route = inject(routeLocationKey, null)
+const inTeach = computed(() => Array.isArray(route?.meta.requiresRole))
 const roleLabel = computed(() =>
   role.value === 'teacher' ? t('accountMenu.roleTeacher') : role.value === 'admin' ? t('accountMenu.roleAdmin') : '',
 )
@@ -149,7 +154,15 @@ function chooseLanguage(code: SupportedLocale) {
             @click="view = 'language'"
           />
           <MenuRow
-            v-if="canTeach"
+            v-if="inTeach"
+            data-test="account-back-to-learning"
+            :icon="GraduationCap"
+            :label="t('accountMenu.backToLearning')"
+            :to="{ name: 'home' }"
+            @click="close"
+          />
+          <MenuRow
+            v-else-if="canTeach"
             data-test="account-teach"
             :icon="PencilRuler"
             :label="t('accountMenu.teach')"

@@ -1,7 +1,8 @@
 import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
+import { routeLocationKey } from 'vue-router'
 
 import { mockViewport } from '@/shared/testUtils/viewport'
 
@@ -35,7 +36,7 @@ type Role = 'student' | 'teacher' | 'admin'
 
 let wrappers: VueWrapper[] = []
 
-function mountMenu({ width = 390, role = 'student' as Role } = {}) {
+function mountMenu({ width = 390, role = 'student' as Role, routeMeta = {} as Record<string, unknown> } = {}) {
   mockViewport(width)
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -49,7 +50,11 @@ function mountMenu({ width = 390, role = 'student' as Role } = {}) {
   }
   const wrapper = mount(AccountMenu, {
     attachTo: document.body,
-    global: { plugins: [pinia], stubs: { RouterLink: RouterLinkStub } },
+    global: {
+      plugins: [pinia],
+      stubs: { RouterLink: RouterLinkStub },
+      provide: { [routeLocationKey as symbol]: reactive({ name: 'here', meta: routeMeta }) },
+    },
   })
   wrappers.push(wrapper)
   return { wrapper, currentUser }
@@ -187,6 +192,23 @@ describe('AccountMenu', () => {
       await open(wrapper)
 
       expect(wrapper.find('[data-test="account-teach"]').exists()).toBe(false)
+    })
+
+    it.each(['teacher', 'admin'] as const)('inside Teach, offers "Back to learning" in its place for a %s, landing on Home', async (role) => {
+      const { wrapper } = mountMenu({ role, routeMeta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] } })
+      await open(wrapper)
+
+      expect(wrapper.find('[data-test="account-teach"]').exists()).toBe(false)
+      const back = wrapper.getComponent<typeof RouterLinkStub>('[data-test="account-back-to-learning"]')
+      expect(back.text()).toContain('Back to learning')
+      expect(back.props('to')).toEqual({ name: 'home' })
+    })
+
+    it('offers no "Back to learning" outside Teach', async () => {
+      const { wrapper } = mountMenu({ role: 'admin', routeMeta: { requiresAuth: true } })
+      await open(wrapper)
+
+      expect(wrapper.find('[data-test="account-back-to-learning"]').exists()).toBe(false)
     })
 
     it.each(['teacher', 'admin'] as const)('takes a %s to authoring', async (role) => {

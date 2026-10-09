@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 
+import { reactive } from 'vue'
+import { routeLocationKey } from 'vue-router'
+
 import AccountMenu from './AccountMenu.vue'
 
 const meta = {
@@ -38,4 +41,24 @@ export const MenuExpanded: Story = { play: openMenu, globals: { role: 'admin', v
 export const LongPortuguese: Story = {
   play: openMenu,
   globals: { role: 'teacher', locale: 'pt-BR', viewport: { value: 'compact' } },
+}
+
+/** Inside Teach, "Back to learning" takes Teach's place and lands on Home. */
+export const InsideTeach: Story = {
+  play: openMenu,
+  globals: { role: 'admin', viewport: { value: 'compact' } },
+  render: () => ({
+    components: { AccountMenu },
+    provide: { [routeLocationKey as symbol]: reactive({
+        name: 'teacher-content',
+        path: '/teacher/content',
+        fullPath: '/teacher/content',
+        params: {},
+        query: {},
+        hash: '',
+        matched: [],
+        meta: { requiresRole: ['teacher', 'admin'] },
+      }) },
+    template: '<div class="flex justify-end"><AccountMenu /></div>',
+  }),
 }
