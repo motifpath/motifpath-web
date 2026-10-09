@@ -371,8 +371,23 @@ describe('MyCoursesView', () => {
     await flushPromises()
 
     expect(setCurrentPath).toHaveBeenCalledWith({ courseEnrollmentId: 'e-1' })
-    expect(current.retry).toHaveBeenCalled()
+    expect(card(wrapper, 'Fingerstyle journey').find('[data-test="current"]').exists()).toBe(true)
     expect(push).not.toHaveBeenCalled()
+  })
+
+  it('keeps the list on screen while switching, without reloading it', async () => {
+    enrollments.enrollments.value = [enrollment()]
+    let finish!: (view: StudentPathView) => void
+    setCurrentPath.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+    const wrapper = mountView()
+
+    await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+    finish(currentPath({}))
+    await flushPromises()
+
+    expect(current.retry).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-test="loading"]').exists()).toBe(false)
+    expect(current.data.value?.course_enrollment_id).toBe('e-1')
   })
 
   it('switches to a standalone path', async () => {
@@ -411,17 +426,16 @@ describe('MyCoursesView', () => {
     it('switches back to the course that was current before', async () => {
       enrollments.enrollments.value = [enrollment(), enrollment({ course_enrollment_id: 'e-0', course_title: 'Major triads' })]
       current.data.value = currentPath({ course_enrollment_id: 'e-0' })
-      setCurrentPath.mockResolvedValue(currentPath({}))
+      setCurrentPath.mockResolvedValueOnce(currentPath({})).mockResolvedValueOnce(currentPath({ course_enrollment_id: 'e-0' }))
       const wrapper = mountView()
       await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
       await flushPromises()
-      current.retry.mockClear()
 
       undoAction().action.run()
       await flushPromises()
 
       expect(setCurrentPath).toHaveBeenLastCalledWith({ courseEnrollmentId: 'e-0' })
-      expect(current.retry).toHaveBeenCalled()
+      expect(card(wrapper, 'Major triads').find('[data-test="current"]').exists()).toBe(true)
     })
 
     it('switches back to a standalone path that was current before', async () => {

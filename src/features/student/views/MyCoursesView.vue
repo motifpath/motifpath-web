@@ -100,9 +100,10 @@ function currentTarget(): CurrentPathTarget | null {
     : { studentPathId: data.student_path_id }
 }
 
+// The switch answers with the new current path, so the list re-marks it in place: reloading would
+// swap the whole list for a skeleton and lose the scroll position and keyboard focus.
 async function makeCurrent(target: CurrentPathTarget) {
-  await setCurrentPath(target)
-  await currentState.retry()
+  currentState.data.value = await setCurrentPath(target)
 }
 
 // Switching is reversible, so it happens at once with an Undo, never behind a confirm.
