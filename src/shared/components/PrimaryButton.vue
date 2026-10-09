@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { RouterLink, type RouteLocationRaw } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
+
+import AppButton from '@/shared/components/AppButton.vue'
 
 withDefaults(
   defineProps<{
@@ -7,23 +9,12 @@ withDefaults(
     to?: RouteLocationRaw
     type?: 'button' | 'submit'
   }>(),
-  { as: 'button', type: 'button' },
+  { as: 'button', to: undefined, type: 'button' },
 )
 </script>
 
 <template>
-  <RouterLink
-    v-if="as === 'RouterLink'"
-    :to="to!"
-    class="rounded bg-accent px-4 py-2 text-sm text-accent-fg"
-  >
+  <AppButton variant="primary" :to="as === 'RouterLink' ? to : undefined" :type="type">
     <slot />
-  </RouterLink>
-  <button
-    v-else
-    :type="type"
-    class="rounded bg-accent px-4 py-2 text-sm text-accent-fg disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    <slot />
-  </button>
+  </AppButton>
 </template>
