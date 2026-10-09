@@ -13,7 +13,7 @@ const meta = {
     components: { NavigationSidebar, MenuRow },
     setup: () => ({ args, CircleUserRound }),
     template: `
-      <div class="h-[40rem]">
+      <div class="flex h-[40rem]">
         <NavigationSidebar v-bind="args">
           <template #account><MenuRow label="Account" :icon="CircleUserRound" /></template>
         </NavigationSidebar>

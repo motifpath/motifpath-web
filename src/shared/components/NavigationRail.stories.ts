@@ -12,7 +12,7 @@ const meta = {
     components: { NavigationRail, UserAvatar },
     setup: () => ({ args }),
     template: `
-      <div class="h-[40rem]">
+      <div class="flex h-[40rem]">
         <NavigationRail v-bind="args">
           <template #account><UserAvatar initial="A" /></template>
         </NavigationRail>

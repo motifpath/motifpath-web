@@ -24,7 +24,7 @@ const { t } = useTypedT()
   <!-- A desktop's navigation: icon and label rows. Authoring is desktop-first, so here Teach gets
        its own row instead of hiding in the account menu. The account entry (slot `account`) sits at
        the foot. -->
-  <div class="flex h-full w-64 flex-col border-r border-border bg-surface-raised px-3 py-5">
+  <div class="flex w-64 flex-col border-r border-border bg-surface-raised px-3 py-5">
     <RouterLink
       :to="{ name: 'home' }"
       class="mb-3 flex items-center gap-2.5 self-start rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"

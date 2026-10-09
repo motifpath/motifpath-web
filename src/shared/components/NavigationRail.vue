@@ -17,7 +17,7 @@ const { t } = useTypedT()
 <template>
   <!-- A tablet's navigation: the same five destinations, down the left edge. The account entry
        (slot `account`) sits at the foot. -->
-  <div class="flex h-full w-24 flex-col items-center border-r border-border bg-surface-raised py-5">
+  <div class="flex w-24 flex-col items-center border-r border-border bg-surface-raised py-5">
     <RouterLink :to="{ name: 'home' }" class="mb-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
       <BrandMark size="md" />
     </RouterLink>

@@ -54,11 +54,32 @@ type Story = StoryObj<typeof meta>
 const settle = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** A phone: slim top bar with the avatar, the five destinations along the bottom. */
-export const Compact: Story = { globals: { viewport: { value: 'compact' } } }
+export const Compact: Story = {
+  globals: { viewport: { value: 'compact' } },
+  play: async ({ canvasElement }) => {
+    await settle(100)
+    const bar = canvasElement.querySelector('[data-test="learner-top-bar"]')!.getBoundingClientRect()
+    const avatar = canvasElement.querySelector('[data-test="learner-top-bar"] [data-test="account-menu-avatar"] span')!.getBoundingClientRect()
+    await expect(avatar.height).toBe(32)
+    await expect(avatar.top).toBeGreaterThanOrEqual(bar.top)
+    await expect(avatar.bottom).toBeLessThanOrEqual(bar.bottom)
+  },
+}
 /** A tablet: the rail, with the avatar at its foot. */
 export const Medium: Story = { render: onRoute('path'), globals: { viewport: { value: 'medium' } } }
 /** A desktop: the sidebar, with Teach for authors and the Account row at its foot. */
-export const Expanded: Story = { render: onRoute('my-courses'), globals: { role: 'teacher', viewport: { value: 'expanded' } } }
+export const Expanded: Story = {
+  render: onRoute('my-courses'),
+  globals: { role: 'teacher', viewport: { value: 'expanded' } },
+  // The sidebar spans the screen, with the Account row at its foot, however short the page.
+  play: async ({ canvasElement }) => {
+    await settle(100)
+    const sidebar = canvasElement.querySelector('[data-test="navigation-sidebar"]')!.getBoundingClientRect()
+    const account = canvasElement.querySelector('[data-test="navigation-sidebar"] [data-test="account-menu-avatar"]')!.getBoundingClientRect()
+    await expect(sidebar.height).toBe(window.innerHeight)
+    await expect(sidebar.bottom - account.bottom).toBeLessThan(40)
+  },
+}
 export const LongPortuguese: Story = { render: onRoute('course-catalog'), globals: { locale: 'pt-BR', viewport: { value: 'compact' } } }
 
 /** A lesson takes the phone's full height: no bottom bar. */
