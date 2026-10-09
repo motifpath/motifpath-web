@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 
+import { failing } from '@/shared/testUtils/msw/handlers'
+
 import SongChartCard from './SongChartCard.vue'
 
 const meta = {
@@ -20,3 +22,4 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+export const Failed: Story = { parameters: { msw: { handlers: { publishedSongChart: failing('publishedSongChart') } } } }

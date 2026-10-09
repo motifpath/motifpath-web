@@ -5,7 +5,7 @@ import type { Alias } from 'vite'
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.ts'],
-  addons: ['@storybook/addon-a11y'],
+  addons: ['@storybook/addon-a11y', '@storybook/addon-vitest'],
   // The mock API's service worker; kept out of `public/` so the app never ships it.
   staticDirs: ['./public'],
   framework: { name: '@storybook/vue3-vite', options: {} },

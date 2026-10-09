@@ -5,6 +5,8 @@ import FocusCard from './FocusCard.vue'
 const meta = {
   title: 'Cards & progress/FocusCard',
   component: FocusCard,
+  // A list item: it only renders inside the list its caller provides.
+  decorators: [() => ({ template: '<ul><story /></ul>' })],
   args: {
     position: 4,
     eyebrow: 'Up next',

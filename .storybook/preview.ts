@@ -1,3 +1,4 @@
+import { fetchesSettled } from './mocks/fetchesInFlight'
 import { setup, type Preview } from '@storybook/vue3-vite'
 import { setupWorker } from 'msw/browser'
 import { mswLoader } from 'msw-storybook-addon/csf3'
@@ -35,15 +36,20 @@ for (const [locale, messages] of [
   i18n.global.mergeLocaleMessage(locale, messages)
 }
 
-// Stories answer API calls from the mock API. A call to another origin that
-// no handler covers is reported, so a story can't quietly sit in a loading
-// state; same-origin requests are Storybook's own files.
+// Stories answer API calls from the mock API. An API call (a fetch to another
+// origin) that no handler covers fails the story, so a story can't quietly sit
+// in a loading state or reach a real backend. Same-origin requests are
+// Storybook's own files; images, audio and other subresources aren't API calls.
+const unmockedCalls: string[] = []
+
 async function startMockApi() {
   const worker = setupWorker()
   await worker.start({
     quiet: true,
     onUnhandledRequest(request, print) {
-      if (new URL(request.url).origin !== window.location.origin) print.error()
+      if (request.destination !== '' || new URL(request.url).origin === window.location.origin) return
+      unmockedCalls.push(`${request.method} ${request.url}`)
+      print.error()
     },
   })
   return worker
@@ -118,8 +124,16 @@ const preview: Preview = {
     () => {
       clearVoiceCache()
       clearEmbeddedDiagramCache()
+      unmockedCalls.length = 0
     },
   ],
+  async afterEach() {
+    // An unmatched call is only reported once the mock API has seen it.
+    await fetchesSettled(1000)
+    if (unmockedCalls.length > 0) {
+      throw new Error(`API calls with no mock handler (add one in src/shared/testUtils/msw/handlers.ts):\n${unmockedCalls.join('\n')}`)
+    }
+  },
   decorators: [
     (story, context) => {
       const { theme, locale, role } = context.globals as {
@@ -145,7 +159,18 @@ const preview: Preview = {
   parameters: {
     layout: 'fullscreen',
     controls: { matchers: { color: /(background|color)$/i } },
-    a11y: { test: 'todo' },
+    a11y: {
+      test: 'error',
+      config: {
+        rules: [
+          // `ink-subtle` text measures 2.8:1 on the light surfaces; the signed-off
+          // design darkens the token to clear 4.5:1. Until it does, only text in
+          // that colour (set on it or inherited) skips the contrast check;
+          // everything else is held to it.
+          { id: 'color-contrast', selector: '*:not(.text-ink-subtle):not(.text-ink-subtle *)' },
+        ],
+      },
+    },
     msw: { handlers: defaultHandlers },
     viewport: {
       options: {

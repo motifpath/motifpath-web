@@ -25,9 +25,18 @@ const { creators, nameQuery, isLoading, error, retry } = useCourseCreators(props
 
 const id = useId()
 const listboxId = `${id}-listbox`
+const statusId = `${id}-status`
 const optionId = (index: number) => `${id}-option-${index}`
 
 const isOpen = ref(false)
+
+/** What the open list shows instead of options, if anything. */
+const status = computed<'loading' | 'failed' | 'empty' | null>(() => {
+  if (isLoading.value && creators.value.length === 0) return 'loading'
+  if (error.value) return 'failed'
+  if (creators.value.length === 0) return 'empty'
+  return null
+})
 const highlighted = ref(-1)
 
 // While the list is open the field is a search box; closed, it names the
@@ -99,7 +108,7 @@ function onKeydown(event: KeyboardEvent) {
         autocomplete="off"
         aria-autocomplete="list"
         :aria-expanded="isOpen"
-        :aria-controls="listboxId"
+        :aria-controls="status ? statusId : listboxId"
         :aria-activedescendant="highlighted >= 0 ? optionId(highlighted) : undefined"
         :value="inputText"
         :placeholder="
@@ -126,20 +135,16 @@ function onKeydown(event: KeyboardEvent) {
         <ChevronDown :size="16" aria-hidden="true" />
       </div>
 
-      <ul
-        v-if="isOpen"
-        :id="listboxId"
-        role="listbox"
-        :aria-label="label ?? t('teacherFilterPicker.label')"
-        class="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-surface-raised py-1 shadow-lg"
+      <!-- A listbox holds only options; loading, failure and no matches are a status line in its place. -->
+      <p
+        v-if="isOpen && status"
+        :id="statusId"
+        role="status"
+        class="absolute z-10 mt-1 flex w-full items-center justify-between gap-2 rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-ink-muted shadow-lg"
+        :data-test="status === 'empty' ? 'teacher-filter-no-matches' : undefined"
       >
-        <li v-if="isLoading && creators.length === 0" class="px-3 py-2 text-sm text-ink-muted">
-          {{ t('teacherFilterPicker.loading') }}
-        </li>
-        <li
-          v-else-if="error"
-          class="flex items-center justify-between gap-2 px-3 py-2 text-sm text-ink-muted"
-        >
+        <template v-if="status === 'loading'">{{ t('teacherFilterPicker.loading') }}</template>
+        <template v-else-if="status === 'failed'">
           {{ t('teacherFilterPicker.errorMessage') }}
           <button
             type="button"
@@ -149,32 +154,32 @@ function onKeydown(event: KeyboardEvent) {
           >
             {{ t('teacherFilterPicker.retry') }}
           </button>
-        </li>
-        <li
-          v-else-if="creators.length === 0"
-          data-test="teacher-filter-no-matches"
-          class="px-3 py-2 text-sm text-ink-muted"
-        >
-          {{ t('teacherFilterPicker.noMatches') }}
-        </li>
-        <template v-else>
-          <li
-            v-for="(teacher, index) in creators"
-            :id="optionId(index)"
-            :key="teacher.user_id"
-            role="option"
-            :aria-selected="teacher.user_id === modelValue?.user_id"
-            class="cursor-pointer px-3 py-2 text-sm"
-            :class="[
-              index === highlighted ? 'bg-accent-muted text-accent-text' : 'text-ink',
-              teacher.user_id === modelValue?.user_id ? 'font-semibold' : '',
-            ]"
-            @mousedown.prevent="select(teacher)"
-            @mouseenter="highlighted = index"
-          >
-            {{ teacher.display_name }}
-          </li>
         </template>
+        <template v-else>{{ t('teacherFilterPicker.noMatches') }}</template>
+      </p>
+      <ul
+        v-else-if="isOpen"
+        :id="listboxId"
+        role="listbox"
+        :aria-label="label ?? t('teacherFilterPicker.label')"
+        class="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-surface-raised py-1 shadow-lg"
+      >
+        <li
+          v-for="(teacher, index) in creators"
+          :id="optionId(index)"
+          :key="teacher.user_id"
+          role="option"
+          :aria-selected="teacher.user_id === modelValue?.user_id"
+          class="cursor-pointer px-3 py-2 text-sm"
+          :class="[
+            index === highlighted ? 'bg-accent-muted text-accent-text' : 'text-ink',
+            teacher.user_id === modelValue?.user_id ? 'font-semibold' : '',
+          ]"
+          @mousedown.prevent="select(teacher)"
+          @mouseenter="highlighted = index"
+        >
+          {{ teacher.display_name }}
+        </li>
       </ul>
     </div>
   </div>

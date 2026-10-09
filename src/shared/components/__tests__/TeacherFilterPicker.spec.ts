@@ -152,4 +152,29 @@ describe('TeacherFilterPicker', () => {
 
     expect(creatorsState.retry).toHaveBeenCalled()
   })
+
+  // A listbox may only hold options, so a status line or a retry button
+  // inside one is announced wrongly by screen readers.
+  it.each([
+    ['loading', () => (creatorsState.isLoading.value = true)],
+    ['failed', () => (creatorsState.error.value = true)],
+    ['no matches', () => {}],
+  ])('keeps the %s message out of the listbox', async (_state, arrange) => {
+    creatorsState.creators.value = []
+    arrange()
+    const wrapper = mountPicker()
+
+    await wrapper.get('[data-test="teacher-filter-input"]').trigger('focus')
+
+    expect(wrapper.find('[role="listbox"]').exists()).toBe(false)
+  })
+
+  it('holds only options in its listbox', async () => {
+    const wrapper = mountPicker()
+
+    await wrapper.get('[data-test="teacher-filter-input"]').trigger('focus')
+
+    const children = wrapper.get('[role="listbox"]').element.children
+    expect([...children].map((child) => child.getAttribute('role'))).toEqual(['option', 'option'])
+  })
 })

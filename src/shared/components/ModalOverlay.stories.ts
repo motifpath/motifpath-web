@@ -5,7 +5,8 @@ import ModalOverlay from './ModalOverlay.vue'
 const meta = {
   title: 'Overlays/ModalOverlay',
   component: ModalOverlay,
-  args: { open: true },
+  // The panel has no surface of its own; callers give it one.
+  args: { open: true, panelClass: 'w-[420px] max-w-[92vw] rounded-xl bg-surface-raised shadow-level2' },
   render: (args) => ({
     components: { ModalOverlay },
     setup: () => ({ args }),
