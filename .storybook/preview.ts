@@ -99,9 +99,12 @@ const preview: Preview = {
         locale: SupportedLocale
         role: 'student' | 'teacher' | 'admin'
       }
+      // The store picks a locale from the browser when it is first created,
+      // so it is created before the toolbar's locale is applied.
+      const currentUser = useCurrentUserStore()
       document.documentElement.classList.toggle('dark', theme === 'dark')
       i18n.global.locale.value = locale
-      useCurrentUserStore().profile = {
+      currentUser.profile = {
         user_id: '00000000-0000-4000-8000-000000000001',
         role,
         display_name: 'Ana Souza',
