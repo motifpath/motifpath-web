@@ -6,6 +6,8 @@ import type { Alias } from 'vite'
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.ts'],
   addons: ['@storybook/addon-a11y'],
+  // The mock API's service worker; kept out of `public/` so the app never ships it.
+  staticDirs: ['./public'],
   framework: { name: '@storybook/vue3-vite', options: {} },
   async viteFinal(viteConfig) {
     // Stories render without a Clerk session: swap the app's auth wrapper for a
