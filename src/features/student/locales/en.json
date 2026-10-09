@@ -74,7 +74,6 @@
     "clearHintAfter": "to revisit and change a previous exercise's answer."
   },
   "courseCatalogView": {
-    "heading": "Find a course",
     "errorMessage": "We couldn't load the course catalog.",
     "emptyHeading": "No courses yet",
     "emptyMessage": "New courses will appear here as soon as they are published.",
@@ -143,7 +142,6 @@
     "prompt": "My question or recording:"
   },
   "pathCatalogView": {
-    "heading": "Find a path",
     "errorMessage": "We couldn't load the path catalog.",
     "emptyHeading": "No paths yet",
     "emptyMessage": "New paths will appear here as soon as they are published.",

@@ -301,5 +301,10 @@
     "roleAdmin": "Admin",
     "en": "English",
     "ptBr": "Português (Brasil)"
+  },
+  "discoverSwitch": {
+    "label": "Catalog",
+    "courses": "Courses",
+    "paths": "Paths"
   }
 }

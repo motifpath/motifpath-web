@@ -136,6 +136,13 @@ describe('PathCatalogView', () => {
     vi.clearAllMocks()
   })
 
+  it('sits under Discover: the title, then the Courses | Paths switch', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('h1').text()).toBe('Discover')
+    expect(wrapper.findComponent({ name: 'DiscoverSwitch' }).exists()).toBe(true)
+  })
+
   it('lists each published path on a card labeled as a path', () => {
     const wrapper = mountView()
 
