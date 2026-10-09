@@ -281,5 +281,20 @@
   "sheetHeader": {
     "back": "Back",
     "close": "Close"
+  },
+  "accountMenu": {
+    "label": "Account",
+    "appearance": "Appearance",
+    "system": "Auto",
+    "light": "Light",
+    "dark": "Dark",
+    "language": "Language",
+    "languageNote": "Lesson content keeps its own language — this changes the app only.",
+    "teach": "Teach",
+    "teachValue": "Authoring",
+    "roleTeacher": "Teacher",
+    "roleAdmin": "Admin",
+    "en": "English",
+    "ptBr": "Português (Brasil)"
   }
 }

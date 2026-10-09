@@ -12,5 +12,6 @@ export function useAuth(): AuthContext {
     openUserProfile: () => {},
     signOut: () => Promise.resolve(),
     displayInitial: computed(() => 'A'),
+    email: computed(() => 'ana.souza@example.com'),
   }
 }

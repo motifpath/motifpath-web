@@ -281,5 +281,20 @@
   "sheetHeader": {
     "back": "Voltar",
     "close": "Fechar"
+  },
+  "accountMenu": {
+    "label": "Conta",
+    "appearance": "Aparência",
+    "system": "Auto",
+    "light": "Claro",
+    "dark": "Escuro",
+    "language": "Idioma",
+    "languageNote": "O conteúdo das lições mantém o próprio idioma — isto muda só o app.",
+    "teach": "Ensinar",
+    "teachValue": "Criação",
+    "roleTeacher": "Professor",
+    "roleAdmin": "Admin",
+    "en": "English",
+    "ptBr": "Português (Brasil)"
   }
 }

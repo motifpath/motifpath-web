@@ -11,8 +11,10 @@ const props = withDefaults(
     closeOnScrim?: boolean
     /** Where the layer's content sits: centred, along the bottom edge, or wherever its content places itself. */
     placement?: 'center' | 'bottom' | 'none'
+    /** `clear` for a menu, which sits beside its trigger without dimming the page. */
+    scrim?: 'dim' | 'clear'
   }>(),
-  { closeOnScrim: true, placement: 'center' },
+  { closeOnScrim: true, placement: 'center', scrim: 'dim' },
 )
 const emit = defineEmits<{ close: [] }>()
 
@@ -36,7 +38,12 @@ function onScrimClick() {
 
 <template>
   <div v-if="open" ref="layer" class="fixed inset-0 z-40" @keydown="onKeydown">
-    <div data-test="overlay-scrim" class="absolute inset-0 bg-scrim/40" @click="onScrimClick" />
+    <div
+      data-test="overlay-scrim"
+      class="absolute inset-0"
+      :class="{ 'bg-scrim/40': scrim === 'dim' }"
+      @click="onScrimClick"
+    />
     <div
       class="pointer-events-none absolute inset-0 flex"
       :class="{
