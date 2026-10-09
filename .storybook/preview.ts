@@ -1,4 +1,6 @@
 import { setup, type Preview } from '@storybook/vue3-vite'
+import { setupWorker } from 'msw/browser'
+import { mswLoader } from 'msw-storybook-addon/csf3'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 
@@ -12,6 +14,9 @@ import teacherEn from '../src/features/teacher/locales/en.json'
 import teacherPtBr from '../src/features/teacher/locales/pt-BR.json'
 import { i18n, type SupportedLocale } from '../src/i18n'
 import { router as appRouter } from '../src/router'
+import { clearEmbeddedDiagramCache } from '../src/shared/composables/useEmbeddedDiagram'
+import { clearVoiceCache } from '../src/shared/composables/useListVoices'
+import { defaultHandlers } from '../src/shared/testUtils/msw/handlers'
 import { useCurrentUserStore } from '../src/stores/currentUser'
 import '../src/assets/main.css'
 
@@ -28,6 +33,20 @@ for (const [locale, messages] of [
   ['pt-BR', adminPtBr],
 ] as const) {
   i18n.global.mergeLocaleMessage(locale, messages)
+}
+
+// Stories answer API calls from the mock API. A call to another origin that
+// no handler covers is reported, so a story can't quietly sit in a loading
+// state; same-origin requests are Storybook's own files.
+async function startMockApi() {
+  const worker = setupWorker()
+  await worker.start({
+    quiet: true,
+    onUnhandledRequest(request, print) {
+      if (new URL(request.url).origin !== window.location.origin) print.error()
+    },
+  })
+  return worker
 }
 
 const pinia = createPinia()
@@ -92,6 +111,15 @@ const preview: Preview = {
     role: 'student',
     viewport: { value: 'compact', isRotated: false },
   },
+  loaders: [
+    mswLoader(startMockApi),
+    // Voices and diagrams are kept for the page's lifetime; each story asks
+    // again, so one story's mocked answer never leaks into the next.
+    () => {
+      clearVoiceCache()
+      clearEmbeddedDiagramCache()
+    },
+  ],
   decorators: [
     (story, context) => {
       const { theme, locale, role } = context.globals as {
@@ -118,6 +146,7 @@ const preview: Preview = {
     layout: 'fullscreen',
     controls: { matchers: { color: /(background|color)$/i } },
     a11y: { test: 'todo' },
+    msw: { handlers: defaultHandlers },
     viewport: {
       options: {
         compact: { name: 'Compact — phone (390)', styles: { width: '390px', height: '844px' }, type: 'mobile' },

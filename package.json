@@ -70,6 +70,8 @@
     "eslint": "^9.16.0",
     "eslint-plugin-vue": "^9.32.0",
     "jsdom": "^25.0.1",
+    "msw": "^2.15.0",
+    "msw-storybook-addon": "^3.0.3",
     "node-web-audio-api": "2.2.0",
     "npm-run-all2": "^7.0.1",
     "openapi-typescript": "^7.13.0",
@@ -86,5 +88,10 @@
     "openapi-typescript": {
       "typescript": "$typescript"
     }
+  },
+  "msw": {
+    "workerDirectory": [
+      ".storybook/public"
+    ]
   }
 }
