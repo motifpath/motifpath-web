@@ -70,7 +70,8 @@
     "backToHome": "Voltar para o início"
   },
   "progressMeter": {
-    "summary": "{completed} de {total} etapas concluídas"
+    "summary": "{completed} de {total} etapas concluídas",
+    "short": "{completed} de {total}"
   },
   "toastStack": {
     "dismissAriaLabel": "Dispensar"
