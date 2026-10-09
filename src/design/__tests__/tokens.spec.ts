@@ -48,4 +48,8 @@ describe('design tokens', () => {
     expect(colorOf('scrim', 'dark')).toBe('#000000')
   })
 
+  it('sets body and display text in Manrope first', () => {
+    expect(tokens.font.family.body.$value[0]).toBe('Manrope')
+    expect(tokens.font.family.display.$value[0]).toBe('Manrope')
+  })
 })

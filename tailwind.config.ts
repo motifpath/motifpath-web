@@ -1,5 +1,4 @@
 import type { Config } from 'tailwindcss'
-import defaultTheme from 'tailwindcss/defaultTheme'
 
 import tokens from './src/design/tokens.json'
 
@@ -78,7 +77,7 @@ const config: Config = {
       borderRadius: scaleValues<string>(tokens.radius),
       boxShadow,
       fontFamily: {
-        sans: ['Inter', ...defaultTheme.fontFamily.sans],
+        sans: tokens.font.family.body.$value,
       },
     },
   },
