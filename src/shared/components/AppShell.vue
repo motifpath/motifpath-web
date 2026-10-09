@@ -31,15 +31,16 @@ const { isSignedIn } = useAuth()
           >
         </nav>
 
-        <!-- Signed out: the language switcher is the only account-scoped
-             control, so it's shown inline. Signed in: it moves into the
+        <!-- Signed out: language and theme are the only account-scoped
+             controls, so they're shown inline. Signed in: they move into the
              account menu behind the avatar, matching AppBar's pattern
-             elsewhere in the app, instead of sitting in the header on its
-             own with no other account controls next to it. -->
-        <LocaleSwitcher v-if="!isSignedIn" class="ml-auto" />
-        <ThemeToggle :class="{ 'ml-auto': isSignedIn }" />
-
-        <AccountMenu v-if="isSignedIn" />
+             elsewhere in the app. -->
+        <!-- Signed in, Appearance sits in the account menu too. -->
+        <template v-if="!isSignedIn">
+          <LocaleSwitcher class="ml-auto" />
+          <ThemeToggle />
+        </template>
+        <AccountMenu v-else class="ml-auto" />
 
         <slot name="header-actions" />
       </div>

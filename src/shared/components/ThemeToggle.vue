@@ -19,7 +19,7 @@ const { t } = useTypedT()
     :aria-pressed="isDark"
     :aria-label="t('appBar.themeToggleAriaLabel')"
     class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
-    @click="themeStore.toggle()"
+    @click="themeStore.setPreference(isDark ? 'light' : 'dark')"
   >
     <Icon :name="isDark ? 'sun' : 'moon'" :size="15" />
   </button>

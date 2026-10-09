@@ -83,10 +83,17 @@ describe('AppShell', () => {
     expect(wrapper.find('[data-test="extra-action"]').exists()).toBe(true)
   })
 
-  it('always renders the theme toggle', () => {
+  it('renders the theme toggle for a visitor who is signed out', () => {
     const wrapper = mountShell()
 
     expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(true)
+  })
+
+  it('leaves Appearance to the account menu once signed in', () => {
+    isSignedIn.value = true
+    const wrapper = mountShell()
+
+    expect(wrapper.find('[data-test="theme-toggle"]').exists()).toBe(false)
   })
 
   it('renders the locale switcher inline when signed out, so a visitor can change language before signing in', () => {
