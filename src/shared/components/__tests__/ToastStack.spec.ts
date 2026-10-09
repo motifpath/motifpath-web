@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 
 import ToastStack from '@/shared/components/ToastStack.vue'
@@ -61,7 +62,7 @@ describe('ToastStack', () => {
     expect(wrapper.findAll('[data-test="toast"]')).toHaveLength(0)
   })
 
-  it('stacks multiple toasts', () => {
+  it('shows one toast at a time: the latest replaces the previous one', () => {
     useToast().clear()
     const { success, error } = useToast()
     success('Exercise created.')
@@ -69,6 +70,80 @@ describe('ToastStack', () => {
 
     const wrapper = mount(ToastStack)
 
-    expect(wrapper.findAll('[data-test="toast"]')).toHaveLength(2)
+    expect(wrapper.findAll('[data-test="toast"]')).toHaveLength(1)
+    expect(wrapper.get('[data-test="toast"]').text()).toContain('Upload failed.')
+  })
+
+  it('sits at the bottom of the screen on the inverse surface', () => {
+    useToast().clear()
+    useToast().neutral('Saved.')
+
+    const wrapper = mount(ToastStack)
+
+    expect(wrapper.get('[data-test="toast-region"]').classes()).toContain('bottom-0')
+    expect(wrapper.get('[data-test="toast"]').classes()).toEqual(expect.arrayContaining(['bg-ink', 'text-surface']))
+  })
+
+  it('renders a neutral toast with a status role', () => {
+    useToast().clear()
+    useToast().neutral('Major triads is now your current course.')
+
+    const wrapper = mount(ToastStack)
+
+    expect(wrapper.get('[data-test="toast"]').attributes('role')).toBe('status')
+  })
+
+  it("runs the toast's action and closes the toast when the action is used", async () => {
+    useToast().clear()
+    const run = vi.fn()
+    useToast().neutral('Major triads is now your current course.', { action: { label: 'Undo', run } })
+
+    const wrapper = mount(ToastStack)
+    const action = wrapper.get('[data-test="toast-action"]')
+    expect(action.text()).toBe('Undo')
+    await action.trigger('click')
+
+    expect(run).toHaveBeenCalledOnce()
+    expect(wrapper.findAll('[data-test="toast"]')).toHaveLength(0)
+  })
+
+  it('offers a close control only on an error toast, which never goes on its own', () => {
+    useToast().clear()
+    useToast().success('Saved.')
+    const wrapper = mount(ToastStack)
+    expect(wrapper.find('[data-test="toast-dismiss"]').exists()).toBe(false)
+  })
+
+  describe('while the pointer is over it or focus is inside it', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    it('keeps the toast on screen past its time', async () => {
+      useToast().clear()
+      useToast().success('Saved.')
+      const wrapper = mount(ToastStack)
+
+      await wrapper.get('[data-test="toast"]').trigger('mouseenter')
+      vi.advanceTimersByTime(20_000)
+      await nextTick()
+      expect(wrapper.findAll('[data-test="toast"]')).toHaveLength(1)
+
+      await wrapper.get('[data-test="toast"]').trigger('mouseleave')
+      vi.advanceTimersByTime(5000)
+      await nextTick()
+      expect(wrapper.findAll('[data-test="toast"]')).toHaveLength(0)
+    })
+
+    it('keeps the toast on screen while it holds keyboard focus', async () => {
+      useToast().clear()
+      useToast().neutral('Switched.', { action: { label: 'Undo', run: () => {} } })
+      const wrapper = mount(ToastStack)
+
+      await wrapper.get('[data-test="toast"]').trigger('focusin')
+      vi.advanceTimersByTime(20_000)
+      await nextTick()
+
+      expect(wrapper.findAll('[data-test="toast"]')).toHaveLength(1)
+    })
   })
 })
