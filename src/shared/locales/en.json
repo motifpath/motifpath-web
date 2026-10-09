@@ -277,5 +277,9 @@
     "unavailableHeading": "This song chart isn't available",
     "unavailableMessage": "It may have been taken down, or the link may be wrong.",
     "loadFailed": "Couldn't load the song chart."
+  },
+  "sheetHeader": {
+    "back": "Back",
+    "close": "Close"
   }
 }
