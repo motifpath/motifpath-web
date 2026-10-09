@@ -11,10 +11,12 @@ const { t } = useTypedT()
 <template>
   <!-- position: fixed so a toast stays on screen regardless of the page's
        own scroll position. At the bottom, in the thumb zone, where the
-       student's attention already is after acting. -->
+       student's attention already is after acting — above the bottom navigation bar while it
+       shows (the shell sets --toast-clearance to the bar's height), else clear of the home
+       indicator. -->
   <div
     data-test="toast-region"
-    class="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center px-4 pb-safe"
+    class="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center px-4 pb-[var(--toast-clearance,max(0.75rem,env(safe-area-inset-bottom)))]"
   >
     <div
       v-for="toast in toasts"
