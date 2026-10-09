@@ -146,6 +146,9 @@ npm run test:coverage
 
 # Build for production
 npm run build
+
+# Component catalog (see STORYBOOK.md)
+npm run storybook
 ```
 
 ## Project Structure
@@ -189,6 +192,9 @@ what happens on interaction — not internal implementation details.
 npm run test          # run all tests
 npm run test:coverage # run with coverage report
 ```
+
+Every library component has a Storybook story beside it, built against a mock API.
+The rules are in [STORYBOOK.md](STORYBOOK.md).
 
 ## Related Repositories
 
