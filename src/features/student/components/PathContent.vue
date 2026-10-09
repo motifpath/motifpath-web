@@ -1,67 +1,93 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import PathStep from '@/features/student/components/PathStep.vue'
-import { groupPathSections } from '@/features/student/utils/groupPathSections'
-import { pathProgress, stepViews, type PathStepView } from '@/features/student/utils/pathProgress'
+import LockedStepPanel from '@/features/student/components/LockedStepPanel.vue'
+import type { PathCourse } from '@/features/student/composables/usePathCourse'
+import { useStepWording } from '@/features/student/composables/useStepWording'
+import { buildMyPath, type MyPathStep } from '@/features/student/utils/myPath'
+import NextStepCard from '@/shared/components/NextStepCard.vue'
 import ProgressMeter from '@/shared/components/ProgressMeter.vue'
+import SectionHeader from '@/shared/components/SectionHeader.vue'
+import StepRow from '@/shared/components/StepRow.vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
 
-const props = defineProps<{ view: components['schemas']['StudentPathView'] }>()
+const props = defineProps<{
+  view: components['schemas']['StudentPathView']
+  course: PathCourse | null
+}>()
 
-const sections = computed(() => groupPathSections(props.view.items))
+const { t } = useTypedT()
+const wording = useStepWording()
 
-const stepViewByPosition = computed(
-  () => new Map(stepViews(props.view).map((s) => [s.position, s])),
-)
+const path = computed(() => buildMyPath(props.view))
+const next = computed(() => path.value.next)
+const nextAction = computed(() => (next.value ? wording.startAction(next.value) : null))
 
-/**
- * `stepViews` and `groupPathSections` both derive from the same
- * `props.view.items`, so every position rendered by a section should have a
- * matching view. Fail loudly instead of silently rendering blank props if
- * that invariant is ever broken.
- */
-function stepViewFor(position: number): PathStepView {
-  const found = stepViewByPosition.value.get(position)
-  if (!found) {
-    throw new Error(`PathContent: no step view found for position ${position}`)
-  }
-  return found
+// Finished sections start folded; the student can unfold one, by its first step's position.
+const unfolded = ref(new Set<number>())
+function toggle(firstPosition: number): void {
+  const updated = new Set(unfolded.value)
+  if (!updated.delete(firstPosition)) updated.add(firstPosition)
+  unfolded.value = updated
 }
 
-const progress = computed(() => pathProgress(props.view))
+const lockedStep = ref<MyPathStep | null>(null)
+
+/** A step the student can open links to its lesson; a locked one explains itself instead. */
+function linkOf(step: MyPathStep) {
+  return step.state === 'locked' || step.state === 'language' ? undefined : wording.lessonRoute(step)
+}
 </script>
 
 <template>
-  <div data-test="path">
-    <h2 class="text-lg font-medium">{{ view.title }}</h2>
-    <ProgressMeter
-      data-test="path-progress"
-      class="mb-4"
-      :completed="progress.completed"
-      :total="progress.total"
+  <div data-test="path" class="flex flex-col gap-5">
+    <header class="flex flex-col gap-2">
+      <p v-if="course" data-test="path-eyebrow" class="text-xs font-semibold uppercase tracking-wide text-accent-text">
+        {{ t('pathView.coursePart', { course: course.title, part: course.part, parts: course.parts }) }}
+      </p>
+      <h1 class="text-lg font-semibold text-ink">{{ view.title }}</h1>
+      <ProgressMeter data-test="path-progress" :completed="path.progress.completed" :total="path.progress.total" />
+    </header>
+
+    <NextStepCard
+      v-if="next && nextAction"
+      :eyebrow="t('pathView.upNext', { position: next.position, total: path.progress.total })"
+      :title="next.title"
+      :kind="next.kind"
+      :kind-label="wording.kindLabel(next)"
+      :action-label="nextAction.label"
+      :to="nextAction.to"
     />
 
-    <div
-      v-for="section in sections"
-      :key="section.items[0].position"
+    <section
+      v-for="section in path.sections"
+      :key="section.steps[0].position"
       data-test="path-section"
-      class="mb-4"
+      class="flex flex-col gap-1"
     >
-      <h3
+      <SectionHeader
         v-if="section.label"
-        data-test="section-heading"
-        class="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-muted"
-      >
-        {{ section.label }}
-      </h3>
-      <ol :start="section.items[0].position" class="flex flex-col gap-1">
-        <PathStep
-          v-for="item in section.items"
-          :key="item.position"
-          v-bind="stepViewFor(item.position)"
+        :label="section.label"
+        :count="t('pathView.sectionCount', { done: section.done, total: section.total })"
+        :foldable="section.finished"
+        :expanded="unfolded.has(section.steps[0].position)"
+        @toggle="toggle(section.steps[0].position)"
+      />
+      <ol v-if="!section.finished || unfolded.has(section.steps[0].position)" class="flex flex-col gap-1">
+        <StepRow
+          v-for="step in section.steps"
+          :key="step.position"
+          :state="step.state"
+          :position="step.position"
+          :title="step.title"
+          :meta="wording.meta(step)"
+          :to="linkOf(step)"
+          @select="lockedStep = step"
         />
       </ol>
-    </div>
+    </section>
+
+    <LockedStepPanel :step="lockedStep" :next="next" @close="lockedStep = null" />
   </div>
 </template>
