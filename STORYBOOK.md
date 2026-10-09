@@ -10,7 +10,7 @@ npm run build-storybook  # static build, as CI runs it
 npm run test:storybook   # every story as a test, in headless Chromium
 ```
 
-The first `test:storybook` on a machine needs `npx playwright install chromium`.
+The story tests need Chromium, installed once per machine as part of the README's Setup.
 
 ## What enters the library
 

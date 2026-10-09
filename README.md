@@ -50,6 +50,7 @@ from `main` to `dev` automatically. Review and merge it promptly.
 ```bash
 mise trust && mise install   # Node.js, at the version in mise.toml
 npm install
+npx playwright install --with-deps chromium   # the browser the Storybook story tests run in
 cp .env.example .env.local
 ```
 
@@ -149,6 +150,9 @@ npm run build
 
 # Component catalog (see STORYBOOK.md)
 npm run storybook
+
+# Every Storybook story as a test (render, interactions, mocked API, accessibility)
+npm run test:storybook
 ```
 
 ## Project Structure
