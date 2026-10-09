@@ -1,3 +1,11 @@
+/* Manrope, self-hosted (no third-party font request). It ships no italic,
+   so italic text is a browser-slanted regular. Each file declares its own
+   unicode-range, so a browser only fetches the scripts a page uses. */
+@import '@fontsource/manrope/400.css';
+@import '@fontsource/manrope/500.css';
+@import '@fontsource/manrope/600.css';
+@import '@fontsource/manrope/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,7 +24,7 @@
   --color-border: 228 222 243;
   --color-ink: 26 22 51;
   --color-ink-muted: 91 84 112;
-  --color-ink-subtle: 154 148 174;
+  --color-ink-subtle: 112 105 138;
   --color-accent: 109 40 224;
   --color-accent-fg: 255 255 255;
   --color-accent-muted: 240 233 255;
@@ -28,9 +36,10 @@
   --color-danger: 196 54 47;
   --color-danger-fg: 255 255 255;
   --color-danger-muted: 251 232 231;
-  --color-warning: 180 83 9;
+  --color-warning: 178 82 9;
   --color-warning-fg: 255 255 255;
   --color-warning-muted: 253 240 220;
+  --color-scrim: 15 13 31;
   /* Fretboard wood tone — feature-scoped to the diagram viewer/editor, not yet a
      motifpath-brand role; promote to tokens.json if another surface needs it. */
   --color-fretboard-wood: 196 158 110;
@@ -62,7 +71,7 @@
   --color-border: 44 46 88;
   --color-ink: 236 234 255;
   --color-ink-muted: 167 162 200;
-  --color-ink-subtle: 110 105 140;
+  --color-ink-subtle: 134 130 161;
   --color-accent: 124 60 255;
   --color-accent-fg: 255 255 255;
   --color-accent-muted: 36 28 77;
@@ -77,6 +86,7 @@
   --color-warning: 251 191 36;
   --color-warning-fg: 26 18 6;
   --color-warning-muted: 58 42 10;
+  --color-scrim: 0 0 0;
   --color-fretboard-wood: 90 66 42;
   --color-fretboard-wood-edge: 58 42 28;
   --color-fretboard-grain: 160 115 76;

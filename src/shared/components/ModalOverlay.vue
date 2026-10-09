@@ -7,7 +7,7 @@ const emit = defineEmits<{ close: [] }>()
   <div
     v-if="open"
     data-test="modal-overlay"
-    class="fixed inset-0 z-20 flex items-center justify-center bg-brand-ground/45"
+    class="fixed inset-0 z-20 flex items-center justify-center bg-scrim/40"
     @click="emit('close')"
   >
     <div data-test="modal-panel" :class="panelClass" @click.stop>
