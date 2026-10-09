@@ -5,6 +5,8 @@ import StepRow from './StepRow.vue'
 const meta = {
   title: 'Cards & progress/StepRow',
   component: StepRow,
+  // A list item: it only renders inside the list its caller provides.
+  decorators: [() => ({ template: '<ul><story /></ul>' })],
   args: { position: 3, default: 'Triads on the neck' },
 } satisfies Meta<typeof StepRow>
 

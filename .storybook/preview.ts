@@ -159,7 +159,18 @@ const preview: Preview = {
   parameters: {
     layout: 'fullscreen',
     controls: { matchers: { color: /(background|color)$/i } },
-    a11y: { test: 'todo' },
+    a11y: {
+      test: 'error',
+      config: {
+        rules: [
+          // `ink-subtle` text measures 2.8:1 on the light surfaces; the signed-off
+          // design darkens the token to clear 4.5:1. Until it does, only text in
+          // that colour (set on it or inherited) skips the contrast check;
+          // everything else is held to it.
+          { id: 'color-contrast', selector: '*:not(.text-ink-subtle):not(.text-ink-subtle *)' },
+        ],
+      },
+    },
     msw: { handlers: defaultHandlers },
     viewport: {
       options: {
