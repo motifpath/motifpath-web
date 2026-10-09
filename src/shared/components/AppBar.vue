@@ -13,7 +13,6 @@ import {
   sectionsFor,
 } from '@/shared/navigation'
 import { useCurrentUserStore } from '@/stores/currentUser'
-import { useThemeStore } from '@/stores/theme'
 
 const props = withDefaults(
   defineProps<{
@@ -41,7 +40,6 @@ const props = withDefaults(
   { compact: false, showSave: false, saveDisabled: false, justSaved: false },
 )
 
-const themeStore = useThemeStore()
 const { t } = useTypedT()
 
 const currentUser = useCurrentUserStore()
@@ -175,17 +173,6 @@ function closeDrawer(): void {
       @click="onSave?.()"
     >
       {{ t('buttons.save') }}
-    </button>
-
-    <button
-      type="button"
-      data-test="app-bar-theme-toggle"
-      :aria-pressed="themeStore.theme === 'dark'"
-      :aria-label="t('appBar.themeToggleAriaLabel')"
-      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border text-ink-muted"
-      @click="themeStore.toggle()"
-    >
-      <Icon :name="themeStore.theme === 'dark' ? 'sun' : 'moon'" :size="15" />
     </button>
 
     <AccountMenu />

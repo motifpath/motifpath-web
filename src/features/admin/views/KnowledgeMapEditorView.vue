@@ -14,8 +14,8 @@ import { useKnowledgeMap, type WriteOutcome } from '@/features/admin/composables
 import { refusalText } from '@/features/admin/utils/knowledgeMap'
 import AppBar from '@/shared/components/AppBar.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useScopedLocale } from '@/shared/composables/useScopedLocale'
@@ -321,9 +321,9 @@ function removeEdge(edgeId: string) {
     <div class="flex flex-1 flex-col gap-4 px-4 pb-10 pt-6 sm:px-[48px] sm:pt-8">
       <h1 class="text-lg font-bold text-ink sm:text-xl">{{ t('knowledgeMap.heading') }}</h1>
 
-      <StateLoading v-if="map.isLoading.value && nodes.length === 0" :noun="t('knowledgeMap.loadingNoun')" />
+      <LoadingSkeleton v-if="map.isLoading.value && nodes.length === 0" />
       <div v-else-if="map.loadFailed.value && nodes.length === 0" data-test="kmap-load-error">
-        <StateError :message="t('knowledgeMap.loadFailed')" @retry="map.reload" />
+        <LoadFailed :message="t('knowledgeMap.loadFailed')" @retry="map.reload" />
       </div>
 
       <div v-else class="grid min-h-0 flex-1 gap-6 md:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)]">

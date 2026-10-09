@@ -1,17 +1,16 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export type Theme = 'light' | 'dark'
+/** What the person chose: follow the device (`system`, the default), or always light or dark. */
+export type ThemePreference = 'system' | Theme
 
 const STORAGE_KEY = 'motifpath:theme'
+const DARK_QUERY = '(prefers-color-scheme: dark)'
 
-function systemPreference(): Theme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
-
-function persistedPreference(): Theme | null {
+function persistedPreference(): ThemePreference {
   const stored = window.localStorage.getItem(STORAGE_KEY)
-  return stored === 'light' || stored === 'dark' ? stored : null
+  return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
 }
 
 function applyToDocument(value: Theme): void {
@@ -19,24 +18,31 @@ function applyToDocument(value: Theme): void {
 }
 
 /**
- * Resolves the active theme: an explicit prior choice from `localStorage` wins;
- * otherwise falls back to the OS-level `prefers-color-scheme`. `set()` persists
- * an explicit choice and flips the `dark` class Tailwind's `darkMode: 'class'`
- * reads.
+ * The active theme. The person's preference is remembered on this device; on `system` (Auto)
+ * the theme follows the device's `prefers-color-scheme`, live, so switching the phone to dark
+ * mode switches the app too. The resolved `theme` flips the `dark` class Tailwind's
+ * `darkMode: 'class'` reads.
  */
 export const useThemeStore = defineStore('theme', () => {
-  const theme = ref<Theme>(persistedPreference() ?? systemPreference())
+  const preference = ref<ThemePreference>(persistedPreference())
+
+  const deviceQuery = typeof window.matchMedia === 'function' ? window.matchMedia(DARK_QUERY) : null
+  const deviceDark = ref(deviceQuery?.matches ?? false)
+  deviceQuery?.addEventListener('change', (event) => {
+    deviceDark.value = event.matches
+    applyToDocument(theme.value)
+  })
+
+  const theme = computed<Theme>(() =>
+    preference.value === 'system' ? (deviceDark.value ? 'dark' : 'light') : preference.value,
+  )
   applyToDocument(theme.value)
 
-  function set(value: Theme): void {
-    theme.value = value
+  function setPreference(value: ThemePreference): void {
+    preference.value = value
     window.localStorage.setItem(STORAGE_KEY, value)
-    applyToDocument(value)
+    applyToDocument(theme.value)
   }
 
-  function toggle(): void {
-    set(theme.value === 'dark' ? 'light' : 'dark')
-  }
-
-  return { theme, set, toggle }
+  return { preference, theme, setPreference }
 })

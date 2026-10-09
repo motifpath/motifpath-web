@@ -1,17 +1,16 @@
 <script setup lang="ts">
+import OverlayLayer from '@/shared/components/OverlayLayer.vue'
+
 withDefaults(defineProps<{ open: boolean; panelClass?: string }>(), { panelClass: '' })
 const emit = defineEmits<{ close: [] }>()
 </script>
 
 <template>
-  <div
-    v-if="open"
-    data-test="modal-overlay"
-    class="fixed inset-0 z-20 flex items-center justify-center bg-scrim/40"
-    @click="emit('close')"
-  >
-    <div data-test="modal-panel" :class="panelClass" @click.stop>
+  <!-- A centred panel the caller lays out itself, on the shared layer: scrim, Esc, focus kept
+       inside, and Back closes it before leaving the page. -->
+  <OverlayLayer data-test="modal-overlay" :open="open" @close="emit('close')">
+    <div data-test="modal-panel" :class="panelClass">
       <slot />
     </div>
-  </div>
+  </OverlayLayer>
 </template>

@@ -34,8 +34,8 @@
   },
   "states": {
     "loading": "Loading…",
-    "loadingWithNoun": "Loading {noun}…",
     "locked": {
+      "title": "This step opens later",
       "message": "Complete the previous step to unlock this lesson."
     }
   },
@@ -62,6 +62,7 @@
     "ariaLabel": "Close"
   },
   "notFoundView": {
+    "title": "This page isn't available",
     "message": "This page doesn't exist.",
     "backToHome": "Back to home"
   },
@@ -220,7 +221,6 @@
     "title": "Credits",
     "soundsTitle": "Sounds",
     "soundsIntro": "Diagrams play with these recordings, used under their licenses.",
-    "loadingNoun": "credits",
     "errorMessage": "We couldn't load the credits."
   },
   "fretboard": {
@@ -273,9 +273,27 @@
   },
   "songChartPage": {
     "close": "Close",
-    "loadingNoun": "song chart",
     "unavailableHeading": "This song chart isn't available",
     "unavailableMessage": "It may have been taken down, or the link may be wrong.",
     "loadFailed": "Couldn't load the song chart."
+  },
+  "sheetHeader": {
+    "back": "Back",
+    "close": "Close"
+  },
+  "accountMenu": {
+    "label": "Account",
+    "appearance": "Appearance",
+    "system": "Auto",
+    "light": "Light",
+    "dark": "Dark",
+    "language": "Language",
+    "languageNote": "Lesson content keeps its own language — this changes the app only.",
+    "teach": "Teach",
+    "teachValue": "Authoring",
+    "roleTeacher": "Teacher",
+    "roleAdmin": "Admin",
+    "en": "English",
+    "ptBr": "Português (Brasil)"
   }
 }

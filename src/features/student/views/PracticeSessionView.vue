@@ -32,8 +32,8 @@ import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeShell from '@/shared/components/PracticeShell.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -191,8 +191,8 @@ onBeforeUnmount(() => {
         <p class="text-sm text-ink-muted">{{ t('practiceSessionView.intro') }}</p>
       </header>
 
-      <StateLoading v-if="isLoading" :noun="t('practiceSessionView.loadingNoun')" />
-      <StateError v-else-if="instrumentsError" :message="t('practiceSessionView.instrumentsError')" @retry="retryInstruments()" />
+      <LoadingSkeleton v-if="isLoading" />
+      <LoadFailed v-else-if="instrumentsError" :message="t('practiceSessionView.instrumentsError')" @retry="retryInstruments()" />
 
       <div v-else class="flex flex-col gap-5">
         <InstrumentTilePicker

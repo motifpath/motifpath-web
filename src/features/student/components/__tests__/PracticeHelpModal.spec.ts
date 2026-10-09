@@ -27,7 +27,7 @@ describe('PracticeHelpModal', () => {
       props: { open: true, exerciseType: 'text_response', allowMultiple: false },
     })
 
-    await wrapper.get('[data-test="modal-overlay"]').trigger('click')
+    await wrapper.get('[data-test="overlay-scrim"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })

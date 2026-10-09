@@ -10,9 +10,9 @@ import AppBar from '@/shared/components/AppBar.vue'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -112,19 +112,20 @@ function statusLabel(tab: CourseStatus | null): string {
         @clear="clearFilters"
       />
 
-      <StateLoading v-if="isLoading" data-test="loading" :noun="t('courseListView.loadingNoun')" />
+      <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-      <StateError
+      <LoadFailed
         v-else-if="error"
         data-test="error"
         :message="t('courseListView.errorMessage')"
         @retry="retry"
       />
 
-      <StateEmpty
+      <StateBlock
         v-else-if="courses.length === 0 && hasActiveFilters"
         data-test="no-matches"
-        :heading="t('courseListView.noMatchesHeading')"
+        kind="empty"
+        :title="t('courseListView.noMatchesHeading')"
         :message="t('courseListView.noMatchesMessage')"
       >
         <template #action>
@@ -137,12 +138,13 @@ function statusLabel(tab: CourseStatus | null): string {
             {{ t('courseFilters.clearFilters') }}
           </button>
         </template>
-      </StateEmpty>
+      </StateBlock>
 
-      <StateEmpty
+      <StateBlock
         v-else-if="courses.length === 0"
         data-test="empty"
-        :heading="t('courseListView.emptyHeading')"
+        kind="empty"
+        :title="t('courseListView.emptyHeading')"
         :message="t('courseListView.emptyMessage')"
       />
 

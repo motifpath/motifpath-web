@@ -10,8 +10,8 @@ import { computed, onUnmounted, ref, watch } from 'vue'
 
 import { useFretboardMap } from '@/features/student/composables/usePracticeHome'
 import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { boardTopFor, fretboardGeometry, MARKER_RADIUS, markerCenterX, stringLineY } from '@/shared/utils/fretboardGeometry'
@@ -107,8 +107,8 @@ const cy = (string: number) => stringLineY(frame.value, string)
 </script>
 
 <template>
-  <StateLoading v-if="isLoading" :noun="t('practiceHomeView.fretboard.noun')" />
-  <StateError v-else-if="error" :message="t('practiceHomeView.fretboard.error')" @retry="retry()" />
+  <LoadingSkeleton v-if="isLoading" />
+  <LoadFailed v-else-if="error" :message="t('practiceHomeView.fretboard.error')" @retry="retry()" />
 
   <section v-else-if="tuning && cells.length > 0" data-test="fretboard-heatmap" class="flex flex-col gap-2">
     <h2 class="text-base font-semibold">{{ t('practiceHomeView.fretboard.title') }}</h2>

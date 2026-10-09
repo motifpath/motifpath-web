@@ -1,7 +1,9 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
-import { createPinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, ref } from 'vue'
+import { mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { computed, nextTick, ref } from 'vue'
+
+import { mockViewport } from '@/shared/testUtils/viewport'
 
 const clerk = {
   isLoaded: ref(true),
@@ -9,9 +11,9 @@ const clerk = {
   getToken: vi.fn(async () => 'jwt-abc'),
   signOut: vi.fn(async () => {}),
 }
-const clerkUser = ref<{ firstName: string | null; primaryEmailAddress: null } | null>({
+const clerkUser = ref<{ firstName: string | null; primaryEmailAddress: { emailAddress: string } | null } | null>({
   firstName: 'Gilson',
-  primaryEmailAddress: null,
+  primaryEmailAddress: { emailAddress: 'gilson@example.com' },
 })
 
 vi.mock('@clerk/vue', () => ({
@@ -26,65 +28,204 @@ vi.mock('@clerk/vue', () => ({
 }))
 
 const { default: AccountMenu } = await import('@/shared/components/AccountMenu.vue')
+const { useCurrentUserStore } = await import('@/stores/currentUser')
+const { useThemeStore } = await import('@/stores/theme')
 
-function mountMenu() {
-  return mount(AccountMenu, {
-    global: {
-      plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
-    },
+type Role = 'student' | 'teacher' | 'admin'
+
+let wrappers: VueWrapper[] = []
+
+function mountMenu({ width = 390, role = 'student' as Role } = {}) {
+  mockViewport(width)
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const currentUser = useCurrentUserStore()
+  currentUser.profile = {
+    user_id: '00000000-0000-4000-8000-000000000001',
+    role,
+    display_name: 'Gilson Yamada',
+    locale: { code: 'en', name: 'English' },
+    registered_at: '2026-01-01T00:00:00Z',
+  }
+  const wrapper = mount(AccountMenu, {
+    attachTo: document.body,
+    global: { plugins: [pinia], stubs: { RouterLink: RouterLinkStub } },
   })
+  wrappers.push(wrapper)
+  return { wrapper, currentUser }
+}
+
+async function open(wrapper: VueWrapper) {
+  await wrapper.get('[data-test="account-menu-avatar"]').trigger('click')
+  await nextTick()
 }
 
 describe('AccountMenu', () => {
   beforeEach(() => {
     clerk.signOut.mockClear()
-    clerkUser.value = { firstName: 'Gilson', primaryEmailAddress: null }
+    window.localStorage.clear()
+    clerkUser.value = { firstName: 'Gilson', primaryEmailAddress: { emailAddress: 'gilson@example.com' } }
+  })
+  afterEach(() => {
+    wrappers.forEach((wrapper) => wrapper.unmount())
+    wrappers = []
   })
 
-  it("renders the signed-in user's display initial in the avatar", () => {
+  it("shows the signed-in user's initial on the avatar, which says it opens a menu", () => {
     clerkUser.value = { firstName: 'Ana', primaryEmailAddress: null }
+    const { wrapper } = mountMenu()
 
-    const wrapper = mountMenu()
-
-    expect(wrapper.get('[data-test="account-menu-avatar"]').text()).toBe('A')
+    const avatar = wrapper.get('[data-test="account-menu-avatar"]')
+    expect(avatar.text()).toBe('A')
+    expect(avatar.attributes('aria-haspopup')).toBe('dialog')
+    expect(avatar.attributes('aria-expanded')).toBe('false')
   })
 
-  it('opens a menu with the locale switcher and sign out when the avatar is clicked', async () => {
-    const wrapper = mountMenu()
+  it('on a phone, opens as a bottom sheet', async () => {
+    const { wrapper } = mountMenu({ width: 390 })
+    await open(wrapper)
 
-    expect(wrapper.find('[data-test="account-menu"]').exists()).toBe(false)
-
-    await wrapper.get('[data-test="account-menu-avatar"]').trigger('click')
-
-    const menu = wrapper.get('[data-test="account-menu"]')
-    expect(menu.find('[data-test="locale-switcher"]').exists()).toBe(true)
-    expect(menu.findAll('[data-test="sign-out"]')).toHaveLength(1)
+    expect(wrapper.get('[data-test="account-menu"]').attributes('data-presentation')).toBe('sheet')
+    expect(wrapper.get('[data-test="account-menu-avatar"]').attributes('aria-expanded')).toBe('true')
   })
 
-  it("signs the user out when the menu's sign out item is used", async () => {
-    const wrapper = mountMenu()
-    await wrapper.get('[data-test="account-menu-avatar"]').trigger('click')
+  it.each([720, 1280])('at %i px, opens as a menu anchored to the avatar, not a dialog', async (width) => {
+    const { wrapper } = mountMenu({ width })
+    await open(wrapper)
+
+    expect(wrapper.get('[data-test="account-menu"]').attributes('data-presentation')).toBe('menu')
+  })
+
+  it('says who is signed in: name and email', async () => {
+    const { wrapper } = mountMenu()
+    await open(wrapper)
+
+    const identity = wrapper.get('[data-test="account-identity"]')
+    expect(identity.text()).toContain('Gilson Yamada')
+    expect(identity.text()).toContain('gilson@example.com')
+    expect(identity.text()).not.toContain('Student')
+  })
+
+  it.each([
+    ['teacher', 'Teacher'],
+    ['admin', 'Admin'],
+  ] as const)('names the role of a %s under the name', async (role, label) => {
+    const { wrapper } = mountMenu({ role })
+    await open(wrapper)
+
+    expect(wrapper.get('[data-test="account-identity"]').text()).toContain(label)
+  })
+
+  describe('Appearance', () => {
+    it('offers Auto, Light and Dark, with Auto chosen by default', async () => {
+      const { wrapper } = mountMenu()
+      await open(wrapper)
+
+      const options = wrapper.findAll('[data-test^="appearance-"]')
+      expect(options.map((o) => o.text())).toEqual(['Auto', 'Light', 'Dark'])
+      expect(wrapper.get('[data-test="appearance-system"]').attributes('aria-checked')).toBe('true')
+    })
+
+    it('applies a choice at once, without closing the menu', async () => {
+      const { wrapper } = mountMenu()
+      await open(wrapper)
+
+      await wrapper.get('[data-test="appearance-dark"]').trigger('click')
+
+      expect(useThemeStore().preference).toBe('dark')
+      expect(document.documentElement.classList.contains('dark')).toBe(true)
+      expect(wrapper.find('[data-test="account-menu"]').exists()).toBe(true)
+    })
+  })
+
+  describe('Language', () => {
+    it('shows the current language on its row', async () => {
+      const { wrapper } = mountMenu()
+      await open(wrapper)
+
+      expect(wrapper.get('[data-test="account-language"]').text()).toContain('English')
+    })
+
+    it('opens a sub-view in place of the menu, with a back arrow', async () => {
+      const { wrapper } = mountMenu()
+      await open(wrapper)
+
+      await wrapper.get('[data-test="account-language"]').trigger('click')
+
+      expect(wrapper.find('[data-test="account-identity"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="language-option-pt-BR"]').exists()).toBe(true)
+
+      await wrapper.get('[data-test="overlay-back"]').trigger('click')
+      expect(wrapper.find('[data-test="account-identity"]').exists()).toBe(true)
+    })
+
+    it('switches the language at once and goes back to the menu', async () => {
+      const { wrapper, currentUser } = mountMenu()
+      const setLocale = vi.spyOn(currentUser, 'setLocale').mockResolvedValue()
+      await open(wrapper)
+      await wrapper.get('[data-test="account-language"]').trigger('click')
+
+      await wrapper.get('[data-test="language-option-pt-BR"]').trigger('click')
+
+      expect(setLocale).toHaveBeenCalledWith('pt-BR')
+      expect(wrapper.find('[data-test="account-identity"]').exists()).toBe(true)
+    })
+
+    it('marks the current language as chosen', async () => {
+      const { wrapper } = mountMenu()
+      await open(wrapper)
+      await wrapper.get('[data-test="account-language"]').trigger('click')
+
+      expect(wrapper.get('[data-test="language-option-en"]').attributes('aria-checked')).toBe('true')
+      expect(wrapper.get('[data-test="language-option-pt-BR"]').attributes('aria-checked')).toBe('false')
+    })
+  })
+
+  describe('Teach', () => {
+    it('is not offered to a student: learning is open to every role, only authoring is gated', async () => {
+      const { wrapper } = mountMenu({ role: 'student' })
+      await open(wrapper)
+
+      expect(wrapper.find('[data-test="account-teach"]').exists()).toBe(false)
+    })
+
+    it.each(['teacher', 'admin'] as const)('takes a %s to authoring', async (role) => {
+      const { wrapper } = mountMenu({ role })
+      await open(wrapper)
+
+      const teach = wrapper.getComponent<typeof RouterLinkStub>('[data-test="account-teach"]')
+      expect(teach.props('to')).toEqual({ name: 'teacher-content' })
+    })
+  })
+
+  it('signs out at once, with no confirm', async () => {
+    const { wrapper } = mountMenu()
+    await open(wrapper)
 
     await wrapper.get('[data-test="sign-out"]').trigger('click')
 
     expect(clerk.signOut).toHaveBeenCalledOnce()
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
   })
 
-  it('closes the menu when its overlay is clicked', async () => {
-    const wrapper = mountMenu()
-    await wrapper.get('[data-test="account-menu-avatar"]').trigger('click')
+  it('closes on Esc and gives focus back to the avatar', async () => {
+    const { wrapper } = mountMenu({ width: 1280 })
+    const avatar = wrapper.get<HTMLButtonElement>('[data-test="account-menu-avatar"]')
+    avatar.element.focus()
+    await open(wrapper)
 
-    await wrapper.get('[data-test="account-menu-overlay"]').trigger('click')
+    await wrapper.get('[data-test="account-menu"]').trigger('keydown', { key: 'Escape' })
+    await nextTick()
 
     expect(wrapper.find('[data-test="account-menu"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(avatar.element)
   })
 
-  it('closes the menu when a locale option is selected', async () => {
-    const wrapper = mountMenu()
-    await wrapper.get('[data-test="account-menu-avatar"]').trigger('click')
+  it('closes on a tap outside it', async () => {
+    const { wrapper } = mountMenu({ width: 1280 })
+    await open(wrapper)
 
-    await wrapper.get('[data-test="locale-option-pt-BR"]').trigger('click')
+    await wrapper.get('[data-test="overlay-scrim"]').trigger('click')
 
     expect(wrapper.find('[data-test="account-menu"]').exists()).toBe(false)
   })

@@ -9,9 +9,9 @@ import { useCourseCompletionRedirect } from '@/features/student/composables/useC
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import { completedCourseEnrollmentId, isStandalonePathComplete } from '@/features/student/utils/courseCompletion'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 
 const { data, error, isLoading, retry } = useStudentPath()
 const { t } = useTypedT()
@@ -23,16 +23,17 @@ useCourseCompletionRedirect(() => completedCourseEnrollmentId(data.value))
   <section>
     <h1 class="mb-4 text-xl font-semibold text-accent-text sm:text-2xl">{{ t('pathView.heading') }}</h1>
 
-    <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathView.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <StateEmpty
+    <StateBlock
       v-else-if="error === 'no-path'"
       data-test="no-path"
-      :heading="t('pathView.emptyHeading')"
+      kind="empty"
+      :title="t('pathView.emptyHeading')"
       :message="t('pathView.emptyMessage')"
     />
 
-    <StateError
+    <LoadFailed
       v-else-if="error"
       data-test="error"
       :message="t('pathView.errorMessage')"

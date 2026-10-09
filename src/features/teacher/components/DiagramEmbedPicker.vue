@@ -19,8 +19,8 @@ import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.v
 import DiagramRefControls from '@/features/teacher/components/DiagramRefControls.vue'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
 import { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramEmbedDraft'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -81,9 +81,9 @@ watch(
 <template>
   <div class="flex flex-col gap-3">
     <template v-if="step === 'initial' && initialLoad">
-      <StateLoading v-if="initialLoad.isLoading.value" :noun="t('diagramEmbedPicker.loadingNoun')" />
+      <LoadingSkeleton v-if="initialLoad.isLoading.value" />
       <div v-else-if="initialLoad.error.value" class="flex flex-col gap-2">
-        <StateError
+        <LoadFailed
           data-test="embed-picker-load-error"
           :message="t('diagramEmbedPicker.loadErrorMessage')"
           @retry="initialLoad.retry"

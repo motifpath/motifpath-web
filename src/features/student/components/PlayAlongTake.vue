@@ -16,7 +16,7 @@ import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import PlayAlongInfo from '@/features/student/components/PlayAlongInfo.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
@@ -197,7 +197,7 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
 
 <template>
   <div class="flex flex-col gap-4" data-test="play-along-take">
-    <StateLoading v-if="loaded.status.value === 'loading'" />
+    <LoadingSkeleton v-if="loaded.status.value === 'loading'" />
 
     <div v-else-if="loaded.status.value === 'unavailable'" class="flex flex-col items-start gap-3">
       <p class="text-ink-muted">{{ t('playAlongTake.unavailable') }}</p>

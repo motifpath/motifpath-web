@@ -34,8 +34,8 @@
   },
   "states": {
     "loading": "Carregando…",
-    "loadingWithNoun": "Carregando {noun}…",
     "locked": {
+      "title": "Esta etapa abre depois",
       "message": "Complete a etapa anterior para desbloquear esta lição."
     }
   },
@@ -62,6 +62,7 @@
     "ariaLabel": "Fechar"
   },
   "notFoundView": {
+    "title": "Esta página não está disponível",
     "message": "Esta página não existe.",
     "backToHome": "Voltar para o início"
   },
@@ -220,7 +221,6 @@
     "title": "Créditos",
     "soundsTitle": "Sons",
     "soundsIntro": "Os diagramas tocam com estas gravações, usadas conforme as suas licenças.",
-    "loadingNoun": "créditos",
     "errorMessage": "Não foi possível carregar os créditos."
   },
   "fretboard": {
@@ -273,9 +273,27 @@
   },
   "songChartPage": {
     "close": "Fechar",
-    "loadingNoun": "cifra",
     "unavailableHeading": "Esta cifra não está disponível",
     "unavailableMessage": "Ela pode ter sido retirada, ou o link pode estar errado.",
     "loadFailed": "Não foi possível carregar a cifra."
+  },
+  "sheetHeader": {
+    "back": "Voltar",
+    "close": "Fechar"
+  },
+  "accountMenu": {
+    "label": "Conta",
+    "appearance": "Aparência",
+    "system": "Auto",
+    "light": "Claro",
+    "dark": "Escuro",
+    "language": "Idioma",
+    "languageNote": "O conteúdo das lições mantém o próprio idioma — isto muda só o app.",
+    "teach": "Ensinar",
+    "teachValue": "Criação",
+    "roleTeacher": "Professor",
+    "roleAdmin": "Admin",
+    "en": "English",
+    "ptBr": "Português (Brasil)"
   }
 }

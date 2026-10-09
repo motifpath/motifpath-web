@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-import ErrorRetryNotice from '@/shared/components/ErrorRetryNotice.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import SignOutLink from '@/shared/components/SignOutLink.vue'
 import { useAuth } from '@/features/auth/composables/useAuth'
@@ -38,9 +38,9 @@ async function retryWithFreshToken(): Promise<void> {
         {{ t('buttons.nameAddedTryAgain') }}
       </button>
     </div>
-    <ErrorRetryNotice
+    <LoadFailed
       v-else
-      test-id="registration-failed"
+      data-test="registration-failed"
       :message="t('errors.registrationFailed')"
       @retry="currentUser.retry()"
     />

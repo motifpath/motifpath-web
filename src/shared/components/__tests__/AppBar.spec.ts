@@ -361,13 +361,10 @@ describe('AppBar', () => {
     expect(wrapper.text()).toContain('Saved')
   })
 
-  it('always renders the theme toggle and flips the document theme class on click', async () => {
+  it('has no theme toggle of its own: Appearance lives in the account menu', () => {
     const wrapper = mountBar({ context: 'student' })
 
-    const toggle = wrapper.get('[data-test="app-bar-theme-toggle"]')
-    await toggle.trigger('click')
-
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(wrapper.find('[data-test="app-bar-theme-toggle"]').exists()).toBe(false)
   })
 
   it('renders the account menu', () => {

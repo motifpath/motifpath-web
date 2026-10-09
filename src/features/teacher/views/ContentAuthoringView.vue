@@ -26,8 +26,8 @@ import { useSaveChallenge } from '@/features/teacher/composables/useSaveChalleng
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
@@ -438,11 +438,11 @@ async function onSaveChallenge({
     </div>
 
     <div v-else-if="loadingContentNode" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading :noun="t('contentAuthoringView.loadingNoun')" />
+      <LoadingSkeleton />
     </div>
 
     <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
-      <StateError :message="t('contentAuthoringView.loadErrorMessage')" @retry="retryLoad" />
+      <LoadFailed :message="t('contentAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <main

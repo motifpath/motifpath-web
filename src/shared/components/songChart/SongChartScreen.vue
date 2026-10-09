@@ -7,9 +7,9 @@
 import { X } from 'lucide-vue-next'
 
 import SongChartReader from '@/shared/components/songChart/SongChartReader.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { usePublishedSongChart } from '@/shared/composables/usePublishedSongChart'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -35,12 +35,12 @@ const { chart, instrument, isLoading, error, notFound, retry } = usePublishedSon
     </header>
 
     <main class="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-4 pt-4">
-      <StateLoading v-if="isLoading" :noun="t('songChartPage.loadingNoun')" />
+      <LoadingSkeleton v-if="isLoading" />
       <div v-else-if="notFound" data-test="song-chart-unavailable">
-        <StateEmpty :heading="t('songChartPage.unavailableHeading')" :message="t('songChartPage.unavailableMessage')" />
+        <StateBlock kind="notFound" :title="t('songChartPage.unavailableHeading')" :message="t('songChartPage.unavailableMessage')" />
       </div>
       <div v-else-if="error || !chart" data-test="song-chart-error">
-        <StateError :message="t('songChartPage.loadFailed')" @retry="retry" />
+        <LoadFailed :message="t('songChartPage.loadFailed')" @retry="retry" />
       </div>
       <SongChartReader v-else :chart="chart" :instrument="instrument" />
     </main>

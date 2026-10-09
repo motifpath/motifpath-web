@@ -10,9 +10,9 @@ import AppBar from '@/shared/components/AppBar.vue'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -107,14 +107,15 @@ function statusLabel(tab: LearningPathStatus | null): string {
         @clear="clearFilters"
       />
 
-      <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathListView.loadingNoun')" />
+      <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-      <StateError v-else-if="error" data-test="error" :message="t('pathListView.errorMessage')" @retry="retry" />
+      <LoadFailed v-else-if="error" data-test="error" :message="t('pathListView.errorMessage')" @retry="retry" />
 
-      <StateEmpty
+      <StateBlock
         v-else-if="paths.length === 0 && hasActiveFilters"
         data-test="no-matches"
-        :heading="t('pathListView.noMatchesHeading')"
+        kind="empty"
+        :title="t('pathListView.noMatchesHeading')"
         :message="t('pathListView.noMatchesMessage')"
       >
         <template #action>
@@ -127,12 +128,13 @@ function statusLabel(tab: LearningPathStatus | null): string {
             {{ t('courseFilters.clearFilters') }}
           </button>
         </template>
-      </StateEmpty>
+      </StateBlock>
 
-      <StateEmpty
+      <StateBlock
         v-else-if="paths.length === 0"
         data-test="empty"
-        :heading="t('pathListView.emptyHeading')"
+        kind="empty"
+        :title="t('pathListView.emptyHeading')"
         :message="t('pathListView.emptyMessage')"
       >
         <template #action>
@@ -140,7 +142,7 @@ function statusLabel(tab: LearningPathStatus | null): string {
             {{ t('pathListView.newPathLabel') }}
           </RouterLink>
         </template>
-      </StateEmpty>
+      </StateBlock>
 
       <template v-else>
         <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

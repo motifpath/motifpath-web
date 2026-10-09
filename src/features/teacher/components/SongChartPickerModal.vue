@@ -9,8 +9,8 @@ import { Music } from 'lucide-vue-next'
 import { usePublishedSongChartLibrary } from '@/features/teacher/composables/usePublishedSongChartLibrary'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 defineProps<{ open: boolean }>()
@@ -39,8 +39,8 @@ const { charts, searchText, isLoading, error, reload } = usePublishedSongChartLi
         class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm text-ink"
       />
       <div class="min-h-0 flex-1 overflow-y-auto">
-        <StateLoading v-if="isLoading" :noun="t('songChartPicker.loadingNoun')" />
-        <StateError v-else-if="error" :message="t('songChartPicker.loadFailed')" @retry="reload" />
+        <LoadingSkeleton v-if="isLoading" />
+        <LoadFailed v-else-if="error" :message="t('songChartPicker.loadFailed')" @retry="reload" />
         <p v-else-if="charts.length === 0" data-test="song-chart-none" class="text-sm text-ink-muted">
           {{ t('songChartPicker.none') }}
         </p>

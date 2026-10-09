@@ -24,8 +24,8 @@ import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
 import AppBar from '@/shared/components/AppBar.vue'
 import LocaleScope from '@/shared/components/LocaleScope.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useToast } from '@/shared/composables/useToast'
@@ -435,7 +435,7 @@ async function saveAs(names: Record<string, string>) {
     </div>
 
     <div v-else-if="loadingDiagram" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading :noun="t('diagramAuthoringView.loadingNoun')" />
+      <LoadingSkeleton />
     </div>
 
     <div
@@ -443,7 +443,7 @@ async function saveAs(names: Record<string, string>) {
       data-test="load-error"
       class="flex flex-1 items-center justify-center p-10"
     >
-      <StateError :message="t('diagramAuthoringView.loadErrorMessage')" @retry="retryLoad" />
+      <LoadFailed :message="t('diagramAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <div

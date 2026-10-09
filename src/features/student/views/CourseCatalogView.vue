@@ -12,9 +12,9 @@ import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -113,14 +113,15 @@ async function enroll(course: CourseCatalogEntry) {
       @clear="clearFilters"
     />
 
-    <StateLoading v-if="isLoading" data-test="loading" :noun="t('courseCatalogView.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <StateError v-else-if="error" data-test="error" :message="t('courseCatalogView.errorMessage')" @retry="retry" />
+    <LoadFailed v-else-if="error" data-test="error" :message="t('courseCatalogView.errorMessage')" @retry="retry" />
 
-    <StateEmpty
+    <StateBlock
       v-else-if="courses.length === 0 && hasActiveFilters"
       data-test="no-matches"
-      :heading="t('courseCatalogView.noMatchesHeading')"
+      kind="empty"
+      :title="t('courseCatalogView.noMatchesHeading')"
       :message="t('courseCatalogView.noMatchesMessage')"
     >
       <template #action>
@@ -133,12 +134,13 @@ async function enroll(course: CourseCatalogEntry) {
           {{ t('courseFilters.clearFilters') }}
         </button>
       </template>
-    </StateEmpty>
+    </StateBlock>
 
-    <StateEmpty
+    <StateBlock
       v-else-if="courses.length === 0"
       data-test="empty"
-      :heading="t('courseCatalogView.emptyHeading')"
+      kind="empty"
+      :title="t('courseCatalogView.emptyHeading')"
       :message="t('courseCatalogView.emptyMessage')"
     />
 

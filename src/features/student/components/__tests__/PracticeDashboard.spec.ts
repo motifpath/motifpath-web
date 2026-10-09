@@ -44,7 +44,7 @@ vi.mock('@/features/student/composables/usePracticeHome', () => ({
 
 import FretboardHeatmap from '@/features/student/components/FretboardHeatmap.vue'
 import PracticeDashboard from '@/features/student/components/PracticeDashboard.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 
 const names = (en: string) => ({ en })
 
@@ -349,7 +349,7 @@ describe('PracticeDashboard', () => {
     overviewState.item.value = null
     overviewState.isLoading.value = true
 
-    expect(mountHome().findComponent(StateLoading).exists()).toBe(true)
+    expect(mountHome().findComponent(LoadingSkeleton).exists()).toBe(true)
   })
 
   it('says when the overview can’t be loaded, and tries again', async () => {

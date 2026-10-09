@@ -25,10 +25,10 @@ describe('ModalOverlay', () => {
     expect(wrapper.get('[data-test="modal-panel"]').classes()).toContain('w-[420px]')
   })
 
-  it('emits close when the overlay itself is clicked', async () => {
+  it('emits close when the scrim around the panel is clicked', async () => {
     const wrapper = mount(ModalOverlay, { props: { open: true } })
 
-    await wrapper.get('[data-test="modal-overlay"]').trigger('click')
+    await wrapper.get('[data-test="overlay-scrim"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
@@ -39,5 +39,13 @@ describe('ModalOverlay', () => {
     await wrapper.get('[data-test="modal-panel"]').trigger('click')
 
     expect(wrapper.emitted('close')).toBeUndefined()
+  })
+
+  it('closes on Esc', async () => {
+    const wrapper = mount(ModalOverlay, { props: { open: true }, slots: { default: '<button>Inside</button>' } })
+
+    await wrapper.get('[data-test="modal-panel"]').trigger('keydown', { key: 'Escape' })
+
+    expect(wrapper.emitted('close')).toHaveLength(1)
   })
 })

@@ -7,9 +7,10 @@ const meta = {
   component: ConfirmDialog,
   args: {
     open: true,
-    title: 'Delete this exercise?',
-    message: 'It is removed from every challenge that uses it. This can’t be undone.',
-    confirmLabel: 'Delete',
+    title: 'Leave Fingerstyle basics?',
+    message: 'You’ll lose your place in this course. If you enrol again, it starts from checkpoint 1.',
+    confirmLabel: 'Leave course',
+    cancelLabel: 'Keep learning',
   },
 } satisfies Meta<typeof ConfirmDialog>
 
@@ -18,10 +19,12 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 export const Busy: Story = { args: { busy: true } }
+export const DefaultCancel: Story = { args: { cancelLabel: undefined } }
 export const LongPortuguese: Story = {
   args: {
-    title: 'Excluir este exercício definitivamente?',
-    message: 'Ele será removido de todos os desafios que o usam. Esta ação não pode ser desfeita.',
-    confirmLabel: 'Excluir exercício',
+    title: 'Sair de Fundamentos do fingerstyle?',
+    message: 'Você perderá seu lugar neste curso. Se se inscrever de novo, ele recomeça do checkpoint 1.',
+    confirmLabel: 'Sair do curso',
+    cancelLabel: 'Continuar aprendendo',
   },
 }

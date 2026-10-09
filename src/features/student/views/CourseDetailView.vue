@@ -8,9 +8,9 @@ import { useMyCourseEnrollments } from '@/features/student/composables/useMyCour
 import { usePublishedCourse } from '@/features/student/composables/usePublishedCourse'
 import { useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -87,12 +87,13 @@ async function continueCourse() {
       {{ t('courseDetailView.backToCatalog') }}
     </RouterLink>
 
-    <StateLoading v-if="isLoading" data-test="loading" :noun="t('courseDetailView.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <StateEmpty
+    <StateBlock
       v-else-if="notFound"
       data-test="not-found"
-      :heading="t('courseDetailView.notFoundHeading')"
+      kind="notFound"
+      :title="t('courseDetailView.notFoundHeading')"
       :message="t('courseDetailView.notFoundMessage')"
     >
       <template #action>
@@ -100,9 +101,9 @@ async function continueCourse() {
           {{ t('nav.findCourse') }}
         </RouterLink>
       </template>
-    </StateEmpty>
+    </StateBlock>
 
-    <StateError
+    <LoadFailed
       v-else-if="error"
       data-test="error"
       :message="t('courseDetailView.errorMessage')"

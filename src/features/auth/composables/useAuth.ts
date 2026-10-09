@@ -20,6 +20,8 @@ export interface AuthContext {
   signOut: () => Promise<void>
   /** Single uppercase letter for an avatar badge — first name, else email, else "?". */
   displayInitial: ComputedRef<string>
+  /** The account's primary email address, or an empty string when it has none. */
+  email: ComputedRef<string>
 }
 
 /**
@@ -43,5 +45,6 @@ export function useAuth(): AuthContext {
       const source = user?.firstName || user?.primaryEmailAddress?.emailAddress
       return source ? source.charAt(0).toUpperCase() : '?'
     }),
+    email: computed(() => clerkUser.user.value?.primaryEmailAddress?.emailAddress ?? ''),
   }
 }

@@ -110,7 +110,7 @@ describe('ExercisePreviewModal', () => {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
-    await wrapper.get('[data-test="modal-overlay"]').trigger('click')
+    await wrapper.get('[data-test="overlay-scrim"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
