@@ -16,6 +16,8 @@ declare module 'vue-router' {
     requiresRole?: Role[]
     /** Route wants a wider content column than the app's usual reading width. */
     wideContent?: boolean
+    /** Route takes a phone's full height: the bottom navigation bar steps aside (the rail and sidebar stay). */
+    hidesBottomBar?: boolean
     /**
      * The route this one replaces while keeping the same form on screen (a new
      * item's first save), so arriving from it keeps the scroll position.
@@ -90,7 +92,8 @@ const routes: RouteRecordRaw[] = [
         name: 'node',
         // Wider than the app's usual column: the video would otherwise be
         // squeezed by a timed cue even when the viewport has room to spare.
-        meta: { wideContent: true },
+        // A lesson is a page pushed onto My path, so on a phone it gets the height the bar would take.
+        meta: { wideContent: true, hidesBottomBar: true },
         component: () => import('@/features/student/views/NodeView.vue'),
       },
       {

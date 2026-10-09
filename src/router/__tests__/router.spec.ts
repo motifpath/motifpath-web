@@ -299,6 +299,14 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('practice-session')
   })
 
+  it('gives a lesson the phone’s full height, without the bottom navigation bar', () => {
+    expect(router.resolve('/path/nodes/node-abc').meta.hidesBottomBar).toBe(true)
+  })
+
+  it('keeps the bottom navigation bar on My path itself', () => {
+    expect(router.resolve('/path').meta.hidesBottomBar).toBeFalsy()
+  })
+
   it('runs a practice session in the Practice Shell’s layout, with no app bar', async () => {
     const [layout] = router.resolve('/practice/session').matched
     // A lazy route component is a loader until the first navigation replaces it with what it loaded.

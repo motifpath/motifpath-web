@@ -158,6 +158,22 @@ describe('LearnerShell', () => {
     expect(links).toContainEqual({ name: 'credits' })
   })
 
+  it('uses the reading-width content column for an ordinary route', () => {
+    const main = mountShell().get('main')
+
+    expect(main.classes()).toContain('max-w-4xl')
+    expect(main.classes()).not.toContain('max-w-7xl')
+  })
+
+  it("gives a route marked 'wideContent' a wider column, growing again on a very large screen", () => {
+    route.meta = { wideContent: true }
+    const main = mountShell().get('main')
+
+    expect(main.classes()).toContain('max-w-7xl')
+    expect(main.classes()).toContain('2xl:max-w-[96rem]')
+    expect(main.classes()).not.toContain('max-w-4xl')
+  })
+
   describe('toasts', () => {
     it('are lifted above the bottom bar while it shows', () => {
       mountShell({ width: 390 })
