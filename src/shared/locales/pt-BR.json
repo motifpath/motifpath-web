@@ -15,7 +15,8 @@
     "songCharts": "Cifras",
     "myPath": "Trilha",
     "learning": "Aprender",
-    "discover": "Explorar"
+    "discover": "Explorar",
+    "ariaLabel": "Principal"
   },
   "appBar": {
     "menuAriaLabel": "Menu",

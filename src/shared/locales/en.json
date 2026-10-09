@@ -15,7 +15,8 @@
     "songCharts": "Song charts",
     "myPath": "My path",
     "learning": "Learning",
-    "discover": "Discover"
+    "discover": "Discover",
+    "ariaLabel": "Main"
   },
   "appBar": {
     "menuAriaLabel": "Menu",
