@@ -4,7 +4,6 @@
   },
   "pathView": {
     "heading": "Minha trilha",
-    "loadingNoun": "sua trilha",
     "emptyHeading": "Tudo pronto",
     "emptyMessage": "Estamos preparando sua trilha personalizada. Avisaremos quando estiver pronta.",
     "errorMessage": "Não foi possível carregar sua trilha.",
@@ -33,7 +32,6 @@
     "checkBackSoon": "Ainda estamos preparando. Volte em breve.",
     "practiceLink": "Praticar esta lição ›",
     "backToPath": "‹ Voltar para sua trilha",
-    "loadingNoun": "sua lição",
     "errorMessage": "Não foi possível carregar esta lição.",
     "notFoundHeading": "Lição não encontrada",
     "notFoundMessage": "Esta lição não está na sua trilha.",
@@ -52,7 +50,6 @@
     "resetAsideWidth": "Redefinir o painel de anotações para o tamanho padrão"
   },
   "practiceView": {
-    "loadingNoun": "os exercícios de prática",
     "errorMessage": "Não foi possível carregar este exercício de prática.",
     "empty": "Ainda não há prática para esta lição.",
     "backToLesson": "‹ Voltar para a lição",
@@ -78,7 +75,6 @@
   },
   "courseCatalogView": {
     "heading": "Encontre um curso",
-    "loadingNoun": "os cursos",
     "errorMessage": "Não foi possível carregar o catálogo de cursos.",
     "emptyHeading": "Nenhum curso ainda",
     "emptyMessage": "Novos cursos aparecerão aqui assim que forem publicados.",
@@ -95,7 +91,6 @@
   "myCoursesView": {
     "heading": "Meu aprendizado",
     "findAnotherCourse": "Encontrar outro curso",
-    "loadingNoun": "seus cursos",
     "errorMessage": "Não foi possível carregar seus cursos e trilhas.",
     "emptyHeading": "Nada por aqui ainda",
     "emptyMessage": "Inscreva-se em um curso ou em uma trilha para vê-los aqui.",
@@ -115,7 +110,6 @@
     "open": "Abrir"
   },
   "courseDetailView": {
-    "loadingNoun": "o curso",
     "errorMessage": "Não foi possível carregar este curso.",
     "notFoundHeading": "Este curso ainda não foi publicado",
     "notFoundMessage": "Este curso não está disponível no catálogo.",
@@ -128,7 +122,6 @@
     "learningPath": "Trilha de aprendizagem {position}"
   },
   "courseCompletedView": {
-    "loadingNoun": "seu curso",
     "errorMessage": "Não foi possível carregar seu curso.",
     "notFoundHeading": "Nada para comemorar aqui ainda",
     "notFoundMessage": "Este não é um curso que você concluiu.",
@@ -149,7 +142,6 @@
   },
   "pathCatalogView": {
     "heading": "Encontre uma trilha",
-    "loadingNoun": "as trilhas",
     "errorMessage": "Não foi possível carregar o catálogo de trilhas.",
     "emptyHeading": "Nenhuma trilha ainda",
     "emptyMessage": "Novas trilhas aparecerão aqui assim que forem publicadas.",
@@ -164,7 +156,6 @@
     "moreFromTeacher": "Mais deste professor"
   },
   "pathDetailView": {
-    "loadingNoun": "a trilha",
     "errorMessage": "Não foi possível carregar esta trilha.",
     "notFoundHeading": "Esta trilha ainda não foi publicada",
     "notFoundMessage": "Esta trilha não está disponível no catálogo.",
@@ -183,7 +174,6 @@
     "minutesOption": "{minutes} min",
     "start": "Começar a praticar",
     "starting": "Montando sua sessão…",
-    "loadingNoun": "instrumentos",
     "instrumentsError": "Não conseguimos carregar os instrumentos.",
     "planError": "Não conseguimos montar sua sessão.",
     "nothingToPlay": "Ainda não há nada para tocar neste instrumento. Você pode praticar na cabeça.",

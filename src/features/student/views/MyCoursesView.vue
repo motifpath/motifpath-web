@@ -15,9 +15,9 @@ import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -119,19 +119,20 @@ async function switchTo(target: CurrentPathTarget) {
       </div>
     </div>
 
-    <StateLoading v-if="isLoading" data-test="loading" :noun="t('myCoursesView.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <StateError
+    <LoadFailed
       v-else-if="hasError"
       data-test="error"
       :message="t('myCoursesView.errorMessage')"
       @retry="retry"
     />
 
-    <StateEmpty
+    <StateBlock
       v-else-if="isEmpty"
       data-test="empty"
-      :heading="t('myCoursesView.emptyHeading')"
+      kind="empty"
+      :title="t('myCoursesView.emptyHeading')"
       :message="t('myCoursesView.emptyMessage')"
     >
       <template #action>
@@ -144,7 +145,7 @@ async function switchTo(target: CurrentPathTarget) {
           </RouterLink>
         </div>
       </template>
-    </StateEmpty>
+    </StateBlock>
 
     <template v-else>
       <div v-if="enrollments.length" class="flex flex-col gap-3">

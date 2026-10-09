@@ -69,7 +69,6 @@
       "confirmMessage": "Excluir {name}? Isso não pode ser desfeito.",
       "confirm": "Excluir"
     },
-    "loadingNoun": "o mapa de conhecimento",
     "loadFailed": "Não foi possível carregar o mapa de conhecimento.",
     "newSkill": "Nova habilidade",
     "newConcept": "Novo conceito",
@@ -90,7 +89,6 @@
     "discardMessage": "O que você alterou neste nó não foi salvo."
   },
   "songChartPreview": {
-    "loadingNoun": "cifra",
     "notFoundHeading": "Cifra não encontrada",
     "notFoundMessage": "Nenhuma cifra tem este link. Ela pode ter sido excluída.",
     "loadFailed": "Não foi possível carregar a cifra.",
@@ -109,7 +107,6 @@
       "withdrawn": "Retirada"
     },
     "publishedAt": "Publicada · revisão {revision}",
-    "loadingNoun": "cifras",
     "loadFailed": "Não foi possível carregar as cifras.",
     "noMatchesHeading": "Nenhuma cifra encontrada",
     "noMatchesMessage": "Tente outro título ou artista, ou outra situação.",

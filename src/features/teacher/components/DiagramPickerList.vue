@@ -12,9 +12,9 @@ import { computed } from 'vue'
 import { useDiagramSearch } from '@/features/teacher/composables/useDiagramSearch'
 import DiagramThumbnail from '@/shared/components/diagram/DiagramThumbnail.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import TeacherFilterPicker from '@/shared/components/TeacherFilterPicker.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
@@ -112,13 +112,12 @@ const KIND_CHIPS = [
       </button>
     </div>
 
-    <StateLoading
+    <LoadingSkeleton
       v-if="isLoading && diagrams.length === 0"
       data-test="diagram-picker-loading"
-      :noun="t('diagramPickerList.loadingNoun')"
     />
 
-    <StateError
+    <LoadFailed
       v-else-if="error"
       data-test="diagram-picker-error"
       :message="t('diagramPickerList.loadErrorMessage')"
@@ -133,10 +132,11 @@ const KIND_CHIPS = [
       {{ t('diagramPickerList.noMatches') }}
     </p>
 
-    <StateEmpty
+    <StateBlock
       v-else-if="!isLoading && offered.length === 0 && !hasMore"
       data-test="diagram-picker-empty"
-      :heading="emptyHeading ?? t('diagramPickerList.emptyHeading')"
+      kind="empty"
+      :title="emptyHeading ?? t('diagramPickerList.emptyHeading')"
       :message="emptyMessage ?? t('diagramPickerList.emptyMessage')"
     />
 

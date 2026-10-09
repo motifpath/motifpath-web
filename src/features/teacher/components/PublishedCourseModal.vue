@@ -3,8 +3,8 @@ import type { components } from '@/api/generated/core-domain'
 import { usePublishedCourse } from '@/features/teacher/composables/useCourseAuthoring'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type OutlineItem = components['schemas']['CourseOutlineItem']
@@ -44,8 +44,8 @@ function sectionsOf(items: OutlineItem[]): OutlineSection[] {
       <ModalCloseButton @close="emit('close')" />
     </div>
 
-    <StateLoading v-if="isLoading" :noun="t('publishedCourseModal.loadingNoun')" />
-    <StateError v-else-if="error || !outline" :message="t('publishedCourseModal.errorMessage')" @retry="retry" />
+    <LoadingSkeleton v-if="isLoading" />
+    <LoadFailed v-else-if="error || !outline" :message="t('publishedCourseModal.errorMessage')" @retry="retry" />
 
     <template v-else>
       <div class="flex flex-col gap-1">

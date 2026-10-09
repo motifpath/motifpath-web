@@ -19,7 +19,7 @@ import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.v
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useIntervalLabel } from '@/shared/composables/useIntervalLabel'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -150,7 +150,7 @@ const { next } = useAdvanceAfterAnswer(
     <p v-if="instrumentName" data-test="item-instrument" class="text-sm font-medium text-ink-muted">{{ instrumentName }}</p>
 
     <div v-if="status === 'loading'" data-test="shape-loading">
-      <StateLoading />
+      <LoadingSkeleton />
     </div>
 
     <div v-else-if="status === 'unavailable' || !shownDiagram || !instrument" class="flex flex-col items-start gap-3">

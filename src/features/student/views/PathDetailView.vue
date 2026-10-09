@@ -7,9 +7,9 @@ import { useEnrollInLearningPath } from '@/features/student/composables/useEnrol
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
@@ -66,12 +66,13 @@ async function enroll() {
       </RouterLink>
     </div>
 
-    <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathDetailView.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <StateEmpty
+    <StateBlock
       v-else-if="notFound"
       data-test="not-found"
-      :heading="t('pathDetailView.notFoundHeading')"
+      kind="notFound"
+      :title="t('pathDetailView.notFoundHeading')"
       :message="t('pathDetailView.notFoundMessage')"
     >
       <template #action>
@@ -79,9 +80,9 @@ async function enroll() {
           {{ t('nav.findPath') }}
         </RouterLink>
       </template>
-    </StateEmpty>
+    </StateBlock>
 
-    <StateError v-else-if="error" data-test="error" :message="t('pathDetailView.errorMessage')" @retry="retry" />
+    <LoadFailed v-else-if="error" data-test="error" :message="t('pathDetailView.errorMessage')" @retry="retry" />
 
     <template v-else-if="path">
       <div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">

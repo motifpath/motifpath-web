@@ -5,9 +5,9 @@ import type { components } from '@/api/generated/core-domain'
 import { useSongChartLibrary } from '@/features/admin/composables/useSongChartLibrary'
 import AppBar from '@/shared/components/AppBar.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -83,20 +83,22 @@ function statusText(chart: SongChartSummary): string {
         </div>
       </div>
 
-      <StateLoading v-if="isLoading" data-test="loading" :noun="t('songChartList.loadingNoun')" />
+      <LoadingSkeleton v-if="isLoading" data-test="loading" />
       <div v-else-if="error" data-test="error">
-        <StateError :message="t('songChartList.loadFailed')" @retry="reload" />
+        <LoadFailed :message="t('songChartList.loadFailed')" @retry="reload" />
       </div>
-      <StateEmpty
+      <StateBlock
         v-else-if="charts.length === 0 && hasActiveFilters"
         data-test="no-matches"
-        :heading="t('songChartList.noMatchesHeading')"
+        kind="empty"
+        :title="t('songChartList.noMatchesHeading')"
         :message="t('songChartList.noMatchesMessage')"
       />
-      <StateEmpty
+      <StateBlock
         v-else-if="charts.length === 0"
         data-test="empty"
-        :heading="t('songChartList.emptyHeading')"
+        kind="empty"
+        :title="t('songChartList.emptyHeading')"
         :message="t('songChartList.emptyMessage')"
       />
       <template v-else>

@@ -92,7 +92,6 @@
   "exerciseAuthoringView": {
     "editExerciseBreadcrumb": "Edit exercise",
     "newExerciseBreadcrumb": "New exercise",
-    "loadingNoun": "exercise",
     "loadErrorMessage": "Failed to load the exercise",
     "titlePlaceholder": "Untitled exercise",
     "titleHint": "Internal title — for the content library, not shown to students",
@@ -130,7 +129,6 @@
   },
   "exerciseListView": {
     "heading": "Exercises",
-    "loadingNoun": "exercises",
     "loadErrorMessage": "We couldn't load the exercises.",
     "emptyHeading": "No exercises yet",
     "emptyMessage": "Create your first exercise to start building the reusable pool.",
@@ -145,7 +143,6 @@
   },
   "diagramListView": {
     "heading": "Diagrams",
-    "loadingNoun": "diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "No diagrams yet",
     "emptyMessage": "Create your first diagram to start building the reusable library.",
@@ -165,7 +162,6 @@
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "New diagram",
     "editDiagramBreadcrumb": "Edit diagram",
-    "loadingNoun": "diagram",
     "loadErrorMessage": "We couldn't load the diagram.",
     "namePlaceholder": "Diagram name",
     "nameLabel": "Name",
@@ -289,7 +285,6 @@
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
     "editBreadcrumb": "Edit content",
     "newBreadcrumb": "New content",
-    "loadingNoun": "content node",
     "loadErrorMessage": "Failed to load the content node",
     "titlePlaceholder": "Untitled content",
     "titleHint": "Internal title — for the content library, not shown to students",
@@ -348,7 +343,6 @@
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
     "heading": "Content",
     "newContentLabel": "New content",
-    "loadingNoun": "content",
     "errorMessage": "We couldn't load the content nodes.",
     "emptyHeading": "No content yet",
     "emptyMessage": "Create your first video or article to start building the content library.",
@@ -359,7 +353,6 @@
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
     "editBreadcrumb": "Edit path",
     "newBreadcrumb": "New path",
-    "loadingNoun": "learning path",
     "loadErrorMessage": "Failed to load the learning path",
     "titlePlaceholder": "Untitled path",
     "titleHint": "Name shown to teachers and admins, not to students.",
@@ -398,7 +391,6 @@
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
     "heading": "Paths",
     "newPathLabel": "New path",
-    "loadingNoun": "paths",
     "errorMessage": "We couldn't load the learning paths.",
     "emptyHeading": "No paths yet",
     "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
@@ -476,7 +468,6 @@
     "permissionDenied": "Only teachers and admins can manage courses.",
     "allStatuses": "All",
     "statusTabsLabel": "Course status",
-    "loadingNoun": "courses",
     "errorMessage": "We couldn't load your courses.",
     "emptyHeading": "No courses yet",
     "emptyMessage": "Courses you create will appear here.",
@@ -510,7 +501,6 @@
       "title": "Title",
       "updated": "Recently updated"
     },
-    "loadingNoun": "learning paths",
     "errorMessage": "Couldn't load the learning paths.",
     "emptyMessage": "No learning path matches these filters.",
     "noLevel": "No level",
@@ -534,12 +524,10 @@
   },
   "publishedCourseModal": {
     "title": "What learners see",
-    "loadingNoun": "published course",
     "errorMessage": "Couldn't load the published course."
   },
   "courseBuilderView": {
     "permissionDenied": "This page is for teachers and admins only — your account can't build courses.",
-    "loadingNoun": "course",
     "notFound": "This course doesn't exist, or it was removed.",
     "backToCourses": "Back to courses",
     "loadErrorMessage": "Couldn't load this course.",
@@ -574,7 +562,6 @@
     "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}"
   },
   "diagramPickerList": {
-    "loadingNoun": "diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "No diagrams yet",
     "emptyMessage": "Create a diagram in the Diagrams library first.",
@@ -591,7 +578,6 @@
     "noMatches": "No diagrams match these filters."
   },
   "diagramEmbedPicker": {
-    "loadingNoun": "diagram",
     "loadErrorMessage": "We couldn't load this diagram.",
     "chooseAnother": "Choose another diagram",
     "changeDiagram": "Change diagram",
@@ -745,7 +731,6 @@
   "songChartPicker": {
     "title": "Insert a song chart",
     "searchPlaceholder": "Title or artist",
-    "loadingNoun": "song charts",
     "loadFailed": "Couldn't load the song charts.",
     "none": "No published song chart matches."
   }

@@ -6,8 +6,8 @@ import ExerciseView from '@/shared/components/ExerciseView.vue'
 import PracticeHelpModal from '@/features/student/components/PracticeHelpModal.vue'
 import SendToTeacher from '@/features/student/components/SendToTeacher.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useLessonTitles } from '@/features/student/composables/useLessonTitles'
 import { usePracticeSession } from '@/features/student/composables/usePracticeSession'
 import { conciergeNumber, practiceReference } from '@/features/student/utils/conciergeLink'
@@ -44,9 +44,9 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
 
 <template>
   <section data-test="practice">
-    <StateLoading v-if="session.status.value === 'loading'" data-test="loading" :noun="t('practiceView.loadingNoun')" />
+    <LoadingSkeleton v-if="session.status.value === 'loading'" data-test="loading" />
 
-    <StateError
+    <LoadFailed
       v-else-if="session.status.value === 'error'"
       :message="t('practiceView.errorMessage')"
       @retry="session.retry()"

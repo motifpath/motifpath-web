@@ -6,9 +6,9 @@ import { useListContentNodes } from '@/features/teacher/composables/useListConte
 import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
@@ -61,9 +61,9 @@ const { instrumentsLabel } = useInstrumentNames()
 
       <InstrumentFilterSelect v-model="instrumentId" class="w-fit" />
 
-      <StateLoading v-if="isLoading" data-test="loading" :noun="t('contentListView.loadingNoun')" />
+      <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-      <StateError v-else-if="error" data-test="error" :message="t('contentListView.errorMessage')" @retry="retry" />
+      <LoadFailed v-else-if="error" data-test="error" :message="t('contentListView.errorMessage')" @retry="retry" />
 
       <div
         v-else-if="contentNodes.length === 0 && instrumentId"
@@ -76,10 +76,11 @@ const { instrumentsLabel } = useInstrumentNames()
         </button>
       </div>
 
-      <StateEmpty
+      <StateBlock
         v-else-if="contentNodes.length === 0"
         data-test="empty"
-        :heading="t('contentListView.emptyHeading')"
+        kind="empty"
+        :title="t('contentListView.emptyHeading')"
         :message="t('contentListView.emptyMessage')"
       >
         <template #action>
@@ -87,7 +88,7 @@ const { instrumentsLabel } = useInstrumentNames()
             {{ t('contentListView.newContentLabel') }}
           </RouterLink>
         </template>
-      </StateEmpty>
+      </StateBlock>
 
       <template v-else>
         <ul class="flex flex-col gap-2">

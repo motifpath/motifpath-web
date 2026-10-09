@@ -8,8 +8,8 @@ import type { components } from '@/api/generated/core-domain'
 import DayMarks from '@/features/student/components/DayMarks.vue'
 import FretboardHeatmap from '@/features/student/components/FretboardHeatmap.vue'
 import { usePracticeSummary } from '@/features/student/composables/usePracticeHome'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -58,8 +58,8 @@ function progressValues(line: SkillProgress): string {
 </script>
 
 <template>
-  <StateLoading v-if="isLoading" :noun="t('practiceHomeView.summaryNoun')" />
-  <StateError v-else-if="error" :message="t('practiceHomeView.summaryError')" @retry="retry()" />
+  <LoadingSkeleton v-if="isLoading" />
+  <LoadFailed v-else-if="error" :message="t('practiceHomeView.summaryError')" @retry="retry()" />
 
   <div v-else-if="summary" class="flex flex-col gap-6">
     <div data-test="practice-days">

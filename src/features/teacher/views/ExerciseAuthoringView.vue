@@ -24,8 +24,8 @@ import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExerc
 import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LanguageCodesPicker from '@/shared/components/LanguageCodesPicker.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { diagramStimulusOptions } from '@/shared/utils/diagramAnswerCells'
@@ -341,11 +341,11 @@ async function save() {
     </div>
 
     <div v-else-if="loadingExercise" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading :noun="t('exerciseAuthoringView.loadingNoun')" />
+      <LoadingSkeleton />
     </div>
 
     <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
-      <StateError :message="t('exerciseAuthoringView.loadErrorMessage')" @retry="retryLoad" />
+      <LoadFailed :message="t('exerciseAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <div
@@ -437,7 +437,7 @@ async function save() {
             <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
           </button>
           <template v-if="showsDiagramStimulus && form.stimulusDiagram.value">
-            <StateLoading v-if="stimulus.status.value === 'loading'" :noun="t('diagramEmbedPicker.loadingNoun')" />
+            <LoadingSkeleton v-if="stimulus.status.value === 'loading'" />
             <DiagramStimulusEditor
               v-else-if="stimulus.diagram.value && stimulus.instrument.value"
               :key="`${stimulus.diagram.value.diagram_id}-${stimulusPick}`"
@@ -446,7 +446,7 @@ async function save() {
               :diagram-ref="form.stimulusDiagram.value"
               @update:diagram-ref="form.setStimulusDiagram"
             />
-            <StateError
+            <LoadFailed
               v-else-if="stimulus.status.value === 'error'"
               data-test="stimulus-diagram-error"
               :message="t('diagramEmbedPicker.loadErrorMessage')"

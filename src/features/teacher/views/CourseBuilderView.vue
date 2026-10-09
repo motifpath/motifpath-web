@@ -21,8 +21,8 @@ import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import LevelPicker from '@/shared/components/LevelPicker.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -249,7 +249,7 @@ const bodyReady = computed(() => !isLoading.value && !loadError.value)
     </div>
 
     <div v-else-if="isLoading" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading :noun="t('courseBuilderView.loadingNoun')" />
+      <LoadingSkeleton />
     </div>
 
     <div
@@ -264,7 +264,7 @@ const bodyReady = computed(() => !isLoading.value && !loadError.value)
     </div>
 
     <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
-      <StateError :message="t('courseBuilderView.loadErrorMessage')" @retry="retryLoad" />
+      <LoadFailed :message="t('courseBuilderView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <main

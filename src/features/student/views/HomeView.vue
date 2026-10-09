@@ -6,7 +6,7 @@ import RegistrationFailedNotice from '@/features/auth/components/RegistrationFai
 import { useAuth } from '@/features/auth/composables/useAuth'
 import PracticeDashboard from '@/features/student/components/PracticeDashboard.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const { isLoaded, isSignedIn } = useAuth()
@@ -21,7 +21,7 @@ const { t } = useTypedT()
   <section v-else class="flex flex-col items-start gap-4">
     <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('appBar.brand') }}</h1>
 
-    <StateLoading v-if="!isLoaded" data-test="loading" />
+    <LoadingSkeleton v-if="!isLoaded" data-test="loading" />
 
     <RegistrationFailedNotice v-else-if="isSignedIn && currentUser.state === 'failed'" />
 

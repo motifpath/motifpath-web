@@ -15,9 +15,9 @@ import AppBar from '@/shared/components/AppBar.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { downloadText, fileSlug } from '@/shared/utils/downloadText'
@@ -124,9 +124,9 @@ const actionClass = 'flex items-center gap-1.5 rounded-md border border-border p
     <AppBar context="teacher" :compact="isCompact" :primary-nav-to="{ name: 'admin-song-charts' }" />
 
     <div class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
-      <StateLoading v-if="isLoading" :noun="t('songChartPreview.loadingNoun')" />
-      <StateEmpty v-else-if="notFound" :heading="t('songChartPreview.notFoundHeading')" :message="t('songChartPreview.notFoundMessage')" />
-      <StateError v-else-if="loadError" :message="t('songChartPreview.loadFailed')" @retry="editor.load" />
+      <LoadingSkeleton v-if="isLoading" />
+      <StateBlock v-else-if="notFound" kind="notFound" :title="t('songChartPreview.notFoundHeading')" :message="t('songChartPreview.notFoundMessage')" />
+      <LoadFailed v-else-if="loadError" :message="t('songChartPreview.loadFailed')" @retry="editor.load" />
 
       <template v-else>
         <header class="flex flex-wrap items-center justify-between gap-3">

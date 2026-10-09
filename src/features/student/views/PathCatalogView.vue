@@ -11,9 +11,9 @@ import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -110,14 +110,15 @@ async function enroll(path: PathCatalogEntry) {
       @clear="clearFilters"
     />
 
-    <StateLoading v-if="isLoading" data-test="loading" :noun="t('pathCatalogView.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <StateError v-else-if="error" data-test="error" :message="t('pathCatalogView.errorMessage')" @retry="retry" />
+    <LoadFailed v-else-if="error" data-test="error" :message="t('pathCatalogView.errorMessage')" @retry="retry" />
 
-    <StateEmpty
+    <StateBlock
       v-else-if="paths.length === 0 && hasActiveFilters"
       data-test="no-matches"
-      :heading="t('pathCatalogView.noMatchesHeading')"
+      kind="empty"
+      :title="t('pathCatalogView.noMatchesHeading')"
       :message="t('pathCatalogView.noMatchesMessage')"
     >
       <template #action>
@@ -130,12 +131,13 @@ async function enroll(path: PathCatalogEntry) {
           {{ t('courseFilters.clearFilters') }}
         </button>
       </template>
-    </StateEmpty>
+    </StateBlock>
 
-    <StateEmpty
+    <StateBlock
       v-else-if="paths.length === 0"
       data-test="empty"
-      :heading="t('pathCatalogView.emptyHeading')"
+      kind="empty"
+      :title="t('pathCatalogView.emptyHeading')"
       :message="t('pathCatalogView.emptyMessage')"
     />
 

@@ -18,8 +18,8 @@ import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import LevelPicker from '@/shared/components/LevelPicker.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -259,11 +259,11 @@ async function unpublish() {
     </div>
 
     <div v-else-if="loadingLearningPath" class="flex flex-1 items-center justify-center p-10">
-      <StateLoading :noun="t('pathBuilderView.loadingNoun')" />
+      <LoadingSkeleton />
     </div>
 
     <div v-else-if="loadError" data-test="load-error" class="flex flex-1 items-center justify-center p-10">
-      <StateError :message="t('pathBuilderView.loadErrorMessage')" @retry="retryLoad" />
+      <LoadFailed :message="t('pathBuilderView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
     <main

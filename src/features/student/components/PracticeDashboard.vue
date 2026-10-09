@@ -14,8 +14,8 @@ import PracticeSummaryPanel from '@/features/student/components/PracticeSummaryP
 import { usePracticeOverview } from '@/features/student/composables/usePracticeHome'
 import InstrumentIcon from '@/shared/components/InstrumentIcon.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -76,8 +76,8 @@ const startTo = computed(() =>
       </PrimaryButton>
     </header>
 
-    <StateLoading v-if="isLoading" :noun="t('practiceHomeView.overviewNoun')" />
-    <StateError v-else-if="error" :message="t('practiceHomeView.overviewError')" @retry="retry()" />
+    <LoadingSkeleton v-if="isLoading" />
+    <LoadFailed v-else-if="error" :message="t('practiceHomeView.overviewError')" @retry="retry()" />
 
     <template v-else-if="overview">
       <div v-if="cards.length > 0" role="tablist" :aria-label="t('practiceHomeView.tabsLabel')" class="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4">

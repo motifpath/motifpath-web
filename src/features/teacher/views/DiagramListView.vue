@@ -8,9 +8,9 @@ import AppBar from '@/shared/components/AppBar.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -111,14 +111,15 @@ const {
         </label>
       </CourseFilters>
 
-      <StateLoading v-if="isLoading" data-test="loading" :noun="t('diagramListView.loadingNoun')" />
+      <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-      <StateError v-else-if="error" data-test="error" :message="t('diagramListView.loadErrorMessage')" @retry="reload" />
+      <LoadFailed v-else-if="error" data-test="error" :message="t('diagramListView.loadErrorMessage')" @retry="reload" />
 
-      <StateEmpty
+      <StateBlock
         v-else-if="diagrams.length === 0 && hasActiveFilters"
         data-test="no-matches"
-        :heading="t('diagramListView.noMatchesHeading')"
+        kind="empty"
+        :title="t('diagramListView.noMatchesHeading')"
         :message="t('diagramListView.noMatchesMessage')"
       >
         <template #action>
@@ -131,12 +132,13 @@ const {
             {{ t('courseFilters.clearFilters') }}
           </button>
         </template>
-      </StateEmpty>
+      </StateBlock>
 
-      <StateEmpty
+      <StateBlock
         v-else-if="diagrams.length === 0"
         data-test="empty"
-        :heading="t('diagramListView.emptyHeading')"
+        kind="empty"
+        :title="t('diagramListView.emptyHeading')"
         :message="t('diagramListView.emptyMessage')"
       >
         <template #action>
@@ -144,7 +146,7 @@ const {
             {{ t('common.newDiagram') }}
           </RouterLink>
         </template>
-      </StateEmpty>
+      </StateBlock>
 
       <template v-else>
         <ul class="flex flex-col gap-2">

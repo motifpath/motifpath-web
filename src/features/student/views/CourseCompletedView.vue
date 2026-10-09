@@ -5,9 +5,9 @@ import { RouterLink, useRoute } from 'vue-router'
 
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -27,14 +27,15 @@ const completedEnrollment = computed(
 
 <template>
   <section class="flex flex-col gap-6">
-    <StateLoading v-if="isLoading" data-test="loading" :noun="t('courseCompletedView.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <StateError v-else-if="error" data-test="error" :message="t('courseCompletedView.errorMessage')" @retry="retry" />
+    <LoadFailed v-else-if="error" data-test="error" :message="t('courseCompletedView.errorMessage')" @retry="retry" />
 
-    <StateEmpty
+    <StateBlock
       v-else-if="!completedEnrollment"
       data-test="not-found"
-      :heading="t('courseCompletedView.notFoundHeading')"
+      kind="notFound"
+      :title="t('courseCompletedView.notFoundHeading')"
       :message="t('courseCompletedView.notFoundMessage')"
     >
       <template #action>
@@ -42,7 +43,7 @@ const completedEnrollment = computed(
           {{ t('courseCompletedView.myCourses') }}
         </RouterLink>
       </template>
-    </StateEmpty>
+    </StateBlock>
 
     <div
       v-else

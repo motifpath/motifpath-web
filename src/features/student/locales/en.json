@@ -4,7 +4,6 @@
   },
   "pathView": {
     "heading": "My path",
-    "loadingNoun": "your path",
     "emptyHeading": "You're all set",
     "emptyMessage": "We're building your personalized path. We'll let you know when it's ready.",
     "errorMessage": "We couldn't load your path.",
@@ -33,7 +32,6 @@
     "checkBackSoon": "We're still building it — check back soon.",
     "practiceLink": "Practice this lesson ›",
     "backToPath": "‹ Back to your path",
-    "loadingNoun": "your lesson",
     "errorMessage": "We couldn't load this lesson.",
     "notFoundHeading": "Lesson not found",
     "notFoundMessage": "This lesson isn't on your path.",
@@ -52,7 +50,6 @@
     "resetAsideWidth": "Reset the notes panel to its default size"
   },
   "practiceView": {
-    "loadingNoun": "the practice exercises",
     "errorMessage": "We couldn't load this practice exercise.",
     "empty": "There's no practice for this lesson yet.",
     "backToLesson": "‹ Back to lesson",
@@ -78,7 +75,6 @@
   },
   "courseCatalogView": {
     "heading": "Find a course",
-    "loadingNoun": "courses",
     "errorMessage": "We couldn't load the course catalog.",
     "emptyHeading": "No courses yet",
     "emptyMessage": "New courses will appear here as soon as they are published.",
@@ -95,7 +91,6 @@
   "myCoursesView": {
     "heading": "My learning",
     "findAnotherCourse": "Find another course",
-    "loadingNoun": "your courses",
     "errorMessage": "We couldn't load your courses and paths.",
     "emptyHeading": "Nothing here yet",
     "emptyMessage": "Enroll in a course or a path and it will show up here.",
@@ -115,7 +110,6 @@
     "open": "Open"
   },
   "courseDetailView": {
-    "loadingNoun": "the course",
     "errorMessage": "We couldn't load this course.",
     "notFoundHeading": "This course is not published yet",
     "notFoundMessage": "This course is not available in the catalog.",
@@ -128,7 +122,6 @@
     "learningPath": "Learning path {position}"
   },
   "courseCompletedView": {
-    "loadingNoun": "your course",
     "errorMessage": "We couldn't load your course.",
     "notFoundHeading": "Nothing to celebrate here yet",
     "notFoundMessage": "This course isn't one you've finished.",
@@ -149,7 +142,6 @@
   },
   "pathCatalogView": {
     "heading": "Find a path",
-    "loadingNoun": "paths",
     "errorMessage": "We couldn't load the path catalog.",
     "emptyHeading": "No paths yet",
     "emptyMessage": "New paths will appear here as soon as they are published.",
@@ -164,7 +156,6 @@
     "moreFromTeacher": "More from this teacher"
   },
   "pathDetailView": {
-    "loadingNoun": "the path",
     "errorMessage": "We couldn't load this path.",
     "notFoundHeading": "This path is not published yet",
     "notFoundMessage": "This path is not available in the catalog.",
@@ -183,7 +174,6 @@
     "minutesOption": "{minutes} min",
     "start": "Start practising",
     "starting": "Putting your session together…",
-    "loadingNoun": "instruments",
     "instrumentsError": "We couldn't load the instruments.",
     "planError": "We couldn't put your session together.",
     "nothingToPlay": "There’s nothing to play on this instrument yet. You can practise in your head instead.",

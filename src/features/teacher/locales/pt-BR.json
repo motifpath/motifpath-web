@@ -92,7 +92,6 @@
   "exerciseAuthoringView": {
     "editExerciseBreadcrumb": "Editar exercício",
     "newExerciseBreadcrumb": "Novo exercício",
-    "loadingNoun": "exercício",
     "loadErrorMessage": "Falha ao carregar o exercício",
     "titlePlaceholder": "Exercício sem título",
     "titleHint": "Título interno — para a biblioteca de conteúdo, não mostrado aos alunos",
@@ -130,7 +129,6 @@
   },
   "exerciseListView": {
     "heading": "Exercícios",
-    "loadingNoun": "exercícios",
     "loadErrorMessage": "Não foi possível carregar os exercícios.",
     "emptyHeading": "Ainda não há exercícios",
     "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável.",
@@ -145,7 +143,6 @@
   },
   "diagramListView": {
     "heading": "Diagramas",
-    "loadingNoun": "diagramas",
     "loadErrorMessage": "Não foi possível carregar os diagramas.",
     "emptyHeading": "Ainda não há diagramas",
     "emptyMessage": "Crie seu primeiro diagrama para começar a construir a biblioteca reutilizável.",
@@ -165,7 +162,6 @@
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "Novo diagrama",
     "editDiagramBreadcrumb": "Editar diagrama",
-    "loadingNoun": "diagrama",
     "loadErrorMessage": "Não foi possível carregar o diagrama.",
     "namePlaceholder": "Nome do diagrama",
     "nameLabel": "Nome",
@@ -289,7 +285,6 @@
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
     "editBreadcrumb": "Editar conteúdo",
     "newBreadcrumb": "Novo conteúdo",
-    "loadingNoun": "nó de conteúdo",
     "loadErrorMessage": "Falha ao carregar o nó de conteúdo",
     "titlePlaceholder": "Conteúdo sem título",
     "titleHint": "Título interno — para a biblioteca de conteúdo, não mostrado aos alunos",
@@ -348,7 +343,6 @@
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
     "heading": "Conteúdo",
     "newContentLabel": "Novo conteúdo",
-    "loadingNoun": "conteúdo",
     "errorMessage": "Não foi possível carregar os nós de conteúdo.",
     "emptyHeading": "Ainda não há conteúdo",
     "emptyMessage": "Crie seu primeiro vídeo ou artigo para começar a construir a biblioteca de conteúdo.",
@@ -359,7 +353,6 @@
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
     "editBreadcrumb": "Editar trilha",
     "newBreadcrumb": "Nova trilha",
-    "loadingNoun": "trilha de aprendizagem",
     "loadErrorMessage": "Falha ao carregar a trilha de aprendizagem",
     "titlePlaceholder": "Trilha sem título",
     "titleHint": "Nome mostrado a professores e administradores, não aos alunos.",
@@ -398,7 +391,6 @@
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
     "heading": "Trilhas",
     "newPathLabel": "Nova trilha",
-    "loadingNoun": "trilhas",
     "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
     "emptyHeading": "Ainda não há trilhas",
     "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
@@ -476,7 +468,6 @@
     "permissionDenied": "Apenas professores e administradores podem gerenciar cursos.",
     "allStatuses": "Todos",
     "statusTabsLabel": "Status do curso",
-    "loadingNoun": "cursos",
     "errorMessage": "Não foi possível carregar seus cursos.",
     "emptyHeading": "Nenhum curso ainda",
     "emptyMessage": "Os cursos que você criar aparecerão aqui.",
@@ -510,7 +501,6 @@
       "title": "Título",
       "updated": "Atualizadas recentemente"
     },
-    "loadingNoun": "trilhas de aprendizagem",
     "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
     "emptyMessage": "Nenhuma trilha corresponde a estes filtros.",
     "noLevel": "Sem nível",
@@ -534,12 +524,10 @@
   },
   "publishedCourseModal": {
     "title": "O que os alunos veem",
-    "loadingNoun": "curso publicado",
     "errorMessage": "Não foi possível carregar o curso publicado."
   },
   "courseBuilderView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar cursos.",
-    "loadingNoun": "curso",
     "notFound": "Este curso não existe ou foi removido.",
     "backToCourses": "Voltar aos cursos",
     "loadErrorMessage": "Não foi possível carregar este curso.",
@@ -574,7 +562,6 @@
     "draftPathsBlockPublish": "Publique estas trilhas antes do curso: {titles}"
   },
   "diagramPickerList": {
-    "loadingNoun": "diagramas",
     "loadErrorMessage": "Não foi possível carregar os diagramas.",
     "emptyHeading": "Nenhum diagrama ainda",
     "emptyMessage": "Crie um diagrama na biblioteca de Diagramas primeiro.",
@@ -591,7 +578,6 @@
     "noMatches": "Nenhum diagrama corresponde a estes filtros."
   },
   "diagramEmbedPicker": {
-    "loadingNoun": "diagrama",
     "loadErrorMessage": "Não foi possível carregar este diagrama.",
     "chooseAnother": "Escolher outro diagrama",
     "changeDiagram": "Trocar diagrama",
@@ -745,7 +731,6 @@
   "songChartPicker": {
     "title": "Inserir uma cifra",
     "searchPlaceholder": "Título ou artista",
-    "loadingNoun": "cifras",
     "loadFailed": "Não foi possível carregar as cifras.",
     "none": "Nenhuma cifra publicada encontrada."
   }

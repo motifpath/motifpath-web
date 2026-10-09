@@ -210,7 +210,9 @@ describe('NodeView', () => {
 
       const wrapper = await mountView()
 
-      expect(wrapper.find('[data-test="locked"]').exists()).toBe(true)
+      const locked = wrapper.get('[data-test="locked"]')
+      expect(locked.text()).toContain('This step opens later')
+      expect(locked.text()).toContain('Complete the previous step to unlock this lesson.')
       expect(wrapper.find('media-player').exists()).toBe(false)
     })
 

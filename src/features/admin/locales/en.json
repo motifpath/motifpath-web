@@ -69,7 +69,6 @@
       "confirmMessage": "Delete {name}? This can’t be undone.",
       "confirm": "Delete"
     },
-    "loadingNoun": "the knowledge map",
     "loadFailed": "Couldn't load the knowledge map.",
     "newSkill": "New skill",
     "newConcept": "New concept",
@@ -90,7 +89,6 @@
     "discardMessage": "What you changed in this node hasn't been saved."
   },
   "songChartPreview": {
-    "loadingNoun": "song chart",
     "notFoundHeading": "Song chart not found",
     "notFoundMessage": "No song chart has this link. It may have been deleted.",
     "loadFailed": "Couldn't load the song chart.",
@@ -109,7 +107,6 @@
       "withdrawn": "Withdrawn"
     },
     "publishedAt": "Published · revision {revision}",
-    "loadingNoun": "song charts",
     "loadFailed": "Couldn't load the song charts.",
     "noMatchesHeading": "No song chart matches",
     "noMatchesMessage": "Try another title or artist, or another status.",

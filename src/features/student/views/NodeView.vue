@@ -11,10 +11,10 @@ import { useLessonTracking } from '@/features/student/composables/useLessonTrack
 import { activeCue } from '@/features/student/utils/activeCue'
 import { lessonReference } from '@/features/student/utils/conciergeLink'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateEmpty from '@/shared/components/StateEmpty.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
-import StateLocked from '@/shared/components/StateLocked.vue'
+import AppButton from '@/shared/components/AppButton.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import SongChartScreen from '@/shared/components/songChart/SongChartScreen.vue'
 import { SONG_CHART_OPENER } from '@/shared/components/songChart/songChartOpener'
 import { useMediaQuery } from '@/shared/composables/useMediaQuery'
@@ -175,29 +175,39 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
       {{ lesson.node.value?.title ?? t('nodeView.heading') }}
     </h1>
 
-    <StateLoading
+    <LoadingSkeleton
       v-if="lesson.state.value === 'loading'"
       data-test="loading"
-      :noun="t('nodeView.loadingNoun')"
     />
 
-    <StateError
+    <LoadFailed
       v-else-if="lesson.state.value === 'error'"
       data-test="error"
       :message="t('nodeView.errorMessage')"
       @retry="lesson.retry()"
     />
 
-    <StateLocked v-else-if="lesson.state.value === 'locked'" data-test="locked" />
+    <StateBlock
+      v-else-if="lesson.state.value === 'locked'"
+      data-test="locked"
+      kind="locked"
+      :title="t('states.locked.title')"
+      :message="t('states.locked.message')"
+    >
+      <template #action>
+        <AppButton :to="{ name: 'path' }">{{ t('buttons.backToPath') }}</AppButton>
+      </template>
+    </StateBlock>
 
-    <StateEmpty
+    <StateBlock
       v-else-if="lesson.state.value === 'not-found'"
       data-test="not-found"
-      :heading="t('nodeView.notFoundHeading')"
+      kind="notFound"
+      :title="t('nodeView.notFoundHeading')"
       :message="t('nodeView.notFoundMessage')"
     />
 
-    <StateError
+    <LoadFailed
       v-else-if="lesson.state.value === 'no-media'"
       data-test="no-video"
       :message="t('nodeView.noVideo')"
@@ -220,7 +230,7 @@ async function finish(to: RouteLocationRaw, { awaitProgress = false } = {}): Pro
            cue's aria-live region lives in, must stay mounted throughout — an
            announcement region that's removed and re-added is typically read
            as silent by a screen reader. -->
-      <StateError
+      <LoadFailed
         v-if="playbackFailed"
         data-test="playback-error"
         :message="t('nodeView.playbackError')"

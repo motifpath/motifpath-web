@@ -16,7 +16,7 @@ import { computed, ref } from 'vue'
 
 import type { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramEmbedDraft'
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
-import StateError from '@/shared/components/StateError.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { useListVoices } from '@/shared/composables/useListVoices'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
@@ -271,7 +271,7 @@ function intervalLabel(code: IntervalCode): string {
           {{ t('diagramEmbedPicker.playback.loop') }}
         </label>
       </div>
-      <StateError
+      <LoadFailed
         v-if="draft.playbackOffered.value && voicesError"
         data-test="embed-picker-playback-voices-error"
         :message="t('diagramEmbedPicker.playback.voicesError')"

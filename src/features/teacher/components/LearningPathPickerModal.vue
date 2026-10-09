@@ -10,8 +10,8 @@ import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
-import StateError from '@/shared/components/StateError.vue'
-import StateLoading from '@/shared/components/StateLoading.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -97,10 +97,10 @@ const isAdmin = computed(() => currentUser.profile?.role === 'admin')
       </div>
     </CourseFilters>
 
-    <StateLoading v-if="isLoading" :noun="t('learningPathPickerModal.loadingNoun')" />
+    <LoadingSkeleton v-if="isLoading" />
 
     <div v-else-if="error" data-test="path-picker-error">
-      <StateError :message="t('learningPathPickerModal.errorMessage')" @retry="retry" />
+      <LoadFailed :message="t('learningPathPickerModal.errorMessage')" @retry="retry" />
     </div>
 
     <p v-else-if="paths.length === 0" data-test="path-picker-empty" class="text-sm text-ink-subtle">
