@@ -604,4 +604,60 @@ describe('ExerciseView', () => {
       })
     })
   })
+
+  describe('a missing stimulus', () => {
+    const listening = { exerciseType: 'audio_recognition' as const, prompt: plainTextPrompt('p'), options: textOptions, audioUrl: 'https://x/third.mp3' }
+
+    it('says when the sound to hear didn’t load', async () => {
+      const wrapper = mount(ExerciseView, { props: listening })
+
+      await wrapper.get('[data-test="exercise-audio-play"]').trigger('error')
+
+      expect(wrapper.emitted('stimulusMissing')).toEqual([['failed_to_load']])
+    })
+
+    it('says when the picture to look at didn’t load', async () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: regionOptions, imageUrl: 'https://x/fretboard.png' },
+      })
+
+      await wrapper.get('[data-test="exercise-stimulus-image"]').trigger('error')
+
+      expect(wrapper.emitted('stimulusMissing')).toEqual([['failed_to_load']])
+    })
+
+    it('says when the diagram to look at can’t be shown here', () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: regionOptions, diagramRef: makeDiagramRef({ diagram_id: 'd1' }) },
+        global: { stubs: { EmbeddedDiagram: { name: 'EmbeddedDiagram', emits: ['status'], template: '<div />' } } },
+      })
+
+      wrapper.getComponent({ name: 'EmbeddedDiagram' }).vm.$emit('status', 'unavailable')
+
+      expect(wrapper.emitted('stimulusMissing')).toEqual([['unavailable']])
+    })
+
+    it('shows the caller’s notice in place of the missing stimulus, and locks the options', async () => {
+      const wrapper = mount(ExerciseView, {
+        props: { ...listening, stimulusMissing: true },
+        slots: { 'stimulus-notice': '<p data-test="notice">The sound didn’t load.</p>' },
+      })
+
+      expect(wrapper.find('[data-test="exercise-audio-play"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="notice"]').exists()).toBe(true)
+      const option = wrapper.findAll('[data-test="exercise-option"]')[0]!
+      expect(option.attributes('data-locked')).toBe('true')
+      await option.trigger('click')
+      expect(wrapper.emitted('update:selectedOptionIds')).toBeUndefined()
+    })
+
+    it('loads the stimulus again once it is no longer missing', async () => {
+      const wrapper = mount(ExerciseView, { props: { ...listening, stimulusMissing: true } })
+
+      await wrapper.setProps({ stimulusMissing: false })
+
+      expect(wrapper.find('[data-test="exercise-audio-play"]').exists()).toBe(true)
+      expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-locked')).toBe('false')
+    })
+  })
 })

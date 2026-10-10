@@ -8,11 +8,13 @@ import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import Icon from '@/shared/components/Icon.vue'
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
 import type { components } from '@/api/generated/core-domain'
+import type { components as EventComponents } from '@/api/generated/event-ingestion'
 
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 type PromptDocument = components['schemas']['PromptDocument']
 type DiagramRef = components['schemas']['DiagramRef']
+type MissingReason = EventComponents['schemas']['NotAnsweredResponse']['reason']
 
 const props = withDefaults(
   defineProps<{
@@ -51,8 +53,14 @@ const props = withDefaults(
      * challenge alike.
      */
     reveal?: { correctOptionIds: string[] }
+    /**
+     * The stimulus is missing (it didn't load, or can't be shown here): the caller's
+     * `stimulus-notice` takes its place and the options lock, so a guess can't be taken for an
+     * answer. Clearing it loads the stimulus again.
+     */
+    stimulusMissing?: boolean
   }>(),
-  { direction: 'column', allowMultiple: false },
+  { direction: 'column', allowMultiple: false, stimulusMissing: false },
 )
 
 /**
@@ -70,7 +78,7 @@ function isSelected(optionId: string): boolean {
 }
 
 function select(optionId: string): void {
-  if (props.reveal) return
+  if (props.reveal || props.stimulusMissing) return
   if (isSelected(optionId)) {
     selected.value = selected.value.filter((id) => id !== optionId)
     return
@@ -161,7 +169,13 @@ const playingOptionId = ref<string | null>(null)
 const emit = defineEmits<{
   /** A clip started or stopped sounding, so a caller can time an answer from the last one heard. */
   playing: [playing: boolean]
+  /** The stimulus didn't load, or can't be shown on this device. */
+  stimulusMissing: [reason: MissingReason]
 }>()
+
+function onDiagramStatus(status: string): void {
+  if (status === 'unavailable') emit('stimulusMissing', 'unavailable')
+}
 
 function markText(optionId: string): string {
   return t(markOf(optionId) === 'right' ? 'exerciseView.markRight' : 'exerciseView.markWrong')
@@ -221,8 +235,12 @@ watch(
     </div>
 
     <div class="min-w-0" :class="isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'">
+      <div v-if="isImageRecognition && stimulusMissing" data-test="stimulus-missing">
+        <slot name="stimulus-notice" />
+      </div>
+
       <div
-        v-if="isImageRecognition && diagramRef"
+        v-else-if="isImageRecognition && diagramRef"
         data-test="exercise-stimulus-diagram"
         class="overflow-hidden rounded-[10px] border border-border bg-surface-sunken p-2"
       >
@@ -237,6 +255,7 @@ watch(
           :position-marks="positionMarks"
           @select="selectPosition"
           @select-answer="select"
+          @status="onDiagramStatus"
         >
           <template #unavailable>
             <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
@@ -254,6 +273,7 @@ watch(
           alt=""
           class="block h-auto w-full"
           draggable="false"
+          @error="emit('stimulusMissing', 'failed_to_load')"
         />
         <div
           v-else
@@ -298,12 +318,16 @@ watch(
       </div>
 
       <template v-else-if="isTextResponse || isAudioRecognition">
+        <div v-if="isAudioRecognition && stimulusMissing" data-test="stimulus-missing" class="mb-2">
+          <slot name="stimulus-notice" />
+        </div>
         <audio
-          v-if="isAudioRecognition && audioUrl"
+          v-else-if="isAudioRecognition && audioUrl"
           data-test="exercise-audio-play"
           :src="audioUrl"
           controls
           class="mb-2 w-full"
+          @error="emit('stimulusMissing', 'failed_to_load')"
         />
         <div
           v-else-if="isAudioRecognition"
@@ -320,8 +344,12 @@ watch(
             data-test="exercise-option"
             :data-selected="isSelected(option.option_id)"
             :data-mark="markOf(option.option_id)"
-            class="flex cursor-pointer items-center gap-2 rounded-md border px-[11px] py-[9px]"
-            :class="optionTone(option.option_id, 'border-accent bg-accent-muted', 'border-border bg-transparent')"
+            :data-locked="stimulusMissing"
+            class="flex items-center gap-2 rounded-md border px-[11px] py-[9px]"
+            :class="[
+              optionTone(option.option_id, 'border-accent bg-accent-muted', 'border-border bg-transparent'),
+              stimulusMissing ? 'cursor-default opacity-50' : 'cursor-pointer',
+            ]"
             @click="select(option.option_id)"
           >
             <div
