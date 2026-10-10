@@ -13,6 +13,7 @@ import type { components } from '@/api/generated/core-domain'
 import { useAdvanceAfterAnswer } from '@/features/student/composables/useAdvanceAfterAnswer'
 import type { GradedCellAnswer } from '@/features/student/composables/usePracticeSessionRun'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
+import OptionTile from '@/shared/components/OptionTile.vue'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 import type { CellMark } from '@/shared/components/diagram/DrillFretboard.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
@@ -21,6 +22,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import { cellNoteName } from '@/shared/utils/fretboardCell'
 import type { CellAnswer, CellPlace } from '@/shared/utils/fretboardCell'
 import { nameTheNoteChoices } from '@/shared/utils/noteChoices'
+import { optionState } from '@/shared/utils/optionState'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Cell = NonNullable<Item['fretboard_cell']>
@@ -127,29 +129,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     />
 
     <div v-if="naming" class="grid grid-cols-2 gap-2" role="group" :aria-label="t('sessionFretboardCell.notes')">
-      <button
+      <OptionTile
         v-for="(noteName, i) in choices"
         :key="noteName"
-        type="button"
         data-test="note-choice"
         :data-mark="noteMark(noteName)"
-        :disabled="answer !== null"
-        class="relative flex h-12 items-center justify-center rounded-md border text-base font-semibold"
-        :class="{
-          'border-success bg-success-muted': noteMark(noteName) === 'right',
-          'border-danger bg-danger-muted': noteMark(noteName) === 'wrong',
-          'border-border hover:border-accent': !noteMark(noteName),
-        }"
+        :key-hint="i + 1"
+        :label="shown(noteName)"
+        :state="optionState({ selected: false, mark: noteMark(noteName), settled: answer !== null })"
         @click="nameNote(noteName)"
-      >
-        <span data-test="key-hint" class="absolute left-2 top-1 text-xs font-medium text-ink-muted" aria-hidden="true">{{ i + 1 }}</span>
-        <span data-test="note-name">{{ shown(noteName) }}</span>
-        <CircleCheck v-if="noteMark(noteName) === 'right'" :size="14" class="absolute right-1 top-1 text-success" aria-hidden="true" />
-        <CircleX v-else-if="noteMark(noteName) === 'wrong'" :size="14" class="absolute right-1 top-1 text-danger" aria-hidden="true" />
-        <span v-if="noteMark(noteName)" class="sr-only">
-          {{ noteMark(noteName) === 'right' ? t('sessionFretboardCell.markedRight') : t('sessionFretboardCell.markedWrong') }}
-        </span>
-      </button>
+      />
     </div>
 
     <PracticeActionBar>

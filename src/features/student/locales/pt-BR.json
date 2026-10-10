@@ -350,9 +350,7 @@
     "nameTheNote": "Que nota é esta?",
     "findTheNote": "Encontre {note} na corda {string}",
     "board": "Braço do instrumento",
-    "notes": "Notas",
-    "markedRight": "resposta certa",
-    "markedWrong": "sua resposta, errada"
+    "notes": "Notas"
   },
   "sessionDiagramShape": {
     "nameTheShape": "Que forma é esta?",

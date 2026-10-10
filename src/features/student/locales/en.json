@@ -350,9 +350,7 @@
     "nameTheNote": "Name this note",
     "findTheNote": "Find {note} on string {string}",
     "board": "Fretboard",
-    "notes": "Notes",
-    "markedRight": "right answer",
-    "markedWrong": "your answer, wrong"
+    "notes": "Notes"
   },
   "sessionDiagramShape": {
     "nameTheShape": "Which shape is this?",

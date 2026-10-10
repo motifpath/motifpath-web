@@ -78,7 +78,7 @@ describe('SessionFretboardCell', () => {
     })
 
     const choiceTexts = (wrapper: ReturnType<typeof mountCell>) =>
-      wrapper.findAll('[data-test="note-choice"]').map((choice) => `${choice.get('[data-test="key-hint"]').text()}${choice.get('[data-test="note-name"]').text()}`)
+      wrapper.findAll('[data-test="note-choice"]').map((choice) => `${choice.get('[data-test="key-hint"]').text()}${choice.get('[data-test="option-label"]').text()}`)
 
     it('lights the cell and offers four near notes, each with its key', () => {
       const wrapper = mountCell({ item: naming })
@@ -130,6 +130,7 @@ describe('SessionFretboardCell', () => {
 
       const choices = wrapper.findAll('[data-test="note-choice"]')
       expect(choices.map((choice) => choice.attributes('data-mark'))).toEqual(['right', 'wrong', undefined, undefined])
+      expect(choices.map((choice) => choice.attributes('data-state'))).toEqual(['right', 'wrong', 'locked', 'locked'])
       expect(choices.every((choice) => choice.attributes('disabled') !== undefined)).toBe(true)
 
       press('3')
