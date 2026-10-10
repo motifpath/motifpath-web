@@ -15,7 +15,6 @@
     "meta": {
       "done": "{kind} · Done",
       "current": "Up next · {kind}",
-      "now": "Now · {kind}",
       "language": "Only in {language} for now"
     },
     "locked": {
@@ -87,8 +86,7 @@
       "markAsDone": "Mark as done",
       "marksDone": "Marks step {position} done.",
       "marksDoneAndOpens": "Marks step {position} done and opens step {next}."
-    },
-    "inThisSection": "In this section"
+    }
   },
   "lessonPlayer": {
     "play": "Play",
