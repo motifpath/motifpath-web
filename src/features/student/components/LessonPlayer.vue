@@ -22,12 +22,16 @@
  *   — but keying the whole player would tear down and rebuild the aside slot
  *   too, and that's exactly the element an aria-live announcement needs to
  *   stay mounted.
- * - The aside's width is student-controlled (drag or arrow keys on the
- *   handle) and remembered per browser, only while in landscape — including
- *   a phone rotated to landscape, not just a desktop-sized screen. In
- *   portrait the aside stacks full-width below the video, so the remembered
- *   width is kept but not applied there: a pixel width would squeeze a
+ * - The aside sits beside the video only where the video fills the screen's
+ *   height: a phone turned sideways, or fullscreen. Anywhere else it stacks
+ *   full-width below the video, where the page has room for it.
+ * - While beside the video, the aside's width is student-controlled (drag or
+ *   arrow keys on the handle) and remembered per browser. Stacked below, the
+ *   remembered width is kept but not applied: a pixel width would squeeze a
  *   diagram or picture into a sliver of the screen.
+ * - A page that shows the aside content in its own column sets
+ *   `asideInFullscreenOnly`: the aside then shows only in fullscreen, the one
+ *   place the page can't, while its content stays mounted throughout.
  * - In fullscreen the video is letterboxed and vertically centred, so the
  *   aside's content is centred too, rather than left hanging at the top.
  */
@@ -41,10 +45,12 @@ import Icon from '@/shared/components/Icon.vue'
 import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-defineProps<{
+const props = defineProps<{
   src: string
   /** Changing this value throws away and reconnects the video provider. */
   resetToken?: number | string
+  /** The page shows the aside content outside fullscreen, so the player shows it only in fullscreen. */
+  asideInFullscreenOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +59,8 @@ const emit = defineEmits<{
   ended: []
   /** The video could not be loaded or played. */
   error: []
+  /** The player entered (true) or left (false) fullscreen. */
+  fullscreen: [on: boolean]
 }>()
 
 const { t } = useTypedT()
@@ -64,7 +72,17 @@ function onTimeUpdate(event: CustomEvent<{ currentTime: number }>): void {
 const controlClass =
   'group flex shrink-0 items-center justify-center rounded-sm p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus'
 
-const { matches: canResizeAside } = useMediaQuery('(orientation: landscape)')
+const { matches: isShortLandscape } = useMediaQuery('(orientation: landscape) and (max-height: 500px)')
+const isFullscreen = ref(false)
+
+function onFullscreenChange(event: CustomEvent<boolean>): void {
+  isFullscreen.value = event.detail
+  emit('fullscreen', event.detail)
+}
+
+const showsAside = computed(() => !props.asideInFullscreenOnly || isFullscreen.value)
+// Beside the video, the aside's width can be dragged; stacked below it, it spans the full width.
+const canResizeAside = computed(() => showsAside.value && (isShortLandscape.value || isFullscreen.value))
 
 const ASIDE_MIN_PX = 240
 const ASIDE_MAX_PX = 640
@@ -95,8 +113,8 @@ function clamp(value: number): number {
   return Math.min(asideMaxPx(), Math.max(ASIDE_MIN_PX, value))
 }
 
-// null means "use the default responsive width" (the landscape:w-80
-// classes below) — set once the student has ever dragged or keyed a size,
+// null means "use the default responsive width" (the w-80 classes the aside
+// takes beside the video) — set once the student has ever dragged or keyed a size,
 // here or in an earlier lesson.
 const asideWidthPx = ref<number | null>(null)
 const asideEl = ref<HTMLElement | null>(null)
@@ -196,8 +214,10 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
     :src="src"
     playsinline
     data-test="lesson-player"
-    class="group/player flex aspect-auto flex-col overflow-hidden rounded-lg bg-brand-ground landscape:flex-row"
+    class="group/player flex aspect-auto overflow-hidden rounded-lg bg-brand-ground"
+    :class="canResizeAside ? 'flex-row' : 'flex-col'"
     @time-update="onTimeUpdate"
+    @fullscreen-change="onFullscreenChange"
     @ended="emit('ended')"
     @error="emit('error')"
   >
@@ -266,10 +286,12 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
 
     <div
       v-if="$slots.aside"
+      v-show="showsAside"
       ref="asideEl"
       data-test="player-aside"
       :style="asideStyle"
-      class="relative flex w-full shrink-0 flex-col self-stretch overflow-y-auto p-3 landscape:w-80 landscape:xl:w-1/3"
+      class="relative flex shrink-0 flex-col self-stretch overflow-y-auto p-3"
+      :class="canResizeAside ? 'w-80 xl:w-1/3' : 'w-full'"
     >
       <button
         v-if="canResizeAside && asideWidthPx !== null"
