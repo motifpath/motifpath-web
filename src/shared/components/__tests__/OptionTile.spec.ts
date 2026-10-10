@@ -41,6 +41,6 @@ describe('OptionTile', () => {
   it('shows richer content in place of its label when given some', () => {
     const wrapper = mount(OptionTile, { props: { keyHint: 1, label: 'C' }, slots: { default: '<span data-test="custom">C ♯</span>' } })
 
-    expect(wrapper.get('[data-test="option-label"] [data-test="custom"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="option-label"] [data-test="custom"]').exists()).toBe(true)
   })
 })
