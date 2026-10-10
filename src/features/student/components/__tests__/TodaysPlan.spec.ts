@@ -31,7 +31,7 @@ const labels: Record<string, string> = { 'exercise:e1': 'Name the interval', 'pl
 const labelOf = (planItem: Item) => labels[planItem.item_key] ?? (planItem.fretboard_cell?.drill === 'find_the_note' ? 'Find the note' : 'Name the note')
 
 function mountPlan() {
-  return mount(TodaysPlan, { props: { items, minutes: 10, labelOf } })
+  return mount(TodaysPlan, { props: { items, minutes: 10, instrumentName: 'Guitar', labelOf } })
 }
 
 describe('TodaysPlan', () => {
@@ -51,7 +51,7 @@ describe('TodaysPlan', () => {
     const shapes = [shape('d1', 'name_the_shape'), cell(5, 3, 'name_the_note'), shape('d2', 'find_the_degree'), shape('d3', 'name_the_shape')]
     const shapeLabel = (planItem: Item) =>
       planItem.diagram_shape ? (planItem.diagram_shape.drill === 'name_the_shape' ? 'Name the shape' : 'Find the degree') : labelOf(planItem)
-    const wrapper = mount(TodaysPlan, { props: { items: shapes, minutes: 5, labelOf: shapeLabel } })
+    const wrapper = mount(TodaysPlan, { props: { items: shapes, minutes: 5, instrumentName: 'Guitar', labelOf: shapeLabel } })
 
     expect(wrapper.findAll('[data-test="plan-row-name"]').map((row) => row.text())).toEqual([
       'Name the shape · 2 shapes',
@@ -64,7 +64,7 @@ describe('TodaysPlan', () => {
     const wrapper = mountPlan()
 
     expect(wrapper.get('h1').text()).toBe("Today's plan")
-    expect(wrapper.text()).toContain('10 min')
+    expect(wrapper.get('[data-test="plan-meta"]').text()).toBe('10 min · Guitar')
     expect(wrapper.findAll('[data-test="plan-row"]').map((row) => row.get('[data-test="plan-row-name"]').text())).toEqual([
       'Name the interval',
       'Name the note · 3 notes',
@@ -82,6 +82,18 @@ describe('TodaysPlan', () => {
       'A step further',
       'New',
     ])
+  })
+
+  it('says what kind of item each line is', () => {
+    const wrapper = mountPlan()
+
+    expect(wrapper.findAll('[data-test="plan-row-kind"]').map((kind) => kind.text())).toEqual(['Exercise', 'Fretboard', 'Play-along', 'Fretboard'])
+  })
+
+  it('numbers the lines in session order', () => {
+    const wrapper = mountPlan()
+
+    expect(wrapper.findAll('[data-test="plan-row-position"]').map((position) => position.text())).toEqual(['1', '2', '3', '4'])
   })
 
   it('starts the session with its primary action', async () => {

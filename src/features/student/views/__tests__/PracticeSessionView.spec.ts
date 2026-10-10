@@ -114,7 +114,12 @@ const FeltQuestionsStub = defineComponent({
 
 const TodaysPlanStub = defineComponent({
   name: 'TodaysPlan',
-  props: { items: { type: Array, required: true }, minutes: { type: Number, required: true }, labelOf: { type: Function, required: true } },
+  props: {
+    items: { type: Array, required: true },
+    minutes: { type: Number, required: true },
+    instrumentName: { type: String, required: true },
+    labelOf: { type: Function, required: true },
+  },
   emits: ['start'],
   setup(props) {
     return () => h('div', { 'data-test': 'plan' }, `${props.minutes} min: ${props.items.length} items`)
@@ -288,6 +293,7 @@ describe('PracticeSessionView', () => {
       await composeSession(wrapper)
 
       expect(wrapper.get('[data-test="plan"]').text()).toBe('10 min: 2 items')
+      expect(wrapper.getComponent(TodaysPlanStub).props('instrumentName')).toBe('Guitar')
       expect(wrapper.find('[data-test="take"]').exists()).toBe(false)
       expect(track).not.toHaveBeenCalled()
       expect(wakeLockActive!.value).toBe(false)
@@ -361,6 +367,15 @@ describe('PracticeSessionView', () => {
       await startSession(wrapper, plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }))
 
       expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 10 } })
+    })
+
+    it('names a session in the head as such on today’s plan', async () => {
+      const wrapper = mountView()
+      await headTile(wrapper).get('input').setValue()
+
+      await composeSession(wrapper, plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }))
+
+      expect(wrapper.getComponent(TodaysPlanStub).props('instrumentName')).toBe('In my head')
     })
 
     it('chooses the head when no instrument can play along', () => {

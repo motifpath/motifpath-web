@@ -6,7 +6,7 @@
 import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import { pickReasonKeys } from '@/features/student/utils/pickReason'
+import PlanRowLine from '@/features/student/components/PlanRow.vue'
 import { planRows } from '@/features/student/utils/planRows'
 import type { PlanRow } from '@/features/student/utils/planRows'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
@@ -18,6 +18,8 @@ type Item = components['schemas']['PracticeSessionItem']
 const props = defineProps<{
   items: Item[]
   minutes: number
+  /** The instrument in the student's hands, or how a session in the head is called. */
+  instrumentName: string
   /** What to call an item on screen. */
   labelOf: (item: Item) => string
 }>()
@@ -40,17 +42,18 @@ function rowName(row: PlanRow): string {
   <section class="flex flex-col gap-4" data-test="todays-plan">
     <header class="flex items-baseline justify-between gap-2">
       <h1 class="text-xl font-semibold">{{ t('sessionPlan.title') }}</h1>
-      <span class="text-sm text-ink-muted">{{ t('sessionPlan.minutes', { minutes }) }}</span>
+      <span data-test="plan-meta" class="shrink-0 text-sm text-ink-muted">{{ t('sessionPlan.meta', { minutes, instrument: instrumentName }) }}</span>
     </header>
 
-    <ol class="flex flex-col divide-y divide-border rounded-lg border border-border">
-      <li v-for="(row, index) in rows" :key="row.key" data-test="plan-row" class="flex items-center gap-3 px-3 py-2.5">
-        <span class="w-5 shrink-0 text-right text-sm tabular-nums text-ink-subtle">{{ index + 1 }}</span>
-        <div class="flex min-w-0 flex-col">
-          <span data-test="plan-row-name" class="truncate font-medium">{{ rowName(row) }}</span>
-          <span data-test="plan-row-reason" class="text-xs text-ink-muted">{{ t(pickReasonKeys[row.item.reason]) }}</span>
-        </div>
-      </li>
+    <ol class="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface-raised">
+      <PlanRowLine
+        v-for="(row, index) in rows"
+        :key="row.key"
+        :position="index + 1"
+        :name="rowName(row)"
+        :reason="row.item.reason"
+        :kind="row.item.kind"
+      />
     </ol>
 
     <PracticeActionBar>

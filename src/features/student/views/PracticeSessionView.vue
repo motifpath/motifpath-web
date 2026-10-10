@@ -72,6 +72,12 @@ watch(instrumentId, () => {
 })
 const run = shallowRef<ReturnType<typeof usePracticeSessionRun> | null>(null)
 
+/** How a session is labelled by what it is practised on: the instrument's name, or in the head. */
+function instrumentLabel(id: string | null): string {
+  const instrument = id ? instruments.value.find((candidate) => candidate.instrument_id === id) : undefined
+  return instrument ? localizedName(instrument.names) : t('practiceSessionView.inMyHead')
+}
+
 /** The open-string pitches of an instrument, which its fretboard cells are drawn and graded with. */
 function tuningOf(id: string): string[] | undefined {
   return instruments.value.find((instrument) => instrument.instrument_id === id)?.tuning
@@ -191,7 +197,7 @@ onBeforeUnmount(() => {
     <section v-if="isComposing" class="flex flex-col gap-4" data-test="plan-composing">
       <header class="flex items-baseline justify-between gap-2">
         <h1 class="text-xl font-semibold">{{ t('sessionPlan.title') }}</h1>
-        <span class="text-sm text-ink-muted">{{ t('sessionPlan.minutes', { minutes }) }}</span>
+        <span class="shrink-0 text-sm text-ink-muted">{{ t('sessionPlan.meta', { minutes, instrument: instrumentLabel(instrumentId) }) }}</span>
       </header>
       <p class="text-sm text-ink-muted">{{ t('practiceSessionView.starting') }}</p>
       <LoadingSkeleton :count="5" />
@@ -214,7 +220,14 @@ onBeforeUnmount(() => {
       @find-where-to-start="findWhereToStart"
     />
 
-    <TodaysPlan v-else-if="!started" :items="run.plan.items" :minutes="run.plan.minutes" :label-of="labelOf" @start="run.start()" />
+    <TodaysPlan
+      v-else-if="!started"
+      :items="run.plan.items"
+      :minutes="run.plan.minutes"
+      :instrument-name="instrumentLabel(run.plan.instrument_id ?? null)"
+      :label-of="labelOf"
+      @start="run.start()"
+    />
 
     <section v-else-if="finished" class="flex flex-col gap-3" data-test="session-done">
       <h1 class="text-xl font-semibold">{{ t('practiceSessionView.doneTitle') }}</h1>

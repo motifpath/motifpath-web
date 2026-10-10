@@ -247,7 +247,6 @@
   },
   "sessionPlan": {
     "title": "O plano de hoje",
-    "minutes": "{minutes} min",
     "start": "Vamos lá",
     "playAlong": "Tocar junto",
     "cells": "{drill} · {count} nota | {drill} · {count} notas",
@@ -262,6 +261,13 @@
       "played": "Você tocou {name} até {bpm} BPM.",
       "next": "A seguir",
       "continue": "Continuar"
+    },
+    "meta": "{minutes} min · {instrument}",
+    "kinds": {
+      "exercise": "Exercício",
+      "playAlong": "Tocar junto",
+      "fretboard": "Braço",
+      "chordChange": "Troca de acordes"
     }
   },
   "playAlongTake": {
