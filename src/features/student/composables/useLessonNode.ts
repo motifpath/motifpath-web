@@ -12,9 +12,9 @@ type StudentPathItem = components['schemas']['StudentPathItem']
 /**
  * What the lesson screen should show. `locked` waits on an earlier step;
  * `language-locked` has no version in the student's language and was opened
- * without choosing one it has. `unsupported` is a step whose content type has
- * no lesson screen yet; `no-media` is a video step that has no video to play
- * (older content).
+ * without choosing one it has. `no-media` is a step with nothing to show: a
+ * video step with no video to play, or an article with no text (older
+ * content).
  */
 export type LessonNodeState =
   | 'loading'
@@ -22,7 +22,6 @@ export type LessonNodeState =
   | 'not-found'
   | 'locked'
   | 'language-locked'
-  | 'unsupported'
   | 'no-media'
   | 'ready'
 
@@ -144,13 +143,11 @@ export function useLessonNode(
       cues.value = cuesResult.data?.items ?? []
       hasChallenge.value = challengesResult.data.length > 0
 
-      if (nodeResult.data.content_type !== 'video') {
-        state.value = 'unsupported'
-      } else if (!nodeResult.data.media_url) {
-        state.value = 'no-media'
-      } else {
-        state.value = 'ready'
-      }
+      const hasContent =
+        nodeResult.data.content_type === 'video'
+          ? Boolean(nodeResult.data.media_url)
+          : (nodeResult.data.rich_content?.content.length ?? 0) > 0
+      state.value = hasContent ? 'ready' : 'no-media'
     } catch {
       // A superseded call's own requests were aborted above — nothing to do,
       // the newer call already owns state. Any other failure (network down)

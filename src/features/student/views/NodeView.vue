@@ -2,6 +2,7 @@
 import { computed, defineAsyncComponent, h, onBeforeUnmount, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import ArticleLesson from '@/features/student/components/ArticleLesson.vue'
 import CuePanel from '@/features/student/components/CuePanel.vue'
 import SendToTeacher from '@/features/student/components/SendToTeacher.vue'
 import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
@@ -99,11 +100,13 @@ const handOff = ref<HandOff>('none')
 // reopening a completed lesson is for reference only: the video plays like
 // any other lesson's, but nothing here is ever reported again.
 const isReview = computed(() => lesson.status.value === 'completed')
+const isArticle = computed(() => lesson.node.value?.content_type === 'article')
+const articleBody = computed(() => (isArticle.value ? (lesson.node.value?.rich_content ?? null) : null))
 const cue = computed(() => activeCue(lesson.cues.value, playbackSeconds.value))
 const mediaUrl = computed(() => lesson.node.value?.media_url ?? '')
 // Any lesson the student may open can be asked about — including one whose
 // video is missing or whose content type has no screen yet.
-const canAskTeacher = computed(() => ['ready', 'unsupported', 'no-media'].includes(lesson.state.value))
+const canAskTeacher = computed(() => ['ready', 'no-media'].includes(lesson.state.value))
 
 const stepMeta = computed(() => {
   const step = lesson.step.value
@@ -149,9 +152,22 @@ const nextAction = computed(() => (handOffNext.value ? wording.startAction(handO
 
 // The practice actions sit in a bar at the foot of the screen, where the floating ask-your-teacher
 // button would otherwise cover them.
+// An article has none: its actions sit at the end of the text, where reading leads.
 const showsActionBar = computed(
-  () => (isReview.value && lesson.hasChallenge.value) || (handOff.value === 'practise' && !playbackFailed.value),
+  () =>
+    !isArticle.value &&
+    ((isReview.value && lesson.hasChallenge.value) || (handOff.value === 'practise' && !playbackFailed.value)),
 )
+
+/** What Mark as done says it will do: mark this step done and, when there is one, open the next. */
+const markAsDoneHint = computed(() => {
+  const position = lesson.step.value?.position
+  if (position === undefined) return null
+  const next = lesson.next.value
+  return next
+    ? t('nodeView.articleEnd.marksDoneAndOpens', { position, next: next.position })
+    : t('nodeView.articleEnd.marksDone', { position })
+})
 
 // Bumped on every fresh viewing, so a completion still being recorded for an earlier one
 // doesn't hand off from a lesson the student has since moved on from.
@@ -214,6 +230,40 @@ async function onEnded(): Promise<void> {
     handOff.value = 'done'
   }
 }
+
+/**
+ * Mark as done at the end of an article: the completion is recorded before the next step opens, so
+ * that step has opened by the time the student lands on it. The next step is the one the path has
+ * once this step is recorded, opened without choosing a language, so a step only in another
+ * language explains itself. After the last step, or when no path is left, it goes to My path; a
+ * lesson that finished the course goes to the course-completed screen, even if the student left.
+ */
+async function markAsDone(): Promise<void> {
+  if (isReview.value || handOff.value !== 'none') return
+  const myViewing = viewing
+  handOff.value = 'saving'
+
+  await complete()
+  if (myViewing !== viewing) return
+
+  const outcome = await waitForCompletion(nodeId.value)
+  if (outcome.kind === 'course-completed') {
+    await router.replace({ name: 'course-completed', params: { enrollmentId: outcome.enrollmentId } })
+    return
+  }
+  if (left || myViewing !== viewing) return
+  const next =
+    outcome.kind === 'recorded' ? (outcome.view ? stepAfter(outcome.view, nodeId.value) : null) : lesson.next.value
+  await router.push(next ? { name: 'node', params: { nodeId: next.contentNodeId } } : { name: 'path' })
+}
+
+/** Practise this at the end of an article: the reading is reported, and the challenge finishes the step. */
+async function practiseArticle(): Promise<void> {
+  if (isReview.value || handOff.value !== 'none') return
+  handOff.value = 'saving'
+  await complete()
+  if (!left) await router.push({ name: 'practice', params: { nodeId: nodeId.value } })
+}
 </script>
 
 <template>
@@ -228,7 +278,7 @@ async function onEnded(): Promise<void> {
 
     <template v-if="lesson.state.value === 'loading'">
       <h1 class="sr-only">{{ t('nodeView.heading') }}</h1>
-      <LoadingSkeleton data-test="loading" shape="video" />
+      <LoadingSkeleton data-test="loading" :shape="lesson.step.value?.kind === 'article' ? 'lines' : 'video'" />
     </template>
 
     <template v-else-if="lesson.state.value === 'error'">
@@ -276,7 +326,7 @@ async function onEnded(): Promise<void> {
     </template>
 
     <template v-else>
-      <template v-if="lesson.state.value === 'ready'">
+      <template v-if="lesson.state.value === 'ready' && !isArticle">
         <!-- A playback failure says so where the video was, but does not unmount the player below
              it (v-show, not v-if): the video engine still needs a fresh provider on retry, but the
              player itself, and the aside slot the cue's aria-live region lives in, must stay
@@ -327,19 +377,48 @@ async function onEnded(): Promise<void> {
 
       <LoadFailed
         v-if="lesson.state.value === 'no-media'"
-        data-test="no-video"
-        :message="t('nodeView.noVideo')"
+        :data-test="isArticle ? 'no-text' : 'no-video'"
+        :message="isArticle ? t('nodeView.noText') : t('nodeView.noVideo')"
         @retry="lesson.retry()"
       />
 
-      <div
-        v-else-if="lesson.state.value === 'unsupported'"
-        data-test="unsupported"
-        class="flex flex-col items-start gap-2"
-      >
-        <p class="text-ink-muted">{{ t('nodeView.unavailable') }}</p>
-        <p class="text-sm text-ink-muted">{{ t('nodeView.checkBackSoon') }}</p>
-      </div>
+      <template v-else-if="articleBody">
+        <ArticleLesson :document="articleBody" :cues="lesson.cues.value" />
+
+        <!-- The hand-off sits at the end of the text, where reading leads, never in a bar. -->
+        <div
+          v-if="!isReview || lesson.hasChallenge.value"
+          data-test="article-end"
+          class="flex max-w-prose flex-col gap-3 border-t border-border pt-4"
+        >
+          <AppButton
+            v-if="isReview"
+            variant="secondary"
+            :to="{ name: 'practice', params: { nodeId } }"
+            data-test="practise-again"
+            block
+          >
+            {{ t('nodeView.practiseAgain') }}
+          </AppButton>
+          <template v-else>
+            <p class="text-base font-semibold text-ink">{{ t('nodeView.articleEnd.title') }}</p>
+            <AppButton
+              :data-test="lesson.hasChallenge.value ? 'practise-this' : 'mark-as-done'"
+              :busy="handOff === 'saving'"
+              block
+              @click="lesson.hasChallenge.value ? practiseArticle() : markAsDone()"
+            >
+              {{ lesson.hasChallenge.value ? t('nodeView.practiseThis') : t('nodeView.articleEnd.markAsDone') }}
+            </AppButton>
+            <p v-if="lesson.hasChallenge.value" class="text-xs text-ink-muted">{{ t('nodeView.tryIt.messageArticle') }}</p>
+            <p v-else-if="markAsDoneHint" class="text-xs text-ink-muted">{{ markAsDoneHint }}</p>
+            <!-- Mounted from the start, so the saving is announced; the busy button already shows it. -->
+            <p data-test="hand-off-status" role="status" class="sr-only">
+              <template v-if="handOff === 'saving'">{{ t('nodeView.savingProgress') }}</template>
+            </p>
+          </template>
+        </div>
+      </template>
 
       <template v-else-if="!playbackFailed">
         <div v-if="handOff === 'practise'" data-test="try-it" class="flex flex-col gap-1 rounded-lg bg-accent-muted px-4 py-3">

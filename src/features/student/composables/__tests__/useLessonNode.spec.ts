@@ -311,12 +311,25 @@ describe('useLessonNode', () => {
     expect(cues.value).toEqual([])
   })
 
-  it.each(['article', 'diagram'])('is unsupported for a %s step', async (contentType) => {
-    respondWith({ ...healthy, [NODE]: ok({ ...videoNode, content_type: contentType }) })
+  it('is ready for an article step with its text', async () => {
+    const body = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Read me' }] }] }
+    respondWith({ ...healthy, [NODE]: ok({ content_node_id: 'node-2', title: 'Step 2', content_type: 'article', rich_content: body }) })
+
+    const { state, node } = await load()
+
+    expect(state.value).toBe('ready')
+    expect(node.value?.rich_content).toEqual(body)
+  })
+
+  it.each([
+    ['no text', undefined],
+    ['an empty text', { type: 'doc', content: [] }],
+  ])('has no media when an article step has %s', async (_, body) => {
+    respondWith({ ...healthy, [NODE]: ok({ content_node_id: 'node-2', title: 'Step 2', content_type: 'article', rich_content: body }) })
 
     const { state } = await load()
 
-    expect(state.value).toBe('unsupported')
+    expect(state.value).toBe('no-media')
   })
 
   it('has no media when a video step has no media URL', async () => {

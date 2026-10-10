@@ -22,3 +22,17 @@ export function makeVideoNode(id: string, overrides: Partial<ContentNode> = {}):
     ...overrides,
   }
 }
+
+/** Builds an article `ContentNode` for tests, one paragraph per given text. */
+export function makeArticleNode(id: string, paragraphs: string[], overrides: Partial<ContentNode> = {}): ContentNode {
+  return makeVideoNode(id, {
+    title: 'Reading chord boxes',
+    content_type: 'article',
+    media_url: undefined,
+    rich_content: {
+      type: 'doc',
+      content: paragraphs.map((text) => ({ type: 'paragraph', content: [{ type: 'text', text }] })),
+    },
+    ...overrides,
+  })
+}

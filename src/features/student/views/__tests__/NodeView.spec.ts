@@ -5,8 +5,8 @@ import type * as VueRouter from 'vue-router'
 
 import type { LessonNodeState } from '@/features/student/composables/useLessonNode'
 import type { MyPathStep } from '@/features/student/utils/myPath'
-import { makeTimedCue } from '@/features/student/testing/expandedContent'
-import { makeVideoNode } from '@/features/student/testing/contentNode'
+import { makeParagraphCue, makeTimedCue } from '@/features/student/testing/expandedContent'
+import { makeArticleNode, makeVideoNode } from '@/features/student/testing/contentNode'
 import { makeStudentPathItem, makeStudentPathView } from '@/features/student/testing/studentPathItem'
 import type { components } from '@/api/generated/core-domain'
 
@@ -252,6 +252,15 @@ describe('NodeView', () => {
       expect(wrapper.find('media-player').exists()).toBe(false)
     })
 
+    it('shows a skeleton in the shape of a page of text while an article step loads', async () => {
+      setLesson({ state: 'loading', node: null, status: null })
+      lesson.step.value = makeStep(8, { kind: 'article' })
+
+      const wrapper = await mountView()
+
+      expect(wrapper.getComponent({ name: 'LoadingSkeleton' }).props('shape')).toBe('lines')
+    })
+
     it('shows an error and lets the student try again', async () => {
       setLesson({ state: 'error', node: null, status: null })
 
@@ -335,13 +344,14 @@ describe('NodeView', () => {
       expect(lesson.retry).toHaveBeenCalledTimes(1)
     })
 
-    it('keeps the holding screen for a step whose content type has no lesson screen yet', async () => {
-      setLesson({ state: 'unsupported' })
+    it('says so when an article step has no text, and lets the student try again', async () => {
+      setLesson({ state: 'no-media', node: makeArticleNode('node-abc', [], { rich_content: undefined }) })
 
       const wrapper = await mountView()
+      await wrapper.get('[data-test="retry"]').trigger('click')
 
-      expect(wrapper.get('[data-test="unsupported"]').text()).toContain("isn't available yet")
-      expect(wrapper.find('media-player').exists()).toBe(false)
+      expect(wrapper.get('[data-test="no-text"]').text()).toContain("doesn't have any text yet")
+      expect(lesson.retry).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -686,6 +696,255 @@ describe('NodeView', () => {
     })
   })
 
+  describe('an article lesson', () => {
+    const paragraphs = ['First paragraph.', 'Second paragraph.', 'Third paragraph.']
+
+    function setArticle(next: { status?: Status; hasChallenge?: boolean; cues?: ExpandedContent[] } = {}) {
+      setLesson({ ...next, node: makeArticleNode('node-abc', paragraphs) })
+      lesson.step.value = makeStep(8, {
+        contentNodeId: 'node-abc',
+        kind: 'article',
+        state: next.status === 'completed' ? 'done' : 'current',
+      })
+    }
+
+    beforeEach(() => {
+      setArticle()
+    })
+
+    it('shows its text in a readable column under the title block, with no video', async () => {
+      const wrapper = await mountView()
+
+      const article = wrapper.get('[data-test="article"]')
+      expect(article.text()).toContain('First paragraph.')
+      expect(article.text()).toContain('Third paragraph.')
+      expect(article.classes()).toContain('max-w-prose')
+      expect(wrapper.find('media-player').exists()).toBe(false)
+      const html = wrapper.html()
+      expect(html.indexOf('<h1')).toBeLessThan(html.indexOf('data-test="article"'))
+      expect(wrapper.get('h1').text()).toBe('Reading chord boxes')
+      expect(wrapper.get('[data-test="step-meta"]').text()).toBe('Step 8 of 14 · Article')
+    })
+
+    it('lets the student try again a diagram in the text that failed to load', async () => {
+      const wrapper = await mountView()
+
+      expect(wrapper.getComponent({ name: 'PromptRenderer' }).props('retryableDiagrams')).toBe(true)
+    })
+
+    it('shows a paragraph cue under its paragraph, before the text that follows it', async () => {
+      setArticle({ cues: [makeParagraphCue('picture', 2)] })
+
+      const wrapper = await mountView()
+
+      const html = wrapper.get('[data-test="article"]').html()
+      const cue = html.indexOf('picture.png')
+      expect(cue).toBeGreaterThan(html.indexOf('Second paragraph.'))
+      expect(cue).toBeLessThan(html.indexOf('Third paragraph.'))
+    })
+
+    it('has no completion action while the student reads: no bar at the foot of the screen', async () => {
+      const wrapper = await mountView()
+
+      expect(wrapper.find('.sticky').exists()).toBe(false)
+    })
+
+    it('ends the text with Mark as done, saying what it does', async () => {
+      const wrapper = await mountView()
+
+      const end = wrapper.get('[data-test="article-end"]')
+      expect(end.text()).toContain("That's the lesson.")
+      expect(end.get('[data-test="mark-as-done"]').text()).toBe('Mark as done')
+      expect(end.text()).toContain('Marks step 8 done and opens step 9.')
+      const html = wrapper.html()
+      expect(html.indexOf('Third paragraph.')).toBeLessThan(html.indexOf('data-test="article-end"'))
+    })
+
+    it('says Mark as done only marks the step done after the last step', async () => {
+      lesson.next.value = null
+
+      const wrapper = await mountView()
+
+      expect(wrapper.get('[data-test="article-end"]').text()).toContain('Marks step 8 done.')
+    })
+
+    describe('Mark as done', () => {
+      async function markAsDone(wrapper: Wrapper) {
+        await wrapper.get('[data-test="mark-as-done"]').trigger('click')
+        await flushPromises()
+      }
+
+      it('completes the step, waits until it is recorded, then opens the next step', async () => {
+        const order: string[] = []
+        complete.mockImplementation(async () => {
+          order.push('complete')
+        })
+        waitForCompletion.mockImplementation(async (nodeId: string) => {
+          order.push(`wait:${nodeId}`)
+          return {
+            kind: 'recorded',
+            view: makeStudentPathView([
+              { ...makeStudentPathItem(8, undefined, 'completed'), content_node_id: 'node-abc' },
+              { ...makeStudentPathItem(9, undefined, 'not_started'), content_node_id: 'node-9' },
+            ]),
+          }
+        })
+        push.mockImplementation(async () => {
+          order.push('open')
+        })
+        const wrapper = await mountView()
+
+        await markAsDone(wrapper)
+
+        expect(order).toEqual(['complete', 'wait:node-abc', 'open'])
+        expect(push).toHaveBeenCalledWith({ name: 'node', params: { nodeId: 'node-9' } })
+      })
+
+      it('opens the step after it as the path has it once recorded, without choosing a language for it', async () => {
+        lesson.next.value = makeStep(9, { state: 'locked' })
+        waitForCompletion.mockResolvedValue({
+          kind: 'recorded',
+          view: makeStudentPathView([
+            { ...makeStudentPathItem(8, undefined, 'completed'), content_node_id: 'node-abc' },
+            { ...makeStudentPathItem(9, undefined, 'locked'), content_node_id: 'node-fresh', lock_reason: 'language', available_languages: [{ code: 'en', name: 'English' }] },
+          ]),
+        })
+        const wrapper = await mountView()
+
+        await markAsDone(wrapper)
+
+        expect(push).toHaveBeenCalledWith({ name: 'node', params: { nodeId: 'node-fresh' } })
+      })
+
+      it('still opens the next step when the completion is slow to be recorded', async () => {
+        waitForCompletion.mockResolvedValue({ kind: 'timed-out' })
+        const wrapper = await mountView()
+
+        await markAsDone(wrapper)
+
+        expect(push).toHaveBeenCalledWith({ name: 'node', params: { nodeId: 'node-9' } })
+      })
+
+      it('goes to My path when no path is left once it is recorded', async () => {
+        waitForCompletion.mockResolvedValue({ kind: 'recorded' })
+        const wrapper = await mountView()
+
+        await markAsDone(wrapper)
+
+        expect(push).toHaveBeenCalledWith({ name: 'path' })
+      })
+
+      it('goes back to My path after the last step', async () => {
+        lesson.next.value = null
+        waitForCompletion.mockResolvedValue({ kind: 'timed-out' })
+        const wrapper = await mountView()
+
+        await markAsDone(wrapper)
+
+        expect(push).toHaveBeenCalledWith({ name: 'path' })
+      })
+
+      it('goes straight to the course-completed screen when this lesson finished the course', async () => {
+        waitForCompletion.mockResolvedValue({ kind: 'course-completed', enrollmentId: 'ce-1' })
+        const wrapper = await mountView()
+
+        await markAsDone(wrapper)
+
+        expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
+        expect(push).not.toHaveBeenCalled()
+      })
+
+      it('shows it is saving, in the live region, and ignores further taps meanwhile', async () => {
+        waitForCompletion.mockImplementation(() => new Promise(() => {}))
+        const wrapper = await mountView()
+        const region = wrapper.get('[data-test="hand-off-status"]')
+        expect(region.attributes('role')).toBe('status')
+
+        await markAsDone(wrapper)
+        await markAsDone(wrapper)
+
+        expect(region.text()).toBe('Saving your progress…')
+        expect(wrapper.get('[data-test="mark-as-done"]').attributes('aria-busy')).toBe('true')
+        expect(complete).toHaveBeenCalledTimes(1)
+        expect(push).not.toHaveBeenCalled()
+      })
+
+      it('does not open the next step if the student left while it was being recorded', async () => {
+        let settleWait: (outcome: unknown) => void = () => {}
+        waitForCompletion.mockImplementation(() => new Promise((resolve) => (settleWait = resolve)))
+        const wrapper = await mountView()
+        await markAsDone(wrapper)
+
+        wrapper.unmount()
+        settleWait({ kind: 'recorded' })
+        await flushPromises()
+
+        expect(push).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('with a challenge', () => {
+      beforeEach(() => {
+        setArticle({ hasChallenge: true })
+      })
+
+      it('ends the text with Practise this instead of Mark as done', async () => {
+        const wrapper = await mountView()
+
+        const end = wrapper.get('[data-test="article-end"]')
+        expect(end.get('[data-test="practise-this"]').text()).toBe('Practise this')
+        expect(end.text()).toContain('A few short exercises on what you just read. They finish this step.')
+        expect(wrapper.find('[data-test="mark-as-done"]').exists()).toBe(false)
+        expect(wrapper.find('.sticky').exists()).toBe(false)
+      })
+
+      it('reports the lesson read, then starts the challenge', async () => {
+        const order: string[] = []
+        complete.mockImplementation(async () => {
+          order.push('complete')
+        })
+        push.mockImplementation(async () => {
+          order.push('practice')
+        })
+        const wrapper = await mountView()
+
+        await wrapper.get('[data-test="practise-this"]').trigger('click')
+        await flushPromises()
+
+        expect(order).toEqual(['complete', 'practice'])
+        expect(push).toHaveBeenCalledWith({ name: 'practice', params: { nodeId: 'node-abc' } })
+        expect(waitForCompletion).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('reopened once done', () => {
+      it('offers only Practise again at the end of the text, as a secondary action', async () => {
+        setArticle({ status: 'completed', hasChallenge: true })
+
+        const wrapper = await mountView()
+
+        const end = wrapper.get('[data-test="article-end"]')
+        expect(end.getComponent({ name: 'AppButton' }).props()).toMatchObject({
+          variant: 'secondary',
+          to: { name: 'practice', params: { nodeId: 'node-abc' } },
+        })
+        expect(wrapper.find('[data-test="mark-as-done"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="practise-this"]').exists()).toBe(false)
+        expect(wrapper.find('.sticky').exists()).toBe(false)
+        expect(wrapper.get('[data-test="step-meta"]').text()).toBe('Step 8 of 14 · Article · Done')
+      })
+
+      it('offers nothing at the end when the lesson has no challenge', async () => {
+        setArticle({ status: 'completed' })
+
+        const wrapper = await mountView()
+
+        expect(wrapper.find('[data-test="article-end"]').exists()).toBe(false)
+        expect(complete).not.toHaveBeenCalled()
+      })
+    })
+  })
+
   describe('reopening a completed lesson', () => {
     beforeEach(() => {
       setLesson({ status: 'completed', hasChallenge: true })
@@ -773,7 +1032,7 @@ describe('NodeView', () => {
       expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('raised')).toBe(false)
     })
 
-    it.each<LessonNodeState>(['unsupported', 'no-media'])('is offered on an unlocked %s lesson', async (state) => {
+    it.each<LessonNodeState>(['ready', 'no-media'])('is offered on an unlocked %s lesson', async (state) => {
       setLesson({ state })
 
       const wrapper = await mountView()
