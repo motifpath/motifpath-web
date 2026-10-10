@@ -51,8 +51,6 @@
     "backToMyPath": "Back to My path",
     "stepMeta": "Step {position} of {total} · {kind}",
     "stepMetaDone": "Step {position} of {total} · {kind} · Done",
-    "unavailable": "This lesson isn't available yet.",
-    "checkBackSoon": "We're still building it — check back soon.",
     "errorMessage": "We couldn't load this lesson.",
     "notFound": {
       "title": "This lesson isn't on your path",
@@ -67,16 +65,24 @@
       "actionNoCurrent": "Go to My path"
     },
     "noVideo": "This lesson doesn't have a video yet.",
+    "noText": "This lesson doesn't have any text yet.",
     "playbackError": "The video didn't load.",
     "playerLoadError": "The video player couldn't load. Reload the page to try again.",
     "tryIt": {
       "title": "Now try it",
-      "message": "A few short exercises on what you just watched. They finish this step."
+      "message": "A few short exercises on what you just watched. They finish this step.",
+      "messageArticle": "A few short exercises on what you just read. They finish this step."
     },
     "practiseThis": "Practise this",
     "practiseAgain": "Practise again",
     "stepDone": "Step done",
-    "savingProgress": "Saving your progress…"
+    "savingProgress": "Saving your progress…",
+    "articleEnd": {
+      "title": "That's the lesson.",
+      "markAsDone": "Mark as done",
+      "marksDone": "Marks step {position} done.",
+      "marksDoneAndOpens": "Marks step {position} done and opens step {next}."
+    }
   },
   "lessonPlayer": {
     "play": "Play",

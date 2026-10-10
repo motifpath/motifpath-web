@@ -130,6 +130,43 @@ describe('EmbeddedDiagram', () => {
     expect(wrapper.text()).toBe('')
   })
 
+  describe('retryable, where a missing diagram leaves a gap in what the student reads', () => {
+    it('says the diagram did not load and offers Try again, where the diagram would be', async () => {
+      serve(null)
+
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, caption: 'Position 1', retryable: true } })
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="inline-notice"]').text()).toBe("This diagram didn't load.")
+      expect(wrapper.get('[data-test="retry"]').text()).toBe('Try again')
+      expect(wrapper.find('figcaption').exists()).toBe(false)
+    })
+
+    it('draws the diagram once Try again loads it', async () => {
+      serve(null)
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, retryable: true } })
+      await flushPromises()
+
+      serve(makeFrettedDiagram())
+      await wrapper.get('[data-test="retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
+    })
+
+    it('still shows nothing for a diagram that loaded but cannot be shown, since trying again would not help', async () => {
+      GET.mockImplementation((path: string) =>
+        path === '/instruments' ? ok([makeFrettedInstrument({ instrument_id: 'another-instrument' })]) : ok(makeFrettedDiagram()),
+      )
+
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, retryable: true } })
+      await flushPromises()
+
+      expect(wrapper.text()).toBe('')
+    })
+  })
+
   it('passes answer choices to the view and re-emits a pick', async () => {
     serve(makeFrettedDiagram())
 

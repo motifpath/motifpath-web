@@ -17,6 +17,7 @@ import { computed, shallowRef, watch } from 'vue'
 
 import DiagramPlayer, { PLAYER_WIDTH } from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { isPlayable } from '@/shared/composables/useDiagramPlayback'
@@ -45,6 +46,9 @@ const props = withDefaults(
     inert?: boolean
     /** Scale a plain drawing to fit, for a small card, instead of a readable board that may scroll. */
     compact?: boolean
+    /** A failed load says so in place and offers Try again, for a diagram the student is reading
+     *  around: a lesson's text would otherwise have a silent gap. */
+    retryable?: boolean
   }>(),
   {
     selectablePositionIds: () => [],
@@ -56,6 +60,7 @@ const props = withDefaults(
     multiple: false,
     inert: false,
     compact: false,
+    retryable: false,
   },
 )
 
@@ -67,7 +72,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useTypedT()
-const { status, diagram, instrument, diagramRef, labelMode } = useEmbeddedDiagram(() => props.embed)
+const { status, failed, diagram, instrument, diagramRef, labelMode, retry } = useEmbeddedDiagram(() => props.embed)
 watch(status, (next) => emit('status', next), { immediate: true })
 
 const activePositionIds = shallowRef<string[]>([])
@@ -128,5 +133,11 @@ const playable = computed(
     </div>
     <figcaption v-if="props.caption" class="text-sm text-ink-muted">{{ props.caption }}</figcaption>
   </figure>
+  <LoadFailed
+    v-else-if="status === 'unavailable' && failed && props.retryable"
+    data-test="embedded-diagram-failed"
+    :message="t('embeddedDiagram.loadFailed')"
+    @retry="retry()"
+  />
   <slot v-else-if="status === 'unavailable'" name="unavailable" />
 </template>

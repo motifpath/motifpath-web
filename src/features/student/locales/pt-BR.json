@@ -51,8 +51,6 @@
     "backToMyPath": "Voltar para a trilha",
     "stepMeta": "Passo {position} de {total} · {kind}",
     "stepMetaDone": "Passo {position} de {total} · {kind} · Concluído",
-    "unavailable": "Esta lição ainda não está disponível.",
-    "checkBackSoon": "Ainda estamos preparando. Volte em breve.",
     "errorMessage": "Não foi possível carregar esta lição.",
     "notFound": {
       "title": "Esta lição não está na sua trilha",
@@ -67,16 +65,24 @@
       "actionNoCurrent": "Ir para a trilha"
     },
     "noVideo": "Esta lição ainda não tem vídeo.",
+    "noText": "Esta lição ainda não tem texto.",
     "playbackError": "O vídeo não carregou.",
     "playerLoadError": "O player de vídeo não carregou. Recarregue a página para tentar de novo.",
     "tryIt": {
       "title": "Agora experimente",
-      "message": "Alguns exercícios curtos sobre o que você acabou de assistir. Eles concluem este passo."
+      "message": "Alguns exercícios curtos sobre o que você acabou de assistir. Eles concluem este passo.",
+      "messageArticle": "Alguns exercícios curtos sobre o que você acabou de ler. Eles concluem este passo."
     },
     "practiseThis": "Praticar isto",
     "practiseAgain": "Praticar de novo",
     "stepDone": "Passo concluído",
-    "savingProgress": "Salvando seu progresso…"
+    "savingProgress": "Salvando seu progresso…",
+    "articleEnd": {
+      "title": "Fim da lição.",
+      "markAsDone": "Marcar como concluído",
+      "marksDone": "Marca o passo {position} como concluído.",
+      "marksDoneAndOpens": "Marca o passo {position} como concluído e abre o passo {next}."
+    }
   },
   "lessonPlayer": {
     "play": "Reproduzir",

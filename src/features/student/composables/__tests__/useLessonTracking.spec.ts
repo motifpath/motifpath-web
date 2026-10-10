@@ -110,8 +110,8 @@ describe('useLessonTracking', () => {
       'error',
       'locked',
       'not-found',
+      'language-locked',
       'no-media',
-      'unsupported',
     ])('emits nothing while the lesson is %s', (state) => {
       useLessonTracking(lessonFor(freshNodeId(), 'not_started', state))
 
