@@ -4,7 +4,7 @@ import { nextTick, ref } from 'vue'
 import type * as VueRouter from 'vue-router'
 
 import type { LessonNodeState } from '@/features/student/composables/useLessonNode'
-import type { MyPathStep } from '@/features/student/utils/myPath'
+import type { MyPathSection, MyPathStep } from '@/features/student/utils/myPath'
 import { makeParagraphCue, makeTimedCue } from '@/features/student/testing/expandedContent'
 import { makeArticleNode, makeVideoNode } from '@/features/student/testing/contentNode'
 import { makeStudentPathItem, makeStudentPathView } from '@/features/student/testing/studentPathItem'
@@ -56,6 +56,7 @@ const lesson = {
   next: ref<MyPathStep | null>(null),
   current: ref<MyPathStep | null>(null),
   total: ref(14),
+  section: ref<MyPathSection | null>(null),
   retry: vi.fn(),
 }
 type LessonOptions = { language?: () => string | undefined }
@@ -91,6 +92,11 @@ const isShortHeight = ref(false)
 vi.mock('@/shared/composables/useMediaQuery', () => ({
   useMediaQuery: (query: string) => ({ matches: query === '(max-height: 500px)' ? isShortHeight : isShortViewport }),
 }))
+
+// Whether the window has room for the lesson and a side column; driven directly, as its own tests
+// cover how it follows the window.
+const twoPanes = ref(false)
+vi.mock('@/shared/composables/useTwoPanes', () => ({ useTwoPanes: () => ({ twoPanes }) }))
 
 const complete = vi.fn()
 const useLessonTracking = vi.fn<(source: unknown) => { complete: typeof complete }>(() => ({
@@ -150,6 +156,13 @@ function setLesson(next: {
   lesson.next.value = makeStep(9, { state: 'open' })
   lesson.current.value = null
   lesson.total.value = 14
+  lesson.section.value = {
+    label: 'Triad shapes',
+    done: 2,
+    total: 5,
+    finished: false,
+    steps: [makeStep(7, { state: 'done' }), lesson.step.value, makeStep(9, { state: 'locked' })],
+  }
 }
 
 /**
@@ -195,6 +208,7 @@ describe('NodeView', () => {
     lesson.retry.mockReset()
     isShortViewport.value = false
     isShortHeight.value = false
+    twoPanes.value = false
     setLesson({})
   })
 
@@ -429,12 +443,22 @@ describe('NodeView', () => {
         expect(wrapper.get('[data-test="cue-region"]').attributes('aria-live')).toBe('polite')
       })
 
-      it('gives the cue a fixed width, not a share of the video, so a wider screen keeps the video full size', async () => {
+      it('gives the cue a fixed width beside the video on a phone turned sideways, so the video keeps its size', async () => {
+        isShortViewport.value = true
         const wrapper = await mountView()
 
         const classes = wrapper.get('[data-test="player-aside"]').classes()
-        expect(classes).toContain('landscape:w-80')
-        expect(classes).not.toContain('landscape:w-1/3')
+        expect(classes).toContain('w-80')
+        expect(classes).not.toContain('w-1/3')
+      })
+
+      it('shows the cue under the video, in the one column, when the window has no room for a side column', async () => {
+        const wrapper = await mountView()
+
+        await playTo(wrapper, 6)
+
+        expect(wrapper.find('[data-test="lesson-aside"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="player-aside"]').find('[data-test="cue"]').exists()).toBe(true)
       })
     })
 
@@ -1099,6 +1123,106 @@ describe('NodeView', () => {
       expect(wrapper.find('[data-test="song-chart-screen"]').exists()).toBe(false)
       expect(wrapper.find('media-player').exists()).toBe(true)
       expect(play).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('a window with room for a side column', () => {
+    beforeEach(() => {
+      twoPanes.value = true
+    })
+
+    const aside = (wrapper: Wrapper) => wrapper.get('[data-test="lesson-aside"]')
+
+    it('lists the steps around the lesson beside it, with the lesson on screen as the one the student is on', async () => {
+      const wrapper = await mountView()
+
+      const steps = aside(wrapper).get('[data-test="lesson-section-steps"]')
+      expect(steps.text()).toContain('Triad shapes')
+      expect(steps.text()).toContain('Now · Video')
+    })
+
+    it('puts a video\'s cue at the top of the side column, not in the player', async () => {
+      setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+      const wrapper = await mountView()
+
+      await playTo(wrapper, 6)
+
+      expect(aside(wrapper).find('[data-test="cue"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="player-aside"]').isVisible()).toBe(false)
+    })
+
+    it('moves the cue into the player in fullscreen, keeping its announcement region the same element', async () => {
+      setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+      const wrapper = await mountView()
+      const region = wrapper.get('[data-test="cue-region"]').element
+
+      wrapper.get('media-player').element.dispatchEvent(new CustomEvent('fullscreen-change', { detail: true }))
+      await nextTick()
+
+      expect(wrapper.get('media-player').element.contains(region)).toBe(true)
+      expect(wrapper.get('[data-test="cue-region"]').element).toBe(region)
+    })
+
+    it('brings the cue back beside the video when fullscreen ends', async () => {
+      setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+      const wrapper = await mountView()
+      const player = wrapper.get('media-player').element
+
+      player.dispatchEvent(new CustomEvent('fullscreen-change', { detail: true }))
+      await nextTick()
+      player.dispatchEvent(new CustomEvent('fullscreen-change', { detail: false }))
+      await nextTick()
+
+      expect(aside(wrapper).find('[data-test="cue-region"]').exists()).toBe(true)
+    })
+
+    describe('when a video with no challenge ends', () => {
+      it('puts Step done and the next step\'s card at the top of the side column, with no Back to My path', async () => {
+        const wrapper = await mountView()
+
+        await endVideo(wrapper)
+        await flushPromises()
+
+        const side = aside(wrapper)
+        expect(side.find('[data-test="step-done"]').exists()).toBe(true)
+        expect(side.find('[data-test="next-step-card"]').exists()).toBe(true)
+        expect(side.html().indexOf('next-step-card')).toBeLessThan(side.html().indexOf('lesson-section-steps'))
+        expect(wrapper.find('[data-test="back-to-my-path"]').exists()).toBe(false)
+      })
+
+      it('shows the lesson done and the step it opened up next, as the path has them once it is recorded', async () => {
+        const recorded = makeStudentPathView([
+          { ...makeStudentPathItem(7, 'Triad shapes', 'completed'), content_node_id: 'node-7' },
+          { ...makeStudentPathItem(8, 'Triad shapes', 'completed'), content_node_id: 'node-abc' },
+          makeStudentPathItem(9, 'Triad shapes'),
+        ])
+        waitForCompletion.mockResolvedValue({ kind: 'recorded', view: recorded })
+        const wrapper = await mountView()
+
+        await endVideo(wrapper)
+        await flushPromises()
+
+        const rows = aside(wrapper).findAll('[data-test="step-row"]')
+        expect(rows[1].text()).toContain('Video · Done')
+        expect(rows[2].text()).toContain('Up next · Video')
+      })
+    })
+
+    it('keeps an article\'s cues in its text: the side column holds only the steps', async () => {
+      setLesson({ node: makeArticleNode('node-abc', ['First.', 'Second.']), cues: [makeParagraphCue('picture', 1)] })
+      lesson.step.value = makeStep(8, { contentNodeId: 'node-abc', kind: 'article' })
+      const wrapper = await mountView()
+
+      expect(wrapper.get('[data-test="article"]').html()).toContain('picture.png')
+      expect(aside(wrapper).html()).not.toContain('picture.png')
+      expect(aside(wrapper).find('[data-test="lesson-section-steps"]').exists()).toBe(true)
+    })
+
+    it('has no side column for a lesson the student cannot open yet', async () => {
+      setLesson({ state: 'locked', node: null })
+      const wrapper = await mountView()
+
+      expect(wrapper.find('[data-test="lesson-aside"]').exists()).toBe(false)
     })
   })
 })

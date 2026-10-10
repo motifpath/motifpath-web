@@ -15,6 +15,7 @@
     "meta": {
       "done": "{kind} · Concluído",
       "current": "A seguir · {kind}",
+      "now": "Agora · {kind}",
       "language": "Só em {language} por enquanto"
     },
     "locked": {
@@ -86,7 +87,8 @@
       "markAsDone": "Marcar como concluído",
       "marksDone": "Marca o passo {position} como concluído.",
       "marksDoneAndOpens": "Marca o passo {position} como concluído e abre o passo {next}."
-    }
+    },
+    "inThisSection": "Nesta seção"
   },
   "lessonPlayer": {
     "play": "Reproduzir",
