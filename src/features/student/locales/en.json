@@ -217,8 +217,8 @@
     "minutesOption": "{minutes} min",
     "start": "Start practising",
     "starting": "Putting your session together…",
-    "instrumentsError": "We couldn't load the instruments.",
-    "planError": "We couldn't put your session together.",
+    "instrumentsError": "We couldn't load the instruments. Check your connection and try again.",
+    "planError": "We couldn't put your session together. Your choices are kept — try again.",
     "nothingToPlay": "There’s nothing to play on this instrument yet. You can practise in your head instead.",
     "practiseInTheHead": "Practise in my head",
     "endSession": "End session",
@@ -242,7 +242,8 @@
     "applyIt": "Apply it",
     "close": "Close",
     "inMyHead": "In my head",
-    "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument."
+    "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument.",
+    "findWhereToStart": "Find where to start"
   },
   "sessionPlan": {
     "title": "Today's plan",

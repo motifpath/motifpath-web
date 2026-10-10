@@ -217,8 +217,8 @@
     "minutesOption": "{minutes} min",
     "start": "Começar a praticar",
     "starting": "Montando sua sessão…",
-    "instrumentsError": "Não conseguimos carregar os instrumentos.",
-    "planError": "Não conseguimos montar sua sessão.",
+    "instrumentsError": "Não conseguimos carregar os instrumentos. Verifique sua conexão e tente de novo.",
+    "planError": "Não conseguimos montar sua sessão. Suas escolhas foram mantidas — tente de novo.",
     "nothingToPlay": "Ainda não há nada para tocar neste instrumento. Você pode praticar na cabeça.",
     "practiseInTheHead": "Praticar na cabeça",
     "endSession": "Encerrar sessão",
@@ -242,7 +242,8 @@
     "applyIt": "Aplique",
     "close": "Fechar",
     "inMyHead": "Na cabeça",
-    "nothingInTheHead": "Ainda não há nada para praticar na cabeça. Escolha um instrumento."
+    "nothingInTheHead": "Ainda não há nada para praticar na cabeça. Escolha um instrumento.",
+    "findWhereToStart": "Encontrar por onde começar"
   },
   "sessionPlan": {
     "title": "O plano de hoje",

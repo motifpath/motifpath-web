@@ -12,13 +12,14 @@
  * All of it runs in the Practice Shell: × ends a running session, and otherwise leaves for where
  * the student came from. The screen stays on while the session runs.
  */
-import { Brain } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import FeltQuestions from '@/features/student/components/FeltQuestions.vue'
 import NextUpCard from '@/features/student/components/NextUpCard.vue'
+import PracticeSetup from '@/features/student/components/PracticeSetup.vue'
+import type { SetupProblem } from '@/features/student/components/PracticeSetup.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
@@ -28,11 +29,9 @@ import TodaysPlan from '@/features/student/components/TodaysPlan.vue'
 import { useComposePracticeSession, DEFAULT_SESSION_MINUTES } from '@/features/student/composables/useComposePracticeSession'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
-import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeShell from '@/shared/components/PracticeShell.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
@@ -40,8 +39,6 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import { useWakeLock } from '@/shared/composables/useWakeLock'
 
 type Item = components['schemas']['PracticeSessionItem']
-
-const MINUTE_CHOICES = [5, 10, 15, 20, 30] as const
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
@@ -68,9 +65,11 @@ watch(
   { immediate: true },
 )
 
-const composeError = ref<'nothing_to_practise' | 'failed' | null>(null)
-/** Whether the session that couldn't be composed was in the head, for its message. */
-const composedInHead = ref(false)
+const problem = ref<SetupProblem | null>(null)
+// Having nothing to practise is about the choice made; another choice may have something.
+watch(instrumentId, () => {
+  if (problem.value !== 'failed') problem.value = null
+})
 const run = shallowRef<ReturnType<typeof usePracticeSessionRun> | null>(null)
 
 /** The open-string pitches of an instrument, which its fretboard cells are drawn and graded with. */
@@ -80,13 +79,12 @@ function tuningOf(id: string): string[] | undefined {
 
 async function startSession() {
   if (isComposing.value) return
-  composeError.value = null
-  composedInHead.value = instrumentId.value === null
+  const inTheHead = instrumentId.value === null
   const outcome = await compose(instrumentId.value, minutes.value)
-  if (outcome.kind !== 'composed') {
-    composeError.value = outcome.kind
-    return
-  }
+  if (outcome.kind === 'failed') problem.value = 'failed'
+  else if (outcome.kind === 'nothing_to_practise') problem.value = inTheHead ? 'nothing_in_the_head' : 'nothing_to_play'
+  if (outcome.kind !== 'composed') return
+  problem.value = null
   run.value = usePracticeSessionRun(outcome.plan, { tuningOf })
 }
 
@@ -149,6 +147,11 @@ function practiseInTheHead() {
   void startSession()
 }
 
+/** With nothing to practise in the head either, the home's first run shows where to start. */
+function findWhereToStart() {
+  void router.push({ name: 'home' })
+}
+
 function practiseAgain() {
   run.value = null
 }
@@ -185,67 +188,31 @@ onBeforeUnmount(() => {
     :progress="running ? run!.progress.value : undefined"
     @exit="exit"
   >
-    <section v-if="!run" class="flex flex-col gap-5" data-test="practice-session">
-      <header class="flex flex-col gap-1">
-        <h1 class="text-xl font-semibold">{{ t('practiceSessionView.title') }}</h1>
-        <p class="text-sm text-ink-muted">{{ t('practiceSessionView.intro') }}</p>
+    <section v-if="isComposing" class="flex flex-col gap-4" data-test="plan-composing">
+      <header class="flex items-baseline justify-between gap-2">
+        <h1 class="text-xl font-semibold">{{ t('sessionPlan.title') }}</h1>
+        <span class="text-sm text-ink-muted">{{ t('sessionPlan.minutes', { minutes }) }}</span>
       </header>
-
-      <LoadingSkeleton v-if="isLoading" />
-      <LoadFailed v-else-if="instrumentsError" :message="t('practiceSessionView.instrumentsError')" @retry="retryInstruments()" />
-
-      <div v-else class="flex flex-col gap-5">
-        <InstrumentTilePicker
-          v-model="instrumentId"
-          :instruments="playable"
-          :label="t('practiceSessionView.instrumentLabel')"
-          :none-label="t('practiceSessionView.inMyHead')"
-        />
-
-        <fieldset class="flex flex-col gap-1.5">
-          <legend class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-subtle">
-            {{ t('practiceSessionView.minutesLabel') }}
-          </legend>
-          <div class="flex flex-wrap gap-2">
-            <label
-              v-for="choice in MINUTE_CHOICES"
-              :key="choice"
-              class="flex h-12 cursor-pointer items-center rounded-md border px-4 text-sm"
-              :class="minutes === choice ? 'border-accent bg-accent-muted' : 'border-border'"
-            >
-              <input v-model="minutes" type="radio" name="minutes" class="sr-only" :value="choice" :data-test="`minutes-${choice}`" />
-              {{ t('practiceSessionView.minutesOption', { minutes: choice }) }}
-            </label>
-          </div>
-        </fieldset>
-
-        <p v-if="composeError === 'nothing_to_practise' && composedInHead" class="text-sm text-danger" role="alert">
-          {{ t('practiceSessionView.nothingInTheHead') }}
-        </p>
-        <div v-else-if="composeError === 'nothing_to_practise'" class="flex flex-col items-start gap-2">
-          <p class="text-sm text-danger" role="alert">{{ t('practiceSessionView.nothingToPlay') }}</p>
-          <button
-            type="button"
-            data-test="practise-in-head"
-            :disabled="isComposing"
-            class="flex h-12 items-center gap-2 rounded-md border border-border px-4 text-sm font-semibold hover:border-accent"
-            @click="practiseInTheHead"
-          >
-            <Brain :size="20" :stroke-width="1.5" aria-hidden="true" />
-            {{ t('practiceSessionView.practiseInTheHead') }}
-          </button>
-        </div>
-        <p v-else-if="composeError === 'failed'" class="text-sm text-danger" role="alert">
-          {{ t('practiceSessionView.planError') }}
-        </p>
-
-        <PracticeActionBar>
-          <PrimaryButton data-test="start-session" data-primary-action :disabled="isComposing" class="h-12 w-full" @click="startSession">
-            {{ isComposing ? t('practiceSessionView.starting') : t('practiceSessionView.start') }}
-          </PrimaryButton>
-        </PracticeActionBar>
-      </div>
+      <p class="text-sm text-ink-muted">{{ t('practiceSessionView.starting') }}</p>
+      <LoadingSkeleton :count="5" />
+      <PracticeActionBar>
+        <PrimaryButton data-primary-action disabled class="h-12 w-full">{{ t('sessionPlan.start') }}</PrimaryButton>
+      </PracticeActionBar>
     </section>
+
+    <PracticeSetup
+      v-else-if="!run"
+      v-model:instrument-id="instrumentId"
+      v-model:minutes="minutes"
+      :instruments="playable"
+      :instruments-loading="isLoading"
+      :instruments-failed="instrumentsError"
+      :problem="problem"
+      @start="startSession"
+      @retry-instruments="retryInstruments()"
+      @practise-in-the-head="practiseInTheHead"
+      @find-where-to-start="findWhereToStart"
+    />
 
     <TodaysPlan v-else-if="!started" :items="run.plan.items" :minutes="run.plan.minutes" :label-of="labelOf" @start="run.start()" />
 
