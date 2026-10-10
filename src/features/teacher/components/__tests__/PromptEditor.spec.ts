@@ -359,7 +359,7 @@ describe('PromptEditor', () => {
     }
 
     async function mountEditor(modelValue: PromptDocument) {
-      const wrapper = mount(PromptEditor, { props: { modelValue }, global: { stubs: { teleport: true } } })
+      const wrapper = mount(PromptEditor, { props: { modelValue } })
       await nextTick()
       await nextTick()
       return wrapper
@@ -458,7 +458,7 @@ describe('PromptEditor', () => {
 
   describe('song charts', () => {
     // The picker and the card load charts themselves; their own specs cover that.
-    const stubs = { teleport: true, SongChartPickerModal: true, SongChartCard: { props: ['songChartId'], template: '<div data-test="song-chart-card" :data-song-chart-id="songChartId" />' } }
+    const stubs = { SongChartPickerModal: true, SongChartCard: { props: ['songChartId'], template: '<div data-test="song-chart-card" :data-song-chart-id="songChartId" />' } }
 
     it('offers no song chart where song charts have no place, such as an exercise prompt', async () => {
       const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') }, global: { stubs } })
@@ -469,7 +469,7 @@ describe('PromptEditor', () => {
 
     it('loads no song charts until the teacher opens the picker', async () => {
       GET.mockClear()
-      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Play along'), songCharts: true }, global: { stubs: { teleport: true } } })
+      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Play along'), songCharts: true } })
       await nextTick()
 
       expect(GET.mock.calls.some(([path]) => path === '/song-charts')).toBe(false)

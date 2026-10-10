@@ -61,61 +61,59 @@ function apply() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <ModalOverlay
-      :open="open"
-      panel-class="flex h-[85vh] w-[720px] max-w-[92vw] flex-col gap-4 rounded-xl bg-surface-raised p-5 shadow-level2"
-      @close="emit('close')"
-    >
-      <div data-test="media-picker" class="contents">
-        <div class="flex items-center justify-between">
-          <span class="text-base font-bold">{{ t('mediaPickerModal.title') }}</span>
-          <ModalCloseButton @close="emit('close')" />
-        </div>
-
-        <div class="flex w-fit gap-1 rounded-md bg-surface-sunken p-[3px]" role="tablist">
-          <button
-            v-for="option in (['image', 'diagram'] as const)"
-            :key="option"
-            type="button"
-            role="tab"
-            :data-test="`media-tab-${option}`"
-            :aria-selected="tab === option"
-            class="rounded-sm px-3 py-1 text-xs font-semibold"
-            :class="tab === option ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-            @click="tab = option"
-          >
-            {{ option === 'image' ? t('mediaPickerModal.image') : t('mediaPickerModal.diagram') }}
-          </button>
-        </div>
-
-        <div class="min-h-0 flex-1 overflow-y-auto">
-          <FileDropField v-if="tab === 'image'" @select="emit('image', $event)" />
-          <DiagramPickerList v-else-if="chooseOnly" @select="pick" />
-          <DiagramEmbedPicker v-else :initial="initialDiagram" @change="chosen = $event" />
-        </div>
-
-        <div class="flex justify-end gap-2 border-t border-border pt-4">
-          <button
-            type="button"
-            data-test="media-cancel"
-            class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold"
-            @click="emit('close')"
-          >
-            {{ t('diagramEmbedPicker.cancel') }}
-          </button>
-          <button
-            v-if="tab === 'diagram' && !chooseOnly"
-            type="button"
-            data-test="media-apply"
-            :disabled="!chosen"
-            class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
-            @click="apply"
-          >
-            {{ t('diagramEmbedPicker.apply') }}
-          </button>
-        </div>
+  <ModalOverlay
+    :open="open"
+    panel-class="flex h-[85vh] w-[720px] max-w-[92vw] flex-col gap-4 rounded-xl bg-surface-raised p-5 shadow-level2"
+    @close="emit('close')"
+  >
+    <div data-test="media-picker" class="contents">
+      <div class="flex items-center justify-between">
+        <span class="text-base font-bold">{{ t('mediaPickerModal.title') }}</span>
+        <ModalCloseButton @close="emit('close')" />
       </div>
-    </ModalOverlay>
-  </Teleport>
+
+      <div class="flex w-fit gap-1 rounded-md bg-surface-sunken p-[3px]" role="tablist">
+        <button
+          v-for="option in (['image', 'diagram'] as const)"
+          :key="option"
+          type="button"
+          role="tab"
+          :data-test="`media-tab-${option}`"
+          :aria-selected="tab === option"
+          class="rounded-sm px-3 py-1 text-xs font-semibold"
+          :class="tab === option ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
+          @click="tab = option"
+        >
+          {{ option === 'image' ? t('mediaPickerModal.image') : t('mediaPickerModal.diagram') }}
+        </button>
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <FileDropField v-if="tab === 'image'" @select="emit('image', $event)" />
+        <DiagramPickerList v-else-if="chooseOnly" @select="pick" />
+        <DiagramEmbedPicker v-else :initial="initialDiagram" @change="chosen = $event" />
+      </div>
+
+      <div class="flex justify-end gap-2 border-t border-border pt-4">
+        <button
+          type="button"
+          data-test="media-cancel"
+          class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold"
+          @click="emit('close')"
+        >
+          {{ t('diagramEmbedPicker.cancel') }}
+        </button>
+        <button
+          v-if="tab === 'diagram' && !chooseOnly"
+          type="button"
+          data-test="media-apply"
+          :disabled="!chosen"
+          class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
+          @click="apply"
+        >
+          {{ t('diagramEmbedPicker.apply') }}
+        </button>
+      </div>
+    </div>
+  </ModalOverlay>
 </template>

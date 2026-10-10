@@ -4,6 +4,7 @@ import { defineComponent, h, nextTick, ref } from 'vue'
 import { createRouter, createWebHistory, onBeforeRouteUpdate, RouterView } from 'vue-router'
 
 import OverlayLayer from '@/shared/components/OverlayLayer.vue'
+import { overlayInPlaceKey } from '@/shared/composables/overlayInPlace'
 import { installOverlayHistory } from '@/shared/composables/useOverlayHistory'
 
 let wrappers: VueWrapper[] = []
@@ -241,6 +242,28 @@ describe('OverlayLayer', () => {
       expect(back).not.toHaveBeenCalled()
       expect(router.currentRoute.value.name).toBe('other')
       back.mockRestore()
+    })
+  })
+
+  describe('on <body>', () => {
+    it('opens on <body>, outside the container it was opened from, carrying the attributes it was given', async () => {
+      const wrapper = mount(
+        defineComponent({
+          components: { OverlayLayer },
+          template: `
+            <div data-test="opener" class="sticky z-10">
+              <OverlayLayer :open="true" data-test="named-layer"><div data-test="panel" /></OverlayLayer>
+            </div>`,
+        }),
+        { attachTo: document.body, global: { provide: { [overlayInPlaceKey as symbol]: false } } },
+      )
+      wrappers.push(wrapper)
+      await nextTick()
+
+      const layer = document.querySelector('[data-test="named-layer"]')
+      expect(layer?.parentElement).toBe(document.body)
+      expect(layer?.querySelector('[data-test="panel"]')).not.toBeNull()
+      expect(document.querySelector('[data-test="opener"] [data-test="panel"]')).toBeNull()
     })
   })
 })

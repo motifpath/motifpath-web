@@ -21,7 +21,6 @@ const chosen: DiagramRef = { diagram_id: 'd-penta', layers: { label: 'custom', i
 function mountModal(props: { open?: boolean; initial?: DiagramRef | null; editing?: boolean } = {}) {
   return mount(DiagramEmbedPickerModal, {
     props: { open: true, initial: null, editing: false, ...props },
-    global: { stubs: { teleport: true } },
   })
 }
 

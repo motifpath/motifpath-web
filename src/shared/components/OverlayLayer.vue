@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, toRef } from 'vue'
+import { inject, ref, toRef } from 'vue'
 
+import { overlayInPlaceKey } from '@/shared/composables/overlayInPlace'
 import { useFocusTrap } from '@/shared/composables/useFocusTrap'
 import { useOverlayHistory } from '@/shared/composables/useOverlayHistory'
 
@@ -17,7 +18,10 @@ const props = withDefaults(
   { closeOnScrim: true, placement: 'center', scrim: 'dim' },
 )
 const emit = defineEmits<{ close: [] }>()
+// A teleport root can't take the caller's attributes (a `data-test`, say) on its own: the layer does.
+defineOptions({ inheritAttrs: false })
 
+const inPlace = inject(overlayInPlaceKey, false)
 const layer = ref<HTMLElement | null>(null)
 const { onKeydown: trapTab } = useFocusTrap(layer, toRef(props, 'open'))
 useOverlayHistory(toRef(props, 'open'), () => emit('close'))
@@ -37,23 +41,28 @@ function onScrimClick() {
 </script>
 
 <template>
-  <div v-if="open" ref="layer" class="fixed inset-0 z-40" @keydown="onKeydown">
-    <div
-      data-test="overlay-scrim"
-      class="absolute inset-0"
-      :class="{ 'bg-scrim/40': scrim === 'dim' }"
-      @click="onScrimClick"
-    />
-    <div
-      class="pointer-events-none absolute inset-0 flex"
-      :class="{
-        'items-center justify-center p-4': placement === 'center',
-        'items-end justify-center': placement === 'bottom',
-      }"
-    >
-      <div class="pointer-events-auto contents">
-        <slot />
+  <!-- On <body>, not where it was opened: a sticky or z-indexed container (the top bar, the
+       sidebar) makes its own stacking context, and a layer inside one paints under any later
+       sibling at the same level — the bottom bar over the account sheet. -->
+  <Teleport to="body" :disabled="inPlace">
+    <div v-if="open" ref="layer" v-bind="$attrs" class="fixed inset-0 z-40" @keydown="onKeydown">
+      <div
+        data-test="overlay-scrim"
+        class="absolute inset-0"
+        :class="{ 'bg-scrim/40': scrim === 'dim' }"
+        @click="onScrimClick"
+      />
+      <div
+        class="pointer-events-none absolute inset-0 flex"
+        :class="{
+          'items-center justify-center p-4': placement === 'center',
+          'items-end justify-center': placement === 'bottom',
+        }"
+      >
+        <div class="pointer-events-auto contents">
+          <slot />
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>

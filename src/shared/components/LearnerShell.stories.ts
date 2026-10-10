@@ -65,6 +65,22 @@ export const Compact: Story = {
     await expect(avatar.bottom).toBeLessThanOrEqual(bar.bottom)
   },
 }
+/**
+ * The account menu opens from the top bar, but its sheet covers the bottom bar: whatever is
+ * painted where the bar sits belongs to the sheet. Stacking needs a real browser to prove.
+ */
+export const AccountSheetAboveTheBar: Story = {
+  globals: { viewport: { value: 'compact' } },
+  play: async ({ canvasElement, userEvent }) => {
+    await settle(100)
+    await userEvent.click(canvasElement.querySelector<HTMLElement>('[data-test="learner-top-bar"] [data-test="account-menu-avatar"]')!)
+    await settle(300)
+    const bar = canvasElement.querySelector('[data-test="navigation-bar"]')!.getBoundingClientRect()
+    const painted = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2)
+    await expect(painted?.closest('[data-test="account-menu"]')).not.toBeNull()
+    await userEvent.keyboard('{Escape}')
+  },
+}
 /** A tablet: the rail, with the avatar at its foot. */
 export const Medium: Story = { render: onRoute('path'), globals: { viewport: { value: 'medium' } } }
 /** A desktop: the sidebar, with Teach for authors and the Account row at its foot. */

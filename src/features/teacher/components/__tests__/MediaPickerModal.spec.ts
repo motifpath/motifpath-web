@@ -14,7 +14,7 @@ const chord: DiagramRef = { diagram_id: 'd-e-major', layers: { label: 'custom' }
 function mountModal(props: Record<string, unknown> = {}) {
   return mount(MediaPickerModal, {
     props: { open: true, initialDiagram: null, ...props },
-    global: { stubs: { teleport: true, DiagramEmbedPicker: true, DiagramPickerList: true } },
+    global: { stubs: { DiagramEmbedPicker: true, DiagramPickerList: true } },
   })
 }
 
