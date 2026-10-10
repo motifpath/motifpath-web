@@ -253,6 +253,15 @@ describe('useLessonNode', () => {
       expect(lesson.current.value).toMatchObject({ position: 2, contentNodeId: 'node-2' })
     })
 
+    it('knows the steps around it in its section', async () => {
+      respondWith({ ...healthy, [PATH]: ok(path) })
+
+      const lesson = await load()
+
+      expect(lesson.section.value?.steps.map((step) => step.position)).toEqual([1, 2, 3])
+      expect(lesson.section.value).toMatchObject({ done: 1, total: 3 })
+    })
+
     it('forgets where the step sat while it reloads', async () => {
       respondWith({ ...healthy, [PATH]: ok(path) })
       const lesson = await load()
@@ -263,6 +272,7 @@ describe('useLessonNode', () => {
       expect(lesson.next.value).toBeNull()
       expect(lesson.current.value).toBeNull()
       expect(lesson.total.value).toBe(0)
+      expect(lesson.section.value).toBeNull()
     })
   })
 

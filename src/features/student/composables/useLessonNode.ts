@@ -1,7 +1,7 @@
 import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 import { completedCourseEnrollmentId as completedEnrollmentOf } from '@/features/student/utils/courseCompletion'
-import { buildMyPath, stepAfter, type MyPathStep } from '@/features/student/utils/myPath'
+import { buildMyPath, sectionAround, stepAfter, type MyPathSection, type MyPathStep } from '@/features/student/utils/myPath'
 import { useApi } from '@/shared/composables/useApi'
 import type { components } from '@/api/generated/core-domain'
 
@@ -52,11 +52,13 @@ export function useLessonNode(
   const completedCourseEnrollmentId = ref<string | null>(null)
   const pathTitle = ref<string | null>(null)
   // Where the step sits on the path: the step itself, the one after it (which its completion
-  // opens), the one the student can do now, and how many steps the path has.
+  // opens), the one the student can do now, how many steps the path has, and the steps around it
+  // in its section.
   const step = ref<MyPathStep | null>(null)
   const next = ref<MyPathStep | null>(null)
   const current = ref<MyPathStep | null>(null)
   const total = ref(0)
+  const section = ref<MyPathSection | null>(null)
 
   // Bumped on every load() call; a call only applies its result if it is
   // still the most recent one by the time it resolves, so an overlapping
@@ -76,6 +78,7 @@ export function useLessonNode(
     next.value = null
     current.value = null
     total.value = 0
+    section.value = null
   }
 
   async function load(): Promise<void> {
@@ -110,6 +113,7 @@ export function useLessonNode(
       next.value = stepAfter(pathResult.data, id)
       current.value = steps.find((candidate) => candidate.position === pathResult.data.current_position) ?? null
       total.value = steps.length
+      section.value = sectionAround(pathResult.data, id)
       // A language-locked step opens once the student picks a language it has: the lock is about
       // the student's own language, not about the lesson being out of reach.
       const language = toValue(options.language)
@@ -175,6 +179,7 @@ export function useLessonNode(
     next,
     current,
     total,
+    section,
     retry: load,
   }
 }
