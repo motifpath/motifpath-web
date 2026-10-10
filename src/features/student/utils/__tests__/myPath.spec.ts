@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildMyPath, sectionAround, stepAfter } from '@/features/student/utils/myPath'
+import { buildMyPath, stepAfter } from '@/features/student/utils/myPath'
 import {
   makeStudentPathItem as item,
   makeStudentPathView as view,
@@ -119,48 +119,5 @@ describe('stepAfter', () => {
 
   it('has nothing after a step that is not on the path', () => {
     expect(stepAfter(view([item(1), item(2)]), 'node-9')).toBeNull()
-  })
-})
-
-describe('sectionAround', () => {
-  const shapes = [
-    item(1, 'Open chords', 'completed'),
-    item(2, 'Triad shapes', 'completed'),
-    item(3, 'Triad shapes', 'completed'),
-    item(4, 'Triad shapes'),
-    behindEarlierStep(5, 'Triad shapes'),
-    behindEarlierStep(6, 'Triad shapes'),
-    behindEarlierStep(7, 'In music'),
-  ]
-
-  it('gives the step before, the step itself and the step after, from its own section', () => {
-    const section = sectionAround(view(shapes), 'node-4')
-
-    expect(section?.steps.map((s) => s.position)).toEqual([3, 4, 5])
-    expect(section?.steps.map((s) => s.state)).toEqual(['done', 'current', 'locked'])
-  })
-
-  it('counts the whole section, not just the steps it gives', () => {
-    expect(sectionAround(view(shapes), 'node-4')).toMatchObject({ label: 'Triad shapes', done: 2, total: 5 })
-  })
-
-  it('never reaches into the section before or after', () => {
-    expect(sectionAround(view(shapes), 'node-2')?.steps.map((s) => s.position)).toEqual([2, 3])
-    expect(sectionAround(view(shapes), 'node-6')?.steps.map((s) => s.position)).toEqual([5, 6])
-  })
-
-  it('gives a step alone in its section on its own', () => {
-    expect(sectionAround(view(shapes), 'node-7')?.steps.map((s) => s.position)).toEqual([7])
-  })
-
-  it('works for a path with no section labels', () => {
-    const section = sectionAround(view([item(1, undefined, 'completed'), item(2), behindEarlierStep(3)]), 'node-2')
-
-    expect(section).toMatchObject({ label: null, done: 1, total: 3 })
-    expect(section?.steps.map((s) => s.position)).toEqual([1, 2, 3])
-  })
-
-  it('has nothing for a step that is not on the path', () => {
-    expect(sectionAround(view(shapes), 'node-9')).toBeNull()
   })
 })

@@ -81,19 +81,6 @@ export function buildMyPath(view: StudentPathView): MyPath {
 }
 
 /**
- * A step among its neighbours, for a lesson to show where it sits: the step before it, the step
- * itself and the step after it, never crossing into another section. The counts are the whole
- * section's. Null when the step isn't on the path.
- */
-export function sectionAround(view: StudentPathView, contentNodeId: string): MyPathSection | null {
-  for (const section of buildMyPath(view).sections) {
-    const index = section.steps.findIndex((step) => step.contentNodeId === contentNodeId)
-    if (index !== -1) return { ...section, steps: section.steps.slice(Math.max(0, index - 1), index + 2) }
-  }
-  return null
-}
-
-/**
  * The step after a step, as the path has it now: the one that step's completion opens. Null after
  * the last step, or when the step isn't on the path.
  */
