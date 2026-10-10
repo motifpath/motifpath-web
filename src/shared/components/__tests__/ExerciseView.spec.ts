@@ -79,9 +79,7 @@ describe('ExerciseView', () => {
   })
 
   describe('audio_selection', () => {
-    // jsdom has no real media pipeline — every click pauses/plays the shared
-    // element, so both are stubbed for every test here, not just the ones
-    // that assert on them.
+    // jsdom has no real media pipeline, so play and pause are stubbed for every test here.
     beforeEach(() => {
       vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
       vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
@@ -90,105 +88,85 @@ describe('ExerciseView', () => {
       vi.restoreAllMocks()
     })
 
-    it('renders equally sized labeled buttons, with no visible native player', () => {
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
+    function mountSounds(props: Partial<InstanceType<typeof ExerciseView>['$props']> = {}) {
+      return mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions, ...props },
       })
+    }
+    const rows = (wrapper: ReturnType<typeof mountSounds>) => wrapper.findAll('[data-test="exercise-option"]')
+    const playButton = (wrapper: ReturnType<typeof mountSounds>, i: number) => rows(wrapper)[i]!.get('[data-test="option-play"]')
+    const player = (wrapper: ReturnType<typeof mountSounds>) => wrapper.get('audio').element as HTMLAudioElement
 
-      const rows = wrapper.findAll('[data-test="exercise-option"]')
-      expect(rows).toHaveLength(2)
-      expect(rows[0]?.text()).toContain('Lick A')
-      expect(rows[1]?.text()).toContain('Lick B')
-      // A single shared, hidden player drives playback — not one <audio> per
-      // option — so there is nothing resembling a native scrubber per button.
+    it('lists each sound as a labelled row with its own play button, and no visible native player', () => {
+      const wrapper = mountSounds()
+
+      expect(rows(wrapper).map((row) => row.text())).toEqual([expect.stringContaining('Lick A'), expect.stringContaining('Lick B')])
+      expect(playButton(wrapper, 0).attributes('aria-label')).toBe('Play Lick A')
       expect(wrapper.findAll('audio')).toHaveLength(1)
       expect(wrapper.get('audio').attributes('controls')).toBeUndefined()
     })
 
-    it('selects an audio_selection option on click', async () => {
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
+    it('selects an option when its row is tapped, without playing it', async () => {
+      const wrapper = mountSounds()
 
-      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+      await rows(wrapper)[1]!.trigger('click')
 
-      expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-selected')).toBe('true')
+      expect(rows(wrapper)[1]!.attributes('data-selected')).toBe('true')
+      expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
     })
 
-    it("plays the clicked option's clip through the shared player", async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
+    it('plays an option’s clip from its play button, without selecting it', async () => {
+      const wrapper = mountSounds()
 
-      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
 
-      const audioEl = wrapper.get('audio').element as HTMLAudioElement
-      expect(audioEl.src).toBe('https://x/lick1.mp3')
-      expect(playSpy).toHaveBeenCalledTimes(1)
+      expect(player(wrapper).src).toBe('https://x/lick1.mp3')
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+      expect(rows(wrapper).every((row) => row.attributes('data-selected') === 'false')).toBe(true)
+      expect(wrapper.emitted('playing')).toEqual([[true]])
     })
 
-    it('stops the previously playing clip before playing a newly clicked option, so playback never overlaps', async () => {
-      const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
+    it('switches clips without overlapping them', async () => {
+      const wrapper = mountSounds()
 
-      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
-      await wrapper.findAll('[data-test="exercise-option"]')[1]!.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
+      await playButton(wrapper, 1).trigger('click')
 
-      expect(pauseSpy).toHaveBeenCalled()
-      const audioEl = wrapper.get('audio').element as HTMLAudioElement
-      expect(audioEl.src).toBe('https://x/lick2.mp3')
+      expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+      expect(player(wrapper).src).toBe('https://x/lick2.mp3')
+      expect(playButton(wrapper, 1).attributes('aria-label')).toBe('Stop Lick B')
     })
 
-    it('stops (does not restart) and unselects an option when it is clicked again while playing', async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
-      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
+    it('stops a clip when its play button is tapped again', async () => {
+      const wrapper = mountSounds()
 
-      await firstOption.trigger('click')
-      expect(playSpy).toHaveBeenCalledTimes(1)
+      await playButton(wrapper, 0).trigger('click')
+      await playButton(wrapper, 0).trigger('click')
 
-      await firstOption.trigger('click')
-
-      expect(playSpy).toHaveBeenCalledTimes(1)
-      expect(pauseSpy).toHaveBeenCalled()
-      // The second click is both a stop and an unanswer, same as every other
-      // exercise type's click-to-deselect behavior.
-      expect(firstOption.attributes('data-selected')).toBe('false')
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+      expect(playButton(wrapper, 0).attributes('aria-label')).toBe('Play Lick A')
     })
 
-    it('selects and plays again on a third click, after the second click stopped and unselected it', async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
-      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
+    it('says when a clip ends by itself, and plays it again from the start', async () => {
+      const wrapper = mountSounds()
 
-      await firstOption.trigger('click')
-      await firstOption.trigger('click')
-      await firstOption.trigger('click')
-
-      expect(firstOption.attributes('data-selected')).toBe('true')
-      expect(playSpy).toHaveBeenCalledTimes(2)
-    })
-
-    it('plays again from the start after a clicked clip finished naturally', async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
-      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
-
-      await firstOption.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
       await wrapper.get('audio').trigger('ended')
-      await firstOption.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
 
-      expect(playSpy).toHaveBeenCalledTimes(2)
+      expect(wrapper.emitted('playing')).toEqual([[true], [false], [true]])
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2)
+    })
+
+    it('stops the clip sounding once the answer is graded', async () => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+
+      await wrapper.setProps({ selectedOptionIds: ['a1'], reveal: { correctOptionIds: ['a1'] } })
+
+      expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
     })
   })
 

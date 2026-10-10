@@ -59,7 +59,9 @@
     "markRight": "Resposta certa",
     "markWrong": "Sua resposta, errada",
     "choiceMarkedRight": "{choice}, resposta certa",
-    "choiceMarkedWrong": "{choice}, sua resposta, errada"
+    "choiceMarkedWrong": "{choice}, sua resposta, errada",
+    "playOption": "Tocar {label}",
+    "stopOption": "Parar {label}"
   },
   "modalCloseButton": {
     "ariaLabel": "Fechar"

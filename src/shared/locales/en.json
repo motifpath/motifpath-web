@@ -59,7 +59,9 @@
     "markRight": "Right answer",
     "markWrong": "Your answer, wrong",
     "choiceMarkedRight": "{choice}, right answer",
-    "choiceMarkedWrong": "{choice}, your answer, wrong"
+    "choiceMarkedWrong": "{choice}, your answer, wrong",
+    "playOption": "Play {label}",
+    "stopOption": "Stop {label}"
   },
   "modalCloseButton": {
     "ariaLabel": "Close"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Check, Volume2, X } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { Check, Play, Square, X } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
@@ -152,14 +152,16 @@ const hasDiagramChoices = computed(() => props.options.some((option) => option.d
 const isAudioSelection = computed(() => props.exerciseType === 'audio_selection')
 const isLandscape = computed(() => props.direction === 'row')
 
-// A single shared, hidden player — not one <audio> per option — so clicking
-// an option can never overlap two clips: switching always pauses whatever
-// was playing before loading and starting the newly clicked one.
+// A single shared, hidden player — not one <audio> per option — so two clips can never overlap:
+// playing another option's clip always stops the one sounding first.
 const audioPlayerEl = ref<HTMLAudioElement | null>(null)
-// Which option's clip the shared player currently holds — distinct from
-// isSelected, since selection and playback are click-triggered together but
-// track different things (an answer vs. what's audible right now).
+// Which option's clip is sounding. Playing is not choosing: it never touches the selection.
 const playingOptionId = ref<string | null>(null)
+
+const emit = defineEmits<{
+  /** A clip started or stopped sounding, so a caller can time an answer from the last one heard. */
+  playing: [playing: boolean]
+}>()
 
 function markText(optionId: string): string {
   return t(markOf(optionId) === 'right' ? 'exerciseView.markRight' : 'exerciseView.markWrong')
@@ -169,29 +171,43 @@ function markClass(optionId: string): string {
   return markOf(optionId) === 'right' ? 'text-success' : 'text-danger'
 }
 
-function selectAndPlay(option: Option): void {
+function stopClip(): void {
+  if (playingOptionId.value === null) return
+  audioPlayerEl.value?.pause()
+  playingOptionId.value = null
+  emit('playing', false)
+}
+
+/** Plays an option's clip from the top, or stops it when it is the one sounding. */
+function togglePlay(option: Option): void {
   const el = audioPlayerEl.value
   if (!el) return
-
-  select(option.option_id)
-
-  // Clicking the option that's already playing stops it — it must not
-  // restart from the top, the way a fresh pick or a switch does. select()
-  // above already unanswered it, same as every other exercise type's
-  // click-to-deselect behavior.
   if (playingOptionId.value === option.option_id) {
-    el.pause()
-    playingOptionId.value = null
+    stopClip()
     return
   }
-
   if (!option.audio_url) return
+  const wasSounding = playingOptionId.value !== null
   el.pause()
   el.src = option.audio_url
   el.currentTime = 0
   void el.play()
   playingOptionId.value = option.option_id
+  if (!wasSounding) emit('playing', true)
 }
+
+function onClipEnded(): void {
+  playingOptionId.value = null
+  emit('playing', false)
+}
+
+// Once graded, the answer is in: whatever still sounds stops there.
+watch(
+  () => props.reveal,
+  (reveal) => {
+    if (reveal) stopClip()
+  },
+)
 </script>
 
 <template>
@@ -367,27 +383,41 @@ function selectAndPlay(option: Option): void {
         </div>
       </div>
 
-      <div v-else-if="isAudioSelection" class="grid grid-cols-2 gap-2">
-        <button
+      <div v-else-if="isAudioSelection" class="flex flex-col gap-2">
+        <div
           v-for="option in options"
           :key="option.option_id"
-          type="button"
           data-test="exercise-option"
           :data-selected="isSelected(option.option_id)"
           :data-mark="markOf(option.option_id)"
-          class="flex min-h-[64px] items-center justify-center gap-2 rounded-md border-2 px-3 py-3 text-center text-[13px] font-semibold text-ink"
+          class="flex min-h-[56px] cursor-pointer items-center gap-2 rounded-md border-2 py-1 pl-1 pr-3"
           :class="optionTone(option.option_id, 'border-accent bg-accent-muted', 'border-border bg-transparent')"
-          @click="selectAndPlay(option)"
+          @click="select(option.option_id)"
         >
-          <Volume2 :size="16" aria-hidden="true" />
-          {{ option.label }}
+          <button
+            type="button"
+            data-test="option-play"
+            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-accent hover:bg-surface-sunken"
+            :aria-label="t(playingOptionId === option.option_id ? 'exerciseView.stopOption' : 'exerciseView.playOption', { label: option.label ?? '' })"
+            @click.stop="togglePlay(option)"
+          >
+            <Square v-if="playingOptionId === option.option_id" :size="18" aria-hidden="true" />
+            <Play v-else :size="18" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            class="min-w-0 flex-1 py-2 text-left text-[13px] font-semibold text-ink"
+            :aria-pressed="isSelected(option.option_id)"
+          >
+            {{ option.label }}
+          </button>
           <span v-if="markOf(option.option_id)" data-test="answer-mark" :class="markClass(option.option_id)">
             <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
             <X v-else :size="16" aria-hidden="true" />
             <span class="sr-only">{{ markText(option.option_id) }}</span>
           </span>
-        </button>
-        <audio ref="audioPlayerEl" class="hidden" @ended="playingOptionId = null" />
+        </div>
+        <audio ref="audioPlayerEl" class="hidden" @ended="onClipEnded" />
       </div>
     </div>
   </div>
