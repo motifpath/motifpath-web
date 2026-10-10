@@ -30,7 +30,7 @@ export function skillsInstrumentId(overview: Overview): string | null {
   return todaysPractice(overview)?.instrumentId ?? overview.instruments[0]?.instrument_id ?? null
 }
 
-/** This week's three numbers, across every instrument. */
+/** This week's numbers, across every instrument. */
 export function thisWeek(overview: Overview) {
   return {
     minutes: overview.minutes_practised_last_7,
@@ -39,6 +39,7 @@ export function thisWeek(overview: Overview) {
     bestStreak: overview.day_streak_best,
     songs: overview.songs_played_total,
     songsThisWeek: overview.songs_played_last_7,
+    skillsUp: overview.skills_up_last_7,
   }
 }
 
@@ -60,4 +61,31 @@ export function skillLevelCounts(summary: Summary): { counts: Record<ShownLevel,
   }
 
   return { counts, fading }
+}
+
+/** One calendar day, as YYYY-MM-DD, and whether something happened on it. */
+export interface MarkedDay {
+  date: string
+  marked: boolean
+}
+
+/**
+ * A day row's marks: each day's weekday, as an initial and in full, whether something happened,
+ * and which one is today. The days arrive oldest first with today last, so the last is today.
+ */
+export function weekdayMarks(days: MarkedDay[], locale: string) {
+  // A YYYY-MM-DD date is a calendar day, not an instant: read and name it in UTC so the device's
+  // own time zone can never shift it to the day before.
+  const letter = new Intl.DateTimeFormat(locale, { weekday: 'narrow', timeZone: 'UTC' })
+  const name = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' })
+  return days.map((day, index) => {
+    const date = new Date(`${day.date}T00:00:00Z`)
+    return {
+      date: day.date,
+      letter: letter.format(date),
+      name: name.format(date),
+      filled: day.marked,
+      isToday: index === days.length - 1,
+    }
+  })
 }

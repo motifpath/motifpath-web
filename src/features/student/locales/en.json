@@ -410,7 +410,15 @@
   "yourProgressView": {
     "title": "Your progress",
     "back": "Back",
-    "comingSoon": "Your minutes, streak, songs and skills for each instrument will show here soon."
+    "allInstruments": "All instruments",
+    "learningDays": "Learning days",
+    "learned": "learned",
+    "practiceDays": "Practice days",
+    "practised": "practised",
+    "instrumentChoice": "Instrument",
+    "anyInstrument": "Any instrument",
+    "movedTitle": "Moved this week",
+    "instrumentError": "We couldn't load your progress on this instrument."
   },
   "studentHome": {
     "greeting": {
@@ -450,7 +458,9 @@
       "startStreak": "Start one today · best {count}",
       "startFirstStreak": "Start one today",
       "songsThisWeek": "+{count} this week",
-      "error": "We couldn't load this week."
+      "error": "We couldn't load this week.",
+      "skillsUp": "Skills up",
+      "skillsUpThisWeek": "this week"
     },
     "skills": {
       "title": "Your skills",
@@ -458,5 +468,9 @@
       "fading": "{count} fading — refresh it | {count} fading — refresh them",
       "error": "We couldn't load your skills."
     }
+  },
+  "weekDays": {
+    "count": "{label} · {count} of 7",
+    "today": "(today)"
   }
 }

@@ -410,7 +410,15 @@
   "yourProgressView": {
     "title": "Seu progresso",
     "back": "Voltar",
-    "comingSoon": "Seus minutos, dias seguidos, músicas e habilidades de cada instrumento vão aparecer aqui em breve."
+    "allInstruments": "Todos os instrumentos",
+    "learningDays": "Dias de estudo",
+    "learned": "estudou",
+    "practiceDays": "Dias de prática",
+    "practised": "praticou",
+    "instrumentChoice": "Instrumento",
+    "anyInstrument": "Qualquer",
+    "movedTitle": "Avançou esta semana",
+    "instrumentError": "Não conseguimos carregar seu progresso neste instrumento."
   },
   "studentHome": {
     "greeting": {
@@ -450,7 +458,9 @@
       "startStreak": "Comece hoje · recorde {count}",
       "startFirstStreak": "Comece hoje",
       "songsThisWeek": "+{count} esta semana",
-      "error": "Não conseguimos carregar esta semana."
+      "error": "Não conseguimos carregar esta semana.",
+      "skillsUp": "Habilidades em alta",
+      "skillsUpThisWeek": "esta semana"
     },
     "skills": {
       "title": "Suas habilidades",
@@ -458,5 +468,9 @@
       "fading": "{count} enfraquecendo — revise-a | {count} enfraquecendo — revise-as",
       "error": "Não conseguimos carregar suas habilidades."
     }
+  },
+  "weekDays": {
+    "count": "{label} · {count} de 7",
+    "today": "(hoje)"
   }
 }

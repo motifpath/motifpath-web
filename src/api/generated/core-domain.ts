@@ -6184,6 +6184,14 @@ export interface components {
              *     summary, not this one. Never a streak: a missed day is never a reset.
              */
             practice_days_last_7: number;
+            /**
+             * @description The same last 7 calendar days, one entry each, oldest first and today last, in
+             *     the given time zone, so a day row can show which days they were. practised
+             *     follows practice_days_last_7's rule, so as many days are practised as
+             *     practice_days_last_7 counts. Never a streak: a day only says whether it
+             *     happened, never that one was missed.
+             */
+            last_7_days: components["schemas"]["PracticeDay"][];
             /** @description Skills that improved over the last 7 days, most improved first. Empty when none did. */
             progress_this_week: components["schemas"]["SkillProgress"][];
             /** @description The top three next steps, in order. */
@@ -6266,9 +6274,11 @@ export interface components {
              */
             day_streak_best: number;
             /**
-             * @description How many skills, counted once per instrument, have at least one improved measure
-             *     in that instrument's progress this week (accuracy, fluency or best clean tempo
-             *     higher now than 7 days ago). Concepts are not counted.
+             * @description How many distinct skills have at least one improved measure this week (accuracy,
+             *     fluency or best clean tempo higher now than 7 days ago), on any of the student's
+             *     instruments or on the items that suit every instrument. A skill that improved on
+             *     several instruments counts once, and a student with no instrument cards still
+             *     counts theirs. Concepts are not counted.
              */
             skills_up_last_7: number;
             /**
@@ -6284,10 +6294,49 @@ export interface components {
              */
             songs_played_last_7: number;
             /**
+             * @description The last 7 calendar days, one entry each, oldest first and today last, in the
+             *     given time zone, so a day row can show which days they were. practised and
+             *     learned follow practice_days_last_7's and learning_days_last_7's rules, so the
+             *     days marked match those counts. Never a streak: a day only says whether it
+             *     happened, never that one was missed.
+             */
+            last_7_days: components["schemas"]["ActivityDay"][];
+            /**
              * @description One card per instrument of the student, inferred from the paths and courses
              *     they're enrolled in, in the order their summaries are tabbed.
              */
             instruments: components["schemas"]["PracticeInstrumentCard"][];
+        };
+        /** @description One calendar day of an instrument's last 7, and whether the student practised it. */
+        PracticeDay: {
+            /**
+             * Format: date
+             * @description The calendar day, in the time zone asked for.
+             */
+            date: string;
+            /**
+             * @description Whether the student finished a practice session with the summarised instrument
+             *     in hand on this day, by the rule practice_days_last_7 counts.
+             */
+            practised: boolean;
+        };
+        /** @description One calendar day of the student's last 7, across instruments. */
+        ActivityDay: {
+            /**
+             * Format: date
+             * @description The calendar day, in the time zone asked for.
+             */
+            date: string;
+            /**
+             * @description Whether the student finished a practice session on this day, on any instrument
+             *     or without one, by the rule practice_days_last_7 counts.
+             */
+            practised: boolean;
+            /**
+             * @description Whether the student completed at least one content node on this day, by the
+             *     rule learning_days_last_7 counts.
+             */
+            learned: boolean;
         };
         /** @description One instrument at a glance, linking to its practice summary. */
         PracticeInstrumentCard: {
@@ -6785,6 +6834,8 @@ export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
 export type SchemaFretboardMap = components['schemas']['FretboardMap'];
 export type SchemaFretboardMapCell = components['schemas']['FretboardMapCell'];
 export type SchemaPracticeOverview = components['schemas']['PracticeOverview'];
+export type SchemaPracticeDay = components['schemas']['PracticeDay'];
+export type SchemaActivityDay = components['schemas']['ActivityDay'];
 export type SchemaPracticeInstrumentCard = components['schemas']['PracticeInstrumentCard'];
 export type SchemaSkillProgress = components['schemas']['SkillProgress'];
 export type SchemaPracticeNextStep = components['schemas']['PracticeNextStep'];
