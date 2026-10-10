@@ -48,18 +48,35 @@
   },
   "nodeView": {
     "heading": "Lesson",
+    "backToMyPath": "Back to My path",
+    "stepMeta": "Step {position} of {total} · {kind}",
+    "stepMetaDone": "Step {position} of {total} · {kind} · Done",
     "unavailable": "This lesson isn't available yet.",
     "checkBackSoon": "We're still building it — check back soon.",
-    "practiceLink": "Practice this lesson ›",
-    "backToPath": "‹ Back to your path",
     "errorMessage": "We couldn't load this lesson.",
-    "notFoundHeading": "Lesson not found",
-    "notFoundMessage": "This lesson isn't on your path.",
+    "notFound": {
+      "title": "This lesson isn't on your path",
+      "message": "It may have moved or been replaced. Your path shows where you are.",
+      "action": "Go to My path"
+    },
+    "locked": {
+      "title": "This step opens later",
+      "message": "Finish step {position}, “{title}”, first. Steps open one by one.",
+      "messageNoCurrent": "Finish the steps before it first. Steps open one by one.",
+      "action": "Go to step {position}",
+      "actionNoCurrent": "Go to My path"
+    },
     "noVideo": "This lesson doesn't have a video yet.",
-    "playbackError": "We couldn't play this video.",
+    "playbackError": "The video didn't load.",
     "playerLoadError": "The video player couldn't load. Reload the page to try again.",
-    "markComplete": "Mark complete",
-    "goToPractice": "Go to practice ›"
+    "tryIt": {
+      "title": "Now try it",
+      "message": "A few short exercises on what you just watched. They finish this step."
+    },
+    "practiseThis": "Practise this",
+    "practiseAgain": "Practise again",
+    "stepDone": "Step done",
+    "savingProgress": "Saving your progress…"
   },
   "lessonPlayer": {
     "play": "Play",

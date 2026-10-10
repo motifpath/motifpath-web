@@ -48,18 +48,35 @@
   },
   "nodeView": {
     "heading": "Lição",
+    "backToMyPath": "Voltar para a trilha",
+    "stepMeta": "Passo {position} de {total} · {kind}",
+    "stepMetaDone": "Passo {position} de {total} · {kind} · Concluído",
     "unavailable": "Esta lição ainda não está disponível.",
     "checkBackSoon": "Ainda estamos preparando. Volte em breve.",
-    "practiceLink": "Praticar esta lição ›",
-    "backToPath": "‹ Voltar para sua trilha",
     "errorMessage": "Não foi possível carregar esta lição.",
-    "notFoundHeading": "Lição não encontrada",
-    "notFoundMessage": "Esta lição não está na sua trilha.",
+    "notFound": {
+      "title": "Esta lição não está na sua trilha",
+      "message": "Ela pode ter mudado de lugar ou sido substituída. Sua trilha mostra onde você está.",
+      "action": "Ir para a trilha"
+    },
+    "locked": {
+      "title": "Este passo abre depois",
+      "message": "Conclua antes o passo {position}, “{title}”. Os passos abrem um a um.",
+      "messageNoCurrent": "Conclua antes os passos anteriores. Os passos abrem um a um.",
+      "action": "Ir para o passo {position}",
+      "actionNoCurrent": "Ir para a trilha"
+    },
     "noVideo": "Esta lição ainda não tem vídeo.",
-    "playbackError": "Não foi possível reproduzir este vídeo.",
+    "playbackError": "O vídeo não carregou.",
     "playerLoadError": "O player de vídeo não carregou. Recarregue a página para tentar de novo.",
-    "markComplete": "Marcar como concluída",
-    "goToPractice": "Ir para a prática ›"
+    "tryIt": {
+      "title": "Agora experimente",
+      "message": "Alguns exercícios curtos sobre o que você acabou de assistir. Eles concluem este passo."
+    },
+    "practiseThis": "Praticar isto",
+    "practiseAgain": "Praticar de novo",
+    "stepDone": "Passo concluído",
+    "savingProgress": "Salvando seu progresso…"
   },
   "lessonPlayer": {
     "play": "Reproduzir",
