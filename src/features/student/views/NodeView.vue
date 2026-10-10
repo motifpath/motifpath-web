@@ -111,13 +111,16 @@ const stepMeta = computed(() => {
   return isReview.value ? t('nodeView.stepMetaDone', values) : t('nodeView.stepMeta', values)
 })
 
-/** A step locked behind an earlier one opens from the step the student can do now. */
+/**
+ * A step locked behind an earlier one opens from the step the student can do now. Going there never
+ * picks a language: a language-locked step explains itself and lets the student choose.
+ */
 const lockedContent = computed(() => {
   const current = lesson.current.value
   return current
     ? {
         message: t('nodeView.locked.message', { position: current.position, title: current.title }),
-        action: { label: t('nodeView.locked.action', { position: current.position }), to: wording.lessonRoute(current) },
+        action: { label: t('nodeView.locked.action', { position: current.position }), to: { name: 'node', params: { nodeId: current.contentNodeId } } },
       }
     : { message: t('nodeView.locked.messageNoCurrent'), action: { label: t('nodeView.locked.actionNoCurrent'), to: { name: 'path' } } }
 })

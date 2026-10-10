@@ -278,6 +278,18 @@ describe('NodeView', () => {
       expect(wrapper.find('media-player').exists()).toBe(false)
     })
 
+    it('opens the step that opens it without choosing a language, so a language-locked one explains itself', async () => {
+      setLesson({ state: 'locked', status: 'locked', node: null })
+      lesson.current.value = makeStep(8, { state: 'language', availableLanguages: ['en'] })
+
+      const wrapper = await mountView()
+
+      expect(wrapper.getComponent<typeof RouterLinkStub>('[data-test="locked-action"]').props('to')).toEqual({
+        name: 'node',
+        params: { nodeId: 'node-8' },
+      })
+    })
+
     it('offers My path from a locked step when no step can be done now', async () => {
       setLesson({ state: 'locked', status: 'locked', node: null })
 
