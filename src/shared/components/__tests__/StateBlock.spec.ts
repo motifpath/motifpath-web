@@ -18,6 +18,7 @@ describe('StateBlock', () => {
     ['locked', 'lucide-lock'],
     ['notFound', 'lucide-search-x'],
     ['offline', 'lucide-wifi-off'],
+    ['language', 'lucide-languages'],
   ] as const)('a %s state shows its icon in a disc', (kind, icon) => {
     const wrapper = mount(StateBlock, { props: { kind, title: 'Title', message: 'Message' } })
 

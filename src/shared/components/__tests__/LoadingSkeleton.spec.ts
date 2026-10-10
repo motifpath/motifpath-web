@@ -26,6 +26,17 @@ describe('LoadingSkeleton', () => {
     expect(wrapper.findAll('[data-test="skeleton-block"]')).toHaveLength(4)
   })
 
+  it('draws a video lesson as a video-shaped block with the lines of its title under it', async () => {
+    const wrapper = mount(LoadingSkeleton, { props: { shape: 'video' } })
+
+    vi.advanceTimersByTime(300)
+    await nextTick()
+
+    const blocks = wrapper.findAll('[data-test="skeleton-block"]')
+    expect(blocks[0].classes()).toContain('aspect-video')
+    expect(blocks.length).toBeGreaterThan(1)
+  })
+
   it('tells assistive technology the content is loading, from the start', () => {
     const wrapper = mount(LoadingSkeleton)
 
