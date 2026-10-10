@@ -2,16 +2,16 @@
 /**
  * The Practice Shell: the one layout of every practice run. An exit, the student's
  * place in the run and its progress on top; what is played or shown and what the student does
- * below; the action in a PracticeActionBar at the bottom. No other navigation.
+ * below; the action in a PracticeActionBar at the bottom. No other navigation, at any size: on a
+ * wider screen the content stays in one centred 560 px column.
  *
  * Keys, so a keyboard or a page-turner pedal can drive a run: Escape exits, and Enter or Space
  * presses the primary action (the button marked `data-primary-action`) unless a control has the
  * focus and takes the key itself.
  */
-import { X } from 'lucide-vue-next'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-import { useTypedT } from '@/shared/composables/useTypedT'
+import PracticeHeader from '@/shared/components/PracticeHeader.vue'
 
 defineProps<{
   /** The exit's accessible name: what × does here. */
@@ -24,7 +24,6 @@ defineProps<{
 
 const emit = defineEmits<{ exit: [] }>()
 
-const { t } = useTypedT()
 const root = ref<HTMLElement | null>(null)
 
 const CONTROLS = 'button, a, input, select, textarea, [contenteditable], [role="button"], [role="radio"], [role="checkbox"]'
@@ -48,46 +47,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <div ref="root" data-test="practice-shell" class="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4">
-    <div class="sticky top-0 z-10 flex flex-col gap-2 bg-surface pt-2 pb-3">
-      <div class="relative flex h-12 items-center">
-        <button
-          type="button"
-          data-test="shell-exit"
-          class="-ml-2 flex h-12 w-12 items-center justify-center rounded-full text-ink-muted hover:text-ink"
-          :aria-label="exitLabel"
-          @click="emit('exit')"
-        >
-          <X :size="24" aria-hidden="true" />
-        </button>
-        <span
-          v-if="position"
-          data-test="shell-position"
-          class="absolute left-1/2 -translate-x-1/2 text-sm font-semibold tabular-nums text-ink-muted"
-        >
-          {{ position.current }} / {{ position.total }}
-        </span>
-      </div>
-      <div
-        v-if="progress && position"
-        class="flex gap-1"
-        role="progressbar"
-        :aria-label="t('practiceShell.progressLabel')"
-        aria-valuemin="0"
-        :aria-valuemax="position.total"
-        :aria-valuenow="position.current"
-      >
-        <div
-          v-for="(filled, i) in progress"
-          :key="i"
-          data-test="session-segment"
-          :data-filled="Math.round(filled * 100)"
-          class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken"
-        >
-          <div class="h-full bg-accent transition-all motion-reduce:transition-none" :style="{ width: `${filled * 100}%` }" />
-        </div>
-      </div>
-    </div>
+  <div ref="root" data-test="practice-shell" class="mx-auto flex w-full max-w-[35rem] flex-1 flex-col px-5">
+    <PracticeHeader :exit-label="exitLabel" :position="position" :progress="progress" @exit="emit('exit')" />
 
     <!-- Room under the content for the fixed action bar. -->
     <div class="flex flex-1 flex-col gap-4 pb-32">
