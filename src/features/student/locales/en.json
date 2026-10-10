@@ -358,7 +358,7 @@
     "nameTheShape": "Which shape is this?",
     "findTheDegree": "Tap the {degree} in this shape",
     "shapes": "Shapes",
-    "unavailable": "This shape can't be shown right now."
+    "unavailable": "This shape can’t be shown right now. Skip it — it won’t count against you."
   },
   "tapCheck": {
     "title": "Tap check",

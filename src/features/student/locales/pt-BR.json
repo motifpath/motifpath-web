@@ -358,7 +358,7 @@
     "nameTheShape": "Que forma é esta?",
     "findTheDegree": "Toque a {degree} nesta forma",
     "shapes": "Formas",
-    "unavailable": "Não foi possível mostrar esta forma agora."
+    "unavailable": "Esta forma não pode ser mostrada agora. Pule — ela não conta contra você."
   },
   "tapCheck": {
     "title": "Teste de toque",

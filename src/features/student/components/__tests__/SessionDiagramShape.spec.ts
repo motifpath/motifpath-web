@@ -113,13 +113,17 @@ describe('SessionDiagramShape', () => {
     expect(wrapper.find('[data-test="diagram-canvas"]').exists()).toBe(false)
   })
 
-  it('offers to skip a shape whose diagram can’t be shown', async () => {
+  it('says a shape whose diagram can’t be shown won’t count, and skips it as unavailable', async () => {
     embedded.status.value = 'unavailable'
     const wrapper = mountShape({ item: naming })
 
-    await wrapper.get('[data-test="skip-shape"]').trigger('click')
+    const notice = wrapper.get('[data-test="inline-notice"]')
+    expect(notice.attributes('data-tone')).toBe('unavailable')
+    expect(notice.text()).toBe('This shape can’t be shown right now. Skip it — it won’t count against you.')
+    await wrapper.get('[data-test="skip-shape"][data-primary-action]').trigger('click')
 
-    expect(wrapper.emitted('next')).toHaveLength(1)
+    expect(wrapper.emitted('skip')).toEqual([['unavailable']])
+    expect(wrapper.emitted('next')).toBeUndefined()
   })
 
   describe('name the shape', () => {
@@ -131,7 +135,7 @@ describe('SessionDiagramShape', () => {
       expect(wrapper.findAll('[data-test="diagram-position-label"]')).toHaveLength(0)
       expect(wrapper.text()).not.toContain('C major')
       expect(wrapper.text()).not.toContain('CAGED')
-      expect(wrapper.findAll('[data-test="shape-choice"]').map((choice) => choice.text())).toEqual([
+      expect(wrapper.findAll('[data-test="shape-choice"] [data-test="option-label"]').map((choice) => choice.text())).toEqual([
         'C shape',
         'A shape',
         'G shape',
@@ -159,12 +163,26 @@ describe('SessionDiagramShape', () => {
       })
     })
 
+    it('shows each member with the number key that names it', () => {
+      const wrapper = mountShape({ item: naming })
+
+      expect(wrapper.findAll('[data-test="shape-choice"] [data-test="key-hint"]').map((hint) => hint.text())).toEqual(['1', '2', '3', '4', '5'])
+    })
+
+    it('answers with the number key of a member', () => {
+      const wrapper = mountShape({ item: naming })
+
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '4', bubbles: true }))
+
+      expect(wrapper.emitted('answer')![0]![0]).toEqual({ response_type: 'name_the_shape', shape: 'E' })
+    })
+
     it('reveals the right shape beside a wrong pick, and goes on from there', async () => {
       const wrapper = mountShape({ item: naming, answer: { answer: { response_type: 'name_the_shape', shape: 'E' }, correct: false } })
 
       const marks = wrapper.findAll('[data-test="shape-choice"]').map((choice) => choice.attributes('data-mark'))
       expect(marks).toEqual([undefined, 'right', undefined, 'wrong', undefined])
-      expect(wrapper.findAll('[data-test="shape-choice"]')[1]!.text()).toContain('right answer')
+      expect(wrapper.findAll('[data-test="shape-choice"]')[1]!.text()).toContain('Right answer')
       expect(wrapper.get('[data-test="answer-feedback"]').text()).toContain('Not quite')
       await wrapper.get('[data-test="next-item"]').trigger('click')
       expect(wrapper.emitted('next')).toHaveLength(1)

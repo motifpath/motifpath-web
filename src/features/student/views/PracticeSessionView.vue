@@ -300,6 +300,7 @@ onBeforeUnmount(() => {
         :instrument-name="currentInstrumentName"
         @answer="(answer, board) => run!.answerShape(answer, board)"
         @next="run.nextItem()"
+        @skip="run.skip($event)"
       />
       <PlayAlongTake
         v-else-if="current.kind === 'play_along' && current.play_along && run.tempo.value !== null"

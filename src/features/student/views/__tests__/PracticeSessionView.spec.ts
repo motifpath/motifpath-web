@@ -451,6 +451,17 @@ describe('PracticeSessionView', () => {
     })
   })
 
+  it('sends a shape that can’t be shown as not answered and moves on', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper, plan([shapeItem(), cellItem(5, 3, 'name_the_note')]))
+
+    wrapper.getComponent(SessionDiagramShapeStub).vm.$emit('skip', 'unavailable')
+    await flushPromises()
+
+    expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: { response_type: 'not_answered', reason: 'unavailable' } })])
+    expect(wrapper.findComponent(SessionFretboardCellStub).exists()).toBe(true)
+  })
+
   describe('with fretboard cells', () => {
     it('shows a cell with its instrument’s tuning, and records its answer', async () => {
       const wrapper = mountView()
