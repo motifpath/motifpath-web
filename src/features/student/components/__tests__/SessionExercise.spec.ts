@@ -104,7 +104,7 @@ describe('SessionExercise', () => {
 
     expect(wrapper.get('[data-test="item-reason"]').text()).toBe('Due for review')
     expect(wrapper.text()).toContain('Which interval is this?')
-    expect(wrapper.findAll('[data-test="exercise-option"]').map((candidate) => candidate.text())).toEqual(['Minor third', 'Major third'])
+    expect(wrapper.findAll('[data-test="exercise-option"] [data-test="option-label"]').map((candidate) => candidate.text())).toEqual(['Minor third', 'Major third'])
   })
 
   describe('with one right option', () => {

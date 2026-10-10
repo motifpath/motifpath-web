@@ -167,7 +167,7 @@ describe('PracticeView', () => {
     expect(mountView().getComponent(PracticeHelpModal).props('diagramStimulus')).toBe(false)
   })
 
-  it('tells ExerciseView to allow multiple selections only when the exercise has more than one correct option', () => {
+  it('says how many to choose when the exercise has more than one correct option', () => {
     const multiCorrectExercise: Exercise = {
       ...textExercise,
       options: [
@@ -179,7 +179,7 @@ describe('PracticeView', () => {
 
     const wrapper = mountView()
 
-    expect(wrapper.get('[data-test="exercise-option-indicator"]').classes()).not.toContain('rounded-full')
+    expect(wrapper.get('[data-test="choose-count"]').text()).toBe('Choose 2')
   })
 
   it('reads "Next ›" on a non-final exercise and "See result" on the last one', () => {

@@ -279,16 +279,32 @@ describe('ExerciseView', () => {
     expect(rows[0]?.attributes('data-selected')).toBe('false')
   })
 
-  it('renders a checkbox-shaped indicator when allowMultiple is true and a radio-shaped one otherwise', () => {
-    const single = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
-    })
-    const multi = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, allowMultiple: true },
+  it('says how many to choose after the prompt, when told', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, allowMultiple: true, chooseCount: 2 },
     })
 
-    expect(single.get('[data-test="exercise-option-indicator"]').classes()).toContain('rounded-full')
-    expect(multi.get('[data-test="exercise-option-indicator"]').classes()).not.toContain('rounded-full')
+    expect(wrapper.get('[data-test="choose-count"]').text()).toBe('Choose 2')
+  })
+
+  it('says nothing about how many when not told', () => {
+    const wrapper = mount(ExerciseView, { props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions } })
+
+    expect(wrapper.find('[data-test="choose-count"]').exists()).toBe(false)
+  })
+
+  it('shows each text option with the number key that chooses it', () => {
+    const wrapper = mount(ExerciseView, { props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions } })
+
+    expect(wrapper.findAll('[data-test="exercise-option"] [data-test="key-hint"]').map((hint) => hint.text())).toEqual(['1', '2'])
+  })
+
+  it('locks the options it doesn’t mark once the answer is graded', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: [...textOptions, { option_id: 'o3', label: 'Tapping', is_correct: false }], selectedOptionIds: ['o2'], reveal: { correctOptionIds: ['o1'] } },
+    })
+
+    expect(wrapper.findAll('[data-test="exercise-option"]').map((option) => option.attributes('data-state'))).toEqual(['right', 'wrong', 'locked'])
   })
 
   it('lays out the prompt beside the content in landscape direction', () => {

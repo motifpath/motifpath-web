@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { Check, Play, Square, X } from 'lucide-vue-next'
+import { Check, X } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import AudioOption from '@/shared/components/AudioOption.vue'
 import Icon from '@/shared/components/Icon.vue'
+import ImageOption from '@/shared/components/ImageOption.vue'
+import OptionTile from '@/shared/components/OptionTile.vue'
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
+import { optionState } from '@/shared/utils/optionState'
+import type { OptionState } from '@/shared/utils/optionState'
 
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
@@ -59,8 +64,10 @@ const props = withDefaults(
      * answer. Clearing it loads the stimulus again.
      */
     stimulusMissing?: boolean
+    /** How many options to choose, said after the prompt when there are several right ones. */
+    chooseCount?: number
   }>(),
-  { direction: 'column', allowMultiple: false, stimulusMissing: false },
+  { direction: 'column', allowMultiple: false, stimulusMissing: false, chooseCount: undefined },
 )
 
 /**
@@ -86,14 +93,6 @@ function select(optionId: string): void {
   selected.value = props.allowMultiple ? [...selected.value, optionId] : [optionId]
 }
 
-// Shape says radio-vs-checkbox; fill only applies to a selected checkbox —
-// a selected radio stays outline-only, matching the pre-multi-select look.
-function indicatorClasses(optionId: string): string[] {
-  const shape = props.allowMultiple ? 'rounded-sm' : 'rounded-full'
-  if (!isSelected(optionId)) return [shape, 'border-border']
-  return props.allowMultiple ? [shape, 'border-accent', 'bg-accent'] : [shape, 'border-accent']
-}
-
 /** How a graded answer marks an option: right when it is a right one, wrong when picked but not right. */
 function markOf(optionId: string): AnswerMarkKind | undefined {
   if (!props.reveal) return undefined
@@ -101,12 +100,9 @@ function markOf(optionId: string): AnswerMarkKind | undefined {
   return isSelected(optionId) ? 'wrong' : undefined
 }
 
-/** An option's border and fill: its mark once graded, otherwise whether it is picked. */
-function optionTone(optionId: string, selectedTone: string, idleTone: string): string {
-  const mark = markOf(optionId)
-  if (mark === 'right') return 'border-success bg-success-muted'
-  if (mark === 'wrong') return 'border-danger bg-danger-muted'
-  return isSelected(optionId) ? selectedTone : idleTone
+/** An option's look: its mark once graded, locked when it can't be chosen, otherwise whether it's picked. */
+function stateOf(optionId: string): OptionState {
+  return optionState({ selected: isSelected(optionId), mark: markOf(optionId), settled: Boolean(props.reveal) || props.stimulusMissing })
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
@@ -181,10 +177,6 @@ function markText(optionId: string): string {
   return t(markOf(optionId) === 'right' ? 'exerciseView.markRight' : 'exerciseView.markWrong')
 }
 
-function markClass(optionId: string): string {
-  return markOf(optionId) === 'right' ? 'text-success' : 'text-danger'
-}
-
 function stopClip(): void {
   if (playingOptionId.value === null) return
   audioPlayerEl.value?.pause()
@@ -231,7 +223,9 @@ watch(
       :class="isLandscape ? 'flex-[0_0_40%]' : 'flex-[0_0_auto]'"
     >
       <PromptRenderer :document="prompt" />
-      <slot name="after-prompt" />
+      <p v-if="chooseCount" data-test="choose-count" class="mt-1 text-sm font-medium text-ink-muted">
+        {{ t('exerciseView.chooseCount', { count: chooseCount }) }}
+      </p>
     </div>
 
     <div class="min-w-0" :class="isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'">
@@ -338,32 +332,18 @@ watch(
         </div>
 
         <div class="flex flex-col gap-2">
-          <div
-            v-for="option in options"
+          <OptionTile
+            v-for="(option, i) in options"
             :key="option.option_id"
             data-test="exercise-option"
             :data-selected="isSelected(option.option_id)"
             :data-mark="markOf(option.option_id)"
             :data-locked="stimulusMissing"
-            class="flex items-center gap-2 rounded-md border px-[11px] py-[9px]"
-            :class="[
-              optionTone(option.option_id, 'border-accent bg-accent-muted', 'border-border bg-transparent'),
-              stimulusMissing ? 'cursor-default opacity-50' : 'cursor-pointer',
-            ]"
+            :key-hint="i + 1"
+            :label="option.label ?? ''"
+            :state="stateOf(option.option_id)"
             @click="select(option.option_id)"
-          >
-            <div
-              data-test="exercise-option-indicator"
-              class="h-4 w-4 shrink-0 border-2"
-              :class="indicatorClasses(option.option_id)"
-            />
-            <span class="text-[13px] text-ink">{{ option.label }}</span>
-            <span v-if="markOf(option.option_id)" data-test="answer-mark" class="ml-auto" :class="markClass(option.option_id)">
-              <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
-              <X v-else :size="16" aria-hidden="true" />
-              <span class="sr-only">{{ markText(option.option_id) }}</span>
-            </span>
-          </div>
+          />
         </div>
       </template>
 
@@ -373,79 +353,41 @@ watch(
         class="grid gap-2"
         :class="hasDiagramChoices ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'"
       >
-        <div
-          v-for="option in options"
+        <ImageOption
+          v-for="(option, i) in options"
           :key="option.option_id"
           data-test="exercise-option"
           :data-selected="isSelected(option.option_id)"
           :data-mark="markOf(option.option_id)"
-          class="relative cursor-pointer overflow-hidden rounded-md border-2"
-          :class="optionTone(option.option_id, 'border-accent', 'border-border')"
+          :key-hint="i + 1"
+          :label="option.label"
+          :state="stateOf(option.option_id)"
           @click="select(option.option_id)"
         >
           <span
-            v-if="markOf(option.option_id)"
-            data-test="answer-mark"
-            class="absolute right-1.5 top-1.5 z-[1] flex h-6 w-6 items-center justify-center rounded-full"
-            :class="markOf(option.option_id) === 'right' ? 'bg-success text-success-fg' : 'bg-danger text-danger-fg'"
-          >
-            <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
-            <X v-else :size="16" aria-hidden="true" />
-            <span class="sr-only">{{ markText(option.option_id) }}</span>
-          </span>
-          <div
             data-test="exercise-option-media"
-            class="flex w-full items-center justify-center overflow-hidden bg-surface-sunken"
-            :class="[option.diagram_ref ? 'px-2 py-1' : 'h-32', { 'border-b border-border': option.label }]"
+            class="flex w-full items-center justify-center overflow-hidden"
+            :class="option.diagram_ref ? 'px-2 py-1' : 'h-32'"
           >
             <EmbeddedDiagram v-if="option.diagram_ref" :embed="{ kind: 'single', ref: option.diagram_ref }" inert compact class="w-full" />
             <img v-else :src="option.image_url" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
-          </div>
-          <div
-            v-if="option.label"
-            data-test="exercise-option-label"
-            class="px-2 py-1.5"
-            :class="isSelected(option.option_id) ? 'bg-accent-muted' : 'bg-transparent'"
-          >
-            <span class="text-xs text-ink">{{ option.label }}</span>
-          </div>
-        </div>
+          </span>
+        </ImageOption>
       </div>
 
       <div v-else-if="isAudioSelection" class="flex flex-col gap-2">
-        <div
+        <AudioOption
           v-for="option in options"
           :key="option.option_id"
           data-test="exercise-option"
           :data-selected="isSelected(option.option_id)"
           :data-mark="markOf(option.option_id)"
-          class="flex min-h-[56px] cursor-pointer items-center gap-2 rounded-md border-2 py-1 pl-1 pr-3"
-          :class="optionTone(option.option_id, 'border-accent bg-accent-muted', 'border-border bg-transparent')"
-          @click="select(option.option_id)"
-        >
-          <button
-            type="button"
-            data-test="option-play"
-            class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-accent hover:bg-surface-sunken"
-            :aria-label="t(playingOptionId === option.option_id ? 'exerciseView.stopOption' : 'exerciseView.playOption', { label: option.label ?? '' })"
-            @click.stop="togglePlay(option)"
-          >
-            <Square v-if="playingOptionId === option.option_id" :size="18" aria-hidden="true" />
-            <Play v-else :size="18" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="min-w-0 flex-1 py-2 text-left text-[13px] font-semibold text-ink"
-            :aria-pressed="isSelected(option.option_id)"
-          >
-            {{ option.label }}
-          </button>
-          <span v-if="markOf(option.option_id)" data-test="answer-mark" :class="markClass(option.option_id)">
-            <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
-            <X v-else :size="16" aria-hidden="true" />
-            <span class="sr-only">{{ markText(option.option_id) }}</span>
-          </span>
-        </div>
+          :label="option.label ?? ''"
+          :state="stateOf(option.option_id)"
+          :playing="playingOptionId === option.option_id"
+          @select="select(option.option_id)"
+          @play="togglePlay(option)"
+        />
         <audio ref="audioPlayerEl" class="hidden" @ended="onClipEnded" />
       </div>
     </div>

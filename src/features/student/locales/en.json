@@ -341,7 +341,6 @@
     "right": "Right!",
     "wrong": "Not quite.",
     "next": "Continue",
-    "chooseCount": "Choose {count}",
     "skip": "Skip",
     "soundFailed": "The sound didn’t load. You need to hear it to answer — try again, or skip it.",
     "pictureFailed": "The picture didn’t load. You need to see it to answer — try again, or skip it.",

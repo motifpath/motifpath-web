@@ -115,15 +115,13 @@ onBeforeUnmount(() => {
       :selected-option-ids="shown"
       :reveal="reveal"
       @update:selected-option-ids="choose"
+      :choose-count="allowMultiple ? rightCount : undefined"
       :stimulus-missing="missing !== null"
       @playing="emit('playing', $event)"
       @stimulus-missing="missing = $event"
     >
       <template #stimulus-notice>
         <InlineNotice :tone="missing === 'unavailable' ? 'unavailable' : 'error'" :message="missingMessage" />
-      </template>
-      <template v-if="allowMultiple" #after-prompt>
-        <p data-test="choose-count" class="mt-1 text-sm font-medium text-ink-muted">{{ t('sessionExercise.chooseCount', { count: rightCount }) }}</p>
       </template>
     </ExerciseView>
 
