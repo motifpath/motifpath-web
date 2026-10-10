@@ -9,15 +9,15 @@ import { CircleCheck, CircleX } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import { useTypedT } from '@/shared/composables/useTypedT'
-
-export type OptionTileState = 'default' | 'selected' | 'right' | 'wrong' | 'locked'
+import { isSettled, OPTION_STATE_CLASSES } from '@/shared/utils/optionState'
+import type { OptionState } from '@/shared/utils/optionState'
 
 const props = withDefaults(
   defineProps<{
     /** The number key that chooses it. */
     keyHint: number
     label: string
-    state?: OptionTileState
+    state?: OptionState
   }>(),
   { state: 'default' },
 )
@@ -26,15 +26,7 @@ defineEmits<{ click: [event: MouseEvent] }>()
 
 const { t } = useTypedT()
 
-const STATE_CLASSES: Record<OptionTileState, string> = {
-  default: 'border border-border bg-surface hover:border-accent',
-  selected: 'border-2 border-accent bg-accent-muted',
-  right: 'border-2 border-success bg-success-muted',
-  wrong: 'border-2 border-danger bg-danger-muted',
-  locked: 'border border-border bg-surface opacity-55',
-}
-
-const settled = computed(() => props.state === 'right' || props.state === 'wrong' || props.state === 'locked')
+const settled = computed(() => isSettled(props.state))
 </script>
 
 <template>
@@ -44,7 +36,7 @@ const settled = computed(() => props.state === 'right' || props.state === 'wrong
     :aria-pressed="state === 'selected'"
     :disabled="settled"
     class="flex min-h-[56px] w-full items-center gap-3 rounded-lg px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-    :class="STATE_CLASSES[state]"
+    :class="OPTION_STATE_CLASSES[state]"
     @click="$emit('click', $event)"
   >
     <span

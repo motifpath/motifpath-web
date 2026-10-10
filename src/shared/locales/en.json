@@ -323,5 +323,9 @@
   "optionTile": {
     "markRight": "Right answer",
     "markWrong": "Your answer, wrong"
+  },
+  "audioOption": {
+    "play": "Play {label}",
+    "stop": "Stop {label}"
   }
 }
