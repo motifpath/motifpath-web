@@ -50,10 +50,10 @@ colors['brand-ground'] = tokens.brand.ground.$value
 // brand colour is fixed by that brand, not by either MotifPath theme.
 colors['whatsapp'] = '#25D366'
 
-// Fretboard materials, and the fretboard map's level colours, are feature-scoped
-// to the fretboard drawings rather than motifpath-brand roles; their values sit
-// beside --color-fretboard-wood in src/assets/main.css.
-for (const material of ['fretboard-inlay', 'fretboard-string', 'fretboard-metal-shadow', 'fretboard-sounding', 'level-learning', 'level-accurate', 'level-fluent', 'level-retained']) {
+// Fretboard materials are feature-scoped to the fretboard drawings rather than
+// motifpath-brand roles; their values sit beside --color-fretboard-wood in
+// src/assets/main.css.
+for (const material of ['fretboard-inlay', 'fretboard-string', 'fretboard-metal-shadow', 'fretboard-sounding']) {
   colors[material] = `rgb(var(--color-${material}) / <alpha-value>)`
 }
 
