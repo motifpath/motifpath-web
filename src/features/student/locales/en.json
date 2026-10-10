@@ -345,20 +345,9 @@
     }
   },
   "practiceHomeView": {
-    "title": "Practice",
-    "start": "Start practising",
-    "overview": "Overview",
-    "tabsLabel": "Practice by instrument",
-    "overviewNoun": "your practice",
-    "overviewError": "We couldn't load your practice.",
-    "summaryNoun": "this instrument's practice",
     "summaryError": "We couldn't load this instrument's practice.",
-    "noInstruments": "What you're learning suits any instrument, so choose the instrument in your hands when you start. Want an instrument of your own?",
-    "findPath": "Find a path",
     "practiceDays": "Practice days",
-    "learningDays": "Learning days",
     "daysOf7": "None of the last 7 days | 1 of the last 7 days | {count} of the last 7 days",
-    "noSuggestion": "Nothing to suggest yet",
     "progressTitle": "This week",
     "noProgress": "Nothing has moved yet this week. A session will show it here.",
     "measures": {
