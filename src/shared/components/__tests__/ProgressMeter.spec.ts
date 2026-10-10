@@ -28,4 +28,11 @@ describe('ProgressMeter', () => {
 
     expect(wrapper.text()).toBe('0 of 0')
   })
+
+  it('leaves the count out when the caller already says it, and the bar keeps the full sentence', () => {
+    const wrapper = mount(ProgressMeter, { props: { completed: 7, total: 14, showCount: false } })
+
+    expect(wrapper.text()).toBe('')
+    expect(wrapper.get('[role="progressbar"]').attributes('aria-label')).toBe('7 of 14 steps complete')
+  })
 })

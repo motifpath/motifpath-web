@@ -44,7 +44,11 @@
       "message": "A path is a short series of lessons, in order. Pick a course or a path to start one.",
       "action": "Explore courses and paths"
     },
-    "errorMessage": "We couldn't load your path."
+    "errorMessage": "We couldn't load your path.",
+    "progressCard": {
+      "steps": "{completed} of {total} steps",
+      "coursePart": "Part {part} of {parts} of {course}"
+    }
   },
   "nodeView": {
     "heading": "Lesson",

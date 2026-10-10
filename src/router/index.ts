@@ -84,6 +84,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'path',
+        // Room for a side column beside the steps on a wide window.
+        meta: { wideContent: true },
         component: () => import('@/features/student/views/PathView.vue'),
       },
       {

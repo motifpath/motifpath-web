@@ -328,6 +328,10 @@ describe('router', () => {
     expect(router.resolve('/path').meta.hidesBottomBar).toBeFalsy()
   })
 
+  it('gives My path the wide content column, for the side column beside its steps', () => {
+    expect(router.resolve('/path').meta.wideContent).toBe(true)
+  })
+
   it('runs a practice session in the Practice Shell’s layout, with no app bar', async () => {
     const [layout] = router.resolve('/practice/session').matched
     // A lazy route component is a loader until the first navigation replaces it with what it loaded.
