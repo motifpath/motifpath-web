@@ -7,6 +7,7 @@ import type { LessonNodeState } from '@/features/student/composables/useLessonNo
 import type { MyPathStep } from '@/features/student/utils/myPath'
 import { makeTimedCue } from '@/features/student/testing/expandedContent'
 import { makeVideoNode } from '@/features/student/testing/contentNode'
+import { makeStudentPathItem, makeStudentPathView } from '@/features/student/testing/studentPathItem'
 import type { components } from '@/api/generated/core-domain'
 
 type ContentNode = components['schemas']['ContentNode']
@@ -470,18 +471,17 @@ describe('NodeView', () => {
         expect(wrapper.getComponent<typeof RouterLinkStub>('[data-test="back-to-my-path"]').props('to')).toEqual({ name: 'path' })
       })
 
-      it('offers the next step even when the path it loaded still showed it locked behind this one', async () => {
+      it('offers the next step as the path has it once this one is recorded', async () => {
+        // Read before this step was done, the path shows step 9 waiting behind it; recorded, step 9
+        // turns out to be in English only.
         lesson.next.value = makeStep(9, { state: 'locked' })
-        const wrapper = await mountView()
-
-        await endVideo(wrapper)
-        await flushPromises()
-
-        expect(wrapper.getComponent({ name: 'NextStepCard' }).props('actionLabel')).toBe('Start lesson')
-      })
-
-      it('opens a language-locked next step in the language it has', async () => {
-        lesson.next.value = makeStep(9, { state: 'language', availableLanguages: ['en'] })
+        waitForCompletion.mockResolvedValue({
+          kind: 'recorded',
+          view: makeStudentPathView([
+            { ...makeStudentPathItem(8, undefined, 'completed'), content_node_id: 'node-abc' },
+            { ...makeStudentPathItem(9, undefined, 'locked'), lock_reason: 'language', available_languages: [{ code: 'en', name: 'English' }] },
+          ]),
+        })
         const wrapper = await mountView()
 
         await endVideo(wrapper)
@@ -490,6 +490,20 @@ describe('NodeView', () => {
         expect(wrapper.getComponent({ name: 'NextStepCard' }).props()).toMatchObject({
           actionLabel: 'Watch in English',
           to: { name: 'node', params: { nodeId: 'node-9' }, query: { language: 'en' } },
+        })
+      })
+
+      it('falls back to the next step the lesson loaded with when no fresh path came back, offering it as a lesson', async () => {
+        lesson.next.value = makeStep(9, { state: 'locked' })
+        waitForCompletion.mockResolvedValue({ kind: 'timed-out' })
+        const wrapper = await mountView()
+
+        await endVideo(wrapper)
+        await flushPromises()
+
+        expect(wrapper.getComponent({ name: 'NextStepCard' }).props()).toMatchObject({
+          actionLabel: 'Start lesson',
+          to: { name: 'node', params: { nodeId: 'node-9' } },
         })
       })
 

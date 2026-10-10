@@ -1,8 +1,10 @@
 import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
 import { useApi } from '@/shared/composables/useApi'
+import type { components } from '@/api/generated/core-domain'
 
 export type LessonCompletionOutcome =
-  | { kind: 'recorded' }
+  /** `view` is the path as re-read once the lesson was recorded; absent when no path is left. */
+  | { kind: 'recorded'; view?: components['schemas']['StudentPathView'] }
   | { kind: 'course-completed'; enrollmentId: string }
   | { kind: 'timed-out' }
 
@@ -32,7 +34,7 @@ export function useLessonCompletionSync({ intervalMs = 500, attempts = 10 } = {}
       if (enrollmentId) return { kind: 'course-completed', enrollmentId }
 
       const item = result.data.items.find((candidate) => candidate.content_node_id === contentNodeId)
-      if (!item || item.status === 'completed') return { kind: 'recorded' }
+      if (!item || item.status === 'completed') return { kind: 'recorded', view: result.data }
     }
     return { kind: 'timed-out' }
   }

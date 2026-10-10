@@ -79,3 +79,13 @@ export function buildMyPath(view: StudentPathView): MyPath {
     complete: steps.every((step) => step.state === 'done'),
   }
 }
+
+/**
+ * The step after a step, as the path has it now: the one that step's completion opens. Null after
+ * the last step, or when the step isn't on the path.
+ */
+export function stepAfter(view: StudentPathView, contentNodeId: string): MyPathStep | null {
+  const item = view.items.find((candidate) => candidate.content_node_id === contentNodeId)
+  const after = item && view.items.find((candidate) => candidate.position === item.position + 1)
+  return after ? stepOf(after, view.current_position) : null
+}

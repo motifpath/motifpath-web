@@ -10,6 +10,7 @@ import { useLessonNode } from '@/features/student/composables/useLessonNode'
 import { useLessonTracking } from '@/features/student/composables/useLessonTracking'
 import { useStepWording } from '@/features/student/composables/useStepWording'
 import { activeCue } from '@/features/student/utils/activeCue'
+import { stepAfter, type MyPathStep } from '@/features/student/utils/myPath'
 import { lessonReference } from '@/features/student/utils/conciergeLink'
 import { Check } from 'lucide-vue-next'
 
@@ -137,13 +138,14 @@ const languageContent = computed(() => {
 })
 
 /**
- * The step after this one, as its card offers it. The path was read before this step was done, so
- * a step it showed waiting behind this one is offered as the next lesson it now is.
+ * The step after this one, as its card offers it: read from the path re-read once this step was
+ * recorded, which knows what it opened (a step only in another language, say). Without that read,
+ * the path the lesson loaded with, where that step still waits behind this one and is offered as the
+ * lesson it now is.
  */
-const nextAction = computed(() => {
-  const next = lesson.next.value
-  return next ? wording.startAction(next) : null
-})
+const recordedNext = ref<MyPathStep | null>(null)
+const handOffNext = computed(() => recordedNext.value ?? lesson.next.value)
+const nextAction = computed(() => (handOffNext.value ? wording.startAction(handOffNext.value) : null))
 
 // The practice actions sit in a bar at the foot of the screen, where the floating ask-your-teacher
 // button would otherwise cover them.
@@ -160,6 +162,7 @@ function resetPlayback(): void {
   playbackSeconds.value = 0
   playbackFailed.value = false
   handOff.value = 'none'
+  recordedNext.value = null
 }
 
 // A reload, or a different lesson, starts a fresh viewing. A node change
@@ -207,6 +210,7 @@ async function onEnded(): Promise<void> {
   if (outcome.kind === 'course-completed') {
     await router.replace({ name: 'course-completed', params: { enrollmentId: outcome.enrollmentId } })
   } else if (!left && myViewing === viewing) {
+    if (outcome.kind === 'recorded' && outcome.view) recordedNext.value = stepAfter(outcome.view, nodeId.value)
     handOff.value = 'done'
   }
 }
@@ -352,11 +356,11 @@ async function onEnded(): Promise<void> {
             <Check :size="20" aria-hidden="true" />{{ t('nodeView.stepDone') }}
           </p>
           <NextStepCard
-            v-if="lesson.next.value && nextAction"
-            :eyebrow="t('pathView.upNext', { position: lesson.next.value.position, total: lesson.total.value })"
-            :title="lesson.next.value.title"
-            :kind="lesson.next.value.kind"
-            :kind-label="wording.kindLabel(lesson.next.value)"
+            v-if="handOffNext && nextAction"
+            :eyebrow="t('pathView.upNext', { position: handOffNext.position, total: lesson.total.value })"
+            :title="handOffNext.title"
+            :kind="handOffNext.kind"
+            :kind-label="wording.kindLabel(handOffNext)"
             :action-label="nextAction.label"
             :to="nextAction.to"
           />

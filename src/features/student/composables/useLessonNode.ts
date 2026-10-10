@@ -1,7 +1,7 @@
 import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 import { completedCourseEnrollmentId as completedEnrollmentOf } from '@/features/student/utils/courseCompletion'
-import { buildMyPath, type MyPathStep } from '@/features/student/utils/myPath'
+import { buildMyPath, stepAfter, type MyPathStep } from '@/features/student/utils/myPath'
 import { useApi } from '@/shared/composables/useApi'
 import type { components } from '@/api/generated/core-domain'
 
@@ -108,7 +108,7 @@ export function useLessonNode(
       status.value = item.status
       const steps = buildMyPath(pathResult.data).sections.flatMap((section) => section.steps)
       step.value = steps.find((candidate) => candidate.contentNodeId === id) ?? null
-      next.value = steps.find((candidate) => candidate.position === item.position + 1) ?? null
+      next.value = stepAfter(pathResult.data, id)
       current.value = steps.find((candidate) => candidate.position === pathResult.data.current_position) ?? null
       total.value = steps.length
       // A language-locked step opens once the student picks a language it has: the lock is about
