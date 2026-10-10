@@ -458,5 +458,9 @@
       "fading": "{count} enfraquecendo — revise-a | {count} enfraquecendo — revise-as",
       "error": "Não conseguimos carregar suas habilidades."
     }
+  },
+  "weekDays": {
+    "count": "{label} · {count} de 7",
+    "today": "(hoje)"
   }
 }

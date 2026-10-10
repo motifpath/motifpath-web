@@ -17,11 +17,13 @@ export function usePracticeOverview() {
   )
 }
 
-/** One instrument's practice summary, loaded on setup. */
-export function usePracticeSummary(instrumentId: string) {
-  return useApiItem<Summary>((coreApi) =>
-    coreApi.GET('/students/me/practice-summary', { params: { query: { instrument_id: instrumentId, time_zone: timeZone() } } }),
-  )
+/**
+ * One instrument's practice summary, loaded on setup. With no instrument, the summary of the
+ * skills that suit any instrument.
+ */
+export function usePracticeSummary(instrumentId: string | null) {
+  const query = instrumentId ? { instrument_id: instrumentId, time_zone: timeZone() } : { time_zone: timeZone() }
+  return useApiItem<Summary>((coreApi) => coreApi.GET('/students/me/practice-summary', { params: { query } }))
 }
 
 /** How well the student knows each cell of an instrument's fretboard, loaded on setup. */

@@ -458,5 +458,9 @@
       "fading": "{count} fading — refresh it | {count} fading — refresh them",
       "error": "We couldn't load your skills."
     }
+  },
+  "weekDays": {
+    "count": "{label} · {count} of 7",
+    "today": "(today)"
   }
 }

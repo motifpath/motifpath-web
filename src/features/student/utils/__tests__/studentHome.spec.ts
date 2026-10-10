@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
-import { skillLevelCounts, skillsInstrumentId, thisWeek, todaysPractice } from '@/features/student/utils/studentHome'
+import { skillLevelCounts, skillsInstrumentId, thisWeek, todaysPractice, weekdayMarks } from '@/features/student/utils/studentHome'
 
 type Overview = components['schemas']['PracticeOverview']
 type Summary = components['schemas']['PracticeSummary']
@@ -104,7 +104,7 @@ describe('skillsInstrumentId', () => {
 })
 
 describe('thisWeek', () => {
-  it('reads minutes against the week before, the day streak with the best, and songs played', () => {
+  it('reads minutes against the week before, the day streak with the best, songs played and skills up', () => {
     const week = thisWeek(
       overview({
         minutes_practised_last_7: 48,
@@ -113,16 +113,47 @@ describe('thisWeek', () => {
         day_streak_best: 9,
         songs_played_total: 5,
         songs_played_last_7: 1,
+        skills_up_last_7: 3,
       }),
     )
 
-    expect(week).toEqual({ minutes: 48, minutesChange: 15, streak: 3, bestStreak: 9, songs: 5, songsThisWeek: 1 })
+    expect(week).toEqual({ minutes: 48, minutesChange: 15, streak: 3, bestStreak: 9, songs: 5, songsThisWeek: 1, skillsUp: 3 })
   })
 
   it('keeps a lower week as a negative change, for the tile to show without alarm', () => {
     const week = thisWeek(overview({ minutes_practised_last_7: 20, minutes_practised_previous_7: 45 }))
 
     expect(week.minutesChange).toBe(-25)
+  })
+})
+
+describe('weekdayMarks', () => {
+  // Thursday 2026-10-08 to Wednesday 2026-10-14.
+  const week = ['2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14']
+  const days = (marked: number[]) => week.map((date, index) => ({ date, marked: marked.includes(index) }))
+
+  it('names each day by its weekday initial, in the student’s language', () => {
+    expect(weekdayMarks(days([]), 'en').map((mark) => mark.letter)).toEqual(['T', 'F', 'S', 'S', 'M', 'T', 'W'])
+    expect(weekdayMarks(days([]), 'pt-BR').map((mark) => mark.letter)).toEqual(['Q', 'S', 'S', 'D', 'S', 'T', 'Q'])
+  })
+
+  it('names the whole weekday too, for assistive technology', () => {
+    expect(weekdayMarks(days([]), 'en')[0]!.name).toBe('Thursday')
+  })
+
+  it('fills the days something happened and counts them', () => {
+    const marks = weekdayMarks(days([0, 2, 6]), 'en')
+
+    expect(marks.map((mark) => mark.filled)).toEqual([true, false, true, false, false, false, true])
+  })
+
+  it('marks the last day as today, and only that one', () => {
+    expect(weekdayMarks(days([]), 'en').map((mark) => mark.isToday)).toEqual([false, false, false, false, false, false, true])
+  })
+
+  it('reads each date as a calendar day, whatever the device’s time zone', () => {
+    // Parsed as UTC midnight, 2026-10-08 would be the 7th west of Greenwich.
+    expect(weekdayMarks([{ date: '2026-10-08', marked: false }], 'en')[0]!.name).toBe('Thursday')
   })
 })
 

@@ -38,6 +38,15 @@ describe('the practice home’s data', () => {
     })
   })
 
+  it('loads the summary of the skills that suit any instrument, with no instrument asked for', async () => {
+    GET.mockResolvedValueOnce({ data: { instrument_id: null }, response: { status: 200 } })
+
+    const { isLoading } = usePracticeSummary(null)
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(GET).toHaveBeenCalledWith('/students/me/practice-summary', { params: { query: { time_zone: 'America/Sao_Paulo' } } })
+  })
+
   it('loads an instrument’s fretboard map', async () => {
     GET.mockResolvedValueOnce({ data: { instrument_id: GUITAR, layout_instrument_id: GUITAR, cells: [] }, response: { status: 200 } })
 
