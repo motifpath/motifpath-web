@@ -24,14 +24,14 @@ const skills = computed(() => (summary.value ? skillLevelCounts(summary.value) :
 <template>
   <div class="flex flex-col gap-3">
     <header class="flex items-center gap-2">
-      <h2 class="text-base font-semibold text-ink">
+      <h2 class="min-w-0 flex-1 text-base font-semibold text-ink">
         {{ t('studentHome.skills.title') }}
         <span v-if="instrumentName" class="font-medium text-ink-muted">· {{ instrumentName }}</span>
       </h2>
       <RouterLink
         :to="{ name: 'your-progress', query: { instrument: instrumentId } }"
         data-test="skills-see-all"
-        class="ml-auto inline-flex min-h-12 items-center text-sm font-semibold text-accent-text"
+        class="inline-flex min-h-12 shrink-0 items-center whitespace-nowrap text-sm font-semibold text-accent-text"
       >
         {{ t('studentHome.skills.seeAll') }}
       </RouterLink>

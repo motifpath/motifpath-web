@@ -125,3 +125,22 @@ export const practiceSummary: Schemas['PracticeSummary'] = {
     },
   ],
 }
+
+const pathSteps = ['Holding the guitar', 'Tuning', 'Open E minor', 'Open A minor', 'Strumming down', 'Strumming up', 'Changing chords', 'Major triads', 'Inversions', 'Minor triads', 'Barre shapes', 'Power chords', 'Palm muting', 'Your first song']
+
+/** "Guitar fundamentals": 8 of its 14 steps done, the next being the video "Inversions". */
+export const studentPath: Schemas['StudentPathView'] = {
+  student_path_id: 'student-path-guitar',
+  source_template_id: 'path-guitar-fundamentals',
+  title: 'Guitar fundamentals',
+  current_position: 9,
+  course_completed: false,
+  items: pathSteps.map((title, index) => ({
+    position: index + 1,
+    content_node_id: `node-${index + 1}`,
+    content_node_version_id: `node-version-${index + 1}`,
+    title,
+    content_type: index % 3 === 2 ? 'article' : 'video',
+    status: index < 8 ? 'completed' : 'not_started',
+  })),
+}

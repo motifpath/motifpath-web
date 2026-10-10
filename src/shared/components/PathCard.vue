@@ -30,7 +30,7 @@ const percent = computed(() => (props.total === 0 ? 0 : (props.completed / props
     class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
   >
     <div class="flex items-center gap-2">
-      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-muted text-accent-text">
+      <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent-muted text-accent-text">
         <Icon name="path" :size="18" />
       </span>
       <span class="flex min-w-0 flex-1 flex-col">
