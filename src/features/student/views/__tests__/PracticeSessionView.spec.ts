@@ -929,6 +929,19 @@ describe('PracticeSessionView', () => {
       expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: expect.objectContaining({ latency_ms: 0 }) })])
     })
 
+    it('sends a skipped exercise as not answered and moves on', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, mixed())
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('skip', 'failed_to_load')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: { response_type: 'not_answered', reason: 'failed_to_load' } }),
+      ])
+      expect(wrapper.find('[data-test="take"]').exists()).toBe(true)
+    })
+
     it('moves on to the next item when the student asks', async () => {
       const wrapper = mountView()
       await startSession(wrapper, mixed())

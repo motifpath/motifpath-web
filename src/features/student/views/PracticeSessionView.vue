@@ -281,6 +281,7 @@ onBeforeUnmount(() => {
         :answer="run.exerciseAnswer.value"
         @answer="run.answer($event)"
         @playing="run.clipPlaying($event)"
+        @skip="run.skip($event)"
         @next="run.nextItem()"
       />
       <SessionFretboardCell

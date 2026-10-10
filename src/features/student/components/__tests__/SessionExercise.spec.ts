@@ -55,6 +55,9 @@ const sounds: Item = {
 }
 sounds.exercise = { ...sounds.exercise!, exercise_type: 'audio_selection' }
 
+const listening: Item = { ...oneCorrect, item_key: 'exercise:ex-4' }
+listening.exercise = { ...oneCorrect.exercise!, exercise_id: 'ex-4', exercise_type: 'audio_recognition', audio_url: 'https://media.test/third.mp3' }
+
 let reducedMotion = false
 function stubMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -188,6 +191,80 @@ describe('SessionExercise', () => {
 
       expect(wrapper.emitted('playing')).toEqual([[true], [false]])
       expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+  })
+
+  describe('when its stimulus is missing', () => {
+    const missing = async (wrapper: ReturnType<typeof mountExercise>, reason: 'failed_to_load' | 'unavailable') => {
+      wrapper.getComponent(ExerciseView).vm.$emit('stimulusMissing', reason)
+      await wrapper.vm.$nextTick()
+    }
+    const bar = (wrapper: ReturnType<typeof mountExercise>) => wrapper.get('[data-test="action-bar"]')
+
+    it('offers no Skip while the stimulus is there', () => {
+      expect(mountExercise({ item: listening }).find('[data-test="skip-item"]').exists()).toBe(false)
+    })
+
+    it('says the sound didn’t load in its place, and offers Try again first and Skip', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('error')
+      expect(notice.text()).toBe('The sound didn’t load. You need to hear it to answer — try again, or skip it.')
+      expect(bar(wrapper).get('[data-test="retry-stimulus"]').text()).toBe('Try again')
+      expect(bar(wrapper).get('[data-test="retry-stimulus"]').attributes()).toHaveProperty('data-primary-action')
+      expect(bar(wrapper).get('[data-test="skip-item"]').attributes()).not.toHaveProperty('data-primary-action')
+    })
+
+    it('takes no choice, by tap or key, while the sound is missing', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await option(wrapper, 'Minor third').trigger('click')
+      press('1')
+
+      expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+
+    it('loads the sound again on Try again', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await bar(wrapper).get('[data-test="retry-stimulus"]').trigger('click')
+
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
+      expect(wrapper.getComponent(ExerciseView).props('stimulusMissing')).toBe(false)
+    })
+
+    it('skips as failed to load', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await bar(wrapper).get('[data-test="skip-item"]').trigger('click')
+
+      expect(wrapper.emitted('skip')).toEqual([['failed_to_load']])
+    })
+
+    it('says an exercise that can’t be shown here won’t count, with Skip as the only way on', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'unavailable')
+
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('unavailable')
+      expect(notice.text()).toBe('This exercise can’t be shown right now. Skip it — it won’t count against you.')
+      expect(bar(wrapper).find('[data-test="retry-stimulus"]').exists()).toBe(false)
+      await bar(wrapper).get('[data-test="skip-item"][data-primary-action]').trigger('click')
+      expect(wrapper.emitted('skip')).toEqual([['unavailable']])
+    })
+
+    it('starts the next exercise with its stimulus expected', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await wrapper.setProps({ item: oneCorrect })
+
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
     })
   })
 

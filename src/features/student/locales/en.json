@@ -341,7 +341,11 @@
     "right": "Right!",
     "wrong": "Not quite.",
     "next": "Continue",
-    "chooseCount": "Choose {count}"
+    "chooseCount": "Choose {count}",
+    "skip": "Skip",
+    "soundFailed": "The sound didn’t load. You need to hear it to answer — try again, or skip it.",
+    "pictureFailed": "The picture didn’t load. You need to see it to answer — try again, or skip it.",
+    "unavailable": "This exercise can’t be shown right now. Skip it — it won’t count against you."
   },
   "sessionFretboardCell": {
     "nameTheNote": "Name this note",
