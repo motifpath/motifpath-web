@@ -46,6 +46,15 @@ const twoCorrect = item('ex-2', [
   { option_id: 'e', is_correct: true, label: 'E' },
 ])
 
+const sounds: Item = {
+  ...item('ex-3', [
+    { option_id: 's1', is_correct: false, label: 'Lick A', audio_url: 'https://media.test/a.mp3' },
+    { option_id: 's2', is_correct: true, label: 'Lick B', audio_url: 'https://media.test/b.mp3' },
+    { option_id: 's3', is_correct: false, label: 'Lick C', audio_url: 'https://media.test/c.mp3' },
+  ]),
+}
+sounds.exercise = { ...sounds.exercise!, exercise_type: 'audio_selection' }
+
 let reducedMotion = false
 function stubMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -128,6 +137,57 @@ describe('SessionExercise', () => {
       await check().trigger('click')
 
       expect(wrapper.emitted('answer')).toEqual([[['c', 'e']]])
+    })
+  })
+
+  describe('with several right options, saying how many', () => {
+    it('ends the prompt with how many to choose', () => {
+      expect(mountExercise({ item: twoCorrect }).get('[data-test="choose-count"]').text()).toBe('Choose 2')
+    })
+
+    it('says nothing about how many with one right option', () => {
+      expect(mountExercise({ item: oneCorrect }).find('[data-test="choose-count"]').exists()).toBe(false)
+    })
+  })
+
+  describe('with sound options', () => {
+    beforeEach(() => {
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    })
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('waits for Check even with one right option', async () => {
+      const wrapper = mountExercise({ item: sounds })
+
+      await option(wrapper, 'Lick B').trigger('click')
+      expect(option(wrapper, 'Lick B').attributes('data-selected')).toBe('true')
+      expect(wrapper.emitted('answer')).toBeUndefined()
+
+      await wrapper.get('[data-test="action-bar"] [data-test="check-answer"]').trigger('click')
+      expect(wrapper.emitted('answer')).toEqual([[['s2']]])
+    })
+
+    it('chooses with a number key without committing', async () => {
+      const wrapper = mountExercise({ item: sounds })
+
+      press('3')
+      await wrapper.vm.$nextTick()
+
+      expect(option(wrapper, 'Lick C').attributes('data-selected')).toBe('true')
+      expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+
+    it('says when a clip starts and stops, so the answer can be timed from the last one heard', async () => {
+      const wrapper = mountExercise({ item: sounds })
+
+      await option(wrapper, 'Lick A').get('[data-test="option-play"]').trigger('click')
+      await option(wrapper, 'Lick A').get('[data-test="option-play"]').trigger('click')
+
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+      expect(wrapper.emitted('answer')).toBeUndefined()
     })
   })
 

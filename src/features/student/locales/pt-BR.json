@@ -340,7 +340,8 @@
     "check": "Verificar",
     "right": "Certo!",
     "wrong": "Não foi dessa vez.",
-    "next": "Continuar"
+    "next": "Continuar",
+    "chooseCount": "Escolha {count}"
   },
   "sessionFretboardCell": {
     "nameTheNote": "Que nota é esta?",

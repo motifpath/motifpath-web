@@ -340,7 +340,8 @@
     "check": "Check",
     "right": "Right!",
     "wrong": "Not quite.",
-    "next": "Continue"
+    "next": "Continue",
+    "chooseCount": "Choose {count}"
   },
   "sessionFretboardCell": {
     "nameTheNote": "Name this note",

@@ -217,6 +217,7 @@ watch(
       :class="isLandscape ? 'flex-[0_0_40%]' : 'flex-[0_0_auto]'"
     >
       <PromptRenderer :document="prompt" />
+      <slot name="after-prompt" />
     </div>
 
     <div class="min-w-0" :class="isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'">

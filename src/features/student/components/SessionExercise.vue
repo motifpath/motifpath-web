@@ -2,7 +2,8 @@
 /**
  * One exercise item of a practice session, answered at its commit point:
  * with one right option the tap is the answer, since latency counts from the prompt and an extra
- * tap would read as slowness; with several, the student chooses and then checks. The parent
+ * tap would read as slowness; with several, the student is told how many, chooses and then checks.
+ * Sound options always wait for Check, since listening is not answering. The parent
  * records the answer. Feedback shows in place: a right answer moves on by itself after a moment
  * (Continue instead when the student asks for reduced motion); a wrong one reveals the right
  * option(s) and waits for Continue, so the student sees where the mistake was.
@@ -32,12 +33,15 @@ const props = defineProps<{
   answer: ExerciseAnswer | null
 }>()
 
-const emit = defineEmits<{ answer: [optionIds: string[]]; next: [] }>()
+const emit = defineEmits<{ answer: [optionIds: string[]]; next: []; playing: [playing: boolean] }>()
 
 const { t } = useTypedT()
 
 const exercise = computed<Exercise>(() => props.item.exercise!)
 const allowMultiple = computed(() => hasMultipleCorrectOptions(exercise.value.options))
+const rightCount = computed(() => exercise.value.options.filter((option) => option.is_correct).length)
+/** Whether the student commits with Check rather than with the tap. */
+const checksFirst = computed(() => allowMultiple.value || exercise.value.exercise_type === 'audio_selection')
 
 const chosen = ref<string[]>([])
 watch(
@@ -59,7 +63,7 @@ const reveal = computed(() =>
 function choose(optionIds: string[]) {
   if (props.answer) return
   chosen.value = optionIds
-  if (!allowMultiple.value && optionIds.length === 1) emit('answer', optionIds)
+  if (!checksFirst.value && optionIds.length === 1) emit('answer', optionIds)
 }
 
 const { next } = useAdvanceAfterAnswer(
@@ -97,7 +101,12 @@ onBeforeUnmount(() => {
       :selected-option-ids="shown"
       :reveal="reveal"
       @update:selected-option-ids="choose"
-    />
+      @playing="emit('playing', $event)"
+    >
+      <template v-if="allowMultiple" #after-prompt>
+        <p data-test="choose-count" class="mt-1 text-sm font-medium text-ink-muted">{{ t('sessionExercise.chooseCount', { count: rightCount }) }}</p>
+      </template>
+    </ExerciseView>
 
     <PracticeActionBar>
       <template v-if="answer">
@@ -116,7 +125,7 @@ onBeforeUnmount(() => {
         </PrimaryButton>
       </template>
       <PrimaryButton
-        v-else-if="allowMultiple"
+        v-else-if="checksFirst"
         data-test="check-answer"
         data-primary-action
         class="h-12 w-full"

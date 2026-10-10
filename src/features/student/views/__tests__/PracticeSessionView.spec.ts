@@ -916,6 +916,19 @@ describe('PracticeSessionView', () => {
       expect(segments(wrapper)).toEqual([100, 0])
     })
 
+    it('times a choice among sounds from the clips the exercise reports', async () => {
+      const wrapper = mountView()
+      const sounds = exerciseItem(EXERCISE)
+      sounds.exercise = { ...sounds.exercise!, exercise_type: 'audio_selection' }
+      await startSession(wrapper, plan([sounds]))
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('playing', true)
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: expect.objectContaining({ latency_ms: 0 }) })])
+    })
+
     it('moves on to the next item when the student asks', async () => {
       const wrapper = mountView()
       await startSession(wrapper, mixed())
