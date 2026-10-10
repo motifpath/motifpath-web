@@ -15,7 +15,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 import { useAdvanceAfterAnswer } from '@/features/student/composables/useAdvanceAfterAnswer'
 import type { ExerciseAnswer } from '@/features/student/composables/usePracticeSessionRun'
-import { pickReasonKeys } from '@/features/student/utils/pickReason'
+import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
@@ -84,10 +84,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col gap-4" data-test="session-exercise">
-    <h2 data-test="item-title" class="-mb-2 text-lg font-semibold leading-tight">{{ exercise.title }}</h2>
-    <span data-test="item-reason" class="self-start rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">
-      {{ t(pickReasonKeys[item.reason]) }}
-    </span>
+    <ItemHeader :title="exercise.title" :reason="item.reason" />
 
     <ExerciseView
       :exercise-type="exercise.exercise_type"

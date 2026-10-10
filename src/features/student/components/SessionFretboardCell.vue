@@ -12,7 +12,7 @@ import { computed, onBeforeUnmount, onMounted } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 import { useAdvanceAfterAnswer } from '@/features/student/composables/useAdvanceAfterAnswer'
 import type { GradedCellAnswer } from '@/features/student/composables/usePracticeSessionRun'
-import { pickReasonKeys } from '@/features/student/utils/pickReason'
+import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 import type { CellMark } from '@/shared/components/diagram/DrillFretboard.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
@@ -102,12 +102,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 <template>
   <div class="flex flex-col gap-4" data-test="session-fretboard-cell">
-    <span data-test="item-reason" class="self-start rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">
-      {{ t(pickReasonKeys[item.reason]) }}
-    </span>
-
-    <p v-if="instrumentName" data-test="item-instrument" class="text-sm font-medium text-ink-muted">{{ instrumentName }}</p>
-    <p data-test="cell-prompt" class="text-lg font-semibold">{{ prompt }}</p>
+    <p v-if="instrumentName" data-test="item-instrument" class="-mb-2 text-sm font-medium text-ink-muted">{{ instrumentName }}</p>
+    <ItemHeader :title="prompt" :reason="item.reason" />
 
     <DrillFretboard
       :tuning="tuning"

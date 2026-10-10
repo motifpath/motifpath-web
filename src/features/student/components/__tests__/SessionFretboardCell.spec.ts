@@ -74,7 +74,7 @@ describe('SessionFretboardCell', () => {
     it('lights the cell and offers the twelve notes', () => {
       const wrapper = mountCell({ item: naming })
 
-      expect(wrapper.get('[data-test="cell-prompt"]').text()).toBe('Name this note')
+      expect(wrapper.get('h2[data-test="item-title"]').text()).toBe('Name this note')
       const lit = wrapper.get('[data-test="lit-cell"]')
       expect([lit.attributes('data-string'), lit.attributes('data-fret')]).toEqual(['5', '3'])
       expect(wrapper.findAll('[data-test="note-choice"]').map((choice) => choice.text())).toEqual([
@@ -123,7 +123,7 @@ describe('SessionFretboardCell', () => {
     it('asks for the note on its string, and takes taps on that string only', async () => {
       const wrapper = mountCell({ item: finding })
 
-      expect(wrapper.get('[data-test="cell-prompt"]').text()).toBe('Find F on string 6')
+      expect(wrapper.get('h2[data-test="item-title"]').text()).toBe('Find F on string 6')
       expect(wrapper.get('[data-test="asked-string"]').attributes('data-string')).toBe('6')
       expect(wrapper.findAll('[data-test="drill-cell"]').every((target) => target.attributes('data-string') === '6')).toBe(true)
       expect(wrapper.find('[data-test="lit-cell"]').exists()).toBe(false)

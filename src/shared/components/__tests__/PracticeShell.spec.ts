@@ -51,6 +51,13 @@ describe('PracticeShell', () => {
     expect(wrapper.find('[role="progressbar"]').exists()).toBe(false)
   })
 
+  it('keeps text, options and feedback to one 560 px column with 24 px gutters', () => {
+    const wrapper = mountShell()
+
+    const column = wrapper.get('[data-test="practice-shell"]')
+    expect(column.classes()).toEqual(expect.arrayContaining(['mx-auto', 'max-w-[35rem]', 'px-5']))
+  })
+
   it('exits on Escape, so a keyboard or pedal can leave', () => {
     const wrapper = mountShell()
 

@@ -13,6 +13,18 @@ export interface PlanRow {
   shapeCount?: number
 }
 
+/** The drill a fretboard cell or diagram shape belongs to, which its line is keyed by; null for any other item. */
+function drillTemplateOf(item: Item): string | null {
+  if (item.fretboard_cell) return `fretboard_cell:${item.fretboard_cell.drill}`
+  if (item.diagram_shape) return `diagram_shape:${item.diagram_shape.drill}`
+  return null
+}
+
+/** The key of the plan line an item is listed on. */
+export function planRowKeyOf(item: Item): string {
+  return drillTemplateOf(item) ?? item.item_key
+}
+
 /**
  * The lines of today's plan, in session order. Fretboard cells and diagram shapes come many to a
  * session and look alike, so each drill's cells, and each drill's shapes, are one line, where its
@@ -22,11 +34,7 @@ export function planRows(items: Item[]): PlanRow[] {
   const rows: PlanRow[] = []
   const drillRows = new Map<string, PlanRow>()
   for (const item of items) {
-    const template = item.fretboard_cell
-      ? `fretboard_cell:${item.fretboard_cell.drill}`
-      : item.diagram_shape
-        ? `diagram_shape:${item.diagram_shape.drill}`
-        : null
+    const template = drillTemplateOf(item)
     if (!template) {
       rows.push({ key: item.item_key, item })
       continue

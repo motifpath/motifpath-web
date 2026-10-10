@@ -955,4 +955,66 @@ describe('usePracticeSessionRun', () => {
       })
     })
   })
+
+  describe('what the run did, for its summary', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-06T10:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('keeps whether each answered item was right', () => {
+      const run = usePracticeSessionRun(plan([exerciseItem('e1', 'due'), exerciseItem('e2', 'new')]))
+      run.start()
+
+      run.answer(['right'])
+      run.nextItem()
+      run.answer(['wrong'])
+
+      expect(run.outcomes.value.get('exercise:e1')).toEqual({ kind: 'answered', correct: true })
+      expect(run.outcomes.value.get('exercise:e2')).toEqual({ kind: 'answered', correct: false })
+    })
+
+    it('keeps a play-along’s rated takes, a warm-up’s too', () => {
+      const run = usePracticeSessionRun(twoItems)
+      run.start()
+
+      run.rate('clean')
+      run.rate('almost')
+
+      expect(run.outcomes.value.get(`play_along:${WARM_UP}`)).toEqual({
+        kind: 'played',
+        takes: [
+          { bpm: 80, rating: 'clean' },
+          { bpm: 80, rating: 'almost' },
+        ],
+      })
+    })
+
+    it('keeps nothing for an item the student never answered', () => {
+      const run = usePracticeSessionRun(plan([exerciseItem('e1', 'due'), exerciseItem('e2', 'new')]))
+      run.start()
+
+      run.nextItem()
+      run.end()
+
+      expect([...run.outcomes.value.keys()]).toEqual([])
+    })
+
+    it('counts the minutes from the start to the end, never less than one', () => {
+      const run = usePracticeSessionRun(twoItems)
+      run.start()
+      vi.advanceTimersByTime(10 * 60_000 + 40_000)
+      run.end()
+
+      expect(run.elapsedMinutes.value).toBe(11)
+
+      const quick = usePracticeSessionRun(twoItems)
+      quick.start()
+      vi.advanceTimersByTime(5_000)
+      quick.end()
+
+      expect(quick.elapsedMinutes.value).toBe(1)
+    })
+  })
 })

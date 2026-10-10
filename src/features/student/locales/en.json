@@ -217,8 +217,8 @@
     "minutesOption": "{minutes} min",
     "start": "Start practising",
     "starting": "Putting your session together…",
-    "instrumentsError": "We couldn't load the instruments.",
-    "planError": "We couldn't put your session together.",
+    "instrumentsError": "We couldn't load the instruments. Check your connection and try again.",
+    "planError": "We couldn't put your session together. Your choices are kept — try again.",
     "nothingToPlay": "There’s nothing to play on this instrument yet. You can practise in your head instead.",
     "practiseInTheHead": "Practise in my head",
     "endSession": "End session",
@@ -235,18 +235,16 @@
       "stretch": "A step further"
     },
     "doneTitle": "Session done",
-    "doneBody": "Nothing answered or rated this time. Every session still counts. | You answered or rated {count} item. | You answered or rated {count} items.",
     "practiseAgain": "Practise again",
-    "backToPath": "Back to my path",
     "progressLabel": "Session progress",
     "applyIt": "Apply it",
     "close": "Close",
     "inMyHead": "In my head",
-    "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument."
+    "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument.",
+    "findWhereToStart": "Find where to start"
   },
   "sessionPlan": {
     "title": "Today's plan",
-    "minutes": "{minutes} min",
     "start": "Let's go",
     "playAlong": "Play-along",
     "cells": "{drill} · {count} note | {drill} · {count} notes",
@@ -261,7 +259,25 @@
       "played": "You played {name} up to {bpm} BPM.",
       "next": "Next",
       "continue": "Continue"
+    },
+    "meta": "{minutes} min · {instrument}",
+    "kinds": {
+      "exercise": "Exercise",
+      "playAlong": "Play-along",
+      "fretboard": "Fretboard",
+      "chordChange": "Chord change"
     }
+  },
+  "sessionSummary": {
+    "minutes": "{minutes} min · {instrument}",
+    "withItems": "{ran} · {count} item | {ran} · {count} items",
+    "whatYouPractised": "What you practised",
+    "played": "up to {bpm} BPM · {rating}",
+    "counted": "{right} of {answered} right",
+    "right": "Right",
+    "notQuite": "Not quite",
+    "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
+    "done": "Done"
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",

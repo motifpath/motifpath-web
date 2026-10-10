@@ -114,7 +114,12 @@ const FeltQuestionsStub = defineComponent({
 
 const TodaysPlanStub = defineComponent({
   name: 'TodaysPlan',
-  props: { items: { type: Array, required: true }, minutes: { type: Number, required: true }, labelOf: { type: Function, required: true } },
+  props: {
+    items: { type: Array, required: true },
+    minutes: { type: Number, required: true },
+    instrumentName: { type: String, required: true },
+    labelOf: { type: Function, required: true },
+  },
   emits: ['start'],
   setup(props) {
     return () => h('div', { 'data-test': 'plan' }, `${props.minutes} min: ${props.items.length} items`)
@@ -127,6 +132,16 @@ const NextUpCardStub = defineComponent({
   emits: ['continue'],
   setup(props) {
     return () => h('div', { 'data-test': 'next-up' }, `${props.doneLabel} up to ${props.fastestBpm} → ${props.nextLabel} (${props.nextReason})`)
+  },
+})
+
+// The summary loads this week's numbers itself: here it only reports what it was given and emits.
+const SessionSummaryStub = defineComponent({
+  name: 'SessionSummary',
+  props: { rows: { type: Array, required: true }, minutes: Number, instrumentName: String, itemCount: Number, labelOf: Function },
+  emits: ['done', 'practiseAgain'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'session-done' }, `${props.minutes} min · ${props.instrumentName} · ${props.itemCount} items · ${props.rows.length} rows`)
   },
 })
 
@@ -234,6 +249,7 @@ function mountView() {
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
         NextUpCard: NextUpCardStub,
+        SessionSummary: SessionSummaryStub,
       },
     },
   })
@@ -288,6 +304,7 @@ describe('PracticeSessionView', () => {
       await composeSession(wrapper)
 
       expect(wrapper.get('[data-test="plan"]').text()).toBe('10 min: 2 items')
+      expect(wrapper.getComponent(TodaysPlanStub).props('instrumentName')).toBe('Guitar')
       expect(wrapper.find('[data-test="take"]').exists()).toBe(false)
       expect(track).not.toHaveBeenCalled()
       expect(wakeLockActive!.value).toBe(false)
@@ -363,6 +380,15 @@ describe('PracticeSessionView', () => {
       expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 10 } })
     })
 
+    it('names a session in the head as such on today’s plan', async () => {
+      const wrapper = mountView()
+      await headTile(wrapper).get('input').setValue()
+
+      await composeSession(wrapper, plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }))
+
+      expect(wrapper.getComponent(TodaysPlanStub).props('instrumentName')).toBe('In my head')
+    })
+
     it('chooses the head when no instrument can play along', () => {
       instruments.instruments.value = allInstruments.filter((instrument) => instrument.family === 'keyboard')
       const wrapper = mountView()
@@ -372,15 +398,21 @@ describe('PracticeSessionView', () => {
       expect(wrapper.get('[data-test="start-session"]').attributes('disabled')).toBeUndefined()
     })
 
-    it('says when there is nothing to practise in the head', async () => {
+    it('says when there is nothing to practise in the head, and the way out is the primary action', async () => {
       const wrapper = mountView()
       await headTile(wrapper).get('input').setValue()
       POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
       await wrapper.get('[data-test="start-session"]').trigger('click')
       await flushPromises()
 
-      expect(wrapper.text()).toContain('There’s nothing to practise in your head yet. Pick an instrument.')
-      expect(wrapper.find('[data-test="practise-in-head"]').exists()).toBe(false)
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('unavailable')
+      expect(notice.text()).toBe('There’s nothing to practise in your head yet. Pick an instrument.')
+      const primary = wrapper.get('[data-primary-action]')
+      expect(primary.text()).toBe('Find where to start')
+
+      await primary.trigger('click')
+      expect(router.push).toHaveBeenCalledWith({ name: 'home' })
     })
   })
 
@@ -685,8 +717,7 @@ describe('PracticeSessionView', () => {
     await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true, answered_count: 0 })])
-    expect(wrapper.text()).toContain('Session done')
-    expect(wrapper.text()).toContain('Nothing answered or rated this time.')
+    expect(wrapper.getComponent(SessionSummaryStub).props()).toMatchObject({ rows: [], itemCount: 0, instrumentName: 'Guitar' })
   })
 
   it('shows the session done after its last take', async () => {
@@ -696,7 +727,9 @@ describe('PracticeSessionView', () => {
     await flushPromises()
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false, answered_count: 1 })])
-    expect(wrapper.text()).toContain('You answered or rated 1 item.')
+    const summary = wrapper.getComponent(SessionSummaryStub)
+    expect(summary.props('itemCount')).toBe(1)
+    expect(summary.props('rows')).toEqual([expect.objectContaining({ key: `play_along:${DUE}`, result: { kind: 'played', fastestBpm: 65, rating: 'clean' } })])
   })
 
   it('goes back to the choice for another session', async () => {
@@ -704,9 +737,20 @@ describe('PracticeSessionView', () => {
     await startSession(wrapper)
     await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
-    await wrapper.get('[data-test="practise-again"]').trigger('click')
+    wrapper.getComponent(SessionSummaryStub).vm.$emit('practiseAgain')
+    await flushPromises()
 
     expect(wrapper.find('[data-test="start-session"]').exists()).toBe(true)
+  })
+
+  it('goes home when the student is done', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+    wrapper.getComponent(SessionSummaryStub).vm.$emit('done')
+
+    expect(router.push).toHaveBeenCalledWith({ name: 'home' })
   })
 
   it('ends a session left mid-way, once', async () => {
@@ -752,38 +796,85 @@ describe('PracticeSessionView', () => {
     expect(track).not.toHaveBeenCalled()
   })
 
-  it('says when the session can’t be put together, and tries again', async () => {
-    const wrapper = mountView()
-    POST.mockResolvedValueOnce({ error: { message: 'boom' }, response: { status: 500 } })
-    await wrapper.get('[data-test="start-session"]').trigger('click')
-    await flushPromises()
+  describe('setup', () => {
+    it('keeps the choices when the session can’t be put together, and Try again sends them again', async () => {
+      const wrapper = mountView()
+      await wrapper.get('[data-test="minutes-20"]').setValue()
+      POST.mockResolvedValueOnce({ error: { message: 'boom' }, response: { status: 500 } })
+      await wrapper.get('[data-test="start-session"]').trigger('click')
+      await flushPromises()
 
-    expect(wrapper.text()).toContain("We couldn't put your session together.")
-    await startSession(wrapper)
-    expect(segments(wrapper)).toEqual([0, 0])
-  })
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('error')
+      expect(notice.text()).toBe("We couldn't put your session together. Your choices are kept — try again.")
+      expect(wrapper.get<HTMLInputElement>('[data-test="minutes-20"]').element.checked).toBe(true)
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Try again')
 
-  it('offers a session in the head when there is nothing to play on the chosen instrument', async () => {
-    const wrapper = mountView()
-    POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
-    await wrapper.get('[data-test="start-session"]').trigger('click')
-    await flushPromises()
+      await startSession(wrapper)
+      expect(POST).toHaveBeenLastCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 20 } })
+      expect(segments(wrapper)).toEqual([0, 0])
+    })
 
-    expect(wrapper.get('[role="alert"]').text()).toBe('There’s nothing to play on this instrument yet. You can practise in your head instead.')
-    expect(wrapper.findAll('[data-test="instrument-tile"]')).toHaveLength(2)
+    it('makes practising in the head the primary action when there is nothing to play on the chosen instrument', async () => {
+      const wrapper = mountView()
+      POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
+      await wrapper.get('[data-test="start-session"]').trigger('click')
+      await flushPromises()
 
-    POST.mockResolvedValueOnce({ data: plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }), response: { status: 200 } })
-    await wrapper.get('[data-test="practise-in-head"]').trigger('click')
-    await flushPromises()
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('unavailable')
+      expect(notice.text()).toBe('There’s nothing to play on this instrument yet. You can practise in your head instead.')
+      expect(wrapper.findAll('[data-test="instrument-tile"]')).toHaveLength(2)
+      expect(wrapper.findAll('[data-primary-action]')).toHaveLength(1)
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Practise in my head')
 
-    expect(POST).toHaveBeenLastCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 10 } })
-    expect(wrapper.find('[data-test="plan"]').exists()).toBe(true)
-  })
+      POST.mockResolvedValueOnce({ data: plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }), response: { status: 200 } })
+      await wrapper.get('[data-primary-action]').trigger('click')
+      await flushPromises()
 
-  it('says when the instruments can’t be loaded', () => {
-    instruments.error.value = true
+      expect(POST).toHaveBeenLastCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 10 } })
+      expect(wrapper.find('[data-test="plan"]').exists()).toBe(true)
+    })
 
-    expect(mountView().text()).toContain("We couldn't load the instruments.")
+    it('goes back to Start practising once another instrument is chosen', async () => {
+      const wrapper = mountView()
+      POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
+      await wrapper.get('[data-test="start-session"]').trigger('click')
+      await flushPromises()
+
+      await wrapper.findAll('[data-test="instrument-tile"]')[1].get('input').setValue()
+
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Start practising')
+    })
+
+    it('says in place when the instruments can’t be loaded, with Try again as the primary action', async () => {
+      instruments.error.value = true
+      const wrapper = mountView()
+
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('error')
+      expect(notice.text()).toBe("We couldn't load the instruments. Check your connection and try again.")
+      expect(wrapper.find('[data-test="minutes-10"]').exists()).toBe(true)
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Try again')
+
+      await wrapper.get('[data-primary-action]').trigger('click')
+      expect(instruments.retry).toHaveBeenCalledOnce()
+    })
+
+    it('shows the shape of today’s plan while the session is put together, never a blank spinner', async () => {
+      const wrapper = mountView()
+      POST.mockReturnValueOnce(new Promise(() => {}))
+      await wrapper.get('[data-test="start-session"]').trigger('click')
+
+      const composing = wrapper.get('[data-test="plan-composing"]')
+      expect(composing.text()).toContain("Today's plan")
+      expect(composing.text()).toContain('Putting your session together…')
+      expect(composing.find('[aria-busy="true"]').exists()).toBe(true)
+      expect(wrapper.get('[data-primary-action]').text()).toBe("Let's go")
+      expect(wrapper.get('[data-primary-action]').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="start-session"]').exists()).toBe(false)
+    })
   })
 
   it('plays the next take at the tempo the student picks', async () => {
@@ -856,7 +947,7 @@ describe('PracticeSessionView', () => {
       await flushPromises()
       await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
-      expect(wrapper.get('[data-test="session-done"]').text()).toContain('You answered or rated 1 item.')
+      expect(wrapper.getComponent(SessionSummaryStub).props('itemCount')).toBe(1)
       expect(events('practice.session_ended')).toEqual([expect.objectContaining({ answered_count: 1, left_early: true })])
     })
   })
