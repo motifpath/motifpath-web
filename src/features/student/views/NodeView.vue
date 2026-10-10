@@ -325,7 +325,15 @@ async function practiseArticle(): Promise<void> {
       </StateBlock>
     </template>
 
-    <template v-else>
+    <!-- One reading column, as wide as a tablet's, on every screen from a tablet up: the cue sits
+         under the video at the video's width. A phone turned sideways keeps the whole width, as
+         the video fills its height with the cue beside it. -->
+    <div
+      v-else
+      data-test="lesson-layout"
+      class="flex flex-col gap-4"
+      :class="isShortHeight ? null : ['mx-auto w-full', isArticle ? 'max-w-[35rem]' : 'max-w-[38.75rem]']"
+    >
       <template v-if="lesson.state.value === 'ready' && !isArticle">
         <!-- A playback failure says so where the video was, but does not unmount the player below
              it (v-show, not v-if): the video engine still needs a fresh provider on retry, but the
@@ -342,8 +350,8 @@ async function practiseArticle(): Promise<void> {
         <!-- The cue lives inside LessonPlayer's aside slot (not beside it as a
              separate element) so it is still shown when the player goes
              fullscreen — the Fullscreen API only renders an element's own
-             descendants. Stacked below the video in portrait, beside it in
-             landscape.
+             descendants. Beside the video on a phone turned sideways and in
+             fullscreen, stacked below it otherwise.
 
              The slot is provided whenever this lesson has any cues at all, not
              only while one is active: an aria-live region has to stay mounted
@@ -486,7 +494,7 @@ async function practiseArticle(): Promise<void> {
           {{ t('nodeView.practiseAgain') }}
         </AppButton>
       </div>
-    </template>
+    </div>
 
     <div v-if="openSongChartId" data-test="song-chart-overlay" class="fixed inset-0 z-50 overflow-y-auto bg-surface">
       <SongChartScreen :song-chart-id="openSongChartId" @close="openSongChartId = null" />

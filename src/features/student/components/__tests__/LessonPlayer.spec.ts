@@ -11,8 +11,8 @@ vi.mock('vidstack/player', () => ({}))
 vi.mock('vidstack/player/ui', () => ({}))
 vi.mock('vidstack/player/styles/base.css', () => ({}))
 
-// Defaults to landscape so every test that doesn't care about orientation
-// doesn't have to set it up.
+// Defaults to a screen where the aside sits beside the video (a phone turned sideways), so every
+// test that doesn't care where it sits doesn't have to set it up.
 const canResizeAside = ref(true)
 const useMediaQuerySpy = vi.fn((query: string) => {
   void query
@@ -180,8 +180,8 @@ describe('LessonPlayer', () => {
       })
 
       const classes = wrapper.get('[data-test="player-aside"]').classes()
-      expect(classes).toContain('landscape:w-80')
-      expect(classes).toContain('landscape:xl:w-1/3')
+      expect(classes).toContain('w-80')
+      expect(classes).toContain('xl:w-1/3')
     })
 
     it('stretches the aside to the full height of the row, not the zero-height box a flex child gets by default when it has no cue showing', () => {
@@ -242,6 +242,39 @@ describe('LessonPlayer', () => {
       await wrapper.setProps({ resetToken: 2 })
 
       expect(wrapper.get('media-player').element).toBe(before)
+    })
+  })
+
+  describe('where the aside sits', () => {
+    function fireFullscreen(wrapper: ReturnType<typeof mountPlayer>, on: boolean) {
+      wrapper.get('media-player').element.dispatchEvent(new CustomEvent('fullscreen-change', { detail: on }))
+      return nextTick()
+    }
+
+    it('sits beside the video on a screen short in landscape, a phone turned sideways', () => {
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('media-player').classes()).toContain('flex-row')
+    })
+
+    it('stacks below the video on any other screen, a landscape laptop window included, at the full width', () => {
+      canResizeAside.value = false
+
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('media-player').classes()).not.toContain('flex-row')
+      expect(wrapper.get('[data-test="player-aside"]').classes()).toContain('w-full')
+      expect(wrapper.get('[data-test="player-aside"]').classes()).not.toContain('w-80')
+    })
+
+    it('sits beside the video in fullscreen on any screen', async () => {
+      canResizeAside.value = false
+      const wrapper = mountPlayer(true)
+
+      await fireFullscreen(wrapper, true)
+
+      expect(wrapper.get('media-player').classes()).toContain('flex-row')
+      expect(wrapper.find('[data-test="aside-resize-handle"]').exists()).toBe(true)
     })
   })
 
@@ -424,10 +457,10 @@ describe('LessonPlayer', () => {
       expect(wrapper.get('[data-test="lesson-player"] > div').classes()).toContain('min-w-80')
     })
 
-    it('is available in landscape at any width, including a phone, not just a desktop-sized screen', () => {
+    it('is available where the aside sits beside the video: a screen short in landscape, at any width', () => {
       mountPlayer(true)
 
-      expect(useMediaQuerySpy).toHaveBeenCalledWith('(orientation: landscape)')
+      expect(useMediaQuerySpy).toHaveBeenCalledWith('(orientation: landscape) and (max-height: 500px)')
     })
 
     it('shows a grip glyph on the handle so its purpose is visible, not just discoverable by hovering', () => {

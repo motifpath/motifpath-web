@@ -355,6 +355,31 @@ describe('NodeView', () => {
     })
   })
 
+  describe('the reading column', () => {
+    const layout = (wrapper: Wrapper) => wrapper.get('[data-test="lesson-layout"]')
+
+    it('keeps a video lesson to a 620 px column on any wider screen, the cue under the video', async () => {
+      const wrapper = await mountView()
+
+      expect(layout(wrapper).classes()).toContain('max-w-[38.75rem]')
+      expect(layout(wrapper).classes()).toContain('mx-auto')
+    })
+
+    it('keeps an article to a 560 px column', async () => {
+      setLesson({ node: makeArticleNode('node-abc', ['First.']) })
+      const wrapper = await mountView()
+
+      expect(layout(wrapper).classes()).toContain('max-w-[35rem]')
+    })
+
+    it('lets the video take the whole width on a phone turned sideways, where the cue sits beside it', async () => {
+      isShortHeight.value = true
+      const wrapper = await mountView()
+
+      expect(layout(wrapper).classes()).not.toContain('max-w-[38.75rem]')
+    })
+  })
+
   describe('a lesson that is ready', () => {
     it('titles the page with the lesson, under the video', async () => {
       const wrapper = await mountView()
@@ -429,12 +454,19 @@ describe('NodeView', () => {
         expect(wrapper.get('[data-test="cue-region"]').attributes('aria-live')).toBe('polite')
       })
 
-      it('gives the cue a fixed width, not a share of the video, so a wider screen keeps the video full size', async () => {
+      it('gives the cue a fixed width beside the video on a phone turned sideways, so the video keeps its size', async () => {
+        isShortViewport.value = true
         const wrapper = await mountView()
 
         const classes = wrapper.get('[data-test="player-aside"]').classes()
-        expect(classes).toContain('landscape:w-80')
-        expect(classes).not.toContain('landscape:w-1/3')
+        expect(classes).toContain('w-80')
+        expect(classes).not.toContain('w-1/3')
+      })
+
+      it('shows the cue under the video, at the column\'s width, on any other screen', async () => {
+        const wrapper = await mountView()
+
+        expect(wrapper.get('[data-test="player-aside"]').classes()).toContain('w-full')
       })
     })
 
