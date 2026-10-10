@@ -89,6 +89,8 @@ export const practiceOverview: Schemas['PracticeOverview'] = {
   day_streak_current: 3,
   day_streak_best: 9,
   skills_up_last_7: 2,
+  songs_played_total: 3,
+  songs_played_last_7: 1,
   instruments: [
     {
       instrument_id: 'instrument-guitar',

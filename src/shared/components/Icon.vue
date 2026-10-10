@@ -9,11 +9,16 @@
  * is exposed to assistive tech as an image instead of hidden.
  */
 import {
+  Check,
+  ChevronDown,
   ChevronRight,
   Circle,
+  CirclePlay,
   CircleCheck,
   CircleDot,
+  FileText,
   GripVertical,
+  Languages,
   LoaderCircle,
   Lock,
   Maximize,
@@ -36,6 +41,11 @@ type IconName =
   | 'todo'
   | 'menu'
   | 'chevron-right'
+  | 'chevron-down'
+  | 'check'
+  | 'video'
+  | 'article'
+  | 'language'
   | 'sun'
   | 'moon'
   | 'play'
@@ -68,6 +78,11 @@ const glyph = computed(
       todo: Circle,
       menu: Menu,
       'chevron-right': ChevronRight,
+      'chevron-down': ChevronDown,
+      check: Check,
+      video: CirclePlay,
+      article: FileText,
+      language: Languages,
       sun: Sun,
       moon: Moon,
       play: Play,

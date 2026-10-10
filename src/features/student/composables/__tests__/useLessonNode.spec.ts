@@ -167,6 +167,36 @@ describe('useLessonNode', () => {
     expect(get).toHaveBeenCalledWith(PATH, expect.anything())
   })
 
+  it('opens a language-locked step in a language the student chose from those it has', async () => {
+    const path = makeStudentPathView([
+      makeStudentPathItem(1, undefined, 'completed'),
+      { ...makeStudentPathItem(2, undefined, 'locked'), lock_reason: 'language', available_languages: [{ code: 'en', name: 'English' }] },
+    ])
+    respondWith({ ...healthy, [PATH]: ok(path) })
+
+    const lesson = useLessonNode('node-2', { language: 'en' })
+    await flushPromises()
+
+    expect(lesson.state.value).toBe('ready')
+    expect(lesson.status.value).toBe('locked')
+  })
+
+  it.each([
+    ['a language the step does not have', 'language', 'es'],
+    ['a step locked behind an earlier one', 'previous_step', 'en'],
+  ] as const)('stays locked when the chosen language is for %s', async (_case, lockReason, language) => {
+    const path = makeStudentPathView([
+      makeStudentPathItem(1, undefined, 'completed'),
+      { ...makeStudentPathItem(2, undefined, 'locked'), lock_reason: lockReason, available_languages: [{ code: 'en', name: 'English' }] },
+    ])
+    respondWith({ ...healthy, [PATH]: ok(path) })
+
+    const lesson = useLessonNode('node-2', { language })
+    await flushPromises()
+
+    expect(lesson.state.value).toBe('locked')
+  })
+
   it('is not found when the node is not on the student path', async () => {
     respondWith(healthy)
 

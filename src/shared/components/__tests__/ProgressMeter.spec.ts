@@ -4,10 +4,11 @@ import { mount } from '@vue/test-utils'
 import ProgressMeter from '@/shared/components/ProgressMeter.vue'
 
 describe('ProgressMeter', () => {
-  it('renders a labelled progressbar with the completed/total caption', () => {
+  it('shows a short count beside the bar and gives the bar the full sentence', () => {
     const wrapper = mount(ProgressMeter, { props: { completed: 1, total: 3 } })
 
-    expect(wrapper.text()).toBe('1 of 3 steps complete')
+    expect(wrapper.text()).toBe('1 of 3')
+    expect(wrapper.get('[role="progressbar"]').attributes('aria-label')).toBe('1 of 3 steps complete')
 
     const bar = wrapper.get('[role="progressbar"]')
     expect(bar.attributes('aria-valuenow')).toBe('1')
@@ -18,22 +19,13 @@ describe('ProgressMeter', () => {
   it('reflects full completion', () => {
     const wrapper = mount(ProgressMeter, { props: { completed: 2, total: 2 } })
 
-    expect(wrapper.text()).toBe('2 of 2 steps complete')
+    expect(wrapper.text()).toBe('2 of 2')
     expect(wrapper.get('[role="progressbar"]').attributes('aria-valuenow')).toBe('2')
   })
 
   it('handles a zero-length path without dividing by zero', () => {
     const wrapper = mount(ProgressMeter, { props: { completed: 0, total: 0 } })
 
-    expect(wrapper.text()).toBe('0 of 0 steps complete')
-  })
-
-  it('names the progressbar with its caption', () => {
-    const wrapper = mount(ProgressMeter, { props: { completed: 1, total: 3 }, attachTo: document.body })
-
-    const bar = wrapper.get('[role="progressbar"]')
-    const caption = document.getElementById(bar.attributes('aria-labelledby') ?? '')
-    expect(caption?.textContent).toBe('1 of 3 steps complete')
-    wrapper.unmount()
+    expect(wrapper.text()).toBe('0 of 0')
   })
 })

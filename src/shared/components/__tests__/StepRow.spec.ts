@@ -1,72 +1,74 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 
 import StepRow from '@/shared/components/StepRow.vue'
 
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: [{ path: '/nodes/:nodeId', name: 'node', component: { template: '<div />' } }],
+})
+
+function mountRow(props: Partial<InstanceType<typeof StepRow>['$props']> = {}) {
+  return mount(StepRow, {
+    props: { state: 'current', position: 8, title: 'The G chord', meta: 'Up next · Video', ...props },
+    global: { plugins: [router] },
+    attachTo: document.body,
+  })
+}
+
 describe('StepRow', () => {
-  it('renders the position and default slot content', () => {
-    const wrapper = mount(StepRow, {
-      props: { position: 3 },
-      slots: { default: 'Minor pentatonic shape 1' },
-    })
+  it('shows the title and the meta line', () => {
+    const wrapper = mountRow()
 
-    expect(wrapper.get('[data-test="step-position"]').text()).toBe('3')
-    expect(wrapper.text()).toContain('Minor pentatonic shape 1')
+    expect(wrapper.text()).toContain('The G chord')
+    expect(wrapper.get('[data-test="step-meta"]').text()).toBe('Up next · Video')
   })
 
-  it('applies emphasis styling when emphasis is true', () => {
-    const wrapper = mount(StepRow, { props: { position: 1, emphasis: true } })
+  it('links to its destination when given one', () => {
+    const wrapper = mountRow({ to: { name: 'node', params: { nodeId: 'n-8' } } })
 
-    expect(wrapper.classes()).toContain('font-medium')
-    expect(wrapper.classes()).toContain('text-ink')
+    expect(wrapper.get('a').attributes('href')).toBe('/nodes/n-8')
   })
 
-  it('applies muted styling when muted is true', () => {
-    const wrapper = mount(StepRow, { props: { position: 1, muted: true } })
+  it('is a button that reports a tap when it has no destination', async () => {
+    const wrapper = mountRow({ state: 'locked', meta: 'Video' })
 
-    expect(wrapper.classes()).toContain('text-ink-subtle')
+    await wrapper.get('button').trigger('click')
+
+    expect(wrapper.emitted('select')).toHaveLength(1)
   })
 
-  it('renders the status slot only when provided', () => {
-    const withStatus = mount(StepRow, {
-      props: { position: 1 },
-      slots: { status: '<span data-test="probe">done</span>' },
-    })
-    expect(withStatus.find('[data-test="probe"]').exists()).toBe(true)
-
-    const withoutStatus = mount(StepRow, { props: { position: 1 } })
-    expect(withoutStatus.find('[data-test="probe"]').exists()).toBe(false)
+  it.each([
+    ['current', '8'],
+    ['open', '8'],
+    ['locked', '8'],
+  ] as const)('marks a %s step with its position', (state, marker) => {
+    expect(mountRow({ state }).get('[data-test="step-marker"]').text()).toBe(marker)
   })
 
-  it('renders the action slot when provided', () => {
-    const wrapper = mount(StepRow, {
-      props: { position: 1 },
-      slots: { action: '<a data-test="probe-action">Open</a>' },
-    })
-
-    expect(wrapper.find('[data-test="probe-action"]').exists()).toBe(true)
+  it.each(['done', 'language'] as const)('marks a %s step with an icon instead of its position', (state) => {
+    expect(mountRow({ state }).get('[data-test="step-marker"]').text()).toBe('')
   })
 
-  it('renders as a plain row by default (no card container classes)', () => {
-    const wrapper = mount(StepRow, { props: { position: 1 } })
-
-    expect(wrapper.classes()).not.toContain('border')
+  it('highlights the current step', () => {
+    expect(mountRow({ state: 'current' }).get('[data-test="step-row"]').classes()).toContain('bg-accent-muted')
   })
 
-  it('renders as a bordered card when card is true', () => {
-    const wrapper = mount(StepRow, { props: { position: 1, card: true } })
+  it('gives a language step its reason in the warning colour, never the error colour', () => {
+    const wrapper = mountRow({ state: 'language', meta: 'Only in English for now' })
 
-    expect(wrapper.classes()).toContain('border')
-    expect(wrapper.classes()).toContain('rounded-md')
+    expect(wrapper.get('[data-test="step-meta"]').classes()).toContain('text-warning')
+    expect(wrapper.html()).not.toContain('danger')
   })
 
-  it('forwards arbitrary attributes to the root element', () => {
-    const wrapper = mount(StepRow, {
-      props: { position: 1 },
-      attrs: { 'data-test': 'path-step', 'aria-disabled': 'true' },
-    })
+  it('shows a lock on locked and language steps, and a chevron otherwise', () => {
+    expect(mountRow({ state: 'locked' }).find('[data-test="step-lock"]').exists()).toBe(true)
+    expect(mountRow({ state: 'language' }).find('[data-test="step-lock"]').exists()).toBe(true)
+    expect(mountRow({ state: 'done' }).find('[data-test="step-lock"]').exists()).toBe(false)
+  })
 
-    expect(wrapper.attributes('data-test')).toBe('path-step')
-    expect(wrapper.attributes('aria-disabled')).toBe('true')
+  it('is announced as the current step', () => {
+    expect(mountRow({ state: 'current', to: { name: 'node', params: { nodeId: 'n-8' } } }).get('a').attributes('aria-current')).toBe('step')
   })
 })

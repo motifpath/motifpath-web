@@ -41,7 +41,13 @@ const nodeId = computed(() => {
   return (Array.isArray(raw) ? raw[0] : raw) ?? ''
 })
 
-const lesson = useLessonNode(nodeId)
+// A language-locked step opened from My path names the language the student chose to open it in.
+const language = computed(() => {
+  const raw = route.query.language
+  return typeof raw === 'string' ? raw : undefined
+})
+
+const lesson = useLessonNode(nodeId, { language: () => language.value })
 useCourseCompletionRedirect(lesson.completedCourseEnrollmentId)
 const { complete } = useLessonTracking(lesson)
 

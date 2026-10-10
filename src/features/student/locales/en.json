@@ -4,27 +4,47 @@
   },
   "pathView": {
     "heading": "My path",
-    "emptyHeading": "You're all set",
-    "emptyMessage": "We're building your personalized path. We'll let you know when it's ready.",
-    "errorMessage": "We couldn't load your path.",
-    "completeHeading": "Path complete!",
-    "completeMessage": "You finished {title}. Pick your next step: find a course, or switch to another path in My learning.",
-    "findCourse": "Find a course",
-    "myCourses": "My learning"
-  },
-  "pathStep": {
-    "status": {
-      "completed": "Completed",
-      "in_progress": "In progress",
-      "not_started": "Not started",
-      "locked": "Locked"
+    "coursePart": "{course} · Part {part} of {parts}",
+    "sectionCount": "{done} of {total}",
+    "kind": {
+      "video": "Video",
+      "article": "Article"
     },
-    "review": "Review",
-    "openLesson": "Open lesson",
-    "continue": "Continue",
-    "start": "Start",
-    "continueSubtitle": "In progress · pick up where you left off",
-    "startSubtitle": "Not started yet"
+    "upNext": "Up next · step {position} of {total}",
+    "startLesson": "Start lesson",
+    "meta": {
+      "done": "{kind} · Done",
+      "current": "Up next · {kind}",
+      "language": "Only in {language} for now"
+    },
+    "locked": {
+      "title": "Step {position} opens later",
+      "message": "Finish step {current}, “{title}”, and the steps after it open one by one.",
+      "action": "Go to step {current}"
+    },
+    "language": {
+      "title": "Not in {ownLanguage} yet",
+      "message": {
+        "video": "This lesson is only in {language} for now. Watch it in {language} — finishing it opens the next step.",
+        "article": "This lesson is only in {language} for now. Read it in {language} — finishing it opens the next step."
+      },
+      "action": {
+        "video": "Watch in {language}",
+        "article": "Read in {language}"
+      }
+    },
+    "complete": {
+      "title": "You finished {title}",
+      "message": "{total} of {total} steps. What you learned keeps coming back in Practice so it stays with you.",
+      "findNext": "Find your next path",
+      "practise": "Practise what you learned"
+    },
+    "empty": {
+      "title": "No path yet",
+      "message": "A path is a short series of lessons, in order. Pick a course or a path to start one.",
+      "action": "Explore courses and paths"
+    },
+    "errorMessage": "We couldn't load your path."
   },
   "nodeView": {
     "heading": "Lesson",

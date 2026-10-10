@@ -1,13 +1,31 @@
-import { describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { effectScope, nextTick, reactive, type EffectScope } from 'vue'
 
 const get = vi.fn()
+
+// The profile's locale is the one the server confirmed; the path's language locks follow it.
+const currentUser = reactive({ profile: { locale: { code: 'en', name: 'English' } } })
+vi.mock('@/stores/currentUser', () => ({ useCurrentUserStore: () => currentUser }))
 
 vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET: get }, eventApi: {} }),
 }))
 
-import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import { useStudentPath as useStudentPathUnscoped } from '@/features/student/composables/useStudentPath'
+
+// Each call runs in its own scope, stopped after the test, so an earlier test's locale watcher
+// can't reload in a later one.
+const scopes: EffectScope[] = []
+function useStudentPath() {
+  const scope = effectScope()
+  scopes.push(scope)
+  const result = scope.run(useStudentPathUnscoped)
+  if (!result) throw new Error('useStudentPath did not run')
+  return result
+}
+afterEach(() => {
+  scopes.splice(0).forEach((scope) => scope.stop())
+})
 
 async function settle() {
   await nextTick()
@@ -55,5 +73,22 @@ describe('useStudentPath', () => {
     await retry()
 
     expect(error.value).toBeNull()
+  })
+
+  it('reloads the path when the server confirms a new locale, without going back to loading', async () => {
+    currentUser.profile.locale = { code: 'en', name: 'English' }
+    get.mockResolvedValueOnce({ data: { title: 'Blues Foundations', items: [] }, error: undefined })
+    const { data, isLoading } = useStudentPath()
+    await settle()
+
+    get.mockClear()
+    get.mockResolvedValueOnce({ data: { title: 'Fundamentos do blues', items: [] }, error: undefined })
+    currentUser.profile.locale = { code: 'pt-BR', name: 'Português' }
+    await nextTick()
+
+    expect(get).toHaveBeenCalledWith('/students/me/path')
+    expect(isLoading.value).toBe(false)
+    await settle()
+    expect(data.value?.title).toBe('Fundamentos do blues')
   })
 })

@@ -20,14 +20,19 @@ export type LessonNodeState =
  * Loads everything the lesson screen needs for one content node: the
  * student's progress on it (from their path), the node itself, its timed
  * cues and whether it has a challenge. Locked steps stop after the path
- * request, so nothing about a lesson the student may not open is fetched.
+ * request, so nothing about a lesson the student may not open is fetched —
+ * except a language-locked step opened in a `language` it has, which loads
+ * like any other.
  *
  * The cues only decorate the lesson, so a failure to load them leaves the
  * lesson playable with none rather than blocking it; every other failure is
  * an error. Reloads whenever nodeId changes, since Vue Router reuses a
  * mounted component when only a param on the same route record changes.
  */
-export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
+export function useLessonNode(
+  nodeId: MaybeRefOrGetter<string>,
+  options: { language?: MaybeRefOrGetter<string | undefined> } = {},
+) {
   const { coreApi } = useApi()
 
   const state = ref<LessonNodeState>('loading')
@@ -81,7 +86,14 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
         return
       }
       status.value = item.status
-      if (item.status === 'locked') {
+      // A language-locked step opens once the student picks a language it has: the lock is about
+      // the student's own language, not about the lesson being out of reach.
+      const language = toValue(options.language)
+      const openedInLanguage =
+        item.lock_reason === 'language' &&
+        language !== undefined &&
+        (item.available_languages ?? []).some((available) => available.code === language)
+      if (item.status === 'locked' && !openedInLanguage) {
         state.value = 'locked'
         return
       }
@@ -124,7 +136,7 @@ export function useLessonNode(nodeId: MaybeRefOrGetter<string>) {
   }
 
   watch(
-    () => toValue(nodeId),
+    () => [toValue(nodeId), toValue(options.language)],
     () => void load(),
   )
   void load()

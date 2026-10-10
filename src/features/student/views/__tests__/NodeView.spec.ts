@@ -20,11 +20,12 @@ vi.mock('vidstack/player/styles/base.css', () => ({}))
 
 const push = vi.fn()
 const replace = vi.fn()
+const route: { params: { nodeId: string }; query: Record<string, string> } = { params: { nodeId: 'node-abc' }, query: {} }
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return {
     ...actual,
-    useRoute: () => ({ params: { nodeId: 'node-abc' } }),
+    useRoute: () => route,
     useRouter: () => ({ push, replace }),
   }
 })
@@ -39,7 +40,11 @@ const lesson = {
   pathTitle: ref<string | null>('Blues Basics'),
   retry: vi.fn(),
 }
-vi.mock('@/features/student/composables/useLessonNode', () => ({ useLessonNode: () => lesson }))
+type LessonOptions = { language?: () => string | undefined }
+const useLessonNode = vi.fn<(nodeId: unknown, options?: LessonOptions) => typeof lesson>(() => lesson)
+vi.mock('@/features/student/composables/useLessonNode', () => ({
+  useLessonNode: (nodeId: unknown, options?: LessonOptions) => useLessonNode(nodeId, options),
+}))
 
 // The button has its own tests; here only where it appears and what it is given.
 vi.mock('@/features/student/components/SendToTeacher.vue', async () => {
@@ -177,6 +182,15 @@ describe('NodeView', () => {
     await mountView()
 
     expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'ce-1' } })
+  })
+
+  it('opens the lesson in the language the student chose from the path', async () => {
+    route.query = { language: 'en' }
+    await mountView()
+
+    const options = useLessonNode.mock.calls.at(-1)?.[1]
+    expect(options?.language?.()).toBe('en')
+    route.query = {}
   })
 
   it('reports the lesson it shows to the tracker', async () => {
