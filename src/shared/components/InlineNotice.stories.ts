@@ -13,3 +13,4 @@ type Story = StoryObj<typeof meta>
 
 export const Failed: Story = {}
 export const LongPortuguese: Story = { args: { message: 'Não foi possível carregar seus cursos. Verifique sua conexão.' } }
+export const Unavailable: Story = { args: { tone: 'unavailable', message: 'There’s nothing to play on this instrument yet. You can practise in your head instead.' } }
