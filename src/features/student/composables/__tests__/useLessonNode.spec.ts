@@ -182,19 +182,88 @@ describe('useLessonNode', () => {
   })
 
   it.each([
-    ['a language the step does not have', 'language', 'es'],
-    ['a step locked behind an earlier one', 'previous_step', 'en'],
-  ] as const)('stays locked when the chosen language is for %s', async (_case, lockReason, language) => {
+    ['no language was chosen', undefined],
+    ['the chosen language is one the step does not have', 'es'],
+  ] as const)('is language-locked, and fetches nothing about the node, when %s', async (_case, language) => {
     const path = makeStudentPathView([
       makeStudentPathItem(1, undefined, 'completed'),
-      { ...makeStudentPathItem(2, undefined, 'locked'), lock_reason: lockReason, available_languages: [{ code: 'en', name: 'English' }] },
+      { ...makeStudentPathItem(2, undefined, 'locked'), lock_reason: 'language', available_languages: [{ code: 'en', name: 'English' }] },
     ])
     respondWith({ ...healthy, [PATH]: ok(path) })
 
     const lesson = useLessonNode('node-2', { language })
     await flushPromises()
 
+    expect(lesson.state.value).toBe('language-locked')
+    expect(lesson.step.value?.availableLanguages).toEqual(['en'])
+    expect(get).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays locked behind an earlier step whatever language was chosen', async () => {
+    const path = makeStudentPathView([
+      makeStudentPathItem(1, undefined, 'in_progress'),
+      { ...makeStudentPathItem(2, undefined, 'locked'), lock_reason: 'previous_step', available_languages: [{ code: 'en', name: 'English' }] },
+    ])
+    respondWith({ ...healthy, [PATH]: ok(path) })
+
+    const lesson = useLessonNode('node-2', { language: 'en' })
+    await flushPromises()
+
     expect(lesson.state.value).toBe('locked')
+  })
+
+  describe('where the step sits on the path', () => {
+    const path = makeStudentPathView([
+      makeStudentPathItem(1, undefined, 'completed'),
+      makeStudentPathItem(2, undefined, 'in_progress'),
+      { ...makeStudentPathItem(3, undefined, 'locked'), lock_reason: 'previous_step', content_type: 'article' },
+    ])
+
+    it('knows its position, the number of steps and its kind', async () => {
+      respondWith({ ...healthy, [PATH]: ok(path) })
+
+      const lesson = await load()
+
+      expect(lesson.step.value).toMatchObject({ position: 2, kind: 'video', title: 'Step 2' })
+      expect(lesson.total.value).toBe(3)
+    })
+
+    it('knows the step after it, the one its completion opens', async () => {
+      respondWith({ ...healthy, [PATH]: ok(path) })
+
+      const lesson = await load()
+
+      expect(lesson.next.value).toMatchObject({ position: 3, contentNodeId: 'node-3', kind: 'article' })
+    })
+
+    it('has no step after the last one', async () => {
+      respondWith({ ...healthy, [PATH]: ok(path), [NODE]: ok({ ...videoNode, content_node_id: 'node-3' }) })
+
+      const lesson = await load('node-3')
+
+      expect(lesson.next.value).toBeNull()
+    })
+
+    it('knows the step the student can do now, the way forward from a locked one', async () => {
+      respondWith({ ...healthy, [PATH]: ok(path) })
+
+      const lesson = await load('node-3')
+
+      expect(lesson.state.value).toBe('locked')
+      expect(lesson.current.value).toMatchObject({ position: 2, contentNodeId: 'node-2' })
+    })
+
+    it('forgets where the step sat while it reloads', async () => {
+      respondWith({ ...healthy, [PATH]: ok(path) })
+      const lesson = await load()
+
+      void lesson.retry()
+
+      expect(lesson.step.value).toBeNull()
+      expect(lesson.next.value).toBeNull()
+      expect(lesson.current.value).toBeNull()
+      expect(lesson.total.value).toBe(0)
+    })
   })
 
   it('is not found when the node is not on the student path', async () => {
