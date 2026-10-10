@@ -165,6 +165,21 @@ describe('LearnerShell', () => {
     expect(links).toContainEqual({ name: 'credits' })
   })
 
+  it("adds nothing under a page marked 'fillsScreen', which lays itself out to the screen's height", () => {
+    route.meta = { fillsScreen: true }
+    const shell = mountShell()
+
+    expect(shell.find('footer').exists()).toBe(false)
+    expect(shell.get('main').classes()).toContain('pb-0')
+  })
+
+  it('keeps the credits and the padding under an ordinary page', () => {
+    const shell = mountShell()
+
+    expect(shell.find('footer').exists()).toBe(true)
+    expect(shell.get('main').classes()).not.toContain('pb-0')
+  })
+
   it('uses the reading-width content column for an ordinary route', () => {
     const main = mountShell().get('main')
 

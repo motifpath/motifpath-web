@@ -267,6 +267,26 @@ describe('LessonPlayer', () => {
       expect(wrapper.get('[data-test="player-aside"]').classes()).not.toContain('w-80')
     })
 
+    it('gives way under the video when the player is short of height: the video keeps its size, the aside scrolls', () => {
+      canResizeAside.value = false
+
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('media-player').classes()).toContain('min-h-0')
+      expect(wrapper.get('[data-test="lesson-player"] > div').classes()).toContain('shrink-0')
+      const aside = wrapper.get('[data-test="player-aside"]').classes()
+      expect(aside).toContain('min-h-0')
+      expect(aside).toContain('overflow-y-auto')
+      expect(aside).not.toContain('shrink-0')
+    })
+
+    it('beside the video, lets the video take the width the aside leaves', () => {
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('[data-test="lesson-player"] > div').classes()).toContain('flex-1')
+      expect(wrapper.get('[data-test="player-aside"]').classes()).toContain('shrink-0')
+    })
+
     it('sits beside the video in fullscreen on any screen', async () => {
       canResizeAside.value = false
       const wrapper = mountPlayer(true)

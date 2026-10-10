@@ -324,6 +324,10 @@ describe('router', () => {
     expect(router.resolve('/path/nodes/node-abc/practice').meta.hidesBottomBar).toBe(true)
   })
 
+  it('lets a lesson lay itself out to the screen\'s height', () => {
+    expect(router.resolve('/path/nodes/node-abc').meta.fillsScreen).toBe(true)
+  })
+
   it('keeps the bottom navigation bar on My path itself', () => {
     expect(router.resolve('/path').meta.hidesBottomBar).toBeFalsy()
   })

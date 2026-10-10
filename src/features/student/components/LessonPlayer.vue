@@ -24,7 +24,8 @@
  *   stay mounted.
  * - The aside sits beside the video only where the video fills the screen's
  *   height: a phone turned sideways, or fullscreen. Anywhere else it stacks
- *   full-width below the video, where the page has room for it.
+ *   full-width below the video; when the page gives the player less height
+ *   than the two need, the video keeps its size and the aside scrolls.
  * - While beside the video, the aside's width is student-controlled (drag or
  *   arrow keys on the handle) and remembered per browser. Stacked below, the
  *   remembered width is kept but not applied: a pixel width would squeeze a
@@ -205,14 +206,14 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
     :src="src"
     playsinline
     data-test="lesson-player"
-    class="group/player flex aspect-auto overflow-hidden rounded-lg bg-brand-ground"
+    class="group/player flex aspect-auto min-h-0 overflow-hidden rounded-lg bg-brand-ground"
     :class="canResizeAside ? 'flex-row' : 'flex-col'"
     @time-update="onTimeUpdate"
     @fullscreen-change="onFullscreenChange"
     @ended="emit('ended')"
     @error="emit('error')"
   >
-    <div class="relative aspect-video w-full min-w-80 flex-1">
+    <div class="relative aspect-video w-full min-w-80" :class="canResizeAside ? 'flex-1' : 'shrink-0'">
       <media-provider :key="resetToken" />
 
       <media-gesture
@@ -280,8 +281,8 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
       ref="asideEl"
       data-test="player-aside"
       :style="asideStyle"
-      class="relative flex shrink-0 flex-col self-stretch overflow-y-auto p-3"
-      :class="canResizeAside ? 'w-80 xl:w-1/3' : 'w-full'"
+      class="relative flex flex-col self-stretch overflow-y-auto p-3"
+      :class="canResizeAside ? 'w-80 shrink-0 xl:w-1/3' : 'min-h-0 w-full'"
     >
       <button
         v-if="canResizeAside && asideWidthPx !== null"

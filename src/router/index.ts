@@ -20,6 +20,8 @@ declare module 'vue-router' {
     hidesBottomBar?: boolean
     /** Route is a page pushed onto another and brings its own back bar: a phone's brand bar steps aside. */
     pushed?: boolean
+    /** Route lays its page out to the screen's height: the shell adds no padding or footer under it. */
+    fillsScreen?: boolean
     /**
      * The route this one replaces while keeping the same form on screen (a new
      * item's first save), so arriving from it keeps the scroll position.
@@ -95,7 +97,8 @@ const routes: RouteRecordRaw[] = [
         // Wider than the app's usual column: the video would otherwise be
         // squeezed by a timed cue even when the viewport has room to spare.
         // A lesson is a page pushed onto My path, so on a phone it gets the height the bar would take.
-        meta: { wideContent: true, hidesBottomBar: true, pushed: true },
+        // A video lesson fits the screen, its title and actions at the foot of it.
+        meta: { wideContent: true, hidesBottomBar: true, pushed: true, fillsScreen: true },
         component: () => import('@/features/student/views/NodeView.vue'),
       },
       {

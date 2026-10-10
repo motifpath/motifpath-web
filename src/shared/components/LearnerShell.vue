@@ -92,11 +92,14 @@ onBeforeUnmount(() => {
         <AccountMenu class="ml-auto" />
       </header>
 
-      <main class="mx-auto w-full flex-1 px-4 py-5 sm:py-8" :class="contentWidthClass">
+      <main
+        class="mx-auto w-full flex-1 px-4 pt-5 sm:pt-8"
+        :class="[contentWidthClass, route.meta.fillsScreen ? 'pb-0' : 'pb-5 sm:pb-8']"
+      >
         <slot />
       </main>
 
-      <footer class="mx-auto w-full px-4 pb-6 text-xs text-ink-subtle" :class="contentWidthClass">
+      <footer v-if="!route.meta.fillsScreen" class="mx-auto w-full px-4 pb-6 text-xs text-ink-subtle" :class="contentWidthClass">
         <RouterLink :to="{ name: 'credits' }" class="hover:text-ink-muted hover:underline">{{ t('footer.credits') }}</RouterLink>
       </footer>
 

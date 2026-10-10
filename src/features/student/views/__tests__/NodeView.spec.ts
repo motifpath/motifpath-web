@@ -380,6 +380,75 @@ describe('NodeView', () => {
     })
   })
 
+  describe('a video lesson fits the screen', () => {
+    const page = (wrapper: Wrapper) => wrapper.get('[data-test="node"]')
+    const details = (wrapper: Wrapper) => wrapper.get('[data-test="lesson-details"]')
+
+    it('takes the screen\'s height, with the title at its foot, so a cue coming and going never moves it', async () => {
+      setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+      const wrapper = await mountView()
+
+      expect(page(wrapper).classes()).toContain('h-dvh')
+      expect(details(wrapper).classes()).toContain('mt-auto')
+      expect(details(wrapper).find('h1').exists()).toBe(true)
+      expect(details(wrapper).find('[data-test="step-meta"]').exists()).toBe(true)
+    })
+
+    it('lets the player give way to the title and actions: the player\'s area shrinks, and its cue scrolls', async () => {
+      setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+      const wrapper = await mountView()
+
+      expect(wrapper.get('[data-test="lesson-layout"]').classes()).toEqual(expect.arrayContaining(['min-h-0', 'flex-1']))
+      expect(wrapper.get('[data-test="lesson"]').classes()).toEqual(expect.arrayContaining(['flex', 'min-h-0', 'flex-col']))
+      expect(details(wrapper).classes()).toContain('shrink-0')
+    })
+
+    it('keeps Practise this at the foot with the title once the video ends', async () => {
+      setLesson({ hasChallenge: true })
+      const wrapper = await mountView()
+
+      await endVideo(wrapper)
+      await flushPromises()
+
+      expect(details(wrapper).find('[data-test="practise-this"]').exists()).toBe(true)
+      expect(details(wrapper).find('[data-test="try-it"]').exists()).toBe(true)
+    })
+
+    it('keeps Step done and the next step at the foot once a video with no challenge ends', async () => {
+      const wrapper = await mountView()
+
+      await endVideo(wrapper)
+      await flushPromises()
+
+      expect(details(wrapper).find('[data-test="step-done"]').exists()).toBe(true)
+      expect(details(wrapper).find('[data-test="next-step-card"]').exists()).toBe(true)
+    })
+
+    it('lets an article scroll as a page, with room under its end', async () => {
+      setLesson({ node: makeArticleNode('node-abc', ['First.']) })
+      const wrapper = await mountView()
+
+      expect(page(wrapper).classes()).not.toContain('h-dvh')
+      expect(page(wrapper).classes()).toContain('pb-5')
+      expect(details(wrapper).classes()).not.toContain('mt-auto')
+    })
+
+    it('lets the page scroll on a phone turned sideways, where the video already fills the height', async () => {
+      isShortHeight.value = true
+      const wrapper = await mountView()
+
+      expect(page(wrapper).classes()).not.toContain('h-dvh')
+    })
+
+    it('leaves room under a lesson the student cannot open yet', async () => {
+      setLesson({ state: 'locked', node: null })
+      const wrapper = await mountView()
+
+      expect(page(wrapper).classes()).not.toContain('h-dvh')
+      expect(page(wrapper).classes()).toContain('pb-5')
+    })
+  })
+
   describe('a lesson that is ready', () => {
     it('titles the page with the lesson, under the video', async () => {
       const wrapper = await mountView()
