@@ -305,5 +305,14 @@
     "label": "Catalog",
     "courses": "Courses",
     "paths": "Paths"
+  },
+  "levelBar": {
+    "learning": "{count} learning",
+    "accurate": "{count} accurate",
+    "fluent": "{count} fluent",
+    "retained": "{count} retained"
+  },
+  "pathCard": {
+    "eyebrow": "Your path"
   }
 }

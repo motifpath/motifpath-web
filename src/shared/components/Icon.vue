@@ -27,6 +27,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Route,
   Square,
   Sun,
   Volume2,
@@ -57,6 +58,7 @@ type IconName =
   | 'fullscreen'
   | 'grip'
   | 'reset'
+  | 'path'
 
 const props = withDefaults(
   defineProps<{
@@ -94,6 +96,7 @@ const glyph = computed(
       fullscreen: Maximize,
       grip: GripVertical,
       reset: RotateCcw,
+      path: Route,
     })[props.name],
 )
 
