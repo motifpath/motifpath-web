@@ -29,9 +29,6 @@
  *   arrow keys on the handle) and remembered per browser. Stacked below, the
  *   remembered width is kept but not applied: a pixel width would squeeze a
  *   diagram or picture into a sliver of the screen.
- * - A page that shows the aside content in its own column sets
- *   `asideInFullscreenOnly`: the aside then shows only in fullscreen, the one
- *   place the page can't, while its content stays mounted throughout.
  * - In fullscreen the video is letterboxed and vertically centred, so the
  *   aside's content is centred too, rather than left hanging at the top.
  */
@@ -45,12 +42,10 @@ import Icon from '@/shared/components/Icon.vue'
 import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-const props = defineProps<{
+defineProps<{
   src: string
   /** Changing this value throws away and reconnects the video provider. */
   resetToken?: number | string
-  /** The page shows the aside content outside fullscreen, so the player shows it only in fullscreen. */
-  asideInFullscreenOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -59,8 +54,6 @@ const emit = defineEmits<{
   ended: []
   /** The video could not be loaded or played. */
   error: []
-  /** The player entered (true) or left (false) fullscreen. */
-  fullscreen: [on: boolean]
 }>()
 
 const { t } = useTypedT()
@@ -77,12 +70,10 @@ const isFullscreen = ref(false)
 
 function onFullscreenChange(event: CustomEvent<boolean>): void {
   isFullscreen.value = event.detail
-  emit('fullscreen', event.detail)
 }
 
-const showsAside = computed(() => !props.asideInFullscreenOnly || isFullscreen.value)
 // Beside the video, the aside's width can be dragged; stacked below it, it spans the full width.
-const canResizeAside = computed(() => showsAside.value && (isShortLandscape.value || isFullscreen.value))
+const canResizeAside = computed(() => isShortLandscape.value || isFullscreen.value)
 
 const ASIDE_MIN_PX = 240
 const ASIDE_MAX_PX = 640
@@ -286,7 +277,6 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
 
     <div
       v-if="$slots.aside"
-      v-show="showsAside"
       ref="asideEl"
       data-test="player-aside"
       :style="asideStyle"

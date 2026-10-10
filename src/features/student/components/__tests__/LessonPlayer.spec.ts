@@ -276,47 +276,6 @@ describe('LessonPlayer', () => {
       expect(wrapper.get('media-player').classes()).toContain('flex-row')
       expect(wrapper.find('[data-test="aside-resize-handle"]').exists()).toBe(true)
     })
-
-    it('says when the player enters and leaves fullscreen', async () => {
-      const wrapper = mountPlayer(true)
-
-      await fireFullscreen(wrapper, true)
-      await fireFullscreen(wrapper, false)
-
-      expect(wrapper.emitted('fullscreen')).toEqual([[true], [false]])
-    })
-
-    describe('when the page shows the aside content itself outside fullscreen', () => {
-      function mountForPage() {
-        return mount(LessonPlayer, {
-          props: { src: SRC, asideInFullscreenOnly: true },
-          slots: { aside: '<p data-test="cue-probe">a cue</p>' },
-        })
-      }
-
-      it('hides its own aside, so the video takes the player\'s whole width', () => {
-        const wrapper = mountForPage()
-
-        expect(wrapper.get('[data-test="player-aside"]').isVisible()).toBe(false)
-        expect(wrapper.find('[data-test="aside-resize-handle"]').exists()).toBe(false)
-        expect(wrapper.get('media-player').classes()).not.toContain('flex-row')
-      })
-
-      it('keeps the aside content mounted, so an announcement region in it is never torn down', () => {
-        const wrapper = mountForPage()
-
-        expect(wrapper.find('[data-test="cue-probe"]').exists()).toBe(true)
-      })
-
-      it('shows its aside beside the video in fullscreen, where the page cannot', async () => {
-        const wrapper = mountForPage()
-
-        await fireFullscreen(wrapper, true)
-
-        expect(wrapper.get('[data-test="player-aside"]').isVisible()).toBe(true)
-        expect(wrapper.get('media-player').classes()).toContain('flex-row')
-      })
-    })
   })
 
   describe('resizing the aside', () => {
