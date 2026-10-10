@@ -519,6 +519,24 @@ describe('NodeView', () => {
         expect(wrapper.find('[data-test="back-to-my-path"]').exists()).toBe(true)
       })
 
+      it('announces the saving and then the step done in one live region, mounted before the video ends', async () => {
+        let settleWait: (outcome: unknown) => void = () => {}
+        waitForCompletion.mockImplementation(() => new Promise((resolve) => (settleWait = resolve)))
+        const wrapper = await mountView()
+        const region = wrapper.get('[data-test="hand-off-status"]')
+        expect(region.attributes('role')).toBe('status')
+
+        await endVideo(wrapper)
+        await flushPromises()
+        expect(wrapper.get('[data-test="hand-off-status"]').element).toBe(region.element)
+        expect(region.text()).toBe('Saving your progress…')
+
+        settleWait({ kind: 'recorded' })
+        await flushPromises()
+        expect(wrapper.get('[data-test="hand-off-status"]').element).toBe(region.element)
+        expect(region.text()).toBe('Step done')
+      })
+
       it('shows nothing to tap while the completion is being recorded', async () => {
         waitForCompletion.mockImplementation(() => new Promise(() => {}))
         const wrapper = await mountView()

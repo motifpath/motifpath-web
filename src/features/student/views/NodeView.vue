@@ -347,14 +347,27 @@ async function onEnded(): Promise<void> {
           <p class="text-sm text-ink-muted">{{ t('nodeView.tryIt.message') }}</p>
         </div>
 
-        <p v-else-if="handOff === 'saving'" data-test="saving-progress" role="status" class="text-sm text-ink-muted">
-          {{ t('nodeView.savingProgress') }}
+        <!-- One live region, mounted from the start and only its text swapped: a region that is
+             added already holding its message is typically read as silent. Until there is
+             something to say it stays in the accessibility tree but takes no room. -->
+        <p
+          v-if="handOff !== 'practise'"
+          data-test="hand-off-status"
+          role="status"
+          class="flex items-center gap-2"
+          :class="{
+            'sr-only': handOff === 'none',
+            'text-sm text-ink-muted': handOff === 'saving',
+            'text-base font-semibold text-success': handOff === 'done',
+          }"
+        >
+          <span v-if="handOff === 'saving'" data-test="saving-progress">{{ t('nodeView.savingProgress') }}</span>
+          <template v-else-if="handOff === 'done'">
+            <Check :size="20" aria-hidden="true" /><span data-test="step-done">{{ t('nodeView.stepDone') }}</span>
+          </template>
         </p>
 
-        <div v-else-if="handOff === 'done'" class="flex flex-col gap-4">
-          <p data-test="step-done" role="status" class="flex items-center gap-2 text-base font-semibold text-success">
-            <Check :size="20" aria-hidden="true" />{{ t('nodeView.stepDone') }}
-          </p>
+        <div v-if="handOff === 'done'" class="flex flex-col gap-4">
           <NextStepCard
             v-if="handOffNext && nextAction"
             :eyebrow="t('pathView.upNext', { position: handOffNext.position, total: lesson.total.value })"
