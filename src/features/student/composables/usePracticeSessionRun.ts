@@ -59,6 +59,9 @@ function drillTemplateOf(item: Item): string | null {
   return null
 }
 
+/** What became of an item the student got to: answered, right or not, or played take by take. */
+export type ItemOutcome = { kind: 'answered'; correct: boolean } | { kind: 'played'; takes: RatedTake[] }
+
 /** A play-along just finished, handing over to the next item. */
 export interface Handoff {
   done: Item
@@ -121,6 +124,11 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const answeredItems = ref(new Set<string>())
   /** How many items the student answered or rated a take of; a warm-up never counts. */
   const answeredCount = computed(() => answeredItems.value.size)
+  /** What became of each item the student answered or played, by item key, for the summary. */
+  const outcomes = ref(new Map<string, ItemOutcome>())
+  let startedAt = 0
+  /** How long the session ran, in whole minutes, at least one. */
+  const elapsedMinutes = ref(0)
 
   const tapCheckPending = ref(plan.tap_check_due)
   const handoff = ref<Handoff | null>(null)
@@ -197,6 +205,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     if (started.value) return
     started.value = true
     shownAt = Date.now()
+    startedAt = shownAt
     void track({
       event_type: 'practice.session_started',
       practice_session_id: plan.practice_session_id,
@@ -209,6 +218,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function finish(leftEarly: boolean, options: { keepalive?: boolean } = {}) {
     finished.value = true
     askingFelt.value = false
+    elapsedMinutes.value = Math.max(1, Math.round((Date.now() - startedAt) / 60_000))
     void track(
       {
         event_type: 'practice.session_ended',
@@ -235,6 +245,10 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     if (index.value < plan.items.length) return
     if (feltQuestions.value.length > 0) askingFelt.value = true
     else finish(false)
+  }
+
+  function recordOutcome(item: Item, outcome: ItemOutcome) {
+    outcomes.value = new Map(outcomes.value).set(item.item_key, outcome)
   }
 
   /** Counts the item on as answered, and its drill as practised. */
@@ -286,6 +300,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       })
     }
     takes.value = [...takes.value, { bpm, rating }]
+    recordOutcome(item, { kind: 'played', takes: takes.value })
     chosenTempo.value = null
     if (takesLeft.value > 0) return
     const next = plan.items[index.value + 1]
@@ -308,6 +323,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     exerciseAnswer.value = { optionIds, correct: isExactMatch(exercise.options, optionIds) }
     markAnswered(item)
+    recordOutcome(item, { kind: 'answered', correct: exerciseAnswer.value.correct })
     const audio = audioMs.get(exercise.exercise_id)
     void track({
       event_type: 'practice.item_answered',
@@ -333,6 +349,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     cellAnswer.value = { answer, correct }
     markAnswered(item)
+    recordOutcome(item, { kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
       practice_session_id: plan.practice_session_id,
@@ -356,6 +373,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     shapeAnswer.value = { answer, correct }
     markAnswered(item)
+    recordOutcome(item, { kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
       practice_session_id: plan.practice_session_id,
@@ -382,6 +400,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     takesLeft,
     progress,
     answeredCount,
+    outcomes,
+    elapsedMinutes,
     exerciseAnswer,
     cellAnswer,
     shapeAnswer,

@@ -235,9 +235,7 @@
       "stretch": "Um passo além"
     },
     "doneTitle": "Sessão concluída",
-    "doneBody": "Nada respondido ou avaliado desta vez. Toda sessão conta. | Você respondeu ou avaliou {count} item. | Você respondeu ou avaliou {count} itens.",
     "practiseAgain": "Praticar de novo",
-    "backToPath": "Voltar para minha trilha",
     "progressLabel": "Progresso da sessão",
     "applyIt": "Aplique",
     "close": "Fechar",
@@ -269,6 +267,17 @@
       "fretboard": "Braço",
       "chordChange": "Troca de acordes"
     }
+  },
+  "sessionSummary": {
+    "minutes": "{minutes} min · {instrument}",
+    "withItems": "{ran} · {count} item | {ran} · {count} itens",
+    "whatYouPractised": "O que você praticou",
+    "played": "até {bpm} BPM · {rating}",
+    "counted": "{right} de {answered} certas",
+    "right": "Certo",
+    "notQuite": "Não foi dessa vez",
+    "nothingAnswered": "Nada respondido ou avaliado desta vez. Toda sessão conta.",
+    "done": "Concluir"
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",

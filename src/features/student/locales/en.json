@@ -235,9 +235,7 @@
       "stretch": "A step further"
     },
     "doneTitle": "Session done",
-    "doneBody": "Nothing answered or rated this time. Every session still counts. | You answered or rated {count} item. | You answered or rated {count} items.",
     "practiseAgain": "Practise again",
-    "backToPath": "Back to my path",
     "progressLabel": "Session progress",
     "applyIt": "Apply it",
     "close": "Close",
@@ -269,6 +267,17 @@
       "fretboard": "Fretboard",
       "chordChange": "Chord change"
     }
+  },
+  "sessionSummary": {
+    "minutes": "{minutes} min · {instrument}",
+    "withItems": "{ran} · {count} item | {ran} · {count} items",
+    "whatYouPractised": "What you practised",
+    "played": "up to {bpm} BPM · {rating}",
+    "counted": "{right} of {answered} right",
+    "right": "Right",
+    "notQuite": "Not quite",
+    "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
+    "done": "Done"
   },
   "playAlongTake": {
     "bpm": "{bpm} BPM",

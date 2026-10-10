@@ -135,6 +135,16 @@ const NextUpCardStub = defineComponent({
   },
 })
 
+// The summary loads this week's numbers itself: here it only reports what it was given and emits.
+const SessionSummaryStub = defineComponent({
+  name: 'SessionSummary',
+  props: { rows: { type: Array, required: true }, minutes: Number, instrumentName: String, itemCount: Number, labelOf: Function },
+  emits: ['done', 'practiseAgain'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'session-done' }, `${props.minutes} min · ${props.instrumentName} · ${props.itemCount} items · ${props.rows.length} rows`)
+  },
+})
+
 import PracticeSessionView from '@/features/student/views/PracticeSessionView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 
@@ -239,6 +249,7 @@ function mountView() {
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
         NextUpCard: NextUpCardStub,
+        SessionSummary: SessionSummaryStub,
       },
     },
   })
@@ -706,8 +717,7 @@ describe('PracticeSessionView', () => {
     await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true, answered_count: 0 })])
-    expect(wrapper.text()).toContain('Session done')
-    expect(wrapper.text()).toContain('Nothing answered or rated this time.')
+    expect(wrapper.getComponent(SessionSummaryStub).props()).toMatchObject({ rows: [], itemCount: 0, instrumentName: 'Guitar' })
   })
 
   it('shows the session done after its last take', async () => {
@@ -717,7 +727,9 @@ describe('PracticeSessionView', () => {
     await flushPromises()
 
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false, answered_count: 1 })])
-    expect(wrapper.text()).toContain('You answered or rated 1 item.')
+    const summary = wrapper.getComponent(SessionSummaryStub)
+    expect(summary.props('itemCount')).toBe(1)
+    expect(summary.props('rows')).toEqual([expect.objectContaining({ key: `play_along:${DUE}`, result: { kind: 'played', fastestBpm: 65, rating: 'clean' } })])
   })
 
   it('goes back to the choice for another session', async () => {
@@ -725,9 +737,20 @@ describe('PracticeSessionView', () => {
     await startSession(wrapper)
     await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
-    await wrapper.get('[data-test="practise-again"]').trigger('click')
+    wrapper.getComponent(SessionSummaryStub).vm.$emit('practiseAgain')
+    await flushPromises()
 
     expect(wrapper.find('[data-test="start-session"]').exists()).toBe(true)
+  })
+
+  it('goes home when the student is done', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+    await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+    wrapper.getComponent(SessionSummaryStub).vm.$emit('done')
+
+    expect(router.push).toHaveBeenCalledWith({ name: 'home' })
   })
 
   it('ends a session left mid-way, once', async () => {
@@ -924,7 +947,7 @@ describe('PracticeSessionView', () => {
       await flushPromises()
       await wrapper.get('[data-test="shell-exit"]').trigger('click')
 
-      expect(wrapper.get('[data-test="session-done"]').text()).toContain('You answered or rated 1 item.')
+      expect(wrapper.getComponent(SessionSummaryStub).props('itemCount')).toBe(1)
       expect(events('practice.session_ended')).toEqual([expect.objectContaining({ answered_count: 1, left_early: true })])
     })
   })

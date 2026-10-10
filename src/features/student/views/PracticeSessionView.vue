@@ -19,6 +19,7 @@ import type { components } from '@/api/generated/core-domain'
 import FeltQuestions from '@/features/student/components/FeltQuestions.vue'
 import NextUpCard from '@/features/student/components/NextUpCard.vue'
 import PracticeSetup from '@/features/student/components/PracticeSetup.vue'
+import SessionSummary from '@/features/student/components/SessionSummary.vue'
 import type { SetupProblem } from '@/features/student/components/PracticeSetup.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
@@ -29,6 +30,7 @@ import TodaysPlan from '@/features/student/components/TodaysPlan.vue'
 import { useComposePracticeSession, DEFAULT_SESSION_MINUTES } from '@/features/student/composables/useComposePracticeSession'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
+import { summaryRows } from '@/features/student/utils/sessionSummary'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeShell from '@/shared/components/PracticeShell.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
@@ -155,6 +157,10 @@ function practiseInTheHead() {
 
 /** With nothing to practise in the head either, the home's first run shows where to start. */
 function findWhereToStart() {
+  leaveHome()
+}
+
+function leaveHome() {
   void router.push({ name: 'home' })
 }
 
@@ -229,18 +235,16 @@ onBeforeUnmount(() => {
       @start="run.start()"
     />
 
-    <section v-else-if="finished" class="flex flex-col gap-3" data-test="session-done">
-      <h1 class="text-xl font-semibold">{{ t('practiceSessionView.doneTitle') }}</h1>
-      <p class="text-ink-muted">{{ t('practiceSessionView.doneBody', { count: run.answeredCount.value }) }}</p>
-      <PracticeActionBar>
-        <PrimaryButton data-test="practise-again" data-primary-action class="h-12 flex-1" @click="practiseAgain">
-          {{ t('practiceSessionView.practiseAgain') }}
-        </PrimaryButton>
-        <RouterLink :to="{ name: 'path' }" class="text-sm font-medium text-accent-text underline">
-          {{ t('practiceSessionView.backToPath') }}
-        </RouterLink>
-      </PracticeActionBar>
-    </section>
+    <SessionSummary
+      v-else-if="finished"
+      :rows="summaryRows(run.plan.items, run.outcomes.value)"
+      :minutes="run.elapsedMinutes.value"
+      :instrument-name="instrumentLabel(run.plan.instrument_id ?? null)"
+      :item-count="run.outcomes.value.size"
+      :label-of="labelOf"
+      @done="leaveHome"
+      @practise-again="practiseAgain"
+    />
 
     <FeltQuestions
       v-else-if="run.askingFelt.value"
