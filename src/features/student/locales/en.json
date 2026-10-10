@@ -399,5 +399,52 @@
     "title": "Your progress",
     "back": "Back",
     "comingSoon": "Your minutes, streak, songs and skills for each instrument will show here soon."
+  },
+  "studentHome": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "today": {
+      "eyebrow": "Today’s practice · {instrument}",
+      "eyebrowAnyInstrument": "Today’s practice",
+      "step": "{kind}: {skill}",
+      "kinds": {
+        "refresh": "Refresh",
+        "strengthen": "Strengthen",
+        "ready_to_start": "Ready to start"
+      },
+      "length": "About {minutes} minutes",
+      "start": "Start practice",
+      "nothingSuggested": "Nothing to refresh right now. Start a session and practise what you choose.",
+      "error": "We couldn't load today's practice."
+    },
+    "path": {
+      "step": "Step {position} · {title}",
+      "noPath": "Follow a path and its next step shows here.",
+      "findPath": "Find a path",
+      "error": "We couldn't load your path."
+    },
+    "week": {
+      "title": "This week",
+      "minutes": "Minutes",
+      "streak": "Day streak",
+      "songs": "Songs",
+      "minutesMore": "+{count} vs last wk",
+      "minutesFewer": "{count} fewer than last wk",
+      "minutesSame": "Same as last wk",
+      "best": "Best: {count}",
+      "startStreak": "Start one today · best {count}",
+      "startFirstStreak": "Start one today",
+      "songsThisWeek": "+{count} this week",
+      "error": "We couldn't load this week."
+    },
+    "skills": {
+      "title": "Your skills",
+      "seeAll": "See all",
+      "fading": "{count} fading — refresh it | {count} fading — refresh them",
+      "error": "We couldn't load your skills."
+    }
   }
 }

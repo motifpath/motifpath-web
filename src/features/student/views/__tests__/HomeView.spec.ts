@@ -26,10 +26,10 @@ vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
 
-const { PracticeDashboard } = vi.hoisted(() => ({
-  PracticeDashboard: { name: 'PracticeDashboard', template: '<div />' },
+const { StudentHome } = vi.hoisted(() => ({
+  StudentHome: { name: 'StudentHome', template: '<div />' },
 }))
-vi.mock('@/features/student/components/PracticeDashboard.vue', () => ({ default: PracticeDashboard }))
+vi.mock('@/features/student/components/StudentHome.vue', () => ({ default: StudentHome }))
 
 import HomeView from '@/features/student/views/HomeView.vue'
 
@@ -53,7 +53,7 @@ describe('HomeView', () => {
     expect(link.props('to')).toEqual({ name: 'sign-in' })
   })
 
-  it('opens on the practice dashboard when signed in and registered', () => {
+  it('opens on the student home when signed in and registered', () => {
     auth.isLoaded.value = true
     auth.isSignedIn.value = true
     currentUser.isRegistered = true
@@ -61,15 +61,15 @@ describe('HomeView', () => {
 
     const wrapper = mountView()
 
-    expect(wrapper.findComponent(PracticeDashboard).exists()).toBe(true)
+    expect(wrapper.findComponent(StudentHome).exists()).toBe(true)
     expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
   })
 
-  it('shows no practice dashboard while signed out', () => {
+  it('shows no student home while signed out', () => {
     auth.isLoaded.value = true
     auth.isSignedIn.value = false
 
-    expect(mountView().findComponent(PracticeDashboard).exists()).toBe(false)
+    expect(mountView().findComponent(StudentHome).exists()).toBe(false)
   })
 
   it('shows a neutral loading line, with no dead link, while signed in but not yet registered', () => {

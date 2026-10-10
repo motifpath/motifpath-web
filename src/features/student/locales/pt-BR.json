@@ -399,5 +399,52 @@
     "title": "Seu progresso",
     "back": "Voltar",
     "comingSoon": "Seus minutos, dias seguidos, músicas e habilidades de cada instrumento vão aparecer aqui em breve."
+  },
+  "studentHome": {
+    "greeting": {
+      "morning": "Bom dia",
+      "afternoon": "Boa tarde",
+      "evening": "Boa noite"
+    },
+    "today": {
+      "eyebrow": "Prática de hoje · {instrument}",
+      "eyebrowAnyInstrument": "Prática de hoje",
+      "step": "{kind}: {skill}",
+      "kinds": {
+        "refresh": "Revisar",
+        "strengthen": "Fortalecer",
+        "ready_to_start": "Pronto para começar"
+      },
+      "length": "Cerca de {minutes} minutos",
+      "start": "Começar a praticar",
+      "nothingSuggested": "Nada para revisar agora. Comece uma sessão e pratique o que escolher.",
+      "error": "Não conseguimos carregar a prática de hoje."
+    },
+    "path": {
+      "step": "Passo {position} · {title}",
+      "noPath": "Siga uma trilha e o próximo passo dela aparece aqui.",
+      "findPath": "Encontrar uma trilha",
+      "error": "Não conseguimos carregar sua trilha."
+    },
+    "week": {
+      "title": "Esta semana",
+      "minutes": "Minutos",
+      "streak": "Dias seguidos",
+      "songs": "Músicas",
+      "minutesMore": "+{count} vs. anterior",
+      "minutesFewer": "{count} a menos que a anterior",
+      "minutesSame": "Igual à anterior",
+      "best": "Recorde: {count}",
+      "startStreak": "Comece hoje · recorde {count}",
+      "startFirstStreak": "Comece hoje",
+      "songsThisWeek": "+{count} esta semana",
+      "error": "Não conseguimos carregar esta semana."
+    },
+    "skills": {
+      "title": "Suas habilidades",
+      "seeAll": "Ver tudo",
+      "fading": "{count} enfraquecendo — revise-a | {count} enfraquecendo — revise-as",
+      "error": "Não conseguimos carregar suas habilidades."
+    }
   }
 }

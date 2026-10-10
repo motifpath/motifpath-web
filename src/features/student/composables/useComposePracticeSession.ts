@@ -5,6 +5,9 @@ import { useApi } from '@/shared/composables/useApi'
 
 type Plan = components['schemas']['PracticeSessionPlan']
 
+/** The length a session is offered at before the student picks another; the home quotes it too. */
+export const DEFAULT_SESSION_MINUTES = 10
+
 export type ComposeOutcome = { kind: 'composed'; plan: Plan } | { kind: 'nothing_to_practise' } | { kind: 'failed' }
 
 /**
