@@ -207,6 +207,9 @@
   "diagramThumbnail": {
     "noPreview": "No preview"
   },
+  "embeddedDiagram": {
+    "loadFailed": "This diagram didn't load."
+  },
   "diagramPlayer": {
     "play": "Play",
     "stop": "Stop",

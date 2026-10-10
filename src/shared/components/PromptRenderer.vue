@@ -12,7 +12,15 @@ type PromptNode = components['schemas']['PromptNode']
 type PromptMark = components['schemas']['PromptMark']
 type PromptAttrs = PromptNode['attrs']
 
-defineProps<{ document: PromptDocument }>()
+const props = withDefaults(
+  defineProps<{
+    document: PromptDocument
+    /** An embedded diagram that fails to load says so and offers Try again, as in a lesson's text,
+     *  instead of leaving nothing behind. */
+    retryableDiagrams?: boolean
+  }>(),
+  { retryableDiagrams: false },
+)
 
 function attrString(attrs: PromptAttrs, key: string): string | undefined {
   const value = attrs?.[key]
@@ -175,7 +183,9 @@ function renderNode(node: PromptNode): VNode {
     case 'diagram': {
       // A diagram node has no text of its own, so a malformed one leaves nothing behind.
       const embed = parseDiagramEmbed(node.attrs?.diagramRef, node.attrs?.diagramStackRef)
-      return embed ? h(EmbeddedDiagram, { embed, class: 'my-1' }) : createCommentVNode('diagram')
+      return embed
+        ? h(EmbeddedDiagram, { embed, retryable: props.retryableDiagrams, class: 'my-1' })
+        : createCommentVNode('diagram')
     }
     case 'songChart': {
       // A song chart node has no text of its own either; a malformed one leaves nothing behind.

@@ -74,6 +74,8 @@ function compositeStack(diagrams: Diagram[], stack: DiagramRef[]): { diagram: Di
  * every diagram of a stack) and its instrument. Anything a student can't be
  * shown — a failed load, an unknown instrument, or a keyboard diagram, which
  * has no student viewer yet — is `unavailable`, and the caller shows nothing.
+ * `failed` tells a failed load, which `retry` may fix, from a diagram that
+ * loaded but can't be shown, which no retry will.
  *
  * A changed embed loads again; one that is merely handed over anew with the
  * same content (a re-rendered cue or prompt) does not.
@@ -86,12 +88,14 @@ export function useEmbeddedDiagram(source: MaybeRefOrGetter<DiagramEmbed>) {
   const instrument = ref<Instrument | null>(null)
   const diagramRef = ref<DiagramRef | null>(null)
   const labelMode = ref<EmbeddedLabelMode>('interval')
+  const failed = ref(false)
 
   let latest = 0
 
   async function load(embed: DiagramEmbed) {
     const attempt = ++latest
     status.value = 'loading'
+    failed.value = false
 
     const refs = embed.kind === 'single' ? [embed.ref] : embed.stack
     const [diagrams, instruments] = await Promise.all([
@@ -108,6 +112,7 @@ export function useEmbeddedDiagram(source: MaybeRefOrGetter<DiagramEmbed>) {
       diagram.value = null
       instrument.value = null
       diagramRef.value = null
+      failed.value = loaded.length !== refs.length || instruments.data === undefined
       status.value = 'unavailable'
       return
     }
@@ -126,5 +131,10 @@ export function useEmbeddedDiagram(source: MaybeRefOrGetter<DiagramEmbed>) {
     { immediate: true },
   )
 
-  return { status, diagram, instrument, diagramRef, labelMode }
+  /** Loads the same embed again, after a failed load. */
+  function retry() {
+    void load(toValue(source))
+  }
+
+  return { status, failed, diagram, instrument, diagramRef, labelMode, retry }
 }

@@ -321,6 +321,16 @@ describe('PromptRenderer', () => {
       expect(html.indexOf('embedded-diagram-stub')).toBeLessThan(html.indexOf('After'))
     })
 
+    it('lets the student retry a diagram that failed to load only when asked to, as a lesson does', () => {
+      const document = doc([{ type: 'diagram', attrs: { diagramRef: makeDiagramRef() } }])
+
+      const lesson = mount(PromptRenderer, { props: { document, retryableDiagrams: true }, global: { stubs } })
+      const prompt = mount(PromptRenderer, { props: { document }, global: { stubs } })
+
+      expect(lesson.getComponent(EmbeddedDiagram).props('retryable')).toBe(true)
+      expect(prompt.getComponent(EmbeddedDiagram).props('retryable')).toBe(false)
+    })
+
     it('shows a stack of diagrams', () => {
       const stack = [makeDiagramRef(), makeDiagramRef({ diagram_id: 'diagram-2' })]
       const wrapper = mount(PromptRenderer, {

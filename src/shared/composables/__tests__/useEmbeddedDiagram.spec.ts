@@ -139,6 +139,40 @@ describe('useEmbeddedDiagram', () => {
 
       await vi.waitFor(() => expect(again.status.value).toBe('ready'))
     })
+
+    it.each([
+      ['the diagram', () => serve([])],
+      ['the instruments', () => GET.mockImplementation((path: string) => (path === '/instruments' ? fail() : ok(pentatonic)))],
+    ])('says the load failed when %s could not be loaded', async (_, failing) => {
+      failing()
+
+      const view = useEmbeddedDiagram({ kind: 'single', ref: makeDiagramRef() })
+
+      await vi.waitFor(() => expect(view.status.value).toBe('unavailable'))
+      expect(view.failed.value).toBe(true)
+    })
+
+    it('does not call a diagram that loaded but cannot be shown a failed load', async () => {
+      serve([pentatonic], [makeFrettedInstrument({ instrument_id: 'another-instrument' })])
+
+      const view = useEmbeddedDiagram({ kind: 'single', ref: makeDiagramRef() })
+
+      await vi.waitFor(() => expect(view.status.value).toBe('unavailable'))
+      expect(view.failed.value).toBe(false)
+    })
+
+    it('loads again on retry, and shows the diagram once it arrives', async () => {
+      serve([])
+      const view = useEmbeddedDiagram({ kind: 'single', ref: makeDiagramRef() })
+      await vi.waitFor(() => expect(view.failed.value).toBe(true))
+
+      serve([pentatonic])
+      view.retry()
+
+      expect(view.status.value).toBe('loading')
+      await vi.waitFor(() => expect(view.status.value).toBe('ready'))
+      expect(view.failed.value).toBe(false)
+    })
   })
 
   describe('a diagram_stack_ref', () => {

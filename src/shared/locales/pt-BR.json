@@ -207,6 +207,9 @@
   "diagramThumbnail": {
     "noPreview": "Sem prévia"
   },
+  "embeddedDiagram": {
+    "loadFailed": "Este diagrama não carregou."
+  },
   "diagramPlayer": {
     "play": "Tocar",
     "stop": "Parar",

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import { expect } from 'storybook/test'
 
 import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import { failing, pending } from '@/shared/testUtils/msw/handlers'
@@ -13,7 +14,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'A diagram it cannot show — a failed load, an unknown instrument, a keyboard diagram — renders the `unavailable` slot, or nothing. There is no empty state.',
+          'A diagram it cannot show — a failed load, an unknown instrument, a keyboard diagram — renders the `unavailable` slot, or nothing. There is no empty state. With `retryable` (in a lesson’s text), a failed load says so in place and offers Try again.',
       },
     },
   },
@@ -33,4 +34,14 @@ export const Failed: Story = {
     setup: () => ({ args }),
     template: '<EmbeddedDiagram v-bind="args"><template #unavailable><p class="text-sm text-ink-muted">This diagram can’t be shown right now.</p></template></EmbeddedDiagram>',
   }),
+}
+
+/** In a lesson's text: a failed load says so where the diagram would be, with Try again. */
+export const FailedRetryable: Story = {
+  args: { retryable: true },
+  parameters: { msw: { handlers: { diagram: failing('diagram') } } },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByRole('alert')).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /try again|tentar novamente/i })).toBeVisible()
+  },
 }
