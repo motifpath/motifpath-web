@@ -81,6 +81,11 @@ export const conceptNodes: Schemas['KnowledgeNode'][] = [
 
 const alternatePicking = { node_id: 'skill-alternate-picking', names: { en: 'Alternate picking', pt_BR: 'Palhetada alternada' } }
 
+// The week ending Saturday 2026-10-10: oldest first, today last.
+const lastWeek = ['2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10']
+const practised = [true, false, true, true, false, true, false]
+const learned = [true, true, false, true, true, true, false]
+
 export const practiceOverview: Schemas['PracticeOverview'] = {
   practice_days_last_7: 4,
   learning_days_last_7: 5,
@@ -91,6 +96,7 @@ export const practiceOverview: Schemas['PracticeOverview'] = {
   skills_up_last_7: 2,
   songs_played_total: 3,
   songs_played_last_7: 1,
+  last_7_days: lastWeek.map((date, i) => ({ date, practised: practised[i], learned: learned[i] })),
   instruments: [
     {
       instrument_id: 'instrument-guitar',
@@ -104,6 +110,7 @@ export const practiceSummary: Schemas['PracticeSummary'] = {
   instrument_id: 'instrument-guitar',
   student_instrument_ids: ['instrument-guitar'],
   practice_days_last_7: 4,
+  last_7_days: lastWeek.map((date, i) => ({ date, practised: practised[i] })),
   progress_this_week: [{ ...alternatePicking, measure: 'best_clean_tempo_bpm', before: 80, after: 92 }],
   next_steps: [{ kind: 'strengthen', ...alternatePicking, level: 'learning' }],
   next_steps_total: 1,

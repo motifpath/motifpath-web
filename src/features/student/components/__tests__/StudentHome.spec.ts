@@ -60,6 +60,7 @@ function overview(overrides: Partial<Overview> = {}): Overview {
     skills_up_last_7: 3,
     songs_played_total: 5,
     songs_played_last_7: 1,
+    last_7_days: [],
     instruments: [
       { instrument_id: GUITAR, practice_days_last_7: 3, top_next_step: { kind: 'refresh', node_id: 'major-triads', names: { en: 'Major triads', pt_BR: 'Tríades maiores' } } },
       { instrument_id: BASS, practice_days_last_7: 0, top_next_step: null },
@@ -95,6 +96,7 @@ function guitarSummary(): Summary {
     instrument_id: GUITAR,
     student_instrument_ids: [GUITAR, BASS],
     practice_days_last_7: 3,
+    last_7_days: [],
     progress_this_week: [],
     next_steps: [],
     next_steps_total: 0,

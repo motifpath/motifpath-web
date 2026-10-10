@@ -21,6 +21,7 @@ function overview(overrides: Partial<Overview> = {}): Overview {
     skills_up_last_7: 0,
     songs_played_total: 0,
     songs_played_last_7: 0,
+    last_7_days: [],
     instruments: [],
     ...overrides,
   }
@@ -43,6 +44,7 @@ function summary(nodes: NodeProgress[][]): Summary {
     instrument_id: GUITAR,
     student_instrument_ids: [GUITAR],
     practice_days_last_7: 0,
+    last_7_days: [],
     progress_this_week: [],
     next_steps: [],
     next_steps_total: 0,
