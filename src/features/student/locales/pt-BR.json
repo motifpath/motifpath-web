@@ -394,5 +394,10 @@
       "cell": "{place}: {level}",
       "cellFading": "{place}: {level}, esmaecendo"
     }
+  },
+  "yourProgressView": {
+    "title": "Seu progresso",
+    "back": "Voltar",
+    "comingSoon": "Seus minutos, dias seguidos, músicas e habilidades de cada instrumento vão aparecer aqui em breve."
   }
 }

@@ -394,5 +394,10 @@
       "cell": "{place}: {level}",
       "cellFading": "{place}: {level}, fading"
     }
+  },
+  "yourProgressView": {
+    "title": "Your progress",
+    "back": "Back",
+    "comingSoon": "Your minutes, streak, songs and skills for each instrument will show here soon."
   }
 }

@@ -28,10 +28,11 @@ export const LEARNER_DESTINATIONS: Destination[] = [
   { id: 'discover', to: { name: 'course-catalog' }, labelKey: 'nav.discover', icon: Compass },
 ]
 
-// The destination each learner route sits under: a lesson and a node's practice belong to My path,
+// The destination each learner route sits under: Your progress belongs to the home, a lesson and a node's practice belong to My path,
 // a finished course to Learning, and a catalog's detail page to Discover.
 const DESTINATION_OF_ROUTE: Record<string, DestinationId> = {
   home: 'home',
+  'your-progress': 'home',
   'practice-session': 'practice',
   path: 'myPath',
   node: 'myPath',

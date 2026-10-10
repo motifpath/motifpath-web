@@ -11,6 +11,7 @@
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Circle,
   CirclePlay,
@@ -42,6 +43,7 @@ type IconName =
   | 'todo'
   | 'menu'
   | 'chevron-right'
+  | 'chevron-left'
   | 'chevron-down'
   | 'check'
   | 'video'
@@ -80,6 +82,7 @@ const glyph = computed(
       todo: Circle,
       menu: Menu,
       'chevron-right': ChevronRight,
+      'chevron-left': ChevronLeft,
       'chevron-down': ChevronDown,
       check: Check,
       video: CirclePlay,

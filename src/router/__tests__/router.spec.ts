@@ -299,6 +299,23 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('practice-session')
   })
 
+  it('lets a registered student reach Your progress, keeping the instrument chosen', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push({ name: 'your-progress', query: { instrument: 'i-1' } })
+    expect(router.currentRoute.value.name).toBe('your-progress')
+    expect(router.currentRoute.value.query).toEqual({ instrument: 'i-1' })
+  })
+
+  it('sends an unauthenticated visitor from Your progress to sign-in', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push({ name: 'your-progress' })
+    expect(router.currentRoute.value.name).toBe('sign-in')
+  })
+
   it('gives a lesson the phone’s full height, without the bottom navigation bar', () => {
     expect(router.resolve('/path/nodes/node-abc').meta.hidesBottomBar).toBe(true)
   })

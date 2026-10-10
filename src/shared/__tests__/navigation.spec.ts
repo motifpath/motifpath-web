@@ -29,6 +29,7 @@ describe('LEARNER_DESTINATIONS', () => {
 describe('destinationOf', () => {
   it.each([
     ['home', 'home'],
+    ['your-progress', 'home'],
     ['practice-session', 'practice'],
     ['path', 'myPath'],
     ['node', 'myPath'],
