@@ -573,6 +573,63 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')[0].response).toMatchObject({ latency_ms: 3000 })
     })
 
+    describe('skipping an item that can’t be answered', () => {
+      it('sends it as not answered, with why, and moves on', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.nextItem()
+        run.skip('failed_to_load')
+
+        expect(tracked('practice.item_answered')).toEqual([
+          {
+            event_type: 'practice.item_answered',
+            practice_session_id: SESSION_ID,
+            item_key: `exercise:${LISTENING}`,
+            response: { response_type: 'not_answered', reason: 'failed_to_load' },
+          },
+        ])
+        expect(run.current.value?.item_key).toBe(`play_along:${APPLY}`)
+      })
+
+      it('sends an item that can’t be shown here as unavailable', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.skip('unavailable')
+
+        expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'not_answered', reason: 'unavailable' })
+      })
+
+      it('leaves it out of the answered count', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.answer(['right'])
+        run.nextItem()
+        run.skip('failed_to_load')
+        run.rate('clean')
+        run.end()
+
+        expect(tracked('practice.session_ended')[0]).toMatchObject({ answered_count: 2 })
+      })
+
+      it('takes no skip once the item is answered', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.answer(['right'])
+        run.skip('failed_to_load')
+
+        expect(tracked('practice.item_answered')).toHaveLength(1)
+        expect(run.current.value?.item_key).toBe(`exercise:${EXERCISE}`)
+      })
+
+      it('finishes the session when the last item is skipped', () => {
+        const run = usePracticeSessionRun(plan([exerciseItem(EXERCISE, 'due')]))
+        run.start()
+        run.skip('unavailable')
+
+        expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ answered_count: 0, left_early: false })])
+      })
+    })
+
     it('counts an answered exercise among the answered items', () => {
       const run = usePracticeSessionRun(mixed)
       run.start()

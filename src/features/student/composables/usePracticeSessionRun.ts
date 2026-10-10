@@ -16,6 +16,8 @@ import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 type Plan = components['schemas']['PracticeSessionPlan']
 type Item = components['schemas']['PracticeSessionItem']
 type FeltRating = EventComponents['schemas']['FeltRating']
+/** Why an item went unanswered: its sound or image didn't load, or it can't be shown here. */
+export type NotAnsweredReason = EventComponents['schemas']['NotAnsweredResponse']['reason']
 
 /** Takes of a play-along, as core estimates the session's time with them. */
 const FOCUS_TAKES = 4
@@ -404,6 +406,24 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   }
 
   /**
+   * Moves past an item the student couldn't answer, sending it as not answered so it is kept but
+   * never graded: it counts neither as answered nor as wrong. Only an item not yet answered.
+   */
+  function skip(reason: NotAnsweredReason) {
+    const item = current.value
+    if (!active() || !item) return
+    if (exerciseAnswer.value || cellAnswer.value || shapeAnswer.value || takes.value.length > 0) return
+
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { response_type: 'not_answered', reason },
+    })
+    nextItem()
+  }
+
+  /**
    * Ends the session now; `keepalive` when the page is closing. Before the last item it ends as
    * left early; during the felt questions, as finished with the ratings given so far.
    */
@@ -438,6 +458,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     rate,
     answer,
     clipPlaying,
+    skip,
     answerCell,
     answerShape,
     completeTapCheck,
