@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildMyPath } from '@/features/student/utils/myPath'
+import { buildMyPath, stepAfter } from '@/features/student/utils/myPath'
 import {
   makeStudentPathItem as item,
   makeStudentPathView as view,
@@ -103,5 +103,21 @@ describe('buildMyPath', () => {
 
   it('is not complete while a step is left', () => {
     expect(buildMyPath(view([item(1, undefined, 'completed'), item(2)])).complete).toBe(false)
+  })
+})
+
+describe('stepAfter', () => {
+  it('gives the step after a step, as the path has it now', () => {
+    const path = view([item(1, undefined, 'completed'), item(2, undefined, 'completed'), languageLocked(3)])
+
+    expect(stepAfter(path, 'node-2')).toMatchObject({ position: 3, contentNodeId: 'node-3', state: 'language', availableLanguages: ['en'] })
+  })
+
+  it('has nothing after the last step', () => {
+    expect(stepAfter(view([item(1, undefined, 'completed'), item(2)]), 'node-2')).toBeNull()
+  })
+
+  it('has nothing after a step that is not on the path', () => {
+    expect(stepAfter(view([item(1), item(2)]), 'node-9')).toBeNull()
   })
 })

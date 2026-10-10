@@ -5,8 +5,8 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 
 withDefaults(
   defineProps<{
-    /** `cards` for a list of cards or rows, `lines` for a page of text. */
-    shape?: 'cards' | 'lines'
+    /** `cards` for a list of cards or rows, `lines` for a page of text, `video` for a video lesson. */
+    shape?: 'cards' | 'lines' | 'video'
     count?: number
   }>(),
   { shape: 'cards', count: 3 },
@@ -30,7 +30,7 @@ function lineWidth(index: number): string {
 </script>
 
 <template>
-  <div role="status" aria-busy="true" class="flex flex-col" :class="shape === 'cards' ? 'gap-3' : 'gap-2'">
+  <div role="status" aria-busy="true" class="flex flex-col" :class="shape === 'lines' ? 'gap-2' : 'gap-3'">
     <span data-test="skeleton-label" class="sr-only">{{ t('states.loading') }}</span>
     <template v-if="visible">
       <template v-if="shape === 'cards'">
@@ -44,6 +44,11 @@ function lineWidth(index: number): string {
           <div class="h-3 w-1/2 animate-pulse rounded-full bg-surface-sunken" />
           <div class="h-3 w-1/3 animate-pulse rounded-full bg-surface-sunken" />
         </div>
+      </template>
+      <template v-else-if="shape === 'video'">
+        <div data-test="skeleton-block" class="aspect-video w-full animate-pulse rounded-lg bg-surface-sunken" aria-hidden="true" />
+        <div data-test="skeleton-block" class="h-4 w-2/3 animate-pulse rounded-full bg-surface-sunken" aria-hidden="true" />
+        <div data-test="skeleton-block" class="h-3 w-1/3 animate-pulse rounded-full bg-surface-sunken" aria-hidden="true" />
       </template>
       <template v-else>
         <div

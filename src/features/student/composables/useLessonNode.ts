@@ -1,6 +1,7 @@
 import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 import { completedCourseEnrollmentId as completedEnrollmentOf } from '@/features/student/utils/courseCompletion'
+import { buildMyPath, stepAfter, type MyPathStep } from '@/features/student/utils/myPath'
 import { useApi } from '@/shared/composables/useApi'
 import type { components } from '@/api/generated/core-domain'
 
@@ -9,12 +10,21 @@ type ExpandedContent = components['schemas']['ExpandedContent']
 type StudentPathItem = components['schemas']['StudentPathItem']
 
 /**
- * What the lesson screen should show. `unsupported` is a step whose content
- * type has no lesson screen yet; `no-media` is a video step that has no
- * video to play (older content).
+ * What the lesson screen should show. `locked` waits on an earlier step;
+ * `language-locked` has no version in the student's language and was opened
+ * without choosing one it has. `unsupported` is a step whose content type has
+ * no lesson screen yet; `no-media` is a video step that has no video to play
+ * (older content).
  */
 export type LessonNodeState =
-  'loading' | 'error' | 'not-found' | 'locked' | 'unsupported' | 'no-media' | 'ready'
+  | 'loading'
+  | 'error'
+  | 'not-found'
+  | 'locked'
+  | 'language-locked'
+  | 'unsupported'
+  | 'no-media'
+  | 'ready'
 
 /**
  * Loads everything the lesson screen needs for one content node: the
@@ -42,6 +52,12 @@ export function useLessonNode(
   const hasChallenge = ref(false)
   const completedCourseEnrollmentId = ref<string | null>(null)
   const pathTitle = ref<string | null>(null)
+  // Where the step sits on the path: the step itself, the one after it (which its completion
+  // opens), the one the student can do now, and how many steps the path has.
+  const step = ref<MyPathStep | null>(null)
+  const next = ref<MyPathStep | null>(null)
+  const current = ref<MyPathStep | null>(null)
+  const total = ref(0)
 
   // Bumped on every load() call; a call only applies its result if it is
   // still the most recent one by the time it resolves, so an overlapping
@@ -57,6 +73,10 @@ export function useLessonNode(
     hasChallenge.value = false
     completedCourseEnrollmentId.value = null
     pathTitle.value = null
+    step.value = null
+    next.value = null
+    current.value = null
+    total.value = 0
   }
 
   async function load(): Promise<void> {
@@ -86,6 +106,11 @@ export function useLessonNode(
         return
       }
       status.value = item.status
+      const steps = buildMyPath(pathResult.data).sections.flatMap((section) => section.steps)
+      step.value = steps.find((candidate) => candidate.contentNodeId === id) ?? null
+      next.value = stepAfter(pathResult.data, id)
+      current.value = steps.find((candidate) => candidate.position === pathResult.data.current_position) ?? null
+      total.value = steps.length
       // A language-locked step opens once the student picks a language it has: the lock is about
       // the student's own language, not about the lesson being out of reach.
       const language = toValue(options.language)
@@ -94,7 +119,7 @@ export function useLessonNode(
         language !== undefined &&
         (item.available_languages ?? []).some((available) => available.code === language)
       if (item.status === 'locked' && !openedInLanguage) {
-        state.value = 'locked'
+        state.value = item.lock_reason === 'language' ? 'language-locked' : 'locked'
         return
       }
 
@@ -141,5 +166,18 @@ export function useLessonNode(
   )
   void load()
 
-  return { state, status, node, cues, hasChallenge, completedCourseEnrollmentId, pathTitle, retry: load }
+  return {
+    state,
+    status,
+    node,
+    cues,
+    hasChallenge,
+    completedCourseEnrollmentId,
+    pathTitle,
+    step,
+    next,
+    current,
+    total,
+    retry: load,
+  }
 }

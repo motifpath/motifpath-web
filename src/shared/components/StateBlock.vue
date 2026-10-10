@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { Inbox, Lock, SearchX, WifiOff } from 'lucide-vue-next'
+import { Inbox, Languages, Lock, SearchX, WifiOff } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-export type StateKind = 'empty' | 'locked' | 'notFound' | 'offline'
+export type StateKind = 'empty' | 'locked' | 'notFound' | 'offline' | 'language'
 
 const props = defineProps<{
-  /** Nothing there yet · not yet allowed · gone or not yours · offline with nothing cached. */
+  /**
+   * Nothing there yet · not yet allowed · gone or not yours · offline with nothing cached · not in
+   * the student's language, but in another one they can choose.
+   */
   kind: StateKind
   /** Specific to the page ("No courses yet"), never "No data". */
   title: string
@@ -13,7 +16,7 @@ const props = defineProps<{
   message: string
 }>()
 
-const ICONS = { empty: Inbox, locked: Lock, notFound: SearchX, offline: WifiOff }
+const ICONS = { empty: Inbox, locked: Lock, notFound: SearchX, offline: WifiOff, language: Languages }
 const icon = computed(() => ICONS[props.kind])
 </script>
 

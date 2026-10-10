@@ -39,6 +39,14 @@ export const NotFound: Story = {
     message: 'It may have been retired or replaced. Others on the same skills are in Discover.',
   },
 }
+/** A step with no version in the student's language, and the language it can be opened in. */
+export const Language: Story = {
+  args: {
+    kind: 'language',
+    title: 'Not in Portuguese yet',
+    message: 'This lesson is only in English for now. Watch it in English — finishing it opens the next step.',
+  },
+}
 /** Offline recovers by itself, so it has no action. */
 export const Offline: Story = {
   args: { kind: 'offline', title: "You're offline", message: 'Discover needs a connection. Pages you already opened still work.' },

@@ -100,7 +100,7 @@ export const LongPortuguese: Story = { render: onRoute('course-catalog'), global
 
 /** A lesson takes the phone's full height: no bottom bar. */
 export const CompactLesson: Story = {
-  render: onRoute('story-lesson', { hidesBottomBar: true }),
+  render: onRoute('story-lesson', { hidesBottomBar: true, pushed: true }),
   globals: { viewport: { value: 'compact' } },
   play: async ({ canvasElement }) => {
     await settle(100)

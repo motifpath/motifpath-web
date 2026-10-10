@@ -21,6 +21,8 @@ const current = computed(() => destinationOf(typeof route.name === 'string' ? ro
 const canTeach = computed(() => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin')
 // A lesson takes the phone's full height; the rail and the sidebar cost no height, so they stay.
 const showsBottomBar = computed(() => sizeClass.value === 'compact' && !route.meta.hidesBottomBar)
+// A pushed page brings its own back bar, which takes the top of a phone's screen in place of the brand bar.
+const showsTopBar = computed(() => sizeClass.value === 'compact' && !route.meta.pushed)
 
 // A route can opt into a wider content column (route.meta.wideContent) — the lesson, whose video
 // would otherwise be squeezed into the reading-width column — growing again on a large desktop.
@@ -79,7 +81,7 @@ onBeforeUnmount(() => {
 
     <div class="flex min-w-0 flex-1 flex-col">
       <header
-        v-if="sizeClass === 'compact'"
+        v-if="showsTopBar"
         data-test="learner-top-bar"
         class="sticky top-0 z-20 flex h-14 items-center gap-2.5 bg-surface-raised pl-5 pr-2 shadow-level1"
       >

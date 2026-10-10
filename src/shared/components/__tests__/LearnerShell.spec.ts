@@ -145,6 +145,13 @@ describe('LearnerShell', () => {
     expect(has(mountShell({ width: 390 }), 'navigation-bar')).toBe(false)
   })
 
+  it('on a phone, leaves the top of the screen to a pushed page, which brings its own back bar', () => {
+    route.name = 'node'
+    route.meta = { hidesBottomBar: true, pushed: true }
+
+    expect(has(mountShell({ width: 390 }), 'learner-top-bar')).toBe(false)
+  })
+
   it('keeps the rail on a tablet for that page', () => {
     route.name = 'node'
     route.meta = { hidesBottomBar: true }

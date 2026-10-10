@@ -28,9 +28,17 @@ describe('useLessonCompletionSync', () => {
 
     const outcome = await sync().waitForCompletion('node-2')
 
-    expect(outcome).toEqual({ kind: 'recorded' })
+    expect(outcome).toMatchObject({ kind: 'recorded' })
     expect(GET).toHaveBeenCalledTimes(3)
     expect(GET).toHaveBeenCalledWith('/students/me/path')
+  })
+
+  it('hands back the path it re-read, so what opened next can be read as it is now', async () => {
+    GET.mockResolvedValueOnce(recorded)
+
+    const outcome = await sync().waitForCompletion('node-2')
+
+    expect(outcome).toEqual({ kind: 'recorded', view: recorded.data })
   })
 
   it('reports the course as completed when a re-read is the one that discovers it', async () => {
@@ -52,7 +60,7 @@ describe('useLessonCompletionSync', () => {
   it('treats the lesson as recorded once the current path has moved on without it', async () => {
     GET.mockResolvedValueOnce(ok(view([item(7, undefined, 'not_started')])))
 
-    expect(await sync().waitForCompletion('node-2')).toEqual({ kind: 'recorded' })
+    expect(await sync().waitForCompletion('node-2')).toMatchObject({ kind: 'recorded' })
   })
 
   it('treats the lesson as recorded once the student has no current path left', async () => {
@@ -75,6 +83,6 @@ describe('useLessonCompletionSync', () => {
       recorded,
     )
 
-    expect(await sync().waitForCompletion('node-2')).toEqual({ kind: 'recorded' })
+    expect(await sync().waitForCompletion('node-2')).toMatchObject({ kind: 'recorded' })
   })
 })
