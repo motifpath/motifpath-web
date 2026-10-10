@@ -13,6 +13,7 @@ import { DEFAULT_SESSION_MINUTES } from '@/features/student/composables/useCompo
 import { usePracticeOverview } from '@/features/student/composables/usePracticeHome'
 import { useStepWording } from '@/features/student/composables/useStepWording'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import { useWeekCaptions } from '@/features/student/composables/useWeekCaptions'
 import { buildMyPath } from '@/features/student/utils/myPath'
 import { skillsInstrumentId, thisWeek, todaysPractice } from '@/features/student/utils/studentHome'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
@@ -64,26 +65,7 @@ const progressTo = computed(() =>
 
 const week = computed(() => (overview.value ? thisWeek(overview.value) : null))
 
-const minutesCaption = computed(() => {
-  if (!week.value) return undefined
-  const { minutes, minutesChange } = week.value
-  if (minutesChange > 0) return t('studentHome.week.minutesMore', { count: minutesChange })
-  if (minutesChange < 0) return t('studentHome.week.minutesFewer', { count: -minutesChange })
-  return minutes > 0 ? t('studentHome.week.minutesSame') : undefined
-})
-
-// A streak is shown kindly: with no current streak the tile invites one and keeps the best, never
-// says one was lost, and keeps the same colours as every other tile.
-const streakCaption = computed(() => {
-  if (!week.value) return undefined
-  const { streak, bestStreak } = week.value
-  if (streak > 0) return t('studentHome.week.best', { count: bestStreak })
-  return bestStreak > 0 ? t('studentHome.week.startStreak', { count: bestStreak }) : t('studentHome.week.startFirstStreak')
-})
-
-const songsCaption = computed(() =>
-  week.value && week.value.songsThisWeek > 0 ? t('studentHome.week.songsThisWeek', { count: week.value.songsThisWeek }) : undefined,
-)
+const { minutes: minutesCaption, streak: streakCaption, songs: songsCaption } = useWeekCaptions(week)
 
 const myPath = computed(() => (studentPath.value ? buildMyPath(studentPath.value) : null))
 
