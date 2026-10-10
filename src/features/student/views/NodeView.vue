@@ -159,6 +159,16 @@ const showsActionBar = computed(
     ((isReview.value && lesson.hasChallenge.value) || (handOff.value === 'practise' && !playbackFailed.value)),
 )
 
+/**
+ * A video lesson fits the screen: the video at the top, the title and what to do next at the foot,
+ * and the cue between them taking what height is left, scrolling when it needs more. A cue coming
+ * and going then never moves the title or the actions. An article reads as a page and scrolls, and
+ * so does a phone turned sideways, where the video already fills the height with its cue beside it.
+ */
+const fitsScreen = computed(
+  () => !isArticle.value && !isShortHeight.value && ['ready', 'no-media'].includes(lesson.state.value),
+)
+
 /** What Mark as done says it will do: mark this step done and, when there is one, open the next. */
 const markAsDoneHint = computed(() => {
   const position = lesson.step.value?.position
@@ -269,7 +279,11 @@ async function practiseArticle(): Promise<void> {
 <template>
   <!-- A page pushed onto My path: its back bar takes the top of the screen, so the page pulls up
        over the shell's top padding. -->
-  <section data-test="node" class="-mt-5 flex flex-col gap-4 sm:-mt-8">
+  <section
+    data-test="node"
+    class="-mt-5 flex flex-col gap-4 sm:-mt-8"
+    :class="fitsScreen ? 'h-dvh' : 'pb-5 sm:pb-8'"
+  >
     <PageBackBar
       :title="lesson.pathTitle.value ?? t('nav.myPath')"
       :to="{ name: 'path' }"
@@ -325,7 +339,18 @@ async function practiseArticle(): Promise<void> {
       </StateBlock>
     </template>
 
-    <template v-else>
+    <!-- One reading column, as wide as a tablet's, on every screen from a tablet up: the cue sits
+         under the video at the video's width. A phone turned sideways keeps the whole width, as
+         the video fills its height with the cue beside it. -->
+    <div
+      v-else
+      data-test="lesson-layout"
+      class="flex flex-col gap-4"
+      :class="[
+        isShortHeight ? null : ['mx-auto w-full', isArticle ? 'max-w-[35rem]' : 'max-w-[38.75rem]'],
+        { 'min-h-0 flex-1': fitsScreen },
+      ]"
+    >
       <template v-if="lesson.state.value === 'ready' && !isArticle">
         <!-- A playback failure says so where the video was, but does not unmount the player below
              it (v-show, not v-if): the video engine still needs a fresh provider on retry, but the
@@ -342,8 +367,8 @@ async function practiseArticle(): Promise<void> {
         <!-- The cue lives inside LessonPlayer's aside slot (not beside it as a
              separate element) so it is still shown when the player goes
              fullscreen — the Fullscreen API only renders an element's own
-             descendants. Stacked below the video in portrait, beside it in
-             landscape.
+             descendants. Beside the video on a phone turned sideways and in
+             fullscreen, stacked below it otherwise.
 
              The slot is provided whenever this lesson has any cues at all, not
              only while one is active: an aria-live region has to stay mounted
@@ -351,7 +376,7 @@ async function practiseArticle(): Promise<void> {
              that's added already full of content, or removed and re-added each
              time, is typically read as silent. CuePanel itself still renders
              nothing between cues, via the empty:hidden rule below. -->
-        <div v-show="!playbackFailed" data-test="lesson">
+        <div v-show="!playbackFailed" data-test="lesson" :class="{ 'flex min-h-0 flex-col': fitsScreen }">
           <LessonPlayer
             ref="player"
             :reset-token="playerKey"
@@ -369,30 +394,117 @@ async function practiseArticle(): Promise<void> {
         </div>
       </template>
 
-      <!-- The title block: no length — the player shows the time once it loads. -->
-      <div class="flex flex-col gap-1">
-        <h1 class="text-lg font-semibold text-ink">{{ lesson.node.value?.title ?? t('nodeView.heading') }}</h1>
-        <p v-if="stepMeta" data-test="step-meta" class="text-xs text-ink-muted">{{ stepMeta }}</p>
-      </div>
+      <!-- On a video lesson that fits the screen, this sits at its foot. -->
+      <div data-test="lesson-details" class="flex flex-col gap-4" :class="{ 'mt-auto shrink-0': fitsScreen }">
+        <!-- The title block: no length — the player shows the time once it loads. -->
+        <div class="flex flex-col gap-1">
+          <h1 class="text-lg font-semibold text-ink">{{ lesson.node.value?.title ?? t('nodeView.heading') }}</h1>
+          <p v-if="stepMeta" data-test="step-meta" class="text-xs text-ink-muted">{{ stepMeta }}</p>
+        </div>
 
-      <LoadFailed
-        v-if="lesson.state.value === 'no-media'"
-        :data-test="isArticle ? 'no-text' : 'no-video'"
-        :message="isArticle ? t('nodeView.noText') : t('nodeView.noVideo')"
-        @retry="lesson.retry()"
-      />
+        <LoadFailed
+          v-if="lesson.state.value === 'no-media'"
+          :data-test="isArticle ? 'no-text' : 'no-video'"
+          :message="isArticle ? t('nodeView.noText') : t('nodeView.noVideo')"
+          @retry="lesson.retry()"
+        />
 
-      <template v-else-if="articleBody">
-        <ArticleLesson :document="articleBody" :cues="lesson.cues.value" />
+        <template v-else-if="articleBody">
+          <ArticleLesson :document="articleBody" :cues="lesson.cues.value" />
 
-        <!-- The hand-off sits at the end of the text, where reading leads, never in a bar. -->
+          <!-- The hand-off sits at the end of the text, where reading leads, never in a bar. -->
+          <div
+            v-if="!isReview || lesson.hasChallenge.value"
+            data-test="article-end"
+            class="flex max-w-prose flex-col gap-3 border-t border-border pt-4"
+          >
+            <AppButton
+              v-if="isReview"
+              variant="secondary"
+              :to="{ name: 'practice', params: { nodeId } }"
+              data-test="practise-again"
+              block
+            >
+              {{ t('nodeView.practiseAgain') }}
+            </AppButton>
+            <template v-else>
+              <p class="text-base font-semibold text-ink">{{ t('nodeView.articleEnd.title') }}</p>
+              <AppButton
+                :data-test="lesson.hasChallenge.value ? 'practise-this' : 'mark-as-done'"
+                :busy="handOff === 'saving'"
+                block
+                @click="lesson.hasChallenge.value ? practiseArticle() : markAsDone()"
+              >
+                {{ lesson.hasChallenge.value ? t('nodeView.practiseThis') : t('nodeView.articleEnd.markAsDone') }}
+              </AppButton>
+              <p v-if="lesson.hasChallenge.value" class="text-xs text-ink-muted">{{ t('nodeView.tryIt.messageArticle') }}</p>
+              <p v-else-if="markAsDoneHint" class="text-xs text-ink-muted">{{ markAsDoneHint }}</p>
+              <!-- Mounted from the start, so the saving is announced; the busy button already shows it. -->
+              <p data-test="hand-off-status" role="status" class="sr-only">
+                <template v-if="handOff === 'saving'">{{ t('nodeView.savingProgress') }}</template>
+              </p>
+            </template>
+          </div>
+        </template>
+
+        <template v-else-if="!playbackFailed">
+          <div v-if="handOff === 'practise'" data-test="try-it" class="flex flex-col gap-1 rounded-lg bg-accent-muted px-4 py-3">
+            <p class="text-sm font-semibold text-ink">{{ t('nodeView.tryIt.title') }}</p>
+            <p class="text-sm text-ink-muted">{{ t('nodeView.tryIt.message') }}</p>
+          </div>
+
+          <!-- One live region, mounted from the start and only its text swapped: a region that is
+               added already holding its message is typically read as silent. Until there is
+               something to say it stays in the accessibility tree but takes no room. -->
+          <p
+            v-if="handOff !== 'practise'"
+            data-test="hand-off-status"
+            role="status"
+            class="flex items-center gap-2"
+            :class="{
+              'sr-only': handOff === 'none',
+              'text-sm text-ink-muted': handOff === 'saving',
+              'text-base font-semibold text-success': handOff === 'done',
+            }"
+          >
+            <span v-if="handOff === 'saving'" data-test="saving-progress">{{ t('nodeView.savingProgress') }}</span>
+            <template v-else-if="handOff === 'done'">
+              <Check :size="20" aria-hidden="true" /><span data-test="step-done">{{ t('nodeView.stepDone') }}</span>
+            </template>
+          </p>
+
+          <div v-if="handOff === 'done'" class="flex flex-col gap-4">
+            <NextStepCard
+              v-if="handOffNext && nextAction"
+              :eyebrow="t('pathView.upNext', { position: handOffNext.position, total: lesson.total.value })"
+              :title="handOffNext.title"
+              :kind="handOffNext.kind"
+              :kind-label="wording.kindLabel(handOffNext)"
+              :action-label="nextAction.label"
+              :to="nextAction.to"
+            />
+            <AppButton variant="tertiary" :to="{ name: 'path' }" data-test="back-to-my-path" block>
+              {{ t('nodeView.backToMyPath') }}
+            </AppButton>
+          </div>
+        </template>
+
+        <!-- The practice action sits in the thumb zone at the foot of the screen. -->
         <div
-          v-if="!isReview || lesson.hasChallenge.value"
-          data-test="article-end"
-          class="flex max-w-prose flex-col gap-3 border-t border-border pt-4"
+          v-if="showsActionBar"
+          class="sticky bottom-0 -mx-4 border-t border-border bg-surface px-4 pt-3 pb-safe"
         >
+          <PrimaryButton
+            v-if="!isReview"
+            as="RouterLink"
+            :to="{ name: 'practice', params: { nodeId } }"
+            data-test="practise-this"
+            class="w-full"
+          >
+            {{ t('nodeView.practiseThis') }}
+          </PrimaryButton>
           <AppButton
-            v-if="isReview"
+            v-else
             variant="secondary"
             :to="{ name: 'practice', params: { nodeId } }"
             data-test="practise-again"
@@ -400,93 +512,9 @@ async function practiseArticle(): Promise<void> {
           >
             {{ t('nodeView.practiseAgain') }}
           </AppButton>
-          <template v-else>
-            <p class="text-base font-semibold text-ink">{{ t('nodeView.articleEnd.title') }}</p>
-            <AppButton
-              :data-test="lesson.hasChallenge.value ? 'practise-this' : 'mark-as-done'"
-              :busy="handOff === 'saving'"
-              block
-              @click="lesson.hasChallenge.value ? practiseArticle() : markAsDone()"
-            >
-              {{ lesson.hasChallenge.value ? t('nodeView.practiseThis') : t('nodeView.articleEnd.markAsDone') }}
-            </AppButton>
-            <p v-if="lesson.hasChallenge.value" class="text-xs text-ink-muted">{{ t('nodeView.tryIt.messageArticle') }}</p>
-            <p v-else-if="markAsDoneHint" class="text-xs text-ink-muted">{{ markAsDoneHint }}</p>
-            <!-- Mounted from the start, so the saving is announced; the busy button already shows it. -->
-            <p data-test="hand-off-status" role="status" class="sr-only">
-              <template v-if="handOff === 'saving'">{{ t('nodeView.savingProgress') }}</template>
-            </p>
-          </template>
         </div>
-      </template>
-
-      <template v-else-if="!playbackFailed">
-        <div v-if="handOff === 'practise'" data-test="try-it" class="flex flex-col gap-1 rounded-lg bg-accent-muted px-4 py-3">
-          <p class="text-sm font-semibold text-ink">{{ t('nodeView.tryIt.title') }}</p>
-          <p class="text-sm text-ink-muted">{{ t('nodeView.tryIt.message') }}</p>
-        </div>
-
-        <!-- One live region, mounted from the start and only its text swapped: a region that is
-             added already holding its message is typically read as silent. Until there is
-             something to say it stays in the accessibility tree but takes no room. -->
-        <p
-          v-if="handOff !== 'practise'"
-          data-test="hand-off-status"
-          role="status"
-          class="flex items-center gap-2"
-          :class="{
-            'sr-only': handOff === 'none',
-            'text-sm text-ink-muted': handOff === 'saving',
-            'text-base font-semibold text-success': handOff === 'done',
-          }"
-        >
-          <span v-if="handOff === 'saving'" data-test="saving-progress">{{ t('nodeView.savingProgress') }}</span>
-          <template v-else-if="handOff === 'done'">
-            <Check :size="20" aria-hidden="true" /><span data-test="step-done">{{ t('nodeView.stepDone') }}</span>
-          </template>
-        </p>
-
-        <div v-if="handOff === 'done'" class="flex flex-col gap-4">
-          <NextStepCard
-            v-if="handOffNext && nextAction"
-            :eyebrow="t('pathView.upNext', { position: handOffNext.position, total: lesson.total.value })"
-            :title="handOffNext.title"
-            :kind="handOffNext.kind"
-            :kind-label="wording.kindLabel(handOffNext)"
-            :action-label="nextAction.label"
-            :to="nextAction.to"
-          />
-          <AppButton variant="tertiary" :to="{ name: 'path' }" data-test="back-to-my-path" block>
-            {{ t('nodeView.backToMyPath') }}
-          </AppButton>
-        </div>
-      </template>
-
-      <!-- The practice action sits in the thumb zone at the foot of the screen. -->
-      <div
-        v-if="showsActionBar"
-        class="sticky bottom-0 -mx-4 border-t border-border bg-surface px-4 pt-3 pb-safe"
-      >
-        <PrimaryButton
-          v-if="!isReview"
-          as="RouterLink"
-          :to="{ name: 'practice', params: { nodeId } }"
-          data-test="practise-this"
-          class="w-full"
-        >
-          {{ t('nodeView.practiseThis') }}
-        </PrimaryButton>
-        <AppButton
-          v-else
-          variant="secondary"
-          :to="{ name: 'practice', params: { nodeId } }"
-          data-test="practise-again"
-          block
-        >
-          {{ t('nodeView.practiseAgain') }}
-        </AppButton>
       </div>
-    </template>
+    </div>
 
     <div v-if="openSongChartId" data-test="song-chart-overlay" class="fixed inset-0 z-50 overflow-y-auto bg-surface">
       <SongChartScreen :song-chart-id="openSongChartId" @close="openSongChartId = null" />
