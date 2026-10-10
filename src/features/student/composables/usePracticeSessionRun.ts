@@ -152,6 +152,9 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const shapeAnswer = ref<GradedShapeAnswer | null>(null)
   /** When the item on was shown, which an exercise's latency counts from. */
   let shownAt = 0
+  /** Whether a clip of the item on is sounding, and when the last one ended. */
+  let clipSounding = false
+  let lastClipEndedAt: number | null = null
 
   // Measured up front, so each length is known by the time its exercise is answered.
   const audioMs = new Map<string, number>()
@@ -241,6 +244,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     cellAnswer.value = null
     shapeAnswer.value = null
     shownAt = Date.now()
+    clipSounding = false
+    lastClipEndedAt = null
     index.value++
     if (index.value < plan.items.length) return
     if (feltQuestions.value.length > 0) askingFelt.value = true
@@ -315,6 +320,21 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     nextItem()
   }
 
+  /** Notes a clip of the item on starting or stopping, which a choice among sounds is timed from. */
+  function clipPlaying(playing: boolean) {
+    if (clipSounding && !playing) lastClipEndedAt = Date.now()
+    clipSounding = playing
+  }
+
+  /**
+   * How long an answer among sounds took: listening isn't answering, so it runs from the end of
+   * the last clip played (0 when one is still sounding), or from when it was shown if none was.
+   */
+  function listeningLatency(): number {
+    if (clipSounding) return 0
+    return Date.now() - (lastClipEndedAt ?? shownAt)
+  }
+
   /** Answers the exercise on with the options chosen; only the first answer counts. */
   function answer(optionIds: string[]) {
     const item = current.value
@@ -324,7 +344,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     exerciseAnswer.value = { optionIds, correct: isExactMatch(exercise.options, optionIds) }
     markAnswered(item)
     recordOutcome(item, { kind: 'answered', correct: exerciseAnswer.value.correct })
-    const audio = audioMs.get(exercise.exercise_id)
+    const amongSounds = exercise.exercise_type === 'audio_selection'
+    const audio = amongSounds ? undefined : audioMs.get(exercise.exercise_id)
     void track({
       event_type: 'practice.item_answered',
       practice_session_id: plan.practice_session_id,
@@ -332,7 +353,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       response: {
         response_type: 'option_choice',
         option_ids: optionIds,
-        latency_ms: Date.now() - shownAt,
+        latency_ms: amongSounds ? listeningLatency() : Date.now() - shownAt,
         ...(audio !== undefined ? { audio_ms: audio } : {}),
       },
     })
@@ -416,6 +437,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     setTempo,
     rate,
     answer,
+    clipPlaying,
     answerCell,
     answerShape,
     completeTapCheck,

@@ -511,6 +511,68 @@ describe('usePracticeSessionRun', () => {
       expect(second.response).toMatchObject({ audio_ms: 2600 })
     })
 
+    describe('with sound options', () => {
+      const SOUNDS = 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+      const soundChoice = plan([
+        exerciseItem(SOUNDS, 'new', {
+          exercise_type: 'audio_selection',
+          options: [
+            { option_id: 'right', is_correct: true, label: 'A', audio_url: 'https://media.test/a.mp3' },
+            { option_id: 'wrong', is_correct: false, label: 'B', audio_url: 'https://media.test/b.mp3' },
+          ],
+        }),
+      ])
+
+      it('times the answer from the end of the last clip played, with no audio length', async () => {
+        measureExerciseAudio.mockResolvedValue(1500)
+        const run = usePracticeSessionRun(soundChoice)
+        await vi.runAllTimersAsync()
+        run.start()
+        vi.advanceTimersByTime(2000)
+        run.clipPlaying(true)
+        vi.advanceTimersByTime(6000)
+        run.clipPlaying(false)
+        vi.advanceTimersByTime(3000)
+        run.answer(['right'])
+
+        const [answered] = tracked('practice.item_answered')
+        expect(answered.response).toEqual({ response_type: 'option_choice', option_ids: ['right'], latency_ms: 3000 })
+      })
+
+      it('times the answer as 0 when a clip is still playing at Check', () => {
+        const run = usePracticeSessionRun(soundChoice)
+        run.start()
+        vi.advanceTimersByTime(2000)
+        run.clipPlaying(true)
+        vi.advanceTimersByTime(1000)
+        run.answer(['right'])
+
+        expect(tracked('practice.item_answered')[0].response).toMatchObject({ latency_ms: 0 })
+      })
+
+      it('times the answer from when the exercise was shown when no clip was played', () => {
+        const run = usePracticeSessionRun(soundChoice)
+        run.start()
+        vi.advanceTimersByTime(5000)
+        run.answer(['right'])
+
+        expect(tracked('practice.item_answered')[0].response).toMatchObject({ latency_ms: 5000 })
+      })
+    })
+
+    it('times an exercise without sound options from when it was shown, whatever clips played', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      vi.advanceTimersByTime(1000)
+      run.clipPlaying(true)
+      vi.advanceTimersByTime(1000)
+      run.clipPlaying(false)
+      vi.advanceTimersByTime(1000)
+      run.answer(['right'])
+
+      expect(tracked('practice.item_answered')[0].response).toMatchObject({ latency_ms: 3000 })
+    })
+
     it('counts an answered exercise among the answered items', () => {
       const run = usePracticeSessionRun(mixed)
       run.start()
