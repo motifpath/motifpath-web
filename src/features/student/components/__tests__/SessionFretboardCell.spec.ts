@@ -71,50 +71,68 @@ describe('SessionFretboardCell', () => {
   })
 
   describe('name the note', () => {
-    it('lights the cell and offers the twelve notes', () => {
+    // A random source near 1 leaves the choices unshuffled: the note, a semitone below, a semitone
+    // above, the neighbouring string.
+    beforeEach(() => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.999)
+    })
+
+    const choiceTexts = (wrapper: ReturnType<typeof mountCell>) =>
+      wrapper.findAll('[data-test="note-choice"]').map((choice) => `${choice.get('[data-test="key-hint"]').text()}${choice.get('[data-test="note-name"]').text()}`)
+
+    it('lights the cell and offers four near notes, each with its key', () => {
       const wrapper = mountCell({ item: naming })
 
       expect(wrapper.get('h2[data-test="item-title"]').text()).toBe('Name this note')
       const lit = wrapper.get('[data-test="lit-cell"]')
       expect([lit.attributes('data-string'), lit.attributes('data-fret')]).toEqual(['5', '3'])
-      expect(wrapper.findAll('[data-test="note-choice"]').map((choice) => choice.text())).toEqual([
-        'C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B',
-      ])
+      expect(choiceTexts(wrapper)).toEqual(['1C', '2B', '3C♯', '4F'])
     })
 
-    it('answers with the tap on a note', async () => {
+    it('answers with the tap on a note, sending the four choices as shown', async () => {
       const wrapper = mountCell({ item: naming })
 
-      await wrapper.findAll('[data-test="note-choice"]')[1]!.trigger('click')
+      await wrapper.findAll('[data-test="note-choice"]')[2]!.trigger('click')
 
-      expect(wrapper.emitted('answer')).toEqual([[{ response_type: 'name_the_note', note_name: 'C#' }]])
+      expect(wrapper.emitted('answer')).toEqual([[{ response_type: 'name_the_note', note_name: 'C#', choices: ['C', 'B', 'C#', 'F'] }]])
     })
 
-    it('answers with a letter key, and a sharp with Shift', () => {
+    it('answers with the number key of a choice', () => {
       const wrapper = mountCell({ item: naming })
 
-      press('c')
-      press('F', { shiftKey: true })
+      press('4')
 
-      expect(wrapper.emitted('answer')).toEqual([
-        [{ response_type: 'name_the_note', note_name: 'C' }],
-        [{ response_type: 'name_the_note', note_name: 'F#' }],
-      ])
+      expect(wrapper.emitted('answer')).toEqual([[{ response_type: 'name_the_note', note_name: 'F', choices: ['C', 'B', 'C#', 'F'] }]])
     })
 
-    it('reveals the right note next to a wrong one, and takes no other answer', async () => {
+    it('ignores a number key with no choice behind it', () => {
+      const wrapper = mountCell({ item: naming })
+
+      press('5')
+
+      expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+
+    it('keeps its choices in the order first shown once answered', () => {
+      const wrapper = mountCell({ item: naming })
+      vi.spyOn(Math, 'random').mockReturnValue(0)
+
+      wrapper.setProps({ answer: { answer: { response_type: 'name_the_note', note_name: 'C', choices: ['C', 'B', 'C#', 'F'] }, correct: true } })
+
+      return wrapper.vm.$nextTick().then(() => expect(choiceTexts(wrapper)).toEqual(['1C', '2B', '3C♯', '4F']))
+    })
+
+    it('reveals the right note next to a wrong one, and takes no other answer', () => {
       const wrapper = mountCell({
         item: naming,
-        answer: { answer: { response_type: 'name_the_note', note_name: 'D' }, correct: false },
+        answer: { answer: { response_type: 'name_the_note', note_name: 'B', choices: ['C', 'B', 'C#', 'F'] }, correct: false },
       })
 
       const choices = wrapper.findAll('[data-test="note-choice"]')
-      expect(choices[0]!.attributes('data-mark')).toBe('right')
-      expect(choices[2]!.attributes('data-mark')).toBe('wrong')
-      expect(choices.filter((choice) => choice.attributes('data-mark')).length).toBe(2)
+      expect(choices.map((choice) => choice.attributes('data-mark'))).toEqual(['right', 'wrong', undefined, undefined])
       expect(choices.every((choice) => choice.attributes('disabled') !== undefined)).toBe(true)
 
-      press('e')
+      press('3')
       expect(wrapper.emitted('answer')).toBeUndefined()
     })
   })

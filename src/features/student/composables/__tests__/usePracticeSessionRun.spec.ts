@@ -744,6 +744,16 @@ describe('usePracticeSessionRun', () => {
       expect(run.progress.value).toEqual([1, 0])
     })
 
+    it('sends a named note with the four choices it was picked from, as shown', () => {
+      const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+      run.start()
+      run.answerCell({ response_type: 'name_the_note', note_name: 'C', choices: ['B', 'F', 'C', 'C#'] })
+
+      expect(tracked('practice.item_answered')[0]).toMatchObject({
+        response: { response_type: 'name_the_note', note_name: 'C', choices: ['B', 'F', 'C', 'C#'] },
+      })
+    })
+
     it('sends the cell tapped to find the note, and says when it is wrong', () => {
       const run = usePracticeSessionRun(inTheHead(), { tuningOf })
       run.start()

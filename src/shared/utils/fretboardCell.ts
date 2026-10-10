@@ -17,8 +17,8 @@ export interface CellPlace {
   fret: number
 }
 
-/** What the student answered, before it's timed. */
-export type CellAnswer = Pick<NameTheNote, 'response_type' | 'note_name'> | Pick<FindTheNote, 'response_type' | 'string' | 'fret'>
+/** What the student answered, before it's timed: a named note keeps the choices it was picked from. */
+export type CellAnswer = Pick<NameTheNote, 'response_type' | 'note_name' | 'choices'> | Pick<FindTheNote, 'response_type' | 'string' | 'fret'>
 
 const LETTER_CLASS: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 
