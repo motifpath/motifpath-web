@@ -31,8 +31,8 @@ const skills = computed(() => (summary.value ? skillLevelCounts(summary.value) :
   <div data-test="progress-instrument">
     <LoadingSkeleton v-if="isLoading" />
     <LoadFailed v-else-if="error" :message="t('yourProgressView.instrumentError')" @retry="retry()" />
-    <div v-else-if="summary" class="grid gap-6" :class="{ 'grid-cols-2 items-start gap-8': sizeClass === 'expanded' }">
-      <div class="flex min-w-0 flex-col gap-6">
+    <div v-else-if="summary" class="grid gap-5" :class="{ 'grid-cols-2 items-start gap-6': sizeClass === 'expanded' }">
+      <div class="flex min-w-0 flex-col gap-5">
         <div data-test="progress-practice-days">
           <WeekDays :label="t('yourProgressView.practiceDays')" :marked-label="t('yourProgressView.practised')" :days="practiceDays" />
         </div>

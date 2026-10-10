@@ -34,12 +34,12 @@ function spoken(mark: ReturnType<typeof weekdayMarks>[number]): string {
   <div class="flex flex-col gap-2">
     <span data-test="week-days-label" class="text-xs font-medium text-ink-muted">{{ t('weekDays.count', { label, count }) }}</span>
     <ol class="flex gap-2">
-      <li v-for="mark in marks" :key="mark.date" data-test="week-day" class="flex w-8 flex-col items-center gap-1">
+      <li v-for="mark in marks" :key="mark.date" data-test="week-day" class="flex w-6 flex-col items-center gap-1">
         <span
           data-test="week-day-mark"
           :data-filled="mark.filled"
           :data-today="mark.isToday"
-          class="h-7 w-7 rounded-full"
+          class="h-6 w-6 rounded-full"
           :class="[mark.filled ? 'bg-success' : 'bg-surface-sunken', { 'ring-2 ring-inset ring-accent': mark.isToday }]"
           aria-hidden="true"
         />
