@@ -109,6 +109,21 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/progress',
+    component: () => import('@/shared/components/AuthenticatedLayout.vue'),
+    meta: { requiresAuth: true },
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
+      {
+        // A page pushed onto the home, opened from a This week tile or "See all"; ?instrument= picks
+        // the instrument it opens on.
+        path: '',
+        name: 'your-progress',
+        component: () => import('@/features/student/views/YourProgressView.vue'),
+      },
+    ],
+  },
+  {
     path: '/courses',
     component: () => import('@/shared/components/AuthenticatedLayout.vue'),
     beforeEnter: () => ensureStudentLocaleLoaded(),

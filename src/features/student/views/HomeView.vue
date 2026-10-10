@@ -4,7 +4,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import RegisteringNotice from '@/features/auth/components/RegisteringNotice.vue'
 import RegistrationFailedNotice from '@/features/auth/components/RegistrationFailedNotice.vue'
 import { useAuth } from '@/features/auth/composables/useAuth'
-import PracticeDashboard from '@/features/student/components/PracticeDashboard.vue'
+import StudentHome from '@/features/student/components/StudentHome.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -15,8 +15,8 @@ const { t } = useTypedT()
 </script>
 
 <template>
-  <!-- Every signed-in user lands on their practice dashboard: every role can learn. -->
-  <PracticeDashboard v-if="isLoaded && isSignedIn && currentUser.isRegistered" />
+  <!-- Every signed-in user lands on their home: every role can learn. -->
+  <StudentHome v-if="isLoaded && isSignedIn && currentUser.isRegistered" />
 
   <section v-else class="flex flex-col items-start gap-4">
     <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('appBar.brand') }}</h1>

@@ -19,6 +19,7 @@ export const endpoints = {
   knowledgeEdges: '*/knowledge-edges',
   practiceOverview: '*/students/me/practice-overview',
   practiceSummary: '*/students/me/practice-summary',
+  studentPath: '*/students/me/path',
   publishedSongChart: '*/song-charts/:song_chart_id/published',
   // The event-ingestion service, which tracking posts to.
   events: '*/events',
@@ -64,6 +65,7 @@ export const defaultHandlers: Record<Endpoint, HttpHandler> = {
   knowledgeEdges: respondWith('knowledgeEdges', []),
   practiceOverview: respondWith('practiceOverview', fixtures.practiceOverview),
   practiceSummary: respondWith('practiceSummary', fixtures.practiceSummary),
+  studentPath: respondWith('studentPath', fixtures.studentPath),
   publishedSongChart: http.get(endpoints.publishedSongChart, ({ params }) =>
     HttpResponse.json(makeLearnerSongChart({ song_chart_id: String(params.song_chart_id) })),
   ),

@@ -305,5 +305,14 @@
     "label": "Catálogo",
     "courses": "Cursos",
     "paths": "Trilhas"
+  },
+  "levelBar": {
+    "learning": "{count} aprendendo",
+    "accurate": "{count} precisa | {count} precisas",
+    "fluent": "{count} fluente | {count} fluentes",
+    "retained": "{count} retida | {count} retidas"
+  },
+  "pathCard": {
+    "eyebrow": "Sua trilha"
   }
 }

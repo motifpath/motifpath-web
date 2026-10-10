@@ -11,6 +11,7 @@
 import {
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Circle,
   CirclePlay,
@@ -27,6 +28,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Route,
   Square,
   Sun,
   Volume2,
@@ -41,6 +43,7 @@ type IconName =
   | 'todo'
   | 'menu'
   | 'chevron-right'
+  | 'chevron-left'
   | 'chevron-down'
   | 'check'
   | 'video'
@@ -57,6 +60,7 @@ type IconName =
   | 'fullscreen'
   | 'grip'
   | 'reset'
+  | 'path'
 
 const props = withDefaults(
   defineProps<{
@@ -78,6 +82,7 @@ const glyph = computed(
       todo: Circle,
       menu: Menu,
       'chevron-right': ChevronRight,
+      'chevron-left': ChevronLeft,
       'chevron-down': ChevronDown,
       check: Check,
       video: CirclePlay,
@@ -94,6 +99,7 @@ const glyph = computed(
       fullscreen: Maximize,
       grip: GripVertical,
       reset: RotateCcw,
+      path: Route,
     })[props.name],
 )
 

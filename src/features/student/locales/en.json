@@ -362,20 +362,9 @@
     }
   },
   "practiceHomeView": {
-    "title": "Practice",
-    "start": "Start practising",
-    "overview": "Overview",
-    "tabsLabel": "Practice by instrument",
-    "overviewNoun": "your practice",
-    "overviewError": "We couldn't load your practice.",
-    "summaryNoun": "this instrument's practice",
     "summaryError": "We couldn't load this instrument's practice.",
-    "noInstruments": "What you're learning suits any instrument, so choose the instrument in your hands when you start. Want an instrument of your own?",
-    "findPath": "Find a path",
     "practiceDays": "Practice days",
-    "learningDays": "Learning days",
     "daysOf7": "None of the last 7 days | 1 of the last 7 days | {count} of the last 7 days",
-    "noSuggestion": "Nothing to suggest yet",
     "progressTitle": "This week",
     "noProgress": "Nothing has moved yet this week. A session will show it here.",
     "measures": {
@@ -410,6 +399,58 @@
       "error": "Couldn’t load your fretboard.",
       "cell": "{place}: {level}",
       "cellFading": "{place}: {level}, fading"
+    }
+  },
+  "yourProgressView": {
+    "title": "Your progress",
+    "back": "Back",
+    "comingSoon": "Your minutes, streak, songs and skills for each instrument will show here soon."
+  },
+  "studentHome": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "today": {
+      "eyebrow": "Today’s practice · {instrument}",
+      "eyebrowAnyInstrument": "Today’s practice",
+      "step": "{kind}: {skill}",
+      "kinds": {
+        "refresh": "Refresh",
+        "strengthen": "Strengthen",
+        "ready_to_start": "Ready to start"
+      },
+      "length": "About {minutes} minutes",
+      "start": "Start practice",
+      "nothingSuggested": "Nothing to refresh right now. Start a session and practise what you choose.",
+      "error": "We couldn't load today's practice."
+    },
+    "path": {
+      "step": "Step {position} · {title}",
+      "noPath": "Follow a path and its next step shows here.",
+      "findPath": "Find a path",
+      "error": "We couldn't load your path."
+    },
+    "week": {
+      "title": "This week",
+      "minutes": "Minutes",
+      "streak": "Day streak",
+      "songs": "Songs",
+      "minutesMore": "+{count} vs last wk",
+      "minutesFewer": "{count} fewer than last wk",
+      "minutesSame": "Same as last wk",
+      "best": "Best: {count}",
+      "startStreak": "Start one today · best {count}",
+      "startFirstStreak": "Start one today",
+      "songsThisWeek": "+{count} this week",
+      "error": "We couldn't load this week."
+    },
+    "skills": {
+      "title": "Your skills",
+      "seeAll": "See all",
+      "fading": "{count} fading — refresh it | {count} fading — refresh them",
+      "error": "We couldn't load your skills."
     }
   }
 }

@@ -25,7 +25,7 @@ import SessionExercise from '@/features/student/components/SessionExercise.vue'
 import SessionFretboardCell from '@/features/student/components/SessionFretboardCell.vue'
 import TapCheck from '@/features/student/components/TapCheck.vue'
 import TodaysPlan from '@/features/student/components/TodaysPlan.vue'
-import { useComposePracticeSession } from '@/features/student/composables/useComposePracticeSession'
+import { useComposePracticeSession, DEFAULT_SESSION_MINUTES } from '@/features/student/composables/useComposePracticeSession'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import InstrumentTilePicker from '@/shared/components/InstrumentTilePicker.vue'
@@ -57,7 +57,7 @@ const asked = typeof route.query.instrument === 'string' ? route.query.instrumen
 
 /** The instrument in the student's hands; null for a session in the head. */
 const instrumentId = ref<string | null>(null)
-const minutes = ref(10)
+const minutes = ref(DEFAULT_SESSION_MINUTES)
 watch(
   playable,
   (list) => {
