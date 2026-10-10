@@ -2,15 +2,7 @@
 import { computed } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-const props = withDefaults(
-  defineProps<{
-    completed: number
-    total: number
-    /** Off where the caller already shows the count beside the bar. */
-    showCount?: boolean
-  }>(),
-  { showCount: true },
-)
+const props = defineProps<{ completed: number; total: number }>()
 
 const percent = computed(() => (props.total === 0 ? 0 : (props.completed / props.total) * 100))
 
@@ -30,6 +22,6 @@ const { t } = useTypedT()
     >
       <div class="h-1.5 rounded-full bg-accent" :style="{ width: `${percent}%` }" />
     </div>
-    <span v-if="showCount" class="text-sm tabular-nums text-ink-muted" aria-hidden="true">{{ t('progressMeter.short', { completed, total }) }}</span>
+    <span class="text-sm tabular-nums text-ink-muted" aria-hidden="true">{{ t('progressMeter.short', { completed, total }) }}</span>
   </div>
 </template>

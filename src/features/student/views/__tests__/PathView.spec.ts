@@ -24,7 +24,6 @@ const course = ref<{ title: string; part: number; parts: number } | null>(null)
 vi.mock('@/features/student/composables/usePathCourse', () => ({ usePathCourse: () => course }))
 
 import PathView from '@/features/student/views/PathView.vue'
-import { mockViewport } from '@/shared/testUtils/viewport'
 
 const page = { template: '<div />' }
 function makeRouter() {
@@ -259,57 +258,5 @@ describe('PathView — complete, no path, loading, error', () => {
     expect(wrapper.text()).toContain("We couldn't load your path.")
     await wrapper.get('[data-test="retry"]').trigger('click')
     expect(state.retry).toHaveBeenCalled()
-  })
-})
-
-describe('PathView — a window with room for two panes', () => {
-  const original = window.matchMedia
-  afterEach(() => {
-    window.matchMedia = original
-    course.value = null
-  })
-
-  it('moves the progress and the next step into a side column beside the steps', async () => {
-    mockViewport(1280)
-    const { wrapper } = await mountView(openChords())
-
-    const side = wrapper.get('[data-test="path-side"]')
-    expect(side.get('[data-test="path-progress-card"]').text()).toContain('7 of 14 steps')
-    expect(side.find('[data-test="next-step-card"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="path-list"]').find('[data-test="next-step-card"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="path-list"]').find('[role="progressbar"]').exists()).toBe(false)
-  })
-
-  it('keeps the bar\'s full sentence for a screen reader without repeating the count beside it', async () => {
-    mockViewport(1280)
-    const { wrapper } = await mountView(openChords())
-
-    const card = wrapper.get('[data-test="path-progress-card"]')
-    expect(card.get('[role="progressbar"]').attributes('aria-label')).toBe('7 of 14 steps complete')
-    expect(card.text().match(/7 of 14/g)).toHaveLength(1)
-  })
-
-  it('names the course part under the progress of a course part', async () => {
-    mockViewport(1280)
-    course.value = { title: 'Guitar foundations', part: 2, parts: 4 }
-    const { wrapper } = await mountView(openChords())
-
-    expect(wrapper.get('[data-test="path-progress-card"]').text()).toContain('Part 2 of 4 of Guitar foundations')
-  })
-
-  it('says nothing about a course under the progress of a standalone path', async () => {
-    mockViewport(1280)
-    const { wrapper } = await mountView(openChords())
-
-    expect(wrapper.get('[data-test="path-progress-card"]').text()).not.toContain('Part')
-  })
-
-  it('keeps one column, with the next step under the title, in a window too narrow for both panes', async () => {
-    mockViewport(1000)
-    const { wrapper } = await mountView(openChords())
-
-    expect(wrapper.find('[data-test="path-side"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="next-step-card"]').exists()).toBe(true)
-    expect(wrapper.get('[data-test="path-progress"]').text()).toContain('7 of 14')
   })
 })

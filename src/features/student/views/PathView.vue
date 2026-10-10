@@ -11,13 +11,11 @@ import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
-import { useTwoPanes } from '@/shared/composables/useTwoPanes'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 const { data, error, isLoading, retry } = useStudentPath()
 const course = usePathCourse(data)
 const { t } = useTypedT()
-const { twoPanes } = useTwoPanes()
 
 useCourseCompletionRedirect(() => completedCourseEnrollmentId(data.value))
 
@@ -25,8 +23,7 @@ const complete = computed(() => data.value !== null && isStandalonePathComplete(
 </script>
 
 <template>
-  <!-- One 560 px column, or the steps and a side column beside them when the window has room. -->
-  <section class="mx-auto flex w-full flex-col gap-5" :class="twoPanes ? 'max-w-[59.5rem]' : 'max-w-[35rem]'">
+  <section class="mx-auto flex w-full max-w-[35rem] flex-col gap-5">
     <template v-if="isLoading">
       <h1 class="sr-only">{{ t('pathView.heading') }}</h1>
       <LoadingSkeleton data-test="loading" />
@@ -65,7 +62,7 @@ const complete = computed(() => data.value !== null && isStandalonePathComplete(
         </AppButton>
       </div>
 
-      <PathContent :view="data" :course="course" :two-panes="twoPanes" />
+      <PathContent :view="data" :course="course" />
     </template>
   </section>
 </template>

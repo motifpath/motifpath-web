@@ -44,11 +44,7 @@
       "message": "Uma trilha é uma sequência curta de lições, em ordem. Escolha um curso ou uma trilha para começar.",
       "action": "Explorar cursos e trilhas"
     },
-    "errorMessage": "Não foi possível carregar sua trilha.",
-    "progressCard": {
-      "steps": "{completed} de {total} passos",
-      "coursePart": "Parte {part} de {parts} de {course}"
-    }
+    "errorMessage": "Não foi possível carregar sua trilha."
   },
   "nodeView": {
     "heading": "Lição",
