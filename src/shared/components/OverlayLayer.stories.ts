@@ -89,7 +89,7 @@ export const ClosesAndNavigates: Story = historyStory(
   }),
   async (canvas, userEvent) => {
     await settle(100)
-    await userEvent.click(canvas.querySelector('#go')!)
+    await userEvent.click(document.querySelector<HTMLElement>('#go')!)
   },
 )
 
@@ -119,7 +119,7 @@ export const DiscardAndLeave: Story = historyStory(
         @confirm="settle(true)" @cancel="settle(false)" /></div>`,
   }),
   async (canvas, userEvent) => {
-    await userEvent.click(canvas.querySelector('#go')!)
+    await userEvent.click(document.querySelector<HTMLElement>('#go')!)
     await settle(200)
     await userEvent.click(document.querySelector('[data-test="confirm-dialog-confirm"]')!)
   },
@@ -150,7 +150,7 @@ async function openThenClose(canvas: HTMLElement, close: () => Promise<void>, us
   await expect(window.history.state?.overlay).toBeTruthy()
   await close()
   await settle(400)
-  await expect(canvas.querySelector('#inside')).toBeNull()
+  await expect(document.querySelector('#inside')).toBeNull()
   await expect(routeUpdates).toBe(0)
 }
 

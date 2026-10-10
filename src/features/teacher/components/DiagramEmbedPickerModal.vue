@@ -43,43 +43,41 @@ function apply() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <ModalOverlay
-      :open="open"
-      panel-class="flex h-[85vh] w-[720px] max-w-[92vw] flex-col gap-4 rounded-xl bg-surface-raised p-5 shadow-level2"
-      @close="emit('close')"
-    >
-      <div class="flex items-center justify-between">
-        <span data-test="embed-picker-title" class="text-base font-bold">
-          {{ editing ? t('diagramEmbedPicker.editTitle') : t('diagramEmbedPicker.insertTitle') }}
-        </span>
-        <ModalCloseButton @close="emit('close')" />
-      </div>
+  <ModalOverlay
+    :open="open"
+    panel-class="flex h-[85vh] w-[720px] max-w-[92vw] flex-col gap-4 rounded-xl bg-surface-raised p-5 shadow-level2"
+    @close="emit('close')"
+  >
+    <div class="flex items-center justify-between">
+      <span data-test="embed-picker-title" class="text-base font-bold">
+        {{ editing ? t('diagramEmbedPicker.editTitle') : t('diagramEmbedPicker.insertTitle') }}
+      </span>
+      <ModalCloseButton @close="emit('close')" />
+    </div>
 
-      <!-- A fixed-height panel with only this part scrolling, so filtering or configuring never resizes the modal. -->
-      <div class="min-h-0 flex-1 overflow-y-auto">
-        <DiagramEmbedPicker :initial="initial" @change="chosen = $event" />
-      </div>
+    <!-- A fixed-height panel with only this part scrolling, so filtering or configuring never resizes the modal. -->
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <DiagramEmbedPicker :initial="initial" @change="chosen = $event" />
+    </div>
 
-      <div class="flex justify-end gap-2 border-t border-border pt-4">
-        <button
-          type="button"
-          data-test="embed-picker-cancel"
-          class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold"
-          @click="emit('close')"
-        >
-          {{ t('diagramEmbedPicker.cancel') }}
-        </button>
-        <button
-          type="button"
-          data-test="embed-picker-apply"
-          :disabled="!chosen"
-          class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
-          @click="apply"
-        >
-          {{ editing ? t('diagramEmbedPicker.apply') : t('diagramEmbedPicker.insert') }}
-        </button>
-      </div>
-    </ModalOverlay>
-  </Teleport>
+    <div class="flex justify-end gap-2 border-t border-border pt-4">
+      <button
+        type="button"
+        data-test="embed-picker-cancel"
+        class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold"
+        @click="emit('close')"
+      >
+        {{ t('diagramEmbedPicker.cancel') }}
+      </button>
+      <button
+        type="button"
+        data-test="embed-picker-apply"
+        :disabled="!chosen"
+        class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
+        @click="apply"
+      >
+        {{ editing ? t('diagramEmbedPicker.apply') : t('diagramEmbedPicker.insert') }}
+      </button>
+    </div>
+  </ModalOverlay>
 </template>
