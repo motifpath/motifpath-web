@@ -319,5 +319,9 @@
   },
   "pathCard": {
     "eyebrow": "Your path"
+  },
+  "optionTile": {
+    "markRight": "Right answer",
+    "markWrong": "Your answer, wrong"
   }
 }
