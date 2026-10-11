@@ -15,6 +15,8 @@ vi.mock('@clerk/vue', () => ({
   }),
   useUser: () => ({ user: ref({ firstName: 'Ana', primaryEmailAddress: null }) }),
   useClerk: () => computed(() => null),
+  useSignIn: () => ({ signIn: computed(() => undefined), setActive: computed(() => undefined) }),
+  useSignUp: () => ({ signUp: computed(() => undefined), setActive: computed(() => undefined) }),
 }))
 
 const route = reactive<{ name?: string; meta: Record<string, unknown> }>({ name: 'admin-song-charts', meta: { requiresRole: ['admin'] } })
