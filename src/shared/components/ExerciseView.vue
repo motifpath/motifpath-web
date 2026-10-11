@@ -9,16 +9,19 @@ import AudioOption from '@/shared/components/AudioOption.vue'
 import Icon from '@/shared/components/Icon.vue'
 import ImageOption from '@/shared/components/ImageOption.vue'
 import OptionTile from '@/shared/components/OptionTile.vue'
+import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
 import { optionState } from '@/shared/utils/optionState'
 import type { OptionState } from '@/shared/utils/optionState'
+import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
 
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 type PromptDocument = components['schemas']['PromptDocument']
 type DiagramRef = components['schemas']['DiagramRef']
+type DiagramStackRef = components['schemas']['DiagramStackRef']
 type MissingReason = EventComponents['schemas']['NotAnsweredResponse']['reason']
 
 const props = withDefaults(
@@ -39,6 +42,11 @@ const props = withDefaults(
      * through diagram_position_id.
      */
     diagramRef?: DiagramRef
+    /** Prebuilt diagrams stacked on one board as the image_recognition stimulus, in place of a
+     *  single diagram. */
+    diagramStackRef?: DiagramStackRef
+    /** Let a diagram stimulus leave the text column on a wider screen, inside the Practice Shell. */
+    breakout?: boolean
     /** The exercise's own stimulus, present when exerciseType is audio_recognition. */
     audioUrl?: string
     /**
@@ -67,7 +75,7 @@ const props = withDefaults(
     /** How many options to choose, said after the prompt when there are several right ones. */
     chooseCount?: number
   }>(),
-  { direction: 'column', allowMultiple: false, stimulusMissing: false, chooseCount: undefined },
+  { direction: 'column', allowMultiple: false, stimulusMissing: false, chooseCount: undefined, breakout: false },
 )
 
 /**
@@ -106,6 +114,10 @@ function stateOf(optionId: string): OptionState {
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
+const stimulusEmbed = computed<DiagramEmbed | null>(() => {
+  if (props.diagramRef) return { kind: 'single', ref: props.diagramRef }
+  return props.diagramStackRef ? { kind: 'stack', stack: props.diagramStackRef.stack } : null
+})
 
 // A diagram stimulus's choices are the fretboard cells its options stand for — every cell in
 // view, marked or not. Options from before cells existed stand for positions instead.
@@ -253,31 +265,35 @@ watch(
         <slot name="stimulus-notice" />
       </div>
 
-      <div
-        v-else-if="isImageRecognition && diagramRef"
-        data-test="exercise-stimulus-diagram"
-        class="overflow-hidden rounded-[10px] border border-border bg-surface-sunken p-2"
+      <component
+        :is="breakout ? PracticeBreakout : 'div'"
+        v-else-if="isImageRecognition && stimulusEmbed"
       >
-        <EmbeddedDiagram
-          :embed="{ kind: 'single', ref: diagramRef }"
-          :selectable-position-ids="choicePositionIds"
-          :selected-position-ids="selectedPositionIds"
-          :answer-cells="answerCells"
-          :selected-answer-ids="selected"
-          :multiple="allowMultiple"
-          :answer-marks="answerMarks"
-          :position-marks="positionMarks"
-          @select="selectPosition"
-          @select-answer="select"
-          @status="onDiagramStatus"
+        <div
+          data-test="exercise-stimulus-diagram"
+          class="overflow-hidden rounded-[10px] border border-border bg-surface-sunken p-2"
         >
-          <template #unavailable>
-            <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
-              {{ t('exerciseView.noStimulusImage') }}
-            </div>
-          </template>
-        </EmbeddedDiagram>
-      </div>
+          <EmbeddedDiagram
+            :embed="stimulusEmbed"
+            :selectable-position-ids="choicePositionIds"
+            :selected-position-ids="selectedPositionIds"
+            :answer-cells="answerCells"
+            :selected-answer-ids="selected"
+            :multiple="allowMultiple"
+            :answer-marks="answerMarks"
+            :position-marks="positionMarks"
+            @select="selectPosition"
+            @select-answer="select"
+            @status="onDiagramStatus"
+          >
+            <template #unavailable>
+              <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
+                {{ t('exerciseView.noStimulusImage') }}
+              </div>
+            </template>
+          </EmbeddedDiagram>
+        </div>
+      </component>
 
       <div v-else-if="isImageRecognition" class="relative overflow-hidden rounded-[10px] border border-border bg-surface-sunken">
         <img

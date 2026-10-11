@@ -521,6 +521,27 @@ describe('ExerciseView', () => {
       expect(wrapper.find('[data-test="no-stimulus-image"]').exists()).toBe(false)
     })
 
+    it('draws a stack of diagrams as the stimulus, its fretboard cells as the choices', () => {
+      const stack = [stimulusRef, makeDiagramRef({ diagram_id: 'd2' })]
+      const cellOptions: Option[] = [
+        { option_id: 'o-1-5', is_correct: true, fret_cell: { string: 1, fret: 5 } },
+        { option_id: 'o-2-7', is_correct: false, fret_cell: { string: 2, fret: 7 } },
+      ]
+      const wrapper = mountStimulus({ diagramRef: undefined, diagramStackRef: { stack }, options: cellOptions })
+
+      const diagram = wrapper.getComponent(EmbeddedDiagramStub)
+      expect(diagram.props('embed')).toEqual({ kind: 'stack', stack })
+      expect(diagram.props('answerCells')).toHaveLength(2)
+      expect(wrapper.find('[data-test="no-stimulus-image"]').exists()).toBe(false)
+    })
+
+    it('lets a diagram stimulus leave the text column when asked to', () => {
+      expect(mountStimulus().find('[data-test="breakout"]').exists()).toBe(false)
+
+      const breakout = mountStimulus({ breakout: true }).get('[data-test="breakout"]')
+      expect(breakout.findComponent(EmbeddedDiagramStub).exists()).toBe(true)
+    })
+
     it('selects the option a picked position stands for', async () => {
       const wrapper = mountStimulus({ allowMultiple: true })
       const diagram = wrapper.getComponent(EmbeddedDiagramStub)
