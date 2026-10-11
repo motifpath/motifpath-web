@@ -16,4 +16,10 @@ describe('ItemHeader', () => {
 
     expect(wrapper.get('[data-test="item-reason"]').text()).toBe('Put it into music')
   })
+
+  it('shows a tag in place of a reason for an item no session picked', () => {
+    const wrapper = mount(ItemHeader, { props: { title: 'Inversions of C major', tag: 'Challenge' } })
+
+    expect(wrapper.get('[data-test="item-reason"]').text()).toBe('Challenge')
+  })
 })
