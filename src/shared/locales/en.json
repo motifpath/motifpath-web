@@ -330,5 +330,6 @@
   "googleButton": {
     "continue": "Continue with Google",
     "busy": "Setting up your account…"
-  }
+  },
+  "signedOutToast": "You're signed out. Your practice and progress are saved."
 }
