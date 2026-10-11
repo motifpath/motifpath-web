@@ -32,6 +32,12 @@ async function bootstrap() {
   app.use(clerkPlugin, {
     publishableKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
     localization: await resolveInitialClerkLocalization(),
+    // Clerk navigates through the app's router, not a page load: back from Google it goes on
+    // within the app, and after signing out it lands on the landing with the signed-out toast
+    // still on screen.
+    routerPush: (to) => router.push(to),
+    routerReplace: (to) => router.replace(to),
+    afterSignOutUrl: '/',
   })
 
   app.use(i18n)
