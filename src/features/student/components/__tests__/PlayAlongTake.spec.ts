@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick, ref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
 
@@ -63,6 +63,9 @@ vi.mock('@/shared/composables/useDiagramPlayback', () => ({
 }))
 
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
+import { resetChordViewPreference } from '@/shared/composables/useChordView'
+import { makeVoicing } from '@/shared/testUtils/songChart'
 
 function item(reason: Item['reason'] = 'due', best: number | null = 70): Item {
   return {
@@ -122,6 +125,31 @@ describe('PlayAlongTake', () => {
 
     expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 100 BPM')
     expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 70 BPM')
+  })
+
+  describe('a chord voicing', () => {
+    const voicing = makeVoicing('d-open', 'chord-d')
+    beforeEach(() => {
+      window.localStorage.clear()
+      resetChordViewPreference()
+      embedded.diagram.value = { ...diagram, purpose: 'chord_voicing', chord_voicing: voicing }
+    })
+    afterEach(() => {
+      embedded.diagram.value = diagram
+    })
+
+    it('plays along with a chord box, its sounding notes lit, and Box | Neck to switch', async () => {
+      playback.activePositionIds.value = ['p1']
+      const wrapper = mountTake()
+
+      expect(wrapper.findComponent(ChordBox).props()).toMatchObject({ voicing, activePositionIds: ['p1'], scale: 2 })
+
+      await wrapper.get('[data-test="chord-view-neck"]').trigger('click')
+
+      expect(wrapper.findComponent(ChordBox).exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).exists()).toBe(true)
+      playback.activePositionIds.value = []
+    })
   })
 
   it('lets the board leave the text column on a wider screen', () => {
