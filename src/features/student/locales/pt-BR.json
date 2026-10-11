@@ -502,5 +502,38 @@
       "right": "Certa",
       "wrong": "Errada"
     }
+  },
+  "firstRun": {
+    "welcome": "Boas-vindas, {name}",
+    "welcomeNoName": "Boas-vindas",
+    "intro": "Duas perguntas rápidas e mostramos por onde começar.",
+    "instrumentQuestion": "O que você quer tocar?",
+    "experienceQuestion": "Quanto você já tocou?",
+    "experiences": {
+      "never_played": "Nunca toquei",
+      "plays_a_bit": "Toco um pouco",
+      "plays_well": "Toco bem"
+    },
+    "show": "Mostrar por onde começar",
+    "whereToStart": "Por onde começar",
+    "change": "Alterar",
+    "paths": "{count} trilha | {count} trilhas",
+    "courses": "{count} curso | {count} cursos",
+    "kinds": {
+      "path": "Trilha",
+      "course": "Curso"
+    },
+    "lessons": "{count} aula | {count} aulas",
+    "closestNew": "Ainda não há nada para iniciantes no {instrument}. Os mais próximos:",
+    "closestLevel": "Ainda não há nada no seu nível no {instrument}. Os mais próximos:",
+    "nothingTitle": "Ainda não há cursos de {instrument}",
+    "nothingMessage": "Estamos adicionando mais. Fale com a gente e ajudamos você a começar.",
+    "askWhatsApp": "Fale com a gente no WhatsApp",
+    "notSure": "Na dúvida? Fale com a gente no WhatsApp",
+    "browse": "Ver tudo em Explorar",
+    "error": "Não foi possível carregar por onde começar.",
+    "homeError": "Não foi possível carregar seu início.",
+    "whatsAppMessage": "Oi! Estou começando no MotifPath e queria ajuda para escolher por onde começar.",
+    "backToWhereToStart": "Por onde começar"
   }
 }

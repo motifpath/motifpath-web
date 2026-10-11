@@ -502,5 +502,38 @@
       "right": "Right",
       "wrong": "Wrong"
     }
+  },
+  "firstRun": {
+    "welcome": "Welcome, {name}",
+    "welcomeNoName": "Welcome",
+    "intro": "Two quick questions and we'll show you where to start.",
+    "instrumentQuestion": "What do you want to play?",
+    "experienceQuestion": "How much have you played it?",
+    "experiences": {
+      "never_played": "Never played",
+      "plays_a_bit": "I can play a bit",
+      "plays_well": "I play well"
+    },
+    "show": "Show me where to start",
+    "whereToStart": "Where to start",
+    "change": "Change",
+    "paths": "{count} path | {count} paths",
+    "courses": "{count} course | {count} courses",
+    "kinds": {
+      "path": "Path",
+      "course": "Course"
+    },
+    "lessons": "{count} lesson | {count} lessons",
+    "closestNew": "Nothing for beginners on {instrument} yet. These are the closest:",
+    "closestLevel": "Nothing at your level on {instrument} yet. These are the closest:",
+    "nothingTitle": "No {instrument} courses yet",
+    "nothingMessage": "We're adding more. Ask us and we'll help you find a way in.",
+    "askWhatsApp": "Ask us on WhatsApp",
+    "notSure": "Not sure? Ask us on WhatsApp",
+    "browse": "Browse everything in Discover",
+    "error": "Where to start couldn't load.",
+    "homeError": "Your home couldn't load.",
+    "whatsAppMessage": "Hi! I'm new to MotifPath and I'd like help choosing where to start.",
+    "backToWhereToStart": "Where to start"
   }
 }

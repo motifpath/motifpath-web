@@ -24,11 +24,16 @@ vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
 
-const { StudentHome, LandingScreen, AccountBridge } = vi.hoisted(() => ({
+const { StudentHome, LandingScreen, AccountBridge, FirstRun } = vi.hoisted(() => ({
   StudentHome: { name: 'StudentHome', template: '<div />' },
   LandingScreen: { name: 'LandingScreen', template: '<div />' },
   AccountBridge: { name: 'AccountBridge', template: '<div />' },
+  FirstRun: { name: 'FirstRun', template: '<div />' },
 }))
+vi.mock('@/features/student/components/FirstRun.vue', () => ({ default: FirstRun }))
+
+const firstRun = { status: ref<'loading' | 'first-run' | 'returning' | 'failed'>('returning'), retry: vi.fn(async () => {}) }
+vi.mock('@/features/student/composables/useFirstRun', () => ({ useFirstRun: () => firstRun }))
 vi.mock('@/features/student/components/StudentHome.vue', () => ({ default: StudentHome }))
 vi.mock('@/features/auth/components/LandingScreen.vue', () => ({ default: LandingScreen }))
 vi.mock('@/features/auth/components/AccountBridge.vue', () => ({ default: AccountBridge }))
@@ -42,6 +47,13 @@ function shown() {
     bridge: wrapper.findComponent(AccountBridge).exists(),
     home: wrapper.findComponent(StudentHome).exists(),
   }
+}
+
+function registered() {
+  auth.isLoaded.value = true
+  auth.isSignedIn.value = true
+  currentUser.isRegistered = true
+  currentUser.state = 'registered'
 }
 
 describe('HomeView', () => {
@@ -77,12 +89,46 @@ describe('HomeView', () => {
     expect(shown()).toEqual({ landing: false, bridge: true, home: false })
   })
 
-  it('opens on the student home when signed in and registered', () => {
-    auth.isLoaded.value = true
-    auth.isSignedIn.value = true
-    currentUser.isRegistered = true
-    currentUser.state = 'registered'
+  it('opens on the student home for a student who has started something', () => {
+    registered()
+    firstRun.status.value = 'returning'
 
     expect(shown()).toEqual({ landing: false, bridge: false, home: true })
+  })
+
+  it('is the first run for a student who has never started a course or a path', () => {
+    registered()
+    firstRun.status.value = 'first-run'
+
+    const wrapper = mount(HomeView)
+
+    expect(wrapper.findComponent(FirstRun).exists()).toBe(true)
+    expect(wrapper.findComponent(StudentHome).exists()).toBe(false)
+  })
+
+  it('shows neither the first run nor the home while it cannot tell yet', () => {
+    registered()
+    firstRun.status.value = 'loading'
+
+    const wrapper = mount(HomeView)
+
+    expect(wrapper.findComponent(FirstRun).exists()).toBe(false)
+    expect(wrapper.findComponent(StudentHome).exists()).toBe(false)
+  })
+
+  it('offers one retry, and neither the first run nor This week, when it cannot tell', async () => {
+    registered()
+    firstRun.status.value = 'failed'
+    firstRun.retry.mockClear()
+
+    const wrapper = mount(HomeView)
+    expect(wrapper.findComponent(FirstRun).exists()).toBe(false)
+    expect(wrapper.findComponent(StudentHome).exists()).toBe(false)
+    expect(wrapper.text()).toContain("Your home couldn't load.")
+
+    const retry = wrapper.findAll('button').find((button) => button.text() === 'Try again')
+    await retry?.trigger('click')
+
+    expect(firstRun.retry).toHaveBeenCalledOnce()
   })
 })

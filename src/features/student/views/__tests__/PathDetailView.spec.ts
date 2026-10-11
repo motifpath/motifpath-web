@@ -108,6 +108,19 @@ describe('PathDetailView', () => {
     expect(wrapper.get('[data-test="enroll"]').text()).toBe('Enroll')
   })
 
+  it('leads back to Where to start, with the same answers, when opened from it', () => {
+    route.query = { startInstrument: 'inst-guitar', startExperience: 'never_played' }
+
+    const wrapper = mountView()
+    const back = wrapper.get('[data-test="back-to-catalog"]')
+
+    expect(back.findComponent(RouterLinkStub).props('to')).toEqual({
+      name: 'home',
+      query: { instrument: 'inst-guitar', experience: 'never_played' },
+    })
+    expect(back.text()).toBe('Where to start')
+  })
+
   it('opens a fresh catalog when the learner did not come from it', () => {
     route.query = {}
 
