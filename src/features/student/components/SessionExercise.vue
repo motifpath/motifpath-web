@@ -15,7 +15,7 @@
  * a wrong answer.
  */
 import { CircleCheck, CircleX } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { useAdvanceAfterAnswer } from '@/features/student/composables/useAdvanceAfterAnswer'
@@ -26,6 +26,7 @@ import ExerciseView from '@/shared/components/ExerciseView.vue'
 import InlineNotice from '@/shared/components/InlineNotice.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import { useOptionKeys } from '@/shared/composables/useOptionKeys'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
@@ -90,31 +91,26 @@ const { next } = useAdvanceAfterAnswer(
   () => emit('next'),
 )
 
-function onKeydown(event: KeyboardEvent) {
-  if (props.answer || event.defaultPrevented || !/^[1-9]$/.test(event.key)) return
-  const option = exercise.value.options[Number(event.key) - 1]
-  if (!option) return
-  const id = option.option_id
-  if (!allowMultiple.value) choose([id])
-  else choose(chosen.value.includes(id) ? chosen.value.filter((chosenId) => chosenId !== id) : [...chosen.value, id])
-}
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKeydown)
+useOptionKeys({
+  options: () => exercise.value.options,
+  multiple: () => allowMultiple.value,
+  selected: () => chosen.value,
+  locked: () => props.answer !== null,
+  choose,
 })
 </script>
 
 <template>
   <div class="flex flex-col gap-4" data-test="session-exercise">
-    <ItemHeader :title="exercise.title" :reason="item.reason" />
-
     <ExerciseView
       :exercise-type="exercise.exercise_type"
       :prompt="exercise.prompt"
       :options="exercise.options"
       :image-url="exercise.image_url"
       :diagram-ref="exercise.diagram_ref"
+      :diagram-stack-ref="exercise.diagram_stack_ref"
+      breakout
+      panes
       :audio-url="exercise.audio_url"
       :allow-multiple="allowMultiple"
       :selected-option-ids="shown"
@@ -125,6 +121,9 @@ onBeforeUnmount(() => {
       @playing="emit('playing', $event)"
       @stimulus-missing="onStimulusMissing"
     >
+      <template #header>
+        <ItemHeader :title="exercise.title" :reason="item.reason" />
+      </template>
       <template #stimulus-notice>
         <InlineNotice :tone="missing === 'unavailable' ? 'unavailable' : 'error'" :message="missingMessage" />
       </template>

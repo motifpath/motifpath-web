@@ -8,7 +8,7 @@
 import { computed, ref, shallowRef, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import ChordBoxDiagram from '@/shared/components/songChart/ChordBoxDiagram.vue'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import { useApi } from '@/shared/composables/useApi'
 import { useChordLookup } from '@/shared/composables/useChordLookup'
 import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
@@ -88,7 +88,7 @@ function pick(diagramId: string) {
           :disabled="!diagrams.get(v.diagram_id)"
           @click="pick(v.diagram_id)"
         >
-          <ChordBoxDiagram
+          <ChordBox
             v-if="diagrams.get(v.diagram_id) && instrumentOf(v.instrument_id)"
             :voicing="v"
             :diagram="diagrams.get(v.diagram_id)!"

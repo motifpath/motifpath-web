@@ -1,30 +1,39 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { computed, nextTick, ref } from 'vue'
 
+import type { ReviewEntry } from '@/features/student/composables/usePracticeSession'
+import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
+import type * as VueRouter from 'vue-router'
 
 type Exercise = components['schemas']['Exercise']
 
-const textExercise: Exercise = {
-  exercise_id: 'ex-1',
-  title: 't1',
-  prompt: plainTextPrompt('Name this technique'),
-  exercise_type: 'text_response',
-  skills: [],
-  concepts: [],
-  options: [
-    { option_id: 'o1', is_correct: true, label: 'Alternate picking' },
-    { option_id: 'o2', is_correct: false, label: 'Legato' },
-  ],
-  challenge_ids: ['ch-1'],
-  content_node_ids: [],
-  remediation_targets: [],
-  languages: [],
-  instrument_ids: [],
-  created_at: '2026-09-01T00:00:00Z',
+function exercise(id: string, overrides: Partial<Exercise> = {}): Exercise {
+  return {
+    exercise_id: id,
+    title: `Exercise ${id}`,
+    prompt: plainTextPrompt('Which inversion is shown?'),
+    exercise_type: 'text_response',
+    skills: [],
+    concepts: [],
+    options: [
+      { option_id: 'o1', is_correct: false, label: 'Root position' },
+      { option_id: 'o2', is_correct: true, label: 'First inversion' },
+      { option_id: 'o3', is_correct: false, label: 'Second inversion' },
+    ],
+    challenge_ids: ['ch-1'],
+    content_node_ids: [],
+    remediation_targets: [],
+    languages: [],
+    instrument_ids: [],
+    created_at: '2026-09-01T00:00:00Z',
+    ...overrides,
+  }
 }
+
+const nine = Array.from({ length: 9 }, (_, i) => exercise(`ex-${i + 1}`))
 
 const exercises = ref<Exercise[]>([])
 const currentIndex = ref(0)
@@ -41,6 +50,7 @@ const state = {
   score: ref({ correct: 0, total: 0 }),
   scorePercent: ref(0),
   scoreTier: ref<'success' | 'warning' | 'danger'>('success'),
+  review: ref<ReviewEntry[]>([]),
   select: vi.fn(),
   next: vi.fn(),
   back: vi.fn(),
@@ -51,270 +61,331 @@ vi.mock('@/features/student/composables/usePracticeSession', () => ({
   usePracticeSession: () => state,
 }))
 
-const titles = { pathTitle: ref<string | null>('Blues Basics'), lessonTitle: ref<string | null>('Shuffle in E') }
-const useLessonTitles = vi.fn(() => titles)
-vi.mock('@/features/student/composables/useLessonTitles', () => ({ useLessonTitles: () => useLessonTitles() }))
+const titles = { pathTitle: ref<string | null>('Blues Basics'), lessonTitle: ref<string | null>('Inversions of C major') }
+vi.mock('@/features/student/composables/useLessonTitles', () => ({ useLessonTitles: () => titles }))
 
-// The button has its own tests; here only where it appears and what it is given.
-vi.mock('@/features/student/components/SendToTeacher.vue', async () => {
+const router = {
+  push: vi.fn(),
+  replace: vi.fn(),
+  back: vi.fn(),
+  resolve: vi.fn(() => ({ fullPath: '/nodes/node-1' })),
+}
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return { ...actual, useRouter: () => router }
+})
+
+// The link has its own tests; here only where it appears and what it is given.
+vi.mock('@/features/student/components/SendToTeacherLink.vue', async () => {
   const { defineComponent, h } = await import('vue')
   return {
     default: defineComponent({
-      name: 'SendToTeacher',
-      props: { reference: String, pathTitle: String, lessonTitle: String, raised: Boolean },
-      setup: () => () => h('div', { 'data-test': 'send-to-teacher-stub' }),
+      name: 'SendToTeacherLink',
+      props: { reference: String, pathTitle: String, lessonTitle: String },
+      setup: () => () => h('div', { 'data-test': 'send-to-teacher-link-stub' }),
     }),
   }
 })
 
+import ChallengeReview from '@/features/student/components/ChallengeReview.vue'
+import HowToAnswer from '@/features/student/components/HowToAnswer.vue'
 import PracticeView from '@/features/student/views/PracticeView.vue'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
-import PracticeHelpModal from '@/features/student/components/PracticeHelpModal.vue'
+
+enableAutoUnmount(afterEach)
 
 function mountView() {
-  return mount(PracticeView, {
-    props: { nodeId: 'node-1' },
-    global: { stubs: { RouterLink: RouterLinkStub } },
-  })
+  return mount(PracticeView, { props: { nodeId: 'node-1' }, attachTo: document.body })
 }
 
-function set(next: Partial<typeof state>) {
-  state.status.value = next.status?.value ?? 'loading'
-  state.exercises.value = next.exercises?.value ?? []
-  state.currentIndex.value = next.currentIndex?.value ?? 0
-  state.currentAnswer.value = next.currentAnswer?.value ?? null
-  state.score.value = next.score?.value ?? { correct: 0, total: 0 }
-  state.scorePercent.value = next.scorePercent?.value ?? 0
-  state.scoreTier.value = next.scoreTier?.value ?? 'success'
+function inProgress(index = 0, answer: string[] | null = null, list: Exercise[] = nine) {
+  state.status.value = 'in-progress'
+  exercises.value = list
+  currentIndex.value = index
+  currentAnswer.value = answer ? { optionIds: answer, isCorrect: false } : null
+}
+
+function press(key: string) {
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
 }
 
 describe('PracticeView', () => {
-  it('shows a loading state while the challenge/exercises request is in flight', () => {
-    set({ status: ref('loading') })
-
-    expect(mountView().find('[data-test="loading"]').exists()).toBe(true)
+  beforeEach(() => {
+    vi.clearAllMocks()
+    state.status.value = 'loading'
+    exercises.value = []
+    currentIndex.value = 0
+    currentAnswer.value = null
+    state.review.value = []
+    titles.lessonTitle.value = 'Inversions of C major'
+    window.history.replaceState({}, '')
   })
 
-  it('shows an error state with a retry control on failure', async () => {
-    set({ status: ref('error') })
-
-    const wrapper = mountView()
-    await wrapper.get('[data-test="retry"]').trigger('click')
-
-    expect(state.retry).toHaveBeenCalled()
-  })
-
-  it('shows an empty state when the node has no challenge', () => {
-    set({ status: ref('empty') })
-
-    expect(mountView().find('[data-test="practice-empty"]').exists()).toBe(true)
-  })
-
-  it('renders the current exercise via ExerciseView and forwards a selection to the session', async () => {
-    set({ status: ref('in-progress'), exercises: ref([textExercise]) })
-
-    const wrapper = mountView()
-    expect(wrapper.text()).toContain('Name this technique')
-
-    const rows = wrapper.findAll('[data-test="exercise-option"]')
-    await rows[1]?.trigger('click')
-
-    expect(state.select).toHaveBeenCalledWith(['o2'])
-  })
-
-  it("forwards the current exercise's stimulus image/audio URLs to ExerciseView", () => {
-    const audioExercise: Exercise = {
-      ...textExercise,
-      exercise_id: 'ex-audio',
-      exercise_type: 'audio_recognition',
-      audio_url: 'https://x/clip.mp3',
-    }
-    set({ status: ref('in-progress'), exercises: ref([audioExercise]) })
-
+  it('runs in the Practice Shell, its × going back to the lesson', () => {
+    inProgress()
     const wrapper = mountView()
 
-    expect(wrapper.get('[data-test="exercise-audio-play"]').attributes('src')).toBe('https://x/clip.mp3')
+    expect(wrapper.find('[data-test="practice-shell"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="shell-exit"]').attributes('aria-label')).toBe('Back to lesson')
   })
 
-  it("forwards the current exercise's diagram stimulus to ExerciseView", () => {
-    const diagramRef = { diagram_id: 'd1', layers: { intervals: false }, correct_intervals: ['R'] }
-    const diagramExercise: Exercise = {
-      ...textExercise,
-      exercise_id: 'ex-diagram',
-      exercise_type: 'image_recognition',
-      diagram_ref: diagramRef,
-      options: [{ option_id: 'o-p0', is_correct: true, diagram_id: 'd1', diagram_position_id: 'p0' }],
-    }
-    set({ status: ref('in-progress'), exercises: ref([diagramExercise]) })
-
+  it('opens nothing as a dialog', async () => {
+    inProgress()
     const wrapper = mountView()
 
-    expect(wrapper.getComponent(ExerciseView).props('diagramRef')).toEqual(diagramRef)
+    await wrapper.get('[data-test="how-to-answer-toggle"]').trigger('click')
+
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 
-  it('tells the help modal whether the stimulus is a diagram', () => {
-    const diagramExercise: Exercise = {
-      ...textExercise,
-      exercise_id: 'ex-diagram',
-      exercise_type: 'image_recognition',
-      diagram_ref: { diagram_id: 'd1', layers: { intervals: false }, correct_intervals: ['R'] },
-      options: [{ option_id: 'o-p0', is_correct: true, diagram_id: 'd1', diagram_position_id: 'p0' }],
-    }
-    set({ status: ref('in-progress'), exercises: ref([diagramExercise]) })
-    expect(mountView().getComponent(PracticeHelpModal).props('diagramStimulus')).toBe(true)
+  describe('states, in place', () => {
+    it('shows a skeleton in the shell while the challenge loads, with × to leave', () => {
+      const wrapper = mountView()
 
-    set({ status: ref('in-progress'), exercises: ref([textExercise]) })
-    expect(mountView().getComponent(PracticeHelpModal).props('diagramStimulus')).toBe(false)
-  })
-
-  it('says how many to choose when the exercise has more than one correct option', () => {
-    const multiCorrectExercise: Exercise = {
-      ...textExercise,
-      options: [
-        { option_id: 'o1', is_correct: true, label: 'A' },
-        { option_id: 'o2', is_correct: true, label: 'B' },
-      ],
-    }
-    set({ status: ref('in-progress'), exercises: ref([multiCorrectExercise]) })
-
-    const wrapper = mountView()
-
-    expect(wrapper.get('[data-test="choose-count"]').text()).toBe('Choose 2')
-  })
-
-  it('reads "Next ›" on a non-final exercise and "See result" on the last one', () => {
-    set({ status: ref('in-progress'), exercises: ref([textExercise, textExercise]), currentIndex: ref(0) })
-    expect(mountView().get('[data-test="next"]').text()).toBe('Next ›')
-
-    set({ status: ref('in-progress'), exercises: ref([textExercise, textExercise]), currentIndex: ref(1) })
-    expect(mountView().get('[data-test="next"]').text()).toBe('See result')
-  })
-
-  it('calls next/back on the session when Next/Back are clicked', async () => {
-    set({
-      status: ref('in-progress'),
-      exercises: ref([textExercise, textExercise]),
-      currentIndex: ref(1),
-      currentAnswer: ref({ optionIds: ['o1'], isCorrect: true }),
-    })
-    const wrapper = mountView()
-
-    await wrapper.get('[data-test="next"]').trigger('click')
-    expect(state.next).toHaveBeenCalled()
-
-    await wrapper.get('[data-test="back"]').trigger('click')
-    expect(state.back).toHaveBeenCalled()
-  })
-
-  it('disables Next until the current exercise has an answer', async () => {
-    set({ status: ref('in-progress'), exercises: ref([textExercise]) })
-    const wrapper = mountView()
-
-    expect(wrapper.get('[data-test="next"]').attributes('disabled')).toBeDefined()
-
-    await wrapper.get('[data-test="exercise-option"]').trigger('click')
-    state.currentAnswer.value = { optionIds: ['o1'], isCorrect: true }
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.get('[data-test="next"]').attributes('disabled')).toBeUndefined()
-  })
-
-  it('shows the result screen with the score and a way back to the last exercise', async () => {
-    set({ status: ref('result'), score: ref({ correct: 3, total: 4 }) })
-
-    const wrapper = mountView()
-
-    expect(wrapper.get('[data-test="result"]').text()).toContain('3 of 4 correct')
-    expect(wrapper.find('[data-test="finish"]').exists()).toBe(true)
-
-    await wrapper.get('[data-test="result-back"]').trigger('click')
-    expect(state.back).toHaveBeenCalled()
-  })
-
-  it('finishes back on My path, where a finished path or course is celebrated', () => {
-    set({ status: ref('result'), score: ref({ correct: 3, total: 4 }) })
-
-    const wrapper = mountView()
-
-    expect(wrapper.get('[data-test="finish"]').getComponent(RouterLinkStub).props('to')).toEqual({ name: 'path' })
-  })
-
-  it('opens and closes the help modal via the "?" toggle and the modal itself', async () => {
-    set({ status: ref('in-progress'), exercises: ref([textExercise]) })
-    const wrapper = mountView()
-
-    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
-
-    await wrapper.get('[data-test="help-toggle"]').trigger('click')
-    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
-
-    await wrapper.get('[data-test="close-modal"]').trigger('click')
-    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
-  })
-
-  it('shows the score percent tinted by tier', () => {
-    set({ status: ref('result'), scorePercent: ref(35), scoreTier: ref('danger') })
-
-    const wrapper = mountView()
-
-    const percent = wrapper.get('[data-test="result-percent"]')
-    expect(percent.text()).toBe('35%')
-    expect(percent.classes()).toContain('text-danger')
-  })
-
-  describe('send to your teacher', () => {
-    const secondExercise: Exercise = { ...textExercise, exercise_id: 'ex-2' }
-
-    beforeEach(() => {
-      vi.stubEnv('VITE_CONCIERGE_WHATSAPP_NUMBER', '+55 11 91234-5678')
-      useLessonTitles.mockClear()
+      expect(wrapper.find('[data-test="challenge-loading"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="shell-exit"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="shell-position"]').exists()).toBe(false)
     })
 
-    afterEach(() => {
-      vi.unstubAllEnvs()
+    it('says the challenge could not load, with Try again as the primary action', async () => {
+      state.status.value = 'error'
+      const wrapper = mountView()
+
+      expect(wrapper.get('[data-test="inline-notice"]').text()).toContain("We couldn't load this challenge.")
+      const retry = wrapper.get('[data-test="action-bar"] [data-primary-action]')
+      expect(retry.text()).toBe('Try again')
+      await retry.trigger('click')
+      expect(state.retry).toHaveBeenCalled()
     })
 
-    it('loads nothing for the message when no concierge number is configured', () => {
-      vi.stubEnv('VITE_CONCIERGE_WHATSAPP_NUMBER', '')
-      set({ status: ref('in-progress'), exercises: ref([textExercise]) })
+    it('says a lesson has no challenge yet, with Back to lesson as the primary action', async () => {
+      state.status.value = 'empty'
+      const wrapper = mountView()
 
+      expect(wrapper.text()).toContain("There's no challenge for this lesson yet.")
+      const back = wrapper.get('[data-test="action-bar"] [data-primary-action]')
+      expect(back.text()).toBe('Back to lesson')
+      await back.trigger('click')
+      expect(router.replace).toHaveBeenCalledWith({ name: 'node', params: { nodeId: 'node-1' } })
+    })
+  })
+
+  describe('the run', () => {
+    it('shows where the student is: "3 / 9" and 9 segments, those done filled', () => {
+      inProgress(2)
+      const wrapper = mountView()
+
+      expect(wrapper.get('[data-test="shell-position"]').text()).toBe('3 / 9')
+      const segments = wrapper.findAll('[data-test="session-segment"]').map((segment) => segment.attributes('data-filled'))
+      expect(segments).toEqual(['100', '100', '0', '0', '0', '0', '0', '0', '0'])
+    })
+
+    it('names the lesson in the item header, tagged as a challenge', () => {
+      inProgress()
+      const wrapper = mountView()
+
+      expect(wrapper.get('[data-test="item-title"]').text()).toBe('Inversions of C major')
+      expect(wrapper.get('[data-test="item-reason"]').text()).toBe('Challenge')
+    })
+
+    it('names the exercise until the lesson title has loaded', () => {
+      titles.lessonTitle.value = null
+      inProgress()
+      const wrapper = mountView()
+
+      expect(wrapper.get('[data-test="item-title"]').text()).toBe('Exercise ex-1')
+    })
+
+    it('shows the exercise, letting a diagram break out and an image to tap take its own pane', () => {
+      const diagramRef = makeDiagramRef({ diagram_id: 'd1' })
+      inProgress(0, null, [exercise('ex-1', { exercise_type: 'image_recognition', diagram_ref: diagramRef })])
+      const view = mountView().getComponent(ExerciseView)
+
+      expect(view.props('exerciseType')).toBe('image_recognition')
+      expect(view.props('diagramRef')).toEqual(diagramRef)
+      expect(view.props('breakout')).toBe(true)
+      expect(view.props('panes')).toBe(true)
+    })
+
+    it('forwards a choice to the session, without revealing anything', async () => {
+      inProgress(2)
+      const wrapper = mountView()
+      const view = wrapper.getComponent(ExerciseView)
+
+      view.vm.$emit('update:selectedOptionIds', ['o2'])
+
+      expect(state.select).toHaveBeenCalledWith(['o2'])
+      expect(view.props('reveal')).toBeUndefined()
+      expect(wrapper.text()).toContain('No answers are shown until the end.')
+    })
+
+    it('shows the choice already made when the student comes back to an exercise', () => {
+      inProgress(2, ['o2'])
+
+      expect(mountView().getComponent(ExerciseView).props('selectedOptionIds')).toEqual(['o2'])
+    })
+
+    it('says how many to choose when an exercise has several right options', () => {
+      const several = exercise('ex-1', {
+        options: [
+          { option_id: 'a', is_correct: true, label: 'C' },
+          { option_id: 'b', is_correct: true, label: 'E' },
+          { option_id: 'c', is_correct: false, label: 'F' },
+        ],
+      })
+      inProgress(0, null, [several])
+      const view = mountView().getComponent(ExerciseView)
+
+      expect(view.props('allowMultiple')).toBe(true)
+      expect(view.props('chooseCount')).toBe(2)
+    })
+
+    it('offers How to answer for the exercise shown', () => {
+      inProgress(0, null, [exercise('ex-1', { exercise_type: 'image_recognition', diagram_ref: makeDiagramRef({ diagram_id: 'd1' }) })])
+      const help = mountView().getComponent(HowToAnswer)
+
+      expect(help.props()).toMatchObject({ exerciseType: 'image_recognition', allowMultiple: false, diagramStimulus: true })
+    })
+
+    it('offers Send to your teacher under the options, never in the action bar', () => {
+      inProgress(2)
+      const wrapper = mountView()
+
+      const link = wrapper.getComponent({ name: 'SendToTeacherLink' })
+      expect(link.props()).toEqual({ reference: 'X-node-1/ex-3', pathTitle: 'Blues Basics', lessonTitle: 'Inversions of C major' })
+      expect(wrapper.get('[data-test="action-bar"]').find('[data-test="send-to-teacher-link-stub"]').exists()).toBe(false)
+    })
+  })
+
+  describe('moving through it', () => {
+    it('waits for a choice before Next', () => {
+      inProgress(2)
+      const wrapper = mountView()
+
+      expect(wrapper.get('[data-test="next"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('moves on with Next once something is chosen', async () => {
+      inProgress(2, ['o2'])
+      const wrapper = mountView()
+
+      const next = wrapper.get('[data-test="next"]')
+      expect(next.text()).toBe('Next')
+      await next.trigger('click')
+      expect(state.next).toHaveBeenCalled()
+    })
+
+    it('reads "See result" on the last exercise', () => {
+      inProgress(8, ['o2'])
+
+      expect(mountView().get('[data-test="next"]').text()).toBe('See result')
+    })
+
+    it('offers Back from the second exercise on', async () => {
+      inProgress(0)
+      expect(mountView().find('[data-test="back"]').exists()).toBe(false)
+
+      inProgress(2)
+      const wrapper = mountView()
+      await wrapper.get('[data-test="back"]').trigger('click')
+      expect(state.back).toHaveBeenCalled()
+    })
+
+    it('chooses with number keys and moves on with Enter', async () => {
+      inProgress(2)
       mountView()
 
-      expect(useLessonTitles).not.toHaveBeenCalled()
-    })
+      press('2')
+      expect(state.select).toHaveBeenCalledWith(['o2'])
 
-    it('is offered on the exercise shown, with its reference and the lesson titles', () => {
-      set({ status: ref('in-progress'), exercises: ref([textExercise, secondExercise]) })
-
-      const wrapper = mountView()
-
-      const button = wrapper.findComponent({ name: 'SendToTeacher' })
-      expect(button.exists()).toBe(true)
-      expect(button.props()).toEqual({
-        reference: 'X-node-1/ex-1',
-        pathTitle: 'Blues Basics',
-        lessonTitle: 'Shuffle in E',
-        // Clear of the sticky bar holding Next.
-        raised: true,
-      })
-    })
-
-    it('follows the exercise the student moves on to', async () => {
-      set({ status: ref('in-progress'), exercises: ref([textExercise, secondExercise]) })
-      const wrapper = mountView()
-
-      state.currentIndex.value = 1
+      currentAnswer.value = { optionIds: ['o2'], isCorrect: true }
       await nextTick()
+      press('Enter')
+      expect(state.next).toHaveBeenCalled()
+    })
+  })
 
-      expect(wrapper.findComponent({ name: 'SendToTeacher' }).props('reference')).toBe('X-node-1/ex-2')
+  describe('the result', () => {
+    beforeEach(() => {
+      state.status.value = 'result'
+      exercises.value = nine
+      currentIndex.value = 8
+      state.score.value = { correct: 7, total: 9 }
+      state.scorePercent.value = 78
+      state.scoreTier.value = 'success'
     })
 
-    it.each(['loading', 'error', 'empty', 'result'] as const)('is not offered while the practice is %s', (status) => {
-      set({ status: ref(status), exercises: ref([textExercise]) })
-
+    it('says the challenge is done, with the score and the lesson', () => {
       const wrapper = mountView()
 
-      expect(wrapper.findComponent({ name: 'SendToTeacher' }).exists()).toBe(false)
+      expect(wrapper.get('h1').text()).toBe('Challenge done')
+      expect(wrapper.get('[data-test="result-summary"]').text()).toBe('7 of 9 correct')
+      expect(wrapper.get('[data-test="result-percent"]').text()).toBe('78%')
+      expect(wrapper.get('[data-test="result-percent"]').classes()).toContain('bg-success-muted')
+      expect(wrapper.text()).toContain('Inversions of C major')
+    })
+
+    it('reviews every answer', () => {
+      const entry: ReviewEntry = { exercise: nine[0]!, number: 1, chosen: [], missed: [] }
+      state.review.value = [entry]
+
+      expect(mountView().getComponent(ChallengeReview).props('entries')).toEqual([entry])
+    })
+
+    it('fills every progress segment', () => {
+      const segments = mountView().findAll('[data-test="session-segment"]')
+
+      expect(segments.every((segment) => segment.attributes('data-filled') === '100')).toBe(true)
+    })
+
+    it('finishes on My path', async () => {
+      const wrapper = mountView()
+
+      const finish = wrapper.get('[data-test="finish"]')
+      expect(finish.attributes('data-primary-action')).toBeDefined()
+      await finish.trigger('click')
+      expect(router.push).toHaveBeenCalledWith({ name: 'path' })
+    })
+
+    it('goes back to the last exercise with Back', async () => {
+      const wrapper = mountView()
+
+      await wrapper.get('[data-test="back"]').trigger('click')
+
+      expect(state.back).toHaveBeenCalled()
+    })
+  })
+
+  describe('leaving', () => {
+    it('goes back to the lesson it came from with ×, without asking', async () => {
+      window.history.replaceState({ back: '/nodes/node-1' }, '')
+      inProgress(2)
+      const wrapper = mountView()
+
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+      expect(router.back).toHaveBeenCalled()
+      expect(router.replace).not.toHaveBeenCalled()
+    })
+
+    it('opens the lesson in its place when the run was opened from elsewhere', async () => {
+      window.history.replaceState({ back: '/path' }, '')
+      inProgress(2)
+      const wrapper = mountView()
+
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+      expect(router.replace).toHaveBeenCalledWith({ name: 'node', params: { nodeId: 'node-1' } })
+      expect(router.back).not.toHaveBeenCalled()
+    })
+
+    it('leaves with Esc too', () => {
+      inProgress(2)
+      mountView()
+
+      press('Escape')
+
+      expect(router.replace).toHaveBeenCalledWith({ name: 'node', params: { nodeId: 'node-1' } })
     })
   })
 })

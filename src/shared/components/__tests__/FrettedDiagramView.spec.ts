@@ -1252,6 +1252,40 @@ describe('FrettedDiagramView', () => {
     const fretWireXs = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
       wrapper.findAll('[data-test="fret-wire"]').map((wire) => Number(wire.attributes('x')) + Number(wire.attributes('width')) / 2)
 
+    describe('overview strip', () => {
+      afterEach(() => Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo'))
+
+      it('shows the whole board in miniature under a board too wide for its window', async () => {
+        const wrapper = await mountAt(300, { diagram: wide })
+
+        const strip = wrapper.get('[data-test="overview-strip"]')
+        expect(strip.find('[data-test="diagram-canvas"]').exists()).toBe(true)
+        expect(strip.get('[data-test="overview-window"]').attributes('aria-label')).toBe(`${wide.names.en}: part in view`)
+      })
+
+      it('hides the strip when the board fits', async () => {
+        const wrapper = await mountAt(1400, { diagram: wide })
+
+        expect(wrapper.find('[data-test="overview-strip"]').exists()).toBe(false)
+      })
+
+      it('never draws a strip for a compact drawing', async () => {
+        const wrapper = await mountAt(300, { diagram: wide, compact: true })
+
+        expect(wrapper.find('[data-test="overview-strip"]').exists()).toBe(false)
+      })
+
+      it('scrolls the board from the strip', async () => {
+        const scrollTo = vi.fn()
+        Object.defineProperty(HTMLElement.prototype, 'scrollTo', { value: scrollTo, configurable: true })
+        const wrapper = await mountAt(300, { diagram: wide })
+
+        await wrapper.get('[data-test="overview-window"]').trigger('keydown', { key: 'End' })
+
+        expect(scrollTo.mock.calls.at(-1)![0].left).toBeGreaterThan(0)
+      })
+    })
+
     describe('following what plays', () => {
       const scrollTo = vi.fn()
       afterEach(() => {
@@ -1347,8 +1381,22 @@ describe('FrettedDiagramView', () => {
     it('numbers each shown fret space under its middle, and the nut 0', async () => {
       const wrapper = await mountAt(600, { diagram: wide })
 
-      const numbers = wrapper.findAll('[data-test="fret-number"]').map((n) => n.text())
+      const board = wrapper.get('[data-test="board-scroll"]')
+      const numbers = board.findAll('[data-test="fret-number"]').map((n) => n.text())
       expect(numbers).toEqual(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+    })
+
+    it('keeps markers at tap size on a phone: at least 28 px drawn, a 44 px area to tap', async () => {
+      const wrapper = await mountAt(320, { diagram: wide, selectablePositionIds: ['low', 'high'] })
+
+      // Drawn at its real size, one board pixel is one CSS pixel.
+      const board = wrapper.get('[data-test="board-scroll"]')
+      const markers = board.findAll('circle[data-test="diagram-position"]')
+      const targets = board.findAll('[data-test="diagram-choice-target"]')
+      expect(markers).toHaveLength(2)
+      expect(targets).toHaveLength(2)
+      for (const marker of markers) expect(2 * Number(marker.attributes('r'))).toBeGreaterThanOrEqual(28)
+      for (const target of targets) expect(2 * Number(target.attributes('r'))).toBeGreaterThanOrEqual(44)
     })
 
     it('keeps an open-string marker whole, with a touch target apart from a fret-1 marker', async () => {
@@ -1386,7 +1434,7 @@ describe('FrettedDiagramView', () => {
       expect(svg.attributes('width')).toBeUndefined()
       expect(svg.attributes('viewBox')).toBeDefined()
       expect(svg.classes()).toContain('w-full')
-      expect(wrapper.find('[data-test="board-scroll"]').classes()).not.toContain('overflow-x-auto')
+      expect(wrapper.find('[data-test="board-scroll"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(false)
     })
   })

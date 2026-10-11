@@ -321,6 +321,17 @@
     "play": "Play {label}",
     "stop": "Stop {label}"
   },
+  "overviewStrip": {
+    "window": "{name}: part in view"
+  },
+  "diagramLegend": {
+    "label": "Diagrams on this board"
+  },
+  "chordView": {
+    "label": "Show the chord as",
+    "box": "Box",
+    "neck": "Neck"
+  },
   "googleButton": {
     "continue": "Continue with Google",
     "busy": "Setting up your account…"

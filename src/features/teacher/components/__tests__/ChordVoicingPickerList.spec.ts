@@ -31,7 +31,7 @@ function serveCatalog() {
 
 function mountList() {
   return mount(ChordVoicingPickerList, {
-    global: { stubs: { ChordBoxDiagram: { props: ['voicing'], template: '<div data-test="chord-box" :data-voicing-id="voicing.chord_voicing_id" />' } } },
+    global: { stubs: { ChordBox: { props: ['voicing'], template: '<div data-test="chord-box" :data-voicing-id="voicing.chord_voicing_id" />' } } },
   })
 }
 

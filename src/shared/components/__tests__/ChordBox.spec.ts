@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
-import ChordBoxDiagram from '@/shared/components/songChart/ChordBoxDiagram.vue'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { makeVoicing } from '@/shared/testUtils/songChart'
 
@@ -22,7 +22,7 @@ const gBarre3 = voicingOf('g-e-shape-3', [[6, 3, '1'], [5, 5, '3'], [4, 5, '4'],
 const cOpen = voicingOf('c-open', [[5, 3, '3'], [4, 2, '2'], [3, 0, null], [2, 1, '1'], [1, 0, null]], 0, 3, [6])
 
 function mountBox({ voicing, diagram }: ReturnType<typeof voicingOf>) {
-  return mount(ChordBoxDiagram, { props: { voicing, diagram, instrument: makeFrettedInstrument(), label: 'G7' } })
+  return mount(ChordBox, { props: { voicing, diagram, instrument: makeFrettedInstrument(), label: 'G7' } })
 }
 
 /** The dots as [string, fret, finger], low string first. */
@@ -30,7 +30,7 @@ function dots(wrapper: ReturnType<typeof mountBox>) {
   return wrapper.findAll('[data-test="finger-dot"]').map((d) => [Number(d.attributes('data-string')), Number(d.attributes('data-fret')), d.text()])
 }
 
-describe('ChordBoxDiagram', () => {
+describe('ChordBox', () => {
   it("draws an open voicing from the nut, with each finger's number on its dot", () => {
     const wrapper = mountBox(g7Open)
 
@@ -61,12 +61,55 @@ describe('ChordBoxDiagram', () => {
     expect(dots(wrapper)).toContainEqual([5, 5, '3'])
   })
 
+  it('starts a voicing with open strings at the nut, however high its fingers sit', () => {
+    const aOpen = voicingOf('a-open', [[5, 0, null], [4, 2, '1'], [3, 2, '2'], [2, 2, '3'], [1, 0, null]], 2, 2, [6])
+    const wrapper = mountBox(aOpen)
+
+    expect(wrapper.find('[data-test="nut"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="fret-label"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-test="fret-row"]')).toHaveLength(4)
+    // On the 2nd fret: in the second row, not the first.
+    const rowOf = (dot: ReturnType<typeof wrapper.find>) => Number(dot.attributes('data-row'))
+    expect(wrapper.findAll('[data-test="finger-dot"]').map(rowOf)).toEqual([2, 2, 2])
+  })
+
+  it('always shows at least four frets', () => {
+    expect(mountBox(gBarre3).findAll('[data-test="fret-row"]')).toHaveLength(4)
+  })
+
+  it('shows every fret a voicing with open strings reaches, past the 4th too', () => {
+    const cStretch = voicingOf('c-stretch', [[5, 3, '2'], [4, 2, '1'], [3, 0, null], [2, 1, null], [1, 5, '4']], 1, 5, [6])
+    const wrapper = mountBox(cStretch)
+
+    expect(wrapper.find('[data-test="nut"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="fret-row"]')).toHaveLength(5)
+  })
+
   it('draws the strings low to high, left to right', () => {
     const wrapper = mountBox(g7Open)
 
     const xOf = (string: number) => Number(wrapper.get(`[data-test="finger-dot"][data-string="${string}"]`).attributes('data-x'))
     expect(xOf(6)).toBeLessThan(xOf(5))
     expect(xOf(5)).toBeLessThan(xOf(1))
+  })
+
+  it('draws at a larger scale for practice, so every dot is at least 28 px', () => {
+    const wrapper = mount(ChordBox, { props: { ...g7Open, instrument: makeFrettedInstrument(), label: 'G7', scale: 2 } })
+
+    const svg = wrapper.get('svg')
+    const plain = mountBox(g7Open).get('svg')
+    expect(Number(svg.attributes('width'))).toBe(2 * Number(plain.attributes('width')))
+    expect(svg.attributes('viewBox')).toBe(plain.attributes('viewBox'))
+    expect(2 * 2 * Number(wrapper.get('[data-test="finger-dot"] circle').attributes('r'))).toBeGreaterThanOrEqual(28)
+  })
+
+  it('rings the dots and open strings sounding right now', () => {
+    const wrapper = mount(ChordBox, {
+      props: { ...g7Open, instrument: makeFrettedInstrument(), label: 'G7', activePositionIds: ['g7-open-p0', 'g7-open-p2'] },
+    })
+
+    const rings = wrapper.findAll('[data-test="chord-sounding"]')
+    expect(rings.map((ring) => ring.attributes('data-string'))).toEqual(['6', '4'])
   })
 
   it('is described for screen readers', () => {

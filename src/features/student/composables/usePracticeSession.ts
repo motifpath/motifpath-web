@@ -8,12 +8,28 @@ import type { components } from '@/api/generated/core-domain'
 
 type Challenge = components['schemas']['Challenge']
 type Exercise = components['schemas']['Exercise']
+type Option = Exercise['options'][number]
 
 export type PracticeSessionStatus = 'loading' | 'error' | 'empty' | 'in-progress' | 'result'
 
 interface Answer {
   optionIds: string[]
   isCorrect: boolean
+}
+
+/** An option as the review names it: with its key, the number it was shown with, counted from 1. */
+export interface ReviewedOption {
+  option: Option
+  key: number
+}
+
+/** One exercise in the review after the last one: what the student chose, and any right option they didn't. */
+export interface ReviewEntry {
+  exercise: Exercise
+  /** Its place in the challenge, counted from 1. */
+  number: number
+  chosen: (ReviewedOption & { right: boolean })[]
+  missed: ReviewedOption[]
 }
 
 /**
@@ -67,6 +83,20 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
     const { correct, total } = score.value
     return total === 0 ? 0 : Math.round((correct / total) * 100)
   })
+  const review = computed<ReviewEntry[]>(() =>
+    exercises.value.map((exercise, index) => {
+      const chosenIds = answers.value[exercise.exercise_id]?.optionIds ?? []
+      const options = exercise.options.map((option, i) => ({ option, key: i + 1 }))
+      return {
+        exercise,
+        number: index + 1,
+        chosen: options
+          .filter(({ option }) => chosenIds.includes(option.option_id))
+          .map((reviewed) => ({ ...reviewed, right: reviewed.option.is_correct })),
+        missed: options.filter(({ option }) => option.is_correct && !chosenIds.includes(option.option_id)),
+      }
+    }),
+  )
   // Tunable presentation heuristic, not a derived business rule: below this
   // fraction of the challenge's pass_threshold reads as a clear fail rather
   // than a borderline one.
@@ -273,6 +303,7 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
     score,
     scorePercent,
     scoreTier,
+    review,
     select,
     next,
     back,

@@ -10,6 +10,8 @@ import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
+import { makeVoicing } from '@/shared/testUtils/songChart'
 import {
   makeDiagramRef,
   makeFrettedDiagram,
@@ -38,6 +40,71 @@ beforeEach(() => {
 })
 
 describe('EmbeddedDiagram', () => {
+  it('names the diagrams of a stack in a legend under the board', async () => {
+    serve(makeFrettedDiagram({ names: { en: 'A minor pentatonic' } }))
+    const stack: DiagramEmbed = { kind: 'stack', stack: [makeDiagramRef(), makeDiagramRef({ diagram_id: 'diagram-2' })] }
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: stack } })
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-test="legend-entry"]')).toHaveLength(2)
+  })
+
+  describe('a chord voicing', () => {
+    const voicing = makeVoicing('d-open', 'chord-d', { fingering: [{ position_id: 'p0', finger: '1' }] })
+    const chord = makeFrettedDiagram({ names: { en: 'D' }, purpose: 'chord_voicing', chord_voicing: voicing })
+    it('shows as a chord box, from its chord data, with Box | Neck to switch in place', async () => {
+      serve(chord)
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
+      await flushPromises()
+
+      expect(wrapper.findComponent(ChordBox).props()).toMatchObject({ label: 'D', scale: 2 })
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(false)
+      expect(wrapper.get('[data-test="chord-view-box"]').attributes('aria-checked')).toBe('true')
+
+      await wrapper.get('[data-test="chord-view-neck"]').trigger('click')
+
+      expect(wrapper.findComponent(ChordBox).exists()).toBe(false)
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+    })
+
+    it('stays a fretboard, with no switch, when its cells are the answers', async () => {
+      serve(chord)
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, answerCells: [{ optionId: 'o', string: 1, fret: 2 }] } })
+      await flushPromises()
+
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+      expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
+    })
+
+    it('stays a fretboard as a thumbnail', async () => {
+      serve(chord)
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, compact: true } })
+      await flushPromises()
+
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+      expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
+    })
+  })
+
+  it('offers no Box | Neck on a diagram that isn’t a chord voicing', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
+  })
+
+  it('needs no legend for a single diagram', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="diagram-legend"]').exists()).toBe(false)
+  })
+
   it('holds the space with a loading placeholder until the diagram arrives', () => {
     // Only the diagram is held back: the instruments request is shared across mounts.
     GET.mockImplementation((path: string) =>
