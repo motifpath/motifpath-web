@@ -4,7 +4,7 @@
     "practice": "Practice",
     "findCourse": "Find a course",
     "findPath": "Find a path",
-    "content": "Content",
+    "content": "Lessons",
     "paths": "Paths",
     "courses": "Courses",
     "exercises": "Exercises",
@@ -351,5 +351,9 @@
     "bestTick": "Best clean {bpm} BPM",
     "goalTick": "Goal {bpm} BPM",
     "typeTempo": "Type a tempo in BPM"
+  },
+  "teach": {
+    "intro": "Build and look after what your students learn. Quick fixes work here; big edits are easier on a computer.",
+    "admin": "Admin"
   }
 }

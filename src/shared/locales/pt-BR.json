@@ -4,7 +4,7 @@
     "practice": "Praticar",
     "findCourse": "Encontrar um curso",
     "findPath": "Encontrar uma trilha",
-    "content": "Conteúdo",
+    "content": "Aulas",
     "paths": "Trilhas",
     "courses": "Cursos",
     "exercises": "Exercícios",
@@ -351,5 +351,9 @@
     "bestTick": "Melhor limpa {bpm} BPM",
     "goalTick": "Meta {bpm} BPM",
     "typeTempo": "Digite um andamento em BPM"
+  },
+  "teach": {
+    "intro": "Crie e cuide do que seus alunos aprendem. Ajustes rápidos funcionam aqui; edições grandes são mais fáceis no computador.",
+    "admin": "Admin"
   }
 }
