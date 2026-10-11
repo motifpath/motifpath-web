@@ -24,4 +24,10 @@ describe('StatusChip', () => {
     expect(warning.classes()).toEqual(expect.arrayContaining(['bg-warning-muted', 'text-warning']))
     expect(neutral.classes()).toEqual(expect.arrayContaining(['bg-surface-sunken', 'text-ink-muted']))
   })
+
+  it('paints a success chip in the success colours', () => {
+    const success = mount(StatusChip, { props: { label: 'Published', tone: 'success' } })
+
+    expect(success.classes()).toEqual(expect.arrayContaining(['bg-success-muted', 'text-success']))
+  })
 })
