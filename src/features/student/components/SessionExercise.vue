@@ -107,8 +107,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col gap-4" data-test="session-exercise">
-    <ItemHeader :title="exercise.title" :reason="item.reason" />
-
     <ExerciseView
       :exercise-type="exercise.exercise_type"
       :prompt="exercise.prompt"
@@ -117,6 +115,7 @@ onBeforeUnmount(() => {
       :diagram-ref="exercise.diagram_ref"
       :diagram-stack-ref="exercise.diagram_stack_ref"
       breakout
+      panes
       :audio-url="exercise.audio_url"
       :allow-multiple="allowMultiple"
       :selected-option-ids="shown"
@@ -127,6 +126,9 @@ onBeforeUnmount(() => {
       @playing="emit('playing', $event)"
       @stimulus-missing="onStimulusMissing"
     >
+      <template #header>
+        <ItemHeader :title="exercise.title" :reason="item.reason" />
+      </template>
       <template #stimulus-notice>
         <InlineNotice :tone="missing === 'unavailable' ? 'unavailable' : 'error'" :message="missingMessage" />
       </template>
