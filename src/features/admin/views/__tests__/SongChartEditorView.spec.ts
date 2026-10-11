@@ -28,6 +28,9 @@ vi.mock('@/shared/utils/downloadText', async (importOriginal) => ({
 import SongChartEditorView from '@/features/admin/views/SongChartEditorView.vue'
 import { makeLyricLine, makeRevision, makeRevisionSummary, makeSection, makeSongChart } from '@/shared/testUtils/songChart'
 
+// The pages' own content is under test, not Teach's navigation around it.
+const TeachShellStub = { template: '<div><slot /></div>' }
+
 const ok = <T>(data: T, status = 200) => Promise.resolve({ data, response: new Response(null, { status }) })
 const fail = <T>(error: T, status: number) => Promise.resolve({ error, response: new Response(null, { status }) })
 
@@ -68,7 +71,7 @@ async function mountAt(path: string) {
   await router.push(path)
   const wrapper = mount(
     defineComponent({ render: () => h(RouterView) }),
-    { global: { plugins: [router], stubs: { AppBar: true, SongChartLyricsEditor: LyricsEditorStub } } },
+    { global: { plugins: [router], stubs: { AppBar: true, TeachShell: TeachShellStub, SongChartLyricsEditor: LyricsEditorStub } } },
   )
   await flushPromises()
   return { wrapper, router }

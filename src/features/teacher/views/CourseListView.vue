@@ -6,16 +6,15 @@ import {
   type CourseStatus,
   useManagedCourses,
 } from '@/features/teacher/composables/useManagedCourses'
-import AppBar from '@/shared/components/AppBar.vue'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 const STATUS_TABS: (CourseStatus | null)[] = [null, 'draft', 'published', 'retired']
 
@@ -27,7 +26,6 @@ const canAuthor = computed(
 // teacher filter. Each shared card always identifies the course creator.
 const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
-const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 const {
   courses,
@@ -51,8 +49,8 @@ function statusLabel(tab: CourseStatus | null): string {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'teacher-courses' }" />
+  <TeachShell section="teacher-courses">
+  <div class="flex flex-1 flex-col bg-surface">
 
     <div
       v-if="!canAuthor"
@@ -199,4 +197,5 @@ function statusLabel(tab: CourseStatus | null): string {
       </template>
     </div>
   </div>
+  </TeachShell>
 </template>

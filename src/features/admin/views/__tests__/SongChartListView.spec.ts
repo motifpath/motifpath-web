@@ -18,6 +18,9 @@ vi.mock('@/shared/composables/useIsCompact', () => ({
 import SongChartListView from '@/features/admin/views/SongChartListView.vue'
 import { makeRevisionSummary } from '@/shared/testUtils/songChart'
 
+// The pages' own content is under test, not Teach's navigation around it.
+const TeachShellStub = { template: '<div><slot /></div>' }
+
 function chart(id: string, title: string, artist: string, status: SongChartSummary['status'], revision: number | null): SongChartSummary {
   return {
     song_chart_id: id,
@@ -62,7 +65,7 @@ async function mountList() {
     ],
   })
   await router.push('/admin/song-charts')
-  const wrapper = mount(SongChartListView, { global: { plugins: [router], stubs: { AppBar: true } } })
+  const wrapper = mount(SongChartListView, { global: { plugins: [router], stubs: { AppBar: true, TeachShell: TeachShellStub } } })
   await flushPromises()
   return wrapper
 }

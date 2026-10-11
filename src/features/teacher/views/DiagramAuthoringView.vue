@@ -34,6 +34,7 @@ import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
 import { i18n, OFFERED_LANGUAGE_CODES, fromApiLanguageCode, toApiLanguageCode } from '@/i18n'
 import type { components } from '@/api/generated/core-domain'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
@@ -385,7 +386,8 @@ async function saveAs(names: Record<string, string>) {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
+  <TeachShell section="teacher-diagrams" bar="none">
+  <div class="flex flex-1 flex-col bg-surface">
     <AppBar
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-diagrams' }"
@@ -765,4 +767,5 @@ async function saveAs(names: Record<string, string>) {
       />
     </div>
   </div>
+  </TeachShell>
 </template>

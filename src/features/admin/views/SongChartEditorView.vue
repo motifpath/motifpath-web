@@ -11,23 +11,21 @@ import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
 import SongChartLyricsEditor from '@/features/admin/components/songChartEditor/SongChartLyricsEditor.vue'
 import { useSongChartEditor } from '@/features/admin/composables/useSongChartEditor'
-import AppBar from '@/shared/components/AppBar.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { downloadText, fileSlug } from '@/shared/utils/downloadText'
 import { formatDate } from '@/shared/utils/formatDate'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 const props = withDefaults(defineProps<{ songChartId?: string | null }>(), { songChartId: null })
 
 const { t, locale } = useTypedT()
 const date = (iso: string) => formatDate(iso, locale.value)
-const { isCompact } = useIsCompact()
 const router = useRouter()
 const editor = useSongChartEditor(toRef(props, 'songChartId'))
 const { chart, details, body, revisions, isDirty, isLoading, isBusy, loadError, notFound, fieldErrors, importWarnings, importError, publishRefusal } =
@@ -120,8 +118,8 @@ const actionClass = 'flex items-center gap-1.5 rounded-md border border-border p
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'admin-song-charts' }" />
+  <TeachShell section="admin-song-charts">
+  <div class="flex flex-1 flex-col bg-surface">
 
     <div class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
       <LoadingSkeleton v-if="isLoading" />
@@ -340,4 +338,5 @@ const actionClass = 'flex items-center gap-1.5 rounded-md border border-border p
       @cancel="leaving?.(false)"
     />
   </div>
+  </TeachShell>
 </template>

@@ -3,7 +3,6 @@ import { Plus } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
-import AppBar from '@/shared/components/AppBar.vue'
 import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
@@ -11,16 +10,15 @@ import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
 
-const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 const {
   contentNodes,
@@ -37,8 +35,8 @@ const { instrumentsLabel } = useInstrumentNames()
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'teacher-content' }" />
+  <TeachShell section="teacher-content">
+  <div class="flex flex-1 flex-col bg-surface">
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
@@ -119,4 +117,5 @@ const { instrumentsLabel } = useInstrumentNames()
       </template>
     </div>
   </div>
+  </TeachShell>
 </template>

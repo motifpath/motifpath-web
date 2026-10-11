@@ -3,18 +3,16 @@ import { Plus } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
 import { useSongChartLibrary } from '@/features/admin/composables/useSongChartLibrary'
-import AppBar from '@/shared/components/AppBar.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 type SongChartSummary = components['schemas']['SongChartSummary']
 type SongChartStatus = components['schemas']['SongChartStatus']
 
-const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 const { charts, total, status, searchText, hasActiveFilters, isLoading, isLoadingMore, error, loadMoreError, reload, loadMore } =
   useSongChartLibrary()
@@ -30,8 +28,8 @@ function statusText(chart: SongChartSummary): string {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'admin-song-charts' }" />
+  <TeachShell section="admin-song-charts">
+  <div class="flex flex-1 flex-col bg-surface">
 
     <div class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
       <div class="flex items-center justify-between">
@@ -120,4 +118,5 @@ function statusText(chart: SongChartSummary): string {
       </template>
     </div>
   </div>
+  </TeachShell>
 </template>
