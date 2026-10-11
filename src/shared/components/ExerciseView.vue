@@ -197,14 +197,27 @@ function togglePlay(option: Option): void {
   el.pause()
   el.src = option.audio_url
   el.currentTime = 0
-  void el.play()
   playingOptionId.value = option.option_id
   if (!wasSounding) emit('playing', true)
+  el.play().catch(() => {
+    if (playingOptionId.value === option.option_id) onClipStopped()
+  })
 }
 
-function onClipEnded(): void {
+/**
+ * The clip stopped by itself: it ended, failed, or was paused from outside (another app taking
+ * the audio). A clip still counted as sounding would time the next answer as instant.
+ */
+function onClipStopped(): void {
+  if (playingOptionId.value === null) return
   playingOptionId.value = null
   emit('playing', false)
+}
+
+// The pause of a clip being replaced arrives after the new one has started; only a pause that
+// leaves the player silent means the clip stopped.
+function onPlayerPause(): void {
+  if (audioPlayerEl.value?.paused) onClipStopped()
 }
 
 // Once graded, the answer is in: whatever still sounds stops there.
@@ -213,6 +226,13 @@ watch(
   (reveal) => {
     if (reveal) stopClip()
   },
+)
+
+// This view is reused from one exercise to the next: a clip replayed while reviewing an answer
+// mustn't sound over the next one.
+watch(
+  () => props.options,
+  () => stopClip(),
 )
 </script>
 
@@ -388,7 +408,7 @@ watch(
           @select="select(option.option_id)"
           @play="togglePlay(option)"
         />
-        <audio ref="audioPlayerEl" class="hidden" @ended="onClipEnded" />
+        <audio ref="audioPlayerEl" class="hidden" @ended="onClipStopped" @error="onClipStopped" @pause="onPlayerPause" />
       </div>
     </div>
   </div>

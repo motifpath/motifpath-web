@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import { makeDiagramRef } from '@/shared/testUtils/diagram'
@@ -157,6 +157,48 @@ describe('ExerciseView', () => {
 
       expect(wrapper.emitted('playing')).toEqual([[true], [false], [true]])
       expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2)
+    })
+
+    it.each(['error', 'pause'])('says the clip stopped when the player reports %s', async (event) => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+
+      await wrapper.get('audio').trigger(event)
+
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+      expect(playButton(wrapper, 0).attributes('aria-label')).toBe('Play Lick A')
+    })
+
+    it('says the clip stopped when it can’t start', async () => {
+      vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new DOMException('no source', 'NotSupportedError'))
+      const wrapper = mountSounds()
+
+      await playButton(wrapper, 0).trigger('click')
+      await flushPromises()
+
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+    })
+
+    it('keeps the new clip sounding when the one it replaced reports its pause late', async () => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+      await playButton(wrapper, 1).trigger('click')
+      vi.spyOn(player(wrapper), 'paused', 'get').mockReturnValue(false)
+
+      await wrapper.get('audio').trigger('pause')
+
+      expect(wrapper.emitted('playing')).toEqual([[true]])
+      expect(playButton(wrapper, 1).attributes('aria-label')).toBe('Stop Lick B')
+    })
+
+    it('stops the clip sounding when the next exercise’s options arrive', async () => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+
+      await wrapper.setProps({ options: [{ option_id: 'n1', audio_url: 'https://x/next.mp3', label: 'Next', is_correct: true }] })
+
+      expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
     })
 
     it('stops the clip sounding once the answer is graded', async () => {
