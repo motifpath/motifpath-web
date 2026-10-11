@@ -329,5 +329,8 @@
   },
   "overviewStrip": {
     "window": "{name}: part in view"
+  },
+  "diagramLegend": {
+    "label": "Diagrams on this board"
   }
 }

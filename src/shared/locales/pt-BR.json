@@ -329,5 +329,8 @@
   },
   "overviewStrip": {
     "window": "{name}: parte visível"
+  },
+  "diagramLegend": {
+    "label": "Diagramas neste braço"
   }
 }

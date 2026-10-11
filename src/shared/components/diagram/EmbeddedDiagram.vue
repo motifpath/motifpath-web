@@ -10,11 +10,12 @@
  * A single diagram whose usage offers playback gets compact Play and tempo
  * controls in the diagram's own control rail, an inert thumbnail's included:
  * only the drawing is inert, and a tap on them never reaches the card around
- * it, so it doesn't pick an option. A stack never plays. `root_override` isn't applied yet: the diagram is drawn, and played,
+ * it, so it doesn't pick an option. A stack never plays; its diagrams are named in a legend. `root_override` isn't applied yet: the diagram is drawn, and played,
  * as authored.
  */
 import { computed, shallowRef, watch } from 'vue'
 
+import DiagramLegend from '@/shared/components/diagram/DiagramLegend.vue'
 import DiagramPlayer, { PLAYER_WIDTH } from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
@@ -72,7 +73,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useTypedT()
-const { status, failed, diagram, instrument, diagramRef, labelMode, retry } = useEmbeddedDiagram(() => props.embed)
+const { status, failed, diagram, instrument, diagramRef, labelMode, legend, retry } = useEmbeddedDiagram(() => props.embed)
 watch(status, (next) => emit('status', next), { immediate: true })
 
 const activePositionIds = shallowRef<string[]>([])
@@ -131,6 +132,7 @@ const playable = computed(
         </template>
       </FrettedDiagramView>
     </div>
+    <DiagramLegend v-if="legend.length > 1" :entries="legend" />
     <figcaption v-if="props.caption" class="text-sm text-ink-muted">{{ props.caption }}</figcaption>
   </figure>
   <LoadFailed

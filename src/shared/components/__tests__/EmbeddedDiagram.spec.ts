@@ -38,6 +38,25 @@ beforeEach(() => {
 })
 
 describe('EmbeddedDiagram', () => {
+  it('names the diagrams of a stack in a legend under the board', async () => {
+    serve(makeFrettedDiagram({ names: { en: 'A minor pentatonic' } }))
+    const stack: DiagramEmbed = { kind: 'stack', stack: [makeDiagramRef(), makeDiagramRef({ diagram_id: 'diagram-2' })] }
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: stack } })
+    await flushPromises()
+
+    expect(wrapper.findAll('[data-test="legend-entry"]')).toHaveLength(2)
+  })
+
+  it('needs no legend for a single diagram', async () => {
+    serve(makeFrettedDiagram())
+
+    const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="diagram-legend"]').exists()).toBe(false)
+  })
+
   it('holds the space with a loading placeholder until the diagram arrives', () => {
     // Only the diagram is held back: the instruments request is shared across mounts.
     GET.mockImplementation((path: string) =>

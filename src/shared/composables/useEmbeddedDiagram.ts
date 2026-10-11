@@ -3,6 +3,8 @@ import type { MaybeRefOrGetter } from 'vue'
 
 import { useApi } from '@/shared/composables/useApi'
 import { fetchInstruments } from '@/shared/composables/useListInstruments'
+import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
+import type { PaletteColorKey } from '@/shared/utils/colorPalette'
 import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
 import { flattenDiagramStack, stackLayerFromDiagram } from '@/shared/utils/flattenDiagramStack'
 import type { components } from '@/api/generated/core-domain'
@@ -14,6 +16,15 @@ type CoreApi = ReturnType<typeof useApi>['coreApi']
 
 export type EmbeddedDiagramStatus = 'loading' | 'ready' | 'unavailable'
 export type EmbeddedLabelMode = Diagram['label_display']
+
+/** One diagram of a stack, as its legend names it: its names and its hue (null = the default). */
+export interface LegendEntry {
+  names: Diagram['names']
+  color: string | null
+}
+
+/** Hues for a stack's uncoloured layers after the first, apart from each other and the default. */
+const STACK_HUES: PaletteColorKey[] = ['teal', 'amber', 'pink', 'blue']
 
 // A video cue mounts again every time playback enters its window, so a
 // diagram is fetched once per page load rather than once per showing. A
@@ -48,14 +59,33 @@ function withinSubset(diagram: Diagram, diagramRef: DiagramRef): Diagram {
 }
 
 /**
+ * Each layer's hue, so no two diagrams of a stack look alike: a layer keeps its own colour, the
+ * first uncoloured one the default, and every other one the next stack hue no layer has.
+ */
+function layerHues(diagrams: Diagram[]): (string | null)[] {
+  const taken = new Set(diagrams.flatMap((d) => (d.color ? [d.color.toUpperCase()] : [])))
+  const free = STACK_HUES.map((key) => COLOR_PALETTE.find((c) => c.key === key)!.hex).filter((hex) => !taken.has(hex))
+  let defaultUsed = false
+  return diagrams.map((d) => {
+    if (d.color) return d.color
+    if (!defaultUsed) {
+      defaultUsed = true
+      return null
+    }
+    return free.shift() ?? null
+  })
+}
+
+/**
  * Composites a stack into one diagram the fretboard viewer can draw: the
  * first diagram is the base, and every layer (filtered by its own ref's
- * subset) is flattened onto it. Positions and regions get fresh ids, since
- * the viewer keys on them and flattening drops the originals.
+ * subset) is flattened onto it in its own hue. Positions and regions get
+ * fresh ids, since the viewer keys on them and flattening drops the originals.
  */
-function compositeStack(diagrams: Diagram[], stack: DiagramRef[]): { diagram: Diagram; diagramRef: DiagramRef } {
+function compositeStack(diagrams: Diagram[], stack: DiagramRef[]): { diagram: Diagram; diagramRef: DiagramRef; legend: LegendEntry[] } {
   const base = diagrams[0]!
-  const layers = diagrams.map((d, i) => stackLayerFromDiagram(withinSubset(d, stack[i]!)))
+  const hues = layerHues(diagrams)
+  const layers = diagrams.map((d, i) => ({ ...stackLayerFromDiagram(withinSubset(d, stack[i]!)), color: hues[i] ?? null }))
   const flat = flattenDiagramStack(layers, { languages: base.languages, regionPerLayer: false })
   const first = stack[0]!
 
@@ -66,6 +96,7 @@ function compositeStack(diagrams: Diagram[], stack: DiagramRef[]): { diagram: Di
       regions: flat.regions.map((r, i) => ({ ...r, region_id: `stack-region-${i}` })),
     },
     diagramRef: { ...first, layers: { ...first.layers, subset: null } },
+    legend: diagrams.map((d, i) => ({ names: d.names, color: hues[i] ?? null })),
   }
 }
 
@@ -88,6 +119,8 @@ export function useEmbeddedDiagram(source: MaybeRefOrGetter<DiagramEmbed>) {
   const instrument = ref<Instrument | null>(null)
   const diagramRef = ref<DiagramRef | null>(null)
   const labelMode = ref<EmbeddedLabelMode>('interval')
+  /** A stack's diagrams, for its legend; empty for a single diagram. */
+  const legend = ref<LegendEntry[]>([])
   const failed = ref(false)
 
   let latest = 0
@@ -112,14 +145,16 @@ export function useEmbeddedDiagram(source: MaybeRefOrGetter<DiagramEmbed>) {
       diagram.value = null
       instrument.value = null
       diagramRef.value = null
+      legend.value = []
       failed.value = loaded.length !== refs.length || instruments.data === undefined
       status.value = 'unavailable'
       return
     }
 
-    const shown = embed.kind === 'single' ? { diagram: base, diagramRef: embed.ref } : compositeStack(loaded, embed.stack)
+    const shown = embed.kind === 'single' ? { diagram: base, diagramRef: embed.ref, legend: [] } : compositeStack(loaded, embed.stack)
     diagram.value = shown.diagram
     diagramRef.value = shown.diagramRef
+    legend.value = shown.legend
     instrument.value = found
     labelMode.value = base.label_display
     status.value = 'ready'
@@ -136,5 +171,5 @@ export function useEmbeddedDiagram(source: MaybeRefOrGetter<DiagramEmbed>) {
     void load(toValue(source))
   }
 
-  return { status, failed, diagram, instrument, diagramRef, labelMode, retry }
+  return { status, failed, diagram, instrument, diagramRef, labelMode, legend, retry }
 }
