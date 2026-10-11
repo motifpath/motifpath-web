@@ -332,5 +332,10 @@
   },
   "diagramLegend": {
     "label": "Diagrams on this board"
+  },
+  "chordView": {
+    "label": "Show the chord as",
+    "box": "Box",
+    "neck": "Neck"
   }
 }

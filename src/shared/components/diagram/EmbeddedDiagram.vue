@@ -10,20 +10,27 @@
  * A single diagram whose usage offers playback gets compact Play and tempo
  * controls in the diagram's own control rail, an inert thumbnail's included:
  * only the drawing is inert, and a tap on them never reaches the card around
- * it, so it doesn't pick an option. A stack never plays; its diagrams are named in a legend. `root_override` isn't applied yet: the diagram is drawn, and played,
+ * it, so it doesn't pick an option. A stack never plays; its diagrams are named in a legend.
+ * A chord voicing read in place (not a thumbnail, not taking taps as answers) opens as a chord
+ * box, with Box | Neck to switch; the box takes no taps, so a chord whose cells are answers stays
+ * a fretboard. `root_override` isn't applied yet: the diagram is drawn, and played,
  * as authored.
  */
 import { computed, shallowRef, watch } from 'vue'
 
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import DiagramLegend from '@/shared/components/diagram/DiagramLegend.vue'
 import DiagramPlayer, { PLAYER_WIDTH } from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
+import SegmentedControl from '@/shared/components/SegmentedControl.vue'
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
+import { isChordView, useChordView } from '@/shared/composables/useChordView'
 import { isPlayable } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import type { EmbeddedDiagramStatus } from '@/shared/composables/useEmbeddedDiagram'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
 
@@ -78,6 +85,21 @@ watch(status, (next) => emit('status', next), { immediate: true })
 
 const activePositionIds = shallowRef<string[]>([])
 
+const { localizedName } = useLocalizedName()
+// A box takes no taps, and a thumbnail has no room for the switch: both stay a fretboard.
+const takesTaps = computed(() => props.selectablePositionIds.length > 0 || props.answerCells.length > 0)
+const chordView = useChordView(() => (props.embed.kind === 'single' && !props.compact && !takesTaps.value ? diagram.value : null))
+const shownView = computed({
+  get: () => chordView.view.value,
+  set: (next: string) => {
+    if (isChordView(next)) chordView.choose(next)
+  },
+})
+const viewOptions = computed(() => [
+  { value: 'box', label: t('chordView.box') },
+  { value: 'neck', label: t('chordView.neck') },
+])
+
 // The rail keeps room for the player only when there is something to play.
 const playable = computed(
   () =>
@@ -102,8 +124,28 @@ const playable = computed(
     data-test="embedded-diagram"
     class="flex flex-col gap-2"
   >
+    <div v-if="chordView.canSwitch.value" class="flex items-center gap-3">
+      <SegmentedControl v-model="shownView" class="w-40" :label="t('chordView.label')" :options="viewOptions" test-id-prefix="chord-view" />
+      <DiagramPlayer
+        v-if="chordView.view.value === 'box' && playable"
+        :diagram="diagram"
+        :instrument="instrument"
+        :playback="diagramRef.playback ?? null"
+        @active="activePositionIds = $event"
+      />
+    </div>
     <div data-test="embedded-diagram-drawing">
+      <ChordBox
+        v-if="chordView.view.value === 'box' && diagram.chord_voicing"
+        :voicing="diagram.chord_voicing"
+        :diagram="diagram"
+        :instrument="instrument"
+        :label="localizedName(diagram.names)"
+        :scale="2"
+        :active-position-ids="activePositionIds"
+      />
       <FrettedDiagramView
+        v-else
         :diagram="diagram"
         :instrument="instrument"
         :diagram-ref="diagramRef"

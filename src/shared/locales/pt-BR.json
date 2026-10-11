@@ -332,5 +332,10 @@
   },
   "diagramLegend": {
     "label": "Diagramas neste braço"
+  },
+  "chordView": {
+    "label": "Mostrar o acorde como",
+    "box": "Caixa",
+    "neck": "Braço"
   }
 }
