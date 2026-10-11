@@ -19,15 +19,12 @@ import PlayAlongInfo from '@/features/student/components/PlayAlongInfo.vue'
 import SelfRating from '@/features/student/components/SelfRating.vue'
 import TempoControl from '@/features/student/components/TempoControl.vue'
 import AppButton from '@/shared/components/AppButton.vue'
-import ChordBox from '@/shared/components/diagram/ChordBox.vue'
-import ChordViewSwitch from '@/shared/components/diagram/ChordViewSwitch.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import { useChordView } from '@/shared/composables/useChordView'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
@@ -58,9 +55,6 @@ const loaded = useEmbeddedDiagram(() => ({
   kind: 'single',
   ref: { diagram_id: playAlong.value.diagram_id, layers: { intervals: true } },
 }))
-
-// A chord voicing plays along as a chord box, unless the student switched to the neck.
-const chordView = useChordView(() => loaded.diagram.value)
 
 const take = computed(() => (loaded.diagram.value ? withCountIn(loaded.diagram.value) : null))
 
@@ -221,25 +215,9 @@ const meta = computed(() => {
       <PlayAlongInfo v-if="infoOpen" :reason="item.reason" :diagram="loaded.diagram.value" @close="infoOpen = false" />
 
       <div ref="stage" data-test="take-stage" class="flex scroll-mt-20 flex-col gap-4">
-        <ChordViewSwitch
-          v-if="chordView.canSwitch.value"
-          :model-value="chordView.view.value"
-          @update:model-value="chordView.choose"
-        />
         <PracticeBreakout>
           <div class="relative rounded-lg border border-border bg-surface-raised p-2">
-            <ChordBox
-              v-if="chordView.view.value === 'box' && loaded.diagram.value.chord_voicing"
-              class="mx-auto"
-              :voicing="loaded.diagram.value.chord_voicing"
-              :diagram="loaded.diagram.value"
-              :instrument="loaded.instrument.value"
-              :label="localizedName(loaded.diagram.value.names)"
-              :scale="2"
-              :active-position-ids="player.activePositionIds.value"
-            />
             <FrettedDiagramView
-              v-else
               :diagram="loaded.diagram.value"
               :instrument="loaded.instrument.value"
               :diagram-ref="loaded.diagramRef.value"
