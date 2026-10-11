@@ -162,6 +162,25 @@ describe('SongChartEditorView', () => {
       expect(POST).toHaveBeenCalledTimes(1)
     })
 
+    it('reads ChordPro from a chosen file', async () => {
+      const { wrapper } = await mountAt('/admin/song-charts/new')
+      POST.mockReturnValueOnce(ok({ title: 'Ciranda, Cirandinha', artist: null, concert_key: null, capo_fret: 0, tempo_bpm: null, time_signature: null, body: ciranda, import_warnings: [] }))
+
+      await click(wrapper, '[data-test="import"]')
+      await click(wrapper, '[data-test="import-source-file"]')
+      const input = wrapper.get('[data-test="chordpro-file"]')
+      Object.defineProperty(input.element, 'files', { value: [new File(['{title: Ciranda, Cirandinha}'], 'ciranda.cho')] })
+      await input.trigger('change')
+      await flushPromises()
+      expect(wrapper.get('[data-test="chordpro-file-name"]').text()).toBe('ciranda.cho')
+      // The file is read on a later tick; Import is offered once its text is in.
+      await vi.waitFor(() => expect(wrapper.get('[data-test="chordpro-read"]').attributes('disabled')).toBeUndefined())
+      await click(wrapper, '[data-test="chordpro-read"]')
+
+      expect(POST).toHaveBeenCalledWith('/song-charts/chordpro/read', expect.objectContaining({ body: '{title: Ciranda, Cirandinha}' }))
+      expect(valueOf(wrapper, '[data-test="title"]')).toBe('Ciranda, Cirandinha')
+    })
+
     it('asks before replacing lyrics already in the editor, and cancelling keeps them', async () => {
       serve(makeSongChart('chart-1'))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')
@@ -315,6 +334,30 @@ describe('SongChartEditorView', () => {
       expect(wrapper.find('[data-test="lyrics"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="lyrics-read-only"]').text()).toContain('Amazing grace')
       expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+    })
+  })
+
+  describe('withdrawing, in more detail', () => {
+    const published = () => makeSongChart('chart-1', {}, { status: 'published', published_revision: makeRevisionSummary(1) })
+
+    it('says what learners lose, and needs a reason', async () => {
+      serve(published())
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="withdraw"]')
+
+      expect(wrapper.get('[data-test="withdraw-consequence"]').text()).toContain('Learners lose it')
+      expect(wrapper.get('[data-test="withdraw-confirm"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('is a sheet on a phone', async () => {
+      mockViewport(390)
+      serve(published())
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="withdraw"]')
+
+      expect(wrapper.get('[data-test="withdraw-panel"]').attributes('data-layout')).toBe('sheet')
     })
   })
 

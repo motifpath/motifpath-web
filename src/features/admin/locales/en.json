@@ -188,8 +188,7 @@
     "importHeading": "Import ChordPro",
     "importHint": "Paste ChordPro text. It fills the editor; nothing is saved until you save.",
     "importAction": "Import",
-    "withdrawHeading": "Withdraw this song chart?",
-    "withdrawHint": "Learners can no longer read it. Say why, for the other admins.",
+    "withdrawHeading": "Withdraw “{title}”?",
     "replaceHeading": "Replace the lyrics?",
     "replaceMessage": "The imported lyrics replace the ones in the editor. Nothing is saved until you save.",
     "replace": "Replace",
@@ -198,7 +197,14 @@
     "discard": "Discard",
     "rightsNote": "Saved with the draft. Who confirmed it and when is shown here.",
     "noRevisions": "None yet — publishing makes revision 1.",
-    "largerScreen": "Placing chords needs a larger screen. Status, details and rights work here."
+    "largerScreen": "Placing chords needs a larger screen. Status, details and rights work here.",
+    "importSource": "Where the ChordPro comes from",
+    "pasteText": "Paste text",
+    "chooseFileTab": "Choose a file",
+    "chooseFile": "Choose a .cho or .txt file",
+    "nothingSaved": "Nothing is saved until you save. Directives fill the details; lines that can’t be read are listed after importing.",
+    "withdrawConsequence": "Learners lose it at once: its link says it isn’t available, and lessons that show it drop its card. You can publish it again later.",
+    "withdrawReason": "Why (kept with the chart)"
   },
   "songChartStatus": {
     "new": "New — save it to start a draft.",

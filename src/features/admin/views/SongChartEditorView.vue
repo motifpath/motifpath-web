@@ -20,6 +20,7 @@ import { useSongChartEditor } from '@/features/admin/composables/useSongChartEdi
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
+import SegmentedControl from '@/shared/components/SegmentedControl.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
@@ -75,12 +76,37 @@ async function save() {
 
 const importOpen = ref(false)
 const importText = ref('')
+const importSource = ref<'paste' | 'file'>('paste')
+const importFileName = ref<string | null>(null)
+const importSources = computed(() => [
+  { value: 'paste', label: t('songChartEditorView.pasteText') },
+  { value: 'file', label: t('songChartEditorView.chooseFileTab') },
+])
 const confirmingReplace = ref(false)
 
 function openImport() {
   importText.value = ''
+  importFileName.value = null
+  importSource.value = 'paste'
   importError.value = null
   importOpen.value = true
+}
+
+/** A chosen file's text becomes what is imported, as pasted text would. */
+async function onImportFile(event: Event) {
+  const file = event.target instanceof HTMLInputElement ? event.target.files?.[0] : undefined
+  if (!file) return
+  importFileName.value = file.name
+  importText.value = await readText(file)
+}
+
+function readText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(file)
+  })
 }
 
 function readImport() {
@@ -289,17 +315,29 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
       </template>
     </div>
 
-    <ModalOverlay :open="importOpen" panel-class="flex w-[min(560px,calc(100vw-32px))] flex-col gap-3 rounded-xl bg-surface-raised p-5 shadow-level2" @close="importOpen = false">
-      <h2 class="text-base font-bold text-ink">{{ t('songChartEditorView.importHeading') }}</h2>
+    <ModalOverlay
+      :open="importOpen"
+      :panel-class="compact ? 'fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col gap-3 rounded-t-3xl bg-surface-raised p-5 shadow-level2' : 'flex w-[min(560px,calc(100vw-32px))] flex-col gap-3 rounded-3xl bg-surface-raised p-6 shadow-level2'"
+      @close="importOpen = false"
+    >
+      <h2 class="text-xl font-semibold text-ink">{{ t('songChartEditorView.importHeading') }}</h2>
       <p class="text-sm text-ink-muted">{{ t('songChartEditorView.importHint') }}</p>
-      <textarea v-model="importText" data-test="chordpro-text" rows="12" :class="`${inputClass} font-mono`" />
+      <SegmentedControl v-model="importSource" class="w-fit" :label="t('songChartEditorView.importSource')" :options="importSources" test-id-prefix="import-source" />
+      <textarea v-if="importSource === 'paste'" v-model="importText" data-test="chordpro-text" rows="12" class="rounded-xl border border-border bg-surface-sunken p-3 font-mono text-sm text-ink" />
+      <label v-else class="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border bg-surface-sunken p-4 text-sm text-ink-muted">
+        <FileUp :size="22" aria-hidden="true" />
+        <span v-if="importFileName" data-test="chordpro-file-name" class="font-semibold text-ink">{{ importFileName }}</span>
+        <span v-else>{{ t('songChartEditorView.chooseFile') }}</span>
+        <input data-test="chordpro-file" type="file" accept=".cho,.chordpro,.chopro,.crd,.txt,text/plain" class="sr-only" @change="onImportFile" />
+      </label>
+      <p class="text-xs text-ink-muted">{{ t('songChartEditorView.nothingSaved') }}</p>
       <p v-if="importError" data-test="chordpro-error" class="text-sm text-danger">{{ importError }}</p>
       <div class="flex justify-end gap-2">
-        <button type="button" :class="actionClass" @click="importOpen = false">{{ t('confirmDialog.cancel') }}</button>
+        <button type="button" class="h-12 rounded-full px-6 text-base font-semibold text-accent-text hover:bg-surface-sunken" @click="importOpen = false">{{ t('confirmDialog.cancel') }}</button>
         <button
           type="button"
           data-test="chordpro-read"
-          class="rounded-md bg-accent px-3.5 py-1.5 text-[0.8125rem] font-semibold text-accent-fg disabled:opacity-50"
+          class="h-12 rounded-full bg-accent px-6 text-base font-semibold text-accent-fg disabled:opacity-50"
           :disabled="!importText.trim() || isBusy"
           @click="readImport"
         >
@@ -308,21 +346,30 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
       </div>
     </ModalOverlay>
 
-    <ModalOverlay :open="withdrawOpen" panel-class="flex w-[min(440px,calc(100vw-32px))] flex-col gap-3 rounded-xl bg-surface-raised p-5 shadow-level2" @close="withdrawOpen = false">
-      <h2 class="text-base font-bold text-ink">{{ t('songChartEditorView.withdrawHeading') }}</h2>
-      <p class="text-sm text-ink-muted">{{ t('songChartEditorView.withdrawHint') }}</p>
-      <textarea v-model="withdrawReason" data-test="withdraw-reason" rows="3" maxlength="2000" :class="inputClass" />
-      <div class="flex justify-end gap-2">
-        <button type="button" :class="actionClass" @click="withdrawOpen = false">{{ t('confirmDialog.cancel') }}</button>
-        <button
-          type="button"
-          data-test="withdraw-confirm"
-          class="rounded-md bg-danger px-3.5 py-1.5 text-[0.8125rem] font-semibold text-danger-fg disabled:opacity-50"
-          :disabled="!withdrawReason.trim() || isBusy"
-          @click="withdraw"
-        >
-          {{ t('songChartEditorView.withdraw') }}
-        </button>
+    <ModalOverlay
+      :open="withdrawOpen"
+      :panel-class="compact ? 'fixed inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-raised p-5 shadow-level2' : 'flex w-[min(480px,calc(100vw-32px))] flex-col gap-3 rounded-3xl bg-surface-raised p-6 shadow-level2'"
+      @close="withdrawOpen = false"
+    >
+      <div data-test="withdraw-panel" :data-layout="compact ? 'sheet' : 'dialog'" class="flex flex-col gap-3">
+        <h2 class="text-xl font-semibold text-ink">{{ t('songChartEditorView.withdrawHeading', { title: details.title }) }}</h2>
+        <p data-test="withdraw-consequence" class="text-sm text-ink-muted">{{ t('songChartEditorView.withdrawConsequence') }}</p>
+        <label class="flex flex-col gap-1.5 text-sm font-semibold text-ink">
+          {{ t('songChartEditorView.withdrawReason') }}
+          <textarea v-model="withdrawReason" data-test="withdraw-reason" rows="3" maxlength="2000" class="rounded-xl border border-border bg-surface-sunken p-3 text-base font-normal text-ink" />
+        </label>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="h-12 rounded-full px-6 text-base font-semibold text-accent-text hover:bg-surface-sunken" @click="withdrawOpen = false">{{ t('confirmDialog.cancel') }}</button>
+          <button
+            type="button"
+            data-test="withdraw-confirm"
+            class="h-12 rounded-full bg-danger px-6 text-base font-semibold text-danger-fg disabled:opacity-50"
+            :disabled="!withdrawReason.trim() || isBusy"
+            @click="withdraw"
+          >
+            {{ t('songChartEditorView.withdraw') }}
+          </button>
+        </div>
       </div>
     </ModalOverlay>
 

@@ -188,8 +188,7 @@
     "importHeading": "Importar ChordPro",
     "importHint": "Cole o texto ChordPro. Ele preenche o editor; nada é salvo até você salvar.",
     "importAction": "Importar",
-    "withdrawHeading": "Retirar esta cifra?",
-    "withdrawHint": "Os alunos não poderão mais lê-la. Diga o motivo, para os outros administradores.",
+    "withdrawHeading": "Retirar “{title}”?",
     "replaceHeading": "Substituir a letra?",
     "replaceMessage": "A letra importada substitui a do editor. Nada é salvo até você salvar.",
     "replace": "Substituir",
@@ -198,7 +197,14 @@
     "discard": "Descartar",
     "rightsNote": "Salvo com o rascunho. Quem confirmou e quando aparece aqui.",
     "noRevisions": "Nenhuma ainda — publicar cria a revisão 1.",
-    "largerScreen": "Colocar acordes precisa de uma tela maior. Status, detalhes e direitos funcionam aqui."
+    "largerScreen": "Colocar acordes precisa de uma tela maior. Status, detalhes e direitos funcionam aqui.",
+    "importSource": "De onde vem o ChordPro",
+    "pasteText": "Colar texto",
+    "chooseFileTab": "Escolher arquivo",
+    "chooseFile": "Escolha um arquivo .cho ou .txt",
+    "nothingSaved": "Nada é salvo até você salvar. As diretivas preenchem os detalhes; linhas que não puderem ser lidas são listadas depois da importação.",
+    "withdrawConsequence": "Os alunos perdem a cifra na hora: o link diz que ela não está disponível, e as aulas que a mostram deixam de exibir o cartão. Você pode publicá-la de novo depois.",
+    "withdrawReason": "Por quê (fica guardado com a cifra)"
   },
   "songChartStatus": {
     "new": "Nova — salve para começar um rascunho.",
