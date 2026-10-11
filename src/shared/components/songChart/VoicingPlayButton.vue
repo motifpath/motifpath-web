@@ -30,7 +30,7 @@ const playing = computed(() => state.value === 'playing' || state.value === 'loa
     v-if="canPlay"
     type="button"
     data-test="play-voicing"
-    class="flex h-16 w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl bg-accent-muted text-xs font-medium text-accent-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+    class="flex h-16 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl bg-accent-muted px-2 text-xs font-medium text-accent-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
     @click="toggle()"
   >
     <Square v-if="playing" :size="24" aria-hidden="true" />
