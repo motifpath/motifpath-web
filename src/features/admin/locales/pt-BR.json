@@ -96,8 +96,7 @@
   "songChartList": {
     "heading": "Cifras",
     "newChart": "Nova cifra",
-    "searchLabel": "Buscar",
-    "searchPlaceholder": "Título ou artista",
+    "searchPlaceholder": "Buscar título ou artista",
     "statusLabel": "Situação",
     "allStatuses": "Todas",
     "status": {
@@ -105,12 +104,21 @@
       "published": "Publicada",
       "withdrawn": "Retirada"
     },
-    "publishedAt": "Publicada · revisão {revision}",
     "loadFailed": "Não foi possível carregar as cifras.",
     "noMatchesHeading": "Nenhuma cifra encontrada",
     "noMatchesMessage": "Tente outro título ou artista, ou outra situação.",
     "emptyHeading": "Nenhuma cifra ainda",
-    "emptyMessage": "Comece escrevendo uma ou importando ChordPro."
+    "emptyMessage": "Comece escrevendo uma ou importando ChordPro.",
+    "count": "{count} cifra | {count} cifras",
+    "revision": "Revisão {revision}",
+    "neverPublished": "nunca publicada",
+    "rightsNotConfirmed": "direitos não confirmados",
+    "withdrawnMeta": "retirada",
+    "updatedBy": "alterada por {name}, {when}",
+    "today": "hoje",
+    "unpublishedChanges": "Alterações não publicadas",
+    "clearSearch": "Limpar busca",
+    "publishedAt": "Publicada · revisão {revision}"
   },
   "songChartEditor": {
     "lyricsLabel": "Letra e acordes",

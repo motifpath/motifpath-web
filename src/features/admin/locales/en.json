@@ -96,8 +96,7 @@
   "songChartList": {
     "heading": "Song charts",
     "newChart": "New song chart",
-    "searchLabel": "Search",
-    "searchPlaceholder": "Title or artist",
+    "searchPlaceholder": "Search title or artist",
     "statusLabel": "Status",
     "allStatuses": "All",
     "status": {
@@ -105,12 +104,21 @@
       "published": "Published",
       "withdrawn": "Withdrawn"
     },
-    "publishedAt": "Published · revision {revision}",
     "loadFailed": "Couldn't load the song charts.",
     "noMatchesHeading": "No song chart matches",
     "noMatchesMessage": "Try another title or artist, or another status.",
     "emptyHeading": "No song charts yet",
-    "emptyMessage": "Start one by writing it or importing ChordPro."
+    "emptyMessage": "Start one by writing it or importing ChordPro.",
+    "count": "{count} song chart | {count} song charts",
+    "revision": "Revision {revision}",
+    "neverPublished": "never published",
+    "rightsNotConfirmed": "rights not confirmed",
+    "withdrawnMeta": "withdrawn",
+    "updatedBy": "updated by {name}, {when}",
+    "today": "today",
+    "unpublishedChanges": "Unpublished changes",
+    "clearSearch": "Clear search",
+    "publishedAt": "Published · revision {revision}"
   },
   "songChartEditor": {
     "lyricsLabel": "Lyrics and chords",
