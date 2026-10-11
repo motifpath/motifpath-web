@@ -3,7 +3,19 @@ import { useId } from 'vue'
 
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-withDefaults(defineProps<{ size?: 'sm' | 'md' }>(), { size: 'sm' })
+/**
+ * `sm` and `md` sit on a tile in the app bar, rail and sidebar; `lg` (96 px) and `xl` (220 px) are the
+ * bare mark the landing and its brand panel show.
+ */
+const props = withDefaults(defineProps<{ size?: 'sm' | 'md' | 'lg' | 'xl' }>(), { size: 'sm' })
+
+const BOX: Record<NonNullable<typeof props.size>, string> = {
+  sm: 'h-[1.875rem] w-[1.875rem] rounded-md bg-accent-muted',
+  md: 'h-9 w-9 rounded-md bg-accent-muted',
+  lg: 'h-[6rem] w-[6rem]',
+  xl: 'h-[13.75rem] w-[13.75rem]',
+}
+const GLYPH: Record<NonNullable<typeof props.size>, number> = { sm: 16, md: 20, lg: 96, xl: 220 }
 
 const { t } = useTypedT()
 // One gradient per mark: two marks on a page (app bar and rail) must not share an id.
@@ -12,10 +24,10 @@ const gradientId = useId()
 
 <template>
   <div
-    class="flex shrink-0 items-center justify-center rounded-md bg-accent-muted"
-    :class="size === 'sm' ? 'h-[1.875rem] w-[1.875rem]' : 'h-9 w-9'"
+    class="flex shrink-0 items-center justify-center"
+    :class="BOX[size]"
   >
-    <svg :width="size === 'sm' ? 16 : 20" :height="size === 'sm' ? 16 : 20" viewBox="200 100 860 860" role="img" :aria-label="t('appBar.brand')">
+    <svg :width="GLYPH[size]" :height="GLYPH[size]" viewBox="200 100 860 860" role="img" :aria-label="t('appBar.brand')">
       <defs>
         <linearGradient :id="gradientId" x1="309" y1="190" x2="938" y2="890" gradientUnits="userSpaceOnUse">
           <stop offset="0" stop-color="#a14cff" />

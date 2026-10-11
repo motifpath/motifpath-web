@@ -326,5 +326,9 @@
   "audioOption": {
     "play": "Play {label}",
     "stop": "Stop {label}"
+  },
+  "googleButton": {
+    "continue": "Continue with Google",
+    "busy": "Setting up your account…"
   }
 }
