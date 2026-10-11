@@ -68,8 +68,8 @@ describe('useDiagramLibrary', () => {
       kind: 'basic',
       instrument_id: 'i-guitar',
       language: 'pt_BR',
-      skill_id: 's-1',
-      concept_id: 'c-1',
+      skill_ids: ['s-1'],
+      concept_ids: ['c-1'],
       root_note: 'F#',
     })
     expect(hasActiveFilters.value).toBe(true)

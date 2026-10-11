@@ -24,6 +24,7 @@ function exercise(overrides: Partial<Exercise>): Exercise {
     languages: [],
     instrument_ids: [],
     created_at: '2026-09-01T00:00:00Z',
+    updated_at: '2026-09-01T00:00:00Z',
     ...overrides,
   }
 }

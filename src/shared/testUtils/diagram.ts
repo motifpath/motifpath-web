@@ -62,6 +62,7 @@ export function makeFrettedDiagram(overrides: Partial<Diagram> = {}): Diagram {
     regions: [],
     classification: { skills: [], concepts: [] },
     created_at: '2026-09-21T12:00:00Z',
+    updated_at: '2026-09-21T12:00:00Z',
     ...overrides,
   }
 }

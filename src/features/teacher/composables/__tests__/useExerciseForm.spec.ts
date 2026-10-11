@@ -23,6 +23,7 @@ function exercise(overrides: Partial<Exercise>): Exercise {
     languages: [],
     instrument_ids: [],
     created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
   }
 }
@@ -395,6 +396,7 @@ describe('useExerciseForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.title.value).toBe('Name the chord')
@@ -422,6 +424,7 @@ describe('useExerciseForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.imageOptions.value).toEqual([
@@ -448,6 +451,7 @@ describe('useExerciseForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.audioOptions.value).toEqual([
@@ -479,6 +483,7 @@ describe('useExerciseForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
       })
 
       expect(form.imageUrl.value).toBe('https://cdn.example.com/fretboard.png')
