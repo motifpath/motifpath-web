@@ -326,5 +326,8 @@
   "audioOption": {
     "play": "Tocar {label}",
     "stop": "Parar {label}"
+  },
+  "overviewStrip": {
+    "window": "{name}: parte visível"
   }
 }

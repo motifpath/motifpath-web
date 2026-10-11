@@ -326,5 +326,8 @@
   "audioOption": {
     "play": "Play {label}",
     "stop": "Stop {label}"
+  },
+  "overviewStrip": {
+    "window": "{name}: part in view"
   }
 }
