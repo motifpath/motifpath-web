@@ -2,7 +2,9 @@
 /**
  * The diagram embed picker in its own modal, for a rich-text editor's
  * "insert diagram" and "edit diagram". Rendered at the document body, since
- * the editor itself can sit inside another modal.
+ * the editor itself can sit inside another modal: a full-screen layer on a
+ * phone, else a fixed-height dialog. Cancel is always at its foot, and
+ * Insert (or Apply) joins it with the pick's settings.
  */
 import { ref, watch } from 'vue'
 
@@ -30,10 +32,12 @@ const emit = defineEmits<{
 const { t } = useTypedT()
 
 const chosen = ref<DiagramRef | null>(null)
+const pickerStep = ref<'choose' | 'set'>('choose')
 watch(
   () => props.open,
   () => {
     chosen.value = null
+    pickerStep.value = 'choose'
   },
 )
 
@@ -45,7 +49,7 @@ function apply() {
 <template>
   <ModalOverlay
     :open="open"
-    panel-class="flex h-[85vh] w-[720px] max-w-[92vw] flex-col gap-4 rounded-xl bg-surface-raised p-5 shadow-level2"
+    panel-class="flex h-dvh w-screen flex-col gap-4 bg-surface-raised p-4 sm:h-[85vh] sm:w-[1040px] sm:max-w-[92vw] sm:rounded-xl sm:p-5 sm:shadow-level2"
     @close="emit('close')"
   >
     <div class="flex items-center justify-between">
@@ -55,9 +59,10 @@ function apply() {
       <ModalCloseButton @close="emit('close')" />
     </div>
 
-    <!-- A fixed-height panel with only this part scrolling, so filtering or configuring never resizes the modal. -->
-    <div class="min-h-0 flex-1 overflow-y-auto">
-      <DiagramEmbedPicker :initial="initial" @change="chosen = $event" />
+    <!-- A fixed-height panel whose picker scrolls only its results or settings, so filtering or
+         configuring never resizes the modal and the search stays in place. -->
+    <div data-test="embed-picker-body" class="flex min-h-0 flex-1 flex-col">
+      <DiagramEmbedPicker :initial="initial" @change="chosen = $event" @step="pickerStep = $event" />
     </div>
 
     <div class="flex justify-end gap-2 border-t border-border pt-4">
@@ -70,6 +75,7 @@ function apply() {
         {{ t('diagramEmbedPicker.cancel') }}
       </button>
       <button
+        v-if="pickerStep === 'set'"
         type="button"
         data-test="embed-picker-apply"
         :disabled="!chosen"

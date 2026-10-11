@@ -8,9 +8,16 @@
  * hidden positions faded so they can be shown again. An exercise stimulus's
  * answers are marked in the exercise form, not here.
  *
+ * Two steps: choose, then set how it shows. "Change diagram" (or "Change
+ * chord") goes back to the list as it was left, with the pick marked. With
+ * `chooseOnly` (a stimulus, set in the exercise form) a pick is handed back
+ * at once instead.
+ *
  * Reports the ref to embed on every change, or null while there's nothing a
  * student could be shown (no diagram yet, nothing drawn, or a diagram the
- * student view can't draw). Buttons belong to the caller.
+ * student view can't draw), and which step it's on. Buttons belong to the
+ * caller. The search and filters stay put and only the results or the
+ * settings scroll, so the caller gives it a bounded height.
  */
 import { computed, ref, watch } from 'vue'
 
@@ -29,11 +36,20 @@ import type { components } from '@/api/generated/core-domain'
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
 
-const props = defineProps<{
-  /** The ref already embedded, reopened for editing; null to embed a new one. */
-  initial: DiagramRef | null
+const props = withDefaults(
+  defineProps<{
+    /** The ref already embedded, reopened for editing; null to embed a new one. */
+    initial: DiagramRef | null
+    /** Only choose: a pick is handed back at once, how it shows being set elsewhere. */
+    chooseOnly?: boolean
+  }>(),
+  { chooseOnly: false },
+)
+const emit = defineEmits<{
+  change: [diagramRef: DiagramRef | null]
+  step: [step: 'choose' | 'set']
+  pick: [diagram: Diagram]
 }>()
-const emit = defineEmits<{ change: [diagramRef: DiagramRef | null] }>()
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
@@ -51,14 +67,30 @@ if (initialLoad) {
   })
 }
 
+/** The list stays mounted once shown, so going back finds it as it was left. */
+const listShown = ref(step.value === 'list')
+watch(step, (s) => {
+  if (s === 'list') listShown.value = true
+})
+
+const pickedDiagramId = computed(() => draft.diagram.value?.diagram_id ?? null)
+const isChord = computed(() => draft.diagram.value?.purpose === 'chord_voicing')
+
 function choose(diagram: Diagram) {
+  if (props.chooseOnly) {
+    emit('pick', diagram)
+    return
+  }
   draft.select(diagram)
   step.value = 'configure'
 }
 
 function changeDiagram() {
+  if (isChord.value) source.value = 'chords'
   step.value = 'list'
 }
+
+watch(step, (s) => emit('step', s === 'list' ? 'choose' : 'set'), { immediate: true })
 
 // Only a fretted diagram can be drawn for a student yet.
 const instrument = computed(() => {
@@ -79,7 +111,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex min-h-0 flex-1 flex-col gap-3">
     <template v-if="step === 'initial' && initialLoad">
       <LoadingSkeleton v-if="initialLoad.isLoading.value" />
       <div v-else-if="initialLoad.error.value" class="flex flex-col gap-2">
@@ -99,8 +131,8 @@ watch(
       </div>
     </template>
 
-    <template v-else-if="step === 'list'">
-      <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1" role="group" :aria-label="t('diagramEmbedPicker.sourceLabel')">
+    <div v-if="listShown" v-show="step === 'list'" data-test="embed-picker-choose" class="flex min-h-0 flex-1 flex-col gap-3">
+      <div class="flex w-fit shrink-0 gap-1 rounded-lg bg-surface-sunken p-1" role="group" :aria-label="t('diagramEmbedPicker.sourceLabel')">
         <button
           type="button"
           data-test="embed-picker-source-diagrams"
@@ -122,11 +154,15 @@ watch(
           {{ t('diagramEmbedPicker.sourceChords') }}
         </button>
       </div>
-      <ChordVoicingPickerList v-if="source === 'chords'" @select="choose" />
-      <DiagramPickerList v-else @select="choose" />
-    </template>
+      <ChordVoicingPickerList v-if="source === 'chords'" :picked-diagram-id="pickedDiagramId" @select="choose" />
+      <DiagramPickerList v-else :picked-diagram-id="pickedDiagramId" @select="choose" />
+    </div>
 
-    <div v-else-if="step === 'configure' && draft.diagram.value" data-test="embed-picker-config" class="flex flex-col gap-3">
+    <div
+      v-if="step === 'configure' && draft.diagram.value"
+      data-test="embed-picker-config"
+      class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
+    >
       <div class="flex items-center justify-between gap-2">
         <span data-test="embed-picker-name" class="font-semibold text-ink">{{
           localizedName(draft.diagram.value.names)
@@ -137,7 +173,7 @@ watch(
           class="text-sm font-semibold text-accent-text"
           @click="changeDiagram"
         >
-          {{ t('diagramEmbedPicker.changeDiagram') }}
+          {{ isChord ? t('diagramEmbedPicker.changeChord') : t('diagramEmbedPicker.changeDiagram') }}
         </button>
       </div>
 
