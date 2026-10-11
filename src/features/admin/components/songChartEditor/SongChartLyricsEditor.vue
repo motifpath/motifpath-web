@@ -16,7 +16,8 @@ import { MessageSquare, Music, Plus, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import { SECTION_KINDS, songChartExtensions } from '@/features/admin/components/songChartEditor/extensions'
+import { chordProblemsKey, SECTION_KINDS, songChartExtensions } from '@/features/admin/components/songChartEditor/extensions'
+import type { ChordProblem } from '@/features/admin/components/songChartEditor/extensions'
 import { useChordLookup } from '@/shared/composables/useChordLookup'
 import { toSavedDocument } from '@/features/admin/utils/songChartEditorDocument'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -39,8 +40,21 @@ let lastEmitted = JSON.stringify(model.value)
 const sectionKind = ref<SectionKind>('verse')
 const sectionLabel = ref('')
 
+const { lookUp, checkOf } = useChordLookup()
+
+/** A written chord's problem, when it stops publishing. */
+function problemOf(symbol: string): ChordProblem | null {
+  const check = checkOf(symbol)
+  if (!check?.blocks) return null
+  return check.kind === 'not_in_catalog' ? 'not_in_catalog' : 'not_a_chord'
+}
+
+function reasonOf(symbol: string, problem: ChordProblem): string {
+  return problem === 'not_in_catalog' ? t('songChartEditor.notInCatalogReason', { symbol }) : t('songChartEditor.notAChordReason', { symbol })
+}
+
 const editor = useEditor({
-  extensions: songChartExtensions(),
+  extensions: songChartExtensions({ problemOf, reasonOf }),
   content: editable(model.value),
   editorProps: { attributes: { class: 'song-chart-lyrics', 'aria-label': t('songChartEditor.lyricsLabel'), spellcheck: 'false' } },
   onUpdate: ({ editor: e }) => {
@@ -112,7 +126,6 @@ function addComment() {
 
 // ── Chords ───────────────────────────────────────────────────────────────────
 
-const { lookUp, checkOf } = useChordLookup()
 const chordSymbol = ref('')
 const chordAtCursor = ref<Anchor | null>(null)
 const hasSelection = ref(false)
@@ -170,6 +183,12 @@ watch(
 
 const typedCheck = computed(() => (chordSymbol.value.trim() ? checkOf(chordSymbol.value.trim()) : null))
 const chordsToFix = computed(() => writtenSymbols.value.filter((symbol) => checkOf(symbol)?.blocks))
+
+// The catalog answers after the lyrics are drawn; each answer that changes a problem draws the marks again.
+watch(
+  () => writtenSymbols.value.map((symbol) => `${symbol}:${problemOf(symbol) ?? ''}`).join('|'),
+  () => editor.value?.view.dispatch(editor.value.state.tr.setMeta(chordProblemsKey, true)),
+)
 const voicingsAtCursor = computed(() => (chordAtCursor.value ? (checkOf(chordAtCursor.value.writtenSymbol)?.chord?.voicings ?? []) : []))
 const voicingNamesAtCursor = computed(() => voicingNames(voicingsAtCursor.value, t('songChart.openVoicing')))
 
@@ -378,5 +397,37 @@ onBeforeUnmount(() => editor.value?.destroy())
   line-height: 1;
   color: rgb(var(--color-accent-text));
   white-space: nowrap;
+}
+/* A chord that stops publishing is marked where it is written: red dashed when it isn't a chord,
+   amber dashed when the catalog lacks it. The first reason on a line sits under that line. */
+:deep(.song-chart-lyrics [data-problem]) {
+  text-decoration: underline dashed 2px;
+  text-underline-offset: 4px;
+}
+:deep(.song-chart-lyrics [data-problem='not_a_chord']) {
+  text-decoration-color: rgb(var(--color-danger));
+}
+:deep(.song-chart-lyrics [data-problem='not_in_catalog']) {
+  text-decoration-color: rgb(var(--color-warning));
+}
+:deep(.song-chart-chord:has(> [data-problem]))::before {
+  padding: 0 2px;
+  border: 1px dashed;
+  border-radius: 4px;
+}
+:deep(.song-chart-chord:has(> [data-problem='not_a_chord']))::before {
+  border-color: rgb(var(--color-danger));
+  color: rgb(var(--color-danger));
+}
+:deep(.song-chart-chord:has(> [data-problem='not_in_catalog']))::before {
+  border-color: rgb(var(--color-warning));
+  color: rgb(var(--color-warning));
+}
+:deep(.song-chart-lyrics p[data-problem-reason])::after {
+  content: attr(data-problem-reason);
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: rgb(var(--color-ink-muted));
 }
 </style>

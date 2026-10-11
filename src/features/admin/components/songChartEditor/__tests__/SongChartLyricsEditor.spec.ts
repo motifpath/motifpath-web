@@ -173,6 +173,27 @@ describe('SongChartLyricsEditor', () => {
       expect(status.attributes('data-blocks')).toBe(blocks)
     })
 
+    it('marks a chord problem where it is written, with the reason under its line', async () => {
+      const doc: SongChartDocument = {
+        type: 'doc',
+        content: [makeSection([makeLyricLine(['La ', makeAnchor('a1', 'H7')]), makeLyricLine(['lo ', makeAnchor('a2', 'C#7')]), makeLyricLine(['li', makeAnchor('a3', 'G')])])],
+      }
+      const wrapper = mountEditor(doc)
+      await flushPromises()
+      await flushPromises()
+
+      const marked = wrapper
+        .findAll('.song-chart-chord')
+        .filter((c) => c.find('[data-problem]').exists())
+        .map((c) => [c.attributes('data-chord'), c.get('[data-problem]').attributes('data-problem')])
+      expect(marked).toEqual([
+        ['H7', 'not_a_chord'],
+        ['C#7', 'not_in_catalog'],
+      ])
+      const reasons = wrapper.findAll('p[data-lyric-line]').map((p) => p.attributes('data-problem-reason') ?? null)
+      expect(reasons).toEqual(['“H7” isn’t a chord', '“C#7” isn’t in the chord catalog', null])
+    })
+
     it('lists the chords in the lyrics that block publishing', async () => {
       const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['La ', makeAnchor('a1', 'H7')], ['lo', makeAnchor('a2', 'G')])])] }
       const wrapper = mountEditor(doc)

@@ -142,7 +142,9 @@
       "unsupported": "Um tipo de acorde que o catálogo não tem.",
       "not_in_catalog": "Não está no catálogo de acordes.",
       "without_bass": "Mostrado sem o baixo; o catálogo não tem este baixo."
-    }
+    },
+    "notAChordReason": "“{symbol}” não é um acorde",
+    "notInCatalogReason": "“{symbol}” não está no catálogo de acordes"
   },
   "songChartEditorView": {
     "untitled": "Nova cifra",

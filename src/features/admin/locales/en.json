@@ -142,7 +142,9 @@
       "unsupported": "A kind of chord the catalog doesn't have.",
       "not_in_catalog": "Not in the chord catalog.",
       "without_bass": "Shown without its bass; the catalog doesn't have this bass."
-    }
+    },
+    "notAChordReason": "“{symbol}” isn’t a chord",
+    "notInCatalogReason": "“{symbol}” isn’t in the chord catalog"
   },
   "songChartEditorView": {
     "untitled": "New song chart",
