@@ -169,6 +169,12 @@ describe('router', () => {
     expect(router.currentRoute.value.params.nodeId).toBe('node-abc')
   })
 
+  it("runs a lesson's challenge in the Practice Shell, outside the App Shell under My path", () => {
+    const matched = router.resolve('/path/nodes/node-abc/practice').matched
+
+    expect(matched[0]!.path).toBe('/path/nodes/:nodeId/practice')
+  })
+
   it('sends an unauthenticated visitor from a node practice route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
@@ -338,10 +344,6 @@ describe('router', () => {
 
   it('gives a lesson the phone’s full height, without the bottom navigation bar', () => {
     expect(router.resolve('/path/nodes/node-abc').meta.hidesBottomBar).toBe(true)
-  })
-
-  it('gives a node’s practice the phone’s full height too: a practice run shows no navigation', () => {
-    expect(router.resolve('/path/nodes/node-abc/practice').meta.hidesBottomBar).toBe(true)
   })
 
   it('lets a lesson lay itself out to the screen\'s height', () => {

@@ -1,16 +1,29 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useTypedT } from '@/shared/composables/useTypedT'
+/**
+ * A lesson's challenge, run in the Practice Shell. Unlike a practice session it gives no feedback
+ * along the way: Next commits the choice, Back goes back to change it, and the review after the
+ * last exercise is the first place an answer is revealed. × (and Esc, and the browser's back
+ * button) goes back to the lesson without asking, since the challenge can always be run again.
+ */
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
-import ExerciseView from '@/shared/components/ExerciseView.vue'
-import PracticeHelpModal from '@/features/student/components/PracticeHelpModal.vue'
-import SendToTeacher from '@/features/student/components/SendToTeacher.vue'
-import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import LoadFailed from '@/shared/components/LoadFailed.vue'
-import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import ChallengeReview from '@/features/student/components/ChallengeReview.vue'
+import HowToAnswer from '@/features/student/components/HowToAnswer.vue'
+import ItemHeader from '@/features/student/components/ItemHeader.vue'
+import SendToTeacherLink from '@/features/student/components/SendToTeacherLink.vue'
 import { useLessonTitles } from '@/features/student/composables/useLessonTitles'
 import { usePracticeSession } from '@/features/student/composables/usePracticeSession'
-import { conciergeNumber, practiceReference } from '@/features/student/utils/conciergeLink'
+import { practiceReference } from '@/features/student/utils/conciergeLink'
+import AppButton from '@/shared/components/AppButton.vue'
+import ExerciseView from '@/shared/components/ExerciseView.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
+import PracticeShell from '@/shared/components/PracticeShell.vue'
+import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import { useOptionKeys } from '@/shared/composables/useOptionKeys'
+import { useTypedT } from '@/shared/composables/useTypedT'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
 const props = defineProps<{ nodeId: string }>()
@@ -19,22 +32,51 @@ const props = defineProps<{ nodeId: string }>()
 // route change that reuses this component (same route record, new :nodeId)
 // still reloads instead of showing the previous node's session.
 const session = usePracticeSession(() => props.nodeId)
-// Only the concierge message needs the titles, so nothing is loaded for it
-// when no concierge number is configured and the button can't show.
-const titles = conciergeNumber() ? useLessonTitles(() => props.nodeId) : null
+// The lesson's title names every exercise's header and the result.
+const titles = useLessonTitles(() => props.nodeId)
 
 const { t } = useTypedT()
+const router = useRouter()
 
-const helpOpen = ref(false)
+const exercise = computed(() => session.currentExercise.value)
+const total = computed(() => session.exercises.value.length)
+const showsResult = computed(() => session.status.value === 'result')
 
-const progressPercent = computed(() => {
-  const total = session.exercises.value.length
-  if (total === 0) return 0
-  return ((session.currentIndex.value + 1) / total) * 100
+const position = computed(() =>
+  session.status.value === 'in-progress' || showsResult.value
+    ? { current: session.currentIndex.value + 1, total: total.value }
+    : undefined,
+)
+// An exercise's segment fills once the student has moved past it; all of them on the result.
+const progress = computed(() =>
+  session.exercises.value.map((_, index) => (showsResult.value || index < session.currentIndex.value ? 1 : 0)),
+)
+
+const allowMultiple = computed(() => hasMultipleCorrectOptions(exercise.value?.options ?? []))
+const rightCount = computed(() => (exercise.value?.options ?? []).filter((option) => option.is_correct).length)
+const selected = computed(() => session.currentAnswer.value?.optionIds ?? [])
+
+useOptionKeys({
+  options: () => exercise.value?.options ?? [],
+  multiple: () => allowMultiple.value,
+  selected: () => selected.value,
+  locked: () => session.status.value !== 'in-progress',
+  choose: (optionIds) => session.select(optionIds),
 })
 
-const allowMultiple = computed(() => hasMultipleCorrectOptions(session.currentExercise.value?.options ?? []))
-const rightCount = computed(() => (session.currentExercise.value?.options ?? []).filter((option) => option.is_correct).length)
+const lesson = computed(() => ({ name: 'node', params: { nodeId: props.nodeId } }))
+
+/** Back to the lesson: the history entry it came from when there is one, so the lesson isn't stacked twice. */
+function leave() {
+  if (window.history.state?.back === router.resolve(lesson.value).fullPath) router.back()
+  else void router.replace(lesson.value)
+}
+
+function finish() {
+  // The lesson was completed before the challenge began, so finishing leads to My path, where a
+  // finished path or course is celebrated.
+  void router.push({ name: 'path' })
+}
 
 const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
   success: 'bg-success-muted text-success',
@@ -44,105 +86,100 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
 </script>
 
 <template>
-  <section data-test="practice">
-    <LoadingSkeleton v-if="session.status.value === 'loading'" data-test="loading" />
-
-    <LoadFailed
-      v-else-if="session.status.value === 'error'"
-      :message="t('practiceView.errorMessage')"
-      @retry="session.retry()"
-    />
-
-    <div v-else-if="session.status.value === 'empty'" data-test="practice-empty" class="flex flex-col items-start gap-3">
-      <p class="text-ink-muted">{{ t('practiceView.empty') }}</p>
-      <RouterLink :to="{ name: 'node', params: { nodeId: props.nodeId } }" class="text-sm font-medium text-accent-text underline">
-        {{ t('practiceView.backToLesson') }}
-      </RouterLink>
+  <PracticeShell :exit-label="t('challengeRun.exit')" :position="position" :progress="position ? progress : undefined" @exit="leave">
+    <div v-if="session.status.value === 'loading'" data-test="challenge-loading">
+      <LoadingSkeleton :count="4" />
     </div>
 
-    <div v-else-if="session.status.value === 'in-progress' && session.currentExercise.value" class="flex flex-col gap-4">
-      <div class="flex items-center gap-3 border-b border-border pb-2.5 text-xs text-ink-muted">
-        <RouterLink :to="{ name: 'node', params: { nodeId: props.nodeId } }" class="shrink-0">
-          {{ t('practiceView.backToLesson') }}
-        </RouterLink>
-        <div class="h-1 flex-1 overflow-hidden rounded bg-surface-sunken" role="progressbar" :aria-valuenow="session.currentIndex.value + 1" aria-valuemin="1" :aria-valuemax="session.exercises.value.length">
-          <div class="h-full bg-accent" :style="{ width: `${progressPercent}%` }" />
-        </div>
-        <button
-          type="button"
-          data-test="help-toggle"
-          class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-ink text-xs font-bold"
-          :aria-expanded="helpOpen"
-          @click="helpOpen = !helpOpen"
-        >
-          ?
-        </button>
-      </div>
+    <template v-else-if="session.status.value === 'error'">
+      <InlineNotice :message="t('challengeRun.errorMessage')" />
+      <PracticeActionBar>
+        <PrimaryButton data-primary-action class="h-12 w-full" @click="session.retry()">{{ t('buttons.tryAgain') }}</PrimaryButton>
+      </PracticeActionBar>
+    </template>
 
-      <PracticeHelpModal
-        :open="helpOpen"
-        :exercise-type="session.currentExercise.value.exercise_type"
-        :allow-multiple="allowMultiple"
-        :diagram-stimulus="Boolean(session.currentExercise.value.diagram_ref)"
-        @close="helpOpen = false"
-      />
+    <template v-else-if="session.status.value === 'empty'">
+      <p class="text-ink-muted">{{ t('challengeRun.empty') }}</p>
+      <PracticeActionBar>
+        <PrimaryButton data-primary-action class="h-12 w-full" @click="leave">{{ t('challengeRun.backToLesson') }}</PrimaryButton>
+      </PracticeActionBar>
+    </template>
 
+    <template v-else-if="session.status.value === 'in-progress' && exercise">
       <ExerciseView
-        :exercise-type="session.currentExercise.value.exercise_type"
-        :prompt="session.currentExercise.value.prompt"
-        :options="session.currentExercise.value.options"
-        :image-url="session.currentExercise.value.image_url"
-        :diagram-ref="session.currentExercise.value.diagram_ref"
-        :audio-url="session.currentExercise.value.audio_url"
+        :exercise-type="exercise.exercise_type"
+        :prompt="exercise.prompt"
+        :options="exercise.options"
+        :image-url="exercise.image_url"
+        :diagram-ref="exercise.diagram_ref"
+        :diagram-stack-ref="exercise.diagram_stack_ref"
+        :audio-url="exercise.audio_url"
+        breakout
+        panes
         :allow-multiple="allowMultiple"
         :choose-count="allowMultiple ? rightCount : undefined"
-        :selected-option-ids="session.currentAnswer.value?.optionIds ?? []"
+        :selected-option-ids="selected"
         @update:selected-option-ids="session.select"
-      />
-
-      <SendToTeacher
-        :reference="practiceReference(props.nodeId, session.currentExercise.value.exercise_id)"
-        :path-title="titles?.pathTitle.value"
-        :lesson-title="titles?.lessonTitle.value"
-        raised
-      />
-
-      <div class="sticky bottom-0 -mx-4 flex items-center justify-between border-t border-border bg-surface px-4 py-3">
-        <button
-          v-if="session.currentIndex.value > 0"
-          type="button"
-          data-test="back"
-          class="text-xs text-ink-subtle underline"
-          @click="session.back()"
-        >
-          {{ t('buttons.back') }}
-        </button>
-        <span v-else />
-        <PrimaryButton data-test="next" :disabled="!session.canAdvance.value" @click="session.next()">
-          {{ session.isLastExercise.value ? t('practiceView.seeResult') : t('practiceView.next') }}
-        </PrimaryButton>
-      </div>
-    </div>
-
-    <div v-else-if="session.status.value === 'result'" data-test="result" class="flex flex-col items-center gap-3 rounded-md border border-border bg-surface-sunken px-4 py-5 text-center">
-      <p class="text-base font-semibold text-ink">
-        {{ t('practiceView.resultSummary', { correct: session.score.value.correct, total: session.score.value.total }) }}
-      </p>
-      <p
-        data-test="result-percent"
-        class="rounded-full px-3 py-1 text-sm font-semibold"
-        :class="scoreTierClasses[session.scoreTier.value]"
       >
-        {{ session.scorePercent.value }}%
-      </p>
-      <!-- The lesson was completed before practice began, so finishing leads to
-           My path, where a finished path or course is celebrated. -->
-      <PrimaryButton as="RouterLink" data-test="finish" :to="{ name: 'path' }">
-        {{ t('practiceView.finish') }}
-      </PrimaryButton>
-      <button type="button" data-test="result-back" class="text-xs text-ink-subtle underline" @click="session.back()">
-        {{ t('buttons.back') }}
-      </button>
-    </div>
-  </section>
+        <template #header>
+          <ItemHeader :title="titles.lessonTitle.value ?? exercise.title" :tag="t('challengeRun.tag')" />
+        </template>
+        <template #footer>
+          <div class="flex flex-col gap-2">
+            <HowToAnswer
+              :key="exercise.exercise_id"
+              :exercise-type="exercise.exercise_type"
+              :allow-multiple="allowMultiple"
+              :diagram-stimulus="Boolean(exercise.diagram_ref || exercise.diagram_stack_ref)"
+            />
+            <p class="text-xs text-ink-muted">{{ t('challengeRun.noAnswersYet') }}</p>
+            <SendToTeacherLink
+              :reference="practiceReference(props.nodeId, exercise.exercise_id)"
+              :path-title="titles.pathTitle.value"
+              :lesson-title="titles.lessonTitle.value"
+            />
+          </div>
+        </template>
+      </ExerciseView>
+
+      <PracticeActionBar>
+        <AppButton v-if="session.currentIndex.value > 0" data-test="back" variant="tertiary" class="h-12 px-4" @click="session.back()">
+          {{ t('buttons.back') }}
+        </AppButton>
+        <PrimaryButton
+          data-test="next"
+          data-primary-action
+          class="ml-auto h-12 flex-1"
+          :disabled="!session.canAdvance.value"
+          @click="session.next()"
+        >
+          {{ session.isLastExercise.value ? t('challengeRun.seeResult') : t('challengeRun.next') }}
+        </PrimaryButton>
+      </PracticeActionBar>
+    </template>
+
+    <template v-else-if="showsResult">
+      <header class="flex flex-col gap-2">
+        <h1 class="text-2xl font-semibold text-ink">{{ t('challengeRun.doneTitle') }}</h1>
+        <p class="flex items-center gap-3">
+          <span data-test="result-summary" class="text-lg font-semibold text-ink">
+            {{ t('challengeRun.resultSummary', { correct: session.score.value.correct, total: session.score.value.total }) }}
+          </span>
+          <span data-test="result-percent" class="rounded-full px-2.5 py-0.5 text-sm font-semibold" :class="scoreTierClasses[session.scoreTier.value]">
+            {{ session.scorePercent.value }}%
+          </span>
+        </p>
+        <p v-if="titles.lessonTitle.value" class="text-sm text-ink-muted">{{ titles.lessonTitle.value }}</p>
+      </header>
+
+      <ChallengeReview :entries="session.review.value" />
+
+      <PracticeActionBar>
+        <AppButton data-test="back" variant="tertiary" class="h-12 px-4" @click="session.back()">{{ t('buttons.back') }}</AppButton>
+        <PrimaryButton data-test="finish" data-primary-action class="ml-auto h-12 flex-1" @click="finish">
+          {{ t('challengeRun.finish') }}
+        </PrimaryButton>
+      </PracticeActionBar>
+    </template>
+  </PracticeShell>
 </template>

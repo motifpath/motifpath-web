@@ -32,7 +32,7 @@ const instrument = makeFrettedInstrument()
 // The chord box and the neck draw a voicing; these tests are about which voicing and view the
 // card shows, not how they're drawn.
 const stubs = {
-  ChordBoxDiagram: { props: ['voicing'], template: '<div data-test="chord-box" :data-voicing-id="voicing.chord_voicing_id" />' },
+  ChordBox: { props: ['voicing'], template: '<div data-test="chord-box" :data-voicing-id="voicing.chord_voicing_id" />' },
   FrettedDiagramView: { props: ['diagram'], template: '<div data-test="neck" :data-diagram-id="diagram.diagram_id" />' },
 }
 

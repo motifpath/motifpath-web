@@ -19,3 +19,6 @@ export const FretboardCell: Story = { args: { title: 'Name this note', reason: '
 
 /** A long name wraps instead of truncating. */
 export const LongTitle: Story = { args: { title: 'Tríades maiores e menores em todas as regiões do braço', reason: 'application' } }
+
+/** A lesson's challenge exercise: no session picked it, so a tag says what it is. */
+export const Challenge: Story = { args: { title: 'Inversions of C major', reason: undefined, tag: 'Challenge' } }

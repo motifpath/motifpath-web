@@ -58,6 +58,12 @@ describe('SessionFretboardCell', () => {
     vi.useRealTimers()
   })
 
+  it('gives the drill board the room of a wider screen, where the whole neck fits at tap size', () => {
+    const breakout = mountCell({ item: naming }).get('[data-test="breakout"]')
+
+    expect(breakout.findComponent({ name: 'DrillFretboard' }).exists()).toBe(true)
+  })
+
   it('names the instrument the cell is on, when the session mixes instruments', () => {
     expect(mountCell({ item: naming, instrumentName: 'Electric bass' }).get('[data-test="item-instrument"]').text()).toBe('Electric bass')
   })

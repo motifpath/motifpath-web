@@ -9,16 +9,20 @@ import AudioOption from '@/shared/components/AudioOption.vue'
 import Icon from '@/shared/components/Icon.vue'
 import ImageOption from '@/shared/components/ImageOption.vue'
 import OptionTile from '@/shared/components/OptionTile.vue'
-import PromptRenderer from '@/shared/components/PromptRenderer.vue'
+import ExercisePrompt from '@/shared/components/ExercisePrompt.vue'
+import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
 import { optionState } from '@/shared/utils/optionState'
 import type { OptionState } from '@/shared/utils/optionState'
+import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
 
 type Option = components['schemas']['Option']
 type ExerciseType = components['schemas']['Exercise']['exercise_type']
 type PromptDocument = components['schemas']['PromptDocument']
 type DiagramRef = components['schemas']['DiagramRef']
+type DiagramStackRef = components['schemas']['DiagramStackRef']
 type MissingReason = EventComponents['schemas']['NotAnsweredResponse']['reason']
 
 const props = withDefaults(
@@ -39,6 +43,17 @@ const props = withDefaults(
      * through diagram_position_id.
      */
     diagramRef?: DiagramRef
+    /** Prebuilt diagrams stacked on one board as the image_recognition stimulus, in place of a
+     *  single diagram. */
+    diagramStackRef?: DiagramStackRef
+    /** Let a diagram stimulus leave the text column on a wider screen, inside the Practice Shell. */
+    breakout?: boolean
+    /**
+     * Inside the Practice Shell, on an Expanded screen, give a stimulus that is answered by tapping
+     * it (image regions, diagram markers) its own pane on the left, and the `header`, prompt and
+     * `footer` a 400 px pane on the right. Everywhere else the view stays one column.
+     */
+    panes?: boolean
     /** The exercise's own stimulus, present when exerciseType is audio_recognition. */
     audioUrl?: string
     /**
@@ -67,7 +82,7 @@ const props = withDefaults(
     /** How many options to choose, said after the prompt when there are several right ones. */
     chooseCount?: number
   }>(),
-  { direction: 'column', allowMultiple: false, stimulusMissing: false, chooseCount: undefined },
+  { direction: 'column', allowMultiple: false, stimulusMissing: false, chooseCount: undefined, breakout: false, panes: false },
 )
 
 /**
@@ -106,6 +121,15 @@ function stateOf(optionId: string): OptionState {
 }
 
 const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
+
+const { sizeClass } = useSizeClass()
+// Two panes leave the shell's 560 px column, centred on it, as wide as the window allows (keeping
+// the shell's gutters).
+const usesPanes = computed(() => props.panes && isImageRecognition.value && sizeClass.value === 'expanded')
+const stimulusEmbed = computed<DiagramEmbed | null>(() => {
+  if (props.diagramRef) return { kind: 'single', ref: props.diagramRef }
+  return props.diagramStackRef ? { kind: 'stack', stack: props.diagramStackRef.stack } : null
+})
 
 // A diagram stimulus's choices are the fretboard cells its options stand for — every cell in
 // view, marked or not. Options from before cells existed stand for positions instead.
@@ -237,47 +261,61 @@ watch(
 </script>
 
 <template>
-  <div data-test="exercise-view-root" class="flex w-full gap-3.5" :class="isLandscape ? 'flex-row' : 'flex-col'">
-    <div
-      class="text-[15px] font-semibold leading-[1.375rem] text-ink"
-      :class="isLandscape ? 'flex-[0_0_40%]' : 'flex-[0_0_auto]'"
-    >
-      <PromptRenderer :document="prompt" />
-      <p v-if="chooseCount" data-test="choose-count" class="mt-1 text-sm font-medium text-ink-muted">
-        {{ t('exerciseView.chooseCount', { count: chooseCount }) }}
-      </p>
-    </div>
+  <div
+    data-test="exercise-view-root"
+    :class="
+      usesPanes
+        ? 'relative left-1/2 grid w-[calc(100vw-2.5rem)] max-w-[77rem] -translate-x-1/2 grid-cols-[minmax(0,1fr)_25rem] items-start gap-8'
+        : ['flex w-full gap-3.5', isLandscape ? 'flex-row' : 'flex-col']
+    "
+  >
+    <template v-if="!usesPanes">
+      <slot name="header" />
+      <ExercisePrompt
+        :prompt="prompt"
+        :choose-count="chooseCount"
+        :class="isLandscape ? 'flex-[0_0_40%]' : 'flex-[0_0_auto]'"
+      />
+    </template>
 
-    <div class="min-w-0" :class="isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'">
+    <div
+      :data-test="usesPanes ? 'stimulus-pane' : undefined"
+      class="min-w-0"
+      :class="usesPanes ? '' : isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'"
+    >
       <div v-if="isImageRecognition && stimulusMissing" data-test="stimulus-missing">
         <slot name="stimulus-notice" />
       </div>
 
-      <div
-        v-else-if="isImageRecognition && diagramRef"
-        data-test="exercise-stimulus-diagram"
-        class="overflow-hidden rounded-[10px] border border-border bg-surface-sunken p-2"
+      <component
+        :is="breakout && !usesPanes ? PracticeBreakout : 'div'"
+        v-else-if="isImageRecognition && stimulusEmbed"
       >
-        <EmbeddedDiagram
-          :embed="{ kind: 'single', ref: diagramRef }"
-          :selectable-position-ids="choicePositionIds"
-          :selected-position-ids="selectedPositionIds"
-          :answer-cells="answerCells"
-          :selected-answer-ids="selected"
-          :multiple="allowMultiple"
-          :answer-marks="answerMarks"
-          :position-marks="positionMarks"
-          @select="selectPosition"
-          @select-answer="select"
-          @status="onDiagramStatus"
+        <div
+          data-test="exercise-stimulus-diagram"
+          class="overflow-hidden rounded-[10px] border border-border bg-surface-sunken p-2"
         >
-          <template #unavailable>
-            <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
-              {{ t('exerciseView.noStimulusImage') }}
-            </div>
-          </template>
-        </EmbeddedDiagram>
-      </div>
+          <EmbeddedDiagram
+            :embed="stimulusEmbed"
+            :selectable-position-ids="choicePositionIds"
+            :selected-position-ids="selectedPositionIds"
+            :answer-cells="answerCells"
+            :selected-answer-ids="selected"
+            :multiple="allowMultiple"
+            :answer-marks="answerMarks"
+            :position-marks="positionMarks"
+            @select="selectPosition"
+            @select-answer="select"
+            @status="onDiagramStatus"
+          >
+            <template #unavailable>
+              <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
+                {{ t('exerciseView.noStimulusImage') }}
+              </div>
+            </template>
+          </EmbeddedDiagram>
+        </div>
+      </component>
 
       <div v-else-if="isImageRecognition" class="relative overflow-hidden rounded-[10px] border border-border bg-surface-sunken">
         <img
@@ -410,6 +448,14 @@ watch(
         />
         <audio ref="audioPlayerEl" class="hidden" @ended="onClipStopped" @error="onClipStopped" @pause="onPlayerPause" />
       </div>
+    </div>
+
+    <slot v-if="!usesPanes" name="footer" />
+
+    <div v-else data-test="interaction-pane" class="flex flex-col gap-4">
+      <slot name="header" />
+      <ExercisePrompt :prompt="prompt" :choose-count="chooseCount" />
+      <slot name="footer" />
     </div>
   </div>
 </template>

@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import { expect } from 'storybook/test'
 
-import { makeDiagramRef } from '@/shared/testUtils/diagram'
-import { failing, pending } from '@/shared/testUtils/msw/handlers'
+import { makeDiagramRef, makeFrettedDiagram } from '@/shared/testUtils/diagram'
+import { failing, pending, respondWith } from '@/shared/testUtils/msw/handlers'
+import { makeVoicing } from '@/shared/testUtils/songChart'
 
 import EmbeddedDiagram from './EmbeddedDiagram.vue'
 
@@ -44,4 +45,30 @@ export const FailedRetryable: Story = {
     await expect(await canvas.findByRole('alert')).toBeVisible()
     await expect(canvas.getByRole('button', { name: /try again|tentar novamente/i })).toBeVisible()
   },
+}
+
+const dOpen = makeFrettedDiagram({
+  names: { en: 'D' },
+  purpose: 'chord_voicing',
+  positions: [
+    { position_id: 'p4', string: 4, fret: 0, interval: 'R', note_name: 'D', shape: 'dot' },
+    { position_id: 'p3', string: 3, fret: 2, interval: '5', note_name: 'A', shape: 'dot' },
+    { position_id: 'p2', string: 2, fret: 3, interval: 'R', note_name: 'D', shape: 'dot' },
+    { position_id: 'p1', string: 1, fret: 2, interval: '3', note_name: 'F#', shape: 'dot' },
+  ],
+  chord_voicing: makeVoicing('d-open', 'chord-d', {
+    fret_window: { lowest_fret: 2, highest_fret: 3 },
+    fingering: [
+      { position_id: 'p3', finger: '1' },
+      { position_id: 'p1', finger: '2' },
+      { position_id: 'p2', finger: '3' },
+    ],
+    muted_strings: [6, 5],
+  }),
+})
+
+/** A chord voicing: its chord data makes it a chord box, with Box | Neck to switch in place. */
+export const ChordVoicing: Story = {
+  args: { embed: { kind: 'single', ref: makeDiagramRef({ diagram_id: dOpen.diagram_id }) }, caption: undefined },
+  parameters: { msw: { handlers: { diagram: respondWith('diagram', dOpen) } } },
 }

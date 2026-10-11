@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
         :takes-left="run.takesLeft.value"
         :takes-total="run.takesTotal.value"
         @rate="run.rate($event)"
-        @skip="run.nextItem()"
+        @skip="run.skip($event)"
         @tempo="run.setTempo($event)"
       />
       <div v-else class="flex flex-col items-start gap-3">
