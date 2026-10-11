@@ -2,8 +2,10 @@
 /**
  * A chord voicing as a chord box: the strings upright, low string on the left, the frets across
  * from the nut down. Each fretted note is a dot with the finger that plays it, a root note in the
- * darker colour. Open strings are marked "o" and muted strings "x" above the box. A voicing up
- * the neck starts at its first fret, labelled beside the box (e.g. "3fr"), with no nut drawn.
+ * darker colour. Open strings are marked "o" and muted strings "x" above the box. A voicing with
+ * an open string starts at the nut, so the frets its open strings ring from are never hidden; one
+ * without starts at its first fret, labelled beside the box (e.g. "3fr"), with no nut drawn. The box
+ * shows at least four frets, and every fret the voicing reaches.
  * `scale` draws it bigger, for practice, where every dot must be big enough to see at arm's length;
  * while the voicing plays, the notes sounding are ringed as on the fretboard.
  */
@@ -38,7 +40,9 @@ const TOP = 26
 const DOT_RADIUS = 8
 
 const strings = computed(() => props.instrument.string_count ?? 6)
-const isOpenPosition = computed(() => props.voicing.fret_window.lowest_fret === 0)
+// The voicing's fret window leaves open strings out, so it alone can't tell an open chord fingered
+// at the 2nd fret from a barre there.
+const isOpenPosition = computed(() => props.voicing.fret_window.lowest_fret === 0 || notes.value.some((p) => p.fret === 0))
 const firstFret = computed(() => (isOpenPosition.value ? 1 : props.voicing.fret_window.lowest_fret))
 const rows = computed(() => Math.max(MIN_ROWS, props.voicing.fret_window.highest_fret - firstFret.value + 1))
 const width = computed(() => LEFT + (strings.value - 1) * STRING_GAP + 14)
@@ -169,6 +173,7 @@ const mutedStrings = computed(() => [...props.voicing.muted_strings].sort((a, b)
       data-test="finger-dot"
       :data-string="dot.string"
       :data-fret="dot.fret"
+      :data-row="dot.fret - firstFret + 1"
       :data-x="dot.x"
     >
       <circle :cx="dot.x" :cy="dot.y" :r="DOT_RADIUS" :class="dot.root ? 'fill-ink' : 'fill-accent'" />

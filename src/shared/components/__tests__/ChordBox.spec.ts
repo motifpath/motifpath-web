@@ -61,6 +61,30 @@ describe('ChordBox', () => {
     expect(dots(wrapper)).toContainEqual([5, 5, '3'])
   })
 
+  it('starts a voicing with open strings at the nut, however high its fingers sit', () => {
+    const aOpen = voicingOf('a-open', [[5, 0, null], [4, 2, '1'], [3, 2, '2'], [2, 2, '3'], [1, 0, null]], 2, 2, [6])
+    const wrapper = mountBox(aOpen)
+
+    expect(wrapper.find('[data-test="nut"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="fret-label"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-test="fret-row"]')).toHaveLength(4)
+    // On the 2nd fret: in the second row, not the first.
+    const rowOf = (dot: ReturnType<typeof wrapper.find>) => Number(dot.attributes('data-row'))
+    expect(wrapper.findAll('[data-test="finger-dot"]').map(rowOf)).toEqual([2, 2, 2])
+  })
+
+  it('always shows at least four frets', () => {
+    expect(mountBox(gBarre3).findAll('[data-test="fret-row"]')).toHaveLength(4)
+  })
+
+  it('shows every fret a voicing with open strings reaches, past the 4th too', () => {
+    const cStretch = voicingOf('c-stretch', [[5, 3, '2'], [4, 2, '1'], [3, 0, null], [2, 1, null], [1, 5, '4']], 1, 5, [6])
+    const wrapper = mountBox(cStretch)
+
+    expect(wrapper.find('[data-test="nut"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="fret-row"]')).toHaveLength(5)
+  })
+
   it('draws the strings low to high, left to right', () => {
     const wrapper = mountBox(g7Open)
 

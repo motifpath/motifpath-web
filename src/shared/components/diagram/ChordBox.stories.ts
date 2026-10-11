@@ -25,6 +25,27 @@ const g7Diagram = makeFrettedDiagram({
   ],
 })
 
+// The open A: its fingers sit on the 2nd fret, but the A and high E strings ring open.
+const aOpen = makeVoicing('a-open', 'chord-a', {
+  fret_window: { lowest_fret: 2, highest_fret: 2 },
+  fingering: [
+    { position_id: 'a4', finger: '1' },
+    { position_id: 'a3', finger: '2' },
+    { position_id: 'a2', finger: '3' },
+  ],
+  muted_strings: [6],
+})
+const aOpenDiagram = makeFrettedDiagram({
+  diagram_id: aOpen.diagram_id,
+  positions: [
+    { position_id: 'a5', string: 5, fret: 0, interval: 'R', note_name: 'A', shape: 'dot' },
+    { position_id: 'a4', string: 4, fret: 2, interval: '5', note_name: 'E', shape: 'dot' },
+    { position_id: 'a3', string: 3, fret: 2, interval: 'R', note_name: 'A', shape: 'dot' },
+    { position_id: 'a2', string: 2, fret: 2, interval: '3', note_name: 'C#', shape: 'dot' },
+    { position_id: 'a1', string: 1, fret: 0, interval: '5', note_name: 'E', shape: 'dot' },
+  ],
+})
+
 const meta = {
   title: 'Diagrams/ChordBox',
   component: ChordBox,
@@ -41,3 +62,6 @@ export const PracticeSize: Story = { args: { scale: 2 } }
 
 /** While the voicing plays, the notes sounding are ringed. */
 export const Sounding: Story = { args: { scale: 2, activePositionIds: ['p6', 'p1'] } }
+
+/** An open chord fingered at the 2nd fret still starts at the nut: its open strings ring from it. */
+export const OpenA: Story = { args: { voicing: aOpen, diagram: aOpenDiagram, label: 'A', scale: 2 } }
