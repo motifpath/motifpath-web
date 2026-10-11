@@ -10,14 +10,21 @@
  * playback when it has several, tempo, voice, direction, loop), and the
  * preview plays with them.
  *
+ * A chord (a diagram with a voicing's chord data) previews as its chord box,
+ * with Box | Neck; the box takes no taps, so positions are hidden or marked
+ * on the neck.
+ *
  * Edits the draft it's given; the caller reads the ref from it.
  */
 import { computed, ref } from 'vue'
 
 import type { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramEmbedDraft'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
+import ChordViewSwitch from '@/shared/components/diagram/ChordViewSwitch.vue'
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
+import { useChordView } from '@/shared/composables/useChordView'
 import { useListVoices } from '@/shared/composables/useListVoices'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -55,6 +62,7 @@ const tool = ref<'visibility' | 'correct'>(props.answers ? 'correct' : 'visibili
 const allPositionIds = computed(() => props.diagram.positions.map((p) => p.position_id ?? ''))
 const previewRef = computed(() => props.draft.toPreviewRef())
 const playingPositionIds = ref<string[]>([])
+const chordView = useChordView(() => props.diagram)
 
 const DIRECTIONS = ['as_authored', 'reversed'] as const
 
@@ -281,9 +289,20 @@ function intervalLabel(code: IntervalCode): string {
 
     <slot name="warnings" />
 
-    <div data-test="embed-picker-preview" class="rounded-md border border-border bg-surface p-3">
+    <div data-test="embed-picker-preview" class="flex flex-col gap-2 rounded-md border border-border bg-surface p-3">
+      <ChordViewSwitch v-if="chordView.canSwitch.value" :model-value="chordView.view.value" @update:model-value="chordView.choose" />
+      <ChordBox
+        v-if="instrument && previewRef && chordView.view.value === 'box' && diagram.chord_voicing"
+        class="self-center"
+        :voicing="diagram.chord_voicing"
+        :diagram="diagram"
+        :instrument="instrument"
+        :label="localizedName(diagram.names)"
+        :scale="2"
+        :active-position-ids="playingPositionIds"
+      />
       <FrettedDiagramView
-        v-if="instrument && previewRef"
+        v-else-if="instrument && previewRef"
         :diagram="diagram"
         :instrument="instrument"
         :diagram-ref="previewRef"
@@ -297,7 +316,6 @@ function intervalLabel(code: IntervalCode): string {
       />
       <DiagramPlayer
         v-if="instrument && previewRef && draft.canConfigurePlayback.value"
-        class="mt-2"
         :diagram="diagram"
         :instrument="instrument"
         :playback="previewRef.playback ?? null"

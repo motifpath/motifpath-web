@@ -8,10 +8,12 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import DiagramRefControls from '@/features/teacher/components/DiagramRefControls.vue'
 import { useDiagramEmbedDraft } from '@/features/teacher/composables/useDiagramEmbedDraft'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import { clearVoiceCache } from '@/shared/composables/useListVoices'
 import { makeFrettedDiagram, makeFrettedInstrument, makePlayback, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { gOpen, makeVoicingDiagram } from '@/shared/testUtils/songChart'
 import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
@@ -181,5 +183,38 @@ describe('DiagramRefControls playback', () => {
     player.vm.$emit('active', ['p1'])
     await flushPromises()
     expect(wrapper.getComponent(FrettedDiagramView).props('activePositionIds')).toEqual(['p1'])
+  })
+})
+
+describe('DiagramRefControls preview of a chord', () => {
+  const chord: Diagram = { ...makeVoicingDiagram(gOpen), chord_voicing: gOpen }
+  const preview = (wrapper: ReturnType<typeof mountControls>['wrapper']) => wrapper.get('[data-test="embed-picker-preview"]')
+
+  it('shows a chord as its chord box, with Box | Neck, and plays it', async () => {
+    const { wrapper } = mountControls(chord)
+    await flushPromises()
+
+    expect(preview(wrapper).findComponent(ChordBox).exists()).toBe(true)
+    expect(preview(wrapper).findComponent(FrettedDiagramView).exists()).toBe(false)
+    expect(wrapper.get('[data-test="chord-view-box"]').attributes('aria-checked')).toBe('true')
+    expect(preview(wrapper).findComponent(DiagramPlayer).exists()).toBe(true)
+  })
+
+  it('shows the chord on the neck, where its positions can be tapped', async () => {
+    const { wrapper } = mountControls(chord)
+    await flushPromises()
+
+    await wrapper.get('[data-test="chord-view-neck"]').trigger('click')
+
+    expect(preview(wrapper).findComponent(ChordBox).exists()).toBe(false)
+    expect(preview(wrapper).getComponent(FrettedDiagramView).props('selectablePositionIds')).toHaveLength(chord.positions.length)
+  })
+
+  it('keeps any other diagram on its board, with no Box | Neck', async () => {
+    const { wrapper } = mountControls(makeFrettedDiagram())
+    await flushPromises()
+
+    expect(preview(wrapper).findComponent(FrettedDiagramView).exists()).toBe(true)
+    expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
   })
 })
