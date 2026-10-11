@@ -144,17 +144,20 @@ function closeCard() {
 }
 
 // The chart stays readable under a floating card: scrolling it tucks the card away to a chip.
+// Scroll events don't bubble, so the window hears them while capturing: the page's own scroll, or
+// that of a layer holding the reader, such as over a lesson.
+const SCROLL_LISTENER = { capture: true, passive: true } as const
 function minimizeOnScroll() {
   if (open.value && !expanded.value) minimized.value = true
 }
 watch(
   () => open.value !== null,
   (isOpen) => {
-    if (isOpen) window.addEventListener('scroll', minimizeOnScroll, { passive: true })
-    else window.removeEventListener('scroll', minimizeOnScroll)
+    if (isOpen) window.addEventListener('scroll', minimizeOnScroll, SCROLL_LISTENER)
+    else window.removeEventListener('scroll', minimizeOnScroll, SCROLL_LISTENER)
   },
 )
-onUnmounted(() => window.removeEventListener('scroll', minimizeOnScroll))
+onUnmounted(() => window.removeEventListener('scroll', minimizeOnScroll, SCROLL_LISTENER))
 
 // ── The metronome ───────────────────────────────────────────────────────────
 

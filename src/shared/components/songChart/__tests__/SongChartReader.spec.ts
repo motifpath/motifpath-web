@@ -235,6 +235,16 @@ describe('SongChartReader', () => {
       expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('C')
     })
 
+    it('minimizes when the chart scrolls inside the layer that holds it, as over a lesson', async () => {
+      const wrapper = mountReader()
+      await tap(wrapper, 'G')
+
+      wrapper.element.dispatchEvent(new Event('scroll'))
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="chord-card-chip"]').text()).toBe('G')
+    })
+
     it('minimizes when the chart scrolls, and stays tappable', async () => {
       const wrapper = mountReader()
       await tap(wrapper, 'G')
