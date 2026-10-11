@@ -92,30 +92,6 @@
     "resizeAside": "Resize the notes panel",
     "resetAsideWidth": "Reset the notes panel to its default size"
   },
-  "practiceView": {
-    "errorMessage": "We couldn't load this practice exercise.",
-    "empty": "There's no practice for this lesson yet.",
-    "backToLesson": "‹ Back to lesson",
-    "seeResult": "See result",
-    "next": "Next ›",
-    "resultSummary": "{correct} of {total} correct",
-    "finish": "Finish"
-  },
-  "practiceHelpModal": {
-    "title": "How to answer",
-    "interaction": {
-      "imageRecognitionMultiple": "Tap every area on the image that answers the prompt.",
-      "imageRecognitionSingle": "Tap the area on the image that answers the prompt.",
-      "diagramRecognitionMultiple": "Tap every marker on the diagram that answers the prompt.",
-      "diagramRecognitionSingle": "Tap the marker on the diagram that answers the prompt.",
-      "imageChoiceMultiple": "Tap every image that applies.",
-      "imageChoiceSingle": "Tap the image that answers the prompt.",
-      "defaultMultiple": "Tap every option that applies.",
-      "defaultSingle": "Tap the option that answers the prompt."
-    },
-    "clearHintBefore": "Tap a selected answer again to clear it. Use",
-    "clearHintAfter": "to revisit and change a previous exercise's answer."
-  },
   "courseCatalogView": {
     "errorMessage": "We couldn't load the course catalog.",
     "emptyHeading": "No courses yet",
@@ -493,5 +469,41 @@
   "weekDays": {
     "count": "{label} · {count} of 7",
     "today": "(today)"
+  },
+  "howToAnswer": {
+    "title": "How to answer",
+    "interaction": {
+      "imageRecognitionMultiple": "Tap every area on the image that answers the prompt.",
+      "imageRecognitionSingle": "Tap the area on the image that answers the prompt.",
+      "diagramRecognitionMultiple": "Tap every marker on the diagram that answers the prompt.",
+      "diagramRecognitionSingle": "Tap the marker on the diagram that answers the prompt.",
+      "imageChoiceMultiple": "Tap every image that applies.",
+      "imageChoiceSingle": "Tap the image that answers the prompt.",
+      "defaultMultiple": "Tap every option that applies.",
+      "defaultSingle": "Tap the option that answers the prompt."
+    },
+    "changeHint": "Then tap Next. You can go back and change an answer until you finish; the one you move on with is the one that counts."
+  },
+  "challengeRun": {
+    "tag": "Challenge",
+    "exit": "Back to lesson",
+    "noAnswersYet": "No answers are shown until the end.",
+    "next": "Next",
+    "seeResult": "See result",
+    "errorMessage": "We couldn't load this challenge.",
+    "empty": "There's no challenge for this lesson yet.",
+    "backToLesson": "Back to lesson",
+    "doneTitle": "Challenge done",
+    "resultSummary": "{correct} of {total} correct",
+    "finish": "Finish",
+    "review": {
+      "heading": "Your answers",
+      "exercise": "Exercise {number}",
+      "yourAnswer": "Your answer: {label}",
+      "rightAnswer": "Right answer: {label}",
+      "noAnswer": "Not answered",
+      "right": "Right",
+      "wrong": "Wrong"
+    }
   }
 }

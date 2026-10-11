@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { mockViewport } from '@/shared/testUtils/viewport'
 import type { components } from '@/api/generated/core-domain'
 
 type Option = components['schemas']['Option']
@@ -737,6 +738,75 @@ describe('ExerciseView', () => {
 
       expect(wrapper.find('[data-test="exercise-audio-play"]').exists()).toBe(true)
       expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-locked')).toBe('false')
+    })
+  })
+
+  describe('panes in the Practice Shell', () => {
+    afterEach(() => Reflect.deleteProperty(window, 'matchMedia'))
+
+    const slots = {
+      header: '<h2 data-test="item-header">Find the bridge</h2>',
+      footer: '<p data-test="item-footer">How to answer</p>',
+    }
+    const regions = {
+      exerciseType: 'image_recognition' as const,
+      prompt: plainTextPrompt('Tap the bridge'),
+      options: regionOptions,
+      imageUrl: 'https://x/guitar.png',
+      panes: true,
+    }
+
+    it('puts a stimulus answered by tapping it in its own pane on Expanded, the rest in the side pane', () => {
+      mockViewport(1280)
+      const wrapper = mount(ExerciseView, { props: regions, slots })
+
+      const stimulus = wrapper.get('[data-test="stimulus-pane"]')
+      const interaction = wrapper.get('[data-test="interaction-pane"]')
+      expect(stimulus.find('[data-test="exercise-stimulus-image"]').exists()).toBe(true)
+      expect(stimulus.findAll('[data-test="exercise-region"]')).toHaveLength(1)
+      expect(interaction.find('[data-test="item-header"]').exists()).toBe(true)
+      expect(interaction.text()).toContain('Tap the bridge')
+      expect(interaction.find('[data-test="item-footer"]').exists()).toBe(true)
+    })
+
+    it('gives a diagram stimulus the pane rather than a breakout on Expanded', () => {
+      mockViewport(1280)
+      const wrapper = mount(ExerciseView, {
+        props: { ...regions, imageUrl: undefined, diagramRef: makeDiagramRef({ diagram_id: 'd1' }), breakout: true },
+        slots,
+      })
+
+      const stimulus = wrapper.get('[data-test="stimulus-pane"]')
+      expect(stimulus.find('[data-test="exercise-stimulus-diagram"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="breakout"]').exists()).toBe(false)
+    })
+
+    it('keeps one column on Medium, header first and footer last', () => {
+      mockViewport(700)
+      const wrapper = mount(ExerciseView, { props: regions, slots })
+
+      expect(wrapper.find('[data-test="stimulus-pane"]').exists()).toBe(false)
+      const html = wrapper.html()
+      expect(html.indexOf('item-header')).toBeLessThan(html.indexOf('Tap the bridge'))
+      expect(html.indexOf('exercise-stimulus-image')).toBeLessThan(html.indexOf('item-footer'))
+    })
+
+    it('keeps one column on Expanded when the options are separate from the stimulus', () => {
+      mockViewport(1280)
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'text_response', prompt: plainTextPrompt('Name this technique'), options: textOptions, panes: true },
+        slots,
+      })
+
+      expect(wrapper.find('[data-test="stimulus-pane"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="item-header"]').exists()).toBe(true)
+    })
+
+    it('keeps one column outside the Practice Shell, even on Expanded', () => {
+      mockViewport(1280)
+      const wrapper = mount(ExerciseView, { props: { ...regions, panes: false }, slots })
+
+      expect(wrapper.find('[data-test="stimulus-pane"]').exists()).toBe(false)
     })
   })
 })

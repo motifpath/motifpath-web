@@ -225,6 +225,53 @@ describe('usePracticeSession', () => {
     expect(session.score.value).toEqual({ correct: 2, total: 2 })
   })
 
+  describe('review after the last exercise', () => {
+    it('lists each exercise with the answer chosen, marked right or wrong, and a right one missed', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      session.select(['o2'])
+      session.next()
+      session.select(['o4'])
+      session.next()
+
+      expect(
+        session.review.value.map((entry) => ({
+          exerciseId: entry.exercise.exercise_id,
+          number: entry.number,
+          chosen: entry.chosen.map(({ option, key, right }) => ({ id: option.option_id, key, right })),
+          missed: entry.missed.map(({ option, key }) => ({ id: option.option_id, key })),
+        })),
+      ).toEqual([
+        { exerciseId: 'ex-1', number: 1, chosen: [{ id: 'o2', key: 2, right: false }], missed: [{ id: 'o1', key: 1 }] },
+        { exerciseId: 'ex-2', number: 2, chosen: [{ id: 'o4', key: 2, right: true }], missed: [] },
+      ])
+    })
+
+    it('lists every right option not chosen when an exercise has several', async () => {
+      GET.mockImplementation((path: string) =>
+        Promise.resolve({
+          data: path === '/content-nodes/{content_node_id}/challenges' ? [challenge] : [multiCorrectExercise],
+          error: undefined,
+          response: { status: 200 },
+        }),
+      )
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      session.select(['m1', 'm3'])
+      session.next()
+
+      const [entry] = session.review.value
+      expect(entry!.chosen.map(({ option, right }) => [option.option_id, right])).toEqual([
+        ['m1', true],
+        ['m3', false],
+      ])
+      expect(entry!.missed.map(({ option }) => option.option_id)).toEqual(['m2'])
+    })
+  })
+
   it('reports scorePercent and a success/warning/danger tier against the challenge pass_threshold', async () => {
     // pass_threshold 70: 2/2 = 100% -> success; below is exercised separately.
     mockHappyPath()

@@ -22,7 +22,7 @@ const lessonProps = {
   lessonTitle: 'Shuffle in E',
 }
 
-function mountButton(props: Partial<typeof lessonProps & { raised: boolean }> = {}) {
+function mountButton(props: Partial<typeof lessonProps> = {}) {
   // Attached, so isVisible() reads the tooltip's computed display.
   return mount(SendToTeacher, { props: { ...lessonProps, ...props }, attachTo: document.body })
 }
@@ -97,14 +97,11 @@ describe('SendToTeacher', () => {
     expect(link.find('[data-test="whatsapp-icon"]').exists()).toBe(true)
   })
 
-  it('starts in the bottom-right corner, higher when raised above a bottom bar', () => {
+  it('starts in the bottom-right corner', () => {
     const resting = float(mountButton())
-    const raised = float(mountButton({ raised: true }))
 
     expect(resting.classes()).toEqual(expect.arrayContaining(['fixed', 'right-4']))
     expect(resting.attributes('style')).toContain('bottom: 16px')
-    expect(raised.classes()).toContain('right-4')
-    expect(raised.attributes('style')).toContain('bottom: 80px')
   })
 
   describe('dragging', () => {
@@ -217,14 +214,6 @@ describe('SendToTeacher', () => {
       expect(float(wrapper).attributes('style')).toContain('bottom: 640px')
     })
 
-    it('cannot be dragged below a bottom bar when raised', async () => {
-      const wrapper = mountButton({ raised: true })
-
-      await drag(wrapper, { clientX: 1000, clientY: 700 }, { clientX: 1000, clientY: 760 })
-
-      expect(float(wrapper).attributes('style')).toContain('bottom: 80px')
-    })
-
     it('hides the tooltip while it is being dragged', async () => {
       const wrapper = mountButton()
       const link = wrapper.get('[data-test="send-to-teacher"]')
@@ -242,7 +231,7 @@ describe('SendToTeacher', () => {
       await drag(first, { clientX: 1000, clientY: 740 }, { clientX: 100, clientY: 440 })
       first.unmount()
 
-      const next = mountButton({ reference: 'X-3eb9ccc1/5c20a7e4', raised: true })
+      const next = mountButton({ reference: 'L-5c20a7e4' })
 
       expect(float(next).classes()).toContain('left-4')
       expect(float(next).attributes('style')).toContain('bottom: 316px')
