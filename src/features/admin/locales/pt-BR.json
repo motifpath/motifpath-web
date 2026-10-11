@@ -148,8 +148,8 @@
     "untitled": "Nova cifra",
     "unsaved": "alterações não salvas",
     "import": "Importar ChordPro",
-    "export": "Exportar ChordPro",
-    "preview": "Prévia",
+    "export": "Exportar .cho",
+    "preview": "Ver como aluno",
     "publish": "Publicar",
     "withdraw": "Retirar",
     "save": "Salvar",
@@ -158,7 +158,6 @@
       "rights_not_confirmed": "Ninguém confirmou que os direitos da música foram verificados.",
       "unresolved_chords": "Alguns acordes impedem a publicação:"
     },
-    "withdrawnBy": "Retirada por {name} em {date}: {reason}",
     "details": "Detalhes",
     "title": "Título",
     "artist": "Artista",
@@ -178,16 +177,8 @@
       "unbalanced_section": "um início ou fim de seção que não corresponde",
       "empty_section": "uma seção sem linhas"
     },
-    "chordWarnings": "Acordes não resolvidos por completo",
-    "chordWarning": {
-      "unparsed_symbol": "não é um acorde",
-      "unsupported_quality": "um tipo de acorde que o catálogo não tem",
-      "chord_not_in_catalog": "não está no catálogo de acordes",
-      "voicing_unavailable": "a forma escolhida não é mais oferecida",
-      "bass_not_in_catalog": "mostrado sem o baixo"
-    },
     "blocksPublishing": "impede a publicação",
-    "rightsConfirmed": "Os direitos da música foram verificados",
+    "rightsConfirmed": "Verifiquei os direitos: domínio público, original ou licenciada para os alunos daqui",
     "rightsConfirmedBy": "Confirmado por {name} em {date}",
     "revisions": "Revisões publicadas",
     "revision": "Revisão {revision}, publicada por {name} em {date}",
@@ -201,6 +192,21 @@
     "replace": "Substituir",
     "leaveHeading": "Descartar alterações não salvas?",
     "leaveMessage": "Suas alterações nesta cifra não foram salvas.",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "rightsNote": "Salvo com o rascunho. Quem confirmou e quando aparece aqui.",
+    "noRevisions": "Nenhuma ainda — publicar cria a revisão 1.",
+    "largerScreen": "Colocar acordes precisa de uma tela maior. Status, detalhes e direitos funcionam aqui."
+  },
+  "songChartStatus": {
+    "new": "Nova — salve para começar um rascunho.",
+    "draft": "Rascunho — nunca publicada. Os alunos não a veem.",
+    "published": "Publicada — os alunos leem a revisão {revision}.",
+    "withdrawn": "Retirada por {name} em {date}: {reason}",
+    "beforeYouPublish": "Antes de publicar:",
+    "confirmRights": "Confirme os direitos",
+    "notAChord": "“{symbol}” em {section}, linha {line}, não é um acorde",
+    "notInCatalog": "“{symbol}” em {section}, linha {line}, não está no catálogo de acordes",
+    "publishAgain": "Publicar de novo",
+    "withdraw": "Retirar…"
   }
 }

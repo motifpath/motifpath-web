@@ -148,8 +148,8 @@
     "untitled": "New song chart",
     "unsaved": "unsaved changes",
     "import": "Import ChordPro",
-    "export": "Export ChordPro",
-    "preview": "Preview",
+    "export": "Export .cho",
+    "preview": "Preview as a learner",
     "publish": "Publish",
     "withdraw": "Withdraw",
     "save": "Save",
@@ -158,7 +158,6 @@
       "rights_not_confirmed": "Nobody has confirmed the song's rights were checked.",
       "unresolved_chords": "Some chords block publishing:"
     },
-    "withdrawnBy": "Withdrawn by {name} on {date}: {reason}",
     "details": "Details",
     "title": "Title",
     "artist": "Artist",
@@ -178,16 +177,8 @@
       "unbalanced_section": "a section start or end that doesn't match",
       "empty_section": "a section with no lines"
     },
-    "chordWarnings": "Chords that didn't fully resolve",
-    "chordWarning": {
-      "unparsed_symbol": "not a chord",
-      "unsupported_quality": "a kind of chord the catalog doesn't have",
-      "chord_not_in_catalog": "not in the chord catalog",
-      "voicing_unavailable": "its chosen voicing is no longer offered",
-      "bass_not_in_catalog": "shown without its bass"
-    },
     "blocksPublishing": "blocks publishing",
-    "rightsConfirmed": "The song's rights were checked",
+    "rightsConfirmed": "I checked the rights: public domain, original, or licensed for learners here",
     "rightsConfirmedBy": "Confirmed by {name} on {date}",
     "revisions": "Published revisions",
     "revision": "Revision {revision}, published by {name} on {date}",
@@ -201,6 +192,21 @@
     "replace": "Replace",
     "leaveHeading": "Discard unsaved changes?",
     "leaveMessage": "Your changes to this song chart haven't been saved.",
-    "discard": "Discard"
+    "discard": "Discard",
+    "rightsNote": "Saved with the draft. Who confirmed it and when is shown here.",
+    "noRevisions": "None yet — publishing makes revision 1.",
+    "largerScreen": "Placing chords needs a larger screen. Status, details and rights work here."
+  },
+  "songChartStatus": {
+    "new": "New — save it to start a draft.",
+    "draft": "Draft — never published. Learners can't see it.",
+    "published": "Published — learners read revision {revision}.",
+    "withdrawn": "Withdrawn by {name} on {date}: {reason}",
+    "beforeYouPublish": "Before you publish:",
+    "confirmRights": "Confirm the rights",
+    "notAChord": "“{symbol}” in {section}, line {line}, isn’t a chord",
+    "notInCatalog": "“{symbol}” in {section}, line {line}, isn’t in the chord catalog",
+    "publishAgain": "Publish again",
+    "withdraw": "Withdraw…"
   }
 }
