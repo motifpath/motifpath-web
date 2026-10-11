@@ -235,6 +235,13 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/teach',
+    name: 'teach',
+    meta: { requiresAuth: true, requiresRole: ['teacher', 'admin'] },
+    beforeEnter: () => ensureTeacherLocaleLoaded(),
+    component: () => import('@/features/teacher/views/TeachHomeView.vue'),
+  },
+  {
     path: '/teacher/exercises',
     // A pass-through parent (no layout of its own — just RouterView) so all
     // three exercise routes below share one beforeEnter instead of each

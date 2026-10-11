@@ -184,6 +184,26 @@ describe('router', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc/practice')
   })
 
+  it.each(['teacher', 'admin'] as const)('lets a registered %s reach Teach home', async (role) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge(role)
+
+    await router.push('/teach')
+
+    expect(router.currentRoute.value.name).toBe('teach')
+  })
+
+  it('sends a registered student away from Teach home to home', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/teach')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
   it('lets a registered teacher reach the teacher exercise-authoring route', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')

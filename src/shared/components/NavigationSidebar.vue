@@ -45,7 +45,7 @@ const { t } = useTypedT()
       />
       <template v-if="showTeach">
         <hr data-test="nav-teach-divider" class="my-1 border-border" />
-        <NavItem data-test="nav-teach" layout="row" :label="t('accountMenu.teach')" :icon="PencilRuler" :to="{ name: 'teacher-content' }" />
+        <NavItem data-test="nav-teach" layout="row" :label="t('accountMenu.teach')" :icon="PencilRuler" :to="{ name: 'teach' }" />
       </template>
     </nav>
     <div class="mt-auto pt-4">

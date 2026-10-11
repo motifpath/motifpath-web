@@ -124,7 +124,7 @@ describe('the navigation sidebar', () => {
 
     const teach = wrapper.findAllComponents(RouterLinkStub).find((link) => link.attributes('data-test') === 'nav-teach')
     expect(teach?.text()).toBe('Teach')
-    expect(teach?.props('to')).toEqual({ name: 'teacher-content' })
+    expect(teach?.props('to')).toEqual({ name: 'teach' })
     expect(wrapper.find('[data-test="nav-teach-divider"]').exists()).toBe(true)
   })
 

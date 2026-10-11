@@ -248,7 +248,7 @@ describe('AccountMenu', () => {
       await open(wrapper)
 
       const teach = wrapper.getComponent<typeof RouterLinkStub>('[data-test="account-teach"]')
-      expect(teach.props('to')).toEqual({ name: 'teacher-content' })
+      expect(teach.props('to')).toEqual({ name: 'teach' })
     })
   })
 
