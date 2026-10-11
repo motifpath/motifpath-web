@@ -101,11 +101,19 @@ const routes: RouteRecordRaw[] = [
         meta: { wideContent: true, hidesBottomBar: true, pushed: true, fillsScreen: true },
         component: () => import('@/features/student/views/NodeView.vue'),
       },
+    ],
+  },
+  {
+    // A lesson's challenge takes the whole screen, in the Practice Shell, with no app bar. Its
+    // address stays under My path, where the lesson is.
+    path: '/path/nodes/:nodeId/practice',
+    component: () => import('@/shared/components/PracticeLayout.vue'),
+    meta: { requiresAuth: true },
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
       {
-        path: 'nodes/:nodeId/practice',
+        path: '',
         name: 'practice',
-        // A practice run shows no navigation; its own bar holds Back and Next at the foot of a phone.
-        meta: { hidesBottomBar: true },
         props: true,
         component: () => import('@/features/student/views/PracticeView.vue'),
       },
