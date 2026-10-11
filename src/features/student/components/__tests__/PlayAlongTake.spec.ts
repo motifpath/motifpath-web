@@ -124,6 +124,12 @@ describe('PlayAlongTake', () => {
     expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 70 BPM')
   })
 
+  it('lets the board leave the text column on a wider screen', () => {
+    const breakout = mountTake().get('[data-test="breakout"]')
+
+    expect(breakout.findComponent({ name: 'FrettedDiagramView' }).exists()).toBe(true)
+  })
+
   it('is titled by its diagram’s name', () => {
     expect(mountTake().get('[data-test="item-title"]').text()).toBe('A minor pentatonic, box 1')
   })

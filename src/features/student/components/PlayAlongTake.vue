@@ -23,6 +23,7 @@ import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.v
 import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
+import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
@@ -214,24 +215,26 @@ const meta = computed(() => {
       <PlayAlongInfo v-if="infoOpen" :reason="item.reason" :diagram="loaded.diagram.value" @close="infoOpen = false" />
 
       <div ref="stage" data-test="take-stage" class="flex scroll-mt-20 flex-col gap-4">
-        <div class="relative rounded-lg border border-border bg-surface-raised p-2">
-          <FrettedDiagramView
-            :diagram="loaded.diagram.value"
-            :instrument="loaded.instrument.value"
-            :diagram-ref="loaded.diagramRef.value"
-            :label-mode="loaded.labelMode.value"
-            :active-position-ids="player.activePositionIds.value"
-            :region-info="false"
-          />
-          <div
-            v-if="phase === 'playing' && countIn > 0"
-            data-test="count-in"
-            class="absolute inset-0 flex items-center justify-center bg-surface/70 text-4xl font-semibold tabular-nums"
-            aria-live="assertive"
-          >
-            {{ countIn }}
+        <PracticeBreakout>
+          <div class="relative rounded-lg border border-border bg-surface-raised p-2">
+            <FrettedDiagramView
+              :diagram="loaded.diagram.value"
+              :instrument="loaded.instrument.value"
+              :diagram-ref="loaded.diagramRef.value"
+              :label-mode="loaded.labelMode.value"
+              :active-position-ids="player.activePositionIds.value"
+              :region-info="false"
+            />
+            <div
+              v-if="phase === 'playing' && countIn > 0"
+              data-test="count-in"
+              class="absolute inset-0 flex items-center justify-center bg-surface/70 text-4xl font-semibold tabular-nums"
+              aria-live="assertive"
+            >
+              {{ countIn }}
+            </div>
           </div>
-        </div>
+        </PracticeBreakout>
 
         <TempoControl
           :tempo="tempo"
