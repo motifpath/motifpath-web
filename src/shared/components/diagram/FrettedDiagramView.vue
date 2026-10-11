@@ -20,7 +20,8 @@
  *
  * The board is drawn at its real size in CSS pixels, so text and touch targets
  * stay readable on a phone; a board wider than its container scrolls on its
- * own. `compact` instead scales a plainer drawing to fit, for a thumbnail.
+ * own, with the whole board in miniature under it to show and move the part in
+ * view. `compact` instead scales a plainer drawing to fit, for a thumbnail.
  *
  * Each region is a translucent band with an outline in its color, and one
  * information control above the board near its last fret, which opens the
@@ -54,6 +55,7 @@ import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { effectiveLabelMode, markerTextKind } from '@/shared/utils/diagramLabels'
 import AnswerMark from '@/shared/components/diagram/AnswerMark.vue'
+import BoardViewport from '@/shared/components/diagram/BoardViewport.vue'
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
 import FretboardMarkerShape from '@/shared/components/diagram/FretboardMarkerShape.vue'
@@ -151,8 +153,8 @@ onUnmounted(() => resizeObserver?.disconnect())
 
 // How far the board is scrolled, so an open description stays in its visible part.
 const scrollLeft = ref(0)
-function onBoardScroll(event: Event) {
-  if (event.target instanceof HTMLElement) scrollLeft.value = event.target.scrollLeft
+function onBoardScroll(left: number) {
+  scrollLeft.value = left
 }
 
 /** Brings a focused answer or note fully into view when the board scrolls. */
@@ -219,7 +221,8 @@ const boardMidY = computed(() => (y(1) + y(layout.value.stringCount)) / 2)
 
 // A readable board wider than its window follows the playback this use plays as it plays: the board starts at
 // the first note, then keeps the sounding note, and the next when both fit, in view.
-const scroller = ref<HTMLElement | null>(null)
+// A compact drawing never scrolls, so its plain wrapper is never followed.
+const viewport = ref<InstanceType<typeof BoardViewport> | HTMLElement | null>(null)
 /** Air kept around a followed note: its touch target and a little more. */
 const FOLLOW_MARGIN = TARGET_RADIUS + 8
 
@@ -236,11 +239,11 @@ function spanOf(ids: string[]): Span | null {
 }
 
 function follow(sounding: Span | null, next: Span | null, behavior: ScrollBehavior) {
-  if (props.compact || !sounding || !scroller.value) return
+  if (props.compact || !sounding || !viewport.value || viewport.value instanceof HTMLElement) return
   const view = { left: scrollLeft.value, width: availableWidth.value, contentWidth: viewW.value, margin: FOLLOW_MARGIN }
   const left = followScrollLeft(view, sounding, next)
   if (left === null) return
-  scroller.value.scrollTo?.({ left, behavior })
+  viewport.value.scrollTo(left, behavior)
   scrollLeft.value = left
 }
 
@@ -525,13 +528,25 @@ function noteAlignClass(position: Marker): string {
 
 <template>
   <div ref="container" class="relative min-w-0" data-region-scope>
-    <div
-      ref="scroller"
-      data-test="board-scroll"
-      :class="compact ? '' : 'overflow-x-auto overflow-y-hidden'"
+    <component
+      :is="compact ? 'div' : BoardViewport"
+      ref="viewport"
+      v-bind="compact ? {} : { contentWidth: viewW, viewWidth: availableWidth, label: localizedName(diagram.names) }"
       @focusin="revealFocused"
       @scroll="onBoardScroll"
     >
+      <template v-if="!compact" #overview>
+        <FrettedDiagramView
+          compact
+          drawing-inert
+          :diagram="diagram"
+          :instrument="instrument"
+          :diagram-ref="diagramRef"
+          :label-mode="labelMode"
+          :active-position-ids="activePositionIds"
+          :region-info="false"
+        />
+      </template>
       <div class="relative" :style="compact ? undefined : { width: `${viewW}px` }">
         <!-- Region controls sit above the board, never over a marker. -->
         <RegionInfoRail
@@ -775,6 +790,6 @@ function noteAlignClass(position: Marker): string {
         </div>
         </div>
       </div>
-    </div>
+    </component>
   </div>
 </template>
