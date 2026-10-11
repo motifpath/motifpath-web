@@ -19,14 +19,14 @@
 import { computed, shallowRef, watch } from 'vue'
 
 import ChordBox from '@/shared/components/diagram/ChordBox.vue'
+import ChordViewSwitch from '@/shared/components/diagram/ChordViewSwitch.vue'
 import DiagramLegend from '@/shared/components/diagram/DiagramLegend.vue'
 import DiagramPlayer, { PLAYER_WIDTH } from '@/shared/components/diagram/DiagramPlayer.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
-import SegmentedControl from '@/shared/components/SegmentedControl.vue'
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
-import { isChordView, useChordView } from '@/shared/composables/useChordView'
+import { useChordView } from '@/shared/composables/useChordView'
 import { isPlayable } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import type { EmbeddedDiagramStatus } from '@/shared/composables/useEmbeddedDiagram'
@@ -89,16 +89,6 @@ const { localizedName } = useLocalizedName()
 // A box takes no taps, and a thumbnail has no room for the switch: both stay a fretboard.
 const takesTaps = computed(() => props.selectablePositionIds.length > 0 || props.answerCells.length > 0)
 const chordView = useChordView(() => (props.embed.kind === 'single' && !props.compact && !takesTaps.value ? diagram.value : null))
-const shownView = computed({
-  get: () => chordView.view.value,
-  set: (next: string) => {
-    if (isChordView(next)) chordView.choose(next)
-  },
-})
-const viewOptions = computed(() => [
-  { value: 'box', label: t('chordView.box') },
-  { value: 'neck', label: t('chordView.neck') },
-])
 
 // The rail keeps room for the player only when there is something to play.
 const playable = computed(
@@ -125,7 +115,7 @@ const playable = computed(
     class="flex flex-col gap-2"
   >
     <div v-if="chordView.canSwitch.value" class="flex items-center gap-3">
-      <SegmentedControl v-model="shownView" class="w-40" :label="t('chordView.label')" :options="viewOptions" test-id-prefix="chord-view" />
+      <ChordViewSwitch :model-value="chordView.view.value" @update:model-value="chordView.choose" />
       <DiagramPlayer
         v-if="chordView.view.value === 'box' && playable"
         :diagram="diagram"
