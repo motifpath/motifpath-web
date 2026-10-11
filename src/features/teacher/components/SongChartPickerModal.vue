@@ -121,13 +121,12 @@ function insertSelected() {
             </p>
             <template v-else>
               <p data-test="song-chart-count" class="pb-2 text-xs font-medium text-ink-muted">{{ t('songChartPicker.count', { count: total }) }}</p>
-              <ul class="flex flex-col gap-2" role="listbox" :aria-label="t('songChartPicker.title')">
+              <ul class="flex flex-col gap-2">
                 <li v-for="chart in charts" :key="chart.song_chart_id">
                   <button
                     type="button"
-                    role="option"
                     data-test="song-chart-option"
-                    :aria-selected="asDialog ? chart.song_chart_id === selectedId : undefined"
+                    :aria-pressed="asDialog ? chart.song_chart_id === selectedId : undefined"
                     class="flex w-full items-center gap-3 rounded-2xl border bg-surface-raised px-3 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     :class="asDialog && chart.song_chart_id === selectedId ? 'border-2 border-accent' : 'border-border hover:border-accent'"
                     @click="choose(chart)"

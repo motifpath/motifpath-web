@@ -124,7 +124,7 @@ describe('SongChartPickerModal', () => {
       await flushPromises()
 
       expect(find('[data-test="song-chart-picker"]')!.dataset.layout).toBe('dialog')
-      expect(rows()[0]!.getAttribute('aria-selected')).toBe('true')
+      expect(rows()[0]!.getAttribute('aria-pressed')).toBe('true')
       expect(find('[data-test="preview-card"]')!.dataset.songChartId).toBe('c-1')
       expect(find('[data-test="preview-lines"]')!.dataset.songChartId).toBe('c-1')
     })
