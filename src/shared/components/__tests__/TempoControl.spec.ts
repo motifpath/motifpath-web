@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
-import TempoControl from '@/features/student/components/TempoControl.vue'
+import TempoControl from '@/shared/components/TempoControl.vue'
 
 type Props = { tempo: number; slowest: number; goal: number; best: number | null; metronome: boolean; disabled: boolean }
 

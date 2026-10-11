@@ -12,6 +12,8 @@ type TimeSignature = components['schemas']['TimeSignature']
 /** The tempo range a diagram, or a usage overriding it, may play at. */
 export const MIN_TEMPO_BPM = 20
 export const MAX_TEMPO_BPM = 300
+/** The step a tempo moves by on a slider or a ladder. */
+export const TEMPO_STEP_BPM = 5
 
 /** Whether a tempo is a whole number of beats per minute within the allowed range. */
 export function isValidTempoBpm(bpm: number): boolean {

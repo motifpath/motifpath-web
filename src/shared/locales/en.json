@@ -333,5 +333,13 @@
     "continue": "Continue with Google",
     "busy": "Setting up your account…"
   },
-  "signedOutToast": "You're signed out. Your practice and progress are saved."
+  "signedOutToast": "You're signed out. Your practice and progress are saved.",
+  "tempoControl": {
+    "label": "Tempo",
+    "metronome": "Metronome",
+    "bpm": "{bpm} BPM",
+    "bestTick": "Best clean {bpm} BPM",
+    "goalTick": "Goal {bpm} BPM",
+    "typeTempo": "Type a tempo in BPM"
+  }
 }

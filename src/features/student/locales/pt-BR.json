@@ -253,7 +253,6 @@
     "done": "Concluir"
   },
   "playAlongTake": {
-    "bpm": "{bpm} BPM",
     "goal": "Meta {target} BPM · melhor limpa {best}",
     "noBest": "nenhuma ainda",
     "warmUpHint": "Aquecimento: toque relaxado. Não conta para o seu progresso.",
@@ -279,13 +278,8 @@
     "skip": "Pular",
     "slower": "{step} BPM mais lento",
     "faster": "{step} BPM mais rápido",
-    "metronome": "Metrônomo",
     "info": "Sobre esta prática",
     "takeOf": "Execução {current} de {total}",
-    "tempoSlider": "Andamento",
-    "bestTick": "Melhor limpa {bpm} BPM",
-    "goalTick": "Meta {bpm} BPM",
-    "typeTempo": "Digite um andamento em BPM",
     "restart": "Recomeçar",
     "restartUnrated": "Recomeçar sem avaliar"
   },

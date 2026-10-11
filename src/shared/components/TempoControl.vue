@@ -8,9 +8,8 @@
 import { computed, nextTick, ref } from 'vue'
 import { Metronome } from 'lucide-vue-next'
 
-import { TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
+import { MAX_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
 
 const props = defineProps<{
   tempo: number
@@ -53,8 +52,8 @@ function along(bpm: number): string {
 }
 
 const ticks = computed(() => [
-  ...(props.best === null ? [] : [{ kind: 'best', bpm: props.best, label: t('playAlongTake.bestTick', { bpm: props.best }) }]),
-  { kind: 'goal', bpm: props.goal, label: t('playAlongTake.goalTick', { bpm: props.goal }) },
+  ...(props.best === null ? [] : [{ kind: 'best', bpm: props.best, label: t('tempoControl.bestTick', { bpm: props.best }) }]),
+  { kind: 'goal', bpm: props.goal, label: t('tempoControl.goalTick', { bpm: props.goal }) },
 ])
 
 /** The typed tempo while the student types one; null while the value only shows. */
@@ -91,7 +90,7 @@ function onFieldKeydown(event: KeyboardEvent) {
 
 <template>
   <div data-test="tempo-control" class="flex min-h-12 items-center gap-3" role="group" aria-labelledby="tempo-heading">
-    <span id="tempo-heading" data-test="tempo-heading" class="sr-only">{{ t('playAlongTake.tempoSlider') }}</span>
+    <span id="tempo-heading" data-test="tempo-heading" class="sr-only">{{ t('tempoControl.label') }}</span>
 
     <button
       type="button"
@@ -99,8 +98,8 @@ function onFieldKeydown(event: KeyboardEvent) {
       class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
       :class="metronome ? 'bg-accent-muted text-accent-text' : 'border border-border text-ink-muted'"
       :aria-pressed="metronome"
-      :aria-label="t('playAlongTake.metronome')"
-      :title="t('playAlongTake.metronome')"
+      :aria-label="t('tempoControl.metronome')"
+      :title="t('tempoControl.metronome')"
       :disabled="disabled"
       @click="emit('update:metronome', !metronome)"
     >
@@ -118,8 +117,8 @@ function onFieldKeydown(event: KeyboardEvent) {
           :step="TEMPO_STEP_BPM"
           :value="shownTempo"
           :disabled="disabled"
-          :aria-label="t('playAlongTake.tempoSlider')"
-          :aria-valuetext="t('playAlongTake.bpm', { bpm: shownTempo })"
+          :aria-label="t('tempoControl.label')"
+          :aria-valuetext="t('tempoControl.bpm', { bpm: shownTempo })"
           @input="slide"
           @change="release"
         />
@@ -149,7 +148,7 @@ function onFieldKeydown(event: KeyboardEvent) {
       class="h-12 w-20 shrink-0 rounded-md border border-accent bg-surface px-2 text-right text-lg font-semibold tabular-nums"
       :min="slowest"
       :max="MAX_TEMPO_BPM"
-      :aria-label="t('playAlongTake.typeTempo')"
+      :aria-label="t('tempoControl.typeTempo')"
       @keydown="onFieldKeydown"
       @blur="finishTyping"
     />
@@ -159,7 +158,7 @@ function onFieldKeydown(event: KeyboardEvent) {
       data-test="tempo-value"
       class="flex h-12 shrink-0 items-baseline gap-1 rounded-md px-3 pt-3 tabular-nums"
       :class="disabled ? 'cursor-default' : 'border border-border'"
-      :title="t('playAlongTake.typeTempo')"
+      :title="t('tempoControl.typeTempo')"
       :aria-disabled="disabled"
       @click="startTyping"
     >

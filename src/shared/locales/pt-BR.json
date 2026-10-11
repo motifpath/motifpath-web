@@ -333,5 +333,13 @@
     "continue": "Continuar com o Google",
     "busy": "Configurando sua conta…"
   },
-  "signedOutToast": "Você saiu. Sua prática e seu progresso estão salvos."
+  "signedOutToast": "Você saiu. Sua prática e seu progresso estão salvos.",
+  "tempoControl": {
+    "label": "Andamento",
+    "metronome": "Metrônomo",
+    "bpm": "{bpm} BPM",
+    "bestTick": "Melhor limpa {bpm} BPM",
+    "goalTick": "Meta {bpm} BPM",
+    "typeTempo": "Digite um andamento em BPM"
+  }
 }

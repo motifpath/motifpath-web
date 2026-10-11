@@ -253,7 +253,6 @@
     "done": "Done"
   },
   "playAlongTake": {
-    "bpm": "{bpm} BPM",
     "goal": "Goal {target} BPM · best clean {best}",
     "noBest": "none yet",
     "warmUpHint": "Warm-up: play it relaxed. It doesn't count toward your progress.",
@@ -279,13 +278,8 @@
     "skip": "Skip",
     "slower": "{step} BPM slower",
     "faster": "{step} BPM faster",
-    "metronome": "Metronome",
     "info": "About this practice",
     "takeOf": "Take {current} of {total}",
-    "tempoSlider": "Tempo",
-    "bestTick": "Best clean {bpm} BPM",
-    "goalTick": "Goal {bpm} BPM",
-    "typeTempo": "Type a tempo in BPM",
     "restart": "Restart",
     "restartUnrated": "Restart without rating"
   },
