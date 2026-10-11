@@ -286,7 +286,7 @@
     "warmUpHint": "Warm-up: play it relaxed. It doesn't count toward your progress.",
     "start": "Start take",
     "countInHint": "A bar of count-in, then play along.",
-    "playing": "Play along. The take ends by itself.",
+    "playing": "Play along. The take ends by itself. Wrong tempo? Restart goes back to the tempo without rating.",
     "stopEarly": "Stop early",
     "ratePrompt": "How was that take at {bpm} BPM?",
     "ratings": {

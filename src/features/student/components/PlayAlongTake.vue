@@ -2,26 +2,32 @@
 /**
  * One take of a play-along item, instrument in hand: a bar of count-in, then the diagram's
  * sequence once at the take's tempo, its positions lighting up as they sound. When the take ends
- * by itself, or the student stops it, the student rates it, and the parent decides the next take's
- * tempo (the tempo ladder). A diagram that can't be played here can only be skipped.
+ * by itself, or the student stops it, the student rates it in the action bar, and the parent
+ * decides the next take's tempo (the tempo ladder). A diagram that can't be played here can only
+ * be skipped, as not answered.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { Info, Metronome, RotateCcw } from 'lucide-vue-next'
+import { Info } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
+import type { NotAnsweredReason } from '@/features/student/composables/usePracticeSessionRun'
 import { withCountIn } from '@/features/student/utils/countIn'
-import { pickReasonKeys } from '@/features/student/utils/pickReason'
-import { ladderFloor, TEMPO_STEP_BPM } from '@/features/student/utils/tempoLadder'
+import { ladderFloor } from '@/features/student/utils/tempoLadder'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
+import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import PlayAlongInfo from '@/features/student/components/PlayAlongInfo.vue'
+import SelfRating from '@/features/student/components/SelfRating.vue'
+import TempoControl from '@/features/student/components/TempoControl.vue'
+import AppButton from '@/shared/components/AppButton.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
-import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
+import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Item = components['schemas']['PracticeSessionItem']
 type PlayAlong = NonNullable<Item['play_along']>
@@ -36,7 +42,7 @@ const props = defineProps<{
   takesTotal: number
 }>()
 
-const emit = defineEmits<{ rate: [rating: TakeRating]; skip: []; tempo: [bpm: number] }>()
+const emit = defineEmits<{ rate: [rating: TakeRating]; skip: [reason: NotAnsweredReason]; tempo: [bpm: number] }>()
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
@@ -132,29 +138,13 @@ function rate(rating: TakeRating) {
   emit('rate', rating)
 }
 
-function changeTempo(step: number) {
-  chooseTempo(props.tempo + step)
-}
-
 function chooseTempo(bpm: number) {
   rated = false
   message.value = null
-  sliding.value = null
   emit('tempo', bpm)
 }
 
-/** The slider's tempo while it's being dragged; the next take's is chosen once it's released. */
-const sliding = ref<number | null>(null)
-const shownTempo = computed(() => sliding.value ?? props.tempo)
 const slowestTempo = computed(() => ladderFloor(playAlong.value.target_tempo_bpm))
-
-function slide(event: Event) {
-  if (event.target instanceof HTMLInputElement) sliding.value = Number(event.target.value)
-}
-
-function release(event: Event) {
-  if (event.target instanceof HTMLInputElement) chooseTempo(Number(event.target.value))
-}
 
 /** What the ladder did with the last rating, said when the next take's tempo changes. */
 const message = ref<string | null>(null)
@@ -178,106 +168,53 @@ watch(
 
 onBeforeUnmount(stopCounting)
 
-const ratings = [
-  {
-    rating: 'struggled',
-    label: 'playAlongTake.ratings.struggled',
-    hint: 'playAlongTake.ratingHints.struggled',
-    tone: 'bg-danger-muted',
-  },
-  { rating: 'almost', label: 'playAlongTake.ratings.almost', hint: 'playAlongTake.ratingHints.almost', tone: 'bg-warning-muted' },
-  { rating: 'clean', label: 'playAlongTake.ratings.clean', hint: 'playAlongTake.ratingHints.clean', tone: 'bg-success-muted' },
-] as const satisfies readonly { rating: TakeRating; label: string; hint: string; tone: string }[]
-
 const infoOpen = ref(false)
 const takesPlayed = computed(() => props.takesTotal - props.takesLeft)
 
-const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlongTake.noBest'))
+/** "Take 1 of 3 · Goal 96 BPM · best clean 68"; a warm-up has no goal to say. */
+const meta = computed(() => {
+  const take = t('playAlongTake.takeOf', { current: Math.min(takesPlayed.value + 1, props.takesTotal), total: props.takesTotal })
+  if (warmUp.value) return take
+  const best = playAlong.value.best_clean_tempo_bpm ?? t('playAlongTake.noBest')
+  return `${take} · ${t('playAlongTake.goal', { target: playAlong.value.target_tempo_bpm, best })}`
+})
 </script>
 
 <template>
   <div class="flex flex-col gap-4" data-test="play-along-take">
     <LoadingSkeleton v-if="loaded.status.value === 'loading'" />
 
-    <div v-else-if="loaded.status.value === 'unavailable'" class="flex flex-col items-start gap-3">
-      <p class="text-ink-muted">{{ t('playAlongTake.unavailable') }}</p>
-      <button type="button" data-test="skip-item" class="text-sm font-medium text-accent-text underline" @click="emit('skip')">
-        {{ t('playAlongTake.skip') }}
-      </button>
-    </div>
+    <template v-else-if="loaded.status.value === 'unavailable'">
+      <InlineNotice tone="unavailable" :message="t('playAlongTake.unavailable')" />
+      <PracticeActionBar>
+        <PrimaryButton data-test="skip-item" data-primary-action class="h-12 w-full" @click="emit('skip', 'unavailable')">
+          {{ t('playAlongTake.skip') }}
+        </PrimaryButton>
+      </PracticeActionBar>
+    </template>
 
     <template v-else-if="loaded.diagram.value && loaded.instrument.value && loaded.diagramRef.value">
-      <h2 data-test="item-title" class="text-lg font-semibold leading-tight">{{ localizedName(loaded.diagram.value.names) }}</h2>
-      <div class="flex flex-col gap-1">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex min-w-0 items-center gap-1">
-            <span class="truncate rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-medium">{{ t(pickReasonKeys[item.reason]) }}</span>
-            <button
-              type="button"
-              data-test="item-info"
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink"
-              :aria-label="t('playAlongTake.info')"
-              :aria-expanded="infoOpen"
-              aria-controls="play-along-info"
-              @click="infoOpen = !infoOpen"
-            >
-              <Info :size="18" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-        <div data-test="tempo-control" class="flex flex-col gap-1 rounded-lg border border-border px-3 py-2">
-          <div class="flex items-baseline justify-between gap-2">
-            <span data-test="tempo-heading" class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{{ t('playAlongTake.tempoSlider') }}</span>
-            <span data-test="tempo-value" class="text-lg font-semibold tabular-nums">{{ t('playAlongTake.bpm', { bpm: shownTempo }) }}</span>
-          </div>
-          <template v-if="phase === 'ready'">
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                data-test="tempo-down"
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-sm tabular-nums"
-                :aria-label="t('playAlongTake.slower', { step: TEMPO_STEP_BPM })"
-                @click="changeTempo(-TEMPO_STEP_BPM)"
-              >
-                −{{ TEMPO_STEP_BPM }}
-              </button>
-              <input
-                type="range"
-                data-test="tempo-slider"
-                class="h-9 min-w-0 flex-1 cursor-pointer accent-accent"
-                :min="slowestTempo"
-                :max="MAX_TEMPO_BPM"
-                :step="TEMPO_STEP_BPM"
-                :value="shownTempo"
-                :aria-label="t('playAlongTake.tempoSlider')"
-                :aria-valuetext="t('playAlongTake.bpm', { bpm: shownTempo })"
-                @input="slide"
-                @change="release"
-              />
-              <button
-                type="button"
-                data-test="tempo-up"
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border text-sm tabular-nums"
-                :aria-label="t('playAlongTake.faster', { step: TEMPO_STEP_BPM })"
-                @click="changeTempo(TEMPO_STEP_BPM)"
-              >
-                +{{ TEMPO_STEP_BPM }}
-              </button>
-            </div>
-            <div class="flex justify-between px-11 text-xs tabular-nums text-ink-subtle" aria-hidden="true">
-              <span data-test="tempo-min">{{ slowestTempo }}</span>
-              <span data-test="tempo-max">{{ MAX_TEMPO_BPM }}</span>
-            </div>
-          </template>
-        </div>
-        <p class="text-xs text-ink-muted">
-          {{ warmUp ? t('playAlongTake.warmUpHint') : t('playAlongTake.goal', { target: playAlong.target_tempo_bpm, best }) }}
-        </p>
+      <ItemHeader :title="localizedName(loaded.diagram.value.names)" :reason="item.reason" />
+
+      <div class="flex items-center gap-1">
+        <p data-test="take-meta" class="text-sm text-ink-muted">{{ meta }}</p>
+        <button
+          type="button"
+          data-test="item-info"
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted hover:text-ink"
+          :aria-label="t('playAlongTake.info')"
+          :aria-expanded="infoOpen"
+          aria-controls="play-along-info"
+          @click="infoOpen = !infoOpen"
+        >
+          <Info :size="18" aria-hidden="true" />
+        </button>
       </div>
+      <p v-if="warmUp" class="text-sm text-ink-muted">{{ t('playAlongTake.warmUpHint') }}</p>
       <PlayAlongInfo v-if="infoOpen" :reason="item.reason" :diagram="loaded.diagram.value" @close="infoOpen = false" />
 
-      <div ref="stage" data-test="take-stage" class="flex scroll-mt-20 flex-col gap-3">
-        <div class="relative rounded-lg bg-surface-raised p-2">
+      <div ref="stage" data-test="take-stage" class="flex scroll-mt-20 flex-col gap-4">
+        <div class="relative rounded-lg border border-border bg-surface-raised p-2">
           <FrettedDiagramView
             :diagram="loaded.diagram.value"
             :instrument="loaded.instrument.value"
@@ -296,77 +233,42 @@ const best = computed(() => playAlong.value.best_clean_tempo_bpm ?? t('playAlong
           </div>
         </div>
 
-        <template v-if="phase === 'ready'">
-          <div class="flex items-center gap-3">
-            <PrimaryButton data-test="start-take" data-primary-action @click="startTake">{{ t('playAlongTake.start') }}</PrimaryButton>
-            <div
-              data-test="take-dots"
-              class="flex items-center gap-1.5"
-              role="img"
-              :aria-label="t('playAlongTake.takeOf', { current: Math.min(takesPlayed + 1, takesTotal), total: takesTotal })"
-            >
-              <span
-                v-for="n in takesTotal"
-                :key="n"
-                data-test="take-dot"
-                :data-played="n <= takesPlayed"
-                class="h-2.5 w-2.5 rounded-full"
-                :class="n <= takesPlayed ? 'bg-accent' : 'border border-border'"
-              />
-            </div>
-            <button
-              type="button"
-              data-test="metronome"
-              class="ml-auto flex h-10 w-10 items-center justify-center rounded-full border"
-              :class="metronome ? 'border-accent bg-accent-muted text-accent-text' : 'border-border text-ink-muted'"
-              :aria-pressed="metronome"
-              :aria-label="t('playAlongTake.metronome')"
-              :title="t('playAlongTake.metronome')"
-              @click="metronome = !metronome"
-            >
-              <Metronome :size="20" aria-hidden="true" />
-            </button>
-          </div>
-          <p v-if="loadError" class="text-sm text-danger" role="alert">{{ t('playAlongTake.loadError') }}</p>
-          <p v-else-if="message" class="text-sm" aria-live="polite">{{ message }}</p>
-          <p class="text-xs text-ink-muted">{{ t('playAlongTake.countInHint') }}</p>
-        </template>
-
-        <div v-else-if="phase === 'playing'" class="flex items-center gap-3">
-          <button type="button" data-test="stop-early" class="rounded-lg border border-border px-4 py-2 text-sm" @click="stopEarly">
-            {{ t('playAlongTake.stopEarly') }}
-          </button>
-          <button type="button" data-test="restart-take" class="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm" @click="restartTake">
-            <RotateCcw :size="16" aria-hidden="true" />
-            {{ t('playAlongTake.restart') }}
-          </button>
-          <p class="text-sm text-ink-muted">{{ t('playAlongTake.playing') }}</p>
-        </div>
-
-        <template v-else>
-          <div class="flex items-center justify-between gap-2">
-            <p class="font-semibold">{{ t('playAlongTake.ratePrompt', { bpm: tempo }) }}</p>
-            <button type="button" data-test="restart-take" class="flex shrink-0 items-center gap-1.5 text-sm font-medium text-accent-text underline" @click="restartTake">
-              <RotateCcw :size="14" aria-hidden="true" />
-              {{ t('playAlongTake.restartUnrated') }}
-            </button>
-          </div>
-          <div class="grid grid-cols-3 gap-2">
-            <button
-              v-for="option in ratings"
-              :key="option.rating"
-              type="button"
-              :data-test="`rate-${option.rating}`"
-              class="flex flex-col items-center rounded-lg p-3 text-ink"
-              :class="option.tone"
-              @click="rate(option.rating)"
-            >
-              <span class="text-base font-semibold">{{ t(option.label) }}</span>
-              <span class="text-center text-xs text-ink-muted">{{ t(option.hint) }}</span>
-            </button>
-          </div>
-        </template>
+        <TempoControl
+          :tempo="tempo"
+          :slowest="slowestTempo"
+          :goal="playAlong.target_tempo_bpm"
+          :best="playAlong.best_clean_tempo_bpm ?? null"
+          :metronome="metronome"
+          :disabled="phase !== 'ready'"
+          @update:metronome="metronome = $event"
+          @tempo="chooseTempo"
+        />
       </div>
+
+      <template v-if="phase === 'ready'">
+        <p v-if="loadError" class="text-sm text-danger" role="alert">{{ t('playAlongTake.loadError') }}</p>
+        <p v-else-if="message" class="text-sm" aria-live="polite">{{ message }}</p>
+        <p class="text-xs text-ink-muted">{{ t('playAlongTake.countInHint') }}</p>
+        <PracticeActionBar>
+          <PrimaryButton data-test="start-take" data-primary-action class="h-12 w-full" @click="startTake">
+            {{ t('playAlongTake.start') }}
+          </PrimaryButton>
+        </PracticeActionBar>
+      </template>
+
+      <template v-else-if="phase === 'playing'">
+        <p class="text-sm text-ink-muted">{{ t('playAlongTake.playing') }}</p>
+        <PracticeActionBar>
+          <AppButton data-test="restart-take" variant="tertiary" class="h-12 px-4" @click="restartTake">
+            {{ t('playAlongTake.restart') }}
+          </AppButton>
+          <AppButton data-test="stop-early" variant="secondary" class="h-12 flex-1" @click="stopEarly">
+            {{ t('playAlongTake.stopEarly') }}
+          </AppButton>
+        </PracticeActionBar>
+      </template>
+
+      <SelfRating v-else :bpm="tempo" @rate="rate" @restart="restartTake" />
     </template>
   </div>
 </template>

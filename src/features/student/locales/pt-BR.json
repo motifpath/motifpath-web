@@ -286,7 +286,7 @@
     "warmUpHint": "Aquecimento: toque relaxado. Não conta para o seu progresso.",
     "start": "Começar execução",
     "countInHint": "Um compasso de contagem, depois toque junto.",
-    "playing": "Toque junto. A execução termina sozinha.",
+    "playing": "Toque junto. A execução termina sozinha. Andamento errado? Recomeçar volta ao andamento sem avaliar.",
     "stopEarly": "Parar antes",
     "ratePrompt": "Como foi essa execução a {bpm} BPM?",
     "ratings": {
