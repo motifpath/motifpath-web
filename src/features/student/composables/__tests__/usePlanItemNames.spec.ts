@@ -47,6 +47,7 @@ const exercise: Item = {
     languages: [{ code: 'en', name: 'English' }],
     instrument_ids: [],
     created_at: '2026-10-06T00:00:00Z',
+    updated_at: '2026-10-06T00:00:00Z',
   },
 }
 

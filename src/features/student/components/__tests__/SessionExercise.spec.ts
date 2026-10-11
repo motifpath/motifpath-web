@@ -33,6 +33,7 @@ function item(exerciseId: string, options: Exercise['options'], reason: Item['re
       languages: [{ code: 'en', name: 'English' }],
       instrument_ids: [],
       created_at: '2026-10-06T00:00:00Z',
+      updated_at: '2026-10-06T00:00:00Z',
     },
   }
 }

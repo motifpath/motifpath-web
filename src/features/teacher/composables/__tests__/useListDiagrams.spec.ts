@@ -41,7 +41,7 @@ describe('useListDiagrams', () => {
     expect(GET).toHaveBeenCalledWith('/diagrams', {
       params: {
         query: {
-          limit: 20, offset: 0, kind: 'custom', created_by: 'u-1', instrument_id: 'i-1', skill_id: 's-1', concept_id: 'c-1',
+          limit: 20, offset: 0, kind: 'custom', created_by: 'u-1', instrument_id: 'i-1', skill_ids: ['s-1'], concept_ids: ['c-1'],
           name: 'penta', root_note: 'A', language: 'pt_BR',
         },
       },

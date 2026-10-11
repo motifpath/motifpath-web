@@ -19,6 +19,8 @@ export function makeVideoNode(id: string, overrides: Partial<ContentNode> = {}):
     languages: [{ code: 'any', name: 'Language-agnostic' }],
     instrument_ids: [],
     created_at: '2026-09-21T12:00:00Z',
+    updated_at: '2026-09-21T12:00:00Z',
+    has_unpublished_changes: true,
     ...overrides,
   }
 }

@@ -272,6 +272,7 @@ function diagramForPreview(positions: Diagram['positions'], regions: Diagram['re
     regions,
     classification: { skills: [], concepts: [] },
     created_at: '',
+    updated_at: '',
   }
 }
 

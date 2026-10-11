@@ -52,10 +52,13 @@ export interface paths {
          * @description Returns content nodes from the library, for browsing and picking one
          *     to edit, use as a remediation target, or add to a learning path —
          *     not a student-facing catalog.
-         *     Results are paginated (ADR-031): ordered by title, then id and
-         *     returned in a {items, total, limit, offset} envelope. An offset
-         *     past the end returns an empty items array, not an error.
-         *     Only teachers and admins may list content nodes.
+         *     Results are paginated (ADR-031) in a {items, total, limit, offset}
+         *     envelope, in the order sort asks for (by title, then id, unless
+         *     sort is updated). An offset past the end returns an empty items
+         *     array, not an error.
+         *     Only teachers and admins may list content nodes; both see every
+         *     author's nodes. Every filter below is optional and they combine
+         *     with AND; skill_ids and concept_ids are any-of within themselves.
          */
         get: operations["listContentNodes"];
         put?: never;
@@ -79,6 +82,38 @@ export interface paths {
          *     item, either alongside media_url or rich_content.
          */
         post: operations["createContentNode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/content-nodes/creators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the creators of the content nodes in the library
+         * @description Returns every distinct user who created at least one content node,
+         *     so a picker can offer a complete creator filter (the created_by
+         *     parameter of GET /content-nodes) without paging. Only teachers and
+         *     admins may list content node creators, as with the library itself.
+         *
+         *     The list is unpaginated: it is bounded by the number of teachers
+         *     and admins, not by the number of content nodes. Results are always
+         *     ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents, so "Álvaro" sorts with the A's — then
+         *     by user_id; an empty array means no creator matches.
+         *     Each creator carries item_count, the number of items in this list's
+         *     section by them that the caller can see, whatever other filters the
+         *     section's list is given.
+         */
+        get: operations["listContentNodeCreators"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -251,9 +286,10 @@ export interface paths {
          * List standalone exercises for authoring
          * @description Returns exercises from the reusable pool, for browsing and picking one
          *     to edit in an authoring tool.
-         *     Results are paginated (ADR-031): ordered by id and
-         *     returned in a {items, total, limit, offset} envelope. An offset
-         *     past the end returns an empty items array, not an error.
+         *     Results are paginated (ADR-031) in a {items, total, limit, offset}
+         *     envelope, in the order sort asks for (by title, then id, unless
+         *     sort is updated). An offset past the end returns an empty items
+         *     array, not an error.
          *     Only teachers and admins may list exercises; the pool is an
          *     authoring surface, not a student-facing catalog. Every teacher sees
          *     the whole pool, whoever created each exercise.
@@ -502,6 +538,9 @@ export interface paths {
          *     ordered by display_name, alphabetically as a person reads names —
          *     ignoring case and accents, so "Álvaro" sorts with the A's — then
          *     by user_id; an empty array means no creator matches.
+         *     Each creator carries item_count, the number of items in this list's
+         *     section by them that the caller can see, whatever other filters the
+         *     section's list is given.
          */
         get: operations["listExerciseCreators"];
         put?: never;
@@ -798,11 +837,13 @@ export interface paths {
          *     creators to offer.
          *
          *     Results are paginated in a {items, total, limit, offset} envelope,
-         *     ordered by the name the caller sees — the diagram's name in the
-         *     caller's locale, else its English name, else its name in the
-         *     alphabetically first language it has — then by id; an offset past
-         *     the end returns an empty items array. Every filter below is
-         *     optional and they combine with AND.
+         *     in the order sort asks for. By default they are ordered by the name
+         *     the caller sees — the diagram's name in the caller's locale, else
+         *     its English name, else its name in the alphabetically first
+         *     language it has — then by id; sort=updated orders by the most
+         *     recent change first, then id. An offset past the end returns an
+         *     empty items array. Every filter below is optional and they combine
+         *     with AND; skill_ids and concept_ids are any-of within themselves.
          *
          *     Chord voicings from the chord catalog are left out unless purpose
          *     asks for them, so they don't crowd the diagrams authors browse;
@@ -855,6 +896,9 @@ export interface paths {
          *     ordered by display_name, alphabetically as a person reads names —
          *     ignoring case and accents, so "Álvaro" sorts with the A's — then
          *     by user_id; an empty array means no creator matches.
+         *     Each creator carries item_count, the number of items in this list's
+         *     section by them that the caller can see, whatever other filters the
+         *     section's list is given.
          */
         get: operations["listDiagramCreators"];
         put?: never;
@@ -1267,6 +1311,9 @@ export interface paths {
          *     never matches it. A path matches skill_ids when any of its content
          *     nodes is classified with any of the given skills, and, if
          *     concept_ids is also given, also with any of the given concepts.
+         *     A skill or concept id also matches every skill or concept below
+         *     it in the knowledge map's tree, so choosing an area finds what is
+         *     classified with any of its sub-skills or sub-concepts.
          *     language matches a path's own language; a path with no language
          *     recorded never matches it. status matches a path's publishing
          *     status.
@@ -1321,6 +1368,9 @@ export interface paths {
          *     ordered by display_name, alphabetically as a person reads names —
          *     ignoring case and accents, so "Álvaro" sorts with the A's — then
          *     by user_id; an empty array means no creator matches.
+         *     Each creator carries item_count, the number of items in this list's
+         *     section by them that the caller can see, whatever other filters the
+         *     section's list is given.
          */
         get: operations["listLearningPathCreators"];
         put?: never;
@@ -1470,6 +1520,9 @@ export interface paths {
          *     version's checkpoints' learning path templates contains a
          *     content node classified with any of the given skills, and, if
          *     both parameters are given, also with any of the given concepts.
+         *     A skill or concept id also matches every skill or concept below
+         *     it in the knowledge map's tree, so choosing an area finds what is
+         *     classified with any of its sub-skills or sub-concepts.
          */
         get: operations["listCatalogCourses"];
         put?: never;
@@ -1501,6 +1554,9 @@ export interface paths {
          *     ordered by display_name, alphabetically as a person reads names —
          *     ignoring case and accents, so "Álvaro" sorts with the A's — then
          *     by user_id; an empty array means no creator matches.
+         *     Each creator carries item_count, the number of items in this list's
+         *     section by them that the caller can see, whatever other filters the
+         *     section's list is given.
          */
         get: operations["listCatalogCreators"];
         put?: never;
@@ -1535,6 +1591,9 @@ export interface paths {
          *     parameter). A path matches when any of its content nodes is
          *     classified with any of the given skills, and, if both parameters
          *     are given, also with any of the given concepts.
+         *     A skill or concept id also matches every skill or concept below
+         *     it in the knowledge map's tree, so choosing an area finds what is
+         *     classified with any of its sub-skills or sub-concepts.
          */
         get: operations["listCatalogPaths"];
         put?: never;
@@ -1590,6 +1649,9 @@ export interface paths {
          *     ordered by display_name, alphabetically as a person reads names —
          *     ignoring case and accents, so "Álvaro" sorts with the A's — then
          *     by user_id; an empty array means no creator matches.
+         *     Each creator carries item_count, the number of items in this list's
+         *     section by them that the caller can see, whatever other filters the
+         *     section's list is given.
          */
         get: operations["listCatalogPathCreators"];
         put?: never;
@@ -1711,9 +1773,11 @@ export interface paths {
          *     /courses/{course_id} for that). Passing status narrows the list
          *     to that status; otherwise every status is returned, each
          *     annotated with whether its live draft has unpublished changes.
-         *     Every filter is evaluated against the live draft. Results are
-         *     ordered by title, then id. To browse the published catalog as a
-         *     learner, whatever your role, use GET /catalog/courses.
+         *     Every filter is evaluated against the live draft. Results are in
+         *     the order sort asks for (by title, then id, unless sort is updated
+         *     — the most recent change to the course or its live draft first).
+         *     To browse the published catalog as a learner, whatever your role,
+         *     use GET /catalog/courses.
          *
          *     Results are paginated in a {items, total, limit,
          *     offset} envelope; an offset past the end returns an empty items
@@ -1731,6 +1795,9 @@ export interface paths {
          *     checkpoints' learning path templates contains a content node
          *     classified with any of the given skills, and, if both parameters
          *     are given, also with any of the given concepts.
+         *     A skill or concept id also matches every skill or concept below
+         *     it in the knowledge map's tree, so choosing an area finds what is
+         *     classified with any of its sub-skills or sub-concepts.
          */
         get: operations["listCourses"];
         put?: never;
@@ -1777,6 +1844,9 @@ export interface paths {
          *     ordered by display_name, alphabetically as a person reads names —
          *     ignoring case and accents, so "Álvaro" sorts with the A's — then
          *     by user_id; an empty array means no creator matches.
+         *     Each creator carries item_count, the number of items in this list's
+         *     section by them that the caller can see, whatever other filters the
+         *     section's list is given.
          */
         get: operations["listCourseCreators"];
         put?: never;
@@ -2586,6 +2656,13 @@ export interface components {
              * @description Timestamp at which the content node was created.
              */
             created_at: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of the last change to the content node; equal to created_at until the first change. GET lists sort by it with sort=updated.
+             */
+            updated_at: string;
+            /** @description True when the content node differs from its latest published version in anything a version records (title, classification, media_url or rich_content, languages, instruments or thumbnail), or nothing has been published yet. Publishing makes it false. */
+            has_unpublished_changes: boolean;
             /** @description The version_number of the most recently published ContentNodeVersion, or null if this node has never been published. A node with no published version cannot be copied into a StudentPathItem. */
             latest_published_version?: number | null;
             instrument_ids: components["schemas"]["InstrumentIds"];
@@ -3272,6 +3349,11 @@ export interface components {
              * @description Timestamp at which the diagram was created.
              */
             created_at: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of the last change to the diagram; equal to created_at until the first change. GET lists sort by it with sort=updated.
+             */
+            updated_at: string;
         };
         /**
          * @description Payload for creating a new diagram. Every position's string/fret vs.
@@ -4849,6 +4931,11 @@ export interface components {
             published_at: string | null;
             /** @description True when the live draft differs from the latest published version in anything a version records (title, summary, level, language, instruments, thumbnail or checkpoints), or nothing has been published yet. Present only in the authoring list, GET /courses; GET /catalog/courses never returns it. */
             has_unpublished_changes?: boolean;
+            /**
+             * Format: date-time
+             * @description Timestamp of the last change to the course: its details, its live draft, publishing or retiring. GET /courses sorts by it with sort=updated. Present only in the authoring list, GET /courses; GET /catalog/courses never returns it.
+             */
+            updated_at?: string;
             instrument_ids: components["schemas"]["InstrumentIds"];
             /**
              * Format: uri
@@ -6016,6 +6103,11 @@ export interface components {
              * @description Timestamp at which the exercise was created.
              */
             created_at: string;
+            /**
+             * Format: date-time
+             * @description Timestamp of the last change to the exercise; equal to created_at until the first change. GET lists sort by it with sort=updated.
+             */
+            updated_at: string;
         };
         /**
          * @description One selectable answer choice within an exercise. An exercise's
@@ -6757,6 +6849,14 @@ export interface components {
             display_name: string;
         };
         /**
+         * @description An author offered by a creator filter: a UserRef plus how many
+         *     items of the list's section they created that the caller can see.
+         */
+        CreatorRef: components["schemas"]["UserRef"] & {
+            /** @description Number of items in the section created by this user that the caller can see, whatever other filters the section's list is given. At least 1, since only creators of a visible item are listed. */
+            item_count: number;
+        };
+        /**
          * @description The stable MotifPath identity for a registered user. The user_id is the
          *     value that other services (e.g. Event Ingestion Service) use to identify
          *     this user in payloads and JWT claim validation.
@@ -6894,6 +6994,12 @@ export interface components {
         Offset: number;
         /** @description Case-insensitive substring match against the item's title (and summary, where it has one). */
         SearchText: string;
+        /** @description title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id. */
+        AuthoringSort: "title" | "updated";
+        /** @description Restricts the results to items classified with at least one of these skills, or a skill below one of them in the skill tree. Repeat the parameter for several skills. */
+        SkillIds: string[];
+        /** @description Restricts the results to items classified with at least one of these concepts, or a concept below one of them in the concept tree. Repeat the parameter for several concepts. */
+        ConceptIds: string[];
         /** @description The ID of the song chart. */
         SongChartId: string;
     };
@@ -7051,6 +7157,7 @@ export type SchemaUpdateInstrumentRequest = components['schemas']['UpdateInstrum
 export type SchemaLanguage = components['schemas']['Language'];
 export type SchemaUpdateMyLocaleRequest = components['schemas']['UpdateMyLocaleRequest'];
 export type SchemaUserRef = components['schemas']['UserRef'];
+export type SchemaCreatorRef = components['schemas']['CreatorRef'];
 export type SchemaUserProfile = components['schemas']['UserProfile'];
 export type SchemaValidationError = components['schemas']['ValidationError'];
 export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError'];
@@ -7066,6 +7173,9 @@ export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
 export type ParameterSearchText = components['parameters']['SearchText'];
+export type ParameterAuthoringSort = components['parameters']['AuthoringSort'];
+export type ParameterSkillIds = components['parameters']['SkillIds'];
+export type ParameterConceptIds = components['parameters']['ConceptIds'];
 export type ParameterSongChartId = components['parameters']['SongChartId'];
 export type $defs = Record<string, never>;
 export interface operations {
@@ -7139,12 +7249,34 @@ export interface operations {
                 limit?: components["parameters"]["Limit"];
                 /** @description Number of matching items to skip before this page (ADR-031). */
                 offset?: components["parameters"]["Offset"];
+                /** @description title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id. */
+                sort?: components["parameters"]["AuthoringSort"];
+                /** @description Restricts the results to items classified with at least one of these skills, or a skill below one of them in the skill tree. Repeat the parameter for several skills. */
+                skill_ids?: components["parameters"]["SkillIds"];
+                /** @description Restricts the results to items classified with at least one of these concepts, or a concept below one of them in the concept tree. Repeat the parameter for several concepts. */
+                concept_ids?: components["parameters"]["ConceptIds"];
+                /**
+                 * @description Restricts the results to content nodes created by this user.
+                 *     GET /content-nodes/creators lists the creators to offer.
+                 */
+                created_by?: string;
+                /**
+                 * @description Restricts the results to content nodes available in this
+                 *     language (a Language.code other than "any"): those that list
+                 *     it among their languages. A language-agnostic node (languages
+                 *     "any") never matches.
+                 */
+                language?: string;
+                /**
+                 * @description Restricts the results by publishing status. draft: never
+                 *     published (no latest_published_version). published: published
+                 *     and not edited since its latest version. unpublished_changes:
+                 *     published, then edited after its latest version was published
+                 *     (has_unpublished_changes).
+                 */
+                status?: "draft" | "published" | "unpublished_changes";
                 /** @description When given, only content nodes of this type are returned. */
                 content_type?: "video" | "article";
-                /** @description When given, only content nodes with this exact skill id among their linked skills are returned. Matches that node only, not its ancestors or descendants. */
-                skill_id?: string;
-                /** @description When given, only content nodes with this exact concept id among their linked concepts are returned. Matches that node only, not its ancestors or descendants. */
-                concept_id?: string;
                 /** @description When given, only content nodes at this difficulty level are returned. */
                 difficulty_level?: "beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert";
                 /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
@@ -7165,7 +7297,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedContentNodes"];
                 };
             };
-            /** @description limit or offset is out of range. */
+            /** @description limit, offset, sort, status or a skill or concept id is out of range. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -7241,6 +7373,56 @@ export interface operations {
              * @description The authenticated user does not have permission to create content.
              *     Only teachers and admins may create content nodes.
              */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listContentNodeCreators: {
+        parameters: {
+            query?: {
+                /** @description Restricts the results to creators whose display_name contains this text, ignoring case and accents ("jose" matches "José"). */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The creators of the content nodes in the library, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatorRef"][];
+                };
+            };
+            /** @description q is out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller is a student. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7701,16 +7883,12 @@ export interface operations {
                 limit?: components["parameters"]["Limit"];
                 /** @description Number of matching items to skip before this page (ADR-031). */
                 offset?: components["parameters"]["Offset"];
-                /**
-                 * @description When given, only exercises linked to this exact skill id are
-                 *     returned.
-                 */
-                skill_id?: string;
-                /**
-                 * @description When given, only exercises linked to this exact concept id are
-                 *     returned.
-                 */
-                concept_id?: string;
+                /** @description title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id. */
+                sort?: components["parameters"]["AuthoringSort"];
+                /** @description Restricts the results to items classified with at least one of these skills, or a skill below one of them in the skill tree. Repeat the parameter for several skills. */
+                skill_ids?: components["parameters"]["SkillIds"];
+                /** @description Restricts the results to items classified with at least one of these concepts, or a concept below one of them in the concept tree. Repeat the parameter for several concepts. */
+                concept_ids?: components["parameters"]["ConceptIds"];
                 /**
                  * @description Restricts the results to exercises written in this language (a
                  *     Language.code other than "any").
@@ -7749,8 +7927,8 @@ export interface operations {
                 };
             };
             /**
-             * @description limit or offset is out of range, or an instrument_id is not a
-             *     valid uuid.
+             * @description limit, offset or sort is out of range, or an instrument_id,
+             *     skill id or concept id is not a valid uuid.
              */
             400: {
                 headers: {
@@ -8474,7 +8652,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRef"][];
+                    "application/json": components["schemas"]["CreatorRef"][];
                 };
             };
             /** @description q is out of range. */
@@ -9458,10 +9636,12 @@ export interface operations {
                 root_note?: string;
                 /** @description When given, only diagrams authored against this instrument are returned. */
                 instrument_id?: string;
-                /** @description When given, only diagrams with this exact skill id among their linked skills are returned. */
-                skill_id?: string;
-                /** @description When given, only diagrams with this exact concept id among their linked concepts are returned. */
-                concept_id?: string;
+                /** @description title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id. */
+                sort?: components["parameters"]["AuthoringSort"];
+                /** @description Restricts the results to items classified with at least one of these skills, or a skill below one of them in the skill tree. Repeat the parameter for several skills. */
+                skill_ids?: components["parameters"]["SkillIds"];
+                /** @description Restricts the results to items classified with at least one of these concepts, or a concept below one of them in the concept tree. Repeat the parameter for several concepts. */
+                concept_ids?: components["parameters"]["ConceptIds"];
                 /**
                  * @description Restricts the results to diagrams of this purpose (see
                  *     Diagram.purpose). Omitted, it is general, so chord voicings are
@@ -9484,7 +9664,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedDiagrams"];
                 };
             };
-            /** @description limit, offset, kind, language, name, root_note or purpose is out of range. */
+            /** @description limit, offset, kind, language, name, root_note, purpose or sort is out of range, or a skill or concept id is not a valid uuid. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -9595,7 +9775,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRef"][];
+                    "application/json": components["schemas"]["CreatorRef"][];
                 };
             };
             /** @description q is out of range. */
@@ -10599,12 +10779,12 @@ export interface operations {
                 created_by?: string;
                 /** @description Restricts the results to learning paths at any of these levels. */
                 levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
-                /** @description Restricts the results to learning paths with a content node classified with at least one of these skills. */
+                /** @description Restricts the results to learning paths with a content node classified with at least one of these skills, or a skill below one of them. */
                 skill_ids?: string[];
-                /** @description Restricts the results to learning paths with a content node classified with at least one of these concepts. */
+                /** @description Restricts the results to learning paths with a content node classified with at least one of these concepts, or a concept below one of them. */
                 concept_ids?: string[];
-                /** @description title orders by title, then id. updated orders by updated_at, most recent first, then id. */
-                sort?: "title" | "updated";
+                /** @description title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id. */
+                sort?: components["parameters"]["AuthoringSort"];
                 /** @description Restricts the results to items for this instrument, or for every instrument (an empty instrument_ids). */
                 instrument_id?: string;
                 /**
@@ -10735,7 +10915,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRef"][];
+                    "application/json": components["schemas"]["CreatorRef"][];
                 };
             };
             /** @description q is empty or longer than 200 characters. */
@@ -11113,9 +11293,9 @@ export interface operations {
                 levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
                 /** @description Restricts the results to courses created by this user. */
                 created_by?: string;
-                /** @description Restricts the results to courses classified with at least one of these skills. */
+                /** @description Restricts the results to courses classified with at least one of these skills, or a skill below one of them. */
                 skill_ids?: string[];
-                /** @description Restricts the results to courses classified with at least one of these concepts. */
+                /** @description Restricts the results to courses classified with at least one of these concepts, or a concept below one of them. */
                 concept_ids?: string[];
                 /**
                  * @description Restricts the results to courses written in this language
@@ -11178,7 +11358,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRef"][];
+                    "application/json": components["schemas"]["CreatorRef"][];
                 };
             };
             /** @description Missing or invalid Bearer token. */
@@ -11205,9 +11385,9 @@ export interface operations {
                 levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
                 /** @description Restricts the results to paths created by this user. */
                 created_by?: string;
-                /** @description Restricts the results to paths with a content node classified with at least one of these skills. */
+                /** @description Restricts the results to paths with a content node classified with at least one of these skills, or a skill below one of them. */
                 skill_ids?: string[];
-                /** @description Restricts the results to paths with a content node classified with at least one of these concepts. */
+                /** @description Restricts the results to paths with a content node classified with at least one of these concepts, or a concept below one of them. */
                 concept_ids?: string[];
                 /**
                  * @description Restricts the results to paths written in this language
@@ -11320,7 +11500,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRef"][];
+                    "application/json": components["schemas"]["CreatorRef"][];
                 };
             };
             /** @description q is empty or longer than 200 characters. */
@@ -11566,13 +11746,15 @@ export interface operations {
                 limit?: components["parameters"]["Limit"];
                 /** @description Number of matching items to skip before this page (ADR-031). */
                 offset?: components["parameters"]["Offset"];
+                /** @description title orders by title (for diagrams, the name the caller reads), then id. updated orders by updated_at, most recent change first, then id. */
+                sort?: components["parameters"]["AuthoringSort"];
                 /** @description Restricts the results to courses at any of these levels. */
                 levels?: ("beginner" | "early_intermediate" | "intermediate" | "advanced" | "expert")[];
                 /** @description Restricts the results to courses created by this user. */
                 created_by?: string;
-                /** @description Restricts the results to courses classified with at least one of these skills. */
+                /** @description Restricts the results to courses classified with at least one of these skills, or a skill below one of them. */
                 skill_ids?: string[];
-                /** @description Restricts the results to courses classified with at least one of these concepts. */
+                /** @description Restricts the results to courses classified with at least one of these concepts, or a concept below one of them. */
                 concept_ids?: string[];
                 /** @description Restricts the results to courses in this status. */
                 status?: "draft" | "published" | "retired";
@@ -11599,7 +11781,7 @@ export interface operations {
                     "application/json": components["schemas"]["PagedCourseCatalog"];
                 };
             };
-            /** @description limit or offset is out of range. */
+            /** @description limit, offset, sort or status is out of range. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -11708,7 +11890,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserRef"][];
+                    "application/json": components["schemas"]["CreatorRef"][];
                 };
             };
             /** @description Missing or invalid Bearer token. */

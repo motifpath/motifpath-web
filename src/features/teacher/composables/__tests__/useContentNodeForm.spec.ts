@@ -194,6 +194,8 @@ describe('useContentNodeForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        has_unpublished_changes: true,
       })
 
       expect(form.title.value).toBe('Alternate picking basics')
@@ -220,6 +222,8 @@ describe('useContentNodeForm', () => {
         instrument_ids: ['i-guitar'],
         thumbnail_url: 'https://cdn.test/thumbnails/cn.png',
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        has_unpublished_changes: true,
       })
 
       expect(form.instrumentIds.value).toEqual(['i-guitar'])
@@ -244,6 +248,8 @@ describe('useContentNodeForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        has_unpublished_changes: true,
       })
 
       expect(form.mediaUrl.value).toBe('https://cdn.example.com/lesson.mp4')
@@ -269,6 +275,8 @@ describe('useContentNodeForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        has_unpublished_changes: true,
       })
 
       expect(form.richContent.value).toEqual(ARTICLE_BODY)
@@ -292,6 +300,8 @@ describe('useContentNodeForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        has_unpublished_changes: true,
       })
 
       expect(form.mediaUrl.value).toBe('')
@@ -316,6 +326,8 @@ describe('useContentNodeForm', () => {
         languages: [{ code: 'pt_BR', name: 'Portuguese (Brazil)' }],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        has_unpublished_changes: true,
       })
 
       expect(form.toUpdateContentNodeRequest().language_codes).toEqual(['pt_BR'])
@@ -334,6 +346,8 @@ describe('useContentNodeForm', () => {
         languages: [],
         instrument_ids: [],
         created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        has_unpublished_changes: true,
       })
 
       expect(form.toUpdateContentNodeRequest().language_codes).toEqual(['any'])
