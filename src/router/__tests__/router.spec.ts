@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@clerk/vue', () => ({
-  SignIn: { name: 'SignIn', template: '<div />' },
+  AuthenticateWithRedirectCallback: { name: 'AuthenticateWithRedirectCallback', template: '<div />' },
   useAuth: () => ({
     isLoaded: { value: true },
     isSignedIn: { value: false },
@@ -25,13 +25,33 @@ describe('router', () => {
     vi.restoreAllMocks()
   })
 
-  it('sends an unauthenticated visitor from a protected route to sign-in', async () => {
+  it('sends an unauthenticated visitor from a protected route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/path')
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
     expect(router.currentRoute.value.query.redirect).toBe('/path')
+  })
+
+  it('leads the old sign-in address to the landing, keeping where the visitor was heading', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/sign-in?redirect=%2Fprogress')
+
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(router.currentRoute.value.query.redirect).toBe('/progress')
+  })
+
+  it.each([
+    ['/sso-callback', 'sso-callback'],
+    ['/welcome/name', 'name-step'],
+  ])('lets a signed-out visitor reach %s, where Google sign-in finishes', async (path, name) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push(path)
+
+    expect(router.currentRoute.value.name).toBe(name)
   })
 
   it('lets a registered visitor reach a protected route', async () => {
@@ -72,7 +92,7 @@ describe('router', () => {
     expect(router.currentRoute.value.query.redirect).toBe('/path')
   })
 
-  it('sends an unauthenticated visitor away from the registering route to sign-in', async () => {
+  it('sends an unauthenticated visitor away from the registering route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/welcome')
@@ -81,16 +101,16 @@ describe('router', () => {
     // route — the self-referential-loop defense lives downstream, in
     // readRedirectQuery rejecting a bridge route's own path as a value
     // (see redirectQuery.spec.ts), not in the guard omitting it here.
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
     expect(router.currentRoute.value.query.redirect).toBe('/welcome')
   })
 
-  it('sends an unauthenticated visitor away from the registration-error route to sign-in', async () => {
+  it('sends an unauthenticated visitor away from the registration-error route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/welcome/error')
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
   })
 
   it('lets a signed-in visitor stay on the registering route while idle/in-flight', async () => {
@@ -130,12 +150,12 @@ describe('router', () => {
     expect(router.currentRoute.value.params.nodeId).toBe('node-abc')
   })
 
-  it('sends an unauthenticated visitor from a node route to sign-in', async () => {
+  it('sends an unauthenticated visitor from a node route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/path/nodes/node-abc')
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
     expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc')
   })
 
@@ -155,12 +175,12 @@ describe('router', () => {
     expect(matched[0]!.path).toBe('/path/nodes/:nodeId/practice')
   })
 
-  it('sends an unauthenticated visitor from a node practice route to sign-in', async () => {
+  it('sends an unauthenticated visitor from a node practice route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/path/nodes/node-abc/practice')
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
     expect(router.currentRoute.value.query.redirect).toBe('/path/nodes/node-abc/practice')
   })
 
@@ -194,12 +214,12 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
-  it('sends an unauthenticated visitor from the teacher exercise-authoring route to sign-in', async () => {
+  it('sends an unauthenticated visitor from the teacher exercise-authoring route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/teacher/exercises/new')
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
     expect(router.currentRoute.value.query.redirect).toBe('/teacher/exercises/new')
   })
 
@@ -315,11 +335,11 @@ describe('router', () => {
     expect(router.currentRoute.value.query).toEqual({ instrument: 'i-1' })
   })
 
-  it('sends an unauthenticated visitor from Your progress to sign-in', async () => {
+  it('sends an unauthenticated visitor from Your progress to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push({ name: 'your-progress' })
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
   })
 
   it('gives a lesson the phone’s full height, without the bottom navigation bar', () => {
@@ -400,12 +420,12 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
-  it('sends an unauthenticated visitor from the course catalog to sign-in', async () => {
+  it('sends an unauthenticated visitor from the course catalog to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 
     await router.push('/courses')
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
   })
 
   // A resolved location as the scroll behavior receives it: always named here.

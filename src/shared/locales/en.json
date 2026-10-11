@@ -28,12 +28,8 @@
     "saved": "Saved",
     "tryAgain": "Try again",
     "signOut": "Sign out",
-    "signOutTryDifferentAccount": "Sign out and try a different account",
-    "signIn": "Sign in",
     "backToPath": "Back to path",
-    "back": "‹ Back",
-    "addYourName": "Add your name",
-    "nameAddedTryAgain": "I've added my name — try again"
+    "back": "‹ Back"
   },
   "states": {
     "loading": "Loading…",
@@ -43,9 +39,7 @@
     }
   },
   "errors": {
-    "localeUpdateFailed": "Could not update your language preference. Please try again.",
-    "registrationFailed": "We couldn't finish setting up your account. This is usually temporary.",
-    "registrationNameRequired": "Your account doesn't have a name yet. Add your first and last name to your profile, then try again."
+    "localeUpdateFailed": "Could not update your language preference. Please try again."
   },
   "localeSwitcher": {
     "label": "Language",
@@ -337,5 +331,10 @@
     "label": "Show the chord as",
     "box": "Box",
     "neck": "Neck"
-  }
+  },
+  "googleButton": {
+    "continue": "Continue with Google",
+    "busy": "Setting up your account…"
+  },
+  "signedOutToast": "You're signed out. Your practice and progress are saved."
 }

@@ -29,7 +29,7 @@ function testRouter() {
       { path: '/welcome', name: 'registering', component: HostComponent },
       { path: '/welcome/error', name: 'registration-error', component: HostComponent },
       { path: '/path', name: 'path', component: { template: '<div />' } },
-      { path: '/sign-in', name: 'sign-in', component: { template: '<div />' } },
+      { path: '/', name: 'home', component: { template: '<div />' } },
     ],
   })
 }
@@ -43,14 +43,14 @@ async function mountAt(fullPath: string) {
 }
 
 describe('useRegistrationRedirect', () => {
-  it('navigates to the path route once registered, when there is no redirect target', async () => {
+  it('navigates Home once registered, when there is no redirect target', async () => {
     currentUser.state = 'registering'
     const router = await mountAt('/welcome')
 
     currentUser.state = 'registered'
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(router.currentRoute.value.name).toBe('path')
+    expect(router.currentRoute.value.name).toBe('home')
   })
 
   it('honors a non-empty redirect target once registered', async () => {
@@ -73,14 +73,14 @@ describe('useRegistrationRedirect', () => {
     expect(router.currentRoute.value.name).toBe('registration-error')
   })
 
-  it('navigates to sign-in when state resets to idle (e.g. signed out mid-flight)', async () => {
+  it('navigates to the landing when state resets to idle (e.g. signed out mid-flight)', async () => {
     currentUser.state = 'registering'
     const router = await mountAt('/welcome')
 
     currentUser.state = 'idle'
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
   })
 
   it('preserves the redirect target through a failure, so a later retry can still honor it', async () => {
@@ -101,7 +101,7 @@ describe('useRegistrationRedirect', () => {
     currentUser.state = 'idle'
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(router.currentRoute.value.name).toBe('sign-in')
+    expect(router.currentRoute.value.name).toBe('home')
     expect(router.currentRoute.value.query.redirect).toBe('/path')
   })
 

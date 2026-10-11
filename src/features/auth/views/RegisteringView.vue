@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import RegisteringNotice from '@/features/auth/components/RegisteringNotice.vue'
+import AccountBridge from '@/features/auth/components/AccountBridge.vue'
 import { useRegistrationRedirect } from '@/features/auth/composables/useRegistrationRedirect'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -15,8 +15,5 @@ useRegistrationRedirect()
 </script>
 
 <template>
-  <section class="flex flex-col items-start gap-4">
-    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">MotifPath</h1>
-    <RegisteringNotice test-id="loading" />
-  </section>
+  <AccountBridge />
 </template>

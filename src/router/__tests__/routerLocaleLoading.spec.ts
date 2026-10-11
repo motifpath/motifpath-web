@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@clerk/vue', () => ({
-  SignIn: { name: 'SignIn', template: '<div />' },
+  AuthenticateWithRedirectCallback: { name: 'AuthenticateWithRedirectCallback', template: '<div />' },
   useAuth: () => ({
     isLoaded: { value: true },
     isSignedIn: { value: false },
@@ -32,7 +32,7 @@ describe('router locale loading', () => {
   beforeEach(async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
     updateRoleBridge(null)
-    await router.replace('/sign-in')
+    await router.replace('/sso-callback')
     await router.isReady()
     ensureAuthLocaleLoaded.mockClear()
     ensureStudentLocaleLoaded.mockClear()
@@ -50,7 +50,7 @@ describe('router locale loading', () => {
   })
 
   it('loads the student locale when navigating to home from a sibling route under the same parent', async () => {
-    // Arrives at /sign-in via beforeEach — the '/' parent record is already
+    // Arrives at /sso-callback via beforeEach — the '/' parent record is already
     // matched, so it will not be re-classified as "entering" on this push.
     await router.push('/')
 
@@ -68,11 +68,11 @@ describe('router locale loading', () => {
     expect(ensureStudentLocaleLoaded).toHaveBeenCalled()
   })
 
-  it('does not load the student locale when navigating to sign-in', async () => {
+  it('does not load the student locale when navigating to another auth route', async () => {
     await router.push('/')
     ensureStudentLocaleLoaded.mockClear()
 
-    await router.push('/sign-in')
+    await router.push('/sso-callback')
 
     expect(ensureStudentLocaleLoaded).not.toHaveBeenCalled()
   })

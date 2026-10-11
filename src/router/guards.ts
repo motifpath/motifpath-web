@@ -31,7 +31,7 @@ function bridgeRouteFor(registration: RegistrationState): string | null {
 
 /**
  * Navigation guard: routes marked `meta.requiresAuth` wait for Clerk to load,
- * then send signed-out visitors to the sign-in route (preserving their target
+ * then send signed-out visitors to the landing (home) (preserving their target
  * as `?redirect=`; `readRedirectQuery` rejects a bridge route's own path as a
  * redirect value, so this never produces a self-referential loop even when
  * `to` is itself `/welcome` or `/welcome/error`).
@@ -54,7 +54,7 @@ export function createAuthGuard(auth: AuthChecker) {
     await auth.isReady()
 
     if (!auth.isSignedIn()) {
-      return routeWithRedirect('sign-in', to.fullPath)
+      return routeWithRedirect('home', to.fullPath)
     }
 
     const bridgeRoute = bridgeRouteFor(auth.getRegistrationState())

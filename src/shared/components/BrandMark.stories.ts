@@ -14,3 +14,7 @@ type Story = StoryObj<typeof meta>
 export const Small: Story = { args: { size: 'sm' } }
 /** The rail's and the sidebar's mark. */
 export const Medium: Story = { args: { size: 'md' } }
+/** The landing's mark, above the headline. */
+export const Large: Story = { args: { size: 'lg' } }
+/** The mark on the landing's brand panel on a wide screen. */
+export const ExtraLarge: Story = { args: { size: 'xl' } }

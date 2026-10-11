@@ -48,17 +48,20 @@ describe('PublicLayout', () => {
     }))
   })
 
-  it('shows a signed-out visitor the public header, with no learner navigation', () => {
+  it('shows a signed-out visitor no shell at all: the landing brings its own layout', () => {
     const wrapper = mountLayout()
 
-    expect(wrapper.find('[data-test="app-shell-home"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="app-shell-home"]').exists()).toBe(false)
     expect(wrapper.findComponent({ name: 'LearnerShell' }).exists()).toBe(false)
   })
 
-  it('keeps the public header until registration has finished', () => {
+  it('shows no shell until registration has finished, so the bridges keep the landing layout', () => {
     isSignedIn.value = true
 
-    expect(mountLayout().findComponent({ name: 'LearnerShell' }).exists()).toBe(false)
+    const wrapper = mountLayout()
+
+    expect(wrapper.find('[data-test="app-shell-home"]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'LearnerShell' }).exists()).toBe(false)
   })
 
   it.each(['student', 'teacher', 'admin'] as const)('gives a signed-in %s Home inside the App Shell', (role) => {

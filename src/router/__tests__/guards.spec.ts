@@ -40,7 +40,7 @@ describe('createAuthGuard', () => {
     expect(await pending).toBe(true)
   })
 
-  it('redirects an unauthenticated user on a protected route to sign-in', async () => {
+  it('redirects an unauthenticated user on a protected route to the landing', async () => {
     const guard = createAuthGuard({
       isReady: () => Promise.resolve(),
       isSignedIn: () => false,
@@ -49,7 +49,7 @@ describe('createAuthGuard', () => {
 
     const result = await guard(route({ meta: { requiresAuth: true }, name: 'path', fullPath: '/path' }))
 
-    expect(result).toEqual({ name: 'sign-in', query: { redirect: '/path' } })
+    expect(result).toEqual({ name: 'home', query: { redirect: '/path' } })
   })
 
   it('lets a registered user through to a protected route', async () => {
@@ -100,7 +100,7 @@ describe('createAuthGuard', () => {
     expect(result).toEqual({ name: 'registration-error', query: { redirect: '/path' } })
   })
 
-  it('redirects an unauthenticated visitor away from the registering route to sign-in', async () => {
+  it('redirects an unauthenticated visitor away from the registering route to the landing', async () => {
     const guard = createAuthGuard({
       isReady: () => Promise.resolve(),
       isSignedIn: () => false,
@@ -111,7 +111,7 @@ describe('createAuthGuard', () => {
       route({ meta: { requiresAuth: true }, name: 'registering', fullPath: '/welcome' }),
     )
 
-    expect(result).toEqual({ name: 'sign-in', query: { redirect: '/welcome' } })
+    expect(result).toEqual({ name: 'home', query: { redirect: '/welcome' } })
   })
 
   it('lets a signed-in user with idle/registering state stay on the registering route', async () => {

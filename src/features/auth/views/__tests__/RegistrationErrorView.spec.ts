@@ -7,67 +7,49 @@ import type { CurrentUserState } from '@/stores/currentUser'
 
 const currentUser = reactive({
   state: ref<CurrentUserState>('failed'),
-  retry: vi.fn(async () => {}),
 })
 
 vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
 
-vi.mock('@/features/auth/composables/useAuth', () => ({
-  useAuth: () => ({ signOut: vi.fn(async () => {}) }),
-}))
+const { AccountBridge } = vi.hoisted(() => ({ AccountBridge: { name: 'AccountBridge', template: '<div />' } }))
+vi.mock('@/features/auth/components/AccountBridge.vue', () => ({ default: AccountBridge }))
 
 import RegistrationErrorView from '@/features/auth/views/RegistrationErrorView.vue'
 
-function testRouter() {
-  return createRouter({
+async function mountAtError() {
+  const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/welcome/error', name: 'registration-error', component: RegistrationErrorView },
-      { path: '/path', name: 'path', component: { template: '<div />' } },
-      { path: '/sign-in', name: 'sign-in', component: { template: '<div />' } },
+      { path: '/', name: 'home', component: { template: '<div />' } },
     ],
   })
+  await router.push('/welcome/error')
+  await router.isReady()
+  const wrapper = mount(RegistrationErrorView, { global: { plugins: [router] } })
+  return { wrapper, router }
 }
 
 describe('RegistrationErrorView', () => {
-  it('explains that registration did not complete', async () => {
+  it('shows the account bridge, which says what went wrong and how to go on', async () => {
     currentUser.state = 'failed'
-    const router = testRouter()
-    await router.push('/welcome/error')
-    await router.isReady()
 
-    const wrapper = mount(RegistrationErrorView, { global: { plugins: [router] } })
+    const { wrapper } = await mountAtError()
 
-    expect(wrapper.find('[data-test="registration-failed"]').exists()).toBe(true)
-  })
-
-  it('retries registration when the try-again control is used', async () => {
-    currentUser.state = 'failed'
-    const router = testRouter()
-    await router.push('/welcome/error')
-    await router.isReady()
-
-    const wrapper = mount(RegistrationErrorView, { global: { plugins: [router] } })
-    await wrapper.get('[data-test="retry"]').trigger('click')
-
-    expect(currentUser.retry).toHaveBeenCalledOnce()
+    expect(wrapper.findComponent(AccountBridge).exists()).toBe(true)
   })
 
   // Full state-transition coverage lives in useRegistrationRedirect.spec.ts —
   // this is just a wiring smoke test confirming the view uses that composable.
-  it('navigates to the path route once a retry succeeds', async () => {
+  it('navigates Home once a retry succeeds', async () => {
     currentUser.state = 'failed'
-    const router = testRouter()
-    await router.push('/welcome/error')
-    await router.isReady()
-
-    mount(RegistrationErrorView, { global: { plugins: [router] } })
+    const { router } = await mountAtError()
 
     currentUser.state = 'registered'
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(router.currentRoute.value.name).toBe('path')
+    expect(router.currentRoute.value.name).toBe('home')
   })
 })

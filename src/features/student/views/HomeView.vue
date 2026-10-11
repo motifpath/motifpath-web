@@ -1,35 +1,19 @@
 <script setup lang="ts">
-import { useTypedT } from '@/shared/composables/useTypedT'
-
-import RegisteringNotice from '@/features/auth/components/RegisteringNotice.vue'
-import RegistrationFailedNotice from '@/features/auth/components/RegistrationFailedNotice.vue'
+import AccountBridge from '@/features/auth/components/AccountBridge.vue'
+import LandingScreen from '@/features/auth/components/LandingScreen.vue'
 import { useAuth } from '@/features/auth/composables/useAuth'
 import StudentHome from '@/features/student/components/StudentHome.vue'
-import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
 const { isLoaded, isSignedIn } = useAuth()
 const currentUser = useCurrentUserStore()
-const { t } = useTypedT()
 </script>
 
 <template>
   <!-- Every signed-in user lands on their home: every role can learn. -->
   <StudentHome v-if="isLoaded && isSignedIn && currentUser.isRegistered" />
-
-  <section v-else class="flex flex-col items-start gap-4">
-    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('appBar.brand') }}</h1>
-
-    <LoadingSkeleton v-if="!isLoaded" data-test="loading" />
-
-    <RegistrationFailedNotice v-else-if="isSignedIn && currentUser.state === 'failed'" />
-
-    <RegisteringNotice v-else-if="isSignedIn" />
-
-    <template v-else>
-      <p class="text-ink-muted">{{ t('home.signedOutMessage') }}</p>
-      <PrimaryButton as="RouterLink" :to="{ name: 'sign-in' }">{{ t('buttons.signIn') }}</PrimaryButton>
-    </template>
-  </section>
+  <!-- Signed in but not set up yet: the same bridge /welcome shows, on the landing's layout. -->
+  <AccountBridge v-else-if="isLoaded && isSignedIn" />
+  <!-- Signed out, or still finding out: the landing, never a blank page. -->
+  <LandingScreen v-else />
 </template>

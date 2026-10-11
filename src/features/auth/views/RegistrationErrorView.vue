@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import RegistrationFailedNotice from '@/features/auth/components/RegistrationFailedNotice.vue'
+import AccountBridge from '@/features/auth/components/AccountBridge.vue'
 import { useRegistrationRedirect } from '@/features/auth/composables/useRegistrationRedirect'
 
 // This route is only ever reached with registration genuinely 'failed' —
-// the guard itself now redirects here only for that state (and away again
+// the guard itself redirects here only for that state (and away again
 // to /welcome for any other), so there's no "reached before App.vue's
 // watcher ran" case left to defend against, unlike RegisteringView.
 //
@@ -13,8 +13,5 @@ useRegistrationRedirect()
 </script>
 
 <template>
-  <section class="flex flex-col items-start gap-4">
-    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">MotifPath</h1>
-    <RegistrationFailedNotice />
-  </section>
+  <AccountBridge />
 </template>

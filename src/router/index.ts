@@ -34,8 +34,8 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/shared/components/PublicLayout.vue'),
-    // Three of this path's four children are auth views (sign-in, the
-    // registering bridge, and the registration-error screen) — loading the
+    // Most of this path's children are auth views (the Google callback, the
+    // name step, the registering bridge and the registration-error screen) — loading the
     // auth locale here once covers all of them instead of repeating the
     // same beforeEnter on each leaf route. A shared parent's beforeEnter only
     // fires when the parent record is newly entering `to.matched`, not on a
@@ -59,9 +59,22 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/features/student/views/HomeView.vue'),
       },
       {
+        // The landing is the only way in; an old sign-in link keeps where the visitor was heading.
         path: 'sign-in',
         name: 'sign-in',
-        component: () => import('@/features/auth/views/SignInView.vue'),
+        redirect: (to) => ({ name: 'home', query: to.query }),
+      },
+      {
+        // Where Clerk brings a visitor back from Google; it decides where they go next.
+        path: 'sso-callback',
+        name: 'sso-callback',
+        component: () => import('@/features/auth/views/SsoCallbackView.vue'),
+      },
+      {
+        // A sign-up Google left without a full name waits here, before any session exists.
+        path: 'welcome/name',
+        name: 'name-step',
+        component: () => import('@/features/auth/views/NameStepView.vue'),
       },
       {
         path: 'welcome',

@@ -50,6 +50,10 @@ colors['brand-ground'] = tokens.brand.ground.$value
 // brand colour is fixed by that brand, not by either MotifPath theme.
 colors['whatsapp'] = '#25D366'
 
+// Google's branding rules put the G on a white disc in every theme, so the disc is
+// fixed by that brand, not by either MotifPath theme.
+colors['google-disc'] = '#FFFFFF'
+
 // Fretboard materials are feature-scoped to the fretboard drawings rather than
 // motifpath-brand roles; their values sit beside --color-fretboard-wood in
 // src/assets/main.css.
