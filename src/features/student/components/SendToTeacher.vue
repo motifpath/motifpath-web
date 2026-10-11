@@ -11,8 +11,6 @@ const props = defineProps<{
   reference: string
   pathTitle?: string | null
   lessonTitle?: string | null
-  /** Floats higher, clear of a bar fixed to the bottom of the screen. */
-  raised?: boolean
 }>()
 
 const { t } = useTypedT()
@@ -34,14 +32,13 @@ function onPointerEnter(event: PointerEvent): void {
 
 // The student can drag the button off whatever it covers. Its geometry
 // matches the classes below: a 3rem (48px) button, 1rem (16px) from the edges,
-// kept below the 4rem app bar plus that same gap, and above a bottom bar
-// (5rem) when raised.
+// kept below the 4rem app bar plus that same gap.
 const float = useDraggableFloat({
   storageKey: 'motifpath:send-to-teacher-position',
   size: 48,
   edge: 16,
   topReserve: 80,
-  minBottom: () => (props.raised ? 80 : 16),
+  minBottom: 16,
 })
 
 function onPointerDown(event: PointerEvent): void {
