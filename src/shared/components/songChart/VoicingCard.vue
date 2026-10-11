@@ -11,7 +11,7 @@ import { computed, ref, useId } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
-import ChordBoxDiagram from '@/shared/components/songChart/ChordBoxDiagram.vue'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import VoicingPlayButton from '@/shared/components/songChart/VoicingPlayButton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { voicingNames } from '@/shared/utils/songChartReading'
@@ -116,7 +116,7 @@ const diagramRef = computed<DiagramRef | null>(() =>
       </div>
 
       <div v-if="diagram && diagramRef" class="flex items-center gap-3">
-        <ChordBoxDiagram v-if="view === 'box'" :voicing="voicing" :diagram="diagram" :instrument="instrument" :label="writtenSymbol" />
+        <ChordBox v-if="view === 'box'" :voicing="voicing" :diagram="diagram" :instrument="instrument" :label="writtenSymbol" />
         <FrettedDiagramView v-else :diagram="diagram" :instrument="instrument" :diagram-ref="diagramRef" compact />
         <VoicingPlayButton v-if="playback" :key="diagram.diagram_id" :diagram="diagram" :instrument="instrument" :playback="playback" />
       </div>

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { makeVoicing } from '@/shared/testUtils/songChart'
 
-import ChordBoxDiagram from './ChordBoxDiagram.vue'
+import ChordBox from './ChordBox.vue'
 
 const g7 = makeVoicing('g7-open', 'chord-g7', {
   fret_window: { lowest_fret: 0, highest_fret: 3 },
@@ -26,10 +26,10 @@ const g7Diagram = makeFrettedDiagram({
 })
 
 const meta = {
-  title: 'Song charts/ChordBoxDiagram',
-  component: ChordBoxDiagram,
+  title: 'Diagrams/ChordBox',
+  component: ChordBox,
   args: { voicing: g7, diagram: g7Diagram, instrument: makeFrettedInstrument(), label: 'G7' },
-} satisfies Meta<typeof ChordBoxDiagram>
+} satisfies Meta<typeof ChordBox>
 
 export default meta
 type Story = StoryObj<typeof meta>

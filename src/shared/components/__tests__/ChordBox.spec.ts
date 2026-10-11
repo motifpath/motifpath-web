@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
-import ChordBoxDiagram from '@/shared/components/songChart/ChordBoxDiagram.vue'
+import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { makeVoicing } from '@/shared/testUtils/songChart'
 
@@ -22,7 +22,7 @@ const gBarre3 = voicingOf('g-e-shape-3', [[6, 3, '1'], [5, 5, '3'], [4, 5, '4'],
 const cOpen = voicingOf('c-open', [[5, 3, '3'], [4, 2, '2'], [3, 0, null], [2, 1, '1'], [1, 0, null]], 0, 3, [6])
 
 function mountBox({ voicing, diagram }: ReturnType<typeof voicingOf>) {
-  return mount(ChordBoxDiagram, { props: { voicing, diagram, instrument: makeFrettedInstrument(), label: 'G7' } })
+  return mount(ChordBox, { props: { voicing, diagram, instrument: makeFrettedInstrument(), label: 'G7' } })
 }
 
 /** The dots as [string, fret, finger], low string first. */
@@ -30,7 +30,7 @@ function dots(wrapper: ReturnType<typeof mountBox>) {
   return wrapper.findAll('[data-test="finger-dot"]').map((d) => [Number(d.attributes('data-string')), Number(d.attributes('data-fret')), d.text()])
 }
 
-describe('ChordBoxDiagram', () => {
+describe('ChordBox', () => {
   it("draws an open voicing from the nut, with each finger's number on its dot", () => {
     const wrapper = mountBox(g7Open)
 
