@@ -1160,7 +1160,7 @@ describe('NodeView', () => {
         ...makeTimedCue('cue-chart', 30, 60),
         content_type: 'rich_text',
         media_url: undefined,
-        rich_content: { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-asa-branca' } }] },
+        rich_content: { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-amazing-grace' } }] },
       }
     }
 
@@ -1185,7 +1185,7 @@ describe('NodeView', () => {
       await wrapper.get('[data-test="song-chart-card"]').trigger('click')
 
       expect(pause).toHaveBeenCalled()
-      expect(wrapper.get('[data-test="song-chart-screen"]').attributes('data-song-chart-id')).toBe('chart-asa-branca')
+      expect(wrapper.get('[data-test="song-chart-screen"]').attributes('data-song-chart-id')).toBe('chart-amazing-grace')
       expect(push).not.toHaveBeenCalled()
     })
 

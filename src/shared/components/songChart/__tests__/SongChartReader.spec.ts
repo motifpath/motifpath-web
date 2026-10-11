@@ -75,7 +75,7 @@ function eventsOfType(type: string) {
   return track.mock.calls.map(([event]) => event).filter((event) => event.event_type === type)
 }
 
-const context = { song_chart_id: 'chart-asa-branca', revision_number: 2 }
+const context = { song_chart_id: 'chart-amazing-grace', revision_number: 2 }
 
 beforeEach(() => {
   track.mockReset()
@@ -86,8 +86,8 @@ describe('SongChartReader', () => {
   describe('reading', () => {
     it('shows each chord over the word it falls on', () => {
       expect(chordsOverWords(mountReader())).toEqual([
-        ['G', 'Quando'],
-        ['C', 'terra'],
+        ['G', 'Amazing'],
+        ['C', 'sweet'],
         ['G', 'Que'],
       ])
     })
@@ -120,7 +120,7 @@ describe('SongChartReader', () => {
     it("opens on the author's pick, highlights the chord, and sends song_chart.chord_viewed", async () => {
       const chart = makeLearnerSongChart()
       chart.body.content[0] = makeSection([
-        makeLyricLine(['Quando', makeAnchor('a1', 'G', { chordDefinitionId: 'chord-g', chordVoicingId: gEShape.chord_voicing_id })]),
+        makeLyricLine(['Amazing', makeAnchor('a1', 'G', { chordDefinitionId: 'chord-g', chordVoicingId: gEShape.chord_voicing_id })]),
       ])
       const wrapper = mountReader(chart)
 
@@ -215,7 +215,7 @@ describe('SongChartReader', () => {
 
     it("titles a slash chord the catalog lacks as written and notes its bass isn't shown", async () => {
       const chart = makeLearnerSongChart()
-      chart.body.content[0] = makeSection([makeLyricLine(['Quando', makeAnchor('a1', 'C/B', { chordDefinitionId: 'chord-c' })])])
+      chart.body.content[0] = makeSection([makeLyricLine(['Amazing', makeAnchor('a1', 'C/B', { chordDefinitionId: 'chord-c' })])])
       const wrapper = mountReader(chart)
 
       await tap(wrapper, 'C/B')
@@ -228,7 +228,7 @@ describe('SongChartReader', () => {
   describe('chords with nothing to show', () => {
     it('shows a no-chord marking as text that opens no card', () => {
       const chart = makeLearnerSongChart()
-      chart.body.content[0] = makeSection([makeLyricLine(['Quando', makeAnchor('a1', 'N.C.')])])
+      chart.body.content[0] = makeSection([makeLyricLine(['Amazing', makeAnchor('a1', 'N.C.')])])
       const segment = mountReader(chart).find('[data-test="chord-segment"]')
 
       expect(segment.find('[data-test="chord-symbol"]').text()).toBe('N.C.')

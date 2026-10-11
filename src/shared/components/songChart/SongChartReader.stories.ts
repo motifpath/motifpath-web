@@ -31,8 +31,8 @@ export const LongLineOnAPhone: Story = {
         content: [
           makeSection([
             makeLyricLine(
-              ['Quando olhei a terra ardendo qual fogueira de São ', makeAnchor('a1', 'G', { chordDefinitionId: 'chord-g' })],
-              ['João, eu perguntei a Deus do céu, ai, por que tamanha judiação', makeAnchor('a2', 'C', { chordDefinitionId: 'chord-c' })],
+              ['Amazing grace, how ', makeAnchor('a1', 'G', { chordDefinitionId: 'chord-g' })],
+              ['sweet the sound that saved a wretch like me, I once was lost but now am found', makeAnchor('a2', 'C', { chordDefinitionId: 'chord-c' })],
             ),
           ]),
         ],

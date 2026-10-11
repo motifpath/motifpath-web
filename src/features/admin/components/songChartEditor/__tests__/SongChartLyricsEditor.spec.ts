@@ -62,10 +62,10 @@ describe('SongChartLyricsEditor', () => {
     const wrapper = mountEditor()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Quando olhei a terra ardendo')
+    expect(wrapper.text()).toContain('Amazing grace, how sweet the sound')
     expect(wrapper.findAll('[data-chord]').map((c) => [c.attributes('data-chord'), c.element.textContent])).toEqual([
-      ['G', 'Quando olhei a '],
-      ['C', 'terra ardendo'],
+      ['G', 'Amazing grace, how '],
+      ['C', 'sweet the sound'],
       ['G', 'Que braseiro'],
     ])
     expect(wrapper.findAll('section[data-kind]').map((s) => [s.attributes('data-kind'), s.attributes('data-label') ?? null])).toEqual([
@@ -113,7 +113,7 @@ describe('SongChartLyricsEditor', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Ciranda')
-    expect(wrapper.text()).not.toContain('Quando olhei')
+    expect(wrapper.text()).not.toContain('Amazing grace')
   })
 
   it('starts a new chart with one empty verse to write in', async () => {
@@ -136,7 +136,7 @@ describe('SongChartLyricsEditor', () => {
     })
 
     it('changes the chord at the cursor, clearing a voicing picked for the old one', async () => {
-      const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Quando', makeAnchor('a1', 'G', { chordVoicingId: gEShape.chord_voicing_id })])])] }
+      const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Amazing', makeAnchor('a1', 'G', { chordVoicingId: gEShape.chord_voicing_id })])])] }
       const wrapper = mountEditor(doc)
       await flushPromises()
 
@@ -144,7 +144,7 @@ describe('SongChartLyricsEditor', () => {
       expect(input instanceof HTMLInputElement && input.value).toBe('G')
       await writeChord(wrapper, 'C')
 
-      expect(emittedChords(wrapper)).toEqual([['C', 'Quando', null]])
+      expect(emittedChords(wrapper)).toEqual([['C', 'Amazing', null]])
     })
 
     it('removes the chord at the cursor', async () => {
@@ -182,7 +182,7 @@ describe('SongChartLyricsEditor', () => {
     })
 
     it("offers the chord's voicings, the best one used until another is picked", async () => {
-      const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Quando', makeAnchor('a1', 'G')])])] }
+      const doc: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Amazing', makeAnchor('a1', 'G')])])] }
       const wrapper = mountEditor(doc)
       await flushPromises()
 
@@ -193,7 +193,7 @@ describe('SongChartLyricsEditor', () => {
       await options[2]!.trigger('click')
       await flushPromises()
 
-      expect(emittedChords(wrapper)).toEqual([['G', 'Quando', gEShape.chord_voicing_id]])
+      expect(emittedChords(wrapper)).toEqual([['G', 'Amazing', gEShape.chord_voicing_id]])
     })
   })
 })

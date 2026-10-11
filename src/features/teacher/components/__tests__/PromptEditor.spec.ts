@@ -486,21 +486,21 @@ describe('PromptEditor', () => {
 
       await wrapper.get('[data-test="prompt-toolbar-song-chart"]').trigger('click')
       expect(wrapper.getComponent(SongChartPickerModal).props('open')).toBe(true)
-      wrapper.getComponent(SongChartPickerModal).vm.$emit('pick', 'chart-asa-branca')
+      wrapper.getComponent(SongChartPickerModal).vm.$emit('pick', 'chart-amazing-grace')
       await nextTick()
 
       const nodes = lastEmittedDocument(wrapper).content
-      expect(nodes.find((n) => n.type === 'songChart')?.attrs).toEqual({ songChartId: 'chart-asa-branca' })
+      expect(nodes.find((n) => n.type === 'songChart')?.attrs).toEqual({ songChartId: 'chart-amazing-grace' })
       expect(wrapper.findComponent(SongChartPickerModal).exists()).toBe(false)
     })
 
     it('shows an embedded song chart as its card', async () => {
-      const modelValue: PromptDocument = { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-asa-branca' } }] }
+      const modelValue: PromptDocument = { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-amazing-grace' } }] }
       const wrapper = mount(PromptEditor, { props: { modelValue, songCharts: true }, global: { stubs } })
       await nextTick()
       await nextTick()
 
-      expect(wrapper.get('[data-test="song-chart-card"]').attributes('data-song-chart-id')).toBe('chart-asa-branca')
+      expect(wrapper.get('[data-test="song-chart-card"]').attributes('data-song-chart-id')).toBe('chart-amazing-grace')
     })
   })
 })

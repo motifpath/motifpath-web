@@ -50,7 +50,7 @@ function serve(chart: SongChart | null, revisions = [] as components['schemas'][
   GET.mockImplementation((path: string) => {
     if (path === '/song-charts/{song_chart_id}' && chart) return ok(chart)
     if (path === '/song-charts/{song_chart_id}/revisions') return ok(revisions)
-    if (path === '/song-charts/{song_chart_id}/chordpro') return ok('{title: Asa Branca}\n')
+    if (path === '/song-charts/{song_chart_id}/chordpro') return ok('{title: Amazing Grace}\n')
     return fail({ message: 'not found' }, 404)
   })
 }
@@ -108,8 +108,8 @@ describe('SongChartEditorView', () => {
 
     it('is saved as a draft, and the editor then edits it', async () => {
       const { wrapper, router } = await mountAt('/admin/song-charts/new')
-      await wrapper.get('[data-test="title"]').setValue('Asa Branca')
-      await wrapper.get('[data-test="artist"]').setValue('Luiz Gonzaga')
+      await wrapper.get('[data-test="title"]').setValue('Amazing Grace')
+      await wrapper.get('[data-test="artist"]').setValue('John Newton')
       await wrapper.get('[data-test="language"]').setValue('pt_BR')
       await click(wrapper, '[data-test="write-line"]')
       const created = makeSongChart('chart-new', { body: ciranda })
@@ -118,7 +118,7 @@ describe('SongChartEditorView', () => {
 
       await click(wrapper, '[data-test="save"]')
 
-      expect(POST).toHaveBeenCalledWith('/song-charts', { body: expect.objectContaining({ title: 'Asa Branca', rights_confirmed: false }) })
+      expect(POST).toHaveBeenCalledWith('/song-charts', { body: expect.objectContaining({ title: 'Amazing Grace', rights_confirmed: false }) })
       expect(router.currentRoute.value.fullPath).toBe('/admin/song-charts/chart-new')
     })
 
@@ -164,7 +164,7 @@ describe('SongChartEditorView', () => {
       expect(POST).not.toHaveBeenCalled()
       await click(wrapper, '[data-test="confirm-dialog-cancel"]')
       expect(POST).not.toHaveBeenCalled()
-      expect(wrapper.get('[data-test="lyrics-text"]').text()).toContain('Quando olhei')
+      expect(wrapper.get('[data-test="lyrics-text"]').text()).toContain('Amazing grace')
     })
 
     it('keeps the pasted text and says why it was refused', async () => {
@@ -185,7 +185,7 @@ describe('SongChartEditorView', () => {
 
       await click(wrapper, '[data-test="export"]')
 
-      expect(downloadText).toHaveBeenCalledWith('amazing-grace.cho', '{title: Asa Branca}\n')
+      expect(downloadText).toHaveBeenCalledWith('amazing-grace.cho', '{title: Amazing Grace}\n')
     })
   })
 

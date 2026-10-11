@@ -66,10 +66,10 @@ describe('SongChartView', () => {
     state.chart.value = makeLearnerSongChart()
     state.instrument.value = makeFrettedInstrument()
 
-    const { wrapper } = await mountAt('/songs/chart-asa-branca')
+    const { wrapper } = await mountAt('/songs/chart-amazing-grace')
 
-    expect(chartOf).toHaveBeenCalledWith('chart-asa-branca')
-    expect(wrapper.get('[data-test="reader"]').text()).toBe('Asa Branca')
+    expect(chartOf).toHaveBeenCalledWith('chart-amazing-grace')
+    expect(wrapper.get('[data-test="reader"]').text()).toBe('Amazing Grace')
     expect(wrapper.find('[data-test="close-song-chart"]').exists()).toBe(true)
     expect(wrapper.find('nav').exists()).toBe(false)
   })
@@ -87,7 +87,7 @@ describe('SongChartView', () => {
   it('offers a retry when the chart fails to load', async () => {
     state.error.value = true
 
-    const { wrapper } = await mountAt('/songs/chart-asa-branca')
+    const { wrapper } = await mountAt('/songs/chart-amazing-grace')
     await wrapper.get('[data-test="song-chart-error"] button').trigger('click')
 
     expect(state.retry).toHaveBeenCalled()
@@ -95,7 +95,7 @@ describe('SongChartView', () => {
 
   it('closes back to where the student came from', async () => {
     state.chart.value = makeLearnerSongChart()
-    const { wrapper, router } = await mountAt('/songs/chart-asa-branca', '/practice')
+    const { wrapper, router } = await mountAt('/songs/chart-amazing-grace', '/practice')
     const back = vi.spyOn(router, 'back').mockImplementation(() => {})
     window.history.replaceState({ back: '/practice' }, '')
 
@@ -106,7 +106,7 @@ describe('SongChartView', () => {
 
   it('closes to the home when the chart was opened directly', async () => {
     state.chart.value = makeLearnerSongChart()
-    const { wrapper, router } = await mountAt('/songs/chart-asa-branca')
+    const { wrapper, router } = await mountAt('/songs/chart-amazing-grace')
     window.history.replaceState({}, '')
 
     await wrapper.get('[data-test="close-song-chart"]').trigger('click')

@@ -38,7 +38,7 @@ import { makeLearnerSongChart } from '@/shared/testUtils/songChart'
 
 function mountView() {
   return mount(SongChartPreviewView, {
-    props: { songChartId: 'chart-asa-branca' },
+    props: { songChartId: 'chart-amazing-grace' },
     global: { stubs: { AppBar: true, FrettedDiagramView: true, DiagramPlayer: true } },
   })
 }
@@ -57,7 +57,7 @@ describe('SongChartPreviewView', () => {
   it('previews the chart named by the route', () => {
     mountView()
 
-    expect(previewOf).toHaveBeenCalledWith('chart-asa-branca')
+    expect(previewOf).toHaveBeenCalledWith('chart-amazing-grace')
   })
 
   it('shows the draft as a learner would read it, saying it is a preview', () => {
@@ -67,7 +67,7 @@ describe('SongChartPreviewView', () => {
     const wrapper = mountView()
 
     expect(wrapper.find('[data-test="preview-note"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Asa Branca')
+    expect(wrapper.text()).toContain('Amazing Grace')
     expect(wrapper.findAll('button[data-test="chord-symbol"]').length).toBeGreaterThan(0)
     expect(track).not.toHaveBeenCalled()
   })

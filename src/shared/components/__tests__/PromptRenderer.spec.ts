@@ -277,14 +277,14 @@ describe('PromptRenderer', () => {
         props: {
           document: doc([
             { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] },
-            { type: 'songChart', attrs: { songChartId: 'chart-asa-branca' } },
+            { type: 'songChart', attrs: { songChartId: 'chart-amazing-grace' } },
             { type: 'paragraph', content: [{ type: 'text', text: 'After' }] },
           ]),
         },
         global: { stubs },
       })
 
-      expect(wrapper.getComponent(SongChartCard).props('songChartId')).toBe('chart-asa-branca')
+      expect(wrapper.getComponent(SongChartCard).props('songChartId')).toBe('chart-amazing-grace')
       const html = wrapper.html()
       expect(html.indexOf('Before')).toBeLessThan(html.indexOf('song-chart-card-stub'))
       expect(html.indexOf('song-chart-card-stub')).toBeLessThan(html.indexOf('After'))

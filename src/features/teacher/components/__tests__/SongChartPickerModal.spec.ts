@@ -28,7 +28,7 @@ function published(id: string, title: string, artist: string, draftTitle = title
   }
 }
 
-const charts = [published('c-1', 'Asa Branca', 'Luiz Gonzaga', 'Asa Branca (ao vivo)'), published('c-2', 'Carinhoso', 'Pixinguinha')]
+const charts = [published('c-1', 'Amazing Grace', 'John Newton', 'Amazing Grace (live)'), published('c-2', 'Carinhoso', 'Pixinguinha')]
 
 function serve() {
   GET.mockImplementation((_path: string, init: { params: { query: { q?: string; status?: string } } }) => {
@@ -59,9 +59,9 @@ describe('SongChartPickerModal', () => {
     await flushPromises()
 
     expect(GET).toHaveBeenCalledWith('/song-charts', expect.objectContaining({ params: { query: expect.objectContaining({ status: 'published' }) } }))
-    expect(rows().map((r) => r.textContent)).toEqual([expect.stringContaining('Asa Branca'), expect.stringContaining('Carinhoso')])
-    expect(rows()[0]!.textContent).toContain('Luiz Gonzaga')
-    expect(rows()[0]!.textContent).not.toContain('ao vivo')
+    expect(rows().map((r) => r.textContent)).toEqual([expect.stringContaining('Amazing Grace'), expect.stringContaining('Carinhoso')])
+    expect(rows()[0]!.textContent).toContain('John Newton')
+    expect(rows()[0]!.textContent).not.toContain('(live)')
   })
 
   it('searches by title or artist', async () => {
@@ -69,7 +69,7 @@ describe('SongChartPickerModal', () => {
     await flushPromises()
 
     const search = document.body.querySelector<HTMLInputElement>('[data-test="song-chart-search"]')!
-    search.value = 'asa'
+    search.value = 'grace'
     search.dispatchEvent(new Event('input'))
     await vi.runAllTimersAsync()
     await flushPromises()

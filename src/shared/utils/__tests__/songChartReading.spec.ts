@@ -12,14 +12,15 @@ describe('lineSegments', () => {
     const g = anchor('a1', 'G')
     const c = anchor('a2', 'C')
 
-    const segments = lineSegments(line(['Quando olhei a ', g], ['terra ardendo', c]))
+    const segments = lineSegments(line(['Amazing grace, how ', g], ['sweet the sound', c]))
 
     expect(segments).toEqual([
-      { text: 'Quando ', anchor: g },
-      { text: 'olhei ', anchor: null },
-      { text: 'a ', anchor: null },
-      { text: 'terra ', anchor: c },
-      { text: 'ardendo', anchor: null },
+      { text: 'Amazing ', anchor: g },
+      { text: 'grace, ', anchor: null },
+      { text: 'how ', anchor: null },
+      { text: 'sweet ', anchor: c },
+      { text: 'the ', anchor: null },
+      { text: 'sound', anchor: null },
     ])
   })
 
