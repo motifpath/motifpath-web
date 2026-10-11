@@ -7,15 +7,16 @@ import { useTypedT } from '@/shared/composables/useTypedT'
  * `sm` and `md` sit on a tile in the app bar, rail and sidebar; `lg` (96 px) and `xl` (220 px) are the
  * bare mark the landing and its brand panel show.
  */
-const props = withDefaults(defineProps<{ size?: 'sm' | 'md' | 'lg' | 'xl' }>(), { size: 'sm' })
+type Size = 'sm' | 'md' | 'lg' | 'xl'
+withDefaults(defineProps<{ size?: Size }>(), { size: 'sm' })
 
-const BOX: Record<NonNullable<typeof props.size>, string> = {
+const BOX: Record<Size, string> = {
   sm: 'h-[1.875rem] w-[1.875rem] rounded-md bg-accent-muted',
   md: 'h-9 w-9 rounded-md bg-accent-muted',
   lg: 'h-[6rem] w-[6rem]',
   xl: 'h-[13.75rem] w-[13.75rem]',
 }
-const GLYPH: Record<NonNullable<typeof props.size>, number> = { sm: 16, md: 20, lg: 96, xl: 220 }
+const GLYPH: Record<Size, number> = { sm: 16, md: 20, lg: 96, xl: 220 }
 
 const { t } = useTypedT()
 // One gradient per mark: two marks on a page (app bar and rail) must not share an id.
