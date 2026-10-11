@@ -655,13 +655,14 @@ describe('PracticeSessionView', () => {
     expect(events('practice.item_answered')).toHaveLength(1)
   })
 
-  it('skips an item the take can’t play', async () => {
+  it('sends an item the take can’t play as not answered and moves on', async () => {
     const wrapper = mountView()
     await startSession(wrapper)
 
-    wrapper.getComponent(PlayAlongTakeStub).vm.$emit('skip')
+    wrapper.getComponent(PlayAlongTakeStub).vm.$emit('skip', 'unavailable')
     await flushPromises()
 
+    expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: { response_type: 'not_answered', reason: 'unavailable' } })])
     expect(segments(wrapper)[0]).toBe(100)
   })
 
