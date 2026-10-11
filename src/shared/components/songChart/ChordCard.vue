@@ -3,9 +3,8 @@
  * One chord of a song chart, opened from a tap on it: the chord as written, Box | Neck, the
  * voicing drawn that way with Strum, and one chip per voicing, named by where it sits ("Open",
  * "3fr"). The parent holds the voicing, the view and whether the card is minimized, so it can
- * remember them across chords. Floating over the chart it minimizes to a chip with the chord and
- * closes with ×; docked in a side pane, the pane does both. A slash chord shown without its bass
- * says so.
+ * remember them across chords. It minimizes to a chip with the chord and closes with ×, floating
+ * over the chart or docked across a side pane. A slash chord shown without its bass says so.
  */
 import { ChevronDown, X } from 'lucide-vue-next'
 import { computed, useId } from 'vue'
@@ -63,7 +62,7 @@ const diagramRef = computed<DiagramRef | null>(() =>
 
 <template>
   <button
-    v-if="floating && minimized"
+    v-if="minimized"
     type="button"
     data-test="chord-card-chip"
     class="flex h-11 min-w-11 items-center justify-center rounded-full border border-border bg-surface px-4 text-base font-bold text-ink shadow-level2"
@@ -78,34 +77,29 @@ const diagramRef = computed<DiagramRef | null>(() =>
     data-test="chord-card"
     :role="floating ? 'dialog' : 'region'"
     :aria-labelledby="titleId"
-    class="flex flex-col gap-2 pb-3.5 pl-3.5 pr-1.5 pt-1.5"
-    :class="[
-      floating ? 'rounded-2xl border border-border bg-surface shadow-level2' : 'w-full',
-      floating && view === 'neck' ? 'w-[min(320px,calc(100vw-32px))]' : floating ? 'w-[232px]' : '',
-    ]"
+    class="flex flex-col gap-2 rounded-2xl border border-border bg-surface pb-3.5 pl-3.5 pr-1.5 pt-1.5"
+    :class="!floating ? 'w-full' : view === 'neck' ? 'w-[min(320px,calc(100vw-32px))] shadow-level2' : 'w-[232px] shadow-level2'"
   >
     <div class="flex items-center">
       <h2 :id="titleId" data-test="chord-card-title" class="min-w-0 flex-1 text-[28px] font-bold leading-[34px] text-ink">{{ writtenSymbol }}</h2>
-      <template v-if="floating">
-        <button
-          type="button"
-          data-test="chord-card-minimize"
-          class="flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          :aria-label="t('songChart.minimizeCard')"
-          @click="minimized = true"
-        >
-          <ChevronDown :size="20" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="chord-card-close"
-          class="flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          :aria-label="t('songChart.closeSheet')"
-          @click="emit('close')"
-        >
-          <X :size="20" aria-hidden="true" />
-        </button>
-      </template>
+      <button
+        type="button"
+        data-test="chord-card-minimize"
+        class="flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        :aria-label="t('songChart.minimizeCard')"
+        @click="minimized = true"
+      >
+        <ChevronDown :size="20" aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        data-test="chord-card-close"
+        class="flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        :aria-label="t('songChart.closeSheet')"
+        @click="emit('close')"
+      >
+        <X :size="20" aria-hidden="true" />
+      </button>
     </div>
 
     <p v-if="missingBass" data-test="missing-bass" class="pr-2 text-sm text-ink-muted">

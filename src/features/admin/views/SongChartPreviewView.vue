@@ -1,44 +1,54 @@
 <script setup lang="ts">
 /**
- * An admin's preview of a song chart's draft, exactly as a learner would read it. Nothing done
- * here counts as a learner's reading.
+ * An admin's preview of a song chart's draft: the learner's reader, full screen, under a banner
+ * saying nothing is recorded. Closing it goes back to the chart's editor.
  */
+import { X } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+
 import { useSongChartPreview } from '@/features/admin/composables/useSongChartPreview'
-import AppBar from '@/shared/components/AppBar.vue'
-import SongChartReader from '@/shared/components/songChart/SongChartReader.vue'
-import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
+import SongChartReader from '@/shared/components/songChart/SongChartReader.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 const props = defineProps<{ songChartId: string }>()
 
 const { t } = useTypedT()
-const { isCompact } = useIsCompact()
+const router = useRouter()
 const { chart, instrument, isLoading, error, notFound, retry } = useSongChartPreview(props.songChartId)
+
+function backToEditor() {
+  void router.push({ name: 'admin-song-chart', params: { songChartId: props.songChartId } })
+}
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" />
+  <SongChartReader v-if="!isLoading && !error && chart" :chart="chart" :instrument="instrument" preview @close="backToEditor" />
 
-    <main class="mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-4 px-4 pb-10 pt-6">
+  <div v-else class="flex min-h-dvh flex-col bg-surface">
+    <header class="flex items-center py-1 pl-2 pr-4">
+      <button
+        type="button"
+        data-test="close-song-chart"
+        class="flex size-12 items-center justify-center rounded-full text-ink hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        :aria-label="t('songChartPage.close')"
+        @click="backToEditor"
+      >
+        <X :size="24" aria-hidden="true" />
+      </button>
+    </header>
+    <main class="mx-auto flex w-full max-w-[560px] flex-1 flex-col px-6 pt-1">
       <div v-if="isLoading" data-test="preview-loading">
         <LoadingSkeleton />
       </div>
       <div v-else-if="notFound" data-test="preview-not-found">
         <StateBlock kind="notFound" :title="t('songChartPreview.notFoundHeading')" :message="t('songChartPreview.notFoundMessage')" />
       </div>
-      <div v-else-if="error || !chart" data-test="preview-error">
+      <div v-else data-test="preview-error">
         <LoadFailed :message="t('songChartPreview.loadFailed')" @retry="retry" />
       </div>
-      <template v-else>
-        <p data-test="preview-note" class="rounded-md bg-surface-sunken px-3 py-2 text-sm text-ink-muted">
-          {{ t('songChartPreview.note') }}
-        </p>
-        <SongChartReader :chart="chart" :instrument="instrument" />
-      </template>
     </main>
   </div>
 </template>

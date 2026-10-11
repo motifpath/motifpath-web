@@ -13,7 +13,7 @@ const meta = {
     instrument: makeFrettedInstrument(),
   },
   parameters: {
-    docs: { description: { component: 'A song chart with each chord over its word; a tap on a chord opens its voicing sheet.' } },
+    docs: { description: { component: 'A song chart full screen: its details, the chords in this song, each chord over its word, the metronome and I played it.' } },
   },
 } satisfies Meta<typeof SongChartReader>
 
@@ -21,6 +21,16 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
+
+export const WithTempoAndMeter: Story = {
+  args: { chart: makeLearnerSongChart({ revision_number: null, tempo_bpm: 72, time_signature: { beats: 3, beat_value: 4 } }) },
+  parameters: { docs: { description: { story: "The song's tempo is the metronome's target." } } },
+}
+
+export const AdminPreview: Story = {
+  args: { preview: true },
+  parameters: { docs: { description: { story: 'An admin previews the draft under a banner; nothing is sent.' } } },
+}
 
 export const LongLineOnAPhone: Story = {
   args: {

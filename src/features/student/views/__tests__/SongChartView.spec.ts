@@ -28,9 +28,12 @@ import SongChartView from '@/features/student/views/SongChartView.vue'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { makeLearnerSongChart } from '@/shared/testUtils/songChart'
 
+// The reader draws its own bar with ×; the stub keeps only that and the title.
 const ReaderStub = defineComponent({
   props: ['chart', 'instrument'],
-  setup: (props) => () => h('div', { 'data-test': 'reader' }, props.chart.title),
+  emits: ['close'],
+  setup: (props, { emit }) => () =>
+    h('div', [h('button', { 'data-test': 'close-song-chart', onClick: () => emit('close') }), h('p', { 'data-test': 'reader' }, props.chart.title)]),
 })
 
 async function mountAt(path: string, from?: string) {
@@ -74,14 +77,26 @@ describe('SongChartView', () => {
     expect(wrapper.find('nav').exists()).toBe(false)
   })
 
-  it("says a chart that can't be read isn't available, without saying why", async () => {
+  it('shows the close control and placeholder lines while the chart loads', async () => {
+    state.isLoading.value = true
+
+    const { wrapper } = await mountAt('/songs/chart-amazing-grace')
+
+    expect(wrapper.find('[data-test="close-song-chart"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="song-chart-loading"]').exists()).toBe(true)
+  })
+
+  it("says a chart that can't be read isn't available, without saying why, and offers Go home", async () => {
     state.error.value = true
     state.notFound.value = true
 
-    const { wrapper } = await mountAt('/songs/withdrawn')
+    const { wrapper, router } = await mountAt('/songs/withdrawn')
 
     expect(wrapper.find('[data-test="song-chart-unavailable"]').exists()).toBe(true)
     expect(wrapper.find('[data-test="reader"]').exists()).toBe(false)
+    await wrapper.get('[data-test="song-chart-go-home"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('home')
   })
 
   it('offers a retry when the chart fails to load', async () => {

@@ -2,13 +2,14 @@
 /**
  * Holds a chord card over the chart in one of the screen's corners. The student drags it by
  * anything but its buttons, and it settles in the corner nearest where it is dropped; a press that
- * barely moves stays a tap. The bottom corners sit above the action bar, the top ones under the
- * reader's bar.
+ * barely moves stays a tap. The bottom corners sit above the action bar, and above the tempo bar
+ * too when it shows (`lifted`); the top ones sit under the reader's bar.
  */
 import { computed, onUnmounted, ref } from 'vue'
 
 export type CardCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
+const props = withDefaults(defineProps<{ lifted?: boolean }>(), { lifted: false })
 const corner = defineModel<CardCorner>('corner', { required: true })
 
 /** How far a press must travel before it counts as a drag, in CSS pixels. */
@@ -18,12 +19,10 @@ const start = ref<{ x: number; y: number } | null>(null)
 const offset = ref({ x: 0, y: 0 })
 const dragging = computed(() => Math.hypot(offset.value.x, offset.value.y) >= DRAG_THRESHOLD)
 
-const placement: Record<CardCorner, string> = {
-  'top-left': 'left-4 top-16',
-  'top-right': 'right-4 top-16',
-  'bottom-left': 'bottom-24 left-4',
-  'bottom-right': 'bottom-24 right-4',
-}
+const placement = computed<Record<CardCorner, string>>(() => {
+  const bottom = props.lifted ? 'bottom-60' : 'bottom-32'
+  return { 'top-left': 'left-4 top-16', 'top-right': 'right-4 top-16', 'bottom-left': `${bottom} left-4`, 'bottom-right': `${bottom} right-4` }
+})
 
 function nearestCorner(x: number, y: number): CardCorner {
   const vertical = y < window.innerHeight / 2 ? 'top' : 'bottom'
@@ -70,7 +69,7 @@ const dragStyle = computed(() => (dragging.value ? { transform: `translate(${off
   <div
     data-test="floating-chord-card"
     :data-corner="corner"
-    class="fixed z-20 touch-none select-none"
+    class="fixed z-30 touch-none select-none"
     :class="[placement[corner], dragging ? 'cursor-grabbing' : 'cursor-grab transition-[top,right,bottom,left]']"
     :style="dragStyle"
     @pointerdown="onPointerDown"

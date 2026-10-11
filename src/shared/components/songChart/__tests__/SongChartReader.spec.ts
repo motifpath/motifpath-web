@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import { ref } from 'vue'
 
@@ -13,7 +13,19 @@ vi.mock('@/shared/composables/useDiagramPlayback', () => ({
   isPlayable: () => true,
 }))
 
+const metronomeOn = ref(false)
+const toggleMetronome = vi.fn(() => {
+  metronomeOn.value = !metronomeOn.value
+})
+vi.mock('@/shared/composables/useMetronome', () => ({
+  useMetronome: () => ({ on: metronomeOn, toggle: toggleMetronome }),
+}))
+const toastSuccess = vi.fn()
+vi.mock('@/shared/composables/useToast', () => ({ useToast: () => ({ success: toastSuccess }) }))
+
 import SongChartReader from '@/shared/components/songChart/SongChartReader.vue'
+import TempoControl from '@/shared/components/TempoControl.vue'
+import { mockViewport } from '@/shared/testUtils/viewport'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import {
   cOpen,
@@ -36,9 +48,12 @@ const stubs = {
   FrettedDiagramView: { props: ['diagram'], template: '<div data-test="neck" :data-diagram-id="diagram.diagram_id" />' },
 }
 
-function mountReader(chart = makeLearnerSongChart(), readerInstrument: typeof instrument | null = instrument): VueWrapper {
-  return mount(SongChartReader, { props: { chart, instrument: readerInstrument }, global: { stubs } })
+function mountReader(chart = makeLearnerSongChart(), readerInstrument: typeof instrument | null = instrument, preview = false): VueWrapper {
+  return mount(SongChartReader, { props: { chart, instrument: readerInstrument, preview }, global: { stubs }, attachTo: document.body })
 }
+
+/** Amazing Grace with its tempo and meter, as the header shows them. */
+const timedChart = () => makeLearnerSongChart({ tempo_bpm: 72, time_signature: { beats: 3, beat_value: 4 } })
 
 /** The chord shown over each word, in order: [chord, word]. */
 function chordsOverWords(wrapper: VueWrapper): Array<[string, string]> {
@@ -77,9 +92,17 @@ function eventsOfType(type: string) {
 
 const context = { song_chart_id: 'chart-amazing-grace', revision_number: 2 }
 
+// Every reader listens on the window; one left mounted would hear the next test's keys.
+enableAutoUnmount(afterEach)
+
 beforeEach(() => {
   track.mockReset()
   toggle.mockReset()
+  toggleMetronome.mockClear()
+  toastSuccess.mockReset()
+  metronomeOn.value = false
+  localStorage.clear()
+  mockViewport(390)
 })
 
 describe('SongChartReader', () => {
@@ -308,6 +331,192 @@ describe('SongChartReader', () => {
       await wrapper.get('[data-test="played-it"]').trigger('click')
 
       expect(eventsOfType('song_chart.completed')).toHaveLength(1)
+    })
+  })
+
+  describe('the header', () => {
+    it('shows the title, the artist and chips for the key, capo, meter and tempo', () => {
+      const wrapper = mountReader(timedChart())
+
+      expect(wrapper.get('[data-test="song-title"]').text()).toBe('Amazing Grace')
+      expect(wrapper.get('[data-test="song-artist"]').text()).toBe('John Newton')
+      expect(wrapper.findAll('[data-test="song-chip"]').map((c) => c.text())).toEqual(['Key G', 'No capo', '3/4', '72 BPM'])
+    })
+
+    it('shows no tempo chip for a chart without a tempo', () => {
+      const wrapper = mountReader()
+
+      expect(wrapper.findAll('[data-test="song-chip"]').map((c) => c.text())).toEqual(['Key G', 'No capo'])
+    })
+
+    it('closes from the bar', async () => {
+      const wrapper = mountReader()
+
+      await wrapper.get('[data-test="close-song-chart"]').trigger('click')
+
+      expect(wrapper.emitted('close')).toHaveLength(1)
+    })
+  })
+
+  describe('the chords in this song', () => {
+    it('shows each chord once, in the order it first appears', () => {
+      const wrapper = mountReader()
+
+      expect(wrapper.findAll('[data-test="strip-chord"]').map((c) => c.attributes('data-chord'))).toEqual(['G', 'C'])
+    })
+
+    it('opens the chord card from the strip, sending song_chart.chord_viewed from the strip with no anchor', async () => {
+      const wrapper = mountReader()
+
+      await wrapper.findAll('[data-test="strip-chord"]')[1]!.trigger('click')
+      await flushPromises()
+
+      expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('C')
+      expect(wrapper.findAll('button[data-test="chord-symbol"][aria-pressed="true"]')).toHaveLength(0)
+      expect(eventsOfType('song_chart.chord_viewed')).toEqual([
+        { event_type: 'song_chart.chord_viewed', song_chart_context: context, source: 'strip', chord_definition_id: 'chord-c', chord_voicing_id: cOpen.chord_voicing_id },
+      ])
+    })
+  })
+
+  describe('the metronome', () => {
+    async function turnOn(wrapper: VueWrapper) {
+      await wrapper.get('[data-test="reader-metronome"]').trigger('click')
+    }
+
+    it("turns on from the bar, at the song's tempo, marked as its target", async () => {
+      const wrapper = mountReader(timedChart())
+
+      await turnOn(wrapper)
+
+      expect(toggleMetronome).toHaveBeenCalled()
+      const control = wrapper.getComponent(TempoControl)
+      expect(control.props('tempo')).toBe(72)
+      expect(control.props('goal')).toBe(72)
+      expect(wrapper.get('[data-test="tempo-note"]').text()).toBe("Song tempo 72 BPM · you're at 72")
+    })
+
+    it('starts at 80 BPM with no target for a chart without a tempo', async () => {
+      const wrapper = mountReader()
+
+      await turnOn(wrapper)
+
+      const control = wrapper.getComponent(TempoControl)
+      expect(control.props('tempo')).toBe(80)
+      expect(control.props('goal')).toBeNull()
+    })
+
+    it('remembers a slower tempo for this song, and sends nothing', async () => {
+      const wrapper = mountReader(timedChart())
+      await turnOn(wrapper)
+      track.mockReset()
+
+      wrapper.getComponent(TempoControl).vm.$emit('tempo', 56)
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="tempo-note"]').text()).toBe("Song tempo 72 BPM · you're at 56")
+      expect(localStorage.getItem('motifpath.songTempo.chart-amazing-grace')).toBe('56')
+      expect(track).not.toHaveBeenCalled()
+    })
+
+    it('docks the tempo bar above the action bar on a phone', async () => {
+      const wrapper = mountReader(timedChart())
+
+      await turnOn(wrapper)
+
+      expect(wrapper.find('[data-test="tempo-bar"]').exists()).toBe(true)
+    })
+  })
+
+  describe('I played it, redesigned', () => {
+    it('becomes a quiet "Played ✓" and confirms with a toast', async () => {
+      const wrapper = mountReader()
+
+      await wrapper.get('[data-test="played-it"]').trigger('click')
+
+      expect(wrapper.get('[data-test="played-it"]').text()).toContain('Played')
+      expect(toastSuccess).toHaveBeenCalledTimes(1)
+    })
+
+    it('confirms only once', async () => {
+      const wrapper = mountReader()
+
+      await wrapper.get('[data-test="played-it"]').trigger('click')
+      await wrapper.get('[data-test="played-it"]').trigger('click')
+
+      expect(toastSuccess).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('the admin preview', () => {
+    it('says it is a draft and that nothing is recorded', () => {
+      const wrapper = mountReader(makeLearnerSongChart({ revision_number: null }), instrument, true)
+
+      expect(wrapper.get('[data-test="preview-banner"]').text()).toBe('Preview of the draft · nothing is recorded')
+      expect(wrapper.findAll('[data-test="song-chip"]').map((c) => c.text())).toContain('Draft')
+    })
+
+    it('sends nothing for the strip, the metronome or I played it', async () => {
+      const wrapper = mountReader(makeLearnerSongChart({ revision_number: null }), instrument, true)
+
+      await wrapper.findAll('[data-test="strip-chord"]')[0]!.trigger('click')
+      await wrapper.get('[data-test="reader-metronome"]').trigger('click')
+      await wrapper.get('[data-test="played-it"]').trigger('click')
+
+      expect(track).not.toHaveBeenCalled()
+      expect(toastSuccess).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('on a wide screen', () => {
+    beforeEach(() => mockViewport(1280))
+
+    it('docks the chord card in a side pane, under the metronome and the chords in this song', async () => {
+      const wrapper = mountReader()
+
+      await tap(wrapper, 'G')
+
+      const pane = wrapper.get('[data-test="reader-pane"]')
+      expect(pane.find('[data-test="pane-metronome"]').exists()).toBe(true)
+      expect(pane.find('[data-test="strip-chord"]').exists()).toBe(true)
+      expect(pane.find('[data-test="chord-card"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="floating-chord-card"]').exists()).toBe(false)
+    })
+
+    it('opens the pane when the metronome is turned on', async () => {
+      const wrapper = mountReader()
+
+      await wrapper.get('[data-test="reader-metronome"]').trigger('click')
+
+      expect(wrapper.find('[data-test="reader-pane"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="tempo-bar"]').exists()).toBe(false)
+    })
+
+    it("collapses the pane when the docked card's × is tapped, leaving no chord highlighted", async () => {
+      const wrapper = mountReader()
+      await tap(wrapper, 'G')
+
+      await card(wrapper).get('[data-test="chord-card-close"]').trigger('click')
+
+      expect(wrapper.find('[data-test="reader-pane"]').exists()).toBe(false)
+      expect(wrapper.findAll('button[data-test="chord-symbol"][aria-pressed="true"]')).toHaveLength(0)
+    })
+
+    it('turns the metronome on and off with M, and moves the tempo with - and +', async () => {
+      const wrapper = mountReader(timedChart())
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm' }))
+      await flushPromises()
+      expect(toggleMetronome).toHaveBeenCalledTimes(1)
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: '-' }))
+      await flushPromises()
+      expect(wrapper.getComponent(TempoControl).props('tempo')).toBe(67)
+
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: '+' }))
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: '+' }))
+      await flushPromises()
+      expect(wrapper.getComponent(TempoControl).props('tempo')).toBe(77)
     })
   })
 })

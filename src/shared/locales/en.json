@@ -268,13 +268,24 @@
     "openVoicing": "Open",
     "openChart": "Open the song",
     "minimizeCard": "Minimize",
-    "expandCard": "Show the chord {chord}"
+    "expandCard": "Show the chord {chord}",
+    "noCapo": "No capo",
+    "draft": "Draft",
+    "chordsInSong": "Chords in this song",
+    "songTempo": "Song tempo {bpm} BPM",
+    "youreAt": "you're at {bpm}",
+    "atTempo": "At {bpm} BPM",
+    "metronomeKeys": "M on / off · − + tempo",
+    "playedToast": "Marked {title} as played",
+    "previewTitle": "Preview",
+    "previewBanner": "Preview of the draft · nothing is recorded"
   },
   "songChartPage": {
     "close": "Close",
     "unavailableHeading": "This song chart isn't available",
     "unavailableMessage": "It may have been taken down, or the link may be wrong.",
-    "loadFailed": "Couldn't load the song chart."
+    "loadFailed": "Couldn't load the song chart.",
+    "goHome": "Go home"
   },
   "sheetHeader": {
     "back": "Back",

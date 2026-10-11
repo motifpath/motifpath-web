@@ -23,8 +23,10 @@ vi.mock('@/features/admin/composables/useSongChartPreview', () => ({
   useSongChartPreview: (songChartId: string) => previewOf(songChartId),
 }))
 
-vi.mock('@/shared/composables/useIsCompact', () => ({
-  useIsCompact: () => ({ isCompact: ref(true) }),
+const push = vi.fn()
+vi.mock('vue-router', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useRouter: () => ({ push }),
 }))
 
 const track = vi.fn()
@@ -39,7 +41,7 @@ import { makeLearnerSongChart } from '@/shared/testUtils/songChart'
 function mountView() {
   return mount(SongChartPreviewView, {
     props: { songChartId: 'chart-amazing-grace' },
-    global: { stubs: { AppBar: true, FrettedDiagramView: true, DiagramPlayer: true } },
+    global: { stubs: { FrettedDiagramView: true, DiagramPlayer: true, RouterLink: true } },
   })
 }
 
@@ -51,6 +53,7 @@ beforeEach(() => {
   state.notFound.value = false
   state.retry.mockReset()
   track.mockReset()
+  push.mockReset()
 })
 
 describe('SongChartPreviewView', () => {
@@ -66,10 +69,20 @@ describe('SongChartPreviewView', () => {
 
     const wrapper = mountView()
 
-    expect(wrapper.find('[data-test="preview-note"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="preview-banner"]').text()).toBe('Preview of the draft · nothing is recorded')
     expect(wrapper.text()).toContain('Amazing Grace')
     expect(wrapper.findAll('button[data-test="chord-symbol"]').length).toBeGreaterThan(0)
     expect(track).not.toHaveBeenCalled()
+  })
+
+  it('closes back to the editor', async () => {
+    state.chart.value = makeLearnerSongChart({ revision_number: null })
+    state.instrument.value = makeFrettedInstrument()
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="close-song-chart"]').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({ name: 'admin-song-chart', params: { songChartId: 'chart-amazing-grace' } })
   })
 
   it('shows loading while the preview loads', () => {

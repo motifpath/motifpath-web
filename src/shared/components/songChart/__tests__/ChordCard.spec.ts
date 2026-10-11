@@ -145,12 +145,13 @@ describe('ChordCard', () => {
   })
 
   describe('docked in a side pane', () => {
-    it('neither minimizes nor closes, since the pane does', () => {
+    it('fills the pane and still minimizes and closes', async () => {
       const wrapper = mountCard({ placement: 'docked' })
 
-      expect(wrapper.find('[data-test="chord-card-minimize"]').exists()).toBe(false)
-      expect(wrapper.find('[data-test="chord-card-close"]').exists()).toBe(false)
-      expect(wrapper.find('[data-test="chord-box"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="chord-card"]').classes()).toContain('w-full')
+      await wrapper.get('[data-test="chord-card-close"]').trigger('click')
+      expect(wrapper.emitted('close')).toHaveLength(1)
+      expect(wrapper.find('[data-test="chord-card-minimize"]').exists()).toBe(true)
     })
   })
 })
