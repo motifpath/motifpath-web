@@ -132,9 +132,7 @@
     "putChord": "Put chord",
     "changeChord": "Change chord",
     "removeChord": "Remove chord",
-    "selectToPut": "Select a word or syllable to put a chord on it.",
     "bestVoicing": "Best voicing (learners see it first)",
-    "chordsToFix": "Chords that block publishing:",
     "chordCheck": {
       "ok": "In the chord catalog.",
       "no_chord": "No chord here.",
@@ -144,7 +142,10 @@
       "without_bass": "Shown without its bass; the catalog doesn't have this bass."
     },
     "notAChordReason": "“{symbol}” isn’t a chord",
-    "notInCatalogReason": "“{symbol}” isn’t in the chord catalog"
+    "notInCatalogReason": "“{symbol}” isn’t in the chord catalog",
+    "undo": "Undo",
+    "redo": "Redo",
+    "chordHint": "Select a word or a syllable, then Chord (or type [ ) to put a chord on it. Chords are checked as you write them."
   },
   "songChartEditorView": {
     "untitled": "New song chart",

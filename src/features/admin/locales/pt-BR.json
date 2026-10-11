@@ -132,9 +132,7 @@
     "putChord": "Pôr acorde",
     "changeChord": "Trocar acorde",
     "removeChord": "Tirar acorde",
-    "selectToPut": "Selecione uma palavra ou sílaba para pôr um acorde nela.",
     "bestVoicing": "Melhor forma (os alunos a veem primeiro)",
-    "chordsToFix": "Acordes que impedem a publicação:",
     "chordCheck": {
       "ok": "No catálogo de acordes.",
       "no_chord": "Sem acorde aqui.",
@@ -144,7 +142,10 @@
       "without_bass": "Mostrado sem o baixo; o catálogo não tem este baixo."
     },
     "notAChordReason": "“{symbol}” não é um acorde",
-    "notInCatalogReason": "“{symbol}” não está no catálogo de acordes"
+    "notInCatalogReason": "“{symbol}” não está no catálogo de acordes",
+    "undo": "Desfazer",
+    "redo": "Refazer",
+    "chordHint": "Selecione uma palavra ou sílaba e toque em Acorde (ou digite [ ) para pôr um acorde nela. Os acordes são conferidos enquanto você escreve."
   },
   "songChartEditorView": {
     "untitled": "Nova cifra",

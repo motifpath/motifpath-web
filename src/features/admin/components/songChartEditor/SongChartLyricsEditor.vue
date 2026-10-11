@@ -12,16 +12,16 @@
  */
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor, JSONContent } from '@tiptap/core'
-import { MessageSquare, Music, Plus, X } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { MessageSquare, Music, Plus, Redo2, Undo2 } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import ChordPopover from '@/features/admin/components/songChartEditor/ChordPopover.vue'
 import { chordProblemsKey, SECTION_KINDS, songChartExtensions } from '@/features/admin/components/songChartEditor/extensions'
 import type { ChordProblem } from '@/features/admin/components/songChartEditor/extensions'
 import { useChordLookup } from '@/shared/composables/useChordLookup'
 import { toSavedDocument } from '@/features/admin/utils/songChartEditorDocument'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { voicingNames } from '@/shared/utils/songChartReading'
 
 type SongChartDocument = components['schemas']['SongChartDocument']
 type SectionKind = (typeof SECTION_KINDS)[number]
@@ -56,7 +56,15 @@ function reasonOf(symbol: string, problem: ChordProblem): string {
 const editor = useEditor({
   extensions: songChartExtensions({ problemOf, reasonOf }),
   content: editable(model.value),
-  editorProps: { attributes: { class: 'song-chart-lyrics', 'aria-label': t('songChartEditor.lyricsLabel'), spellcheck: 'false' } },
+  editorProps: {
+    attributes: { class: 'song-chart-lyrics', 'aria-label': t('songChartEditor.lyricsLabel'), spellcheck: 'false' },
+    // "[" on a selected word, or on a chord, writes a chord there, as Chord does.
+    handleKeyDown: (_, event) => {
+      if (event.key !== '[' || !canWriteChord.value) return false
+      void openChordPopover()
+      return true
+    },
+  },
   onUpdate: ({ editor: e }) => {
     const doc = toSavedDocument(e.getJSON())
     lastEmitted = JSON.stringify(doc)
@@ -182,7 +190,6 @@ watch(
 )
 
 const typedCheck = computed(() => (chordSymbol.value.trim() ? checkOf(chordSymbol.value.trim()) : null))
-const chordsToFix = computed(() => writtenSymbols.value.filter((symbol) => checkOf(symbol)?.blocks))
 
 // The catalog answers after the lyrics are drawn; each answer that changes a problem draws the marks again.
 watch(
@@ -190,7 +197,49 @@ watch(
   () => editor.value?.view.dispatch(editor.value.state.tr.setMeta(chordProblemsKey, true)),
 )
 const voicingsAtCursor = computed(() => (chordAtCursor.value ? (checkOf(chordAtCursor.value.writtenSymbol)?.chord?.voicings ?? []) : []))
-const voicingNamesAtCursor = computed(() => voicingNames(voicingsAtCursor.value, t('songChart.openVoicing')))
+
+// ── The chord popover ────────────────────────────────────────────────────────
+
+const canWriteChord = computed(() => hasSelection.value || chordAtCursor.value !== null)
+const popoverOpen = ref(false)
+const popoverPosition = ref({ top: 0, left: 0, above: false })
+const lyricsBox = ref<HTMLElement | null>(null)
+/** The popover's height, about; it goes above the selection when there's less room below. */
+const POPOVER_HEIGHT = 260
+const POPOVER_GAP = 8
+
+/** Where the selection is, in the lyrics' box; the top-left corner when it can't be measured. */
+function placePopover() {
+  const e = editor.value
+  const box = lyricsBox.value?.getBoundingClientRect()
+  if (!e || !box) return
+  try {
+    const start = e.view.coordsAtPos(e.state.selection.from)
+    const roomBelow = window.innerHeight - start.bottom
+    const above = roomBelow < POPOVER_HEIGHT && start.top > POPOVER_HEIGHT
+    popoverPosition.value = {
+      top: (above ? start.top - POPOVER_HEIGHT - POPOVER_GAP : start.bottom + POPOVER_GAP) - box.top,
+      left: Math.max(0, start.left - box.left),
+      above,
+    }
+  } catch {
+    popoverPosition.value = { top: 0, left: 0, above: false }
+  }
+}
+
+async function openChordPopover() {
+  if (!canWriteChord.value) return
+  chordSymbol.value = chordAtCursor.value?.writtenSymbol ?? ''
+  placePopover()
+  popoverOpen.value = true
+  await nextTick()
+  lyricsBox.value?.querySelector<HTMLInputElement>('[data-test="chord-symbol-input"]')?.focus()
+}
+
+function closeChordPopover() {
+  popoverOpen.value = false
+  editor.value?.commands.focus()
+}
 
 function nextAnchorId(): string {
   const used = model.value.content.flatMap((s) =>
@@ -219,10 +268,12 @@ function putChord() {
   } else if (hasSelection.value) {
     e.chain().focus().setMark('chordAnchor', { anchorId: nextAnchorId(), writtenSymbol: symbol, chordDefinitionId: null, chordVoicingId: null }).run()
   }
+  popoverOpen.value = false
 }
 
 function removeChord() {
   editor.value?.chain().focus().extendMarkRange('chordAnchor').unsetMark('chordAnchor').run()
+  popoverOpen.value = false
 }
 
 function pickVoicing(voicingId: string | null) {
@@ -230,19 +281,35 @@ function pickVoicing(voicingId: string | null) {
 }
 
 onBeforeUnmount(() => editor.value?.destroy())
+
+const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink hover:bg-surface-sunken disabled:opacity-40'
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
-    <div class="flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface-sunken p-2">
+  <div class="flex flex-col gap-3">
+    <div class="flex flex-wrap items-center gap-1" role="toolbar" :aria-label="t('songChartEditor.lyricsLabel')">
+      <button type="button" data-test="undo" :class="toolClass" :aria-label="t('songChartEditor.undo')" :disabled="!editor?.can().undo()" @click="editor?.chain().focus().undo().run()">
+        <Undo2 :size="18" aria-hidden="true" />
+      </button>
+      <button type="button" data-test="redo" :class="toolClass" :aria-label="t('songChartEditor.redo')" :disabled="!editor?.can().redo()" @click="editor?.chain().focus().redo().run()">
+        <Redo2 :size="18" aria-hidden="true" />
+      </button>
+      <button type="button" data-test="add-section" :class="toolClass" @click="addSection">
+        <Plus :size="18" aria-hidden="true" />{{ t('songChartEditor.addSection') }}
+      </button>
+      <button type="button" data-test="add-comment" :class="toolClass" @click="addComment">
+        <MessageSquare :size="18" aria-hidden="true" />{{ t('songChartEditor.addComment') }}
+      </button>
+      <button type="button" data-test="open-chord" :class="toolClass" :disabled="!canWriteChord" @mousedown.prevent @click="openChordPopover">
+        <Music :size="18" aria-hidden="true" />{{ t('songChartEditor.chord') }}
+      </button>
+    </div>
+    <p class="text-xs text-ink-muted">{{ t('songChartEditor.chordHint') }}</p>
+
+    <div class="flex flex-wrap items-end gap-2">
       <label class="flex flex-col gap-1 text-xs font-semibold text-ink-subtle">
         {{ t('songChartEditor.sectionKind') }}
-        <select
-          v-model="sectionKind"
-          data-test="section-kind"
-          class="rounded-md border border-border bg-surface px-2 py-1 text-sm text-ink"
-          @change="setSectionAttrs"
-        >
+        <select v-model="sectionKind" data-test="section-kind" class="h-10 rounded-lg border border-border bg-surface px-2 text-sm text-ink" @change="setSectionAttrs">
           <option v-for="kind in SECTION_KINDS" :key="kind" :value="kind">{{ t(`songChart.sectionKind.${kind}`) }}</option>
         </select>
       </label>
@@ -254,108 +321,28 @@ onBeforeUnmount(() => editor.value?.destroy())
           type="text"
           maxlength="100"
           :placeholder="t('songChartEditor.sectionLabelPlaceholder')"
-          class="w-40 rounded-md border border-border bg-surface px-2 py-1 text-sm text-ink"
+          class="h-10 w-44 rounded-lg border border-border bg-surface px-2 text-sm text-ink"
           @change="setSectionAttrs"
         />
       </label>
-      <button
-        type="button"
-        data-test="add-section"
-        class="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink"
-        @click="addSection"
-      >
-        <Plus :size="14" aria-hidden="true" />{{ t('songChartEditor.addSection') }}
-      </button>
-      <button
-        type="button"
-        data-test="add-comment"
-        class="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink"
-        @click="addComment"
-      >
-        <MessageSquare :size="14" aria-hidden="true" />{{ t('songChartEditor.addComment') }}
-      </button>
     </div>
-    <div class="flex flex-col gap-2 rounded-md border border-border bg-surface-sunken p-2">
-      <div class="flex flex-wrap items-end gap-2">
-        <label class="flex flex-col gap-1 text-xs font-semibold text-ink-subtle">
-          {{ t('songChartEditor.chord') }}
-          <input
-            v-model="chordSymbol"
-            data-test="chord-symbol-input"
-            type="text"
-            maxlength="32"
-            :placeholder="t('songChartEditor.chordPlaceholder')"
-            class="w-28 rounded-md border border-border bg-surface px-2 py-1 font-mono text-sm text-ink"
-            @keydown.enter.prevent="putChord"
-          />
-        </label>
-        <button
-          type="button"
-          data-test="put-chord"
-          class="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink disabled:opacity-50"
-          :disabled="!chordSymbol.trim() || (!hasSelection && !chordAtCursor)"
-          @click="putChord"
-        >
-          <Music :size="14" aria-hidden="true" />{{ chordAtCursor ? t('songChartEditor.changeChord') : t('songChartEditor.putChord') }}
-        </button>
-        <button
-          v-if="chordAtCursor"
-          type="button"
-          data-test="remove-chord"
-          class="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-ink"
-          @click="removeChord"
-        >
-          <X :size="14" aria-hidden="true" />{{ t('songChartEditor.removeChord') }}
-        </button>
-        <p
-          v-if="typedCheck"
-          data-test="chord-status"
-          :data-kind="typedCheck.kind"
-          :data-blocks="String(typedCheck.blocks)"
-          class="text-xs"
-          :class="typedCheck.blocks ? 'text-danger' : 'text-ink-muted'"
-        >
-          {{ t(`songChartEditor.chordCheck.${typedCheck.kind}`) }}
-          <span v-if="typedCheck.blocks">({{ t('songChartEditorView.blocksPublishing') }})</span>
-        </p>
-        <p v-else-if="!hasSelection && !chordAtCursor" class="text-xs text-ink-subtle">{{ t('songChartEditor.selectToPut') }}</p>
-      </div>
 
-      <div v-if="voicingsAtCursor.length" role="radiogroup" :aria-label="t('songChart.voicings')" class="flex flex-wrap gap-1.5">
-        <button
-          type="button"
-          role="radio"
-          data-test="voicing-option"
-          data-voicing-id=""
-          :aria-checked="chordAtCursor?.chordVoicingId === null"
-          class="rounded-md border px-2.5 py-1 text-xs"
-          :class="chordAtCursor?.chordVoicingId === null ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink'"
-          @click="pickVoicing(null)"
-        >
-          {{ t('songChartEditor.bestVoicing') }}
-        </button>
-        <button
-          v-for="(v, i) in voicingsAtCursor"
-          :key="v.chord_voicing_id"
-          type="button"
-          role="radio"
-          data-test="voicing-option"
-          :data-voicing-id="v.chord_voicing_id"
-          :aria-checked="chordAtCursor?.chordVoicingId === v.chord_voicing_id"
-          class="rounded-md border px-2.5 py-1 text-xs"
-          :class="chordAtCursor?.chordVoicingId === v.chord_voicing_id ? 'border-accent bg-accent text-accent-fg' : 'border-border text-ink'"
-          @click="pickVoicing(v.chord_voicing_id)"
-        >
-          {{ voicingNamesAtCursor[i] }}
-        </button>
-      </div>
-
-      <p v-if="chordsToFix.length" class="text-xs text-danger">
-        {{ t('songChartEditor.chordsToFix') }}
-        <span v-for="symbol in chordsToFix" :key="symbol" data-test="chord-to-fix" :data-symbol="symbol" class="ml-1 font-mono font-semibold">{{ symbol }}</span>
-      </p>
+    <div ref="lyricsBox" class="relative">
+      <EditorContent :editor="editor" class="rounded-xl bg-surface-raised py-2" />
+      <ChordPopover
+        v-if="popoverOpen"
+        v-model:symbol="chordSymbol"
+        :on-chord="chordAtCursor !== null"
+        :check="typedCheck"
+        :voicings="voicingsAtCursor"
+        :picked-voicing-id="chordAtCursor?.chordVoicingId ?? null"
+        :position="popoverPosition"
+        @put="putChord"
+        @remove="removeChord"
+        @pick="pickVoicing"
+        @close="closeChordPopover"
+      />
     </div>
-    <EditorContent :editor="editor" class="rounded-md border border-border bg-surface-raised px-4 py-3" />
   </div>
 </template>
 
