@@ -507,5 +507,27 @@
       "defaultSingle": "Tap the option that answers the prompt."
     },
     "changeHint": "Then tap Next. You can go back and change an answer until you finish; the one you move on with is the one that counts."
+  },
+  "challengeRun": {
+    "tag": "Challenge",
+    "exit": "Back to lesson",
+    "noAnswersYet": "No answers are shown until the end.",
+    "next": "Next",
+    "seeResult": "See result",
+    "errorMessage": "We couldn't load this challenge.",
+    "empty": "There's no challenge for this lesson yet.",
+    "backToLesson": "Back to lesson",
+    "doneTitle": "Challenge done",
+    "resultSummary": "{correct} of {total} correct",
+    "finish": "Finish",
+    "review": {
+      "heading": "Your answers",
+      "exercise": "Exercise {number}",
+      "yourAnswer": "Your answer: {label}",
+      "rightAnswer": "Right answer: {label}",
+      "noAnswer": "Not answered",
+      "right": "Right",
+      "wrong": "Wrong"
+    }
   }
 }

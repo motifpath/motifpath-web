@@ -507,5 +507,27 @@
       "defaultSingle": "Toque na opção que responde ao enunciado."
     },
     "changeHint": "Depois toque em Próximo. Você pode voltar e mudar uma resposta até terminar; vale a que você deixar ao seguir."
+  },
+  "challengeRun": {
+    "tag": "Desafio",
+    "exit": "Voltar para a lição",
+    "noAnswersYet": "As respostas só aparecem no final.",
+    "next": "Próximo",
+    "seeResult": "Ver resultado",
+    "errorMessage": "Não foi possível carregar este desafio.",
+    "empty": "Ainda não há desafio para esta lição.",
+    "backToLesson": "Voltar para a lição",
+    "doneTitle": "Desafio concluído",
+    "resultSummary": "{correct} de {total} corretas",
+    "finish": "Concluir",
+    "review": {
+      "heading": "Suas respostas",
+      "exercise": "Exercício {number}",
+      "yourAnswer": "Sua resposta: {label}",
+      "rightAnswer": "Resposta certa: {label}",
+      "noAnswer": "Sem resposta",
+      "right": "Certa",
+      "wrong": "Errada"
+    }
   }
 }
