@@ -1,5 +1,5 @@
 import { computed, type ComputedRef } from 'vue'
-import { useAuth as useClerkAuth, useClerk, useSignIn, useSignUp, useUser as useClerkUser } from '@clerk/vue'
+import { useAuth as useClerkAuth, useSignIn, useSignUp, useUser as useClerkUser } from '@clerk/vue'
 
 import { useToast } from '@/shared/composables/useToast'
 import { i18n } from '@/i18n'
@@ -30,8 +30,6 @@ export interface AuthContext {
    * return the new token.
    */
   refreshToken: () => Promise<string | null>
-  /** Opens Clerk's own profile screen, where users edit their name. */
-  openUserProfile: () => void
   /** Signs out, then tells the visitor their practice and progress are saved. */
   signOut: () => Promise<void>
   /**
@@ -66,7 +64,6 @@ export interface AuthContext {
 export function useAuth(): AuthContext {
   const clerk = useClerkAuth()
   const clerkUser = useClerkUser()
-  const clerkInstance = useClerk()
   const { signIn } = useSignIn()
   const { signUp, setActive } = useSignUp()
   const toast = useToast()
@@ -76,7 +73,6 @@ export function useAuth(): AuthContext {
     isSignedIn: computed(() => clerk.isSignedIn.value === true),
     getToken: () => clerk.getToken.value(),
     refreshToken: () => clerk.getToken.value({ skipCache: true }),
-    openUserProfile: () => clerkInstance.value?.openUserProfile(),
     signOut: async () => {
       await clerk.signOut.value()
       toast.neutral(i18n.global.t('signedOutToast'))

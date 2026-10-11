@@ -26,6 +26,8 @@ vi.mock('@clerk/vue', () => ({
   }),
   useUser: () => ({ user: computed(() => clerkUser.value) }),
   useClerk: () => computed(() => null),
+  useSignIn: () => ({ signIn: computed(() => undefined), setActive: computed(() => undefined) }),
+  useSignUp: () => ({ signUp: computed(() => undefined), setActive: computed(() => undefined) }),
 }))
 
 const { default: AccountMenu } = await import('@/shared/components/AccountMenu.vue')

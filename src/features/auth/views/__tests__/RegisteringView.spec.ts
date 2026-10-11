@@ -14,6 +14,9 @@ vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
 
+const { AccountBridge } = vi.hoisted(() => ({ AccountBridge: { name: 'AccountBridge', template: '<div />' } }))
+vi.mock('@/features/auth/components/AccountBridge.vue', () => ({ default: AccountBridge }))
+
 import RegisteringView from '@/features/auth/views/RegisteringView.vue'
 
 function testRouter() {
@@ -24,7 +27,6 @@ function testRouter() {
       { path: '/welcome/error', name: 'registration-error', component: { template: '<div />' } },
       { path: '/path', name: 'path', component: { template: '<div />' } },
       { path: '/', name: 'home', component: { template: '<div />' } },
-      { path: '/sign-in', name: 'sign-in', component: { template: '<div />' } },
     ],
   })
 }
@@ -44,10 +46,10 @@ describe('RegisteringView', () => {
     vi.restoreAllMocks()
   })
 
-  it('shows the setting-up-your-account loading state', () => {
+  it('shows the account bridge, on the landing layout', () => {
     const wrapper = mount(RegisteringView, { global: { plugins: [router] } })
 
-    expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
+    expect(wrapper.findComponent(AccountBridge).exists()).toBe(true)
   })
 
   // ensure() is called unconditionally on mount — safe regardless of state,
@@ -65,12 +67,12 @@ describe('RegisteringView', () => {
   // Full state-transition coverage (redirect target, empty-redirect fallback,
   // failure, idle/sign-out) lives in useRegistrationRedirect.spec.ts — this is
   // just a wiring smoke test confirming the view actually uses that composable.
-  it('wires up useRegistrationRedirect: navigates to path once registered', async () => {
+  it('wires up useRegistrationRedirect: navigates Home once registered', async () => {
     mount(RegisteringView, { global: { plugins: [router] } })
 
     currentUser.state = 'registered'
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(router.currentRoute.value.name).toBe('path')
+    expect(router.currentRoute.value.name).toBe('home')
   })
 })

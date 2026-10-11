@@ -1,8 +1,21 @@
 {
-  "registeringNotice": {
-    "message": "Configurando sua conta…"
+  "landing": {
+    "headline": "Pratique um pouco todo dia. Veja seu progresso.",
+    "line": "Sessões curtas no seu instrumento, escolhidas para o que você precisa a seguir — e aulas quando quiser aprender algo novo.",
+    "caption": "Grátis durante o alfa. Usamos seu nome e e-mail do Google, nada mais.",
+    "unfinished": "O login com o Google não terminou. Nada foi salvo — tente de novo quando quiser."
   },
-  "signInView": {
-    "subtitle": "Entre para começar a praticar."
+  "bridge": {
+    "failed": "Não conseguimos configurar sua conta. Seu login com o Google funcionou — tente de novo daqui a pouco.",
+    "tryAgain": "Tentar de novo"
+  },
+  "nameStep": {
+    "title": "Como devemos chamar você?",
+    "firstName": "Nome",
+    "lastName": "Sobrenome",
+    "firstNameRequired": "Informe seu nome.",
+    "lastNameRequired": "Informe seu sobrenome.",
+    "saveFailed": "Não conseguimos salvar seu nome. Tente de novo.",
+    "continue": "Continuar"
   }
 }

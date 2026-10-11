@@ -1,4 +1,4 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 
@@ -7,7 +7,6 @@ import type { CurrentUserState } from '@/stores/currentUser'
 const auth = {
   isLoaded: ref(true),
   isSignedIn: ref(false),
-  signOut: vi.fn(async () => {}),
 }
 
 vi.mock('@/features/auth/composables/useAuth', () => ({
@@ -19,38 +18,63 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
 const currentUser = reactive({
   isRegistered: ref(false),
   state: ref<CurrentUserState>('idle'),
-  retry: vi.fn(async () => {}),
 })
 
 vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
 
-const { StudentHome } = vi.hoisted(() => ({
+const { StudentHome, LandingScreen, AccountBridge } = vi.hoisted(() => ({
   StudentHome: { name: 'StudentHome', template: '<div />' },
+  LandingScreen: { name: 'LandingScreen', template: '<div />' },
+  AccountBridge: { name: 'AccountBridge', template: '<div />' },
 }))
 vi.mock('@/features/student/components/StudentHome.vue', () => ({ default: StudentHome }))
+vi.mock('@/features/auth/components/LandingScreen.vue', () => ({ default: LandingScreen }))
+vi.mock('@/features/auth/components/AccountBridge.vue', () => ({ default: AccountBridge }))
 
 import HomeView from '@/features/student/views/HomeView.vue'
 
-function mountView() {
-  return mount(HomeView, { global: { stubs: { RouterLink: RouterLinkStub } } })
+function shown() {
+  const wrapper = mount(HomeView)
+  return {
+    landing: wrapper.findComponent(LandingScreen).exists(),
+    bridge: wrapper.findComponent(AccountBridge).exists(),
+    home: wrapper.findComponent(StudentHome).exists(),
+  }
 }
 
 describe('HomeView', () => {
-  it('shows a loading state until Clerk resolves', () => {
-    auth.isLoaded.value = false
-
-    expect(mountView().find('[data-test="loading"]').exists()).toBe(true)
-  })
-
-  it('offers sign-in when signed out', () => {
+  it('is the landing for a signed-out visitor', () => {
     auth.isLoaded.value = true
     auth.isSignedIn.value = false
 
-    const link = mountView().getComponent(RouterLinkStub)
+    expect(shown()).toEqual({ landing: true, bridge: false, home: false })
+  })
 
-    expect(link.props('to')).toEqual({ name: 'sign-in' })
+  it('is the landing while Clerk is still loading, never a blank page', () => {
+    auth.isLoaded.value = false
+    auth.isSignedIn.value = false
+
+    expect(shown()).toEqual({ landing: true, bridge: false, home: false })
+  })
+
+  it('is the account bridge while a signed-in visitor is still being set up', () => {
+    auth.isLoaded.value = true
+    auth.isSignedIn.value = true
+    currentUser.isRegistered = false
+    currentUser.state = 'registering'
+
+    expect(shown()).toEqual({ landing: false, bridge: true, home: false })
+  })
+
+  it('is the account bridge when setting the account up failed', () => {
+    auth.isLoaded.value = true
+    auth.isSignedIn.value = true
+    currentUser.isRegistered = false
+    currentUser.state = 'failed'
+
+    expect(shown()).toEqual({ landing: false, bridge: true, home: false })
   })
 
   it('opens on the student home when signed in and registered', () => {
@@ -59,42 +83,6 @@ describe('HomeView', () => {
     currentUser.isRegistered = true
     currentUser.state = 'registered'
 
-    const wrapper = mountView()
-
-    expect(wrapper.findComponent(StudentHome).exists()).toBe(true)
-    expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
-  })
-
-  it('shows no student home while signed out', () => {
-    auth.isLoaded.value = true
-    auth.isSignedIn.value = false
-
-    expect(mountView().findComponent(StudentHome).exists()).toBe(false)
-  })
-
-  it('shows a neutral loading line, with no dead link, while signed in but not yet registered', () => {
-    auth.isLoaded.value = true
-    auth.isSignedIn.value = true
-    currentUser.isRegistered = false
-    currentUser.state = 'registering'
-
-    const wrapper = mountView()
-
-    expect(wrapper.find('[data-test="registering"]').exists()).toBe(true)
-    expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
-  })
-
-  it('offers a retry control, not a dead end, when registration failed', async () => {
-    auth.isLoaded.value = true
-    auth.isSignedIn.value = true
-    currentUser.isRegistered = false
-    currentUser.state = 'failed'
-
-    const wrapper = mountView()
-    const retryButton = wrapper.get('[data-test="registration-failed"] [data-test="retry"]')
-    await retryButton.trigger('click')
-
-    expect(wrapper.findAllComponents(RouterLinkStub)).toHaveLength(0)
-    expect(currentUser.retry).toHaveBeenCalledOnce()
+    expect(shown()).toEqual({ landing: false, bridge: false, home: true })
   })
 })

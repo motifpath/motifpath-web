@@ -25,14 +25,10 @@ interface SignUpStub {
 
 const clerkUser = ref<ClerkUserStub | null | undefined>(undefined)
 
-const clerkInstance = {
-  openUserProfile: vi.fn(),
-}
-
-const authenticateWithRedirect = vi.fn(async (_params: Record<string, string>) => {})
+const authenticateWithRedirect = vi.fn<(params: Record<string, string>) => Promise<void>>(async () => {})
 const signIn = ref<{ authenticateWithRedirect: typeof authenticateWithRedirect } | undefined>({ authenticateWithRedirect })
 const signUp = ref<SignUpStub | undefined>(undefined)
-const setActive = vi.fn(async (_params: { session: string | null }) => {})
+const setActive = vi.fn<(params: { session: string | null }) => Promise<void>>(async () => {})
 
 const toastNeutral = vi.fn()
 vi.mock('@/shared/composables/useToast', () => ({ useToast: () => ({ neutral: toastNeutral }) }))
@@ -47,7 +43,6 @@ vi.mock('@clerk/vue', () => ({
   useUser: () => ({
     user: computed(() => clerkUser.value),
   }),
-  useClerk: () => computed(() => clerkInstance),
   useSignIn: () => ({ signIn: computed(() => signIn.value), setActive: computed(() => setActive) }),
   useSignUp: () => ({ signUp: computed(() => signUp.value), setActive: computed(() => setActive) }),
 }))
@@ -111,11 +106,6 @@ describe('useAuth', () => {
     expect(token).toBe('jwt-abc')
   })
 
-  it("opens Clerk's own profile screen, where users edit their name", () => {
-    useAuth().openUserProfile()
-
-    expect(clerkInstance.openUserProfile).toHaveBeenCalledOnce()
-  })
 
   describe('Google sign-in', () => {
     it('sends the visitor straight to Google, through the callback, to the page after it', async () => {

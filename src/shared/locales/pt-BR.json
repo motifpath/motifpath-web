@@ -28,12 +28,8 @@
     "saved": "Salvo",
     "tryAgain": "Tentar novamente",
     "signOut": "Sair",
-    "signOutTryDifferentAccount": "Sair e tentar outra conta",
-    "signIn": "Entrar",
     "backToPath": "Voltar para a trilha",
-    "back": "‹ Voltar",
-    "addYourName": "Adicionar seu nome",
-    "nameAddedTryAgain": "Já adicionei meu nome — tentar novamente"
+    "back": "‹ Voltar"
   },
   "states": {
     "loading": "Carregando…",
@@ -43,9 +39,7 @@
     }
   },
   "errors": {
-    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente.",
-    "registrationFailed": "Não conseguimos concluir a configuração da sua conta. Isso costuma ser temporário.",
-    "registrationNameRequired": "Sua conta ainda não tem um nome. Adicione seu nome e sobrenome ao seu perfil e tente novamente."
+    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente."
   },
   "localeSwitcher": {
     "label": "Idioma",
@@ -329,7 +323,7 @@
   },
   "googleButton": {
     "continue": "Continuar com o Google",
-    "busy": "Preparando sua conta…"
+    "busy": "Configurando sua conta…"
   },
   "signedOutToast": "Você saiu. Sua prática e seu progresso estão salvos."
 }

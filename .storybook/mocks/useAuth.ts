@@ -9,7 +9,6 @@ export function useAuth(): AuthContext {
     isSignedIn: computed(() => true),
     getToken: () => Promise.resolve(null),
     refreshToken: () => Promise.resolve(null),
-    openUserProfile: () => {},
     signOut: () => Promise.resolve(),
     displayInitial: computed(() => 'A'),
     email: computed(() => 'ana.souza@example.com'),

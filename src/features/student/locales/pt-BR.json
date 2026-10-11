@@ -1,7 +1,4 @@
 {
-  "home": {
-    "signedOutMessage": "Entre para começar a praticar."
-  },
   "pathView": {
     "heading": "Minha trilha",
     "coursePart": "{course} · Parte {part} de {parts}",
