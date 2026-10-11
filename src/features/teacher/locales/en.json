@@ -732,8 +732,14 @@
     "published": "Published"
   },
   "chordVoicingPicker": {
-    "symbolLabel": "Chord",
-    "symbolPlaceholder": "e.g. G7"
+    "rootLabel": "Root",
+    "chooseRoot": "Choose",
+    "symbolLabel": "Or type a chord",
+    "symbolPlaceholder": "e.g. am7",
+    "qualityLabel": "Quality",
+    "major": "Major",
+    "notAChord": "“{symbol}” isn’t a chord we can read.",
+    "notInCatalog": "The chord catalog doesn’t have “{symbol}”."
   },
   "songChartPicker": {
     "title": "Insert a song chart",

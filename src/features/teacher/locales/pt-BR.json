@@ -732,8 +732,14 @@
     "published": "Publicada"
   },
   "chordVoicingPicker": {
-    "symbolLabel": "Acorde",
-    "symbolPlaceholder": "ex.: G7"
+    "rootLabel": "Tônica",
+    "chooseRoot": "Escolher",
+    "symbolLabel": "Ou digite um acorde",
+    "symbolPlaceholder": "ex.: am7",
+    "qualityLabel": "Qualidade",
+    "major": "Maior",
+    "notAChord": "“{symbol}” não é um acorde que conseguimos ler.",
+    "notInCatalog": "O catálogo de acordes não tem “{symbol}”."
   },
   "songChartPicker": {
     "title": "Inserir uma cifra",
