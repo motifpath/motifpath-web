@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { makeAnchor, makeChord, makeLyricLine, makeVoicing } from '@/shared/testUtils/songChart'
-import { lineSegments, missingBass, openingVoicing, voicingNames } from '@/shared/utils/songChartReading'
+import { chordC, makeAnchor, makeChord, makeLearnerSongChart, makeLyricLine, makeSection, makeVoicing } from '@/shared/testUtils/songChart'
+import { chordsOfSong, lineSegments, missingBass, openingVoicing, voicingNames } from '@/shared/utils/songChartReading'
 
 const anchor = makeAnchor
 const line = makeLyricLine
@@ -92,5 +92,20 @@ describe('voicingNames', () => {
 
   it('numbers voicings that sit at the same place, so each name is its own', () => {
     expect(voicingNames([at('g-open', 0), at('g-3a', 3), at('g-3b', 3)], 'Open')).toEqual(['Open', '3fr', '3fr · 2'])
+  })
+})
+
+describe('chordsOfSong', () => {
+  const chart = () => makeLearnerSongChart()
+
+  it('lists each chord once, in the order it first appears', () => {
+    expect(chordsOfSong(chart().body, chart().chords).map((c) => c.canonical_symbol)).toEqual(['G', 'C'])
+  })
+
+  it('leaves out no-chord markings, unresolved chords and chords with no voicing', () => {
+    const body = { type: 'doc' as const, content: [makeSection([makeLyricLine(['Amazing ', makeAnchor('a1', 'N.C.')], ['grace ', makeAnchor('a2', 'H7')], ['how ', makeAnchor('a3', 'D', { chordDefinitionId: 'chord-d' })], ['sweet', makeAnchor('a4', 'C', { chordDefinitionId: 'chord-c' })])])] }
+    const chords = [makeChord('chord-d', 'D', []), chordC]
+
+    expect(chordsOfSong(body, chords).map((c) => c.canonical_symbol)).toEqual(['C'])
   })
 })

@@ -5,6 +5,7 @@ type LyricLine = components['schemas']['SongChartLyricLine']
 type Anchor = components['schemas']['SongChartChordAnchor']['attrs']
 type ChordDefinition = components['schemas']['ChordDefinition']
 type ChordVoicing = components['schemas']['ChordVoicing']
+type SongChartBody = components['schemas']['LearnerSongChart']['body']
 
 /** A piece of a lyric line drawn as one unit: some text, and the chord over it, if any. */
 export interface LineSegment {
@@ -57,4 +58,25 @@ export function voicingNames(voicings: ChordVoicing[], open: string): string[] {
     seen.set(base, count)
     return count === 1 ? base : `${base} · ${count}`
   })
+}
+
+/**
+ * The chords a song uses that have something to show, each once, in the order they first appear:
+ * no-chord markings, symbols that resolved to no catalog chord, and chords without a voicing are
+ * left out.
+ */
+export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): ChordDefinition[] {
+  const byId = new Map(chords.map((c) => [c.chord_definition_id, c]))
+  const found = new Map<string, ChordDefinition>()
+  for (const section of body.content) {
+    for (const line of section.content) {
+      if (line.type !== 'lyricLine') continue
+      for (const run of line.content) {
+        const id = run.marks?.[0]?.attrs.chordDefinitionId
+        const chord = id ? byId.get(id) : undefined
+        if (chord && chord.voicings.length > 0 && !found.has(chord.chord_definition_id)) found.set(chord.chord_definition_id, chord)
+      }
+    }
+  }
+  return [...found.values()]
 }
