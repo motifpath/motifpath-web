@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * The tempo of a play-along's next take, in one 48 px row: the metronome toggle, a slider from the
- * ladder's slowest tempo to the fastest playable as the main control, with the best clean tempo and
- * the goal marked on it, and the value, which the student taps to type an exact tempo. A tempo is
- * chosen once the slider is released or the typing is done, so the ladder hears one choice.
+ * A tempo to play at, in one 48 px row: the metronome toggle, a slider from the slowest tempo
+ * offered to the fastest playable as the main control, with the best clean tempo and the goal
+ * marked on it when there are any, and the value, which the student taps to type an exact tempo.
+ * A tempo is chosen once the slider is released or the typing is done, so one gesture is one
+ * choice.
  */
 import { computed, nextTick, ref } from 'vue'
 import { Metronome } from 'lucide-vue-next'
@@ -15,7 +16,10 @@ const props = defineProps<{
   tempo: number
   /** The ladder's slowest tempo, where the slider starts. */
   slowest: number
-  goal: number
+  /** The tempo to work up to, marked on the slider; none when there's no target. */
+  goal: number | null
+  /** What the goal's mark says; "Goal {bpm} BPM" by default. */
+  goalLabel?: string
   /** The best clean tempo so far, if any. */
   best: number | null
   /** Whether a take clicks the beat. */
@@ -53,7 +57,7 @@ function along(bpm: number): string {
 
 const ticks = computed(() => [
   ...(props.best === null ? [] : [{ kind: 'best', bpm: props.best, label: t('tempoControl.bestTick', { bpm: props.best }) }]),
-  { kind: 'goal', bpm: props.goal, label: t('tempoControl.goalTick', { bpm: props.goal }) },
+  ...(props.goal === null ? [] : [{ kind: 'goal', bpm: props.goal, label: props.goalLabel ?? t('tempoControl.goalTick', { bpm: props.goal }) }]),
 ])
 
 /** The typed tempo while the student types one; null while the value only shows. */
