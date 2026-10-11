@@ -145,7 +145,10 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
       }
 
       const created = await coreApi.POST('/users', { body: { role: 'student' } })
-      if (applyIfRegistered(myEpoch, created.data)) return
+      if (applyIfRegistered(myEpoch, created.data)) {
+        await keepChosenLocale(myEpoch)
+        return
+      }
 
       if (created.response?.status === 409) {
         const reconciled = await coreApi.GET('/users/me')
@@ -161,6 +164,15 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
         state.value = 'failed'
       }
     }
+  }
+
+  // A new account starts in the server's default language, but a visitor may already have chosen
+  // one on this device before signing up: that choice wins, so the app doesn't switch language
+  // under them the moment the account exists.
+  async function keepChosenLocale(myEpoch: number): Promise<void> {
+    const chosen = persistedLocale()
+    if (myEpoch !== epoch || chosen === null || chosen === i18n.global.locale.value) return
+    await setLocale(chosen)
   }
 
   /** Starts a registration attempt, or returns the one already running. */

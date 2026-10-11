@@ -349,6 +349,49 @@ describe('useCurrentUserStore', () => {
     })
   })
 
+  describe('the language a new account starts in', () => {
+    it('is the one the visitor chose on this device before signing up', async () => {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, 'pt-BR')
+      GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+      POST.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 201 } })
+      PATCH.mockResolvedValueOnce({
+        data: { ...profile, locale: { code: 'pt_BR', name: 'Portuguese (Brazil)' } },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      expect(PATCH).toHaveBeenCalledWith('/users/me', { body: { locale: 'pt_BR' } })
+      expect(store.state).toBe('registered')
+      expect(i18n.global.locale.value).toBe('pt-BR')
+      expect(store.profile?.locale.code).toBe('pt_BR')
+    })
+
+    it("is the server's when the visitor chose nothing on this device", async () => {
+      GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+      POST.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 201 } })
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      expect(PATCH).not.toHaveBeenCalled()
+      expect(i18n.global.locale.value).toBe('en')
+    })
+
+    it('is not changed for an account that already existed', async () => {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, 'pt-BR')
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+
+      expect(PATCH).not.toHaveBeenCalled()
+      expect(i18n.global.locale.value).toBe('en')
+    })
+  })
+
   describe('locale from the registered profile', () => {
     it('overrides the anonymous locale with the profile locale once registered', async () => {
       mockNavigatorLanguage('en-US')
