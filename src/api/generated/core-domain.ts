@@ -1600,6 +1600,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/starting-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List where a new student should start
+         * @description The paths and courses a student who has never started anything
+         *     should see first, for the instrument they want to play, how much
+         *     they have played it, and their language, in order.
+         *
+         *     When the starting_points setting (PUT /admin/config/{key}) has a
+         *     list for this instrument, experience and language, the result is
+         *     that list's entries in their order, as many as the team chose,
+         *     skipping any entry that is no longer published (source
+         *     "curated"). When no list is configured, or none of its
+         *     entries is still published, the result comes from the catalog
+         *     instead (source "catalog"): published paths, then published
+         *     courses, for this instrument and language at the levels the
+         *     experience maps to — never_played to beginner; plays_a_bit to
+         *     early_intermediate or intermediate; plays_well to advanced or
+         *     expert — each ordered by title, at most five in all. An empty
+         *     items array means nothing matched either way.
+         *
+         *     The same for every caller whatever their role.
+         */
+        get: operations["listStartingPoints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the app's settings
+         * @description Returns every setting key the service knows, with when and by
+         *     whom each was last changed — set or not. Settings are editorial
+         *     and operational values the team changes at runtime; each key's
+         *     value has its own schema (see AppConfigValue). Only admins may
+         *     list them.
+         */
+        get: operations["listAppConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/config/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The setting's key, one of those GET /admin/config lists (today: starting_points). */
+                key: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Get one of the app's settings
+         * @description Returns a setting's current value, with when and by whom it was
+         *     last changed. A known key that was never set returns no value.
+         *     Only admins may read settings.
+         */
+        get: operations["getAppConfig"];
+        /**
+         * Replace one of the app's settings
+         * @description Replaces a setting's whole value. The body must match the schema
+         *     of this key's value (see AppConfigValue: starting_points takes a
+         *     StartingPointsConfig) and pass that key's checks, which may look
+         *     at other data — for starting_points, that every entry names a
+         *     published path or course. A value that fails is refused with
+         *     every problem listed, and nothing is stored. Records the caller
+         *     as the last to change it. Only admins may change settings.
+         */
+        put: operations["setAppConfig"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses": {
         parameters: {
             query?: never;
@@ -3091,10 +3187,22 @@ export interface components {
              *     chord_voicing exactly when the chord catalog installed it as a
              *     voicing, and a diagram created through createDiagram, including
              *     a copy saved from a chord_voicing diagram, is general. A
-             *     diagram's purpose doesn't change how it renders or plays.
+             *     diagram's purpose doesn't change how it plays. Only a
+             *     chord_voicing diagram carries chord data (chord_voicing), and
+             *     a diagram with chord data is shown as a chord box by default.
              * @enum {string}
              */
             purpose: "general" | "chord_voicing";
+            /**
+             * @description The catalog voicing this diagram is the fingering of: its
+             *     chord data (fingers, muted strings, fret window). A diagram
+             *     that carries it is shown as a chord box by default, drawn from
+             *     it without a search of the chord catalog. Present exactly when
+             *     purpose is chord_voicing, on GET /diagrams/{diagram_id}; absent
+             *     from list responses and from every general diagram, a copy
+             *     saved from a chord_voicing diagram included.
+             */
+            readonly chord_voicing?: components["schemas"]["ChordVoicing"];
             created_by: components["schemas"]["UserRef"];
             /**
              * @description The root note this diagram was authored against (e.g. "A"),
@@ -4861,6 +4969,89 @@ export interface components {
             checkpoint_count: number;
             /** @description Number of content nodes across this published course version's checkpoint learning paths. This is not an estimated duration. */
             lesson_count: number;
+        };
+        /**
+         * @description How much a student has played an instrument, as they answer it on their first visit: never, a bit, or well.
+         * @enum {string}
+         */
+        StartingPointExperience: "never_played" | "plays_a_bit" | "plays_well";
+        /** @description One path or course in a list of starting points. */
+        StartingPointRef: {
+            /**
+             * @description Whether id names a learning path or a course.
+             * @enum {string}
+             */
+            kind: "path" | "course";
+            /**
+             * Format: uuid
+             * @description The learning_path_id or course_id of the entry.
+             */
+            id: string;
+        };
+        /** @description One of the app's settings, without its value. */
+        AppConfigSummary: {
+            /** @description The setting's key. */
+            key: string;
+            /** @description Whether the setting has ever been given a value. */
+            is_set: boolean;
+            /**
+             * Format: date-time
+             * @description When the setting was last changed. Absent when it was never set.
+             */
+            updated_at?: string;
+            updated_by?: components["schemas"]["UserRef"];
+        };
+        /** @description One of the app's settings with its value. */
+        AppConfigEntry: {
+            /** @description The setting's key. */
+            key: string;
+            value?: components["schemas"]["AppConfigValue"];
+            /**
+             * Format: date-time
+             * @description When the setting was last changed. Absent when it was never set.
+             */
+            updated_at?: string;
+            updated_by?: components["schemas"]["UserRef"];
+        };
+        /** @description A setting's value. Its schema depends on the key — starting_points takes a StartingPointsConfig. Absent from an AppConfigEntry whose setting was never set. */
+        AppConfigValue: components["schemas"]["StartingPointsConfig"];
+        /** @description The value of the starting_points setting: the paths and courses a student who has never started anything sees first, one list per instrument, experience and language. */
+        StartingPointsConfig: {
+            /** @description Every list. No two lists may share the same instrument_id, experience and language. */
+            lists: components["schemas"]["StartingPointsList"][];
+        };
+        /** @description The starting points for one instrument, experience and language, in order. */
+        StartingPointsList: {
+            /**
+             * Format: uuid
+             * @description The instrument this list is for. It must exist.
+             */
+            instrument_id: string;
+            experience: components["schemas"]["StartingPointExperience"];
+            /** @description The language this list is for, as a Language.code other than "any". */
+            language: string;
+            /** @description The entries, first shown first; as many as the team chooses. Each must name a published path or course. */
+            items: components["schemas"]["StartingPointRef"][];
+        };
+        /** @description A path or a course a new student can start with, as the catalog shows it. path is present when kind is path, course when kind is course. */
+        StartingPoint: {
+            /**
+             * @description Whether this entry is a learning path or a course.
+             * @enum {string}
+             */
+            kind: "path" | "course";
+            path?: components["schemas"]["PathCatalogEntry"];
+            course?: components["schemas"]["CourseCatalogEntry"];
+        };
+        /** @description Where a new student should start, in order. */
+        StartingPoints: {
+            /**
+             * @description curated when the list the team configured answered; catalog when none was configured or none of its entries is still published.
+             * @enum {string}
+             */
+            source: "curated" | "catalog";
+            /** @description The paths and courses, first shown first: as many as the curated list holds, or at most five from the catalog. */
+            items: components["schemas"]["StartingPoint"][];
         };
         /** @description A published learning path as it appears in the path catalog — enough to browse and pick one, never authoring detail such as an item's content_node_id. */
         PathCatalogEntry: {
@@ -6802,6 +6993,15 @@ export type SchemaCourse = components['schemas']['Course'];
 export type SchemaCourseOutlineItem = components['schemas']['CourseOutlineItem'];
 export type SchemaCourseOutlineCheckpoint = components['schemas']['CourseOutlineCheckpoint'];
 export type SchemaCourseDetail = components['schemas']['CourseDetail'];
+export type SchemaStartingPointExperience = components['schemas']['StartingPointExperience'];
+export type SchemaStartingPointRef = components['schemas']['StartingPointRef'];
+export type SchemaAppConfigSummary = components['schemas']['AppConfigSummary'];
+export type SchemaAppConfigEntry = components['schemas']['AppConfigEntry'];
+export type SchemaAppConfigValue = components['schemas']['AppConfigValue'];
+export type SchemaStartingPointsConfig = components['schemas']['StartingPointsConfig'];
+export type SchemaStartingPointsList = components['schemas']['StartingPointsList'];
+export type SchemaStartingPoint = components['schemas']['StartingPoint'];
+export type SchemaStartingPoints = components['schemas']['StartingPoints'];
 export type SchemaPathCatalogEntry = components['schemas']['PathCatalogEntry'];
 export type SchemaPathDetail = components['schemas']['PathDetail'];
 export type SchemaCourseVersion = components['schemas']['CourseVersion'];
@@ -11139,6 +11339,220 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    listStartingPoints: {
+        parameters: {
+            query: {
+                /** @description The instrument the student wants to play. */
+                instrument_id: string;
+                /** @description How much the student has played that instrument. */
+                experience: components["schemas"]["StartingPointExperience"];
+                /** @description The language the student reads, as a Language.code other than "any". Only paths and courses in this language are returned. */
+                language: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Where to start, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartingPoints"];
+                };
+            };
+            /** @description A parameter is missing, instrument_id is not a valid UUID, experience is not a known value, or language is not a known Language.code other than "any". */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    listAppConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every known setting key, ordered by key. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppConfigSummary"][];
+                };
+            };
+            /** @description The request is malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to read settings. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    getAppConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The setting's key, one of those GET /admin/config lists (today: starting_points). */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The setting. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppConfigEntry"];
+                };
+            };
+            /** @description The key is not a well-formed key. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to read settings. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description The service knows no setting with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    setAppConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The setting's key, one of those GET /admin/config lists (today: starting_points). */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppConfigValue"];
+            };
+        };
+        responses: {
+            /** @description The setting as it is now stored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppConfigEntry"];
+                };
+            };
+            /** @description The value does not match this key's schema or fails its checks; every problem is listed with the field it is about. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user does not have permission to change settings. Only admins may. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description The service knows no setting with this key. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
                 };
             };
         };
