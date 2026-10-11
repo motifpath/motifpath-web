@@ -45,7 +45,7 @@ vi.mock('@/shared/composables/useToast', () => ({
 }))
 
 const push = vi.fn()
-const route = { params: { courseId: 'c-1' }, query: { fromCatalog: 'true' } }
+const route = { params: { courseId: 'c-1' }, query: { fromCatalog: 'true' } as Record<string, string> }
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return {
@@ -109,6 +109,22 @@ describe('CourseDetailView', () => {
     enrollments.isLoading.value = false
     enrollments.error.value = false
     vi.clearAllMocks()
+  })
+
+  it('leads back to Where to start, with the same answers, when opened from it', () => {
+    route.query = { startInstrument: 'inst-guitar', startExperience: 'plays_a_bit' }
+    try {
+      const wrapper = mountView()
+      const back = wrapper.get('[data-test="back-to-catalog"]')
+
+      expect(back.findComponent(RouterLinkStub).props('to')).toEqual({
+        name: 'home',
+        query: { instrument: 'inst-guitar', experience: 'plays_a_bit' },
+      })
+      expect(back.text()).toBe('Where to start')
+    } finally {
+      route.query = { fromCatalog: 'true' }
+    }
   })
 
   it('lists every outline item, even when two share a title', async () => {

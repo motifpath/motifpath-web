@@ -15,6 +15,7 @@ import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { languageBadge } from '@/shared/utils/languageLabels'
+import { whereToStartReturn } from '@/features/student/utils/whereToStartReturn'
 
 type CourseEnrollment = components['schemas']['CourseEnrollment']
 
@@ -30,10 +31,14 @@ const { setCurrentPath } = useSetCurrentPath()
 const enrolledHere = ref<CourseEnrollment | null>(null)
 const enrolling = ref(false)
 const continuing = ref(false)
-const backToCatalog = computed(() =>
-  route.query.fromCatalog === 'true'
-    ? { name: 'course-catalog', query: { returnFromCourse: String(route.params.courseId) } }
-    : { name: 'course-catalog' },
+// Opened from a new student's Where to start, the way back is there; otherwise the catalog.
+const fromWhereToStart = computed(() => whereToStartReturn(route.query))
+const backToCatalog = computed(
+  () =>
+    fromWhereToStart.value ??
+    (route.query.fromCatalog === 'true'
+      ? { name: 'course-catalog', query: { returnFromCourse: String(route.params.courseId) } }
+      : { name: 'course-catalog' }),
 )
 
 const activeEnrollment = computed(
@@ -84,7 +89,7 @@ async function continueCourse() {
       data-test="back-to-catalog"
       class="w-fit text-sm font-semibold text-accent-text underline"
     >
-      {{ t('courseDetailView.backToCatalog') }}
+      {{ fromWhereToStart ? t('firstRun.backToWhereToStart') : t('courseDetailView.backToCatalog') }}
     </RouterLink>
 
     <LoadingSkeleton v-if="isLoading" data-test="loading" />

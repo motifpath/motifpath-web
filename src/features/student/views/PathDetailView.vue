@@ -15,6 +15,7 @@ import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { languageBadge } from '@/shared/utils/languageLabels'
+import { whereToStartReturn } from '@/features/student/utils/whereToStartReturn'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,10 +27,14 @@ const { path, isLoading, error, notFound, retry } = useCatalogPath(learningPathI
 const held = useMyStandalonePaths()
 const { enrollInLearningPath } = useEnrollInLearningPath()
 
-const backToCatalog = computed(() =>
-  route.query.fromCatalog === 'true'
-    ? { name: 'path-catalog', query: { returnFromPath: learningPathId } }
-    : { name: 'path-catalog' },
+// Opened from a new student's Where to start, the way back is there; otherwise the catalog.
+const fromWhereToStart = computed(() => whereToStartReturn(route.query))
+const backToCatalog = computed(
+  () =>
+    fromWhereToStart.value ??
+    (route.query.fromCatalog === 'true'
+      ? { name: 'path-catalog', query: { returnFromPath: learningPathId } }
+      : { name: 'path-catalog' }),
 )
 
 // Enrolling in a path the learner already holds reopens their copy, so the
@@ -62,7 +67,7 @@ async function enroll() {
   <section class="flex flex-col gap-6">
     <div data-test="back-to-catalog" class="w-fit">
       <RouterLink :to="backToCatalog" class="text-sm font-semibold text-accent-text underline">
-        {{ t('pathDetailView.backToCatalog') }}
+        {{ fromWhereToStart ? t('firstRun.backToWhereToStart') : t('pathDetailView.backToCatalog') }}
       </RouterLink>
     </div>
 

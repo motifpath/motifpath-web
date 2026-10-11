@@ -21,6 +21,9 @@ export const endpoints = {
   practiceSummary: '*/students/me/practice-summary',
   studentPath: '*/students/me/path',
   publishedSongChart: '*/song-charts/:song_chart_id/published',
+  startingPoints: '*/catalog/starting-points',
+  catalogPaths: '*/catalog/paths',
+  catalogCourses: '*/catalog/courses',
   // The event-ingestion service, which tracking posts to.
   events: '*/events',
 } as const
@@ -70,4 +73,7 @@ export const defaultHandlers: Record<Endpoint, HttpHandler> = {
     HttpResponse.json(makeLearnerSongChart({ song_chart_id: String(params.song_chart_id) })),
   ),
   events: http.post(endpoints.events, () => new HttpResponse(null, { status: 202 })),
+  startingPoints: respondWith('startingPoints', fixtures.startingPoints),
+  catalogPaths: respondWith('catalogPaths', { items: [], total: 0, limit: 5, offset: 0 }),
+  catalogCourses: respondWith('catalogCourses', { items: [], total: 0, limit: 5, offset: 0 }),
 }

@@ -151,3 +151,37 @@ export const studentPath: Schemas['StudentPathView'] = {
     status: index < 8 ? 'completed' : 'not_started',
   })),
 }
+
+const fromZero: Schemas['PathCatalogEntry'] = {
+  learning_path_id: 'path-guitar-from-zero',
+  title: 'Guitar from zero',
+  summary: 'Your first chords and strums, a little every day.',
+  level: 'beginner',
+  language: 'en',
+  created_by: creators[0]!,
+  instrument_ids: ['instrument-guitar'],
+  lesson_count: 18,
+}
+
+const basics: Schemas['CourseCatalogEntry'] = {
+  course_id: 'course-guitar-basics',
+  title: 'Guitar basics',
+  summary: 'Chords, rhythm and your first songs.',
+  level: 'beginner',
+  language: 'en',
+  created_by: creators[0]!,
+  status: 'published',
+  published_at: '2026-09-01T00:00:00Z',
+  instrument_ids: ['instrument-guitar'],
+  checkpoint_count: 3,
+  lesson_count: 12,
+}
+
+/** Where a new student starts on guitar: a path, then a course, as the team chose them. */
+export const startingPoints: Schemas['StartingPoints'] = {
+  source: 'curated',
+  items: [
+    { kind: 'path', path: fromZero },
+    { kind: 'course', course: basics },
+  ],
+}
