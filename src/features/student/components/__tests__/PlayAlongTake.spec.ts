@@ -110,20 +110,24 @@ describe('PlayAlongTake', () => {
     })
   })
 
-  it('shows the take’s tempo, the goal and the best clean tempo', () => {
-    const text = mountTake().text()
-
-    expect(text).toContain('70 BPM')
-    expect(text).toContain('Goal 100 BPM · best clean 70')
-  })
-
-  it('shows the item’s takes as dots, those played filled', () => {
+  it('says which take this is, the goal and the best clean tempo, in one line', () => {
     const wrapper = mountTake({ takesLeft: 3, takesTotal: 4 })
 
-    const dots = wrapper.findAll('[data-test="take-dot"]')
-    expect(dots).toHaveLength(4)
-    expect(dots.filter((dot) => dot.attributes('data-played') === 'true')).toHaveLength(1)
-    expect(wrapper.get('[data-test="take-dots"]').attributes('aria-label')).toBe('Take 2 of 4')
+    expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 2 of 4 · Goal 100 BPM · best clean 70')
+    expect(wrapper.get('[data-test="tempo-value"]').text()).toBe('70 BPM')
+  })
+
+  it('marks the goal and the best clean tempo on the tempo slider', () => {
+    const wrapper = mountTake()
+
+    expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 100 BPM')
+    expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 70 BPM')
+  })
+
+  it('lets the board leave the text column on a wider screen', () => {
+    const breakout = mountTake().get('[data-test="breakout"]')
+
+    expect(breakout.findComponent({ name: 'FrettedDiagramView' }).exists()).toBe(true)
   })
 
   it('is titled by its diagram’s name', () => {
@@ -131,7 +135,7 @@ describe('PlayAlongTake', () => {
   })
 
   it('says why the item was picked', () => {
-    expect(mountTake().text()).toContain('Due for review')
+    expect(mountTake().get('[data-test="item-reason"]').text()).toBe('Due for review')
   })
 
   it('explains the item in place, and hides it again', async () => {
@@ -149,8 +153,22 @@ describe('PlayAlongTake', () => {
     expect(wrapper.find('[data-test="play-along-info"]').exists()).toBe(false)
   })
 
-  it('marks Start take as the primary action, so Enter or a pedal starts it', () => {
-    expect(mountTake().get('[data-test="start-take"]').attributes()).toHaveProperty('data-primary-action')
+  it('offers Start take as the action bar’s primary, so Enter or a pedal starts it', () => {
+    const start = mountTake().get('[data-test="action-bar"]').get('[data-test="start-take"]')
+
+    expect(start.text()).toBe('Start take')
+    expect(start.attributes()).toHaveProperty('data-primary-action')
+  })
+
+  it('offers Restart beside Stop early in the action bar while a take plays', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    const bar = wrapper.get('[data-test="action-bar"]')
+    expect(bar.get('[data-test="restart-take"]').text()).toBe('Restart')
+    expect(bar.get('[data-test="stop-early"]').text()).toBe('Stop early')
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Wrong tempo? Restart goes back to the tempo without rating.')
   })
 
   it('plays the default playback once, after a bar of count-in, at the take’s tempo', () => {
@@ -194,7 +212,8 @@ describe('PlayAlongTake', () => {
     await wrapper.get('[data-test="start-take"]').trigger('click')
     await playTakeToTheEnd()
 
-    expect(wrapper.text()).toContain('How was that take at 70 BPM?')
+    expect(wrapper.get('[data-test="action-bar"]').text()).toContain('How was that take at 70 BPM?')
+    expect(wrapper.find('[data-test="stop-early"]').exists()).toBe(false)
     await wrapper.get('[data-test="rate-clean"]').trigger('click')
 
     expect(wrapper.emitted('rate')).toEqual([['clean']])
@@ -245,33 +264,26 @@ describe('PlayAlongTake', () => {
   })
 
   it('tells a warm-up apart, without the goal', () => {
-    const text = mountTake({ item: item('warm_up') }).text()
+    const wrapper = mountTake({ item: item('warm_up') })
 
-    expect(text).toContain("Warm-up: play it relaxed. It doesn't count toward your progress.")
-    expect(text).not.toContain('Goal')
+    expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 1 of 4')
+    expect(wrapper.text()).toContain("Warm-up: play it relaxed. It doesn't count toward your progress.")
+    expect(wrapper.text()).not.toContain('Goal')
   })
 
   it('shows "none yet" before the first clean take', () => {
     expect(mountTake({ item: item('new', null) }).text()).toContain('best clean none yet')
   })
 
-  it('offers to skip an item whose diagram can’t be played', async () => {
+  it('offers to skip an item whose diagram can’t be played, as not answered because it’s unavailable', async () => {
     embedded.status.value = 'unavailable'
     const wrapper = mountTake()
     await flushPromises()
 
-    expect(wrapper.text()).toContain("This diagram can't be played here.")
-    await wrapper.get('[data-test="skip-item"]').trigger('click')
-    expect(wrapper.emitted('skip')).toHaveLength(1)
-  })
-
-  it('offers 5 BPM slower or faster for the next take', async () => {
-    const wrapper = mountTake({ tempo: 70 })
-
-    await wrapper.get('[data-test="tempo-up"]').trigger('click')
-    await wrapper.get('[data-test="tempo-down"]').trigger('click')
-
-    expect(wrapper.emitted('tempo')).toEqual([[75], [65]])
+    expect(wrapper.get('[data-test="inline-notice"]').text()).toContain("This diagram can't be played here.")
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(false)
+    await wrapper.get('[data-test="action-bar"]').get('[data-test="skip-item"]').trigger('click')
+    expect(wrapper.emitted('skip')).toEqual([['unavailable']])
   })
 
   it('offers every tempo on a slider, from the ladder’s slowest to the fastest playable, in 5 BPM steps', () => {
@@ -296,11 +308,11 @@ describe('PlayAlongTake', () => {
     expect(wrapper.emitted('tempo')).toEqual([[180]])
   })
 
-  it('offers no slider while a take plays', async () => {
+  it('changes no tempo while a take plays', async () => {
     const wrapper = mountTake()
     await wrapper.get('[data-test="start-take"]').trigger('click')
 
-    expect(wrapper.find('[data-test="tempo-slider"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeDefined()
   })
 
   it('heads the tempo control with what it sets, and marks the slider’s ends', () => {
@@ -320,7 +332,7 @@ describe('PlayAlongTake', () => {
 
     expect(playback.stop).toHaveBeenCalled()
     expect(wrapper.find('[data-test="rate-struggled"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="tempo-slider"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
     expect(wrapper.emitted('rate')).toBeUndefined()
   })
@@ -333,23 +345,16 @@ describe('PlayAlongTake', () => {
     await wrapper.get('[data-test="restart-take"]').trigger('click')
 
     expect(wrapper.find('[data-test="rate-struggled"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="tempo-slider"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.emitted('rate')).toBeUndefined()
   })
 
   it('says nothing about the ladder when the student changed the tempo', async () => {
     const wrapper = mountTake({ tempo: 70 })
-    await wrapper.get('[data-test="tempo-up"]').trigger('click')
+    await wrapper.get('[data-test="tempo-slider"]').setValue('75')
     await wrapper.setProps({ tempo: 75 })
 
     expect(wrapper.text()).not.toContain('Clean twice')
-  })
-
-  it('offers no tempo change while a take plays', async () => {
-    const wrapper = mountTake()
-    await wrapper.get('[data-test="start-take"]').trigger('click')
-
-    expect(wrapper.find('[data-test="tempo-up"]').exists()).toBe(false)
   })
 
   it('plays a take with the metronome, unless the student turns it off', async () => {

@@ -2,6 +2,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
+import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
@@ -93,6 +94,17 @@ describe('SessionExercise', () => {
   })
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('hands a diagram stack stimulus over, free to leave the text column', () => {
+    const base = item('stacked', [{ option_id: 'cell', is_correct: true, fret_cell: { string: 1, fret: 5 } }])
+    const stack = { stack: [makeDiagramRef(), makeDiagramRef({ diagram_id: 'diagram-2' })] }
+    const stacked: Item = { ...base, exercise: { ...base.exercise!, exercise_type: 'image_recognition', diagram_stack_ref: stack } }
+
+    const view = mountExercise({ item: stacked }).getComponent(ExerciseView)
+
+    expect(view.props('diagramStackRef')).toEqual(stack)
+    expect(view.props('breakout')).toBe(true)
   })
 
   it('is titled by the exercise’s title', () => {

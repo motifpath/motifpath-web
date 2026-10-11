@@ -45,6 +45,12 @@ describe('TapCheck', () => {
   })
   afterEach(() => vi.useRealTimers())
 
+  it('gives the board the room of a wider screen, as a drill has', () => {
+    const wrapper = mountCheck()
+
+    expect(wrapper.get('[data-test="breakout"]').findComponent({ name: 'DrillFretboard' }).exists()).toBe(true)
+  })
+
   it('says what the tap check is for before it starts', () => {
     const wrapper = mountCheck()
 

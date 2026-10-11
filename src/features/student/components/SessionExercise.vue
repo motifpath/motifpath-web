@@ -115,6 +115,8 @@ onBeforeUnmount(() => {
       :options="exercise.options"
       :image-url="exercise.image_url"
       :diagram-ref="exercise.diagram_ref"
+      :diagram-stack-ref="exercise.diagram_stack_ref"
+      breakout
       :audio-url="exercise.audio_url"
       :allow-multiple="allowMultiple"
       :selected-option-ids="shown"

@@ -286,7 +286,7 @@
     "warmUpHint": "Warm-up: play it relaxed. It doesn't count toward your progress.",
     "start": "Start take",
     "countInHint": "A bar of count-in, then play along.",
-    "playing": "Play along. The take ends by itself.",
+    "playing": "Play along. The take ends by itself. Wrong tempo? Restart goes back to the tempo without rating.",
     "stopEarly": "Stop early",
     "ratePrompt": "How was that take at {bpm} BPM?",
     "ratings": {
@@ -310,6 +310,9 @@
     "info": "About this practice",
     "takeOf": "Take {current} of {total}",
     "tempoSlider": "Tempo",
+    "bestTick": "Best clean {bpm} BPM",
+    "goalTick": "Goal {bpm} BPM",
+    "typeTempo": "Type a tempo in BPM",
     "restart": "Restart",
     "restartUnrated": "Restart without rating"
   },

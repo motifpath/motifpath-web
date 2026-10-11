@@ -175,6 +175,15 @@ describe('useEmbeddedDiagram', () => {
     })
   })
 
+  it('has no legend for a single diagram', async () => {
+    serve([pentatonic])
+
+    const view = useEmbeddedDiagram({ kind: 'single', ref: makeDiagramRef() })
+    await vi.waitFor(() => expect(view.status.value).toBe('ready'))
+
+    expect(view.legend.value).toEqual([])
+  })
+
   describe('a diagram_stack_ref', () => {
     const stack = [
       makeDiagramRef({ styling: { root_color: '#00ff00', interval_color: null } }),
@@ -237,6 +246,31 @@ describe('useEmbeddedDiagram', () => {
       expect(view.diagramRef.value?.layers.intervals).toBe(true)
       expect(view.diagramRef.value?.styling).toEqual(stack[0]!.styling)
       expect(view.labelMode.value).toBe('interval')
+    })
+
+    it('names each layer in a legend, the first in the default hue and the next in a hue of its own', async () => {
+      serve([pentatonic, secondBox])
+
+      const view = useEmbeddedDiagram({ kind: 'stack', stack })
+      await vi.waitFor(() => expect(view.status.value).toBe('ready'))
+
+      expect(view.legend.value).toEqual([
+        { names: pentatonic.names, color: null },
+        { names: { en: 'Box 2' }, color: '#14B8A6' },
+      ])
+      const onlyInBox2 = view.diagram.value?.positions.find((p) => p.string === 6 && p.fret === 10)
+      expect(onlyInBox2?.color).toBe('#14B8A6')
+    })
+
+    it("keeps a layer's own colour, and never gives another layer a hue already taken", async () => {
+      serve([{ ...pentatonic, color: '#14B8A6' }, { ...secondBox, color: null }])
+      const three = [...stack, makeDiagramRef({ diagram_id: 'diagram-2' })]
+
+      const view = useEmbeddedDiagram({ kind: 'stack', stack: three })
+      await vi.waitFor(() => expect(view.status.value).toBe('ready'))
+
+      // Teal is the first layer's own, so the third gets the next stack hue.
+      expect(view.legend.value.map((entry) => entry.color)).toEqual(['#14B8A6', null, '#F59E0B'])
     })
 
     it('is unavailable when any layer cannot be loaded', async () => {

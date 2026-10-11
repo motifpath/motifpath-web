@@ -326,5 +326,16 @@
   "audioOption": {
     "play": "Tocar {label}",
     "stop": "Parar {label}"
+  },
+  "overviewStrip": {
+    "window": "{name}: parte visível"
+  },
+  "diagramLegend": {
+    "label": "Diagramas neste braço"
+  },
+  "chordView": {
+    "label": "Mostrar o acorde como",
+    "box": "Caixa",
+    "neck": "Braço"
   }
 }
