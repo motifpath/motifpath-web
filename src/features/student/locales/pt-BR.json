@@ -310,6 +310,9 @@
     "info": "Sobre esta prática",
     "takeOf": "Execução {current} de {total}",
     "tempoSlider": "Andamento",
+    "bestTick": "Melhor limpa {bpm} BPM",
+    "goalTick": "Meta {bpm} BPM",
+    "typeTempo": "Digite um andamento em BPM",
     "restart": "Recomeçar",
     "restartUnrated": "Recomeçar sem avaliar"
   },

@@ -310,6 +310,9 @@
     "info": "About this practice",
     "takeOf": "Take {current} of {total}",
     "tempoSlider": "Tempo",
+    "bestTick": "Best clean {bpm} BPM",
+    "goalTick": "Goal {bpm} BPM",
+    "typeTempo": "Type a tempo in BPM",
     "restart": "Restart",
     "restartUnrated": "Restart without rating"
   },
