@@ -67,8 +67,8 @@ const dOpen = makeFrettedDiagram({
   }),
 })
 
-/** A chord voicing opens as a chord box, with Box | Neck to switch in place. */
+/** A chord voicing its author set to show as a chord box, with Box | Neck to switch in place. */
 export const ChordVoicing: Story = {
-  args: { embed: { kind: 'single', ref: makeDiagramRef({ diagram_id: dOpen.diagram_id }) }, caption: undefined },
+  args: { embed: { kind: 'single', ref: makeDiagramRef({ diagram_id: dOpen.diagram_id, view: 'chord_box' }) }, caption: undefined },
   parameters: { msw: { handlers: { diagram: respondWith('diagram', dOpen) } } },
 }

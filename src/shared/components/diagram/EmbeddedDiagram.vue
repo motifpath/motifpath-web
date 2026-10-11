@@ -11,9 +11,9 @@
  * controls in the diagram's own control rail, an inert thumbnail's included:
  * only the drawing is inert, and a tap on them never reaches the card around
  * it, so it doesn't pick an option. A stack never plays; its diagrams are named in a legend.
- * A chord voicing read in place (not a thumbnail, not taking taps as answers) opens as a chord
- * box, with Box | Neck to switch; the box takes no taps, so a chord whose cells are answers stays
- * a fretboard. `root_override` isn't applied yet: the diagram is drawn, and played,
+ * A chord voicing whose author chose a chord box for this usage is drawn as one, read in place,
+ * with Box | Neck to switch for this showing; the box takes no taps and has no room as a thumbnail,
+ * so a chord whose cells are answers, or a thumbnail, stays a fretboard. `root_override` isn't applied yet: the diagram is drawn, and played,
  * as authored.
  */
 import { computed, shallowRef, watch } from 'vue'
@@ -88,7 +88,10 @@ const activePositionIds = shallowRef<string[]>([])
 const { localizedName } = useLocalizedName()
 // A box takes no taps, and a thumbnail has no room for the switch: both stay a fretboard.
 const takesTaps = computed(() => props.selectablePositionIds.length > 0 || props.answerCells.length > 0)
-const chordView = useChordView(() => (props.embed.kind === 'single' && !props.compact && !takesTaps.value ? diagram.value : null))
+const chordView = useChordView(() => ({
+  diagram: props.embed.kind === 'single' && !props.compact && !takesTaps.value ? diagram.value : null,
+  diagramRef: diagramRef.value,
+}))
 
 // The rail keeps room for the player only when there is something to play.
 const playable = computed(
