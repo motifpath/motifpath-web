@@ -255,7 +255,7 @@
     "voicings": "Voicings",
     "closeSheet": "Close",
     "voicingUnavailable": "This voicing can't be shown.",
-    "missingBass": "Showing {chord}: the bass {bass} isn't in these voicings.",
+    "missingBass": "Shows {chord} — the bass note {bass} isn't shown",
     "sectionKind": {
       "verse": "Verse",
       "chorus": "Chorus",
@@ -266,12 +266,9 @@
       "other": "Song"
     },
     "openVoicing": "Open",
-    "foldCard": "Fold",
-    "unfoldCard": "Unfold",
-    "view": "View",
-    "boxView": "Box",
-    "neckView": "Neck",
-    "openChart": "Open the song"
+    "openChart": "Open the song",
+    "minimizeCard": "Minimize",
+    "expandCard": "Show the chord {chord}"
   },
   "songChartPage": {
     "close": "Close",

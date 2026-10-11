@@ -60,7 +60,7 @@ async function tap(wrapper: VueWrapper, symbol: string, nth = 0) {
 }
 
 function card(wrapper: VueWrapper) {
-  return wrapper.get('[data-test="voicing-card"]')
+  return wrapper.get('[data-test="chord-card"]')
 }
 
 function chips(wrapper: VueWrapper) {
@@ -127,7 +127,7 @@ describe('SongChartReader', () => {
       await tap(wrapper, 'G')
 
       expect(tappable(wrapper, 'G').attributes('aria-pressed')).toBe('true')
-      expect(card(wrapper).get('[data-test="voicing-card-title"]').text()).toBe('G')
+      expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('G')
       expect(selectedVoicing(wrapper)).toBe('g-e-shape-3')
       expect(eventsOfType('song_chart.chord_viewed')).toEqual([
         { event_type: 'song_chart.chord_viewed', song_chart_context: context, anchor_id: 'a1', chord_definition_id: 'chord-g', chord_voicing_id: 'g-e-shape-3' },
@@ -158,7 +158,7 @@ describe('SongChartReader', () => {
       const wrapper = mountReader()
       await tap(wrapper, 'C')
 
-      await card(wrapper).get('[data-test="view-neck"]').trigger('click')
+      await card(wrapper).get('[data-test="chord-view-neck"]').trigger('click')
 
       expect(card(wrapper).get('[data-test="neck"]').attributes('data-diagram-id')).toBe('diagram-c-open')
       expect(card(wrapper).find('[data-test="chord-box"]').exists()).toBe(false)
@@ -181,7 +181,7 @@ describe('SongChartReader', () => {
       track.mockReset()
 
       await chips(wrapper)[1]!.trigger('click')
-      await card(wrapper).get('[data-test="view-neck"]').trigger('click')
+      await card(wrapper).get('[data-test="chord-view-neck"]').trigger('click')
       await card(wrapper).get('[data-test="play-voicing"]').trigger('click')
 
       expect(selectedVoicing(wrapper)).toBe('c-a-shape-3')
@@ -194,23 +194,66 @@ describe('SongChartReader', () => {
 
       await tap(wrapper, 'C')
 
-      expect(card(wrapper).get('[data-test="voicing-card-title"]').text()).toBe('C')
+      expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('C')
       expect(tappable(wrapper, 'C').attributes('aria-pressed')).toBe('true')
       expect(tappable(wrapper, 'G').attributes('aria-pressed')).toBe('false')
       expect(eventsOfType('song_chart.chord_viewed').map((e) => e.anchor_id)).toEqual(['a1', 'a2'])
     })
 
-    it('folds down to its title, and closes', async () => {
+    it('minimizes to a chip with the chord, and expands from it', async () => {
       const wrapper = mountReader()
       await tap(wrapper, 'C')
 
-      await card(wrapper).get('[data-test="voicing-card-fold"]').trigger('click')
-      expect(card(wrapper).find('[data-test="chord-box"]').exists()).toBe(false)
-      expect(card(wrapper).get('[data-test="voicing-card-title"]').text()).toBe('C')
+      await card(wrapper).get('[data-test="chord-card-minimize"]').trigger('click')
+      expect(wrapper.find('[data-test="chord-card"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="chord-card-chip"]').text()).toBe('C')
 
-      await card(wrapper).get('[data-test="voicing-card-close"]').trigger('click')
-      expect(wrapper.find('[data-test="voicing-card"]').exists()).toBe(false)
+      await wrapper.get('[data-test="chord-card-chip"]').trigger('click')
+      expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('C')
+    })
+
+    it('minimizes when the chart scrolls, and stays tappable', async () => {
+      const wrapper = mountReader()
+      await tap(wrapper, 'G')
+
+      window.dispatchEvent(new Event('scroll'))
+      await flushPromises()
+      expect(wrapper.get('[data-test="chord-card-chip"]').text()).toBe('G')
+
+      await tap(wrapper, 'C')
+      expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('C')
+    })
+
+    it('closes, leaving no chord highlighted', async () => {
+      const wrapper = mountReader()
+      await tap(wrapper, 'C')
+
+      await card(wrapper).get('[data-test="chord-card-close"]').trigger('click')
+
+      expect(wrapper.find('[data-test="chord-card"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="chord-card-chip"]').exists()).toBe(false)
       expect(wrapper.findAll('button[data-test="chord-symbol"][aria-pressed="true"]')).toHaveLength(0)
+    })
+
+    it('remembers the voicing chosen for a chord in this song', async () => {
+      const wrapper = mountReader()
+      await tap(wrapper, 'G')
+      await chips(wrapper)[1]!.trigger('click')
+
+      await tap(wrapper, 'C')
+      await tap(wrapper, 'G')
+
+      expect(selectedVoicing(wrapper)).toBe(gEShape.chord_voicing_id)
+    })
+
+    it('keeps the chosen view for the next chord', async () => {
+      const wrapper = mountReader()
+      await tap(wrapper, 'G')
+      await card(wrapper).get('[data-test="chord-view-neck"]').trigger('click')
+
+      await tap(wrapper, 'C')
+
+      expect(card(wrapper).get('[data-test="neck"]').attributes('data-diagram-id')).toBe('diagram-c-open')
     })
 
     it("titles a slash chord the catalog lacks as written and notes its bass isn't shown", async () => {
@@ -220,7 +263,7 @@ describe('SongChartReader', () => {
 
       await tap(wrapper, 'C/B')
 
-      expect(card(wrapper).get('[data-test="voicing-card-title"]').text()).toBe('C/B')
+      expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('C/B')
       expect(card(wrapper).get('[data-test="missing-bass"]').text()).toContain('B')
     })
   })

@@ -255,7 +255,7 @@
     "voicings": "Formas",
     "closeSheet": "Fechar",
     "voicingUnavailable": "Não foi possível mostrar esta forma.",
-    "missingBass": "Mostrando {chord}: o baixo {bass} não está nestas formas.",
+    "missingBass": "Mostra {chord} — o baixo {bass} não aparece",
     "sectionKind": {
       "verse": "Estrofe",
       "chorus": "Refrão",
@@ -266,12 +266,9 @@
       "other": "Música"
     },
     "openVoicing": "Solta",
-    "foldCard": "Recolher",
-    "unfoldCard": "Expandir",
-    "view": "Visualização",
-    "boxView": "Diagrama",
-    "neckView": "Braço",
-    "openChart": "Abrir a música"
+    "openChart": "Abrir a música",
+    "minimizeCard": "Minimizar",
+    "expandCard": "Mostrar o acorde {chord}"
   },
   "songChartPage": {
     "close": "Fechar",

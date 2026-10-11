@@ -8,10 +8,13 @@
  * chord never leaves its word on a narrow screen.
  */
 import { Check } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import VoicingCard from '@/shared/components/songChart/VoicingCard.vue'
+import ChordCard from '@/shared/components/songChart/ChordCard.vue'
+import FloatingChordCard from '@/shared/components/songChart/FloatingChordCard.vue'
+import type { CardCorner } from '@/shared/components/songChart/FloatingChordCard.vue'
+import type { ChordView } from '@/shared/composables/useChordView'
 import { useSongChartTracking } from '@/shared/composables/useSongChartTracking'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { lineSegments, missingBass, openingVoicing } from '@/shared/utils/songChartReading'
@@ -41,14 +44,51 @@ function cardFor(anchor: Anchor): { chord: ChordDefinition; voicing: ChordVoicin
   return chord && voicing ? { chord, voicing } : null
 }
 
-const open = ref<{ anchor: Anchor; chord: ChordDefinition; voicing: ChordVoicing } | null>(null)
+const open = ref<{ anchor: Anchor; chord: ChordDefinition; voicingId: string } | null>(null)
+
+/** The voicing the student last chose for each chord in this song, by chord; it wins over the
+ *  author's pick for every anchor of that chord. */
+const chosenVoicings = ref(new Map<string, string>())
+/** Box or Neck, kept from one chord to the next. */
+const view = ref<ChordView>('box')
+const minimized = ref(false)
+const corner = ref<CardCorner>('bottom-right')
+
+const openVoicingId = computed({
+  get: () => open.value?.voicingId ?? '',
+  set: (id: string) => {
+    if (!open.value) return
+    open.value.voicingId = id
+    chosenVoicings.value.set(open.value.chord.chord_definition_id, id)
+  },
+})
 
 function openCard(anchor: Anchor) {
   const card = cardFor(anchor)
   if (!card) return
-  open.value = { anchor, ...card }
-  chordViewed(anchor, card.chord.chord_definition_id, card.voicing.chord_voicing_id)
+  const chordId = card.chord.chord_definition_id
+  const voicingId = chosenVoicings.value.get(chordId) ?? card.voicing.chord_voicing_id
+  open.value = { anchor, chord: card.chord, voicingId }
+  minimized.value = false
+  chordViewed(anchor, chordId, voicingId)
 }
+
+function closeCard() {
+  open.value = null
+}
+
+// The chart stays readable under an open card: scrolling it tucks the card away to a chip.
+function minimizeOnScroll() {
+  if (open.value) minimized.value = true
+}
+watch(
+  () => open.value !== null,
+  (isOpen) => {
+    if (isOpen) window.addEventListener('scroll', minimizeOnScroll, { passive: true })
+    else window.removeEventListener('scroll', minimizeOnScroll)
+  },
+)
+onUnmounted(() => window.removeEventListener('scroll', minimizeOnScroll))
 
 const details = computed(() => {
   const c = props.chart
@@ -105,18 +145,20 @@ const details = computed(() => {
       </template>
     </section>
 
-    <div v-if="open && instrument" class="fixed bottom-24 right-4 z-10">
-      <VoicingCard
-        :key="open.anchor.anchorId"
+    <FloatingChordCard v-if="open && instrument" v-model:corner="corner">
+      <ChordCard
+        v-model:voicing-id="openVoicingId"
+        v-model:view="view"
+        v-model:minimized="minimized"
         :written-symbol="open.anchor.writtenSymbol"
         :chord="open.chord"
-        :opening-voicing="open.voicing"
         :diagrams="chart.diagrams"
         :instrument="instrument"
         :missing-bass="missingBass(open.anchor, open.chord)"
-        @close="open = null"
+        placement="floating"
+        @close="closeCard"
       />
-    </div>
+    </FloatingChordCard>
 
     <div class="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface px-4 py-4">
       <button
