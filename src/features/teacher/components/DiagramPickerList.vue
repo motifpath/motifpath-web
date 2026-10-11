@@ -3,10 +3,12 @@
  * Lists the diagrams the caller can see — on one instrument when given, less
  * any it excludes — for the caller to pick one, each drawn whole so its
  * colors, shapes and labels can be told apart. Searchable by name, root
- * note, kind and author. Mount it only while it's shown, so each showing
- * fetches a fresh list. Only picks; the caller decides what the pick does.
+ * note, kind and author, with a live count; the search and filters stay put
+ * and only the results scroll, so the caller gives it a bounded height. The
+ * diagram already picked is marked. Mount it only while it's shown, so each
+ * showing fetches a fresh list. Only picks; the caller decides what the pick does.
  */
-import { Search } from 'lucide-vue-next'
+import { Check, Search } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import { useDiagramSearch } from '@/features/teacher/composables/useDiagramSearch'
@@ -31,8 +33,10 @@ const props = withDefaults(
     excludeIds?: string[]
     emptyHeading?: string
     emptyMessage?: string
+    /** The diagram picked before, marked among the results. */
+    pickedDiagramId?: string | null
   }>(),
-  { instrumentId: undefined, excludeIds: () => [], emptyHeading: undefined, emptyMessage: undefined },
+  { instrumentId: undefined, excludeIds: () => [], emptyHeading: undefined, emptyMessage: undefined, pickedDiagramId: null },
 )
 const emit = defineEmits<{ select: [diagram: Diagram] }>()
 
@@ -54,8 +58,8 @@ const KIND_CHIPS = [
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
-    <div class="flex flex-col gap-2 rounded-md border border-border bg-surface-sunken p-3">
+  <div class="flex min-h-0 flex-1 flex-col gap-3">
+    <div data-test="diagram-filters" class="flex shrink-0 flex-col gap-2 rounded-md border border-border bg-surface-sunken p-3">
       <div class="relative">
         <Search :size="14" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-subtle" aria-hidden="true" />
         <input
@@ -101,87 +105,102 @@ const KIND_CHIPS = [
         </div>
         <TeacherFilterPicker v-model="author" scope="diagrams" :label="t('diagramPickerList.authorLabel')" class="min-w-48 flex-1" />
       </div>
-      <button
-        v-if="hasActiveFilters"
-        type="button"
-        data-test="diagram-filters-clear"
-        class="w-fit text-xs font-semibold text-accent-text"
-        @click="clearFilters"
-      >
-        {{ t('diagramPickerList.clearFilters') }}
-      </button>
+      <div class="flex min-h-6 items-center justify-between gap-3">
+        <p v-if="!error && !(isLoading && diagrams.length === 0)" data-test="diagram-count" class="text-xs font-medium text-ink-muted">
+          {{ t('diagramPickerList.count', { count: total }) }}
+        </p>
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          data-test="diagram-filters-clear"
+          class="ml-auto w-fit text-xs font-semibold text-accent-text"
+          @click="clearFilters"
+        >
+          {{ t('diagramPickerList.clearFilters') }}
+        </button>
+      </div>
     </div>
 
-    <LoadingSkeleton
-      v-if="isLoading && diagrams.length === 0"
-      data-test="diagram-picker-loading"
-    />
-
-    <LoadFailed
-      v-else-if="error"
-      data-test="diagram-picker-error"
-      :message="t('diagramPickerList.loadErrorMessage')"
-      @retry="reload"
-    />
-
-    <p
-      v-else-if="!isLoading && offered.length === 0 && !hasMore && hasActiveFilters"
-      data-test="diagram-picker-no-matches"
-      class="py-6 text-center text-sm text-ink-muted"
-    >
-      {{ t('diagramPickerList.noMatches') }}
-    </p>
-
-    <StateBlock
-      v-else-if="!isLoading && offered.length === 0 && !hasMore"
-      data-test="diagram-picker-empty"
-      kind="empty"
-      :title="emptyHeading ?? t('diagramPickerList.emptyHeading')"
-      :message="emptyMessage ?? t('diagramPickerList.emptyMessage')"
-    />
-
-    <template v-else>
-      <!-- A filter change keeps the current results until the new ones arrive, dimmed, so nothing jumps. -->
-      <ul
-        data-test="diagram-picker-results"
-        :aria-busy="isLoading"
-        class="grid grid-cols-1 gap-2 transition-opacity sm:grid-cols-2"
-        :class="{ 'opacity-50': isLoading }"
-      >
-        <li v-for="diagram in offered" :key="diagram.diagram_id">
-          <button
-            type="button"
-            data-test="diagram-option"
-            class="flex w-full flex-col gap-2 rounded-md border border-border bg-surface p-3 text-left hover:border-accent"
-            @click="emit('select', diagram)"
-          >
-            <DiagramThumbnail :diagram="diagram" :instruments="instruments" />
-            <span class="flex items-start justify-between gap-2">
-              <span class="flex min-w-0 flex-col">
-                <span data-test="diagram-option-name" class="truncate font-semibold text-ink">{{
-                  localizedName(diagram.names)
-                }}</span>
-                <span data-test="diagram-option-author" class="truncate text-xs text-ink-subtle">{{
-                  diagram.created_by.display_name
-                }}</span>
-              </span>
-              <span
-                v-if="diagram.kind === 'basic'"
-                data-test="template-badge"
-                class="shrink-0 rounded-full bg-surface-sunken px-2.5 py-0.5 text-xs font-semibold text-ink-muted"
-                >{{ t('diagramListView.templateBadge') }}</span
-              >
-            </span>
-          </button>
-        </li>
-      </ul>
-      <LoadMoreButton
-        :loaded="diagrams.length"
-        :total="total"
-        :loading="isLoadingMore"
-        :failed="loadMoreError"
-        @load="loadMore"
+    <div data-test="diagram-picker-scroll" class="min-h-0 flex-1 overflow-y-auto">
+      <LoadingSkeleton
+        v-if="isLoading && diagrams.length === 0"
+        data-test="diagram-picker-loading"
       />
-    </template>
+
+      <LoadFailed
+        v-else-if="error"
+        data-test="diagram-picker-error"
+        :message="t('diagramPickerList.loadErrorMessage')"
+        @retry="reload"
+      />
+
+      <p
+        v-else-if="!isLoading && offered.length === 0 && !hasMore && hasActiveFilters"
+        data-test="diagram-picker-no-matches"
+        class="py-6 text-center text-sm text-ink-muted"
+      >
+        {{ t('diagramPickerList.noMatches') }}
+      </p>
+
+      <StateBlock
+        v-else-if="!isLoading && offered.length === 0 && !hasMore"
+        data-test="diagram-picker-empty"
+        kind="empty"
+        :title="emptyHeading ?? t('diagramPickerList.emptyHeading')"
+        :message="emptyMessage ?? t('diagramPickerList.emptyMessage')"
+      />
+
+      <template v-else>
+        <!-- A filter change keeps the current results until the new ones arrive, dimmed, so nothing jumps. -->
+        <ul
+          data-test="diagram-picker-results"
+          :aria-busy="isLoading"
+          class="grid grid-cols-1 gap-2 transition-opacity sm:grid-cols-2"
+          :class="{ 'opacity-50': isLoading }"
+        >
+          <li v-for="diagram in offered" :key="diagram.diagram_id">
+            <button
+              type="button"
+              data-test="diagram-option"
+              :aria-current="diagram.diagram_id === pickedDiagramId ? 'true' : undefined"
+              class="relative flex w-full flex-col gap-2 rounded-md border bg-surface p-3 text-left hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              :class="diagram.diagram_id === pickedDiagramId ? 'border-accent ring-2 ring-inset ring-accent' : 'border-border'"
+              @click="emit('select', diagram)"
+            >
+              <Check
+                v-if="diagram.diagram_id === pickedDiagramId"
+                :size="16"
+                class="absolute right-2 top-2 text-accent-text"
+                aria-hidden="true"
+              />
+              <DiagramThumbnail :diagram="diagram" :instruments="instruments" />
+              <span class="flex items-start justify-between gap-2">
+                <span class="flex min-w-0 flex-col">
+                  <span data-test="diagram-option-name" class="truncate font-semibold text-ink">{{
+                    localizedName(diagram.names)
+                  }}</span>
+                  <span data-test="diagram-option-author" class="truncate text-xs text-ink-subtle">{{
+                    diagram.created_by.display_name
+                  }}</span>
+                </span>
+                <span
+                  v-if="diagram.kind === 'basic'"
+                  data-test="template-badge"
+                  class="shrink-0 rounded-full bg-surface-sunken px-2.5 py-0.5 text-xs font-semibold text-ink-muted"
+                  >{{ t('diagramListView.templateBadge') }}</span
+                >
+              </span>
+            </button>
+          </li>
+        </ul>
+        <LoadMoreButton
+          :loaded="diagrams.length"
+          :total="total"
+          :loading="isLoadingMore"
+          :failed="loadMoreError"
+          @load="loadMore"
+        />
+      </template>
+    </div>
   </div>
 </template>

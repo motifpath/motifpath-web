@@ -569,6 +569,7 @@
     "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}"
   },
   "diagramPickerList": {
+    "count": "{count} diagram | {count} diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "No diagrams yet",
     "emptyMessage": "Create a diagram in the Diagrams library first.",

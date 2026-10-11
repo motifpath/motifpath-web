@@ -46,7 +46,7 @@ function diagramQueries() {
 }
 
 function mountPicker(
-  props: { instrumentId?: string; excludeIds?: string[]; emptyHeading?: string; emptyMessage?: string } = {},
+  props: { instrumentId?: string; excludeIds?: string[]; emptyHeading?: string; emptyMessage?: string; pickedDiagramId?: string | null } = {},
 ) {
   return mount(DiagramPickerList, { props: { instrumentId: 'instrument-guitar', excludeIds: [], ...props } })
 }
@@ -63,6 +63,35 @@ describe('DiagramPickerList', () => {
   })
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('says how many diagrams the filters leave', async () => {
+    serve(() => page([pentatonic, major], 126))
+    const wrapper = mountPicker()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="diagram-count"]').text()).toBe('126 diagrams')
+  })
+
+  it('keeps the search and filters out of the scrolling results', async () => {
+    serve(() => page([pentatonic, major]))
+    const wrapper = mountPicker()
+    await flushPromises()
+
+    const results = wrapper.get('[data-test="diagram-picker-scroll"]')
+    expect(results.classes()).toContain('overflow-y-auto')
+    expect(results.find('[data-test="diagram-option"]').exists()).toBe(true)
+    expect(results.find('[data-test="diagram-search"]').exists()).toBe(false)
+    expect(results.find('[data-test="diagram-root-filter"]').exists()).toBe(false)
+  })
+
+  it('marks the diagram already picked', async () => {
+    serve(() => page([pentatonic, major]))
+    const wrapper = mountPicker({ pickedDiagramId: 'd-major' })
+    await flushPromises()
+
+    const marked = wrapper.findAll('[data-test="diagram-option"]').filter((o) => o.attributes('aria-current') === 'true')
+    expect(marked.map((o) => o.get('[data-test="diagram-option-name"]').text())).toEqual(['C major scale'])
   })
 
   it('lists diagrams of the given instrument, marking templates', async () => {
