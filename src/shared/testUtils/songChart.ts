@@ -98,7 +98,7 @@ export function makeLearnerSongChart(overrides: Partial<LearnerSongChart> = {}):
     revision_number: 2,
     title: 'Amazing Grace',
     artist: 'John Newton',
-    language: 'pt_BR',
+    language: 'en',
     concert_key: 'G',
     capo_fret: 0,
     tempo_bpm: null,
@@ -113,9 +113,9 @@ export function makeLearnerSongChart(overrides: Partial<LearnerSongChart> = {}):
             ['sweet the sound', makeAnchor('a2', 'C', { chordDefinitionId: 'chord-c' })],
           ),
         ]),
-        makeSection([makeLyricLine(['Que braseiro', makeAnchor('a3', 'G', { chordDefinitionId: 'chord-g' })])], {
+        makeSection([makeLyricLine(["'Twas grace that taught", makeAnchor('a3', 'G', { chordDefinitionId: 'chord-g' })])], {
           kind: 'chorus',
-          label: 'Refrão',
+          label: 'Chorus',
         }),
       ],
     },
@@ -163,7 +163,7 @@ export function makeSongChart(
 
 /** A published revision summary, published by Ana. */
 export function makeRevisionSummary(revision: number, title = 'Amazing Grace') {
-  return { revision_number: revision, title, artist: 'John Newton', language: 'pt_BR', concert_key: 'G', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
+  return { revision_number: revision, title, artist: 'John Newton', language: 'en', concert_key: 'G', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
 }
 
 /** A published revision of "Amazing Grace", published and confirmed by Ana. */

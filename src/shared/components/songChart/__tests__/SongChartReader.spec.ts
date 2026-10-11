@@ -88,7 +88,7 @@ describe('SongChartReader', () => {
       expect(chordsOverWords(mountReader())).toEqual([
         ['G', 'Amazing'],
         ['C', 'sweet'],
-        ['G', 'Que'],
+        ['G', "'Twas"],
       ])
     })
 

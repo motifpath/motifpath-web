@@ -66,11 +66,11 @@ describe('SongChartLyricsEditor', () => {
     expect(wrapper.findAll('[data-chord]').map((c) => [c.attributes('data-chord'), c.element.textContent])).toEqual([
       ['G', 'Amazing grace, how '],
       ['C', 'sweet the sound'],
-      ['G', 'Que braseiro'],
+      ['G', "'Twas grace that taught"],
     ])
     expect(wrapper.findAll('section[data-kind]').map((s) => [s.attributes('data-kind'), s.attributes('data-label') ?? null])).toEqual([
       ['verse', null],
-      ['chorus', 'Refrão'],
+      ['chorus', 'Chorus'],
     ])
   })
 
