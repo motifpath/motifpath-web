@@ -818,8 +818,18 @@ export interface components {
             /** @enum {string} */
             event_type: "song_chart.chord_viewed";
             song_chart_context: components["schemas"]["SongChartContext"];
-            /** @description The anchorId of the chord the student tapped. */
-            anchor_id: string;
+            /**
+             * @description Where the student tapped the chord: over the lyrics, or in the "Chords in this
+             *     song" strip under the chart's header.
+             * @enum {string}
+             */
+            source: "lyrics" | "strip";
+            /**
+             * @description The anchorId of the chord the student tapped. Required when source is lyrics;
+             *     absent when source is strip, since a strip chord stands for every anchor of
+             *     that chord.
+             */
+            anchor_id?: string;
             /**
              * Format: uuid
              * @description The catalog chord the tapped anchor resolves to.
