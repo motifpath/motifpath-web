@@ -70,7 +70,7 @@ function openCard(anchor: Anchor) {
   const voicingId = chosenVoicings.value.get(chordId) ?? card.voicing.chord_voicing_id
   open.value = { anchor, chord: card.chord, voicingId }
   minimized.value = false
-  chordViewed(anchor, chordId, voicingId)
+  chordViewed({ source: 'lyrics', anchor }, chordId, voicingId)
 }
 
 function closeCard() {

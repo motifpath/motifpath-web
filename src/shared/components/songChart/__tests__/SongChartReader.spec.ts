@@ -130,7 +130,7 @@ describe('SongChartReader', () => {
       expect(card(wrapper).get('[data-test="chord-card-title"]').text()).toBe('G')
       expect(selectedVoicing(wrapper)).toBe('g-e-shape-3')
       expect(eventsOfType('song_chart.chord_viewed')).toEqual([
-        { event_type: 'song_chart.chord_viewed', song_chart_context: context, anchor_id: 'a1', chord_definition_id: 'chord-g', chord_voicing_id: 'g-e-shape-3' },
+        { event_type: 'song_chart.chord_viewed', song_chart_context: context, source: 'lyrics', anchor_id: 'a1', chord_definition_id: 'chord-g', chord_voicing_id: 'g-e-shape-3' },
       ])
     })
 
