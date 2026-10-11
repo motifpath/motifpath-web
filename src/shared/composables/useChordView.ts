@@ -4,7 +4,6 @@ import type { MaybeRefOrGetter } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 
 type Diagram = components['schemas']['Diagram']
-type DiagramRef = components['schemas']['DiagramRef']
 
 export type ChordView = 'box' | 'neck'
 
@@ -13,21 +12,18 @@ export function isChordView(value: unknown): value is ChordView {
 }
 
 /**
- * How one showing of a diagram looks: as a chord box when its author chose one for this usage and
- * the diagram carries the voicing that fingers the box, otherwise on the fretboard. On a chord box
- * the student switches with Box | Neck for this showing only; the next diagram opens in its
- * author's view again.
+ * How one showing of a diagram looks: a diagram that carries chord data (its voicing's fingers,
+ * muted strings and fret window) is a chord, shown as a chord box; any other on the fretboard. On a
+ * chord box the student switches with Box | Neck for this showing only; the next chord opens as a
+ * box again.
  */
-export function useChordView(source: MaybeRefOrGetter<{ diagram: Diagram | null; diagramRef: DiagramRef | null }>) {
-  const canSwitch = computed(() => {
-    const { diagram, diagramRef } = toValue(source)
-    return diagramRef?.view === 'chord_box' && Boolean(diagram?.chord_voicing)
-  })
+export function useChordView(diagram: MaybeRefOrGetter<Diagram | null>) {
+  const canSwitch = computed(() => Boolean(toValue(diagram)?.chord_voicing))
 
-  /** The student's switch on this showing; null keeps the author's view. */
+  /** The student's switch on this showing; null keeps the box. */
   const switched = ref<ChordView | null>(null)
   watch(
-    () => JSON.stringify(toValue(source).diagramRef),
+    () => toValue(diagram)?.diagram_id,
     () => {
       switched.value = null
     },

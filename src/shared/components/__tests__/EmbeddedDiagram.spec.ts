@@ -53,11 +53,9 @@ describe('EmbeddedDiagram', () => {
   describe('a chord voicing', () => {
     const voicing = makeVoicing('d-open', 'chord-d', { fingering: [{ position_id: 'p0', finger: '1' }] })
     const chord = makeFrettedDiagram({ names: { en: 'D' }, purpose: 'chord_voicing', chord_voicing: voicing })
-    const asBox: DiagramEmbed = { kind: 'single', ref: makeDiagramRef({ view: 'chord_box' }) }
-
-    it('shows as a chord box when its author chose one, with Box | Neck to switch in place', async () => {
+    it('shows as a chord box, from its chord data, with Box | Neck to switch in place', async () => {
       serve(chord)
-      const wrapper = mount(EmbeddedDiagram, { props: { embed: asBox } })
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
       await flushPromises()
 
       expect(wrapper.findComponent(ChordBox).props()).toMatchObject({ label: 'D', scale: 2 })
@@ -70,18 +68,9 @@ describe('EmbeddedDiagram', () => {
       expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
     })
 
-    it('stays on the fretboard, with no switch, when its author chose that', async () => {
-      serve(chord)
-      const wrapper = mount(EmbeddedDiagram, { props: { embed: single } })
-      await flushPromises()
-
-      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
-      expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
-    })
-
     it('stays a fretboard, with no switch, when its cells are the answers', async () => {
       serve(chord)
-      const wrapper = mount(EmbeddedDiagram, { props: { embed: asBox, answerCells: [{ optionId: 'o', string: 1, fret: 2 }] } })
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, answerCells: [{ optionId: 'o', string: 1, fret: 2 }] } })
       await flushPromises()
 
       expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
@@ -90,7 +79,7 @@ describe('EmbeddedDiagram', () => {
 
     it('stays a fretboard as a thumbnail', async () => {
       serve(chord)
-      const wrapper = mount(EmbeddedDiagram, { props: { embed: asBox, compact: true } })
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, compact: true } })
       await flushPromises()
 
       expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
