@@ -24,5 +24,5 @@ const options = computed(() => [
 </script>
 
 <template>
-  <SegmentedControl v-model="shown" class="w-40" :label="t('chordView.label')" :options="options" test-id-prefix="chord-view" />
+  <SegmentedControl v-model="shown" class="w-fit" :label="t('chordView.label')" :options="options" test-id-prefix="chord-view" />
 </template>
