@@ -3091,16 +3091,16 @@ export interface components {
              *     chord_voicing exactly when the chord catalog installed it as a
              *     voicing, and a diagram created through createDiagram, including
              *     a copy saved from a chord_voicing diagram, is general. A
-             *     diagram's purpose doesn't change how it plays; it only picks
-             *     the view a student first sees it in (a chord_voicing diagram
-             *     opens as a chord box, any other as a fretboard).
+             *     diagram's purpose doesn't change how it renders or plays: each
+             *     usage chooses its view (DiagramRef.view).
              * @enum {string}
              */
             purpose: "general" | "chord_voicing";
             /**
              * @description The catalog voicing this diagram is the fingering of, so a
-             *     client can draw it as a chord box (fingers, fret window)
-             *     without a search of the chord catalog. Present exactly when
+             *     client can draw a usage shown as a chord box (DiagramRef.view)
+             *     with its fingers, muted strings and fret window, without a
+             *     search of the chord catalog. Present exactly when
              *     purpose is chord_voicing, on GET /diagrams/{diagram_id}; absent
              *     from list responses and from every general diagram, a copy
              *     saved from a chord_voicing diagram included.
@@ -4328,6 +4328,20 @@ export interface components {
              *     listed, and stores correct_position_ids instead.
              */
             correct_intervals?: string[] | null;
+            /**
+             * @description How this usage shows the diagram, set by its author: on the
+             *     fretboard, or as a chord box (strings upright, finger numbers,
+             *     open and muted strings). The diagram's data can't tell which a
+             *     usage needs, so the author decides. chord_box is accepted only
+             *     for a chord_voicing diagram, whose voicing gives the box its
+             *     fingering, and never inside a diagram_stack_ref, which is drawn
+             *     on one fretboard; otherwise the request is rejected (400). A
+             *     student may switch a chord box to the fretboard and back in
+             *     place; every showing opens in this view again. Absent means
+             *     fretboard.
+             * @enum {string}
+             */
+            view?: "fretboard" | "chord_box";
         };
         /**
          * @description Two or more DiagramRefs composited into one view — e.g. a scale
