@@ -154,7 +154,7 @@ const editor = useEditor({
     StyledTableCell,
     TiptapImage,
     PromptDiagramNode.configure({ onEdit: editDiagram }),
-    PromptSongChartNode,
+    PromptSongChartNode.configure({ onReplace: replaceSongChart }),
   ],
   onUpdate: ({ editor: current }) => {
     emit('update:modelValue', toWireDocument(current.getJSON()))
@@ -291,11 +291,33 @@ function setBackgroundColor(color: string | null) {
 function pickImage() {
   imageInput.value?.click()
 }
-// The song chart picker inserts the picked chart at the cursor.
+// The song chart picker inserts the picked chart at the cursor or, opened from a chart's Replace,
+// swaps that one's chart in place.
 const songChartPickerOpen = ref(false)
+const replacingSongChartPos = ref<number | null>(null)
 
+function openSongChartPicker() {
+  replacingSongChartPos.value = null
+  songChartPickerOpen.value = true
+}
+function replaceSongChart(pos: number) {
+  replacingSongChartPos.value = pos
+  songChartPickerOpen.value = true
+}
 function insertSongChart(songChartId: string) {
-  editor.value?.chain().focus().insertContent({ type: 'songChart', attrs: { songChartId } }).run()
+  const pos = replacingSongChartPos.value
+  if (pos === null) {
+    editor.value?.chain().focus().insertContent({ type: 'songChart', attrs: { songChartId } }).run()
+  } else {
+    editor.value
+      ?.chain()
+      .focus()
+      .command(({ tr }) => {
+        tr.setNodeMarkup(pos, undefined, { songChartId })
+        return true
+      })
+      .run()
+  }
   songChartPickerOpen.value = false
 }
 
@@ -579,7 +601,7 @@ async function onImagePicked(event: Event) {
           class="rounded p-1.5 text-ink-muted"
           :title="t('promptEditor.insertSongChart')"
           :aria-label="t('promptEditor.insertSongChart')"
-          @click="songChartPickerOpen = true"
+          @click="openSongChartPicker"
         >
           <Music :size="16" aria-hidden="true" />
         </button>

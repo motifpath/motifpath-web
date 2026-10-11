@@ -2,17 +2,26 @@ import { mergeAttributes, Node, VueNodeViewRenderer } from '@tiptap/vue-3'
 
 import PromptSongChartNodeView from '@/features/teacher/components/PromptSongChartNodeView.vue'
 
+export interface PromptSongChartNodeOptions {
+  /** Called with the node's position when the author asks to replace its chart. */
+  onReplace: (pos: number) => void
+}
+
 /**
  * A published song chart embedded in lesson content, as the student-side renderer reads it: a
  * `songChart` block node whose `songChartId` attr names the chart. An atom — the chart is picked,
  * never edited as text.
  */
-export const PromptSongChartNode = Node.create({
+export const PromptSongChartNode = Node.create<PromptSongChartNodeOptions>({
   name: 'songChart',
   group: 'block',
   atom: true,
   draggable: true,
   selectable: true,
+
+  addOptions() {
+    return { onReplace: () => {} }
+  },
 
   addAttributes() {
     return {
