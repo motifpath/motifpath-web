@@ -4,6 +4,8 @@
  * from the nut down. Each fretted note is a dot with the finger that plays it, a root note in the
  * darker colour. Open strings are marked "o" and muted strings "x" above the box. A voicing up
  * the neck starts at its first fret, labelled beside the box (e.g. "3fr"), with no nut drawn.
+ * `scale` draws it bigger, for practice, where every dot must be big enough to see at arm's length;
+ * while the voicing plays, the notes sounding are ringed as on the fretboard.
  */
 import { computed } from 'vue'
 
@@ -13,13 +15,20 @@ type ChordVoicing = components['schemas']['ChordVoicing']
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 
-const props = defineProps<{
-  voicing: ChordVoicing
-  diagram: Diagram
-  instrument: Instrument
-  /** What the box shows, for screen readers, e.g. "G7". */
-  label: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    voicing: ChordVoicing
+    diagram: Diagram
+    instrument: Instrument
+    /** What the box shows, for screen readers, e.g. "G7". */
+    label: string
+    /** How many times its own size the box is drawn. */
+    scale?: number
+    /** The positions sounding right now, while the voicing plays. */
+    activePositionIds?: string[]
+  }>(),
+  { scale: 1, activePositionIds: () => [] },
+)
 
 const STRING_GAP = 20
 const FRET_GAP = 24
@@ -64,6 +73,19 @@ const dots = computed(() =>
     })),
 )
 
+/** Where a sounding note is ringed: on its dot, or on the "o" of an open string. */
+const soundingRings = computed(() =>
+  notes.value
+    .filter((p) => props.activePositionIds.includes(p.position_id))
+    .sort((a, b) => b.string - a.string)
+    .map((p) => ({
+      id: p.position_id,
+      string: p.string,
+      x: xOf(p.string),
+      y: p.fret > 0 ? TOP + (p.fret - firstFret.value + 0.5) * FRET_GAP : TOP - 13,
+    })),
+)
+
 const openStrings = computed(() =>
   [...new Set(notes.value.filter((p) => p.fret === 0).map((p) => p.string))].sort((a, b) => b - a),
 )
@@ -73,8 +95,8 @@ const mutedStrings = computed(() => [...props.voicing.muted_strings].sort((a, b)
 <template>
   <svg
     :viewBox="`0 0 ${width} ${height}`"
-    :width="width"
-    :height="height"
+    :width="width * scale"
+    :height="height * scale"
     role="img"
     :aria-label="label"
     class="text-ink"
@@ -152,5 +174,19 @@ const mutedStrings = computed(() => [...props.voicing.muted_strings].sort((a, b)
       <circle :cx="dot.x" :cy="dot.y" :r="DOT_RADIUS" :class="dot.root ? 'fill-ink' : 'fill-accent'" />
       <text :x="dot.x" :y="dot.y + 4" text-anchor="middle" class="fill-accent-fg text-[11px] font-bold">{{ dot.finger }}</text>
     </g>
+
+    <circle
+      v-for="ring in soundingRings"
+      :key="`sounding-${ring.id}`"
+      data-test="chord-sounding"
+      :data-string="ring.string"
+      :cx="ring.x"
+      :cy="ring.y"
+      :r="DOT_RADIUS + 3"
+      fill="none"
+      class="stroke-fretboard-sounding"
+      stroke-width="2"
+      stroke-dasharray="3 2"
+    />
   </svg>
 </template>

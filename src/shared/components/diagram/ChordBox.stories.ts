@@ -35,3 +35,9 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const OpenG7: Story = {}
+
+/** In practice: twice its size, so each dot is 32 px. */
+export const PracticeSize: Story = { args: { scale: 2 } }
+
+/** While the voicing plays, the notes sounding are ringed. */
+export const Sounding: Story = { args: { scale: 2, activePositionIds: ['p6', 'p1'] } }

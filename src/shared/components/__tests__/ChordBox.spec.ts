@@ -69,6 +69,25 @@ describe('ChordBox', () => {
     expect(xOf(5)).toBeLessThan(xOf(1))
   })
 
+  it('draws at a larger scale for practice, so every dot is at least 28 px', () => {
+    const wrapper = mount(ChordBox, { props: { ...g7Open, instrument: makeFrettedInstrument(), label: 'G7', scale: 2 } })
+
+    const svg = wrapper.get('svg')
+    const plain = mountBox(g7Open).get('svg')
+    expect(Number(svg.attributes('width'))).toBe(2 * Number(plain.attributes('width')))
+    expect(svg.attributes('viewBox')).toBe(plain.attributes('viewBox'))
+    expect(2 * 2 * Number(wrapper.get('[data-test="finger-dot"] circle').attributes('r'))).toBeGreaterThanOrEqual(28)
+  })
+
+  it('rings the dots and open strings sounding right now', () => {
+    const wrapper = mount(ChordBox, {
+      props: { ...g7Open, instrument: makeFrettedInstrument(), label: 'G7', activePositionIds: ['g7-open-p0', 'g7-open-p2'] },
+    })
+
+    const rings = wrapper.findAll('[data-test="chord-sounding"]')
+    expect(rings.map((ring) => ring.attributes('data-string'))).toEqual(['6', '4'])
+  })
+
   it('is described for screen readers', () => {
     expect(mountBox(g7Open).get('svg').attributes('aria-label')).toContain('G7')
   })
