@@ -59,7 +59,8 @@
     "markRight": "Resposta certa",
     "markWrong": "Sua resposta, errada",
     "choiceMarkedRight": "{choice}, resposta certa",
-    "choiceMarkedWrong": "{choice}, sua resposta, errada"
+    "choiceMarkedWrong": "{choice}, sua resposta, errada",
+    "chooseCount": "Escolha {count}"
   },
   "modalCloseButton": {
     "ariaLabel": "Fechar"
@@ -317,5 +318,13 @@
   },
   "pathCard": {
     "eyebrow": "Sua trilha"
+  },
+  "optionTile": {
+    "markRight": "Resposta certa",
+    "markWrong": "Sua resposta, errada"
+  },
+  "audioOption": {
+    "play": "Tocar {label}",
+    "stop": "Parar {label}"
   }
 }

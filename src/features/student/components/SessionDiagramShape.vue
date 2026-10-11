@@ -5,18 +5,21 @@
  * which member of its family it is. Finding a degree: its roots are labelled, its other positions
  * aren't, and the student taps where the degree asked is, anywhere on the board around the shape.
  * The parent records and grades the answer, given the board the diagram draws; feedback shows in
- * place, a wrong answer revealing the right one.
+ * place, a wrong answer revealing the right one. Number keys name a member, so a keyboard can answer
+ * too. A shape whose diagram can't be shown here is skipped, never counted against the student.
  */
 import { CircleCheck, CircleX } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { useAdvanceAfterAnswer } from '@/features/student/composables/useAdvanceAfterAnswer'
-import type { GradedShapeAnswer, ShapeBoard } from '@/features/student/composables/usePracticeSessionRun'
+import type { GradedShapeAnswer, NotAnsweredReason, ShapeBoard } from '@/features/student/composables/usePracticeSessionRun'
 import { pickReasonKeys } from '@/features/student/utils/pickReason'
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import type { AnswerCell } from '@/shared/components/diagram/FrettedDiagramView.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
+import OptionTile from '@/shared/components/OptionTile.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
@@ -26,6 +29,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import { cellsOfDegree } from '@/shared/utils/diagramShape'
 import type { ShapeAnswer } from '@/shared/utils/diagramShape'
 import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
+import { optionState } from '@/shared/utils/optionState'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Shape = NonNullable<Item['diagram_shape']>
@@ -40,7 +44,7 @@ const props = defineProps<{
   instrumentName?: string
 }>()
 
-const emit = defineEmits<{ answer: [answer: ShapeAnswer, board: ShapeBoard]; next: [] }>()
+const emit = defineEmits<{ answer: [answer: ShapeAnswer, board: ShapeBoard]; next: []; skip: [reason: NotAnsweredReason] }>()
 
 const { t } = useTypedT()
 const { intervalLabel } = useIntervalLabel()
@@ -139,6 +143,15 @@ const { next } = useAdvanceAfterAnswer(
   () => props.answer,
   () => emit('next'),
 )
+
+function onKeydown(event: KeyboardEvent) {
+  if (props.answer || !naming.value || event.defaultPrevented || !/^[1-9]$/.test(event.key)) return
+  const member = shape.value.options[Number(event.key) - 1]
+  if (member) nameShape(member.shape)
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
@@ -153,10 +166,10 @@ const { next } = useAdvanceAfterAnswer(
       <LoadingSkeleton />
     </div>
 
-    <div v-else-if="status === 'unavailable' || !shownDiagram || !instrument" class="flex flex-col items-start gap-3">
-      <p class="text-ink-muted">{{ t('sessionDiagramShape.unavailable') }}</p>
+    <div v-else-if="status === 'unavailable' || !shownDiagram || !instrument">
+      <InlineNotice tone="unavailable" :message="t('sessionDiagramShape.unavailable')" />
       <PracticeActionBar>
-        <PrimaryButton data-test="skip-shape" data-primary-action class="h-12 w-full" @click="emit('next')">
+        <PrimaryButton data-test="skip-shape" data-primary-action class="h-12 w-full" @click="emit('skip', 'unavailable')">
           {{ t('practiceSessionView.skip') }}
         </PrimaryButton>
       </PracticeActionBar>
@@ -177,29 +190,17 @@ const { next } = useAdvanceAfterAnswer(
         @select-answer="tapCell"
       />
 
-      <div v-if="naming" class="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" :aria-label="t('sessionDiagramShape.shapes')">
-        <button
-          v-for="option in shape.options"
+      <div v-if="naming" class="flex flex-col gap-2" role="group" :aria-label="t('sessionDiagramShape.shapes')">
+        <OptionTile
+          v-for="(option, i) in shape.options"
           :key="option.shape"
-          type="button"
           data-test="shape-choice"
           :data-mark="choiceMark(option.shape)"
-          :disabled="answer !== null"
-          class="relative flex h-12 items-center justify-center rounded-md border px-3 text-base font-semibold"
-          :class="{
-            'border-success bg-success-muted': choiceMark(option.shape) === 'right',
-            'border-danger bg-danger-muted': choiceMark(option.shape) === 'wrong',
-            'border-border hover:border-accent': !choiceMark(option.shape),
-          }"
+          :key-hint="i + 1"
+          :label="option.name"
+          :state="optionState({ selected: false, mark: choiceMark(option.shape), settled: answer !== null })"
           @click="nameShape(option.shape)"
-        >
-          {{ option.name }}
-          <CircleCheck v-if="choiceMark(option.shape) === 'right'" :size="14" class="absolute right-1 top-1 text-success" aria-hidden="true" />
-          <CircleX v-else-if="choiceMark(option.shape) === 'wrong'" :size="14" class="absolute right-1 top-1 text-danger" aria-hidden="true" />
-          <span v-if="choiceMark(option.shape)" class="sr-only">
-            {{ choiceMark(option.shape) === 'right' ? t('sessionFretboardCell.markedRight') : t('sessionFretboardCell.markedWrong') }}
-          </span>
-        </button>
+        />
       </div>
     </template>
 

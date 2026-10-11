@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import { makeDiagramRef } from '@/shared/testUtils/diagram'
@@ -79,9 +79,7 @@ describe('ExerciseView', () => {
   })
 
   describe('audio_selection', () => {
-    // jsdom has no real media pipeline — every click pauses/plays the shared
-    // element, so both are stubbed for every test here, not just the ones
-    // that assert on them.
+    // jsdom has no real media pipeline, so play and pause are stubbed for every test here.
     beforeEach(() => {
       vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
       vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
@@ -90,105 +88,127 @@ describe('ExerciseView', () => {
       vi.restoreAllMocks()
     })
 
-    it('renders equally sized labeled buttons, with no visible native player', () => {
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
+    function mountSounds(props: Partial<InstanceType<typeof ExerciseView>['$props']> = {}) {
+      return mount(ExerciseView, {
+        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions, ...props },
       })
+    }
+    const rows = (wrapper: ReturnType<typeof mountSounds>) => wrapper.findAll('[data-test="exercise-option"]')
+    const playButton = (wrapper: ReturnType<typeof mountSounds>, i: number) => rows(wrapper)[i]!.get('[data-test="option-play"]')
+    const player = (wrapper: ReturnType<typeof mountSounds>) => wrapper.get('audio').element as HTMLAudioElement
 
-      const rows = wrapper.findAll('[data-test="exercise-option"]')
-      expect(rows).toHaveLength(2)
-      expect(rows[0]?.text()).toContain('Lick A')
-      expect(rows[1]?.text()).toContain('Lick B')
-      // A single shared, hidden player drives playback — not one <audio> per
-      // option — so there is nothing resembling a native scrubber per button.
+    it('lists each sound as a labelled row with its own play button, and no visible native player', () => {
+      const wrapper = mountSounds()
+
+      expect(rows(wrapper).map((row) => row.text())).toEqual([expect.stringContaining('Lick A'), expect.stringContaining('Lick B')])
+      expect(playButton(wrapper, 0).attributes('aria-label')).toBe('Play Lick A')
       expect(wrapper.findAll('audio')).toHaveLength(1)
       expect(wrapper.get('audio').attributes('controls')).toBeUndefined()
     })
 
-    it('selects an audio_selection option on click', async () => {
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
+    it('selects an option when its row is tapped, without playing it', async () => {
+      const wrapper = mountSounds()
 
-      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+      await rows(wrapper)[1]!.trigger('click')
 
-      expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-selected')).toBe('true')
+      expect(rows(wrapper)[1]!.attributes('data-selected')).toBe('true')
+      expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled()
     })
 
-    it("plays the clicked option's clip through the shared player", async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
+    it('plays an option’s clip from its play button, without selecting it', async () => {
+      const wrapper = mountSounds()
 
-      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
 
-      const audioEl = wrapper.get('audio').element as HTMLAudioElement
-      expect(audioEl.src).toBe('https://x/lick1.mp3')
-      expect(playSpy).toHaveBeenCalledTimes(1)
+      expect(player(wrapper).src).toBe('https://x/lick1.mp3')
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+      expect(rows(wrapper).every((row) => row.attributes('data-selected') === 'false')).toBe(true)
+      expect(wrapper.emitted('playing')).toEqual([[true]])
     })
 
-    it('stops the previously playing clip before playing a newly clicked option, so playback never overlaps', async () => {
-      const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
+    it('switches clips without overlapping them', async () => {
+      const wrapper = mountSounds()
 
-      await wrapper.findAll('[data-test="exercise-option"]')[0]!.trigger('click')
-      await wrapper.findAll('[data-test="exercise-option"]')[1]!.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
+      await playButton(wrapper, 1).trigger('click')
 
-      expect(pauseSpy).toHaveBeenCalled()
-      const audioEl = wrapper.get('audio').element as HTMLAudioElement
-      expect(audioEl.src).toBe('https://x/lick2.mp3')
+      expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+      expect(player(wrapper).src).toBe('https://x/lick2.mp3')
+      expect(playButton(wrapper, 1).attributes('aria-label')).toBe('Stop Lick B')
     })
 
-    it('stops (does not restart) and unselects an option when it is clicked again while playing', async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const pauseSpy = vi.mocked(HTMLMediaElement.prototype.pause)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
-      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
+    it('stops a clip when its play button is tapped again', async () => {
+      const wrapper = mountSounds()
 
-      await firstOption.trigger('click')
-      expect(playSpy).toHaveBeenCalledTimes(1)
+      await playButton(wrapper, 0).trigger('click')
+      await playButton(wrapper, 0).trigger('click')
 
-      await firstOption.trigger('click')
-
-      expect(playSpy).toHaveBeenCalledTimes(1)
-      expect(pauseSpy).toHaveBeenCalled()
-      // The second click is both a stop and an unanswer, same as every other
-      // exercise type's click-to-deselect behavior.
-      expect(firstOption.attributes('data-selected')).toBe('false')
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+      expect(playButton(wrapper, 0).attributes('aria-label')).toBe('Play Lick A')
     })
 
-    it('selects and plays again on a third click, after the second click stopped and unselected it', async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
-      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
+    it('says when a clip ends by itself, and plays it again from the start', async () => {
+      const wrapper = mountSounds()
 
-      await firstOption.trigger('click')
-      await firstOption.trigger('click')
-      await firstOption.trigger('click')
-
-      expect(firstOption.attributes('data-selected')).toBe('true')
-      expect(playSpy).toHaveBeenCalledTimes(2)
-    })
-
-    it('plays again from the start after a clicked clip finished naturally', async () => {
-      const playSpy = vi.mocked(HTMLMediaElement.prototype.play)
-      const wrapper = mount(ExerciseView, {
-        props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options: audioOptions },
-      })
-      const firstOption = wrapper.findAll('[data-test="exercise-option"]')[0]!
-
-      await firstOption.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
       await wrapper.get('audio').trigger('ended')
-      await firstOption.trigger('click')
+      await playButton(wrapper, 0).trigger('click')
 
-      expect(playSpy).toHaveBeenCalledTimes(2)
+      expect(wrapper.emitted('playing')).toEqual([[true], [false], [true]])
+      expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2)
+    })
+
+    it.each(['error', 'pause'])('says the clip stopped when the player reports %s', async (event) => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+
+      await wrapper.get('audio').trigger(event)
+
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+      expect(playButton(wrapper, 0).attributes('aria-label')).toBe('Play Lick A')
+    })
+
+    it('says the clip stopped when it can’t start', async () => {
+      vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new DOMException('no source', 'NotSupportedError'))
+      const wrapper = mountSounds()
+
+      await playButton(wrapper, 0).trigger('click')
+      await flushPromises()
+
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+    })
+
+    it('keeps the new clip sounding when the one it replaced reports its pause late', async () => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+      await playButton(wrapper, 1).trigger('click')
+      vi.spyOn(player(wrapper), 'paused', 'get').mockReturnValue(false)
+
+      await wrapper.get('audio').trigger('pause')
+
+      expect(wrapper.emitted('playing')).toEqual([[true]])
+      expect(playButton(wrapper, 1).attributes('aria-label')).toBe('Stop Lick B')
+    })
+
+    it('stops the clip sounding when the next exercise’s options arrive', async () => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+
+      await wrapper.setProps({ options: [{ option_id: 'n1', audio_url: 'https://x/next.mp3', label: 'Next', is_correct: true }] })
+
+      expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+    })
+
+    it('stops the clip sounding once the answer is graded', async () => {
+      const wrapper = mountSounds()
+      await playButton(wrapper, 0).trigger('click')
+
+      await wrapper.setProps({ selectedOptionIds: ['a1'], reveal: { correctOptionIds: ['a1'] } })
+
+      expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
     })
   })
 
@@ -301,16 +321,32 @@ describe('ExerciseView', () => {
     expect(rows[0]?.attributes('data-selected')).toBe('false')
   })
 
-  it('renders a checkbox-shaped indicator when allowMultiple is true and a radio-shaped one otherwise', () => {
-    const single = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions },
-    })
-    const multi = mount(ExerciseView, {
-      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, allowMultiple: true },
+  it('says how many to choose after the prompt, when told', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions, allowMultiple: true, chooseCount: 2 },
     })
 
-    expect(single.get('[data-test="exercise-option-indicator"]').classes()).toContain('rounded-full')
-    expect(multi.get('[data-test="exercise-option-indicator"]').classes()).not.toContain('rounded-full')
+    expect(wrapper.get('[data-test="choose-count"]').text()).toBe('Choose 2')
+  })
+
+  it('says nothing about how many when not told', () => {
+    const wrapper = mount(ExerciseView, { props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions } })
+
+    expect(wrapper.find('[data-test="choose-count"]').exists()).toBe(false)
+  })
+
+  it('shows each text option with the number key that chooses it', () => {
+    const wrapper = mount(ExerciseView, { props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: textOptions } })
+
+    expect(wrapper.findAll('[data-test="exercise-option"] [data-test="key-hint"]').map((hint) => hint.text())).toEqual(['1', '2'])
+  })
+
+  it('locks the options it doesn’t mark once the answer is graded', () => {
+    const wrapper = mount(ExerciseView, {
+      props: { exerciseType: 'text_response', prompt: plainTextPrompt('p'), options: [...textOptions, { option_id: 'o3', label: 'Tapping', is_correct: false }], selectedOptionIds: ['o2'], reveal: { correctOptionIds: ['o1'] } },
+    })
+
+    expect(wrapper.findAll('[data-test="exercise-option"]').map((option) => option.attributes('data-state'))).toEqual(['right', 'wrong', 'locked'])
   })
 
   it('lays out the prompt beside the content in landscape direction', () => {
@@ -624,6 +660,62 @@ describe('ExerciseView', () => {
 
         expect(cards[0]!.find('[data-test="exercise-option-label"]').exists()).toBe(false)
       })
+    })
+  })
+
+  describe('a missing stimulus', () => {
+    const listening = { exerciseType: 'audio_recognition' as const, prompt: plainTextPrompt('p'), options: textOptions, audioUrl: 'https://x/third.mp3' }
+
+    it('says when the sound to hear didn’t load', async () => {
+      const wrapper = mount(ExerciseView, { props: listening })
+
+      await wrapper.get('[data-test="exercise-audio-play"]').trigger('error')
+
+      expect(wrapper.emitted('stimulusMissing')).toEqual([['failed_to_load']])
+    })
+
+    it('says when the picture to look at didn’t load', async () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: regionOptions, imageUrl: 'https://x/fretboard.png' },
+      })
+
+      await wrapper.get('[data-test="exercise-stimulus-image"]').trigger('error')
+
+      expect(wrapper.emitted('stimulusMissing')).toEqual([['failed_to_load']])
+    })
+
+    it('says when the diagram to look at can’t be shown here', () => {
+      const wrapper = mount(ExerciseView, {
+        props: { exerciseType: 'image_recognition', prompt: plainTextPrompt('p'), options: regionOptions, diagramRef: makeDiagramRef({ diagram_id: 'd1' }) },
+        global: { stubs: { EmbeddedDiagram: { name: 'EmbeddedDiagram', emits: ['status'], template: '<div />' } } },
+      })
+
+      wrapper.getComponent({ name: 'EmbeddedDiagram' }).vm.$emit('status', 'unavailable')
+
+      expect(wrapper.emitted('stimulusMissing')).toEqual([['unavailable']])
+    })
+
+    it('shows the caller’s notice in place of the missing stimulus, and locks the options', async () => {
+      const wrapper = mount(ExerciseView, {
+        props: { ...listening, stimulusMissing: true },
+        slots: { 'stimulus-notice': '<p data-test="notice">The sound didn’t load.</p>' },
+      })
+
+      expect(wrapper.find('[data-test="exercise-audio-play"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="notice"]').exists()).toBe(true)
+      const option = wrapper.findAll('[data-test="exercise-option"]')[0]!
+      expect(option.attributes('data-locked')).toBe('true')
+      await option.trigger('click')
+      expect(wrapper.emitted('update:selectedOptionIds')).toBeUndefined()
+    })
+
+    it('loads the stimulus again once it is no longer missing', async () => {
+      const wrapper = mount(ExerciseView, { props: { ...listening, stimulusMissing: true } })
+
+      await wrapper.setProps({ stimulusMissing: false })
+
+      expect(wrapper.find('[data-test="exercise-audio-play"]').exists()).toBe(true)
+      expect(wrapper.findAll('[data-test="exercise-option"]')[0]!.attributes('data-locked')).toBe('false')
     })
   })
 })

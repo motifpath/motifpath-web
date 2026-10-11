@@ -34,6 +34,7 @@ const progressPercent = computed(() => {
 })
 
 const allowMultiple = computed(() => hasMultipleCorrectOptions(session.currentExercise.value?.options ?? []))
+const rightCount = computed(() => (session.currentExercise.value?.options ?? []).filter((option) => option.is_correct).length)
 
 const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
   success: 'bg-success-muted text-success',
@@ -94,6 +95,7 @@ const scoreTierClasses: Record<'success' | 'warning' | 'danger', string> = {
         :diagram-ref="session.currentExercise.value.diagram_ref"
         :audio-url="session.currentExercise.value.audio_url"
         :allow-multiple="allowMultiple"
+        :choose-count="allowMultiple ? rightCount : undefined"
         :selected-option-ids="session.currentAnswer.value?.optionIds ?? []"
         @update:selected-option-ids="session.select"
       />

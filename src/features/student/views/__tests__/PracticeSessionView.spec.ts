@@ -451,6 +451,17 @@ describe('PracticeSessionView', () => {
     })
   })
 
+  it('sends a shape that can’t be shown as not answered and moves on', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper, plan([shapeItem(), cellItem(5, 3, 'name_the_note')]))
+
+    wrapper.getComponent(SessionDiagramShapeStub).vm.$emit('skip', 'unavailable')
+    await flushPromises()
+
+    expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: { response_type: 'not_answered', reason: 'unavailable' } })])
+    expect(wrapper.findComponent(SessionFretboardCellStub).exists()).toBe(true)
+  })
+
   describe('with fretboard cells', () => {
     it('shows a cell with its instrument’s tuning, and records its answer', async () => {
       const wrapper = mountView()
@@ -914,6 +925,32 @@ describe('PracticeSessionView', () => {
       ])
       expect(wrapper.get('[data-test="exercise"]').text()).toBe('answered wrong')
       expect(segments(wrapper)).toEqual([100, 0])
+    })
+
+    it('times a choice among sounds from the clips the exercise reports', async () => {
+      const wrapper = mountView()
+      const sounds = exerciseItem(EXERCISE)
+      sounds.exercise = { ...sounds.exercise!, exercise_type: 'audio_selection' }
+      await startSession(wrapper, plan([sounds]))
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('playing', true)
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: expect.objectContaining({ latency_ms: 0 }) })])
+    })
+
+    it('sends a skipped exercise as not answered and moves on', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, mixed())
+
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('skip', 'failed_to_load')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: { response_type: 'not_answered', reason: 'failed_to_load' } }),
+      ])
+      expect(wrapper.find('[data-test="take"]').exists()).toBe(true)
     })
 
     it('moves on to the next item when the student asks', async () => {

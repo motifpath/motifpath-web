@@ -340,21 +340,23 @@
     "check": "Verificar",
     "right": "Certo!",
     "wrong": "Não foi dessa vez.",
-    "next": "Continuar"
+    "next": "Continuar",
+    "skip": "Pular",
+    "soundFailed": "O som não carregou. Você precisa ouvi-lo para responder — tente de novo ou pule.",
+    "pictureFailed": "A imagem não carregou. Você precisa vê-la para responder — tente de novo ou pule.",
+    "unavailable": "Este exercício não pode ser mostrado agora. Pule — ele não conta contra você."
   },
   "sessionFretboardCell": {
     "nameTheNote": "Que nota é esta?",
     "findTheNote": "Encontre {note} na corda {string}",
     "board": "Braço do instrumento",
-    "notes": "Notas",
-    "markedRight": "resposta certa",
-    "markedWrong": "sua resposta, errada"
+    "notes": "Notas"
   },
   "sessionDiagramShape": {
     "nameTheShape": "Que forma é esta?",
     "findTheDegree": "Toque a {degree} nesta forma",
     "shapes": "Formas",
-    "unavailable": "Não foi possível mostrar esta forma agora."
+    "unavailable": "Esta forma não pode ser mostrada agora. Pule — ela não conta contra você."
   },
   "tapCheck": {
     "title": "Teste de toque",

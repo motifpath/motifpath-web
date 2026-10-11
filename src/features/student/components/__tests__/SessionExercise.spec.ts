@@ -46,6 +46,18 @@ const twoCorrect = item('ex-2', [
   { option_id: 'e', is_correct: true, label: 'E' },
 ])
 
+const sounds: Item = {
+  ...item('ex-3', [
+    { option_id: 's1', is_correct: false, label: 'Lick A', audio_url: 'https://media.test/a.mp3' },
+    { option_id: 's2', is_correct: true, label: 'Lick B', audio_url: 'https://media.test/b.mp3' },
+    { option_id: 's3', is_correct: false, label: 'Lick C', audio_url: 'https://media.test/c.mp3' },
+  ]),
+}
+sounds.exercise = { ...sounds.exercise!, exercise_type: 'audio_selection' }
+
+const listening: Item = { ...oneCorrect, item_key: 'exercise:ex-4' }
+listening.exercise = { ...oneCorrect.exercise!, exercise_id: 'ex-4', exercise_type: 'audio_recognition', audio_url: 'https://media.test/third.mp3' }
+
 let reducedMotion = false
 function stubMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -92,7 +104,7 @@ describe('SessionExercise', () => {
 
     expect(wrapper.get('[data-test="item-reason"]').text()).toBe('Due for review')
     expect(wrapper.text()).toContain('Which interval is this?')
-    expect(wrapper.findAll('[data-test="exercise-option"]').map((candidate) => candidate.text())).toEqual(['Minor third', 'Major third'])
+    expect(wrapper.findAll('[data-test="exercise-option"] [data-test="option-label"]').map((candidate) => candidate.text())).toEqual(['Minor third', 'Major third'])
   })
 
   describe('with one right option', () => {
@@ -128,6 +140,140 @@ describe('SessionExercise', () => {
       await check().trigger('click')
 
       expect(wrapper.emitted('answer')).toEqual([[['c', 'e']]])
+    })
+  })
+
+  describe('with several right options, saying how many', () => {
+    it('ends the prompt with how many to choose', () => {
+      expect(mountExercise({ item: twoCorrect }).get('[data-test="choose-count"]').text()).toBe('Choose 2')
+    })
+
+    it('says nothing about how many with one right option', () => {
+      expect(mountExercise({ item: oneCorrect }).find('[data-test="choose-count"]').exists()).toBe(false)
+    })
+  })
+
+  describe('with sound options', () => {
+    beforeEach(() => {
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    })
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('waits for Check even with one right option', async () => {
+      const wrapper = mountExercise({ item: sounds })
+
+      await option(wrapper, 'Lick B').trigger('click')
+      expect(option(wrapper, 'Lick B').attributes('data-selected')).toBe('true')
+      expect(wrapper.emitted('answer')).toBeUndefined()
+
+      await wrapper.get('[data-test="action-bar"] [data-test="check-answer"]').trigger('click')
+      expect(wrapper.emitted('answer')).toEqual([[['s2']]])
+    })
+
+    it('chooses with a number key without committing', async () => {
+      const wrapper = mountExercise({ item: sounds })
+
+      press('3')
+      await wrapper.vm.$nextTick()
+
+      expect(option(wrapper, 'Lick C').attributes('data-selected')).toBe('true')
+      expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+
+    it('says when a clip starts and stops, so the answer can be timed from the last one heard', async () => {
+      const wrapper = mountExercise({ item: sounds })
+
+      await option(wrapper, 'Lick A').get('[data-test="option-play"]').trigger('click')
+      await option(wrapper, 'Lick A').get('[data-test="option-play"]').trigger('click')
+
+      expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+      expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+  })
+
+  describe('when its stimulus is missing', () => {
+    const missing = async (wrapper: ReturnType<typeof mountExercise>, reason: 'failed_to_load' | 'unavailable') => {
+      wrapper.getComponent(ExerciseView).vm.$emit('stimulusMissing', reason)
+      await wrapper.vm.$nextTick()
+    }
+    const bar = (wrapper: ReturnType<typeof mountExercise>) => wrapper.get('[data-test="action-bar"]')
+
+    it('offers no Skip while the stimulus is there', () => {
+      expect(mountExercise({ item: listening }).find('[data-test="skip-item"]').exists()).toBe(false)
+    })
+
+    it('says the sound didn’t load in its place, and offers Try again first and Skip', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('error')
+      expect(notice.text()).toBe('The sound didn’t load. You need to hear it to answer — try again, or skip it.')
+      expect(bar(wrapper).get('[data-test="retry-stimulus"]').text()).toBe('Try again')
+      expect(bar(wrapper).get('[data-test="retry-stimulus"]').attributes()).toHaveProperty('data-primary-action')
+      expect(bar(wrapper).get('[data-test="skip-item"]').attributes()).not.toHaveProperty('data-primary-action')
+    })
+
+    it('takes no choice, by tap or key, while the sound is missing', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await option(wrapper, 'Minor third').trigger('click')
+      press('1')
+
+      expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+
+    it('loads the sound again on Try again', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await bar(wrapper).get('[data-test="retry-stimulus"]').trigger('click')
+
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
+      expect(wrapper.getComponent(ExerciseView).props('stimulusMissing')).toBe(false)
+    })
+
+    it('skips as failed to load', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await bar(wrapper).get('[data-test="skip-item"]').trigger('click')
+
+      expect(wrapper.emitted('skip')).toEqual([['failed_to_load']])
+    })
+
+    it('says an exercise that can’t be shown here won’t count, with Skip as the only way on', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'unavailable')
+
+      const notice = wrapper.get('[data-test="inline-notice"]')
+      expect(notice.attributes('data-tone')).toBe('unavailable')
+      expect(notice.text()).toBe('This exercise can’t be shown right now. Skip it — it won’t count against you.')
+      expect(bar(wrapper).find('[data-test="retry-stimulus"]').exists()).toBe(false)
+      await bar(wrapper).get('[data-test="skip-item"][data-primary-action]').trigger('click')
+      expect(wrapper.emitted('skip')).toEqual([['unavailable']])
+    })
+
+    it('keeps the feedback and Continue when the stimulus fails after the answer', async () => {
+      const wrapper = mountExercise({ item: listening, answer: { optionIds: ['wrong'], correct: false } })
+      await missing(wrapper, 'failed_to_load')
+
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
+      expect(bar(wrapper).find('[data-test="skip-item"]').exists()).toBe(false)
+      expect(bar(wrapper).find('[data-test="next-item"]').exists()).toBe(true)
+    })
+
+    it('starts the next exercise with its stimulus expected', async () => {
+      const wrapper = mountExercise({ item: listening })
+      await missing(wrapper, 'failed_to_load')
+
+      await wrapper.setProps({ item: oneCorrect })
+
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
     })
   })
 

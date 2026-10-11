@@ -511,6 +511,125 @@ describe('usePracticeSessionRun', () => {
       expect(second.response).toMatchObject({ audio_ms: 2600 })
     })
 
+    describe('with sound options', () => {
+      const SOUNDS = 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+      const soundChoice = plan([
+        exerciseItem(SOUNDS, 'new', {
+          exercise_type: 'audio_selection',
+          options: [
+            { option_id: 'right', is_correct: true, label: 'A', audio_url: 'https://media.test/a.mp3' },
+            { option_id: 'wrong', is_correct: false, label: 'B', audio_url: 'https://media.test/b.mp3' },
+          ],
+        }),
+      ])
+
+      it('times the answer from the end of the last clip played, with no audio length', async () => {
+        measureExerciseAudio.mockResolvedValue(1500)
+        const run = usePracticeSessionRun(soundChoice)
+        await vi.runAllTimersAsync()
+        run.start()
+        vi.advanceTimersByTime(2000)
+        run.clipPlaying(true)
+        vi.advanceTimersByTime(6000)
+        run.clipPlaying(false)
+        vi.advanceTimersByTime(3000)
+        run.answer(['right'])
+
+        const [answered] = tracked('practice.item_answered')
+        expect(answered.response).toEqual({ response_type: 'option_choice', option_ids: ['right'], latency_ms: 3000 })
+      })
+
+      it('times the answer as 0 when a clip is still playing at Check', () => {
+        const run = usePracticeSessionRun(soundChoice)
+        run.start()
+        vi.advanceTimersByTime(2000)
+        run.clipPlaying(true)
+        vi.advanceTimersByTime(1000)
+        run.answer(['right'])
+
+        expect(tracked('practice.item_answered')[0].response).toMatchObject({ latency_ms: 0 })
+      })
+
+      it('times the answer from when the exercise was shown when no clip was played', () => {
+        const run = usePracticeSessionRun(soundChoice)
+        run.start()
+        vi.advanceTimersByTime(5000)
+        run.answer(['right'])
+
+        expect(tracked('practice.item_answered')[0].response).toMatchObject({ latency_ms: 5000 })
+      })
+    })
+
+    it('times an exercise without sound options from when it was shown, whatever clips played', () => {
+      const run = usePracticeSessionRun(mixed)
+      run.start()
+      vi.advanceTimersByTime(1000)
+      run.clipPlaying(true)
+      vi.advanceTimersByTime(1000)
+      run.clipPlaying(false)
+      vi.advanceTimersByTime(1000)
+      run.answer(['right'])
+
+      expect(tracked('practice.item_answered')[0].response).toMatchObject({ latency_ms: 3000 })
+    })
+
+    describe('skipping an item that can’t be answered', () => {
+      it('sends it as not answered, with why, and moves on', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.nextItem()
+        run.skip('failed_to_load')
+
+        expect(tracked('practice.item_answered')).toEqual([
+          {
+            event_type: 'practice.item_answered',
+            practice_session_id: SESSION_ID,
+            item_key: `exercise:${LISTENING}`,
+            response: { response_type: 'not_answered', reason: 'failed_to_load' },
+          },
+        ])
+        expect(run.current.value?.item_key).toBe(`play_along:${APPLY}`)
+      })
+
+      it('sends an item that can’t be shown here as unavailable', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.skip('unavailable')
+
+        expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'not_answered', reason: 'unavailable' })
+      })
+
+      it('leaves it out of the answered count', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.answer(['right'])
+        run.nextItem()
+        run.skip('failed_to_load')
+        run.rate('clean')
+        run.end()
+
+        expect(tracked('practice.session_ended')[0]).toMatchObject({ answered_count: 2 })
+      })
+
+      it('takes no skip once the item is answered', () => {
+        const run = usePracticeSessionRun(mixed)
+        run.start()
+        run.answer(['right'])
+        run.skip('failed_to_load')
+
+        expect(tracked('practice.item_answered')).toHaveLength(1)
+        expect(run.current.value?.item_key).toBe(`exercise:${EXERCISE}`)
+      })
+
+      it('finishes the session when the last item is skipped', () => {
+        const run = usePracticeSessionRun(plan([exerciseItem(EXERCISE, 'due')]))
+        run.start()
+        run.skip('unavailable')
+
+        expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ answered_count: 0, left_early: false })])
+      })
+    })
+
     it('counts an answered exercise among the answered items', () => {
       const run = usePracticeSessionRun(mixed)
       run.start()
@@ -742,6 +861,16 @@ describe('usePracticeSessionRun', () => {
       ])
       expect(run.cellAnswer.value).toEqual({ answer: { response_type: 'name_the_note', note_name: 'C' }, correct: true })
       expect(run.progress.value).toEqual([1, 0])
+    })
+
+    it('sends a named note with the four choices it was picked from, as shown', () => {
+      const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+      run.start()
+      run.answerCell({ response_type: 'name_the_note', note_name: 'C', choices: ['B', 'F', 'C', 'C#'] })
+
+      expect(tracked('practice.item_answered')[0]).toMatchObject({
+        response: { response_type: 'name_the_note', note_name: 'C', choices: ['B', 'F', 'C', 'C#'] },
+      })
     })
 
     it('sends the cell tapped to find the note, and says when it is wrong', () => {

@@ -16,6 +16,8 @@ import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 type Plan = components['schemas']['PracticeSessionPlan']
 type Item = components['schemas']['PracticeSessionItem']
 type FeltRating = EventComponents['schemas']['FeltRating']
+/** Why an item went unanswered: its sound or image didn't load, or it can't be shown here. */
+export type NotAnsweredReason = EventComponents['schemas']['NotAnsweredResponse']['reason']
 
 /** Takes of a play-along, as core estimates the session's time with them. */
 const FOCUS_TAKES = 4
@@ -152,6 +154,9 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const shapeAnswer = ref<GradedShapeAnswer | null>(null)
   /** When the item on was shown, which an exercise's latency counts from. */
   let shownAt = 0
+  /** Whether a clip of the item on is sounding, and when the last one ended. */
+  let clipSounding = false
+  let lastClipEndedAt: number | null = null
 
   // Measured up front, so each length is known by the time its exercise is answered.
   const audioMs = new Map<string, number>()
@@ -241,6 +246,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     cellAnswer.value = null
     shapeAnswer.value = null
     shownAt = Date.now()
+    clipSounding = false
+    lastClipEndedAt = null
     index.value++
     if (index.value < plan.items.length) return
     if (feltQuestions.value.length > 0) askingFelt.value = true
@@ -315,6 +322,21 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     nextItem()
   }
 
+  /** Notes a clip of the item on starting or stopping, which a choice among sounds is timed from. */
+  function clipPlaying(playing: boolean) {
+    if (clipSounding && !playing) lastClipEndedAt = Date.now()
+    clipSounding = playing
+  }
+
+  /**
+   * How long an answer among sounds took: listening isn't answering, so it runs from the end of
+   * the last clip played (0 when one is still sounding), or from when it was shown if none was.
+   */
+  function listeningLatency(): number {
+    if (clipSounding) return 0
+    return Date.now() - (lastClipEndedAt ?? shownAt)
+  }
+
   /** Answers the exercise on with the options chosen; only the first answer counts. */
   function answer(optionIds: string[]) {
     const item = current.value
@@ -324,7 +346,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     exerciseAnswer.value = { optionIds, correct: isExactMatch(exercise.options, optionIds) }
     markAnswered(item)
     recordOutcome(item, { kind: 'answered', correct: exerciseAnswer.value.correct })
-    const audio = audioMs.get(exercise.exercise_id)
+    const amongSounds = exercise.exercise_type === 'audio_selection'
+    const audio = amongSounds ? undefined : audioMs.get(exercise.exercise_id)
     void track({
       event_type: 'practice.item_answered',
       practice_session_id: plan.practice_session_id,
@@ -332,7 +355,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       response: {
         response_type: 'option_choice',
         option_ids: optionIds,
-        latency_ms: Date.now() - shownAt,
+        latency_ms: amongSounds ? listeningLatency() : Date.now() - shownAt,
         ...(audio !== undefined ? { audio_ms: audio } : {}),
       },
     })
@@ -383,6 +406,24 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   }
 
   /**
+   * Moves past an item the student couldn't answer, sending it as not answered so it is kept but
+   * never graded: it counts neither as answered nor as wrong. Only an item not yet answered.
+   */
+  function skip(reason: NotAnsweredReason) {
+    const item = current.value
+    if (!active() || !item) return
+    if (exerciseAnswer.value || cellAnswer.value || shapeAnswer.value || takes.value.length > 0) return
+
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { response_type: 'not_answered', reason },
+    })
+    nextItem()
+  }
+
+  /**
    * Ends the session now; `keepalive` when the page is closing. Before the last item it ends as
    * left early; during the felt questions, as finished with the ratings given so far.
    */
@@ -416,6 +457,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     setTempo,
     rate,
     answer,
+    clipPlaying,
+    skip,
     answerCell,
     answerShape,
     completeTapCheck,

@@ -1,18 +1,19 @@
 <script setup lang="ts">
 /**
  * One fretboard cell of a practice session, asked the way its drill says. Naming the note: the cell
- * is lit and the student taps one of the twelve notes, or presses its letter (with Shift for a
- * sharp). Finding the note: the note and its string are named and the student taps where it is on
+ * is lit and the student taps one of four near notes, or presses its number; the answer keeps the
+ * four in the order shown. Finding the note: the note and its string are named and the student taps where it is on
  * that string. The tap is the answer, since latency counts from the prompt. The parent records and
  * grades it; feedback shows in place, a wrong answer revealing where the right one was.
  */
 import { CircleCheck, CircleX } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { useAdvanceAfterAnswer } from '@/features/student/composables/useAdvanceAfterAnswer'
 import type { GradedCellAnswer } from '@/features/student/composables/usePracticeSessionRun'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
+import OptionTile from '@/shared/components/OptionTile.vue'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 import type { CellMark } from '@/shared/components/diagram/DrillFretboard.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
@@ -20,7 +21,8 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { cellNoteName } from '@/shared/utils/fretboardCell'
 import type { CellAnswer, CellPlace } from '@/shared/utils/fretboardCell'
-import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
+import { nameTheNoteChoices } from '@/shared/utils/noteChoices'
+import { optionState } from '@/shared/utils/optionState'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Cell = NonNullable<Item['fretboard_cell']>
@@ -48,6 +50,16 @@ const naming = computed(() => cell.value.drill === 'name_the_note')
 
 /** The cell's note, spelled with sharps. */
 const rightNote = computed(() => cellNoteName(props.tuning, cell.value) ?? '')
+
+/** The four notes offered, drawn once per cell so they never reshuffle under the student. */
+const choices = ref<string[]>([])
+watch(
+  () => [props.item.item_key, props.tuning] as const,
+  () => {
+    choices.value = naming.value ? (nameTheNoteChoices(props.tuning, cell.value) ?? []) : []
+  },
+  { immediate: true },
+)
 
 /** A note name as the student reads it: a real sharp sign. */
 const shown = (noteName: string) => noteName.replace('#', '♯')
@@ -77,7 +89,7 @@ const boardMarks = computed<CellMark[]>(() => {
 })
 
 function nameNote(noteName: string) {
-  if (!props.answer) emit('answer', { response_type: 'name_the_note', note_name: noteName })
+  if (!props.answer) emit('answer', { response_type: 'name_the_note', note_name: noteName, choices: choices.value })
 }
 
 function findNote(place: CellPlace) {
@@ -91,9 +103,8 @@ const { next } = useAdvanceAfterAnswer(
 
 function onKeydown(event: KeyboardEvent) {
   if (props.answer || !naming.value || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return
-  if (!/^[a-g]$/i.test(event.key)) return
-  const letter = event.key.toUpperCase()
-  nameNote(event.shiftKey ? `${letter}#` : letter)
+  const noteName = /^[1-9]$/.test(event.key) ? choices.value[Number(event.key) - 1] : undefined
+  if (noteName) nameNote(noteName)
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
@@ -117,29 +128,17 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       @tap="findNote"
     />
 
-    <div v-if="naming" class="grid grid-cols-6 gap-2" role="group" :aria-label="t('sessionFretboardCell.notes')">
-      <button
-        v-for="noteName in CHROMATIC_SCALE"
+    <div v-if="naming" class="grid grid-cols-2 gap-2" role="group" :aria-label="t('sessionFretboardCell.notes')">
+      <OptionTile
+        v-for="(noteName, i) in choices"
         :key="noteName"
-        type="button"
         data-test="note-choice"
         :data-mark="noteMark(noteName)"
-        :disabled="answer !== null"
-        class="relative flex h-12 items-center justify-center rounded-md border text-base font-semibold"
-        :class="{
-          'border-success bg-success-muted': noteMark(noteName) === 'right',
-          'border-danger bg-danger-muted': noteMark(noteName) === 'wrong',
-          'border-border hover:border-accent': !noteMark(noteName),
-        }"
+        :key-hint="i + 1"
+        :label="shown(noteName)"
+        :state="optionState({ selected: false, mark: noteMark(noteName), settled: answer !== null })"
         @click="nameNote(noteName)"
-      >
-        {{ shown(noteName) }}
-        <CircleCheck v-if="noteMark(noteName) === 'right'" :size="14" class="absolute right-1 top-1 text-success" aria-hidden="true" />
-        <CircleX v-else-if="noteMark(noteName) === 'wrong'" :size="14" class="absolute right-1 top-1 text-danger" aria-hidden="true" />
-        <span v-if="noteMark(noteName)" class="sr-only">
-          {{ noteMark(noteName) === 'right' ? t('sessionFretboardCell.markedRight') : t('sessionFretboardCell.markedWrong') }}
-        </span>
-      </button>
+      />
     </div>
 
     <PracticeActionBar>

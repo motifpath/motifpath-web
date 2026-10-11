@@ -340,21 +340,23 @@
     "check": "Check",
     "right": "Right!",
     "wrong": "Not quite.",
-    "next": "Continue"
+    "next": "Continue",
+    "skip": "Skip",
+    "soundFailed": "The sound didn’t load. You need to hear it to answer — try again, or skip it.",
+    "pictureFailed": "The picture didn’t load. You need to see it to answer — try again, or skip it.",
+    "unavailable": "This exercise can’t be shown right now. Skip it — it won’t count against you."
   },
   "sessionFretboardCell": {
     "nameTheNote": "Name this note",
     "findTheNote": "Find {note} on string {string}",
     "board": "Fretboard",
-    "notes": "Notes",
-    "markedRight": "right answer",
-    "markedWrong": "your answer, wrong"
+    "notes": "Notes"
   },
   "sessionDiagramShape": {
     "nameTheShape": "Which shape is this?",
     "findTheDegree": "Tap the {degree} in this shape",
     "shapes": "Shapes",
-    "unavailable": "This shape can't be shown right now."
+    "unavailable": "This shape can’t be shown right now. Skip it — it won’t count against you."
   },
   "tapCheck": {
     "title": "Tap check",
