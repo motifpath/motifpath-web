@@ -9,6 +9,7 @@ import { useTapCheck, TAP_CHECK_LAST_FRET } from '@/features/student/composables
 import type { TapCheckResult } from '@/features/student/composables/usePracticeSessionRun'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
+import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -44,14 +45,16 @@ function skip() {
       </p>
     </header>
 
-    <DrillFretboard
-      :tuning="tuning"
-      :max-fret="TAP_CHECK_LAST_FRET"
-      :label="t('tapCheck.board')"
-      :lit="lit"
-      :tap-strings="running ? allStrings() : []"
-      @tap="tap"
-    />
+    <PracticeBreakout>
+      <DrillFretboard
+        :tuning="tuning"
+        :max-fret="TAP_CHECK_LAST_FRET"
+        :label="t('tapCheck.board')"
+        :lit="lit"
+        :tap-strings="running ? allStrings() : []"
+        @tap="tap"
+      />
+    </PracticeBreakout>
 
     <PracticeActionBar>
       <button type="button" data-test="skip-tap-check" class="h-12 px-3 text-sm font-medium text-accent-text underline" @click="skip">

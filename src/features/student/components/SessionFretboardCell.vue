@@ -17,6 +17,7 @@ import OptionTile from '@/shared/components/OptionTile.vue'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 import type { CellMark } from '@/shared/components/diagram/DrillFretboard.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
+import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { cellNoteName } from '@/shared/utils/fretboardCell'
@@ -116,17 +117,19 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     <p v-if="instrumentName" data-test="item-instrument" class="-mb-2 text-sm font-medium text-ink-muted">{{ instrumentName }}</p>
     <ItemHeader :title="prompt" :reason="item.reason" />
 
-    <DrillFretboard
-      :tuning="tuning"
-      :max-fret="LAST_FRET"
-      :label="t('sessionFretboardCell.board')"
-      :lit="naming ? cell : null"
-      :asked-string="naming ? null : cell.string"
-      :tap-strings="naming ? [] : [cell.string]"
-      :locked="answer !== null"
-      :marks="boardMarks"
-      @tap="findNote"
-    />
+    <PracticeBreakout>
+      <DrillFretboard
+        :tuning="tuning"
+        :max-fret="LAST_FRET"
+        :label="t('sessionFretboardCell.board')"
+        :lit="naming ? cell : null"
+        :asked-string="naming ? null : cell.string"
+        :tap-strings="naming ? [] : [cell.string]"
+        :locked="answer !== null"
+        :marks="boardMarks"
+        @tap="findNote"
+      />
+    </PracticeBreakout>
 
     <div v-if="naming" class="grid grid-cols-2 gap-2" role="group" :aria-label="t('sessionFretboardCell.notes')">
       <OptionTile
