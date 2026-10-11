@@ -74,6 +74,11 @@ const reveal = computed(() =>
     : undefined,
 )
 
+/** Once answered, the item is done: a stimulus failing afterwards changes nothing the student can do. */
+function onStimulusMissing(reason: NotAnsweredReason) {
+  if (!props.answer) missing.value = reason
+}
+
 function choose(optionIds: string[]) {
   if (props.answer || missing.value) return
   chosen.value = optionIds
@@ -118,7 +123,7 @@ onBeforeUnmount(() => {
       :choose-count="allowMultiple ? rightCount : undefined"
       :stimulus-missing="missing !== null"
       @playing="emit('playing', $event)"
-      @stimulus-missing="missing = $event"
+      @stimulus-missing="onStimulusMissing"
     >
       <template #stimulus-notice>
         <InlineNotice :tone="missing === 'unavailable' ? 'unavailable' : 'error'" :message="missingMessage" />

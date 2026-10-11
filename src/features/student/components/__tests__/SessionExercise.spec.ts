@@ -258,6 +258,15 @@ describe('SessionExercise', () => {
       expect(wrapper.emitted('skip')).toEqual([['unavailable']])
     })
 
+    it('keeps the feedback and Continue when the stimulus fails after the answer', async () => {
+      const wrapper = mountExercise({ item: listening, answer: { optionIds: ['wrong'], correct: false } })
+      await missing(wrapper, 'failed_to_load')
+
+      expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
+      expect(bar(wrapper).find('[data-test="skip-item"]').exists()).toBe(false)
+      expect(bar(wrapper).find('[data-test="next-item"]').exists()).toBe(true)
+    })
+
     it('starts the next exercise with its stimulus expected', async () => {
       const wrapper = mountExercise({ item: listening })
       await missing(wrapper, 'failed_to_load')
