@@ -71,11 +71,11 @@ function mockMatchMedia(compact: boolean): void {
  * A new exercise opens on the type chooser; unless told otherwise, this picks Text response there
  * so a test starts in the editor, as an author would after choosing.
  */
-async function mountView({ chooseType = true }: { chooseType?: boolean } = {}) {
+async function mountView({ chooseType = true, stubs = {} }: { chooseType?: boolean; stubs?: Record<string, boolean> } = {}) {
   const wrapper = mount(ExerciseAuthoringView, {
     global: {
       plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
+      stubs: { RouterLink: RouterLinkStub, ...stubs },
     },
   })
   const chooser = wrapper.find('[data-test="type-choice-text_response"]')
@@ -95,7 +95,6 @@ import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulus
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
-import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import SoundPickerModal from '@/features/teacher/components/SoundPickerModal.vue'
 import SoundSource from '@/features/teacher/components/SoundSource.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
@@ -1007,8 +1006,9 @@ describe('ExerciseAuthoringView', () => {
       playback: { playback_id: 'strum', direction: 'as_authored' as const, loop: false },
     }
 
+    // The picker has its own spec; here only what it's given and what it hands back.
     async function listening() {
-      const wrapper = await mountView()
+      const wrapper = await mountView({ stubs: { SoundPickerModal: true } })
       await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
       return wrapper
     }
@@ -1109,7 +1109,7 @@ describe('ExerciseAuthoringView', () => {
     }
 
     async function selection() {
-      const wrapper = await mountView()
+      const wrapper = await mountView({ stubs: { SoundPickerModal: true } })
       await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
       return wrapper
     }
