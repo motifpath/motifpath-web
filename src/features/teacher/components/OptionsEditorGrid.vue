@@ -12,16 +12,24 @@ import { useTypedT } from '@/shared/composables/useTypedT'
  * card chrome, button wiring, and layout live here once instead of being
  * copy-pasted per option type.
  */
-withDefaults(defineProps<{ options: T[]; compact?: boolean; addIcon: Component; addLabel: string }>(), {
-  compact: false,
-})
+withDefaults(
+  defineProps<{
+    options: T[]
+    compact?: boolean
+    /** Options too wide to sit two to a row on a phone, such as a sound with its controls: one per row there. */
+    wide?: boolean
+    addIcon: Component
+    addLabel: string
+  }>(),
+  { compact: false, wide: false },
+)
 const emit = defineEmits<{ toggle: [id: string]; remove: [id: string]; add: [] }>()
 
 const { t } = useTypedT()
 </script>
 
 <template>
-  <div class="grid gap-3" :class="compact ? 'grid-cols-2' : 'grid-cols-3'">
+  <div class="grid gap-3" :class="compact ? (wide ? 'grid-cols-1' : 'grid-cols-2') : 'grid-cols-3'">
     <div
       v-for="option in options"
       :key="option.id"

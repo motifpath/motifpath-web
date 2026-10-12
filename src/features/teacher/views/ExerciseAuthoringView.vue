@@ -258,6 +258,28 @@ function onRemoveAudioOption(id: string) {
   form.removeAudioOption(id)
 }
 
+/** A new sound option is labelled by its place, so the label never names the answer. */
+function onAddAudioOption() {
+  form.addAudioOption(t('exerciseView.soundNumber', { number: form.audioOptions.value.length + 1 }))
+}
+
+// A diagram replaces the option's file, so a file picked for it but not yet uploaded is dropped
+// rather than uploaded for nothing; clearing the sound drops it too.
+function dropAudioOptionFile(id: string) {
+  delete optionFiles[id]
+  revokeIfBlob(form.audioOptions.value.find((o) => o.id === id)?.audioUrl)
+}
+
+function onAudioOptionDiagram(id: string, sound: DiagramRef) {
+  dropAudioOptionFile(id)
+  form.setAudioOptionDiagram(id, sound)
+}
+
+function onClearAudioOptionSound(id: string) {
+  dropAudioOptionFile(id)
+  form.setAudioOptionURL(id, '')
+}
+
 // One entry per exercise type whose options carry their own media file,
 // driving uploadPendingMedia below without a growing if/else — adding a new
 // such type only means adding an entry here.
@@ -624,10 +646,12 @@ const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 
           :compact="isCompact"
           @set-preview="form.setAudioOptionURL"
           @set-file="onOptionFile"
+          @set-diagram="onAudioOptionDiagram"
+          @clear-sound="onClearAudioOptionSound"
           @edit-label="form.editAudioOptionLabel"
           @toggle="form.toggleAudioOption"
           @remove="onRemoveAudioOption"
-          @add="form.addAudioOption"
+          @add="onAddAudioOption"
         />
 
       </section>

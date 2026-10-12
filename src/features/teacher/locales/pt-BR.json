@@ -20,11 +20,8 @@
   },
   "audioSelectionOptionsEditor": {
     "addLabel": "Adicionar opção de áudio",
-    "chooseAudioAriaLabel": "Escolher áudio",
-    "chooseAudio": "Escolher áudio",
-    "changeAudioAriaLabel": "Alterar áudio",
-    "change": "Alterar",
-    "labelPlaceholder": "Rótulo do botão mostrado ao aluno"
+    "labelPlaceholder": "Som 1",
+    "labelAriaLabel": "Rótulo que os alunos veem"
   },
   "exercisePreviewModal": {
     "portrait": "Retrato",

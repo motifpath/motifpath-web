@@ -20,11 +20,8 @@
   },
   "audioSelectionOptionsEditor": {
     "addLabel": "Add audio option",
-    "chooseAudioAriaLabel": "Choose audio",
-    "chooseAudio": "Choose audio",
-    "changeAudioAriaLabel": "Change audio",
-    "change": "Change",
-    "labelPlaceholder": "Button label shown to the student"
+    "labelPlaceholder": "Sound 1",
+    "labelAriaLabel": "Label students see"
   },
   "exercisePreviewModal": {
     "portrait": "Portrait",

@@ -1101,6 +1101,63 @@ describe('ExerciseAuthoringView', () => {
     })
   })
 
+  describe('audio_selection sounds', () => {
+    const strum = {
+      diagram_id: 'a-minor',
+      layers: { intervals: true },
+      playback: { playback_id: 'strum', direction: 'as_authored' as const, loop: false },
+    }
+
+    async function selection() {
+      const wrapper = await mountView()
+      await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+      return wrapper
+    }
+    const editor = (wrapper: Wrapper) => wrapper.getComponent({ name: 'AudioSelectionOptionsEditor' })
+    const optionIds = (wrapper: Wrapper) => (editor(wrapper).props('options') as { id: string }[]).map((o) => o.id)
+
+    it('labels new options neutrally, by their place', async () => {
+      const wrapper = await selection()
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+
+      expect((editor(wrapper).props('options') as { label: string }[]).map((o) => o.label)).toEqual(['Sound 1', 'Sound 2', 'Sound 3'])
+    })
+
+    it('saves an option played from a diagram, and drops its picked file unuploaded', async () => {
+      const wrapper = await selection()
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      const [id] = optionIds(wrapper)
+      await editor(wrapper).vm.$emit('setFile', id, new File(['a'], 'a.mp3'))
+      await editor(wrapper).vm.$emit('setPreview', id, 'blob:a.mp3')
+
+      await editor(wrapper).vm.$emit('setDiagram', id, strum)
+
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:a.mp3')
+      await wrapper.get('[data-test="option-correct"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Which one is minor?')
+      await selectClassification(wrapper)
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(upload).not.toHaveBeenCalled()
+      expect(POST.mock.calls[0]![1].body.options).toEqual([{ option_id: id, is_correct: true, label: 'Sound 1', diagram_ref: strum }])
+    })
+
+    it('clears an option’s sound, keeping the option', async () => {
+      const wrapper = await selection()
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      const [id] = optionIds(wrapper)
+      await editor(wrapper).vm.$emit('setDiagram', id, strum)
+
+      await editor(wrapper).vm.$emit('clearSound', id)
+
+      expect(editor(wrapper).props('options')).toEqual([expect.objectContaining({ id, audioUrl: '', diagramRef: undefined })])
+    })
+  })
+
   describe('edit mode', () => {
     beforeEach(() => {
       route.params = { id: 'e-1' }
