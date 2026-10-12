@@ -46,6 +46,7 @@ function meta(diagram: Diagram): string {
           :title="t('diagramListView.heading')"
           :new-label="t('common.newDiagram')"
           :new-to="{ name: 'teacher-diagram-new' }"
+          editor-route="teacher-diagram-edit"
           :empty-title="t('diagramListView.emptyHeading')"
           :empty-message="t('diagramListView.emptyMessage')"
           :load-failed-message="t('diagramListView.loadErrorMessage')"

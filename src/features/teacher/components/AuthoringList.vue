@@ -17,6 +17,7 @@ import AuthoringFiltersLayer from '@/features/teacher/components/AuthoringFilter
 import { useAuthoringFilterLabels } from '@/features/teacher/composables/useAuthoringFilterLabels'
 import { type AuthoringSectionItems, useAuthoringList } from '@/features/teacher/composables/useAuthoringList'
 import { useAuthoringListState } from '@/features/teacher/composables/useAuthoringListState'
+import { useListReturn } from '@/features/teacher/composables/useListReturn'
 import {
   activeFilterCount,
   type AuthoringListFilters,
@@ -48,6 +49,8 @@ const props = withDefaults(
     title: string
     newLabel: string
     newTo: RouteLocationRaw
+    /** The route name of an item's editor (its `id` param names the item), to come back to the same place. */
+    editorRoute: string
     emptyTitle: string
     emptyMessage: string
     loadFailedMessage: string
@@ -154,6 +157,13 @@ function countFor(filters: AuthoringListFilters) {
 }
 
 const items = list.items
+
+useListReturn({
+  section: props.section,
+  editorRoute: props.editorRoute,
+  idParam: 'id',
+  list: { ...list, itemCount: computed(() => items.value.length) },
+})
 </script>
 
 <template>

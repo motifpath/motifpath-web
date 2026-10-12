@@ -33,6 +33,7 @@ const collectionMeta = useCollectionMeta()
           :title="t('pathListView.heading')"
           :new-label="t('pathListView.newPathLabel')"
           :new-to="{ name: 'teacher-path-new' }"
+          editor-route="teacher-path-edit"
           :empty-title="t('pathListView.emptyHeading')"
           :empty-message="t('pathListView.emptyMessage')"
           :load-failed-message="t('pathListView.errorMessage')"

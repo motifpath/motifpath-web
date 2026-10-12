@@ -83,6 +83,7 @@ async function mountList(section: AuthoringSection, fullPath = '/list') {
       title: 'Diagrams',
       newLabel: 'New diagram',
       newTo: { name: 'list' },
+      editorRoute: 'list-edit',
       emptyTitle: 'No diagrams yet',
       emptyMessage: 'A diagram shows notes on the instrument.',
       loadFailedMessage: "Couldn't load your diagrams",

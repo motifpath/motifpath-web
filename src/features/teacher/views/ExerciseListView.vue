@@ -43,6 +43,7 @@ function meta(exercise: Exercise): string {
           :title="t('exerciseListView.heading')"
           :new-label="t('common.newExercise')"
           :new-to="{ name: 'teacher-exercise-new' }"
+          editor-route="teacher-exercise-edit"
           :empty-title="t('exerciseListView.emptyHeading')"
           :empty-message="t('exerciseListView.emptyMessage')"
           :load-failed-message="t('exerciseListView.loadErrorMessage')"

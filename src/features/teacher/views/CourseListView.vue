@@ -33,6 +33,7 @@ const collectionMeta = useCollectionMeta()
           :title="t('courseListView.heading')"
           :new-label="t('courseListView.newCourse')"
           :new-to="{ name: 'teacher-course-new' }"
+          editor-route="teacher-course-edit"
           :empty-title="t('courseListView.emptyHeading')"
           :empty-message="t('courseListView.emptyMessage')"
           :load-failed-message="t('courseListView.errorMessage')"

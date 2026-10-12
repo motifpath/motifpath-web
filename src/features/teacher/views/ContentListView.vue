@@ -46,6 +46,7 @@ function meta(lesson: ContentNode): string {
           :title="t('contentListView.heading')"
           :new-label="t('contentListView.newContentLabel')"
           :new-to="{ name: 'teacher-content-new' }"
+          editor-route="teacher-content-edit"
           :empty-title="t('contentListView.emptyHeading')"
           :empty-message="t('contentListView.emptyMessage')"
           :load-failed-message="t('contentListView.errorMessage')"
