@@ -248,7 +248,8 @@
       "skills": "Adicione uma habilidade",
       "concepts": "Adicione um conceito"
     },
-    "leaveMessage": "Suas alterações neste diagrama não foram salvas e serão perdidas."
+    "leaveMessage": "Suas alterações neste diagrama não foram salvas e serão perdidas.",
+    "largerScreen": "Colocar e mover posições fica melhor numa tela maior. O resto deste diagrama pode ser alterado aqui."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",
