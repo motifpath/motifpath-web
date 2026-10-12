@@ -245,10 +245,14 @@
   "sectionedPathList": {
     "emptyMessage": "No content nodes in this path yet — add one to get started.",
     "noSection": "No section",
-    "sectionPlaceholder": "Section",
-    "moveUpAriaLabel": "Move up",
-    "moveDownAriaLabel": "Move down",
-    "removeAriaLabel": "Remove from path"
+    "published": "Published",
+    "draftPublishFirst": "Draft — publish it first",
+    "section": "Section…",
+    "sectionLabel": "Section",
+    "sectionHint": "Lessons next to each other with the same section show under one heading. Leave it blank for none.",
+    "sectionConfirm": "Set section",
+    "open": "Open the lesson",
+    "remove": "Remove from path"
   },
   "classificationFields": {
     "skillLabel": "Skill",
@@ -363,27 +367,22 @@
     "loadErrorMessage": "Failed to load the learning path",
     "titlePlaceholder": "Untitled path",
     "titleHint": "Name shown to teachers and admins, not to students.",
-    "contentLabel": "Content",
-    "addContentNodeLabel": "Add content node",
+    "addContentNodeLabel": "Add a lesson",
     "pathUpdated": "Learning path updated.",
     "pathCreated": "Learning path created.",
     "saveFailed": "Failed to save the learning path",
     "levelLabel": "Level",
-    "levelRequired": "Choose a level to save this path.",
     "instrumentsLabel": "Instruments",
     "thumbnailLabel": "Thumbnail",
     "summaryLabel": "Summary",
     "summaryPlaceholder": "What will a learner get from this path?",
     "languageLabel": "Language",
     "noLanguage": "No language yet",
-    "publishNeeds": "A path needs a summary and a language before it can be published.",
-    "publish": "Publish",
     "unpublish": "Unpublish",
     "published": "Path published.",
     "unpublished": "Path unpublished.",
     "publishFailed": "Couldn't publish the path.",
     "unpublishFailed": "Couldn't unpublish the path.",
-    "adminPublishes": "An admin publishes paths.",
     "missingHeading": "Before this path can be published, it needs:",
     "requirement": {
       "summary": "A summary",
@@ -392,7 +391,17 @@
       "items": "At least one lesson",
       "unpublishedContent": "Published lessons (not yet: {titles})"
     },
-    "saveWouldUnpublish": "A published path must keep everything listed below. Restore it, or unpublish the path first."
+    "saveWouldUnpublish": "A published path must keep everything listed below. Restore it, or unpublish the path first.",
+    "details": "Details",
+    "lessonsHeading": "Lessons · {count}",
+    "lessonsHint": "Drag ⠿ or use ⋮ to move a lesson, or to set its section.",
+    "missing": {
+      "level": "Choose a level",
+      "items": "Add a lesson"
+    },
+    "publishLessonFirst": "Publish the lesson “{title}”",
+    "leaveMessage": "Your changes to this path haven't been saved and will be lost.",
+    "titleLabel": "Path title"
   },
   "pathListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",

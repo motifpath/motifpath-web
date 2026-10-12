@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next'
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import ContentNodePickerModal from '@/features/teacher/components/ContentNodePickerModal.vue'
+import PathStatusPanel from '@/features/teacher/components/PathStatusPanel.vue'
 import SectionedPathList, { type PathBuilderItem } from '@/features/teacher/components/SectionedPathList.vue'
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import { useCreateLearningPath } from '@/features/teacher/composables/useCreateLearningPath'
@@ -14,13 +15,19 @@ import {
 } from '@/features/teacher/composables/useLearningPathPublishing'
 import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
 import { useReplaceLearningPath } from '@/features/teacher/composables/useReplaceLearningPath'
-import AppBar from '@/shared/components/AppBar.vue'
+import { missingToPublishPath, missingToSavePath, type LessonStates } from '@/features/teacher/utils/pathRequirements'
+import AppButton from '@/shared/components/AppButton.vue'
+import EditorAppBar from '@/shared/components/EditorAppBar.vue'
+import EditorBody from '@/shared/components/EditorBody.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import LevelPicker from '@/shared/components/LevelPicker.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
+import SaveBlockers from '@/shared/components/SaveBlockers.vue'
+import UnsavedChangesGuard from '@/shared/components/UnsavedChangesGuard.vue'
+import { useSaveBlockers } from '@/shared/composables/useSaveBlockers'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { DifficultyLevel } from '@/shared/utils/levels'
@@ -38,7 +45,8 @@ const canAuthor = computed(
 // Only an admin publishes and unpublishes paths.
 const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
-const { isCompact } = useIsCompact()
+const { sizeClass } = useSizeClass()
+const isExpanded = computed(() => sizeClass.value === 'expanded')
 const { t } = useTypedT()
 
 const route = useRoute()
@@ -87,7 +95,15 @@ function loadFromLearningPath(learningPath: LearningPath) {
     section_label: item.section_label,
   }))
   savedLearningPathId.value = learningPath.learning_path_id
+  baseline.value = snapshot()
 }
+
+// What a save sends, to tell whether anything is left unsaved.
+function snapshot(): string {
+  return JSON.stringify([title.value, summary.value, language.value, level.value, instrumentIds.value, thumbnailUrl.value, items.value])
+}
+const baseline = ref(snapshot())
+const isDirty = computed(() => snapshot() !== baseline.value)
 
 watch(loadedLearningPath, (learningPath) => {
   if (!learningPath) return
@@ -132,14 +148,34 @@ function onRemoveItem(index: number) {
 }
 
 const saving = ref(false)
-const justSaved = ref(false)
-let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
-onUnmounted(() => clearTimeout(justSavedTimeout))
-
 const toast = useToast()
 
-const canSave = computed(
-  () => !saving.value && !thumbnailUploading.value && items.value.length > 0 && level.value !== null,
+const saveState = computed(() => {
+  if (saving.value) return 'saving'
+  return isDirty.value || !savedLearningPathId.value ? 'unsaved' : 'saved'
+})
+
+const draft = computed(() => ({ summary: summary.value, language: language.value, level: level.value, items: items.value }))
+
+const missingToSave = computed(() =>
+  missingToSavePath(draft.value).map((field) => ({ field, label: t(`pathBuilderView.missing.${field}`) })),
+)
+const saveBlockers = useSaveBlockers(missingToSave)
+
+// Which lessons learners can get, as far as the lesson list loaded so far tells.
+const lessonStates = computed<LessonStates>(() => ({
+  known: new Set(contentNodes.value.map((node) => node.content_node_id)),
+  published: new Set(
+    contentNodes.value.filter((node) => node.latest_published_version != null).map((node) => node.content_node_id),
+  ),
+}))
+
+const missingForPublish = computed(() =>
+  missingToPublishPath(draft.value, lessonStates.value).map((requirement) =>
+    requirement.kind === 'unpublishedLesson'
+      ? t('pathBuilderView.publishLessonFirst', { title: requirement.title })
+      : t(`pathBuilderView.requirement.${requirement.kind}`),
+  ),
 )
 
 const publishing = ref(false)
@@ -194,16 +230,15 @@ async function saveForm(): Promise<LearningPath | null> {
 }
 
 async function save() {
+  if (saving.value || publishing.value || thumbnailUploading.value || !saveBlockers.readyToSave()) return
   const isUpdate = !!savedLearningPathId.value
   if (!(await saveForm())) return
-  justSaved.value = true
-  clearTimeout(justSavedTimeout)
-  justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
   toast.success(isUpdate ? t('pathBuilderView.pathUpdated') : t('pathBuilderView.pathCreated'))
 }
 
 // Publishing saves the form first, so what gets published is what the author sees.
 async function publish() {
+  if (!saveBlockers.readyToSave()) return
   publishing.value = true
   try {
     const saved = await saveForm()
@@ -238,19 +273,26 @@ async function unpublish() {
     publishing.value = false
   }
 }
+
+const cardClass = 'flex flex-col gap-4 rounded-2xl border border-border bg-surface-raised p-4'
+const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-muted'
+const labelClass = 'text-sm font-semibold text-ink'
+const hintClass = 'text-xs text-ink-muted'
+const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 text-base text-ink'
+const textareaClass = 'rounded-xl border border-border bg-surface-sunken px-3 py-2 text-base text-ink'
 </script>
 
 <template>
   <TeachShell section="teacher-paths" bar="none">
   <div class="flex flex-1 flex-col bg-surface">
-    <AppBar
-      :compact="isCompact"
-      :primary-nav-to="{ name: 'teacher-paths' }"
-      :breadcrumb-label="isEditMode ? title || t('pathBuilderView.editBreadcrumb') : t('pathBuilderView.newBreadcrumb')"
-      :show-save="canAuthor"
-      :save-disabled="!canSave"
-      :just-saved="justSaved"
-      :on-save="save"
+    <EditorAppBar
+      :compact="!isExpanded"
+      :section-label="t('nav.paths')"
+      :section-to="{ name: 'teacher-paths' }"
+      :title="isEditMode ? title || t('pathBuilderView.editBreadcrumb') : t('pathBuilderView.newBreadcrumb')"
+      :save-state="saveState"
+      :can-save="canAuthor && !loadingLearningPath && !loadError"
+      @save="save"
     />
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
@@ -267,129 +309,96 @@ async function unpublish() {
       <LoadFailed :message="t('pathBuilderView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
-    <main
-      v-else
-      data-test="builder-body"
-      class="flex min-w-0 flex-1 flex-col gap-6"
-      :class="isCompact ? 'px-4 pb-6 pt-[20px]' : 'px-[48px] pb-[80px] pt-10'"
-    >
-      <div class="flex flex-col gap-1.5">
-        <input
-          v-model="title"
-          type="text"
-          :placeholder="t('pathBuilderView.titlePlaceholder')"
-          class="border-none bg-transparent font-bold text-ink outline-none"
-          :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
+    <EditorBody v-else data-test="builder-body" :two-columns="isExpanded">
+      <template v-if="savedLearningPathId && status" #side>
+        <PathStatusPanel
+          :status="status"
+          :is-admin="isAdmin"
+          :missing="missingForPublish"
+          :busy="publishing || saving"
+          @publish="publish"
+          @unpublish="unpublish"
         />
-        <span class="text-sm text-ink-subtle">{{ t('pathBuilderView.titleHint') }}</span>
-      </div>
-
-      <div
-        v-if="savedLearningPathId && status"
-        data-test="publishing"
-        class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
-      >
-        <div class="flex flex-wrap items-center gap-3">
-          <span
-            data-test="path-status"
-            class="rounded-full bg-accent-muted px-2.5 py-0.5 text-xs font-semibold text-accent-text"
-          >{{ t(`pathStatus.${status}`) }}</span>
-          <template v-if="isAdmin">
-            <button
-              v-if="status === 'draft'"
-              type="button"
-              data-test="publish"
-              class="rounded-md bg-accent px-3 py-1.5 text-[0.8125rem] font-semibold text-accent-fg disabled:opacity-50"
-              :disabled="publishing || !canSave"
-              @click="publish"
-            >
-              {{ t('pathBuilderView.publish') }}
-            </button>
-            <button
-              v-else
-              type="button"
-              data-test="unpublish"
-              class="rounded-md border border-border px-3 py-1.5 text-[0.8125rem] font-semibold text-ink disabled:opacity-50"
-              :disabled="publishing"
-              @click="unpublish"
-            >
-              {{ t('pathBuilderView.unpublish') }}
-            </button>
-          </template>
-          <span v-else class="text-sm text-ink-subtle">{{ t('pathBuilderView.adminPublishes') }}</span>
-        </div>
-        <div v-if="missingToPublish.length" data-test="publish-missing" class="flex flex-col gap-1 text-sm text-ink-muted">
-          <span class="font-semibold text-ink">{{ t('pathBuilderView.missingHeading') }}</span>
+        <div
+          v-if="missingToPublish.length"
+          data-test="publish-missing"
+          role="alert"
+          class="flex flex-col gap-1 rounded-2xl border border-danger bg-danger-muted px-4 py-3 text-sm text-ink"
+        >
+          <span class="font-semibold">{{ t('pathBuilderView.missingHeading') }}</span>
           <ul class="list-disc pl-5">
             <li v-for="requirement in missingToPublish" :key="requirement">{{ requirement }}</li>
           </ul>
         </div>
-      </div>
+      </template>
 
-      <div class="flex flex-col gap-2">
-        <label for="path-summary" class="text-sm font-semibold">{{ t('pathBuilderView.summaryLabel') }}</label>
-        <textarea
-          id="path-summary"
-          v-model="summary"
-          data-test="path-summary"
-          rows="3"
-          :placeholder="t('pathBuilderView.summaryPlaceholder')"
-          class="rounded-md border border-border bg-surface-sunken px-3 py-2 text-sm"
-        />
-      </div>
+      <SaveBlockers :items="saveBlockers.shown.value" :reveal="saveBlockers.reveal.value" />
 
-      <div class="flex flex-col gap-2">
-        <label for="path-language" class="text-sm font-semibold">{{ t('pathBuilderView.languageLabel') }}</label>
-        <LanguageSelect
-          id="path-language"
-          v-model="language"
-          data-test="path-language"
-          :empty-label="t('pathBuilderView.noLanguage')"
-          class="w-fit"
-        />
-        <span class="text-sm text-ink-subtle">{{ t('pathBuilderView.publishNeeds') }}</span>
-      </div>
+      <section :class="cardClass">
+        <h2 :class="eyebrowClass">{{ t('pathBuilderView.details') }}</h2>
+        <label class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('pathBuilderView.titleLabel') }}</span>
+          <input v-model="title" type="text" :placeholder="t('pathBuilderView.titlePlaceholder')" :class="inputClass" />
+          <span :class="hintClass">{{ t('pathBuilderView.titleHint') }}</span>
+        </label>
 
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">{{ t('pathBuilderView.levelLabel') }}</span>
-        <LevelPicker v-model="level" :label="t('pathBuilderView.levelLabel')" class="w-fit" />
-        <span v-if="level === null" data-test="level-required" class="text-sm text-ink-subtle">
-          {{ t('pathBuilderView.levelRequired') }}
-        </span>
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">{{ t('pathBuilderView.instrumentsLabel') }}</span>
-        <InstrumentPicker v-model="instrumentIds" />
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">{{ t('pathBuilderView.thumbnailLabel') }}</span>
-        <ThumbnailField v-model="thumbnailUrl" @uploading="thumbnailUploading = $event" />
-      </div>
-
-      <div class="flex flex-col gap-3 border-t border-border pt-4">
-        <div class="flex items-center justify-between">
-          <label class="text-sm font-semibold">{{ t('pathBuilderView.contentLabel') }}</label>
-          <button
-            type="button"
-            data-test="add-content-node"
-            class="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[0.8125rem] font-semibold text-accent-fg"
-            @click="pickerOpen = true"
-          >
-            <Plus :size="14" aria-hidden="true" />
-            {{ t('pathBuilderView.addContentNodeLabel') }}
-          </button>
+        <div class="flex flex-col gap-1.5">
+          <label for="path-summary" :class="labelClass">{{ t('pathBuilderView.summaryLabel') }}</label>
+          <textarea
+            id="path-summary"
+            v-model="summary"
+            data-test="path-summary"
+            rows="3"
+            :placeholder="t('pathBuilderView.summaryPlaceholder')"
+            :class="textareaClass"
+          />
         </div>
 
+        <div class="flex flex-col gap-1.5">
+          <label for="path-language" :class="labelClass">{{ t('pathBuilderView.languageLabel') }}</label>
+          <LanguageSelect
+            id="path-language"
+            v-model="language"
+            data-test="path-language"
+            :empty-label="t('pathBuilderView.noLanguage')"
+            class="w-fit"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5" data-field="level">
+          <span :class="labelClass">{{ t('pathBuilderView.levelLabel') }}</span>
+          <LevelPicker v-model="level" :label="t('pathBuilderView.levelLabel')" class="w-fit" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('pathBuilderView.instrumentsLabel') }}</span>
+          <InstrumentPicker v-model="instrumentIds" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('pathBuilderView.thumbnailLabel') }}</span>
+          <ThumbnailField v-model="thumbnailUrl" @uploading="thumbnailUploading = $event" />
+        </div>
+      </section>
+
+      <section :class="cardClass" data-field="items">
+        <div class="flex flex-col gap-1">
+          <h2 :class="eyebrowClass">{{ t('pathBuilderView.lessonsHeading', { count: items.length }) }}</h2>
+          <p v-if="items.length > 1" :class="hintClass">{{ t('pathBuilderView.lessonsHint') }}</p>
+        </div>
         <SectionedPathList
           :items="items"
+          :lessons="lessonStates"
           @reorder="onReorder"
           @relabel="onRelabel"
           @remove="onRemoveItem"
         />
-      </div>
-    </main>
+        <AppButton data-test="add-content-node" variant="secondary" block @click="pickerOpen = true">
+          <Plus :size="18" aria-hidden="true" />
+          {{ t('pathBuilderView.addContentNodeLabel') }}
+        </AppButton>
+      </section>
+    </EditorBody>
 
     <ContentNodePickerModal
       :open="pickerOpen"
@@ -398,6 +407,7 @@ async function unpublish() {
       @select="onContentNodePicked"
       @close="pickerOpen = false"
     />
+    <UnsavedChangesGuard :dirty="isDirty" :message="t('pathBuilderView.leaveMessage')" />
   </div>
   </TeachShell>
 </template>

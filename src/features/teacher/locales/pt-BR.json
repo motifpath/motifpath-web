@@ -245,10 +245,14 @@
   "sectionedPathList": {
     "emptyMessage": "Ainda não há nós de conteúdo nesta trilha — adicione um para começar.",
     "noSection": "Sem seção",
-    "sectionPlaceholder": "Seção",
-    "moveUpAriaLabel": "Mover para cima",
-    "moveDownAriaLabel": "Mover para baixo",
-    "removeAriaLabel": "Remover da trilha"
+    "published": "Publicada",
+    "draftPublishFirst": "Rascunho — publique-a antes",
+    "section": "Seção…",
+    "sectionLabel": "Seção",
+    "sectionHint": "Lições vizinhas com a mesma seção aparecem sob um só título. Deixe em branco para nenhuma.",
+    "sectionConfirm": "Definir seção",
+    "open": "Abrir a lição",
+    "remove": "Remover da trilha"
   },
   "classificationFields": {
     "skillLabel": "Habilidade",
@@ -363,27 +367,22 @@
     "loadErrorMessage": "Falha ao carregar a trilha de aprendizagem",
     "titlePlaceholder": "Trilha sem título",
     "titleHint": "Nome mostrado a professores e administradores, não aos alunos.",
-    "contentLabel": "Conteúdo",
-    "addContentNodeLabel": "Adicionar nó de conteúdo",
+    "addContentNodeLabel": "Adicionar lição",
     "pathUpdated": "Trilha de aprendizagem atualizada.",
     "pathCreated": "Trilha de aprendizagem criada.",
     "saveFailed": "Falha ao salvar a trilha de aprendizagem",
     "levelLabel": "Nível",
-    "levelRequired": "Escolha um nível para salvar esta trilha.",
     "instrumentsLabel": "Instrumentos",
     "thumbnailLabel": "Miniatura",
     "summaryLabel": "Resumo",
     "summaryPlaceholder": "O que o aluno vai ganhar com esta trilha?",
     "languageLabel": "Idioma",
     "noLanguage": "Nenhum idioma ainda",
-    "publishNeeds": "Uma trilha precisa de resumo e idioma para ser publicada.",
-    "publish": "Publicar",
     "unpublish": "Despublicar",
     "published": "Trilha publicada.",
     "unpublished": "Trilha despublicada.",
     "publishFailed": "Não foi possível publicar a trilha.",
     "unpublishFailed": "Não foi possível despublicar a trilha.",
-    "adminPublishes": "Um administrador publica as trilhas.",
     "missingHeading": "Para publicar esta trilha, falta:",
     "requirement": {
       "summary": "Um resumo",
@@ -392,7 +391,17 @@
       "items": "Pelo menos uma lição",
       "unpublishedContent": "Lições publicadas (ainda não: {titles})"
     },
-    "saveWouldUnpublish": "Uma trilha publicada precisa manter tudo o que está listado abaixo. Restaure esses itens ou despublique a trilha antes."
+    "saveWouldUnpublish": "Uma trilha publicada precisa manter tudo o que está listado abaixo. Restaure esses itens ou despublique a trilha antes.",
+    "details": "Detalhes",
+    "lessonsHeading": "Lições · {count}",
+    "lessonsHint": "Arraste ⠿ ou use ⋮ para mover uma lição ou definir sua seção.",
+    "missing": {
+      "level": "Escolha um nível",
+      "items": "Adicione uma lição"
+    },
+    "publishLessonFirst": "Publique a lição “{title}”",
+    "leaveMessage": "Suas alterações nesta trilha não foram salvas e serão perdidas.",
+    "titleLabel": "Título da trilha"
   },
   "pathListView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
