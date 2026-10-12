@@ -930,5 +930,22 @@
     },
     "showUnknown": "Mostrar resultados",
     "close": "Fechar filtros"
+  },
+  "soundSettings": {
+    "hiddenNote": "Os alunos ouvem isto sem ver o diagrama. Depois de responder, “O que você ouviu” mostra o diagrama e deixa tocar de novo.",
+    "playback": "Reprodução",
+    "tempo": "Andamento (BPM)",
+    "tempoHint": "Em branco, toca no andamento da própria reprodução.",
+    "tempoInvalid": "Escolha um andamento inteiro de {min} a {max} BPM.",
+    "length": "Duração",
+    "voice": "Som",
+    "voiceDefault": "Padrão do instrumento",
+    "direction": "Sentido",
+    "directions": {
+      "as_authored": "Como escrito",
+      "reversed": "Invertido"
+    },
+    "hearIt": "Ouvir",
+    "stop": "Parar"
   }
 }

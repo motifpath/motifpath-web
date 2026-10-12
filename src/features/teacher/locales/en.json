@@ -930,5 +930,22 @@
     },
     "showUnknown": "Show results",
     "close": "Close filters"
+  },
+  "soundSettings": {
+    "hiddenNote": "Students hear this without seeing the board. After they answer, “What you heard” shows it and lets them replay it.",
+    "playback": "Playback",
+    "tempo": "Tempo (BPM)",
+    "tempoHint": "Blank plays at the playback’s own tempo.",
+    "tempoInvalid": "Pick a whole tempo from {min} to {max} BPM.",
+    "length": "Length",
+    "voice": "Sound",
+    "voiceDefault": "Instrument default",
+    "direction": "Direction",
+    "directions": {
+      "as_authored": "As written",
+      "reversed": "Reversed"
+    },
+    "hearIt": "Hear it",
+    "stop": "Stop"
   }
 }
