@@ -865,5 +865,32 @@
       "byUpdated": "Recently changed",
       "buttonAriaLabel": "Sort: {sort}"
     }
+  },
+  "knowledgeFilter": {
+    "skill": {
+      "title": "Skills",
+      "search": "Search skills",
+      "open": "{count} skill | {count} skills",
+      "done": "Done | Done · {count} skill | Done · {count} skills",
+      "note": "Choosing an area matches it and every skill under it.",
+      "chosen": "Chosen skills",
+      "noMatches": "No skill matches."
+    },
+    "concept": {
+      "title": "Concepts",
+      "search": "Search concepts",
+      "open": "{count} concept | {count} concepts",
+      "done": "Done | Done · {count} concept | Done · {count} concepts",
+      "note": "Choosing an area matches it and every concept under it.",
+      "chosen": "Chosen concepts",
+      "noMatches": "No concept matches."
+    },
+    "recent": "Recent",
+    "allInstruments": "All instruments",
+    "instrumentScope": "Instrument",
+    "openAriaLabel": "Open {name}",
+    "loadFailed": "Couldn't load the list.",
+    "retry": "Try again",
+    "loading": "Loading…"
   }
 }

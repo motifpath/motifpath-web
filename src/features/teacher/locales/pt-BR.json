@@ -865,5 +865,32 @@
       "byUpdated": "Alterados recentemente",
       "buttonAriaLabel": "Ordenar: {sort}"
     }
+  },
+  "knowledgeFilter": {
+    "skill": {
+      "title": "Habilidades",
+      "search": "Buscar habilidades",
+      "open": "{count} habilidade | {count} habilidades",
+      "done": "Concluir | Concluir · {count} habilidade | Concluir · {count} habilidades",
+      "note": "Escolher uma área inclui ela e todas as habilidades dentro dela.",
+      "chosen": "Habilidades escolhidas",
+      "noMatches": "Nenhuma habilidade encontrada."
+    },
+    "concept": {
+      "title": "Conceitos",
+      "search": "Buscar conceitos",
+      "open": "{count} conceito | {count} conceitos",
+      "done": "Concluir | Concluir · {count} conceito | Concluir · {count} conceitos",
+      "note": "Escolher uma área inclui ela e todos os conceitos dentro dela.",
+      "chosen": "Conceitos escolhidos",
+      "noMatches": "Nenhum conceito encontrado."
+    },
+    "recent": "Recentes",
+    "allInstruments": "Todos os instrumentos",
+    "instrumentScope": "Instrumento",
+    "openAriaLabel": "Abrir {name}",
+    "loadFailed": "Não foi possível carregar a lista.",
+    "retry": "Tentar de novo",
+    "loading": "Carregando…"
   }
 }
