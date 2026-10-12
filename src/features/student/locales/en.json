@@ -89,20 +89,6 @@
     "resizeAside": "Resize the notes panel",
     "resetAsideWidth": "Reset the notes panel to its default size"
   },
-  "courseCatalogView": {
-    "errorMessage": "We couldn't load the course catalog.",
-    "emptyHeading": "No courses yet",
-    "emptyMessage": "New courses will appear here as soon as they are published.",
-    "noMatchesHeading": "No matching courses",
-    "noMatchesMessage": "Try fewer filters or a different search.",
-    "enroll": "Enroll",
-    "enrolling": "Enrolling…",
-    "enrolled": "Enrolled",
-    "enrolledToast": "You are now enrolled in {title}.",
-    "details": "Details",
-    "moreFromTeacher": "More from this teacher",
-    "courseTeacher": "by {name}"
-  },
   "learningView": {
     "heading": "Learning",
     "errorMessage": "We couldn't load your courses and paths.",
@@ -192,20 +178,6 @@
     "lessonLine": "Lesson: {title}",
     "referenceLine": "Ref: {reference}",
     "prompt": "My question or recording:"
-  },
-  "pathCatalogView": {
-    "errorMessage": "We couldn't load the path catalog.",
-    "emptyHeading": "No paths yet",
-    "emptyMessage": "New paths will appear here as soon as they are published.",
-    "noMatchesHeading": "No matching paths",
-    "noMatchesMessage": "Try fewer filters or a different search.",
-    "searchPlaceholder": "Search paths",
-    "enroll": "Enroll",
-    "enrolling": "Enrolling…",
-    "continue": "Continue",
-    "enrolledToast": "You are now enrolled in {title}.",
-    "details": "Details",
-    "moreFromTeacher": "More from this teacher"
   },
   "pathDetailView": {
     "errorMessage": "We couldn't load this path.",
@@ -565,5 +537,48 @@
     "homeError": "Your home couldn't load.",
     "whatsAppMessage": "Hi! I'm new to MotifPath and I'd like help choosing where to start.",
     "backToWhereToStart": "Where to start"
+  },
+  "catalogCard": {
+    "inLearning": "In Learning",
+    "finished": "Finished",
+    "parts": "{count} part | {count} parts",
+    "lessons": "{count} lesson | {count} lessons"
+  },
+  "discoverView": {
+    "segments": "Courses or paths",
+    "courses": "Courses",
+    "paths": "Paths",
+    "search": {
+      "courses": "Search courses",
+      "paths": "Search paths"
+    },
+    "count": {
+      "courses": "{count} course · A–Z | {count} courses · A–Z",
+      "paths": "{count} path · A–Z | {count} paths · A–Z"
+    },
+    "noMatches": {
+      "courses": "No courses match",
+      "paths": "No paths match"
+    },
+    "nothingFor": {
+      "searchAndFilters": "Nothing for “{q}” with {filters}. Try another word or fewer filters.",
+      "search": "Nothing for “{q}”. Try another word.",
+      "filters": "Nothing with {filters}. Try fewer filters."
+    },
+    "clearFilters": "Clear filters",
+    "otherMatches": {
+      "courses": "{count} course matches | {count} courses match",
+      "paths": "{count} path matches | {count} paths match"
+    },
+    "showOther": {
+      "courses": "Show courses",
+      "paths": "Show paths"
+    },
+    "empty": {
+      "courses": "No courses yet",
+      "paths": "No paths yet"
+    },
+    "emptyMessage": "Teachers are still writing them. Come back soon.",
+    "loadFailed": "The catalog did not load. Check your connection and try again."
   }
 }
