@@ -52,7 +52,12 @@
     "region": "Região {number}",
     "size": "Tamanho",
     "width": "Largura",
-    "height": "Altura"
+    "height": "Altura",
+    "largerScreen": "Desenhar ou mover regiões fica melhor numa tela maior. Qual região está correta pode ser alterado aqui.",
+    "answerLabel": "Resposta — quais regiões estão corretas",
+    "correct": "Correta",
+    "markCorrect": "Marcar correta",
+    "noRegions": "Nenhuma região foi desenhada ainda."
   },
   "promptEditor": {
     "undo": "Desfazer",
@@ -243,7 +248,8 @@
       "skills": "Adicione uma habilidade",
       "concepts": "Adicione um conceito"
     },
-    "leaveMessage": "Suas alterações neste diagrama não foram salvas e serão perdidas."
+    "leaveMessage": "Suas alterações neste diagrama não foram salvas e serão perdidas.",
+    "largerScreen": "Colocar e mover posições fica melhor numa tela maior. O resto deste diagrama pode ser alterado aqui."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",

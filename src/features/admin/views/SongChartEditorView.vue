@@ -5,7 +5,7 @@
  * rights, publishing, withdrawing, its revisions). A new chart exists once it's first saved, and
  * leaving with unsaved changes asks first.
  */
-import { ChevronRight, Download, Eye, FileUp } from 'lucide-vue-next'
+import { ChevronRight, Download, Eye, FileUp, Monitor } from 'lucide-vue-next'
 import { computed, ref, toRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
@@ -284,7 +284,6 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
             <section :class="cardClass">
               <h2 class="text-base font-semibold text-ink">{{ t('songChartEditor.lyricsLabel') }}</h2>
               <template v-if="compact">
-                <InlineNotice data-test="larger-screen-notice" tone="unavailable" :message="t('songChartEditorView.largerScreen')" />
                 <div data-test="lyrics-read-only" class="flex flex-col gap-3">
                   <section v-for="(section, i) in body.content" :key="i" class="flex flex-col gap-1">
                     <h3 class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">{{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}</h3>
@@ -299,6 +298,7 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
                     </template>
                   </section>
                 </div>
+                <InlineNotice data-test="larger-screen-notice" tone="unavailable" :icon="Monitor" :message="t('songChartEditorView.largerScreen')" />
               </template>
               <SongChartLyricsEditor v-else v-model="body" />
               <span v-if="fieldErrors.body" data-test="error-body" class="text-xs text-danger">{{ t('songChartEditorView.lyricsNeeded') }}</span>

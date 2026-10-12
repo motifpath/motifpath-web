@@ -611,6 +611,7 @@ const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 
           v-model:new-region-shape="form.newRegionShape.value"
           :image-url="form.imageUrl.value"
           :regions="form.regions.value"
+          :read-only="isCompact"
           @add-region="(x, y) => form.addRegion(x, y, form.newRegionShape.value)"
           @move-region="form.moveRegion"
           @resize-region="form.resizeRegion"

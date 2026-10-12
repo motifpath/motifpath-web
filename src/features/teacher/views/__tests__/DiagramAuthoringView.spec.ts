@@ -46,15 +46,33 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
   }),
 }))
 
-function mockMatchMedia(compact: boolean): void {
+const sizeListeners: { query: string; onChange: (event: { matches: boolean }) => void }[] = []
+let windowWidth = 1280
+
+function widthMatches(query: string): boolean {
+  const min = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0)
+  const max = Number(/max-width:\s*(\d+)px/.exec(query)?.[1] ?? Infinity)
+  return windowWidth >= min && windowWidth <= max
+}
+
+/** Makes the window `width` px wide, as far as the size-class queries ask. */
+function screenWidth(width: number): void {
+  windowWidth = width
+  sizeListeners.length = 0
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: compact,
+    get matches() {
+      return widthMatches(query)
+    },
     media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
+    addEventListener: (_type: string, onChange: (event: { matches: boolean }) => void) => sizeListeners.push({ query, onChange }),
     removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
   }))
+}
+
+/** Resizes the window the size-class queries are watching. */
+function resizeWindow(width: number): void {
+  windowWidth = width
+  sizeListeners.forEach(({ query, onChange }) => onChange({ matches: widthMatches(query) }))
 }
 
 const guitar = {
@@ -130,7 +148,8 @@ describe('DiagramAuthoringView', () => {
     currentUser.profile.user_id = 'u-teacher'
     route.params = {}
     router.replace.mockReset()
-    mockMatchMedia(false)
+    // The full editor: the heavy parts are read-only on a phone, which has its own tests.
+    screenWidth(1280)
     useToast().clear()
     // Instruments + skill/concept list fetches all land on the same mocked
     // GET -- default every call to an empty list, individual tests layer a
@@ -1562,4 +1581,97 @@ describe('DiagramAuthoringView', () => {
       expect(POST).not.toHaveBeenCalled()
     })
   })
+
+  describe('on a phone', () => {
+    const minorPentatonic = {
+      diagram_id: 'd-1',
+      instrument_id: 'i-1',
+      kind: 'custom',
+      created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+      names: { en: 'A minor pentatonic — box 1' },
+      label_display: 'interval',
+      positions: [
+        { position_id: 'p-1', interval: 'R', note_name: 'A', string: 6, fret: 5 },
+        { position_id: 'p-2', interval: 'b3', note_name: 'C', string: 6, fret: 8 },
+      ],
+      classification: { skills: [knowledgeNode('s-1')], concepts: [knowledgeNode('c-1', { kind: 'concept' })] },
+      created_at: '2026-09-22T00:00:00Z',
+    }
+
+    async function openMinorPentatonic() {
+      route.params = { id: 'd-1' }
+      GET.mockResolvedValueOnce({ data: minorPentatonic, error: undefined, response: { status: 200 } })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+      return wrapper
+    }
+
+    beforeEach(() => screenWidth(390))
+
+    it('shows the board as students see it, with the larger-screen note under it', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      expect(wrapper.findComponent(FrettedDiagramEditor).exists()).toBe(false)
+      const board = wrapper.getComponent({ name: 'FrettedDiagramView' })
+      expect(board.props('diagram').positions).toHaveLength(2)
+      const notice = wrapper.get('[data-test="larger-screen-notice"]')
+      expect(notice.text()).toBe('Placing and moving positions is best done on a larger screen. The rest of this diagram can be changed here.')
+      expect(notice.find('svg.lucide-monitor').exists()).toBe(true)
+    })
+
+    it('keeps the marker labels editable, and the preview follows them', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      await wrapper.get('[data-test="label-mode-note"]').trigger('click')
+
+      expect(wrapper.getComponent({ name: 'FrettedDiagramView' }).props('labelMode')).toBe('note')
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(true)
+    })
+
+    it('keeps the typed regions editable, and leaves out what places positions', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      expect(wrapper.findComponent(DiagramRegionsEditor).exists()).toBe(true)
+      expect(wrapper.find('[data-test="add-overlay"]').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'DiagramSequenceEditor' }).exists()).toBe(false)
+    })
+
+    it('shows a new diagram on an empty board, with the note', async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+      expect(wrapper.getComponent({ name: 'FrettedDiagramView' }).props('diagram').positions).toEqual([])
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+    })
+
+    it('unlocks placing positions as soon as the window is wider than a phone', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      resizeWindow(768)
+      await flushPromises()
+
+      expect(wrapper.findComponent(FrettedDiagramEditor).exists()).toBe(true)
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(false)
+    })
+  })
+
+  it.each([
+    ['tablet', 768],
+    ['computer', 1280],
+  ])('places positions on a %s, with no larger-screen note', async (_device, width) => {
+    screenWidth(width)
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    expect(wrapper.findComponent(FrettedDiagramEditor).exists()).toBe(true)
+    expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(false)
+  })
 })
+

@@ -67,6 +67,15 @@ function mockMatchMedia(compact: boolean): void {
   }))
 }
 
+/** Makes the window `width` px wide, as far as the size-class queries ask. */
+function screenWidth(width: number): void {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => {
+    const min = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0)
+    const max = Number(/max-width:\s*(\d+)px/.exec(query)?.[1] ?? Infinity)
+    return { matches: width >= min && width <= max, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }
+  })
+}
+
 /**
  * A new exercise opens on the type chooser; unless told otherwise, this picks Text response there
  * so a test starts in the editor, as an author would after choosing.
@@ -652,6 +661,8 @@ describe('ExerciseAuthoringView', () => {
   })
 
   it('uploads a pending stimulus image before saving, then sends the real URL', async () => {
+    // Regions are drawn on a larger screen.
+    screenWidth(1280)
     upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
     POST.mockResolvedValueOnce({
       data: { exercise_id: 'e-1', challenge_ids: [] },
@@ -683,6 +694,8 @@ describe('ExerciseAuthoringView', () => {
   })
 
   it('shows an error and does not save when the pending upload fails', async () => {
+    // Regions are drawn on a larger screen.
+    screenWidth(1280)
     upload.mockRejectedValueOnce(new Error('Upload failed with status 500'))
     const wrapper = await mountView()
     await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
@@ -902,6 +915,8 @@ describe('ExerciseAuthoringView', () => {
   })
 
   it('revokes the stimulus blob URL once it is replaced by the real uploaded URL', async () => {
+    // Regions are drawn on a larger screen.
+    screenWidth(1280)
     upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
     POST.mockResolvedValueOnce({
       data: { exercise_id: 'e-1', challenge_ids: [] },
@@ -1679,4 +1694,40 @@ options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
       expect(POST.mock.calls[0]![1].body.options).toEqual([{ option_id: id, is_correct: true, diagram_ref: chord }])
     })
   })
+
+  describe('image regions by screen size', () => {
+    async function openImageStimulus() {
+      const wrapper = await mountView()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      await pickStimulus(wrapper, new File(['data'], 'fret.png', { type: 'image/png' }))
+      await wrapper.get('img').trigger('load')
+      return wrapper
+    }
+
+    it('shows the image read-only on a phone, with nothing to mark until regions are drawn on a larger screen', async () => {
+      screenWidth(390)
+      const wrapper = await openImageStimulus()
+
+      await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="region-marker"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="no-regions"]').exists()).toBe(true)
+    })
+
+    it.each([
+      ['tablet', 768],
+      ['computer', 1280],
+    ])('draws regions on a %s, with no larger-screen note', async (_device, width) => {
+      screenWidth(width)
+      const wrapper = await openImageStimulus()
+
+      await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+
+      expect(wrapper.findAll('[data-test="region-marker"]')).toHaveLength(1)
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(false)
+    })
+  })
 })
+

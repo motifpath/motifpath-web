@@ -335,6 +335,16 @@ describe('SongChartEditorView', () => {
       expect(wrapper.get('[data-test="lyrics-read-only"]').text()).toContain('Amazing grace')
       expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
     })
+
+    it('puts the larger-screen note under the lyrics, with the larger-screen icon', async () => {
+      serve(makeSongChart('chart-1'))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      const lyrics = wrapper.get('[data-test="lyrics-read-only"]').element
+      const notice = wrapper.get('[data-test="larger-screen-notice"]')
+      expect(lyrics.compareDocumentPosition(notice.element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(notice.find('svg.lucide-monitor').exists()).toBe(true)
+    })
   })
 
   describe('withdrawing, in more detail', () => {

@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch, watchEffect } from 'vue'
-import { Layers, Maximize2, Palette } from 'lucide-vue-next'
+import { Monitor } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
+import DiagramBoardToolbar from '@/features/teacher/components/DiagramBoardToolbar.vue'
 import DiagramPreviewModal from '@/features/teacher/components/DiagramPreviewModal.vue'
 import DiagramLanguageTabs from '@/features/teacher/components/DiagramLanguageTabs.vue'
 import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
 import DiagramSequenceEditor from '@/features/teacher/components/DiagramSequenceEditor.vue'
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
+import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
 import OverlayDiagramsModal from '@/features/teacher/components/OverlayDiagramsModal.vue'
 import SaveDiagramAsModal from '@/features/teacher/components/SaveDiagramAsModal.vue'
-import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import { useCreateDiagram } from '@/features/teacher/composables/useCreateDiagram'
 import { useDiagram } from '@/features/teacher/composables/useDiagram'
@@ -23,6 +24,7 @@ import { useDiagramSequence } from '@/features/teacher/composables/useDiagramSeq
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
 import EditorAppBar from '@/shared/components/EditorAppBar.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LocaleScope from '@/shared/components/LocaleScope.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
@@ -281,11 +283,14 @@ function diagramForPreview(positions: Diagram['positions'], regions: Diagram['re
   }
 }
 
-const previewDiagram = computed<Diagram | null>(() => {
-  if (!selectedInstrument.value || form.positions.value.length === 0) return null
+// The board as students see it. On a phone it is only shown, so it is drawn even before a position
+// is placed; the full preview waits for one.
+const boardPreview = computed<Diagram | null>(() => {
+  if (!selectedInstrument.value) return null
   const request = form.toCreateDiagramRequest()
   return diagramForPreview(request.positions, request.regions ?? [])
 })
+const previewDiagram = computed<Diagram | null>(() => (form.positions.value.length === 0 ? null : boardPreview.value))
 
 // What merging the overlays would produce, for the overlay modal's preview.
 const overlayPreviewDiagram = computed<Diagram | null>(() => {
@@ -576,7 +581,41 @@ async function saveAs(names: Record<string, string>) {
           <span class="text-sm text-ink-subtle">{{ te('diagramAuthoringView.rootNoteHint') }}</span>
         </div>
 
-        <div v-if="selectedInstrument" class="flex flex-col gap-2" data-field="positions">
+        <div v-if="selectedInstrument && boardPreview && isCompact" class="flex flex-col gap-3" data-field="positions">
+          <DiagramBoardToolbar
+            v-model:label-display="form.labelDisplay.value"
+            v-model:color="form.color.value"
+            :can-clear-color="form.canClearColor.value"
+            :color-hint="colorHint"
+            :can-preview="!!previewDiagram"
+            :can-overlay="false"
+            @preview="showPreviewModal = true"
+          />
+          <div class="rounded-lg border border-border bg-surface-raised p-3">
+            <FrettedDiagramView
+              :diagram="boardPreview"
+              :instrument="selectedInstrument"
+              :diagram-ref="previewDiagramRef"
+              :label-mode="form.labelDisplay.value"
+            />
+          </div>
+          <InlineNotice data-test="larger-screen-notice" tone="unavailable" :icon="Monitor" :message="te('diagramAuthoringView.largerScreen')" />
+          <DiagramRegionsEditor
+            data-field="regions"
+            :regions="form.regions.value"
+            :string-count="selectedInstrument.string_count ?? 0"
+            :language="activeLanguage"
+            :invalid-ids="form.invalidRegionIds.value"
+            @add="form.addRegion"
+            @set-frets="form.setRegionFrets"
+            @set-strings="form.setRegionStrings"
+            @set-description="(id, value) => form.setRegionDescription(id, activeLanguage, value)"
+            @set-color="form.setRegionColor"
+            @remove="form.removeRegion"
+          />
+        </div>
+
+        <div v-else-if="selectedInstrument" class="flex flex-col gap-2" data-field="positions">
           <FrettedDiagramEditor
             data-field="notes"
             :instrument="selectedInstrument"
@@ -597,85 +636,16 @@ async function saveAs(names: Record<string, string>) {
             @remove="form.removePosition"
           >
             <template #toolbar>
-              <!-- Wraps on a narrow screen: a row wider than the screen would widen the whole page. -->
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <label class="text-sm font-semibold">{{
-                  te('diagramAuthoringView.positionsLabel')
-                }}</label>
-                <div class="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    data-test="add-overlay"
-                    class="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted"
-                    @click="overlaying = true"
-                  >
-                    <Layers :size="14" aria-hidden="true" />
-                    {{ te('diagramAuthoringView.addOverlayButton') }}
-                  </button>
-                  <button
-                    type="button"
-                    data-test="open-preview-modal"
-                    class="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="!previewDiagram"
-                    :title="previewDiagram ? undefined : te('diagramAuthoringView.previewEmpty')"
-                    @click="showPreviewModal = true"
-                  >
-                    <Maximize2 :size="14" aria-hidden="true" />
-                    {{ te('diagramAuthoringView.viewPreviewButton') }}
-                  </button>
-                  <ColorPaletteMenu
-                    test-id="diagram-color"
-                    :title="te('diagramAuthoringView.colorLabel')"
-                    :model-value="form.color.value"
-                    :allow-clear="form.canClearColor.value"
-                    :hint="colorHint"
-                    @select="(color) => (form.color.value = color)"
-                  >
-                    <Palette :size="16" aria-hidden="true" />
-                  </ColorPaletteMenu>
-                  <div class="flex w-fit gap-1 rounded-lg bg-surface-sunken p-1">
-                    <button
-                      type="button"
-                      data-test="label-mode-interval"
-                      class="rounded-md px-3 py-1 text-xs font-semibold"
-                      :class="
-                        form.labelDisplay.value === 'interval'
-                          ? 'bg-accent text-accent-fg'
-                          : 'text-ink-muted'
-                      "
-                      @click="form.labelDisplay.value = 'interval'"
-                    >
-                      {{ te('diagramAuthoringView.labelModeInterval') }}
-                    </button>
-                    <button
-                      type="button"
-                      data-test="label-mode-note"
-                      class="rounded-md px-3 py-1 text-xs font-semibold"
-                      :class="
-                        form.labelDisplay.value === 'note'
-                          ? 'bg-accent text-accent-fg'
-                          : 'text-ink-muted'
-                      "
-                      @click="form.labelDisplay.value = 'note'"
-                    >
-                      {{ te('diagramAuthoringView.labelModeNote') }}
-                    </button>
-                    <button
-                      type="button"
-                      data-test="label-mode-hidden"
-                      class="rounded-md px-3 py-1 text-xs font-semibold"
-                      :class="
-                        form.labelDisplay.value === 'hidden'
-                          ? 'bg-accent text-accent-fg'
-                          : 'text-ink-muted'
-                      "
-                      @click="form.labelDisplay.value = 'hidden'"
-                    >
-                      {{ te('diagramAuthoringView.labelModeHidden') }}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <DiagramBoardToolbar
+                v-model:label-display="form.labelDisplay.value"
+                v-model:color="form.color.value"
+                :can-clear-color="form.canClearColor.value"
+                :color-hint="colorHint"
+                :can-preview="!!previewDiagram"
+                can-overlay
+                @overlay="overlaying = true"
+                @preview="showPreviewModal = true"
+              />
             </template>
             <DiagramSequenceEditor data-field="playbacks" :form="form" :editor="sequenceEditor" :label-mode="form.labelDisplay.value">
               <template #player>
