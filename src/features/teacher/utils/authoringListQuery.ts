@@ -1,6 +1,7 @@
 import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
+import { OFFERED_LANGUAGE_CODES } from '@/i18n'
 import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
 
 type Exercise = components['schemas']['Exercise']
@@ -81,7 +82,6 @@ export const DIAGRAM_KINDS: DiagramKindChoice[] = ['templates', 'custom']
 export const DIAGRAM_SHOWS: DiagramShowsChoice[] = ['chord_voicings', 'both']
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const LANGUAGE_CODE = /^[a-z]{2,3}(-[A-Z]{2})?$/
 
 /** The query keys a list state is written under; any of them means the address names a state. */
 const STATE_KEYS = ['q', 'sort', 'status', 'type', 'level', 'instrument', 'kind', 'shows', 'root', 'language', 'skill', 'concept', 'author']
@@ -130,7 +130,7 @@ export function parseListQuery(section: AuthoringSection, query: LocationQuery):
     kind: () => oneOf(single(query.kind), DIAGRAM_KINDS),
     shows: () => oneOf(single(query.shows), DIAGRAM_SHOWS),
     root: () => oneOf(single(query.root), CHROMATIC_SCALE),
-    language: () => matching(single(query.language), LANGUAGE_CODE),
+    language: () => oneOf(single(query.language), OFFERED_LANGUAGE_CODES),
     author: () => matching(single(query.author), UUID),
   }
   for (const key of offered) {

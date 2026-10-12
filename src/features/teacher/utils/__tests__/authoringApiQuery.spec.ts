@@ -72,13 +72,13 @@ describe('the API query of each list', () => {
       type: 'video',
       level: 'beginner',
       status: 'unpublished_changes',
-      language: 'pt-BR',
+      language: 'pt_BR',
     })
     expect(lessonsQuery(state)).toEqual({
       content_type: 'video',
       difficulty_level: 'beginner',
       status: 'unpublished_changes',
-      language: 'pt-BR',
+      language: 'pt_BR',
     })
   })
 
