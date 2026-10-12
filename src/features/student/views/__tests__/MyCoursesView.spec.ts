@@ -323,7 +323,7 @@ describe('MyCoursesView', () => {
 
     await row(mountView(), 'First songs').get('[data-test="learning-row"]').trigger('click')
 
-    expect(push).toHaveBeenCalledWith({ name: 'course-detail', params: { courseId: 'c-7' } })
+    expect(push).toHaveBeenCalledWith({ name: 'learning-course', params: { courseId: 'c-7' } })
     expect(setCurrentPath).not.toHaveBeenCalled()
   })
 
@@ -347,7 +347,7 @@ describe('MyCoursesView', () => {
     inLayer('[data-test="learning-menu-details"]').click()
     await flushPromises()
 
-    expect(push).toHaveBeenCalledWith({ name: 'course-detail', params: { courseId: 'c-2' } })
+    expect(push).toHaveBeenCalledWith({ name: 'learning-course', params: { courseId: 'c-2' } })
   })
 
   it('asks before leaving a course, saying what is lost and what stays', async () => {

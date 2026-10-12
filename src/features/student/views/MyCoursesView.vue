@@ -69,7 +69,7 @@ const switching = ref(false)
 function openDetail(item: LearningItem) {
   void router.push(
     item.kind === 'course'
-      ? { name: 'course-detail', params: { courseId: item.detailId } }
+      ? { name: 'learning-course', params: { courseId: item.detailId } }
       : { name: 'path-detail', params: { learningPathId: item.detailId } },
   )
 }

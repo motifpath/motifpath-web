@@ -166,6 +166,14 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/features/student/views/MyCoursesView.vue'),
       },
       {
+        // The same learner view of a course as course-detail, opened from Learning, so the shell
+        // keeps Learning highlighted and the way back leads there.
+        path: 'mine/:courseId',
+        name: 'learning-course',
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/CourseDetailView.vue'),
+      },
+      {
         path: 'mine/:enrollmentId/completed',
         name: 'course-completed',
         meta: { requiresAuth: true },
