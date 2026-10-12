@@ -157,6 +157,18 @@
     "removePath": "Remover de Aprender",
     "update": "Atualizar para a versão mais recente"
   },
+  "updateCopy": {
+    "title": "Atualizar {title}?",
+    "courseMessage": "Você recebe as partes, aulas e imagem mais recentes. As aulas que você concluiu continuam concluídas. Se a aula em que você está foi removida, você continua na próxima que ainda não concluiu. Não é possível desfazer.",
+    "pathMessage": "Você recebe as aulas e a imagem mais recentes. As aulas que você concluiu continuam concluídas. Se a aula em que você está foi removida, você continua na próxima que ainda não concluiu. Não é possível desfazer.",
+    "updateCourse": "Atualizar curso",
+    "updatePath": "Atualizar trilha",
+    "notNow": "Agora não",
+    "tryAgain": "Tentar de novo",
+    "courseFailed": "Não foi possível atualizar o curso. Nada mudou. Verifique sua conexão e tente de novo.",
+    "pathFailed": "Não foi possível atualizar a trilha. Nada mudou. Verifique sua conexão e tente de novo.",
+    "upToDate": "Você já tem a versão mais recente de {title}"
+  },
   "courseDetailView": {
     "errorMessage": "Não foi possível carregar este curso.",
     "notFoundHeading": "Este curso ainda não foi publicado",
