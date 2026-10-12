@@ -15,6 +15,10 @@ let currentHref = ''
 // the guards `installOverlayHistory` adds, as in a component test.
 let navigating = false
 
+// A closed layer's entry that is still current, waiting to be taken back off. A layer opening in
+// the meantime (a menu row that opens a confirm) takes it over instead of stacking a second one.
+let releasing: string | null = null
+
 /**
  * Runs before the router's own listener (capture comes first at the target). A step that only
  * crosses a layer's entry — Back closing a layer, or a layer taking its entry back off — stays on
@@ -82,7 +86,10 @@ export function useOverlayHistory(open: Ref<boolean>, onBack: () => void) {
       onBack()
     })
     // Keep the router's own state on the entry, so the router reads it as the page it is on.
-    window.history.pushState({ ...window.history.state, overlay: entry }, '')
+    const state = { ...window.history.state, overlay: entry }
+    if (releasing !== null && window.history.state?.overlay === releasing) window.history.replaceState(state, '')
+    else window.history.pushState(state, '')
+    releasing = null
     currentIsLayer = true
     currentHref = window.location.href
   }
@@ -92,11 +99,14 @@ export function useOverlayHistory(open: Ref<boolean>, onBack: () => void) {
     const released = entry
     entry = null
     layers.delete(released)
+    releasing = released
     // The click that closed the layer may also be starting a navigation (a menu row that links
     // somewhere, "discard and leave"), whose guards only run once this task is over. Wait for it:
     // stepping back while the router pushes would undo the push. Once the page has moved on, the
     // entry stays behind under it, where it's one more step back to the same page.
     setTimeout(() => {
+      if (releasing !== released) return
+      releasing = null
       if (!navigating && window.history.state?.overlay === released) window.history.back()
     })
   }
