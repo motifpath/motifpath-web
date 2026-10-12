@@ -15,6 +15,8 @@ export const endpoints = {
   instruments: '*/instruments',
   voices: '*/voices',
   diagram: '*/diagrams/:diagram_id',
+  diagrams: '*/diagrams',
+  chords: '*/chords',
   knowledgeNodes: '*/knowledge-nodes',
   knowledgeEdges: '*/knowledge-edges',
   practiceOverview: '*/students/me/practice-overview',
@@ -63,6 +65,8 @@ export const defaultHandlers: Record<Endpoint, HttpHandler> = {
       ? HttpResponse.json(fixtures.diagram)
       : HttpResponse.json({ message: 'Diagram not found' }, { status: 404 }),
   ),
+  diagrams: respondWith('diagrams', { items: [fixtures.diagram], total: 1, limit: 20, offset: 0 }),
+  chords: respondWith('chords', { written_symbol: '', status: 'parsed', parsed: null, warning: null, chord: null, chord_without_bass: null }),
   knowledgeNodes: http.get(endpoints.knowledgeNodes, ({ request }) =>
     HttpResponse.json(new URL(request.url).searchParams.get('kind') === 'concept' ? fixtures.conceptNodes : fixtures.skillNodes),
   ),
