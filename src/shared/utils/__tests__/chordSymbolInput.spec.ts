@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { CHORD_QUALITIES, chordSymbolOf, readTypedChord } from '@/shared/utils/chordSymbolInput'
+import type { ChordQualityChoice } from '@/shared/utils/chordSymbolInput'
 
 describe('readTypedChord', () => {
   it.each([
@@ -29,7 +30,7 @@ describe('chordSymbolOf', () => {
     expect(CHORD_QUALITIES).toEqual(['', 'm', '7', 'm7', 'maj7', 'sus2', 'sus4', 'dim', 'aug'])
   })
 
-  it.each([
+  it.each<[string, ChordQualityChoice, string]>([
     ['A', 'm', 'Am'],
     ['A', '', 'A'],
     ['F#', 'maj7', 'F#maj7'],
