@@ -33,13 +33,22 @@ vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => ({ instruments: ref([]), isLoading: ref(false), error: ref(false), retry: vi.fn() }),
 }))
 
+const update = vi.fn()
+vi.mock('@/features/student/composables/useUpdateLearningItem', () => ({
+  useUpdateLearningItem: () => ({ update }),
+}))
+
 const toast = { success: vi.fn(), error: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
 }))
 
 const push = vi.fn()
-const route = { params: { learningPathId: 'lp-1' }, query: { fromCatalog: 'true' } as Record<string, string> }
+const route = {
+  name: 'path-detail',
+  params: { learningPathId: 'lp-1' },
+  query: { fromCatalog: 'true' } as Record<string, string>,
+}
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
   return { ...actual, useRoute: () => route, useRouter: () => ({ push }) }
@@ -81,7 +90,13 @@ function heldCopy(overrides: Partial<StudentPath> = {}): StudentPath {
 }
 
 function mountView() {
-  return mount(PathDetailView, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  return mount(PathDetailView, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub } } })
+}
+
+function inLayer(selector: string): HTMLElement {
+  const element = document.querySelector<HTMLElement>(selector)
+  if (!element) throw new Error(`nothing matches ${selector}`)
+  return element
 }
 
 describe('PathDetailView', () => {
@@ -91,6 +106,7 @@ describe('PathDetailView', () => {
     detail.error.value = false
     detail.notFound.value = false
     held.paths.value = []
+    route.name = 'path-detail'
     route.query = { fromCatalog: 'true' }
     vi.clearAllMocks()
   })
@@ -214,5 +230,45 @@ describe('PathDetailView', () => {
     await flushPromises()
     await wrapper.get('[data-test="error"] button').trigger('click')
     expect(detail.retry).toHaveBeenCalled()
+  })
+
+  it('leads back to Learning when opened from Learning', () => {
+    route.name = 'learning-path'
+    route.query = {}
+    const back = mountView().get('[data-test="back-to-catalog"]')
+
+    expect(back.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'my-courses' })
+    expect(back.text()).toBe('Back to Learning')
+  })
+
+  describe('a newer version of a path the learner holds', () => {
+    it('is offered in a quiet card under Continue', () => {
+      held.paths.value = [heldCopy({ update_available: true })]
+      const card = mountView().get('[data-test="update-card"]')
+
+      expect(card.text()).toContain('A newer version is available')
+      expect(card.get('[data-test="update-path"]').text()).toBe('Update path')
+    })
+
+    it('is not offered when the copy is up to date', () => {
+      held.paths.value = [heldCopy()]
+
+      expect(mountView().find('[data-test="update-card"]').exists()).toBe(false)
+    })
+
+    it('updates through the confirm, then drops the card with a success toast', async () => {
+      held.paths.value = [heldCopy({ update_available: true })]
+      update.mockResolvedValueOnce({ path: heldCopy({ update_available: false, lesson_count: 5 }) })
+      const wrapper = mountView()
+
+      await wrapper.get('[data-test="update-path"]').trigger('click')
+      expect(inLayer('[role="alertdialog"]').textContent).toContain('Update Open chords?')
+      inLayer('[data-test="confirm-dialog-confirm"]').click()
+      await flushPromises()
+
+      expect(toast.success).toHaveBeenCalledWith('Open chords is up to date')
+      expect(wrapper.find('[data-test="update-card"]').exists()).toBe(false)
+      wrapper.unmount()
+    })
   })
 })

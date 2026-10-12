@@ -72,7 +72,7 @@ function openDetail(item: LearningItem) {
   void router.push(
     item.kind === 'course'
       ? { name: 'learning-course', params: { courseId: item.detailId } }
-      : { name: 'path-detail', params: { learningPathId: item.detailId } },
+      : { name: 'learning-path', params: { learningPathId: item.detailId } },
   )
 }
 

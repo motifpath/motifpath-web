@@ -224,6 +224,9 @@
     "moreFromTeacher": "More from this teacher"
   },
   "pathDetailView": {
+    "backToLearning": "Back to Learning",
+    "newVersionHeading": "A newer version is available",
+    "newVersionMessage": "Get the latest lessons and picture. Lessons you finished stay finished.",
     "errorMessage": "We couldn't load this path.",
     "notFoundHeading": "This path is not published yet",
     "notFoundMessage": "This path is not available in the catalog.",

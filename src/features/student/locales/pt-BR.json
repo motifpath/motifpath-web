@@ -224,6 +224,9 @@
     "moreFromTeacher": "Mais deste professor"
   },
   "pathDetailView": {
+    "backToLearning": "Voltar para Aprender",
+    "newVersionHeading": "Há uma versão mais recente",
+    "newVersionMessage": "Receba as aulas e a imagem mais recentes. As aulas que você concluiu continuam concluídas.",
     "errorMessage": "Não foi possível carregar esta trilha.",
     "notFoundHeading": "Esta trilha ainda não foi publicada",
     "notFoundMessage": "Esta trilha não está disponível no catálogo.",

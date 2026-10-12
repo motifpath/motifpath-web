@@ -339,7 +339,7 @@ describe('MyCoursesView', () => {
     await group(wrapper, 'left').get('button').trigger('click')
     await row(wrapper, 'Open chords').get('[data-test="learning-row"]').trigger('click')
 
-    expect(push).toHaveBeenCalledWith({ name: 'path-detail', params: { learningPathId: 'lp-7' } })
+    expect(push).toHaveBeenCalledWith({ name: 'learning-path', params: { learningPathId: 'lp-7' } })
   })
 
   // ── The ⋯ menu and leaving ─────────────────────────────────────────────

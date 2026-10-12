@@ -406,6 +406,17 @@ describe('router', () => {
     expect(router.currentRoute.value.params.courseId).toBe('c-1')
   })
 
+  it('opens the detail of a path the student holds under Learning', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/courses/mine/paths/lp-1')
+
+    expect(router.currentRoute.value.name).toBe('learning-path')
+    expect(router.currentRoute.value.params.learningPathId).toBe('lp-1')
+  })
+
   it("lets a registered student reach their courses and paths", async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')
