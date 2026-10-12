@@ -7,7 +7,7 @@
  * can lock the options and offer another try.
  */
 import { LoaderCircle, Play, Square } from 'lucide-vue-next'
-import { computed, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
@@ -29,6 +29,10 @@ const { state, missing, played, soundTempo, tempo, toggle } = useDiagramSound(()
 
 const sounding = computed(() => state.value === 'playing')
 watch(sounding, (now) => emit('playing', now))
+// Going away silences the sound, which a holder timing answers must hear about.
+onBeforeUnmount(() => {
+  if (sounding.value) emit('playing', false)
+})
 watch(missing, (reason) => {
   if (reason) emit('missing', reason)
 })

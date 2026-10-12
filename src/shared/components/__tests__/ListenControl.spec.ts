@@ -106,4 +106,15 @@ describe('ListenControl', () => {
     expect(wrapper.emitted('missing')).toEqual([[reason]])
     wrapper.unmount()
   })
+
+  it('says the sound stopped when it goes away while sounding, such as once the answer is in', async () => {
+    const onPlaying = vi.fn()
+    const wrapper = mount(ListenControl, { props: { sound: SOUND, onPlaying } })
+    fake.state.value = 'playing'
+    await flushPromises()
+
+    wrapper.unmount()
+
+    expect(onPlaying.mock.calls).toEqual([[true], [false]])
+  })
 })

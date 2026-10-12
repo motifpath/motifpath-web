@@ -95,7 +95,8 @@
     "markWrong": "Your answer, wrong",
     "choiceMarkedRight": "{choice}, right answer",
     "choiceMarkedWrong": "{choice}, your answer, wrong",
-    "chooseCount": "Choose {count}"
+    "chooseCount": "Choose {count}",
+    "soundNumber": "Sound {number}"
   },
   "modalCloseButton": {
     "ariaLabel": "Close"
@@ -424,5 +425,10 @@
   "whatYouHeard": {
     "heading": "What you heard: {name}",
     "playAgain": "Play again"
+  },
+  "revealedSound": {
+    "yours": "{label} · your answer",
+    "right": "{label} · right answer",
+    "folded": "{label} · {name}"
   }
 }

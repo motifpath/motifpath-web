@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
+const stopDiagramPlayback = vi.hoisted(() => vi.fn())
+vi.mock('@/shared/composables/useDiagramPlayback', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/composables/useDiagramPlayback')>()),
+  stopDiagramPlayback,
+}))
+
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -807,6 +813,187 @@ describe('ExerciseView', () => {
       const wrapper = mount(ExerciseView, { props: { ...regions, panes: false }, slots })
 
       expect(wrapper.find('[data-test="stimulus-pane"]').exists()).toBe(false)
+    })
+  })
+
+  describe('a sound played from a diagram', () => {
+    const aMinor = makeDiagramRef({ diagram_id: 'a-minor', playback: { playback_id: 'strum', direction: 'as_authored', loop: false } })
+    const gMajor = makeDiagramRef({ diagram_id: 'g-major', playback: { playback_id: 'strum', direction: 'as_authored', loop: false } })
+    const cMajor = makeDiagramRef({ diagram_id: 'c-major', playback: { playback_id: 'strum', direction: 'as_authored', loop: false } })
+
+    // Each part has its own spec; here only what the view hands them and does with what they say.
+    const stubs = {
+      ListenControl: { name: 'ListenControl', props: ['sound'], emits: ['playing', 'missing'], template: '<div data-test="listen-control" />' },
+      WhatYouHeard: { name: 'WhatYouHeard', props: ['sound'], template: '<div data-test="what-you-heard" />' },
+      DiagramAudioOption: {
+        name: 'DiagramAudioOption',
+        props: ['label', 'state', 'sound'],
+        emits: ['select', 'playing', 'missing'],
+        template: '<div @click="$emit(\'select\')">{{ label }}</div>',
+      },
+      RevealedSoundOption: { name: 'RevealedSoundOption', props: ['label', 'sound', 'role', 'mark'], template: '<div data-test="revealed-sound" />' },
+      EmbeddedDiagram: { name: 'EmbeddedDiagram', template: '<div data-test="embedded-diagram" />' },
+    }
+
+    beforeEach(() => {
+      stopDiagramPlayback.mockReset()
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+    })
+    afterEach(() => vi.restoreAllMocks())
+
+    describe('audio_recognition', () => {
+      const listening = {
+        exerciseType: 'audio_recognition' as const,
+        prompt: plainTextPrompt('Is this chord major or minor?'),
+        options: [
+          { option_id: 'major', label: 'Major', is_correct: false },
+          { option_id: 'minor', label: 'Minor', is_correct: true },
+        ],
+        diagramRef: aMinor,
+      }
+      const mountListening = (props: Record<string, unknown> = {}) =>
+        mount(ExerciseView, { props: { ...listening, ...props }, global: { stubs }, slots: { 'stimulus-notice': '<p data-test="notice" />' } })
+
+      it('shows a Listen control for the sound, and no board or player of a clip', () => {
+        const wrapper = mountListening()
+
+        expect(wrapper.getComponent({ name: 'ListenControl' }).props('sound')).toEqual(aMinor)
+        expect(wrapper.find('[data-test="embedded-diagram"]').exists()).toBe(false)
+        expect(wrapper.find('audio').exists()).toBe(false)
+        expect(wrapper.find('[data-test="what-you-heard"]').exists()).toBe(false)
+      })
+
+      it('says when the sound starts and stops', () => {
+        const wrapper = mountListening()
+        const listen = wrapper.getComponent({ name: 'ListenControl' })
+        listen.vm.$emit('playing', true)
+        listen.vm.$emit('playing', false)
+        expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+      })
+
+      it('says when the sound can’t be heard', () => {
+        const wrapper = mountListening()
+        wrapper.getComponent({ name: 'ListenControl' }).vm.$emit('missing', 'failed_to_load')
+        expect(wrapper.emitted('stimulusMissing')).toEqual([['failed_to_load']])
+      })
+
+      it('shows the caller’s notice in place of Listen while the sound is missing, and locks the options', async () => {
+        const wrapper = mountListening({ stimulusMissing: true })
+
+        expect(wrapper.find('[data-test="listen-control"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="notice"]').exists()).toBe(true)
+        await wrapper.findAll('[data-test="exercise-option"]')[1]!.trigger('click')
+        expect(wrapper.emitted('update:selectedOptionIds')).toBeUndefined()
+      })
+
+      it('reveals what was heard once the answer is graded, in place of Listen', () => {
+        const wrapper = mountListening({ selectedOptionIds: ['minor'], reveal: { correctOptionIds: ['minor'] } })
+
+        expect(wrapper.getComponent({ name: 'WhatYouHeard' }).props('sound')).toEqual(aMinor)
+        expect(wrapper.find('[data-test="listen-control"]').exists()).toBe(false)
+      })
+
+      it('has nothing to reveal for an uploaded clip', () => {
+        const wrapper = mountListening({ diagramRef: undefined, audioUrl: 'https://x/fifth.mp3', reveal: { correctOptionIds: ['minor'] } })
+        expect(wrapper.find('[data-test="what-you-heard"]').exists()).toBe(false)
+      })
+    })
+
+    describe('audio_selection', () => {
+      const options: Option[] = [
+        { option_id: 's1', label: 'Sound 1', diagram_ref: gMajor, is_correct: false },
+        { option_id: 's2', label: 'Sound 2', diagram_ref: cMajor, is_correct: false },
+        { option_id: 's3', label: 'Sound 3', diagram_ref: aMinor, is_correct: true },
+      ]
+      const mountSounds = (props: Record<string, unknown> = {}) =>
+        mount(ExerciseView, { props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('Which one is minor?'), options, ...props }, global: { stubs } })
+      const soundOptions = (wrapper: ReturnType<typeof mountSounds>) => wrapper.findAllComponents({ name: 'DiagramAudioOption' })
+
+      it('lists the diagram sounds under their neutral labels, with no boards', () => {
+        const wrapper = mountSounds()
+
+        expect(soundOptions(wrapper).map((option) => [option.props('label'), option.props('sound')])).toEqual([
+          ['Sound 1', gMajor],
+          ['Sound 2', cMajor],
+          ['Sound 3', aMinor],
+        ])
+        expect(wrapper.find('[data-test="embedded-diagram"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="revealed-sound"]').exists()).toBe(false)
+      })
+
+      it('labels a sound with no label of its own by its place', () => {
+        const wrapper = mountSounds({ options: options.map(({ label: _label, ...option }) => option) })
+        expect(soundOptions(wrapper).map((option) => option.props('label'))).toEqual(['Sound 1', 'Sound 2', 'Sound 3'])
+      })
+
+      it('selects a sound when its row is tapped', async () => {
+        const wrapper = mountSounds()
+        await soundOptions(wrapper)[1]!.trigger('click')
+        expect(wrapper.emitted('update:selectedOptionIds')).toEqual([[['s2']]])
+      })
+
+      it('silences a clip when a diagram sound starts, and a diagram sound when a clip starts', async () => {
+        const mixed: Option[] = [{ option_id: 'c1', label: 'Sound 1', audio_url: 'https://x/clip.mp3', is_correct: false }, options[2]!]
+        const wrapper = mountSounds({ options: mixed })
+
+        await wrapper.get('[data-test="option-play"]').trigger('click')
+        soundOptions(wrapper)[0]!.vm.$emit('playing', true)
+        expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled()
+
+        await wrapper.get('[data-test="option-play"]').trigger('click')
+        expect(stopDiagramPlayback).toHaveBeenCalled()
+      })
+
+      it('says a sound is playing from the first sound until the last stops', async () => {
+        const wrapper = mountSounds()
+        soundOptions(wrapper)[0]!.vm.$emit('playing', true)
+        soundOptions(wrapper)[0]!.vm.$emit('playing', false)
+        soundOptions(wrapper)[1]!.vm.$emit('playing', true)
+        expect(wrapper.emitted('playing')).toEqual([[true], [false], [true]])
+      })
+
+      it('says when a diagram sound can’t be heard', () => {
+        const wrapper = mountSounds()
+        soundOptions(wrapper)[2]!.vm.$emit('missing', 'failed_to_load')
+        expect(wrapper.emitted('stimulusMissing')).toEqual([['failed_to_load']])
+      })
+
+      it('shows the caller’s notice above the sounds while one is missing, and locks them', async () => {
+        const wrapper = mount(ExerciseView, {
+          props: { exerciseType: 'audio_selection', prompt: plainTextPrompt('p'), options, stimulusMissing: true },
+          global: { stubs },
+          slots: { 'stimulus-notice': '<p data-test="notice" />' },
+        })
+
+        expect(wrapper.find('[data-test="notice"]').exists()).toBe(true)
+        expect(soundOptions(wrapper).map((option) => option.props('state'))).toEqual(['locked', 'locked', 'locked'])
+        await soundOptions(wrapper)[0]!.trigger('click')
+        expect(wrapper.emitted('update:selectedOptionIds')).toBeUndefined()
+      })
+
+      it('after the answer, shows the chosen sound and the right one with their diagrams, the others folded', () => {
+        const wrapper = mountSounds({ selectedOptionIds: ['s2'], reveal: { correctOptionIds: ['s3'] } })
+
+        const revealed = wrapper.findAllComponents({ name: 'RevealedSoundOption' })
+        expect(revealed.map((option) => [option.props('label'), option.props('sound'), option.props('role'), option.props('mark')])).toEqual([
+          ['Sound 1', gMajor, null, undefined],
+          ['Sound 2', cMajor, 'yours', 'wrong'],
+          ['Sound 3', aMinor, 'right', 'right'],
+        ])
+        expect(soundOptions(wrapper)).toHaveLength(0)
+      })
+
+      it('after a right answer, shows that sound once, as the student’s', () => {
+        const wrapper = mountSounds({ selectedOptionIds: ['s3'], reveal: { correctOptionIds: ['s3'] } })
+
+        const roles = wrapper.findAllComponents({ name: 'RevealedSoundOption' }).map((option) => [option.props('role'), option.props('mark')])
+        expect(roles).toEqual([
+          [null, undefined],
+          [null, undefined],
+          ['yours', 'right'],
+        ])
+      })
     })
   })
 })
