@@ -273,7 +273,7 @@
     "shuffleOptionsLabel": "Embaralhar a ordem das opções a cada tentativa"
   },
   "sectionedPathList": {
-    "emptyMessage": "Ainda não há nós de conteúdo nesta trilha — adicione um para começar.",
+    "emptyMessage": "Ainda não há lições nesta trilha — adicione uma para começar.",
     "noSection": "Sem seção",
     "published": "Publicada",
     "draftPublishFirst": "Rascunho — publique-a antes",
@@ -307,9 +307,9 @@
     "editAriaLabel": "Editar pop-up"
   },
   "contentNodePickerModal": {
-    "title": "Adicionar um nó de conteúdo",
+    "title": "Adicionar uma lição",
     "searchPlaceholder": "Buscar por título",
-    "emptyMessage": "Nenhum nó de conteúdo corresponde — todo nó de conteúdo da biblioteca já está nesta trilha, ou nenhum correspondeu à sua busca."
+    "emptyMessage": "Nenhuma lição encontrada — todas as lições da biblioteca já estão nesta trilha, ou nenhuma corresponde à busca."
   },
   "exercisePickerModal": {
     "title": "Anexar um exercício",
@@ -317,13 +317,13 @@
     "emptyMessage": "Nenhum exercício corresponde — todo exercício do repositório já está anexado, ou nenhum correspondeu à sua busca."
   },
   "contentAuthoringView": {
-    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
-    "editBreadcrumb": "Editar conteúdo",
-    "newBreadcrumb": "Novo conteúdo",
-    "loadErrorMessage": "Falha ao carregar o nó de conteúdo",
-    "titlePlaceholder": "Conteúdo sem título",
-    "titleHint": "Título interno — para a biblioteca de conteúdo, não mostrado aos alunos",
-    "contentTypeLabel": "Tipo de conteúdo",
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar lições.",
+    "editBreadcrumb": "Editar lição",
+    "newBreadcrumb": "Nova lição",
+    "loadErrorMessage": "Falha ao carregar a lição",
+    "titlePlaceholder": "Lição sem título",
+    "titleHint": "Os alunos veem este título na trilha.",
+    "contentTypeLabel": "Tipo de lição",
     "typeLockedHint": "O tipo não pode ser alterado após a criação.",
     "typeUnlockedHint": "Vídeo ou artigo — isso determina quais pop-ups cronometrados este nó pode ter.",
     "mediaUrlLabel": "Ou cole um link",
@@ -335,10 +335,10 @@
     "timedPopupsLabel": "Pop-ups cronometrados",
     "paragraphPopupsLabel": "Pop-ups de parágrafo",
     "challengeLabel": "Desafio",
-    "noChallengeMessage": "Ainda não há desafio — monte um para avaliar este conteúdo, com pelo menos um exercício.",
-    "contentNodeUpdated": "Nó de conteúdo atualizado.",
-    "contentNodeCreated": "Nó de conteúdo criado.",
-    "saveContentNodeFailed": "Falha ao salvar o nó de conteúdo",
+    "noChallengeMessage": "Ainda não há desafio — monte um para avaliar esta lição, com pelo menos um exercício.",
+    "contentNodeUpdated": "Lição atualizada.",
+    "contentNodeCreated": "Lição criada.",
+    "saveContentNodeFailed": "Falha ao salvar a lição",
     "addPopupFailed": "Falha ao adicionar o pop-up",
     "updatePopupFailed": "Falha ao atualizar o pop-up",
     "removePopupFailed": "Falha ao remover o pop-up",
@@ -358,7 +358,7 @@
     "instrumentsLabel": "Instrumentos",
     "thumbnailLabel": "Miniatura",
     "publishedVersion": "Versão {version} publicada.",
-    "publishFailed": "Falha ao publicar o nó de conteúdo",
+    "publishFailed": "Falha ao publicar a lição",
     "videoLabel": "Vídeo",
     "uploadLeaveTitle": "Sair e cancelar o envio?",
     "uploadLeaveMessage": "O vídeo ainda está sendo enviado. Sair interrompe o envio, e a lição mantém o vídeo que tinha.",
@@ -384,13 +384,13 @@
     "latestBadge": "Mais recente"
   },
   "contentListView": {
-    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar conteúdo.",
-    "heading": "Conteúdo",
-    "newContentLabel": "Novo conteúdo",
-    "errorMessage": "Não foi possível carregar os nós de conteúdo.",
-    "emptyHeading": "Ainda não há conteúdo",
-    "emptyMessage": "Crie seu primeiro vídeo ou artigo para começar a construir a biblioteca de conteúdo.",
-    "noMatchesMessage": "Nenhum conteúdo é para este instrumento.",
+    "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar lições.",
+    "heading": "Lições",
+    "newContentLabel": "Nova lição",
+    "errorMessage": "Não foi possível carregar as lições.",
+    "emptyHeading": "Ainda não há lições",
+    "emptyMessage": "Crie sua primeira lição em vídeo ou artigo para começar a montar a biblioteca.",
+    "noMatchesMessage": "Nenhuma lição é para este instrumento.",
     "showEveryInstrument": "Mostrar todos os instrumentos"
   },
   "pathBuilderView": {
@@ -442,7 +442,7 @@
     "newPathLabel": "Nova trilha",
     "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
     "emptyHeading": "Ainda não há trilhas",
-    "emptyMessage": "Monte uma trilha ordenada de nós de conteúdo para os alunos seguirem.",
+    "emptyMessage": "Organize lições em uma trilha ordenada para os alunos seguirem.",
     "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
     "noMatchesHeading": "Nenhuma trilha encontrada",
     "searchPlaceholder": "Buscar trilhas pelo título",

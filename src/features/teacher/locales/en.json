@@ -273,7 +273,7 @@
     "shuffleOptionsLabel": "Shuffle option order per attempt"
   },
   "sectionedPathList": {
-    "emptyMessage": "No content nodes in this path yet — add one to get started.",
+    "emptyMessage": "No lessons in this path yet — add one to get started.",
     "noSection": "No section",
     "published": "Published",
     "draftPublishFirst": "Draft — publish it first",
@@ -307,9 +307,9 @@
     "editAriaLabel": "Edit pop-up"
   },
   "contentNodePickerModal": {
-    "title": "Add a content node",
+    "title": "Add a lesson",
     "searchPlaceholder": "Search by title",
-    "emptyMessage": "No content nodes match — every content node in the library is already in this path, or none matched your search."
+    "emptyMessage": "No lessons match — every lesson in the library is already in this path, or none matched your search."
   },
   "exercisePickerModal": {
     "title": "Attach an exercise",
@@ -317,13 +317,13 @@
     "emptyMessage": "No exercises match — every exercise in the pool is already attached, or none matched your search."
   },
   "contentAuthoringView": {
-    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
-    "editBreadcrumb": "Edit content",
-    "newBreadcrumb": "New content",
-    "loadErrorMessage": "Failed to load the content node",
-    "titlePlaceholder": "Untitled content",
-    "titleHint": "Internal title — for the content library, not shown to students",
-    "contentTypeLabel": "Content type",
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author lessons.",
+    "editBreadcrumb": "Edit lesson",
+    "newBreadcrumb": "New lesson",
+    "loadErrorMessage": "Failed to load the lesson",
+    "titlePlaceholder": "Untitled lesson",
+    "titleHint": "Learners see this title on their path.",
+    "contentTypeLabel": "Lesson type",
     "typeLockedHint": "Type can't be changed after creation.",
     "typeUnlockedHint": "Video or article — this determines which timed pop-ups this node can carry.",
     "mediaUrlLabel": "Or paste a link",
@@ -335,10 +335,10 @@
     "timedPopupsLabel": "Timed pop-ups",
     "paragraphPopupsLabel": "Paragraph pop-ups",
     "challengeLabel": "Challenge",
-    "noChallengeMessage": "No challenge yet — build one to assess this content, with at least one exercise.",
-    "contentNodeUpdated": "Content node updated.",
-    "contentNodeCreated": "Content node created.",
-    "saveContentNodeFailed": "Failed to save the content node",
+    "noChallengeMessage": "No challenge yet — build one to assess this lesson, with at least one exercise.",
+    "contentNodeUpdated": "Lesson updated.",
+    "contentNodeCreated": "Lesson created.",
+    "saveContentNodeFailed": "Failed to save the lesson",
     "addPopupFailed": "Failed to add the pop-up",
     "updatePopupFailed": "Failed to update the pop-up",
     "removePopupFailed": "Failed to remove the pop-up",
@@ -358,7 +358,7 @@
     "instrumentsLabel": "Instruments",
     "thumbnailLabel": "Thumbnail",
     "publishedVersion": "Published version {version}.",
-    "publishFailed": "Failed to publish the content node",
+    "publishFailed": "Failed to publish the lesson",
     "videoLabel": "Video",
     "uploadLeaveTitle": "Leave and cancel the upload?",
     "uploadLeaveMessage": "The video is still uploading. Leaving stops it, and the lesson keeps the video it had.",
@@ -384,13 +384,13 @@
     "latestBadge": "Latest"
   },
   "contentListView": {
-    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
-    "heading": "Content",
-    "newContentLabel": "New content",
-    "errorMessage": "We couldn't load the content nodes.",
-    "emptyHeading": "No content yet",
-    "emptyMessage": "Create your first video or article to start building the content library.",
-    "noMatchesMessage": "No content is for this instrument.",
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author lessons.",
+    "heading": "Lessons",
+    "newContentLabel": "New lesson",
+    "errorMessage": "We couldn't load the lessons.",
+    "emptyHeading": "No lessons yet",
+    "emptyMessage": "Create your first video or article lesson to start building the library.",
+    "noMatchesMessage": "No lesson is for this instrument.",
     "showEveryInstrument": "Show every instrument"
   },
   "pathBuilderView": {
@@ -442,7 +442,7 @@
     "newPathLabel": "New path",
     "errorMessage": "We couldn't load the learning paths.",
     "emptyHeading": "No paths yet",
-    "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
+    "emptyMessage": "Assemble lessons into an ordered path for students to follow.",
     "noMatchesMessage": "Try fewer filters or a different search.",
     "noMatchesHeading": "No matching paths",
     "searchPlaceholder": "Search paths by title",

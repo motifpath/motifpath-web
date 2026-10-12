@@ -187,7 +187,7 @@ describe('ContentAuthoringView', () => {
 
       expect(wrapper.find('[data-test="status-panel"]').exists()).toBe(false)
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('t')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
@@ -227,7 +227,7 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Alternate picking basics')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Alternate picking basics')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
@@ -366,7 +366,7 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Picking theory')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Picking theory')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.get('[data-test="content-type-article"]').trigger('click')
       await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', ARTICLE_BODY)
@@ -485,7 +485,7 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('t')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
@@ -514,7 +514,7 @@ describe('ContentAuthoringView', () => {
       await flushPromises()
 
       expect(GET).toHaveBeenCalledWith('/content-nodes/{content_node_id}', { params: { path: { content_node_id: 'cn-1' } } })
-      expect((wrapper.get('input[placeholder="Untitled content"]').element as HTMLInputElement).value).toBe('t')
+      expect((wrapper.get('input[placeholder="Untitled lesson"]').element as HTMLInputElement).value).toBe('t')
       expect(wrapper.get('[data-test="review-state"]').text()).toContain('pending')
       expect(wrapper.text()).toContain('alternate-picking')
       expect(wrapper.text()).toContain('picking-technique')
@@ -548,7 +548,7 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Updated title')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Updated title')
       await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
@@ -600,7 +600,7 @@ describe('ContentAuthoringView', () => {
       expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Edited')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Edited')
       await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
@@ -1200,7 +1200,7 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('input[placeholder="Untitled content"]').setValue('Edited title')
+        await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Edited title')
         expect(wrapper.get('[data-test="status-panel-primary"]').text()).toBe('Publish changes')
         await publishConfirmed(wrapper)
 
@@ -1493,7 +1493,7 @@ describe('ContentAuthoringView', () => {
 
     it('asks before leaving with unsaved edits', async () => {
       const wrapper = await mountSavedLesson()
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Edited title')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Edited title')
 
       const leaving = leaveGuard?.()
       await flushPromises()
