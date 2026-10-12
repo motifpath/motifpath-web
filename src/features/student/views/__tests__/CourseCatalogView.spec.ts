@@ -133,6 +133,7 @@ function enrollment(overrides: Partial<CourseEnrollment> = {}): CourseEnrollment
     active_checkpoint_student_path_id: 'sp-1',
     active_checkpoint_position: 1,
     enrolled_at: '2026-09-02T00:00:00Z',
+    update_available: false,
     ...overrides,
   }
 }

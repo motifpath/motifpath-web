@@ -75,6 +75,7 @@ function heldCopy(overrides: Partial<StudentPath> = {}): StudentPath {
     course_checkpoint_position: null,
     lesson_count: 4,
     completed_count: 1,
+    update_available: false,
     ...overrides,
   }
 }
