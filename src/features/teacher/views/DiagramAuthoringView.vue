@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, shallowRef, watch, watchEffect } from 'vue'
+import { computed, ref, shallowRef, watch, watchEffect } from 'vue'
 import { Layers, Maximize2, Palette } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
@@ -22,11 +22,14 @@ import { useDiagramOverlays } from '@/features/teacher/composables/useDiagramOve
 import { useDiagramSequence } from '@/features/teacher/composables/useDiagramSequence'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useUpdateDiagram } from '@/features/teacher/composables/useUpdateDiagram'
-import AppBar from '@/shared/components/AppBar.vue'
+import EditorAppBar from '@/shared/components/EditorAppBar.vue'
 import LocaleScope from '@/shared/components/LocaleScope.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
+import SaveBlockers from '@/shared/components/SaveBlockers.vue'
+import UnsavedChangesGuard from '@/shared/components/UnsavedChangesGuard.vue'
+import { useSaveBlockers } from '@/shared/composables/useSaveBlockers'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useToast } from '@/shared/composables/useToast'
 import { canEditDiagram } from '@/shared/utils/diagramOwnership'
@@ -45,7 +48,8 @@ const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
 
-const { isCompact } = useIsCompact()
+const { sizeClass, isCompact } = useSizeClass()
+const isExpanded = computed(() => sizeClass.value === 'expanded')
 const { localizedName } = useLocalizedName()
 const { t } = useTypedT()
 
@@ -316,14 +320,22 @@ function onDiscardOverlays() {
 }
 
 const saving = ref(false)
-const justSaved = ref(false)
-let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
-onUnmounted(() => clearTimeout(justSavedTimeout))
-
 const toast = useToast()
 
+// A template an admin saves over must be named in every language, on top of what any diagram needs.
+const missingToSave = computed(() => {
+  const fields = namesMissing.value && !form.missing.value.includes('names') ? ['names' as const, ...form.missing.value] : form.missing.value
+  return fields.map((field) => ({ field, label: t(`diagramAuthoringView.missing.${field}`) }))
+})
+const saveBlockers = useSaveBlockers(missingToSave)
+
+const saveState = computed(() => {
+  if (saving.value) return 'saving'
+  return form.isDirty.value || !savedDiagramId.value ? 'unsaved' : 'saved'
+})
+
 async function save() {
-  if (!form.canSave.value) return
+  if (saving.value || !saveBlockers.readyToSave()) return
 
   saving.value = true
   const isUpdate = !!savedDiagramId.value
@@ -334,10 +346,6 @@ async function save() {
       : await createDiagram(form.toCreateDiagramRequest())
     adoptSaved(diagram)
     form.markSaved(diagram)
-
-    justSaved.value = true
-    clearTimeout(justSavedTimeout)
-    justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
     toast.success(
       isUpdate
         ? t('diagramAuthoringView.diagramUpdated')
@@ -388,18 +396,18 @@ async function saveAs(names: Record<string, string>) {
 <template>
   <TeachShell section="teacher-diagrams" bar="none">
   <div class="flex flex-1 flex-col bg-surface">
-    <AppBar
-      :compact="isCompact"
-      :primary-nav-to="{ name: 'teacher-diagrams' }"
-      :breadcrumb-label="
+    <EditorAppBar
+      :compact="!isExpanded"
+      :section-label="t('nav.diagrams')"
+      :section-to="{ name: 'teacher-diagrams' }"
+      :title="
         isEditMode
           ? localizedName(form.names.value) || t('diagramAuthoringView.editDiagramBreadcrumb')
           : t('diagramAuthoringView.newDiagramBreadcrumb')
       "
-      :show-save="canSaveInPlace"
-      :save-disabled="!form.canSave.value || namesMissing || saving"
-      :just-saved="justSaved"
-      :on-save="save"
+      :save-state="saveState"
+      :can-save="canSaveInPlace && !loadingDiagram && !loadError"
+      @save="save"
     >
       <template #actions>
         <button
@@ -424,7 +432,7 @@ async function saveAs(names: Record<string, string>) {
           {{ t('diagramAuthoringView.saveAsTemplateButton') }}
         </button>
       </template>
-    </AppBar>
+    </EditorAppBar>
 
     <div
       v-if="!canAuthor"
@@ -458,7 +466,10 @@ async function saveAs(names: Record<string, string>) {
         class="flex min-w-0 flex-1 flex-col gap-6"
         :class="isCompact ? 'px-4 pb-6 pt-[20px]' : 'px-[48px] pb-[80px] pt-10'"
       >
+        <SaveBlockers :items="saveBlockers.shown.value" :reveal="saveBlockers.reveal.value" />
+
         <DiagramLanguageTabs
+          data-field="text"
           :languages="form.languages.value"
           :active="activeLanguage"
           :missing="form.missingText.value"
@@ -469,7 +480,7 @@ async function saveAs(names: Record<string, string>) {
         />
 
         <LocaleScope :locale="editingLocale">
-        <div class="flex flex-col gap-1.5">
+        <div class="flex flex-col gap-1.5" data-field="names">
           <input
             :value="form.names.value[activeLanguage] ?? ''"
             type="text"
@@ -565,8 +576,9 @@ async function saveAs(names: Record<string, string>) {
           <span class="text-sm text-ink-subtle">{{ te('diagramAuthoringView.rootNoteHint') }}</span>
         </div>
 
-        <div v-if="selectedInstrument" class="flex flex-col gap-2">
+        <div v-if="selectedInstrument" class="flex flex-col gap-2" data-field="positions">
           <FrettedDiagramEditor
+            data-field="notes"
             :instrument="selectedInstrument"
             :positions="form.positions.value"
             :regions="form.regions.value"
@@ -664,7 +676,7 @@ async function saveAs(names: Record<string, string>) {
                 </div>
               </div>
             </template>
-            <DiagramSequenceEditor :form="form" :editor="sequenceEditor" :label-mode="form.labelDisplay.value">
+            <DiagramSequenceEditor data-field="playbacks" :form="form" :editor="sequenceEditor" :label-mode="form.labelDisplay.value">
               <template #player>
                 <DiagramPlayer
                   v-if="previewDiagram"
@@ -676,6 +688,7 @@ async function saveAs(names: Record<string, string>) {
               </template>
             </DiagramSequenceEditor>
             <DiagramRegionsEditor
+              data-field="regions"
               :regions="form.regions.value"
               :string-count="selectedInstrument.string_count ?? 0"
               :language="activeLanguage"
@@ -700,6 +713,7 @@ async function saveAs(names: Record<string, string>) {
             </span>
           </div>
           <SkillConceptTreePicker
+            data-field="concepts"
             :label="te('classificationFields.conceptLabel')"
             :nodes="conceptNodes"
             :selected-ids="form.conceptIds.value"
@@ -713,6 +727,7 @@ async function saveAs(names: Record<string, string>) {
             @retry="retryConcepts"
           />
           <SkillConceptTreePicker
+            data-field="skills"
             :label="te('classificationFields.skillLabel')"
             :nodes="skillNodes"
             :selected-ids="form.skillIds.value"
@@ -766,6 +781,7 @@ async function saveAs(names: Record<string, string>) {
         @close="saveAsKind = null"
       />
     </div>
+    <UnsavedChangesGuard :dirty="form.isDirty.value && canSaveInPlace" :message="t('diagramAuthoringView.leaveMessage')" />
   </div>
   </TeachShell>
 </template>

@@ -218,7 +218,18 @@
     "templateNeedsEveryName": "Um modelo é compartilhado com todos os professores, então dê um nome em todos os idiomas antes de salvar.",
     "templateNeedsEveryText": "Preencha os rótulos, notas e legendas de região em todos os idiomas antes de salvar como modelo.",
     "addOverlayButton": "Sobrepor diagrama…",
-    "mergedNotice": "As camadas mescladas são salvas como um novo diagrama, então os diagramas de origem ficam como estavam. Use Salvar como."
+    "mergedNotice": "As camadas mescladas são salvas como um novo diagrama, então os diagramas de origem ficam como estavam. Use Salvar como.",
+    "missing": {
+      "names": "Dê um nome em cada idioma",
+      "text": "Preencha os textos em cada idioma",
+      "positions": "Coloque ao menos uma posição",
+      "notes": "Defina o intervalo e a nota de cada posição",
+      "regions": "Corrija as casas ou as cordas de uma região",
+      "playbacks": "Dê ao menos um passo a cada reprodução",
+      "skills": "Adicione uma habilidade",
+      "concepts": "Adicione um conceito"
+    },
+    "leaveMessage": "Suas alterações neste diagrama não foram salvas e serão perdidas."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Clique em uma casa para adicionar ou remover uma posição",

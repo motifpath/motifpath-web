@@ -218,7 +218,18 @@
     "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving.",
     "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template.",
     "addOverlayButton": "Overlay diagram…",
-    "mergedNotice": "The merged layers are saved as a new diagram, so the diagrams you started from stay as they were. Use Save as."
+    "mergedNotice": "The merged layers are saved as a new diagram, so the diagrams you started from stay as they were. Use Save as.",
+    "missing": {
+      "names": "Name it in every language",
+      "text": "Fill in its text in every language",
+      "positions": "Place at least one position",
+      "notes": "Set the interval and note of every position",
+      "regions": "Fix the frets or strings of a region",
+      "playbacks": "Give every playback a step",
+      "skills": "Add a skill",
+      "concepts": "Add a concept"
+    },
+    "leaveMessage": "Your changes to this diagram haven't been saved and will be lost."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",

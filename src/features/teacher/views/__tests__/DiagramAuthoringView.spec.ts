@@ -15,9 +15,18 @@ vi.mock('@/shared/composables/useApi', () => ({
 // below sets route.params.id before mounting.
 const route = reactive<{ params: { id?: string } }>({ params: {} })
 const router = { replace: vi.fn() }
+type LeaveGuard = () => boolean | Promise<boolean>
+let leaveGuard: LeaveGuard | null = null
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
-  return { ...actual, useRoute: () => route, useRouter: () => router }
+  return {
+    ...actual,
+    useRoute: () => route,
+    useRouter: () => router,
+    onBeforeRouteLeave: (guard: LeaveGuard) => {
+      leaveGuard = guard
+    },
+  }
 })
 
 const currentUser = reactive({
@@ -75,6 +84,17 @@ function mountView() {
   })
 }
 
+function blockers(wrapper: ReturnType<typeof mountView>) {
+  return wrapper.findAll('[data-test="save-blocker"]').map((item) => item.text())
+}
+
+/** Taps Save and says what it lists as missing (nothing, and a save, when nothing is). */
+async function blockersAfterSave(wrapper: ReturnType<typeof mountView>) {
+  wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+  await flushPromises()
+  return blockers(wrapper)
+}
+
 import { i18n } from '@/i18n'
 import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
 import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
@@ -125,11 +145,11 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
   })
 
-  it('renders the authoring AppBar with a New diagram breadcrumb', () => {
+  it('names the section and a new diagram in the app bar', () => {
     const wrapper = mountView()
 
-    expect(wrapper.findComponent({ name: 'AppBar' }).exists()).toBe(true)
-    expect(wrapper.text()).toContain('New diagram')
+    expect(wrapper.get('[data-test="editor-app-bar-section"]').text()).toBe('Diagrams')
+    expect(wrapper.get('[data-test="editor-app-bar-title"]').text()).toBe('New diagram')
   })
 
   it('only lists fretted instruments in the instrument picker', async () => {
@@ -170,25 +190,29 @@ describe('DiagramAuthoringView', () => {
     expect(options[1]!.attributes('disabled')).toBeDefined()
   })
 
-  it('disables save until name, a position, and classification are all set', async () => {
+  it('lists what a save still needs until a name, a complete position and the classification are set', async () => {
     GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
     const wrapper = mountView()
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+    expect(await blockersAfterSave(wrapper)).toEqual([
+      'Name it in every language',
+      'Place at least one position',
+      'Add a skill',
+      'Add a concept',
+    ])
 
     await wrapper.get('[data-test="instrument-option"]').trigger('click')
     await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic — Position 1')
     await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
-    expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
-
     await selectClassification(wrapper)
-    // Still disabled: the placed position has no interval/note name yet — nothing computes
-    // them until a root note is chosen, and the server rejects an incomplete position outright.
-    expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+    // The placed position has no interval/note name yet — nothing computes them until a root
+    // note is chosen, and the server rejects an incomplete position outright.
+    expect(blockers(wrapper)).toEqual(['Set the interval and note of every position'])
 
     await wrapper.get('[data-test="root-note-select"]').setValue('G')
-    expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+    expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
+    expect(POST).not.toHaveBeenCalled()
   })
 
   it('names the skills and concepts in the editing language, and asks the team for missing ones', async () => {
@@ -268,7 +292,7 @@ describe('DiagramAuthoringView', () => {
       await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
       await selectClassification(wrapper)
       await wrapper.get('[data-test="root-note-select"]').setValue('G')
-      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
     }
 
     it('offers only instruments that share the layout geometry, with the layout itself always selected', async () => {
@@ -357,7 +381,7 @@ describe('DiagramAuthoringView', () => {
     // String 1 is the high E string; fret 3 sounds G — picking G as root makes it the R.
     await wrapper.get('[data-test="root-note-select"]').setValue('G')
 
-    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
     expect(POST).toHaveBeenCalledWith(
       '/diagrams',
@@ -392,7 +416,7 @@ describe('DiagramAuthoringView', () => {
     await editor().vm.$emit('pick-position', first)
     expect(editor().props('sequenceHighlightIds')).toEqual([first])
 
-    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
     expect(POST).toHaveBeenCalledWith(
       '/diagrams',
@@ -479,7 +503,7 @@ describe('DiagramAuthoringView', () => {
 
     expect(wrapper.findComponent(FrettedDiagramEditor).props('color')).toBe(COLOR_PALETTE[5].hex)
 
-    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
     expect(POST).toHaveBeenCalledWith(
       '/diagrams',
@@ -539,7 +563,7 @@ describe('DiagramAuthoringView', () => {
     expect(wrapper.get(clearSelector).attributes('disabled')).toBeUndefined()
     await wrapper.get(clearSelector).trigger('keydown', { key: 'Escape' })
 
-    await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
     await new Promise((r) => setTimeout(r, 0))
 
     await openColorMenu(wrapper)
@@ -648,7 +672,7 @@ describe('DiagramAuthoringView', () => {
       expect(wrapper.find('[data-test="instrument-option"]').attributes('disabled')).toBeDefined()
 
       await wrapper.get('input[data-test="diagram-name"]').setValue('C Major Scale (updated)')
-      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
       expect(PATCH).toHaveBeenCalledWith(
         '/diagrams/{diagram_id}',
@@ -788,7 +812,21 @@ describe('DiagramAuthoringView', () => {
     }
 
     const appBarShowsSave = (wrapper: ReturnType<typeof mountView>) =>
-      wrapper.findComponent({ name: 'AppBar' }).props('showSave')
+      wrapper.findComponent({ name: 'EditorAppBar' }).props('canSave')
+
+    it('opens with nothing to save, and asks before leaving once edited', async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+      expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
+      expect(await leaveGuard!()).toBe(true)
+
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Renamed')
+      const leaving = leaveGuard!()
+      await flushPromises()
+      expect(wrapper.text()).toContain('Leave without saving?')
+      await wrapper.get('[data-test="confirm-dialog-cancel"]').trigger('click')
+
+      expect(await leaving).toBe(false)
+    })
 
     it('lets a teacher save over their own diagram, and offers Save as but not Save as template', async () => {
       const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
@@ -804,8 +842,8 @@ describe('DiagramAuthoringView', () => {
       currentUser.profile.user_id = 'u-admin'
       const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
 
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
-      expect(appBar.find('[data-test="app-bar-save"]').exists()).toBe(true)
+      const appBar = wrapper.findComponent({ name: 'EditorAppBar' })
+      expect(appBar.find('[data-test="editor-app-bar-saved"]').exists()).toBe(true)
       expect(appBar.find('[data-test="save-as"]').exists()).toBe(true)
       expect(appBar.find('[data-test="save-as-template"]').exists()).toBe(true)
     })
@@ -897,7 +935,7 @@ describe('DiagramAuthoringView', () => {
         error: undefined,
         response: { status: 200 },
       })
-      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
       expect(PATCH).toHaveBeenCalledWith(
         '/diagrams/{diagram_id}',
@@ -1053,7 +1091,7 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('input[data-test="diagram-name"]').setValue('Escala de Dó maior')
 
       PATCH.mockResolvedValueOnce({ data: { ...scale, kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } }, error: undefined, response: { status: 200 } })
-      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
       expect(PATCH).toHaveBeenCalledWith(
         '/diagrams/{diagram_id}',
@@ -1069,14 +1107,15 @@ describe('DiagramAuthoringView', () => {
       expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
       expect(wrapper.find('[data-test^="remove-language-"]').exists()).toBe(false)
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Name it in every language'])
+      expect(PATCH).not.toHaveBeenCalled()
       expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(true)
 
       await wrapper.get('[data-test="language-tab-pt_BR"]').trigger('click')
       await wrapper.get('input[data-test="diagram-name"]').setValue('Escala de Dó maior')
 
       expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(false)
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(false)
     })
 
@@ -1104,7 +1143,7 @@ describe('DiagramAuthoringView', () => {
       await selectClassification(wrapper)
       await wrapper.get('[data-test="root-note-select"]').setValue('G')
 
-      const appBar = wrapper.findComponent({ name: 'AppBar' })
+      const appBar = wrapper.findComponent({ name: 'EditorAppBar' })
       expect(appBar.find('[data-test="save-as"]').exists()).toBe(false)
       await appBar.get('[data-test="save-as-template"]').trigger('click')
       expect((wrapper.get('[data-test="save-as-name-en"]').element as HTMLInputElement).value).toBe('G Major Template')
@@ -1131,7 +1170,7 @@ describe('DiagramAuthoringView', () => {
       await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
       await selectClassification(wrapper)
       await wrapper.get('[data-test="root-note-select"]').setValue('G')
-      const templateButton = () => wrapper.findComponent({ name: 'AppBar' }).get('[data-test="save-as-template"]')
+      const templateButton = () => wrapper.findComponent({ name: 'EditorAppBar' }).get('[data-test="save-as-template"]')
       expect(templateButton().attributes('disabled')).toBeUndefined()
 
       await wrapper.get('[data-test="position-note"]').setValue('Start here')
@@ -1155,7 +1194,7 @@ describe('DiagramAuthoringView', () => {
       await selectClassification(wrapper)
       await wrapper.get('[data-test="root-note-select"]').setValue('G')
 
-      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
       expect(POST).toHaveBeenCalledWith('/diagrams', expect.objectContaining({ body: expect.objectContaining({ kind: 'custom' }) }))
     })
@@ -1232,7 +1271,7 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('[data-test="merge-overlays"]').trigger('click')
     }
 
-    const appBar = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'AppBar' })
+    const appBar = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'EditorAppBar' })
     const editor = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent(FrettedDiagramEditor)
     const modal = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'OverlayDiagramsModal' })
 
@@ -1248,7 +1287,6 @@ describe('DiagramAuthoringView', () => {
       const preview = modal(wrapper).getComponent({ name: 'FrettedDiagramView' }).props('diagram')
       expect(preview.positions.map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
       expect(editor(wrapper).props('positions')).toHaveLength(1)
-      expect(appBar(wrapper).props('saveDisabled')).toBe(false)
     })
 
     it('previews a highlighted region per diagram, named after it, unless the author turns that off', async () => {
@@ -1284,7 +1322,7 @@ describe('DiagramAuthoringView', () => {
 
       expect(modal(wrapper).exists()).toBe(false)
       expect(editor(wrapper).props('positions')).toHaveLength(1)
-      expect(appBar(wrapper).props('showSave')).toBe(true)
+      expect(appBar(wrapper).props('canSave')).toBe(true)
       expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(false)
     })
 
@@ -1311,7 +1349,7 @@ describe('DiagramAuthoringView', () => {
       expect(modal(wrapper).exists()).toBe(false)
       expect(editor(wrapper).props('positions').map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
       expect(editor(wrapper).props('regions')).toHaveLength(2)
-      expect(appBar(wrapper).props('showSave')).toBe(false)
+      expect(appBar(wrapper).props('canSave')).toBe(false)
       expect(wrapper.get('[data-test="save-as"]').attributes('disabled')).toBeUndefined()
       expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(true)
     })
@@ -1354,7 +1392,7 @@ describe('DiagramAuthoringView', () => {
           }),
         }),
       )
-      expect(appBar(wrapper).props('showSave')).toBe(true)
+      expect(appBar(wrapper).props('canSave')).toBe(true)
       expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(false)
     })
 
@@ -1371,8 +1409,8 @@ describe('DiagramAuthoringView', () => {
 
       await merge(wrapper, false)
 
-      expect(appBar(wrapper).props('showSave')).toBe(true)
-      expect(appBar(wrapper).props('saveDisabled')).toBe(false)
+      expect(appBar(wrapper).props('canSave')).toBe(true)
+      expect(appBar(wrapper).props('saveState')).toBe('unsaved')
       expect(editor(wrapper).props('positions')).toHaveLength(3)
     })
 
@@ -1416,7 +1454,7 @@ describe('DiagramAuthoringView', () => {
       expect(body.text()).toContain('Instrumento')
       expect(wrapper.get('[data-test="instrument-option"]').text()).toBe('Violão de 6 cordas')
       expect(wrapper.get('input[data-test="diagram-name"]').attributes('placeholder')).toBe('Nome do diagrama')
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('breadcrumbLabel')).toBe('New diagram')
+      expect(wrapper.get('[data-test="editor-app-bar-title"]').text()).toBe('New diagram')
       expect(i18n.global.locale.value).toBe('en')
 
       await wrapper.get('[data-test="language-tab-en"]').trigger('click')
@@ -1431,17 +1469,17 @@ describe('DiagramAuthoringView', () => {
       await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
       await selectClassification(wrapper)
       await wrapper.get('[data-test="root-note-select"]').setValue('G')
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
 
       await addPortuguese(wrapper)
       expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Name it in every language'])
+      expect(POST).not.toHaveBeenCalled()
 
       await wrapper.get('[data-test="remove-language-pt_BR"]').trigger('click')
       await wrapper.get('[data-test="remove-language-confirm"]').trigger('click')
       expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="language-tab-en"]').attributes('aria-selected')).toBe('true')
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
     })
 
     it("edits marker labels, notes and region captions in each tab's language, and saves them only once every language has them", async () => {
@@ -1455,23 +1493,23 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('[data-test="position-note"]').setValue('Start here')
       await wrapper.get('[data-test="region-add"]').trigger('click')
       await wrapper.get('[data-test="region-description"]').setValue('Box 1')
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
 
       await addPortuguese(wrapper)
       await wrapper.get('input[data-test="diagram-name"]').setValue('Pentatônica menor')
       expect(wrapper.get<HTMLInputElement>('[data-test="position-note"]').element.value).toBe('')
       expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Fill in its text in every language'])
+      expect(POST).not.toHaveBeenCalled()
 
       await wrapper.get('[data-test="position-custom-label"]').setValue('Ev')
       await wrapper.get('[data-test="position-note"]').setValue('Comece aqui')
       await wrapper.get('[data-test="region-description"]').setValue('Caixa 1')
       expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(false)
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(false)
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
       expect(wrapper.findAll('[data-test="editor-region"]').length).toBeGreaterThan(0)
 
       POST.mockResolvedValueOnce({ data: undefined, error: { message: 'stop here' }, response: { status: 400 } })
-      await wrapper.findComponent({ name: 'AppBar' }).props('onSave')!()
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
 
       const body = POST.mock.calls.at(-1)?.[1]?.body
       expect(body.positions[0]).toMatchObject({ custom_label: { en: 'Av', pt_BR: 'Ev' }, note: { en: 'Start here', pt_BR: 'Comece aqui' } })
@@ -1505,7 +1543,8 @@ describe('DiagramAuthoringView', () => {
       await wrapper.get('[data-test="region-fret-start"]').setValue('9')
 
       expect(wrapper.find('[data-test="region-invalid"]').exists()).toBe(true)
-      expect(wrapper.findComponent({ name: 'AppBar' }).props('saveDisabled')).toBe(true)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Fix the frets or strings of a region'])
+      expect(POST).not.toHaveBeenCalled()
     })
   })
 })

@@ -1150,3 +1150,59 @@ describe('useDiagramForm', () => {
     })
   })
 })
+
+describe('useDiagramForm — what a save needs and what is unsaved', () => {
+  function namedPenta() {
+    const form = useDiagramForm()
+    form.tuning.value = ['E', 'A', 'D', 'G', 'B', 'E']
+    form.rootNote.value = 'A'
+    form.setName('en', 'Minor Pentatonic')
+    return form
+  }
+
+  it('a new diagram needs a name, a position, a skill and a concept, in the order of the editor', () => {
+    const form = useDiagramForm()
+
+    expect(form.missing.value).toEqual(['names', 'positions', 'skills', 'concepts'])
+  })
+
+  it('a position without its interval or note is named', () => {
+    const form = useDiagramForm()
+    form.setName('en', 'Minor Pentatonic')
+    form.addPosition({ string: 6, fret: 5 })
+    form.skillIds.value = ['s-1']
+    form.conceptIds.value = ['c-1']
+
+    expect(form.missing.value).toEqual(['notes'])
+  })
+
+  it('needs nothing once it can be saved', () => {
+    const form = namedPenta()
+    form.addPosition({ string: 6, fret: 5 })
+    form.skillIds.value = ['s-1']
+    form.conceptIds.value = ['c-1']
+
+    expect(form.missing.value).toEqual([])
+    expect(form.canSave.value).toBe(true)
+  })
+
+  it('has nothing unsaved once loaded, and something once edited', () => {
+    const form = useDiagramForm()
+    form.loadFromDiagram(makeFrettedDiagram())
+    expect(form.isDirty.value).toBe(false)
+
+    form.setName('en', 'Renamed')
+    expect(form.isDirty.value).toBe(true)
+  })
+
+  it('has nothing unsaved once the saved copy is recorded', () => {
+    const form = useDiagramForm()
+    const diagram = makeFrettedDiagram()
+    form.loadFromDiagram(diagram)
+    form.setName('en', 'Renamed')
+
+    form.markSaved(diagram)
+
+    expect(form.isDirty.value).toBe(false)
+  })
+})
