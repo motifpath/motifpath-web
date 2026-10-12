@@ -14,6 +14,7 @@ import KnowledgeFilterPicker from '@/features/teacher/components/KnowledgeFilter
 import {
   type AuthoringListFilters,
   type AuthoringSection,
+  CREATORS_SCOPE,
   DIAGRAM_KINDS,
   DIAGRAM_SHOWS,
   type FilterKey,
@@ -25,7 +26,6 @@ import { OFFERED_LANGUAGE_CODES, type MessageKey } from '@/i18n'
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
 import MenuRow from '@/shared/components/MenuRow.vue'
 import RootNoteSelect from '@/shared/components/RootNoteSelect.vue'
-import type { CourseCreatorsScope } from '@/shared/composables/useCourseCreators'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { languageLabelKey } from '@/shared/utils/languageLabels'
 import type { TreeNode } from '@/shared/utils/skillConceptTree'
@@ -48,13 +48,6 @@ const emit = defineEmits<{ open: [page: PageKey] }>()
 
 const { t } = useTypedT()
 
-const CREATORS_SCOPE: Record<AuthoringSection, CourseCreatorsScope> = {
-  diagrams: 'diagrams',
-  exercises: 'exercises',
-  lessons: 'lessons',
-  paths: 'path-library',
-  courses: 'managed',
-}
 
 const keys = computed(() => sectionFilters(props.section))
 

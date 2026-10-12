@@ -2,6 +2,7 @@ import type { LocationQuery, LocationQueryRaw } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
 import { OFFERED_LANGUAGE_CODES } from '@/i18n'
+import type { CourseCreatorsScope } from '@/shared/composables/useCourseCreators'
 import { CHROMATIC_SCALE } from '@/shared/utils/musicTheory'
 
 type Exercise = components['schemas']['Exercise']
@@ -85,6 +86,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The query keys a list state is written under; any of them means the address names a state. */
 const STATE_KEYS = ['q', 'sort', 'status', 'type', 'level', 'instrument', 'kind', 'shows', 'root', 'language', 'skill', 'concept', 'author']
+
+/** Where each section's author filter finds its authors. */
+export const CREATORS_SCOPE: Record<AuthoringSection, CourseCreatorsScope> = {
+  diagrams: 'diagrams',
+  exercises: 'exercises',
+  lessons: 'lessons',
+  paths: 'path-library',
+  courses: 'managed',
+}
 
 export function sectionFilters(section: AuthoringSection): FilterKey[] {
   return SECTION_FILTERS[section]
