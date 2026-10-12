@@ -217,4 +217,13 @@ describe('DiagramRefControls preview of a chord', () => {
     expect(preview(wrapper).findComponent(FrettedDiagramView).exists()).toBe(true)
     expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
   })
+
+  it("doesn't say students can't see a diagram it draws, with or without a playback", async () => {
+    for (const diagram of [chord, makeFrettedDiagram()]) {
+      const { wrapper } = mountControls(diagram)
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="embed-picker-unavailable"]').exists()).toBe(false)
+    }
+  })
 })
