@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue'
 
+import { announcedCurrentPath } from '@/features/student/composables/currentPathAnnouncer'
 import { useApi } from '@/shared/composables/useApi'
 import { useCurrentUserStore } from '@/stores/currentUser'
 import type { components } from '@/api/generated/core-domain'
@@ -12,7 +13,8 @@ export type StudentPathError = 'no-path' | 'load-failed'
 /**
  * The student's current path. Which steps are locked for language depends on the student's
  * locale, so the path reloads whenever the server confirms a new one — in the background,
- * keeping the path on screen instead of going back to a skeleton.
+ * keeping the path on screen instead of going back to a skeleton. A switch made anywhere replaces it
+ * at once.
  */
 export function useStudentPath() {
   const { coreApi } = useApi()
@@ -50,6 +52,15 @@ export function useStudentPath() {
       if (code && previous && code !== previous) void load({ quiet: true })
     },
   )
+
+  watch(announcedCurrentPath, (announced) => {
+    if (!announced) return
+    // Whatever an earlier load answers now is older than this.
+    epoch++
+    isLoading.value = false
+    data.value = announced.view
+    error.value = announced.view ? null : 'no-path'
+  })
 
   void load()
 

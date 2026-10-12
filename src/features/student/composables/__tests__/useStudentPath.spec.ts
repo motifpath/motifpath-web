@@ -11,6 +11,8 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET: get }, eventApi: {} }),
 }))
 
+import { makeCurrentPath } from '@/features/student/testing/learning'
+import { announceCurrentPath } from '@/features/student/composables/currentPathAnnouncer'
 import { useStudentPath as useStudentPathUnscoped } from '@/features/student/composables/useStudentPath'
 
 // Each call runs in its own scope, stopped after the test, so an earlier test's locale watcher
@@ -90,5 +92,42 @@ describe('useStudentPath', () => {
     expect(isLoading.value).toBe(false)
     await settle()
     expect(data.value?.title).toBe('Fundamentos do blues')
+  })
+
+  it('takes on a current path that changed elsewhere, without loading again', async () => {
+    get.mockResolvedValueOnce({ data: { title: 'Guitar foundations', items: [] }, error: undefined })
+    const { data } = useStudentPath()
+    await settle()
+    const loads = get.mock.calls.length
+
+    announceCurrentPath(makeCurrentPath({ title: 'Reading rhythm' }))
+    await nextTick()
+
+    expect(data.value?.title).toBe('Reading rhythm')
+    expect(get.mock.calls.length).toBe(loads)
+  })
+
+  it('shows no path once nothing is current any more', async () => {
+    get.mockResolvedValueOnce({ data: { title: 'Guitar foundations', items: [] }, error: undefined })
+    const { data, error } = useStudentPath()
+    await settle()
+
+    announceCurrentPath(null)
+    await nextTick()
+
+    expect(data.value).toBeNull()
+    expect(error.value).toBe('no-path')
+  })
+
+  it('keeps an announced path over a load that answers later', async () => {
+    let answer: (value: unknown) => void = () => {}
+    get.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)))
+    const { data } = useStudentPath()
+
+    announceCurrentPath(makeCurrentPath({ title: 'Reading rhythm' }))
+    answer({ data: { title: 'Guitar foundations', items: [] }, error: undefined })
+    await settle()
+
+    expect(data.value?.title).toBe('Reading rhythm')
   })
 })

@@ -1,3 +1,4 @@
+import { announceCurrentPath } from '@/features/student/composables/currentPathAnnouncer'
 import { useApiMutation } from '@/shared/composables/useApiMutation'
 import type { components } from '@/api/generated/core-domain'
 
@@ -7,7 +8,7 @@ type StudentPathView = components['schemas']['StudentPathView']
 export type CurrentPathTarget = { courseEnrollmentId: string } | { studentPathId: string }
 
 export function useSetCurrentPath() {
-  const setCurrentPath = useApiMutation<[CurrentPathTarget], StudentPathView>(
+  const put = useApiMutation<[CurrentPathTarget], StudentPathView>(
     (coreApi, target) =>
       coreApi.PUT('/students/me/current-path', {
         body:
@@ -17,6 +18,12 @@ export function useSetCurrentPath() {
       }),
     'Failed to switch your current course or path',
   )
+
+  async function setCurrentPath(target: CurrentPathTarget): Promise<StudentPathView> {
+    const view = await put(target)
+    announceCurrentPath(view)
+    return view
+  }
 
   return { setCurrentPath }
 }
