@@ -27,10 +27,11 @@
     "labelPlaceholder": "Rótulo do botão mostrado ao aluno"
   },
   "exercisePreviewModal": {
-    "title": "Pré-visualização do aluno",
     "portrait": "Retrato",
     "landscape": "Paisagem",
-    "description": "Responsivo — o modo retrato empilha, o paisagem coloca o enunciado ao lado da resposta. Este é exatamente o mesmo componente que a tela de prática do aluno usa — não é uma cópia redesenhada — então o que você vê aqui é o que eles veem, sem correção (ele nunca recebe qual opção está marcada como correta)."
+    "description": "A mesma tela em que os alunos praticam: em retrato tudo empilha, em paisagem o enunciado fica ao lado da resposta. Verificar corrige sua resposta como corrigiria a de um aluno, e nada é registrado.",
+    "check": "Verificar",
+    "tryAgain": "Tentar de novo"
   },
   "imageChoiceOptionsEditor": {
     "addLabel": "Adicionar opção de imagem",
@@ -126,7 +127,25 @@
     "exerciseCreated": "Exercício criado.",
     "saveFailed": "Falha ao salvar o exercício",
     "diagramSelected": "Diagrama selecionado",
-    "chooseImageOrDiagram": "Escolha uma imagem ou um diagrama"
+    "chooseImageOrDiagram": "Escolha uma imagem ou um diagrama",
+    "chooseTypeHeading": "O que o aluno vai fazer?",
+    "typeLockedAfterSave": "O tipo não pode ser alterado depois de salvar pela primeira vez.",
+    "typeDescriptions": {
+      "image_recognition": "Toca o lugar certo em uma imagem ou um diagrama.",
+      "image_choice": "Escolhe a imagem, o diagrama ou o diagrama de acorde certo.",
+      "text_response": "Escolhe a resposta certa entre opções de texto.",
+      "audio_recognition": "Ouve um som e escolhe o que é.",
+      "audio_selection": "Ouve as opções e escolhe o som certo."
+    },
+    "missing": {
+      "options": "Marque ao menos uma opção como correta",
+      "stimulus": "Escolha um andamento de 20 a 300 BPM",
+      "skills": "Adicione uma habilidade",
+      "concepts": "Adicione um conceito"
+    },
+    "details": "Detalhes",
+    "titleLabel": "Título do exercício",
+    "leaveMessage": "Suas alterações neste exercício não foram salvas e serão perdidas."
   },
   "exerciseListView": {
     "heading": "Exercícios",

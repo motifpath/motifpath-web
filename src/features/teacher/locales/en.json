@@ -27,10 +27,11 @@
     "labelPlaceholder": "Button label shown to the student"
   },
   "exercisePreviewModal": {
-    "title": "Student preview",
     "portrait": "Portrait",
     "landscape": "Landscape",
-    "description": "Responsive — portrait stacks, landscape puts the prompt beside the answer. This is the exact same component the student's Practice screen mounts — not a redrawn copy — so what you see here is what they see, ungraded (it never receives which option is marked correct)."
+    "description": "The same screen students practise on: portrait stacks, landscape puts the prompt beside the answer. Check grades your answer as it would a student's, and nothing is recorded.",
+    "check": "Check",
+    "tryAgain": "Try again"
   },
   "imageChoiceOptionsEditor": {
     "addLabel": "Add image option",
@@ -126,7 +127,25 @@
     "exerciseCreated": "Exercise created.",
     "saveFailed": "Failed to save the exercise",
     "diagramSelected": "Diagram selected",
-    "chooseImageOrDiagram": "Choose an image or a diagram"
+    "chooseImageOrDiagram": "Choose an image or a diagram",
+    "chooseTypeHeading": "What will the student do?",
+    "typeLockedAfterSave": "The type can't be changed after the first save.",
+    "typeDescriptions": {
+      "image_recognition": "Taps the right place on an image or a diagram.",
+      "image_choice": "Picks the right image, diagram or chord box.",
+      "text_response": "Picks the right answer from text options.",
+      "audio_recognition": "Hears one sound and picks what it is.",
+      "audio_selection": "Hears the options and picks the right sound."
+    },
+    "missing": {
+      "options": "Mark at least one option correct",
+      "stimulus": "Pick a tempo from 20 to 300 BPM",
+      "skills": "Add a skill",
+      "concepts": "Add a concept"
+    },
+    "details": "Details",
+    "titleLabel": "Exercise title",
+    "leaveMessage": "Your changes to this exercise haven't been saved and will be lost."
   },
   "exerciseListView": {
     "heading": "Exercises",
