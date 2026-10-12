@@ -403,6 +403,25 @@ describe('EmbeddedDiagram', () => {
       card.remove()
     })
 
+    it('lights the markers a player outside it is playing, and offers no Play of its own', async () => {
+      serve(makeSequencedFrettedDiagram())
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: playable, activePositionIds: ['p1'] } })
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="diagram-player"]').exists()).toBe(false)
+      expect(wrapper.findComponent(FrettedDiagramView).props()).toMatchObject({ activePositionIds: ['p1'], controlsWidth: 0 })
+    })
+
+    it('lights the chord box markers a player outside it is playing, with no Play under it', async () => {
+      const voicing = makeVoicing('a-minor', 'chord-am', { fingering: [{ position_id: 'p0', finger: '1' }] })
+      serve(makeSequencedFrettedDiagram({ purpose: 'chord_voicing', chord_voicing: voicing }))
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: playable, activePositionIds: ['p0'] } })
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="diagram-player"]').exists()).toBe(false)
+      expect(wrapper.findComponent(ChordBox).props('activePositionIds')).toEqual(['p0'])
+    })
+
     it('never offers Play on a stack', async () => {
       serve(makeSequencedFrettedDiagram())
       const stack: DiagramEmbed = { kind: 'stack', stack: [playable.kind === 'single' ? playable.ref : makeDiagramRef()] }

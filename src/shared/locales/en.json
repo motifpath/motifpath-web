@@ -416,5 +416,13 @@
   "rootNoteSelect": {
     "label": "Root note",
     "any": "Any"
+  },
+  "listenControl": {
+    "listen": "Listen",
+    "sound": "{name} · {bpm} BPM"
+  },
+  "whatYouHeard": {
+    "heading": "What you heard: {name}",
+    "playAgain": "Play again"
   }
 }

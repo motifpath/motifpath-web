@@ -57,6 +57,9 @@ const props = withDefaults(
     /** A failed load says so in place and offers Try again, for a diagram the student is reading
      *  around: a lesson's text would otherwise have a silent gap. */
     retryable?: boolean
+    /** The positions a player outside the diagram is sounding, to light up. Given, the diagram
+     *  offers no Play of its own. */
+    activePositionIds?: string[]
   }>(),
   {
     selectablePositionIds: () => [],
@@ -69,6 +72,7 @@ const props = withDefaults(
     inert: false,
     compact: false,
     retryable: false,
+    activePositionIds: undefined,
   },
 )
 
@@ -83,7 +87,9 @@ const { t } = useTypedT()
 const { status, failed, diagram, instrument, diagramRef, labelMode, legend, retry } = useEmbeddedDiagram(() => props.embed)
 watch(status, (next) => emit('status', next), { immediate: true })
 
-const activePositionIds = shallowRef<string[]>([])
+const heardPositionIds = shallowRef<string[]>([])
+/** The positions to light up: an outside player's when one is given, else the diagram's own. */
+const litPositionIds = computed(() => props.activePositionIds ?? heardPositionIds.value)
 
 const { localizedName } = useLocalizedName()
 const takesTaps = computed(() => props.selectablePositionIds.length > 0 || props.answerCells.length > 0)
@@ -94,9 +100,11 @@ const chordView = useChordView(() => (isChord.value && !fixedBox.value ? diagram
 const showsBox = computed(() => fixedBox.value || (isChord.value && chordView.view.value === 'box'))
 const hiddenPositionIds = computed(() => diagramRef.value?.layers.hidden_position_ids ?? [])
 
-// The rail keeps room for the player only when there is something to play.
+// The rail keeps room for the player only when there is something to play, and no player outside
+// the diagram plays it instead.
 const playable = computed(
   () =>
+    props.activePositionIds === undefined &&
     props.embed.kind === 'single' &&
     diagram.value !== null &&
     instrument.value !== null &&
@@ -125,7 +133,7 @@ const playable = computed(
         :diagram="diagram"
         :instrument="instrument"
         :playback="diagramRef.playback ?? null"
-        @active="activePositionIds = $event"
+        @active="heardPositionIds = $event"
       />
     </div>
     <div data-test="embedded-diagram-drawing">
@@ -138,7 +146,7 @@ const playable = computed(
         :scale="2"
         :fit="props.compact"
         :aria-hidden="props.inert ? 'true' : undefined"
-        :active-position-ids="activePositionIds"
+        :active-position-ids="litPositionIds"
         :hidden-position-ids="hiddenPositionIds"
         :selectable-position-ids="props.selectablePositionIds"
         :answer-cells="props.answerCells"
@@ -161,7 +169,7 @@ const playable = computed(
         :answer-marks="props.answerMarks"
         :position-marks="props.positionMarks"
         :multiple="props.multiple"
-        :active-position-ids="activePositionIds"
+        :active-position-ids="litPositionIds"
         :compact="props.compact"
         :drawing-inert="props.inert"
         :controls-width="playable ? PLAYER_WIDTH : 0"
@@ -170,10 +178,11 @@ const playable = computed(
       >
         <template #controls>
           <DiagramPlayer
+            v-if="playable"
             :diagram="diagram"
             :instrument="instrument"
             :playback="diagramRef.playback ?? null"
-            @active="activePositionIds = $event"
+            @active="heardPositionIds = $event"
           />
         </template>
       </FrettedDiagramView>
@@ -184,7 +193,7 @@ const playable = computed(
         :diagram="diagram"
         :instrument="instrument"
         :playback="diagramRef.playback ?? null"
-        @active="activePositionIds = $event"
+        @active="heardPositionIds = $event"
       />
     </div>
     <DiagramLegend v-if="legend.length > 1" :entries="legend" />
