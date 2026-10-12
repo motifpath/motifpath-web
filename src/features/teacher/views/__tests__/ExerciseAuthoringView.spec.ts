@@ -96,6 +96,8 @@ import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagr
 import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
+import SoundPickerModal from '@/features/teacher/components/SoundPickerModal.vue'
+import SoundSource from '@/features/teacher/components/SoundSource.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
@@ -103,12 +105,12 @@ import { useToast } from '@/shared/composables/useToast'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
 
-// Picks a stimulus file in whichever picker is open: images come through the image-or-diagram
-// modal, audio through the file picker.
+// Picks a stimulus file where the type takes it: an image through the image-or-diagram modal, a
+// sound through its SoundSource.
 async function pickStimulus(wrapper: Wrapper, file: File) {
   const media = wrapper.findComponent(MediaPickerModal)
   if (media.exists() && media.props('open')) await media.vm.$emit('image', file)
-  else await wrapper.findComponent(ImagePickerModal).vm.$emit('select', file)
+  else await wrapper.getComponent(SoundSource).vm.$emit('file', file)
 }
 
 async function fillMinimalTextResponse(wrapper: Wrapper) {
@@ -366,7 +368,7 @@ describe('ExerciseAuthoringView', () => {
 
     await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
     expect(wrapper.findComponent({ name: 'TextOptionsEditor' }).exists()).toBe(true)
-    expect(wrapper.get('[data-test="choose-stimulus"]').text()).toContain('audio')
+    expect(wrapper.findComponent(SoundSource).props('sound')).toBeNull()
 
     await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
     expect(wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' }).exists()).toBe(true)
@@ -815,7 +817,6 @@ describe('ExerciseAuthoringView', () => {
     // Switch to audio and pick a stimulus there instead -- the image pick
     // is now abandoned and should not resurface if we switch back.
     await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
-    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
     await pickStimulus(wrapper, new File(['b'], 'clip.mp3'))
 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:fret.png')
@@ -997,6 +998,107 @@ describe('ExerciseAuthoringView', () => {
     await flushPromises()
 
     expect(POST).toHaveBeenCalled()
+  })
+
+  describe('a listening exercise’s sound', () => {
+    const strum = {
+      diagram_id: 'a-minor',
+      layers: { intervals: true },
+      playback: { playback_id: 'strum', direction: 'as_authored' as const, loop: false },
+    }
+
+    async function listening() {
+      const wrapper = await mountView()
+      await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
+      return wrapper
+    }
+
+    async function fillAndSave(wrapper: Wrapper) {
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Major or minor?')
+      await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Is this chord major or minor?'))
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      await wrapper.get('input[placeholder="Option text"]').setValue('Minor')
+      await wrapper.get('[data-test="option-correct"]').trigger('click')
+      await selectClassification(wrapper)
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+      return POST.mock.calls[0]![1].body
+    }
+
+    it('takes the sound from a diagram, and saves it naming the playback chosen', async () => {
+      const wrapper = await listening()
+
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      const picker = wrapper.getComponent(SoundPickerModal)
+      expect(picker.props()).toMatchObject({ open: true, initial: null })
+      await picker.vm.$emit('apply', strum)
+
+      expect(wrapper.getComponent(SoundSource).props('sound')).toEqual({ kind: 'diagram', ref: strum })
+      expect(wrapper.getComponent(SoundPickerModal).props('open')).toBe(false)
+      const body = await fillAndSave(wrapper)
+      expect(body.diagram_ref).toEqual(strum)
+      expect(body).not.toHaveProperty('audio_url')
+      expect(upload).not.toHaveBeenCalled()
+    })
+
+    it('reopens a diagram sound’s settings from Edit settings', async () => {
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      await wrapper.getComponent(SoundSource).vm.$emit('edit')
+
+      expect(wrapper.getComponent(SoundPickerModal).props()).toMatchObject({ open: true, initial: strum })
+    })
+
+    it('replaces a diagram sound with an uploaded file, uploaded on save', async () => {
+      upload.mockResolvedValueOnce('https://cdn.example.com/fifth.mp3')
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      const file = new File(['a'], 'fifth.mp3', { type: 'audio/mpeg' })
+      await pickStimulus(wrapper, file)
+
+      expect(wrapper.getComponent(SoundSource).props('sound')).toEqual({ kind: 'file', url: 'blob:fifth.mp3' })
+      const body = await fillAndSave(wrapper)
+      expect(upload).toHaveBeenCalledWith(file, 'audio')
+      expect(body.audio_url).toBe('https://cdn.example.com/fifth.mp3')
+      expect(body).not.toHaveProperty('diagram_ref')
+    })
+
+    it('drops a picked file, never uploading it, once a diagram sound replaces it', async () => {
+      const wrapper = await listening()
+      await pickStimulus(wrapper, new File(['a'], 'fifth.mp3'))
+
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:fifth.mp3')
+      await fillAndSave(wrapper)
+      expect(upload).not.toHaveBeenCalled()
+    })
+
+    it('removes the sound', async () => {
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      await wrapper.getComponent(SoundSource).vm.$emit('remove')
+
+      expect(wrapper.getComponent(SoundSource).props('sound')).toBeNull()
+    })
+
+    it('previews the diagram sound as students hear it', async () => {
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      await wrapper.get('[data-test="open-preview"]').trigger('click')
+
+      expect(wrapper.getComponent(ExercisePreview).props()).toMatchObject({ exerciseType: 'audio_recognition', diagramRef: strum })
+    })
   })
 
   describe('edit mode', () => {

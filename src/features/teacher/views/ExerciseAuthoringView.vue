@@ -10,9 +10,11 @@ import ExercisePreview from '@/features/teacher/components/ExercisePreview.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
 import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulusEditor.vue'
-import ImagePickerModal from '@/features/teacher/components/ImagePickerModal.vue'
 import ImageRegionEditor from '@/features/teacher/components/ImageRegionEditor.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
+import SoundPickerModal from '@/features/teacher/components/SoundPickerModal.vue'
+import SoundSource from '@/features/teacher/components/SoundSource.vue'
+import type { SoundValue } from '@/features/teacher/components/SoundSource.vue'
 import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
 import TextOptionsEditor from '@/features/teacher/components/TextOptionsEditor.vue'
 import { useCreateExercise } from '@/features/teacher/composables/useCreateExercise'
@@ -141,25 +143,11 @@ const stimulusFile = ref<{ file: File; kind: 'image' | 'audio' } | null>(null)
 const optionFiles = reactive<Record<string, File>>({})
 
 const stimulusKind = computed(() => (form.exerciseType.value === 'audio_recognition' ? 'audio' : 'image'))
-const hasStimulus = computed(() =>
-  stimulusKind.value === 'audio' ? !!form.audioUrl.value : !!form.imageUrl.value,
-)
 const stimulusImageLabel = computed(() =>
   form.imageUrl.value
     ? (stimulusFile.value?.file.name ?? t('exerciseAuthoringView.imageSelected'))
     : t('exerciseAuthoringView.noImageSelected'),
 )
-
-const stimulusButtonLabel = computed(() => {
-  if (stimulusKind.value === 'audio') {
-    return hasStimulus.value
-      ? t('exerciseAuthoringView.changeStimulusAudio')
-      : t('exerciseAuthoringView.chooseStimulusAudio')
-  }
-  return hasStimulus.value
-    ? t('exerciseAuthoringView.changeStimulusImage')
-    : t('exerciseAuthoringView.chooseStimulusImage')
-})
 
 function onStimulusPicked(file: File) {
   const kind = stimulusKind.value
@@ -175,9 +163,42 @@ function onStimulusPicked(file: File) {
   other.value = ''
 
   stimulusFile.value = { file, kind }
+  if (kind === 'audio') form.setSoundDiagram(null)
   target.value = URL.createObjectURL(file)
   if (kind === 'image') form.stimulusSource.value = 'image'
   stimulusPickerOpen.value = false
+}
+
+// A listening exercise's sound: an uploaded file, or a diagram's playback chosen in its picker.
+const stimulusSound = computed<SoundValue | null>(() => {
+  if (form.soundDiagram.value) return { kind: 'diagram', ref: form.soundDiagram.value }
+  return form.audioUrl.value ? { kind: 'file', url: form.audioUrl.value } : null
+})
+const soundPickerOpen = ref(false)
+/** The diagram sound reopened by Edit settings; null to choose a new one. */
+const soundPickerInitial = ref<DiagramRef | null>(null)
+
+function openSoundPicker(initial: DiagramRef | null) {
+  soundPickerInitial.value = initial
+  soundPickerOpen.value = true
+}
+
+/** Drops the sound's file, never uploading a picked one. */
+function dropSoundFile() {
+  revokeIfBlob(form.audioUrl.value)
+  form.audioUrl.value = ''
+  if (stimulusFile.value?.kind === 'audio') stimulusFile.value = null
+}
+
+function onSoundDiagram(sound: DiagramRef) {
+  dropSoundFile()
+  form.setSoundDiagram(sound)
+  soundPickerOpen.value = false
+}
+
+function removeSound() {
+  dropSoundFile()
+  form.setSoundDiagram(null)
 }
 
 // Bumped on every pick, so the stimulus editor starts afresh even when the same diagram is
@@ -300,6 +321,11 @@ const previewOptions = computed(() => {
     return diagramStimulusOptions(diagram.value, instrument.value, form.stimulusDiagram.value)
   }
   return form.toCreateExerciseRequest().options ?? []
+})
+// A diagram stimulus is the board to answer on; an audio_recognition's diagram is its sound.
+const previewDiagramRef = computed(() => {
+  if (form.hasDiagramStimulus.value) return form.stimulusDiagram.value ?? undefined
+  return form.exerciseType.value === 'audio_recognition' ? (form.soundDiagram.value ?? undefined) : undefined
 })
 const saving = ref(false)
 const toast = useToast()
@@ -547,16 +573,15 @@ const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 
             </template>
           </div>
           <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
-            <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.audioStimulusLabel') }}</label>
-            <button
-              type="button"
-              data-test="choose-stimulus"
-              class="w-fit rounded-md border border-border bg-surface-raised px-3 py-2 text-sm font-semibold"
-              @click="stimulusPickerOpen = true"
-            >
-              {{ stimulusButtonLabel }}
-            </button>
-            <audio v-if="form.audioUrl.value" :src="form.audioUrl.value" controls class="w-full" />
+            <span :class="eyebrowClass">{{ t('exerciseAuthoringView.audioStimulusLabel') }}</span>
+            <SoundSource
+              :sound="stimulusSound"
+              :title="t('exerciseAuthoringView.audioStimulusLabel')"
+              @file="onStimulusPicked"
+              @diagram="openSoundPicker(null)"
+              @edit="openSoundPicker(form.soundDiagram.value)"
+              @remove="removeSound"
+            />
           </div>
         </div>
         <ImageRegionEditor
@@ -645,12 +670,7 @@ const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 
       </section>
     </EditorBody>
 
-    <ImagePickerModal
-      :open="stimulusPickerOpen && stimulusKind === 'audio'"
-      kind="audio"
-      @select="onStimulusPicked"
-      @close="stimulusPickerOpen = false"
-    />
+    <SoundPickerModal :open="soundPickerOpen" :initial="soundPickerInitial" @apply="onSoundDiagram" @close="soundPickerOpen = false" />
     <MediaPickerModal
       :open="stimulusPickerOpen && stimulusKind === 'image'"
       :initial-diagram="showsDiagramStimulus ? form.stimulusDiagram.value : null"
@@ -665,7 +685,7 @@ const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 
       :exercise-type="form.exerciseType.value"
       :options="previewOptions"
       :image-url="form.imageUrl.value"
-      :diagram-ref="form.hasDiagramStimulus.value ? (form.stimulusDiagram.value ?? undefined) : undefined"
+      :diagram-ref="previewDiagramRef"
       :audio-url="form.audioUrl.value"
       @close="previewOpen = false"
     />
