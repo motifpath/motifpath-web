@@ -599,5 +599,20 @@
     },
     "emptyMessage": "Teachers are still writing them. Come back soon.",
     "loadFailed": "The catalog did not load. Check your connection and try again."
+  },
+  "discoverFilters": {
+    "title": "Filters",
+    "close": "Close filters",
+    "groups": {
+      "levels": "Level",
+      "instrument": "Instrument",
+      "language": "Language",
+      "teacher": "Teacher"
+    },
+    "show": {
+      "courses": "Show {shown} course | Show {shown} courses",
+      "paths": "Show {shown} path | Show {shown} paths"
+    },
+    "showUnknown": "Show results"
   }
 }

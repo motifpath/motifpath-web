@@ -2,7 +2,12 @@ import { computed, ref, watch, type Ref } from 'vue'
 
 import type { DiscoverSegment } from '@/features/student/composables/useDiscoverState'
 import { type CatalogItem, courseItem, pathItem } from '@/features/student/utils/catalogItem'
-import { type CatalogQuery, type DiscoverState, toCatalogQuery } from '@/features/student/utils/discoverQuery'
+import {
+  type CatalogQuery,
+  type DiscoverFilters,
+  type DiscoverState,
+  toCatalogQuery,
+} from '@/features/student/utils/discoverQuery'
 import { useApi } from '@/shared/composables/useApi'
 import { type PageRequest, useApiPagedList } from '@/shared/composables/useApiPagedList'
 
@@ -21,7 +26,7 @@ async function fetchCatalog(coreApi: CoreApi, segment: DiscoverSegment, query: C
 /**
  * The segment's catalog, 20 at a time, asked again whenever the segment, search or filters
  * change. When nothing matches, it also counts the other segment's matches, so the student can
- * be pointed there.
+ * be pointed there. It can also count what a draft of filters would show, with today's search.
  */
 export function useDiscoverCatalog(segment: Ref<DiscoverSegment>, state: DiscoverState) {
   const { coreApi } = useApi()
@@ -43,8 +48,14 @@ export function useDiscoverCatalog(segment: Ref<DiscoverSegment>, state: Discove
     if (request === latestCount) otherCount.value = data ? data.total : null
   }
 
+  async function countMatches(filters: DiscoverFilters): Promise<number | null> {
+    const draftQuery = toCatalogQuery({ q: state.q, filters })
+    const { data, error } = await fetchCatalog(coreApi, segment.value, { limit: 1, offset: 0, ...draftQuery })
+    return error || !data ? null : data.total
+  }
+
   watch([segment, query], () => void reload(), { deep: true })
   watch([page.isLoading, items], () => void countOther())
 
-  return { items, reload, otherCount, ...page }
+  return { items, reload, otherCount, countMatches, ...page }
 }

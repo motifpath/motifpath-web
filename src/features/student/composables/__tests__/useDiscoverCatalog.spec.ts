@@ -107,4 +107,26 @@ describe('useDiscoverCatalog', () => {
 
     expect(catalog.error.value).toBe(true)
   })
+
+  it('counts what a draft of filters would show, with the search, on the segment', async () => {
+    answer(page([courseEntry], 7), page([]))
+    const { catalog } = setup('courses', { q: 'blues' })
+    await flushPromises()
+
+    const counted = await catalog.countMatches({ levels: ['beginner'], skills: [], concepts: [] })
+
+    expect(GET).toHaveBeenLastCalledWith('/catalog/courses', {
+      params: { query: { limit: 1, offset: 0, q: 'blues', levels: ['beginner'] } },
+    })
+    expect(counted).toBe(7)
+  })
+
+  it('counts nothing it cannot, rather than a wrong number', async () => {
+    answer(page([courseEntry]), page([]))
+    const { catalog } = setup('courses')
+    await flushPromises()
+    GET.mockResolvedValue({ error: { status: 500 } })
+
+    expect(await catalog.countMatches({ levels: [], skills: [], concepts: [] })).toBeNull()
+  })
 })

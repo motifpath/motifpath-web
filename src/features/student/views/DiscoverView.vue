@@ -4,9 +4,10 @@
  * one set of filters shared by both. Everything lives in the address, so Back from a detail and a
  * shared link reopen the same list. Rows open the detail; nothing starts from here.
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import CatalogCard from '@/features/student/components/CatalogCard.vue'
+import DiscoverFiltersLayer from '@/features/student/components/DiscoverFiltersLayer.vue'
 import { useCatalogReturn } from '@/features/student/composables/useCatalogReturn'
 import { useDiscoverCatalog } from '@/features/student/composables/useDiscoverCatalog'
 import { useDiscoverChips } from '@/features/student/composables/useDiscoverChips'
@@ -17,12 +18,15 @@ import { type CatalogItem, catalogBadge } from '@/features/student/utils/catalog
 import { activeFilterCount, type DiscoverFilters } from '@/features/student/utils/discoverQuery'
 import AppButton from '@/shared/components/AppButton.vue'
 import AppliedFilters from '@/shared/components/AppliedFilters.vue'
+import FilterButton from '@/shared/components/FilterButton.vue'
 import ListEndLoader from '@/shared/components/ListEndLoader.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import SearchField from '@/shared/components/SearchField.vue'
 import SegmentedControl from '@/shared/components/SegmentedControl.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
+import { useListInstruments } from '@/shared/composables/useListInstruments'
+import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -46,6 +50,17 @@ catalogReturn.resume({
 const chips = useDiscoverChips(state)
 const { enrollments } = useMyCourseEnrollments()
 const { paths: heldPaths } = useMyStandalonePaths()
+const { instruments: allInstruments } = useListInstruments()
+const { localizedName } = useLocalizedName()
+
+const filtersOpen = ref(false)
+const instruments = computed(() =>
+  allInstruments.value.map((instrument) => ({ id: instrument.instrument_id, name: localizedName(instrument.names) })),
+)
+const teacherName = computed(() => {
+  const label = chips.value.find((chip) => chip.id === 'teacher')?.label
+  return label && label !== '…' ? label : null
+})
 
 const otherSegment = computed<DiscoverSegment>(() => (segment.value === 'courses' ? 'paths' : 'courses'))
 const layout = computed(() => (sizeClass.value === 'expanded' ? 'tile' : 'row'))
@@ -110,6 +125,7 @@ function removeChip(id: string) {
 
     <div class="flex items-center gap-2" :class="{ 'max-w-xl': layout === 'tile' }">
       <SearchField v-model="searchText" class="flex-1" :placeholder="t(`discoverView.search.${segment}`)" />
+      <FilterButton data-test="discover-filters" :count="activeFilterCount(state.filters)" @click="filtersOpen = true" />
     </div>
 
     <AppliedFilters :chips="chips" @remove="removeChip" @clear="discover.clearFilters()" />
@@ -174,5 +190,16 @@ function removeChip(id: string) {
         @load="catalog.loadMore()"
       />
     </template>
+
+    <DiscoverFiltersLayer
+      :open="filtersOpen"
+      :segment="segment"
+      :filters="state.filters"
+      :count="catalog.countMatches"
+      :instruments="instruments"
+      :teacher-name="teacherName"
+      @apply="discover.setFilters"
+      @close="filtersOpen = false"
+    />
   </section>
 </template>
