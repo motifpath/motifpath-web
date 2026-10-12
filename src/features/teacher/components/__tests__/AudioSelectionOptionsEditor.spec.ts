@@ -125,8 +125,8 @@ describe('AudioSelectionOptionsEditor', () => {
     expect(wrapper.emitted('add')).toHaveLength(1)
   })
 
-  it('gives each option a row of its own on a phone, three per row otherwise', () => {
-    expect(mountEditor().classes()).toContain('grid-cols-3')
+  it('gives each option a row of its own at every size, since a sound row needs the width', () => {
+    expect(mountEditor().classes()).toContain('grid-cols-1')
     expect(mountEditor({ compact: true }).classes()).toContain('grid-cols-1')
   })
 })

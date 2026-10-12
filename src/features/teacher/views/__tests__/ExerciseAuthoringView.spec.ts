@@ -999,6 +999,13 @@ describe('ExerciseAuthoringView', () => {
     expect(POST).toHaveBeenCalled()
   })
 
+  it('wraps the exercise type tabs inside the editor column at every size', async () => {
+    const wrapper = await mountView()
+    const tabs = wrapper.get('[data-test="type-tab-audio_selection"]').element.parentElement!
+    expect(tabs.classList).toContain('flex-wrap')
+    expect(tabs.classList).not.toContain('w-fit')
+  })
+
   describe('a listening exercise’s sound', () => {
     const strum = {
       diagram_id: 'a-minor',

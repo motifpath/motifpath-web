@@ -16,7 +16,8 @@ withDefaults(
   defineProps<{
     options: T[]
     compact?: boolean
-    /** Options too wide to sit two to a row on a phone, such as a sound with its controls: one per row there. */
+    /** Options that need a row's width, such as a sound with its controls: one per row at every size,
+     *  since the editor's column is narrow beside the side panel too. */
     wide?: boolean
     addIcon: Component
     addLabel: string
@@ -29,7 +30,7 @@ const { t } = useTypedT()
 </script>
 
 <template>
-  <div class="grid gap-3" :class="compact ? (wide ? 'grid-cols-1' : 'grid-cols-2') : 'grid-cols-3'">
+  <div class="grid gap-3" :class="wide ? 'grid-cols-1' : compact ? 'grid-cols-2' : 'grid-cols-3'">
     <div
       v-for="option in options"
       :key="option.id"

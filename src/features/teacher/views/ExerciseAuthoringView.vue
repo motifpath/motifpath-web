@@ -517,13 +517,13 @@ const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 
             {{ lockedType?.label }}
             <Lock :size="14" class="text-ink-muted" aria-hidden="true" />
           </p>
-          <div v-else class="flex w-fit gap-2 rounded-lg bg-surface-sunken p-1" :class="{ 'flex-wrap': isCompact }">
+          <div v-else class="flex flex-wrap gap-2 rounded-lg bg-surface-sunken p-1">
             <button
               v-for="type in exerciseTypes"
               :key="type.value"
               type="button"
               :data-test="`type-tab-${type.value}`"
-              class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+              class="flex items-center gap-2 whitespace-nowrap rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               :class="form.exerciseType.value === type.value ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
               @click="form.exerciseType.value = type.value"
             >
