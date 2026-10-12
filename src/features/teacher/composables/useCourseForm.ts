@@ -119,11 +119,6 @@ export function useCourseForm() {
     checkpoints.value = checkpoints.value.filter((_, i) => i !== index)
   }
 
-  /** The distinct paths whose own title isn't known yet. */
-  const checkpointsMissingPathTitle = computed(() => [
-    ...new Set(checkpoints.value.filter((c) => c.pathTitle === null).map((c) => c.learningPathId)),
-  ])
-
   function setPathTitle(learningPathId: string, pathTitle: string) {
     checkpoints.value = checkpoints.value.map((checkpoint) =>
       checkpoint.learningPathId === learningPathId ? { ...checkpoint, pathTitle } : checkpoint,
@@ -172,7 +167,6 @@ export function useCourseForm() {
     addCheckpoint,
     moveCheckpoint,
     removeCheckpoint,
-    checkpointsMissingPathTitle,
     setPathTitle,
     loadFromCourse,
   }

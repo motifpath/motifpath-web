@@ -1,10 +1,6 @@
 import { Compass, Dumbbell, FileText, Grid3x3, Guitar, House, Library, Music, Network, Route } from 'lucide-vue-next'
 import type { FunctionalComponent } from 'vue'
 
-import type { components } from '@/api/generated/core-domain'
-
-type Role = components['schemas']['UserProfile']['role']
-
 export type DestinationId = 'home' | 'practice' | 'myPath' | 'learning' | 'discover'
 
 export interface Destination {
@@ -81,8 +77,3 @@ export const ADMIN_SECTIONS: NavSection[] = [
   { name: 'admin-knowledge-map', labelKey: 'nav.knowledgeMap', icon: Network },
   { name: 'admin-song-charts', labelKey: 'nav.songCharts', icon: Music },
 ]
-
-/** The authoring sections role can reach: the teacher ones, plus the admin ones for an admin. */
-export function authoringSectionsFor(role: Role | undefined): NavSection[] {
-  return role === 'admin' ? [...TEACHER_SECTIONS, ...ADMIN_SECTIONS] : TEACHER_SECTIONS
-}

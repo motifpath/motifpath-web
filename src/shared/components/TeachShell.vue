@@ -7,13 +7,12 @@
  * that goes back to it; a page that brings its own bar, such as an editor, has none.
  */
 import { ArrowLeft, House } from 'lucide-vue-next'
-import { computed, provide } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
 import BrandMark from '@/shared/components/BrandMark.vue'
 import NavItem from '@/shared/components/NavItem.vue'
-import { IN_TEACH_SHELL } from '@/shared/components/teachShellContext'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { ADMIN_SECTIONS, TEACHER_SECTIONS } from '@/shared/navigation'
@@ -36,7 +35,6 @@ const currentUser = useCurrentUserStore()
 
 const expanded = computed(() => sizeClass.value === 'expanded')
 const isAdmin = computed(() => currentUser.profile?.role === 'admin')
-provide(IN_TEACH_SHELL, true)
 
 const shownBar = computed(() => (expanded.value ? 'none' : props.bar))
 </script>

@@ -17,11 +17,9 @@
     "ariaLabel": "Principal"
   },
   "appBar": {
-    "menuAriaLabel": "Menu",
     "accountMenuAriaLabel": "Menu da conta",
     "themeToggleAriaLabel": "Alternar tema",
-    "brand": "MotifPath",
-    "editingCrumb": "— editando {label}"
+    "brand": "MotifPath"
   },
   "editorAppBar": {
     "back": "Voltar para {section}",
@@ -69,7 +67,6 @@
   },
   "buttons": {
     "save": "Salvar",
-    "saved": "Salvo",
     "tryAgain": "Tentar novamente",
     "signOut": "Sair",
     "backToPath": "Voltar para a trilha",

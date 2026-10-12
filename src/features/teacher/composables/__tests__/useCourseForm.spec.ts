@@ -182,7 +182,6 @@ describe('useCourseForm', () => {
       form.loadFromCourse(course)
 
       expect(form.checkpoints.value.map((c) => c.pathTitle)).toEqual(['Open chords', null])
-      expect(form.checkpointsMissingPathTitle.value).toEqual(['lp-2'])
     })
 
     it("fills in a path title once it's known", () => {
@@ -192,7 +191,6 @@ describe('useCourseForm', () => {
       form.setPathTitle('lp-2', 'Travis picking')
 
       expect(form.checkpoints.value[1]!.pathTitle).toBe('Travis picking')
-      expect(form.checkpointsMissingPathTitle.value).toEqual([])
     })
   })
 
@@ -204,7 +202,6 @@ describe('useCourseForm', () => {
     form.loadFromCourse(course)
 
     expect(form.checkpoints.value.map((c) => c.pathTitle)).toEqual(['Open chords', 'Travis picking'])
-    expect(form.checkpointsMissingPathTitle.value).toEqual([])
   })
 
   describe('isDirty', () => {
