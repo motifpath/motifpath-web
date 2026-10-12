@@ -843,5 +843,27 @@
     "remove": "Remover",
     "megabytes": "{value} MB",
     "gigabytes": "{value} GB"
+  },
+  "authoringList": {
+    "count": {
+      "diagrams": "{shown} diagrama | {shown} diagramas",
+      "exercises": "{shown} exercício | {shown} exercícios",
+      "lessons": "{shown} lição | {shown} lições",
+      "paths": "{shown} trilha | {shown} trilhas",
+      "courses": "{shown} curso | {shown} cursos"
+    },
+    "countOf": {
+      "diagrams": "{shown} de {total} diagrama | {shown} de {total} diagramas",
+      "exercises": "{shown} de {total} exercício | {shown} de {total} exercícios",
+      "lessons": "{shown} de {total} lição | {shown} de {total} lições",
+      "paths": "{shown} de {total} trilha | {shown} de {total} trilhas",
+      "courses": "{shown} de {total} curso | {shown} de {total} cursos"
+    },
+    "sort": {
+      "title": "Ordenar",
+      "byTitle": "Nome A–Z",
+      "byUpdated": "Alterados recentemente",
+      "buttonAriaLabel": "Ordenar: {sort}"
+    }
   }
 }
