@@ -1,13 +1,29 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp, GripVertical, X } from 'lucide-vue-next'
-import { ref } from 'vue'
+import { ArrowRight, Pencil, Trash2 } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import type { CheckpointDraft } from '@/features/teacher/composables/useCourseForm'
+import OrderedList from '@/shared/components/OrderedList.vue'
+import OrderedRow, { type OrderedRowAction } from '@/shared/components/OrderedRow.vue'
+import TextEntrySheet from '@/shared/components/TextEntrySheet.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-const props = withDefaults(defineProps<{ checkpoints: CheckpointDraft[]; disabled?: boolean }>(), {
-  disabled: false,
-})
+/** What the course editor knows of a checkpoint's path: whether learners can get it, and its size. */
+export interface CheckpointPathInfo {
+  status: 'draft' | 'published'
+  lessonCount: number
+}
+
+const props = withDefaults(
+  defineProps<{
+    checkpoints: CheckpointDraft[]
+    /** By learning path id; a path not looked up yet is missing. */
+    pathInfo: Record<string, CheckpointPathInfo>
+    disabled?: boolean
+  }>(),
+  { disabled: false },
+)
 const emit = defineEmits<{
   move: [fromIndex: number, toIndex: number]
   remove: [index: number]
@@ -15,44 +31,52 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useTypedT()
+const router = useRouter()
 
-// A row is only draggable while its handle is held, so text in its title
-// input can still be selected and dragged normally.
-const armedIndex = ref<number | null>(null)
-const draggedIndex = ref<number | null>(null)
-const dropTargetIndex = ref<number | null>(null)
+const actions = computed<OrderedRowAction[]>(() =>
+  props.disabled
+    ? []
+    : [
+        { id: 'rename', label: t('courseCheckpointList.rename'), icon: Pencil },
+        { id: 'open', label: t('courseCheckpointList.open'), icon: ArrowRight },
+        { id: 'remove', label: t('courseCheckpointList.remove'), icon: Trash2, danger: true },
+      ],
+)
 
-function onDragStart(index: number, event: DragEvent) {
-  if (props.disabled || armedIndex.value !== index) {
-    event.preventDefault()
-    return
-  }
-  draggedIndex.value = index
-  event.dataTransfer?.setData('text/plain', String(index))
+function titleOf(checkpoint: CheckpointDraft, index: number): string {
+  return `${index + 1} · ${checkpoint.override.trim() || checkpoint.pathTitle || '…'}`
 }
 
-function onDragOver(index: number) {
-  if (draggedIndex.value === null) return
-  dropTargetIndex.value = index
+function metaOf(checkpoint: CheckpointDraft): string {
+  const info = props.pathInfo[checkpoint.learningPathId]
+  if (!info) return t('courseCheckpointList.path')
+  const state = info.status === 'published' ? t('courseCheckpointList.published') : t('courseCheckpointList.draftPublishFirst')
+  return [t('courseCheckpointList.path'), t('courseCheckpointList.lessons', { count: info.lessonCount }), state].join(' · ')
 }
 
-function onDrop(index: number) {
-  const from = draggedIndex.value
-  draggedIndex.value = null
-  dropTargetIndex.value = null
-  if (from === null || from === index) return
-  emit('move', from, index)
+function blocksPublishing(checkpoint: CheckpointDraft): boolean {
+  return props.pathInfo[checkpoint.learningPathId]?.status === 'draft'
 }
 
-function onDragEnd() {
-  armedIndex.value = null
-  draggedIndex.value = null
-  dropTargetIndex.value = null
+function onAction(index: number, id: string) {
+  const checkpoint = props.checkpoints[index]
+  if (!checkpoint) return
+  if (id === 'rename') startRename(index)
+  else if (id === 'open') void router.push({ name: 'teacher-path-edit', params: { id: checkpoint.learningPathId } })
+  else if (id === 'remove') emit('remove', index)
 }
 
-function onOverrideInput(index: number, event: Event) {
-  if (!(event.target instanceof HTMLInputElement)) return
-  emit('updateOverride', index, event.target.value)
+// The checkpoint being renamed in this course, if any.
+const renamingIndex = ref<number | null>(null)
+const renaming = computed(() => (renamingIndex.value === null ? null : (props.checkpoints[renamingIndex.value] ?? null)))
+
+function startRename(index: number) {
+  renamingIndex.value = index
+}
+
+function confirmRename(value: string) {
+  if (renamingIndex.value !== null) emit('updateOverride', renamingIndex.value, value)
+  renamingIndex.value = null
 }
 </script>
 
@@ -62,87 +86,31 @@ function onOverrideInput(index: number, event: Event) {
       {{ t('courseCheckpointList.empty') }}
     </p>
 
-    <ol v-else class="flex flex-col gap-2">
-      <li
+    <OrderedList v-else @move="(from, to) => emit('move', from, to)">
+      <OrderedRow
         v-for="(checkpoint, index) in checkpoints"
         :key="checkpoint.key"
-        data-test="checkpoint-row"
-        :draggable="!disabled && armedIndex === index ? 'true' : 'false'"
-        class="flex flex-wrap items-center gap-3 rounded-md border bg-surface-sunken px-3 py-2.5"
-        :class="[
-          dropTargetIndex === index && draggedIndex !== index ? 'border-accent' : 'border-border',
-          draggedIndex === index ? 'opacity-60' : '',
-        ]"
-        @dragstart="onDragStart(index, $event)"
-        @dragover.prevent="onDragOver(index)"
-        @drop.prevent="onDrop(index)"
-        @dragend="onDragEnd"
-      >
-        <span
-          v-if="!disabled"
-          data-test="checkpoint-drag-handle"
-          :title="t('courseCheckpointList.dragHandleAriaLabel')"
-          class="shrink-0 cursor-grab text-ink-subtle"
-          @pointerdown="armedIndex = index"
-          @pointerup="armedIndex = null"
-        >
-          <GripVertical :size="16" aria-hidden="true" />
-        </span>
-        <span
-          data-test="checkpoint-position"
-          class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-muted"
-        >
-          {{ index + 1 }}
-        </span>
+        :index="index"
+        :count="checkpoints.length"
+        :title="titleOf(checkpoint, index)"
+        :meta="metaOf(checkpoint)"
+        :meta-tone="blocksPublishing(checkpoint) ? 'warning' : 'muted'"
+        :draggable="!disabled"
+        :actions="actions"
+        @action="onAction(index, $event)"
+      />
+    </OrderedList>
 
-        <div class="flex min-w-0 flex-1 flex-col gap-1">
-          <span data-test="checkpoint-path-title" class="truncate text-sm font-semibold text-ink">
-            {{ checkpoint.pathTitle ?? '…' }}
-          </span>
-          <input
-            type="text"
-            data-test="checkpoint-override"
-            :value="checkpoint.override"
-            :placeholder="checkpoint.pathTitle ?? ''"
-            :aria-label="t('courseCheckpointList.overrideAriaLabel', { position: index + 1 })"
-            :disabled="disabled"
-            class="w-full rounded-md border border-border bg-surface-raised px-2 py-1.5 text-sm disabled:cursor-not-allowed"
-            @input="onOverrideInput(index, $event)"
-          />
-        </div>
-
-        <template v-if="!disabled">
-          <button
-            type="button"
-            data-test="checkpoint-move-up"
-            :aria-label="t('courseCheckpointList.moveUpAriaLabel')"
-            :disabled="index === 0"
-            class="flex h-[26px] w-[26px] items-center justify-center rounded-sm border border-border bg-surface-raised text-ink-subtle disabled:cursor-not-allowed disabled:opacity-40"
-            @click="emit('move', index, index - 1)"
-          >
-            <ArrowUp :size="13" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            data-test="checkpoint-move-down"
-            :aria-label="t('courseCheckpointList.moveDownAriaLabel')"
-            :disabled="index === checkpoints.length - 1"
-            class="flex h-[26px] w-[26px] items-center justify-center rounded-sm border border-border bg-surface-raised text-ink-subtle disabled:cursor-not-allowed disabled:opacity-40"
-            @click="emit('move', index, index + 1)"
-          >
-            <ArrowDown :size="13" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            data-test="checkpoint-remove"
-            :aria-label="t('courseCheckpointList.removeAriaLabel')"
-            class="flex h-[26px] w-[26px] items-center justify-center rounded-sm text-ink-subtle"
-            @click="emit('remove', index)"
-          >
-            <X :size="14" aria-hidden="true" />
-          </button>
-        </template>
-      </li>
-    </ol>
+    <TextEntrySheet
+      :open="renaming !== null"
+      :title="t('courseCheckpointList.rename')"
+      :label="t('courseCheckpointList.renameLabel')"
+      :hint="t('courseCheckpointList.renameHint')"
+      :placeholder="renaming?.pathTitle ?? ''"
+      :value="renaming?.override ?? ''"
+      :confirm-label="t('courseCheckpointList.renameConfirm')"
+      @confirm="confirmRename"
+      @close="renamingIndex = null"
+    />
   </div>
 </template>

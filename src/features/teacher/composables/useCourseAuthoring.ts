@@ -9,6 +9,7 @@ type CourseDetail = components['schemas']['CourseDetail']
 type CourseVersion = components['schemas']['CourseVersion']
 type CreateCourseRequest = components['schemas']['CreateCourseRequest']
 type ReplaceCourseRequest = components['schemas']['ReplaceCourseRequest']
+type LearningPath = components['schemas']['LearningPath']
 
 /** A course publish refused because some of its checkpoints use draft learning paths. */
 export class DraftLearningPathsError extends Error {
@@ -79,11 +80,12 @@ export function useCourseMutations() {
 }
 
 /**
- * Looks up learning paths' own titles, which a course only carries for
- * checkpoints without a title override. Each title is looked up once; a
- * path that fails to load is tried again on the next lookUp.
+ * Looks up the learning paths behind a course's checkpoints: a course carries
+ * neither a path's own title (for a retitled checkpoint) nor whether learners
+ * can get it. Each path is looked up once; a path that fails to load is tried
+ * again on the next lookUp.
  */
-export function useLearningPathTitles(onFound: (learningPathId: string, title: string) => void) {
+export function useCheckpointPaths(onFound: (learningPathId: string, learningPath: LearningPath) => void) {
   const { coreApi } = useApi()
   const requested = new Set<string>()
 
@@ -96,7 +98,7 @@ export function useLearningPathTitles(onFound: (learningPathId: string, title: s
           params: { path: { learning_path_id: learningPathId } },
         })
         if (data) {
-          onFound(learningPathId, data.title)
+          onFound(learningPathId, data)
         } else {
           requested.delete(learningPathId)
         }

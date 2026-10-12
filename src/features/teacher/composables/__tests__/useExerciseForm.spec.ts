@@ -663,3 +663,71 @@ describe('useExerciseForm', () => {
     })
   })
 })
+
+describe('useExerciseForm — what a save needs and what is unsaved', () => {
+  function classified(form: ReturnType<typeof useExerciseForm>) {
+    form.skillIds.value = ['s-1']
+    form.conceptIds.value = ['c-1']
+  }
+
+  it('a new exercise needs a correct option, a skill and a concept, in that order', () => {
+    expect(useExerciseForm().missing.value).toEqual(['options', 'skills', 'concepts'])
+  })
+
+  it('needs nothing once an option is correct and it is classified', () => {
+    const form = useExerciseForm()
+    form.addTextOption()
+    form.toggleTextOption(form.textOptions.value[0]!.id)
+    classified(form)
+
+    expect(form.missing.value).toEqual([])
+  })
+
+  it('names a stimulus playback tempo outside 20–300 BPM', () => {
+    const form = useExerciseForm()
+    form.exerciseType.value = 'image_recognition'
+    const tooSlow: DiagramRef = {
+      diagram_id: 'd-penta',
+      layers: { intervals: true, subset: null },
+      correct_position_ids: ['p0'],
+      playback: { tempo_bpm: 10, voice_id: null, direction: 'as_authored', loop: false },
+    }
+    form.setStimulusDiagram(tooSlow)
+    classified(form)
+
+    expect(form.missing.value).toEqual(['stimulus'])
+  })
+
+  it('has nothing unsaved when new, and something once edited', () => {
+    const form = useExerciseForm()
+    expect(form.isDirty.value).toBe(false)
+
+    form.title.value = 'Find the G'
+    expect(form.isDirty.value).toBe(true)
+  })
+
+  it('has nothing unsaved once loaded, or once marked saved', () => {
+    const form = useExerciseForm()
+    form.loadFromExercise(exercise({ exercise_type: 'text_response', title: 'Find the G' }))
+    expect(form.isDirty.value).toBe(false)
+
+    form.title.value = 'Find the G string'
+    form.markSaved()
+    expect(form.isDirty.value).toBe(false)
+  })
+
+  it('a loaded image’s regions placed once the image is measured are not an edit', () => {
+    const form = useExerciseForm()
+    form.loadFromExercise(
+      exercise({
+        image_url: 'https://cdn.test/neck.png',
+        options: [{ option_id: 'o-1', is_correct: true, region: { x: 0.5, y: 0.5, width: 0.1, height: 0.1, shape: 'circle' } }],
+      }),
+    )
+
+    form.setStimulusImageSize(400, 200)
+
+    expect(form.regions.value).toHaveLength(1)
+    expect(form.isDirty.value).toBe(false)
+  })
+})

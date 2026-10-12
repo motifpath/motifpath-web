@@ -17,15 +17,56 @@
     "ariaLabel": "Main"
   },
   "appBar": {
-    "menuAriaLabel": "Menu",
     "accountMenuAriaLabel": "Account menu",
     "themeToggleAriaLabel": "Toggle theme",
-    "brand": "MotifPath",
-    "editingCrumb": "— editing {label}"
+    "brand": "MotifPath"
+  },
+  "editorAppBar": {
+    "back": "Back to {section}",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved ✓"
+  },
+  "unsavedChangesGuard": {
+    "title": "Leave without saving?",
+    "keepEditing": "Keep editing",
+    "leave": "Leave"
+  },
+  "statusPanel": {
+    "label": "Status",
+    "beforeYouPublish": "Before you publish, add:"
+  },
+  "authoringStatus": {
+    "draft": "Draft",
+    "published": "Published",
+    "publishedVersion": "Published · v{version}",
+    "unpublishedChanges": "Unpublished changes",
+    "retired": "Retired",
+    "notPublishedYet": "Not published yet — learners can't find it.",
+    "learnersGet": "Learners get version {version}.",
+    "learnersStillGet": "Learners still get version {version}.",
+    "publishToGiveThem": "Publish to give them your changes.",
+    "publish": "Publish",
+    "publishChanges": "Publish changes",
+    "publishedAsVersion": "Published as version {version}",
+    "seeWhatLearnersSee": "See what learners see"
+  },
+  "saveBlockers": {
+    "title": "Before you can save:"
+  },
+  "orderedRow": {
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "more": "More for {title}"
+  },
+  "previewLayer": {
+    "close": "Close the preview",
+    "whatLearnersSee": "Preview — what learners see",
+    "asStudent": "Preview as student",
+    "notInPreview": "(not in preview)"
   },
   "buttons": {
     "save": "Save",
-    "saved": "Saved",
     "tryAgain": "Try again",
     "signOut": "Sign out",
     "backToPath": "Back to path",
@@ -234,6 +275,10 @@
     "byline": "by {name}",
     "lessons": "{count} lesson | {count} lessons",
     "learningPaths": "{count} learning path | {count} learning paths"
+  },
+  "courseDetailContent": {
+    "outlineHeading": "Course outline",
+    "learningPath": "Learning path {position}"
   },
   "practiceShell": {
     "progressLabel": "Progress"

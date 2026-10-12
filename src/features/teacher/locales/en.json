@@ -27,10 +27,11 @@
     "labelPlaceholder": "Button label shown to the student"
   },
   "exercisePreviewModal": {
-    "title": "Student preview",
     "portrait": "Portrait",
     "landscape": "Landscape",
-    "description": "Responsive — portrait stacks, landscape puts the prompt beside the answer. This is the exact same component the student's Practice screen mounts — not a redrawn copy — so what you see here is what they see, ungraded (it never receives which option is marked correct)."
+    "description": "The same screen students practise on: portrait stacks, landscape puts the prompt beside the answer. Check grades your answer as it would a student's, and nothing is recorded.",
+    "check": "Check",
+    "tryAgain": "Try again"
   },
   "imageChoiceOptionsEditor": {
     "addLabel": "Add image option",
@@ -126,7 +127,25 @@
     "exerciseCreated": "Exercise created.",
     "saveFailed": "Failed to save the exercise",
     "diagramSelected": "Diagram selected",
-    "chooseImageOrDiagram": "Choose an image or a diagram"
+    "chooseImageOrDiagram": "Choose an image or a diagram",
+    "chooseTypeHeading": "What will the student do?",
+    "typeLockedAfterSave": "The type can't be changed after the first save.",
+    "typeDescriptions": {
+      "image_recognition": "Taps the right place on an image or a diagram.",
+      "image_choice": "Picks the right image, diagram or chord box.",
+      "text_response": "Picks the right answer from text options.",
+      "audio_recognition": "Hears one sound and picks what it is.",
+      "audio_selection": "Hears the options and picks the right sound."
+    },
+    "missing": {
+      "options": "Mark at least one option correct",
+      "stimulus": "Pick a tempo from 20 to 300 BPM",
+      "skills": "Add a skill",
+      "concepts": "Add a concept"
+    },
+    "details": "Details",
+    "titleLabel": "Exercise title",
+    "leaveMessage": "Your changes to this exercise haven't been saved and will be lost."
   },
   "exerciseListView": {
     "heading": "Exercises",
@@ -199,7 +218,18 @@
     "templateNeedsEveryName": "A template is shared with every teacher, so name it in every language before saving.",
     "templateNeedsEveryText": "Add every language's marker labels, notes and region captions before saving as a template.",
     "addOverlayButton": "Overlay diagram…",
-    "mergedNotice": "The merged layers are saved as a new diagram, so the diagrams you started from stay as they were. Use Save as."
+    "mergedNotice": "The merged layers are saved as a new diagram, so the diagrams you started from stay as they were. Use Save as.",
+    "missing": {
+      "names": "Name it in every language",
+      "text": "Fill in its text in every language",
+      "positions": "Place at least one position",
+      "notes": "Set the interval and note of every position",
+      "regions": "Fix the frets or strings of a region",
+      "playbacks": "Give every playback a step",
+      "skills": "Add a skill",
+      "concepts": "Add a concept"
+    },
+    "leaveMessage": "Your changes to this diagram haven't been saved and will be lost."
   },
   "frettedDiagramEditor": {
     "fretboardAriaLabel": "Click a fret to place or remove a position",
@@ -243,12 +273,16 @@
     "shuffleOptionsLabel": "Shuffle option order per attempt"
   },
   "sectionedPathList": {
-    "emptyMessage": "No content nodes in this path yet — add one to get started.",
+    "emptyMessage": "No lessons in this path yet — add one to get started.",
     "noSection": "No section",
-    "sectionPlaceholder": "Section",
-    "moveUpAriaLabel": "Move up",
-    "moveDownAriaLabel": "Move down",
-    "removeAriaLabel": "Remove from path"
+    "published": "Published",
+    "draftPublishFirst": "Draft — publish it first",
+    "section": "Section…",
+    "sectionLabel": "Section",
+    "sectionHint": "Lessons next to each other with the same section show under one heading. Leave it blank for none.",
+    "sectionConfirm": "Set section",
+    "open": "Open the lesson",
+    "remove": "Remove from path"
   },
   "classificationFields": {
     "skillLabel": "Skill",
@@ -273,9 +307,9 @@
     "editAriaLabel": "Edit pop-up"
   },
   "contentNodePickerModal": {
-    "title": "Add a content node",
+    "title": "Add a lesson",
     "searchPlaceholder": "Search by title",
-    "emptyMessage": "No content nodes match — every content node in the library is already in this path, or none matched your search."
+    "emptyMessage": "No lessons match — every lesson in the library is already in this path, or none matched your search."
   },
   "exercisePickerModal": {
     "title": "Attach an exercise",
@@ -283,13 +317,13 @@
     "emptyMessage": "No exercises match — every exercise in the pool is already attached, or none matched your search."
   },
   "contentAuthoringView": {
-    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
-    "editBreadcrumb": "Edit content",
-    "newBreadcrumb": "New content",
-    "loadErrorMessage": "Failed to load the content node",
-    "titlePlaceholder": "Untitled content",
-    "titleHint": "Internal title — for the content library, not shown to students",
-    "contentTypeLabel": "Content type",
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author lessons.",
+    "editBreadcrumb": "Edit lesson",
+    "newBreadcrumb": "New lesson",
+    "loadErrorMessage": "Failed to load the lesson",
+    "titlePlaceholder": "Untitled lesson",
+    "titleHint": "Learners see this title on their path.",
+    "contentTypeLabel": "Lesson type",
     "typeLockedHint": "Type can't be changed after creation.",
     "typeUnlockedHint": "Video or article — this determines which timed pop-ups this node can carry.",
     "mediaUrlLabel": "Or paste a link",
@@ -301,10 +335,10 @@
     "timedPopupsLabel": "Timed pop-ups",
     "paragraphPopupsLabel": "Paragraph pop-ups",
     "challengeLabel": "Challenge",
-    "noChallengeMessage": "No challenge yet — build one to assess this content, with at least one exercise.",
-    "contentNodeUpdated": "Content node updated.",
-    "contentNodeCreated": "Content node created.",
-    "saveContentNodeFailed": "Failed to save the content node",
+    "noChallengeMessage": "No challenge yet — build one to assess this lesson, with at least one exercise.",
+    "contentNodeUpdated": "Lesson updated.",
+    "contentNodeCreated": "Lesson created.",
+    "saveContentNodeFailed": "Failed to save the lesson",
     "addPopupFailed": "Failed to add the pop-up",
     "updatePopupFailed": "Failed to update the pop-up",
     "removePopupFailed": "Failed to remove the pop-up",
@@ -323,20 +357,23 @@
     "challengesLoading": "Loading challenges…",
     "instrumentsLabel": "Instruments",
     "thumbnailLabel": "Thumbnail",
-    "publishingLabel": "Publishing",
-    "notPublishedYet": "Not published yet — this content can't be added to a student's path until you publish it.",
-    "publishedAs": "Students get version {version}.",
-    "publishButton": "Publish",
-    "publishing": "Publishing…",
-    "publishHint": "Publishing saves your changes and creates a new version. Students who already have this content keep the version they got.",
     "publishedVersion": "Published version {version}.",
-    "publishFailed": "Failed to publish the content node",
+    "publishFailed": "Failed to publish the lesson",
     "videoLabel": "Video",
     "uploadLeaveTitle": "Leave and cancel the upload?",
     "uploadLeaveMessage": "The video is still uploading. Leaving stops it, and the lesson keeps the video it had.",
     "uploadLeaveConfirm": "Leave",
     "uploadLeaveCancel": "Keep uploading",
-    "videoPreviewTitle": "Video"
+    "videoPreviewTitle": "Video",
+    "details": "Details",
+    "missing": {
+      "video": "Add the video",
+      "article": "Write the article",
+      "skills": "Add a skill",
+      "concepts": "Add a concept"
+    },
+    "leaveMessage": "Your changes to this lesson haven't been saved and will be lost.",
+    "titleLabel": "Lesson title"
   },
   "contentVersionHistory": {
     "heading": "Version history",
@@ -347,13 +384,13 @@
     "latestBadge": "Latest"
   },
   "contentListView": {
-    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author content.",
-    "heading": "Content",
-    "newContentLabel": "New content",
-    "errorMessage": "We couldn't load the content nodes.",
-    "emptyHeading": "No content yet",
-    "emptyMessage": "Create your first video or article to start building the content library.",
-    "noMatchesMessage": "No content is for this instrument.",
+    "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author lessons.",
+    "heading": "Lessons",
+    "newContentLabel": "New lesson",
+    "errorMessage": "We couldn't load the lessons.",
+    "emptyHeading": "No lessons yet",
+    "emptyMessage": "Create your first video or article lesson to start building the library.",
+    "noMatchesMessage": "No lesson is for this instrument.",
     "showEveryInstrument": "Show every instrument"
   },
   "pathBuilderView": {
@@ -363,27 +400,22 @@
     "loadErrorMessage": "Failed to load the learning path",
     "titlePlaceholder": "Untitled path",
     "titleHint": "Name shown to teachers and admins, not to students.",
-    "contentLabel": "Content",
-    "addContentNodeLabel": "Add content node",
+    "addContentNodeLabel": "Add a lesson",
     "pathUpdated": "Learning path updated.",
     "pathCreated": "Learning path created.",
     "saveFailed": "Failed to save the learning path",
     "levelLabel": "Level",
-    "levelRequired": "Choose a level to save this path.",
     "instrumentsLabel": "Instruments",
     "thumbnailLabel": "Thumbnail",
     "summaryLabel": "Summary",
     "summaryPlaceholder": "What will a learner get from this path?",
     "languageLabel": "Language",
     "noLanguage": "No language yet",
-    "publishNeeds": "A path needs a summary and a language before it can be published.",
-    "publish": "Publish",
     "unpublish": "Unpublish",
     "published": "Path published.",
     "unpublished": "Path unpublished.",
     "publishFailed": "Couldn't publish the path.",
     "unpublishFailed": "Couldn't unpublish the path.",
-    "adminPublishes": "An admin publishes paths.",
     "missingHeading": "Before this path can be published, it needs:",
     "requirement": {
       "summary": "A summary",
@@ -392,7 +424,17 @@
       "items": "At least one lesson",
       "unpublishedContent": "Published lessons (not yet: {titles})"
     },
-    "saveWouldUnpublish": "A published path must keep everything listed below. Restore it, or unpublish the path first."
+    "saveWouldUnpublish": "A published path must keep everything listed below. Restore it, or unpublish the path first.",
+    "details": "Details",
+    "lessonsHeading": "Lessons · {count}",
+    "lessonsHint": "Drag ⠿ or use ⋮ to move a lesson, or to set its section.",
+    "missing": {
+      "level": "Choose a level",
+      "items": "Add a lesson"
+    },
+    "publishLessonFirst": "Publish the lesson “{title}”",
+    "leaveMessage": "Your changes to this path haven't been saved and will be lost.",
+    "titleLabel": "Path title"
   },
   "pathListView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
@@ -400,7 +442,7 @@
     "newPathLabel": "New path",
     "errorMessage": "We couldn't load the learning paths.",
     "emptyHeading": "No paths yet",
-    "emptyMessage": "Assemble content nodes into an ordered path for students to follow.",
+    "emptyMessage": "Assemble lessons into an ordered path for students to follow.",
     "noMatchesMessage": "Try fewer filters or a different search.",
     "noMatchesHeading": "No matching paths",
     "searchPlaceholder": "Search paths by title",
@@ -494,11 +536,16 @@
   },
   "courseCheckpointList": {
     "empty": "No checkpoints yet. Add a learning path to start the course.",
-    "dragHandleAriaLabel": "Drag to reorder",
-    "overrideAriaLabel": "Title for checkpoint {position}",
-    "moveUpAriaLabel": "Move checkpoint up",
-    "moveDownAriaLabel": "Move checkpoint down",
-    "removeAriaLabel": "Remove checkpoint"
+    "path": "Path",
+    "lessons": "{count} lesson | {count} lessons",
+    "published": "Published",
+    "draftPublishFirst": "Draft — publish it first",
+    "rename": "Rename in this course",
+    "renameLabel": "Title in this course",
+    "renameHint": "Leave it blank to use the path's own title.",
+    "renameConfirm": "Rename",
+    "open": "Open the path",
+    "remove": "Remove from course"
   },
   "learningPathPickerModal": {
     "title": "Add a checkpoint",
@@ -514,9 +561,6 @@
     "updated": "Updated {date}"
   },
   "courseStatusPanel": {
-    "statusLabel": "Status",
-    "publishedVersion": "Published · v{version}",
-    "showOutline": "See what learners see",
     "publish": "Publish",
     "retire": "Retire",
     "reactivate": "Reactivate",
@@ -526,12 +570,25 @@
     "retireMessage": "The course leaves the catalog, so no one new can enroll. Existing enrollments are unaffected.",
     "reactivateTitle": "Reactivate this course?",
     "reactivateMessage": "The course returns to the catalog with its latest published version. Unpublished changes stay unpublished.",
-    "adminPublishesNote": "An admin publishes courses. Learners won't see this course or your changes until then.",
-    "retireNeedsSave": "Save your changes before retiring the course."
+    "retireNeedsSave": "Save your changes before retiring the course.",
+    "adminPublishes": "An admin publishes courses — your saved changes reach learners when they do.",
+    "retiredMessage": "Retired — it can't be changed. An admin can reactivate it.",
+    "retiredMessageAdmin": "Retired — it can't be changed. Reactivate it to edit it again."
   },
-  "publishedCourseModal": {
-    "title": "What learners see",
-    "errorMessage": "Couldn't load the published course."
+  "pathStatusPanel": {
+    "publishedMessage": "In the path catalog — learners who start it get it as it is saved.",
+    "adminPublishes": "An admin publishes paths — your saved changes reach learners when they do.",
+    "publishTitle": "Publish this path?",
+    "publishMessage": "Your changes are saved first. The path is listed in the path catalog, and learners who start it from now on get it as it is saved."
+  },
+  "lessonStatusPanel": {
+    "authorPublishes": "Its author or an admin publishes it.",
+    "publishTitle": "Publish this lesson?",
+    "publishMessage": "Your changes are saved first. Learners who get this lesson from now on get this version; learners who already have it keep theirs."
+  },
+  "coursePreview": {
+    "enroll": "Enroll (not in preview)",
+    "loadFailed": "Couldn't load the published course."
   },
   "courseBuilderView": {
     "permissionDenied": "This page is for teachers and admins only — your account can't build courses.",
@@ -540,8 +597,6 @@
     "loadErrorMessage": "Couldn't load this course.",
     "newBreadcrumb": "New course",
     "editBreadcrumb": "Edit course",
-    "retiredNotice": "This course is retired, so it can't be changed. An admin can reactivate it.",
-    "retiredNoticeAdmin": "This course is retired, so it can't be changed. Reactivate it to edit it again.",
     "titleLabel": "Course title",
     "titlePlaceholder": "Untitled course",
     "titleHint": "Learners see this title in the course catalog.",
@@ -552,7 +607,6 @@
     "languageHint": "The language the course is written in. Learners can filter the catalog by it.",
     "instrumentsLabel": "Instruments",
     "thumbnailLabel": "Thumbnail",
-    "checkpointsLabel": "Checkpoints",
     "addCheckpoint": "Add checkpoint",
     "saveFailed": "Couldn't save the course.",
     "courseCreated": "Course created",
@@ -563,10 +617,19 @@
     "retireFailed": "Couldn't retire the course.",
     "reactivated": "Course reactivated",
     "reactivateFailed": "Couldn't reactivate the course.",
-    "leaveTitle": "Leave without saving?",
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
-    "leaveConfirm": "Leave",
-    "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}"
+    "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}",
+    "missing": {
+      "title": "Add a title",
+      "summary": "Add a summary",
+      "level": "Choose a level",
+      "language": "Choose a language",
+      "checkpoints": "Add a checkpoint"
+    },
+    "publishPathFirst": "Publish the path “{title}”",
+    "details": "Details",
+    "checkpointsHeading": "Checkpoints · {count}",
+    "checkpointsHint": "Each checkpoint is a path. Drag ⠿ or use ⋮ to move one."
   },
   "diagramPickerList": {
     "count": "{count} diagram | {count} diagrams",

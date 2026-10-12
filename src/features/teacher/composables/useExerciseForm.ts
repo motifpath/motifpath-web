@@ -83,6 +83,9 @@ function makeOptionListHelpers<T extends { id: string; correct: boolean }>(list:
  * matching exerciseType — the others stay populated so a teacher can switch
  * types back and forth without losing what they've already entered.
  */
+/** What an exercise needs before it can be saved. */
+export type ExerciseField = 'options' | 'stimulus' | 'skills' | 'concepts'
+
 export function useExerciseForm() {
   const title = ref('')
   const prompt = ref<PromptDocument>(EMPTY_PROMPT)
@@ -156,6 +159,17 @@ export function useExerciseForm() {
   const hasValidStimulusPlayback = computed(() => {
     const tempo = hasDiagramStimulus.value ? stimulusDiagram.value?.playback?.tempo_bpm : null
     return tempo == null || isValidTempoBpm(tempo)
+  })
+
+  // Skills and concepts drive gap detection and recommendations, so the API refuses an exercise
+  // without at least one of each.
+  const missing = computed<ExerciseField[]>(() => {
+    const fields: ExerciseField[] = []
+    if (!hasCorrectOption.value) fields.push('options')
+    if (!hasValidStimulusPlayback.value) fields.push('stimulus')
+    if (skillIds.value.length === 0) fields.push('skills')
+    if (conceptIds.value.length === 0) fields.push('concepts')
+    return fields
   })
 
   const textOptionHelpers = makeOptionListHelpers(textOptions)
@@ -235,6 +249,8 @@ export function useExerciseForm() {
   function setStimulusImageSize(width: number, height: number) {
     stimulusImageSize.value = { width, height }
     if (pendingRegionOptions.value && width > 0 && height > 0) {
+      // Placing a loaded exercise's regions is not an edit.
+      const wasSaved = !isDirty.value
       regions.value = pendingRegionOptions.value.map((o) => ({
         id: o.option_id,
         x: (o.region?.x ?? 0) * 100,
@@ -245,6 +261,7 @@ export function useExerciseForm() {
         correct: o.is_correct,
       }))
       pendingRegionOptions.value = null
+      if (wasSaved) markSaved()
     }
   }
 
@@ -376,6 +393,36 @@ export function useExerciseForm() {
         if (!exercise.diagram_ref && !exercise.diagram_stack_ref) pendingRegionOptions.value = exercise.options
         break
     }
+    markSaved()
+  }
+
+  // The form as a save would send it (and its type), to tell whether anything is left unsaved.
+  function snapshot(): string {
+    return JSON.stringify([
+      title.value,
+      prompt.value,
+      exerciseType.value,
+      skillIds.value,
+      conceptIds.value,
+      instrumentIds.value,
+      languageCodes.value,
+      imageUrl.value,
+      audioUrl.value,
+      stimulusSource.value,
+      stimulusDiagram.value,
+      stimulusStack.value,
+      textOptions.value,
+      imageOptions.value,
+      audioOptions.value,
+      regions.value,
+    ])
+  }
+  const baseline = ref(snapshot())
+  const isDirty = computed(() => snapshot() !== baseline.value)
+
+  /** Takes the form as it is now as what was last saved. */
+  function markSaved() {
+    baseline.value = snapshot()
   }
 
   return {
@@ -400,6 +447,9 @@ export function useExerciseForm() {
     newRegionShape,
     hasCorrectOption,
     hasValidStimulusPlayback,
+    missing,
+    isDirty,
+    markSaved,
     addTextOption,
     editTextOption,
     toggleTextOption,

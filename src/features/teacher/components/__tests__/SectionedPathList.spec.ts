@@ -1,5 +1,12 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type * as VueRouter from 'vue-router'
+
+const push = vi.fn()
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return { ...actual, useRouter: () => ({ push }) }
+})
 
 import SectionedPathList from '@/features/teacher/components/SectionedPathList.vue'
 import type { PathBuilderItem } from '@/features/teacher/components/SectionedPathList.vue'
@@ -11,72 +18,108 @@ const items: PathBuilderItem[] = [
   { content_node_id: 'cn-4', title: 'Interval recognition', content_type: 'article' },
 ]
 
+// cn-3 was never published; cn-4 isn't known yet.
+const lessons = { published: new Set(['cn-1', 'cn-2']), known: new Set(['cn-1', 'cn-2', 'cn-3']) }
+
+function mountList() {
+  return mount(SectionedPathList, { props: { items, lessons }, attachTo: document.body })
+}
+
+function menuLabels() {
+  return [...document.querySelectorAll('[data-test="ordered-row-menu-item"]')].map((item) => item.textContent?.trim())
+}
+
+function chooseFromMenu(label: string) {
+  ;[...document.querySelectorAll<HTMLButtonElement>('[data-test="ordered-row-menu-item"]')]
+    .find((item) => item.textContent?.trim() === label)!
+    .click()
+}
+
 describe('SectionedPathList', () => {
-  it('groups consecutive items sharing a section label under one heading', () => {
-    const wrapper = mount(SectionedPathList, { props: { items } })
-
-    const sections = wrapper.findAll('[data-test="path-section"]')
-    expect(sections).toHaveLength(2)
-    expect(sections[0].text()).toContain('Chords')
+  let wrapper: ReturnType<typeof mountList> | null = null
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = null
+    document.body.innerHTML = ''
+    push.mockReset()
   })
 
-  it('renders each item with its title and content type', () => {
-    const wrapper = mount(SectionedPathList, { props: { items } })
+  it('groups consecutive lessons sharing a section label under one heading', () => {
+    wrapper = mountList()
 
-    expect(wrapper.text()).toContain('Open position triads')
-    expect(wrapper.text()).toContain('Reading the fretboard')
-    const rows = wrapper.findAll('[data-test="path-item"]')
-    expect(rows[0].text()).toContain('Video')
-    expect(rows[2].text()).toContain('Article')
+    expect(wrapper.findAll('[data-test="path-section-heading"]').map((heading) => heading.text())).toEqual([
+      'Chords',
+      'No section',
+    ])
   })
 
-  it('disables moving the first item up and the last item down', () => {
-    const wrapper = mount(SectionedPathList, { props: { items } })
+  it('names each lesson by its place in the path, and says what it is and whether learners can get it', () => {
+    wrapper = mountList()
 
-    const upButtons = wrapper.findAll('[data-test="move-up"]')
-    const downButtons = wrapper.findAll('[data-test="move-down"]')
-
-    expect(upButtons[0].attributes('disabled')).toBeDefined()
-    expect(downButtons[downButtons.length - 1].attributes('disabled')).toBeDefined()
-    expect(upButtons[1].attributes('disabled')).toBeUndefined()
-    expect(downButtons[0].attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('[data-test="ordered-row-title"]').map((title) => title.text())).toEqual([
+      '1 · Open position triads',
+      '2 · Moveable triads',
+      '3 · Reading the fretboard',
+      '4 · Interval recognition',
+    ])
+    const metas = wrapper.findAll('[data-test="ordered-row-meta"]')
+    expect(metas[0]!.text()).toBe('Video · Published')
+    expect(metas[2]!.text()).toBe('Article · Draft — publish it first')
+    expect(metas[2]!.classes()).toContain('text-warning')
+    expect(metas[3]!.text()).toBe('Article')
   })
 
-  it('emits reorder with the current and target index when moved down', async () => {
-    const wrapper = mount(SectionedPathList, { props: { items } })
+  it('⋮ offers the moves, Section…, Open the lesson and Remove from path', async () => {
+    wrapper = mountList()
 
-    await wrapper.findAll('[data-test="move-down"]')[0].trigger('click')
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[1]!.trigger('click')
 
-    expect(wrapper.emitted('reorder')).toEqual([[0, 1]])
+    expect(menuLabels()).toEqual(['Move up', 'Move down', 'Section…', 'Open the lesson', 'Remove from path'])
   })
 
-  it('emits reorder with the current and target index when moved up', async () => {
-    const wrapper = mount(SectionedPathList, { props: { items } })
+  it('moves a lesson from its menu', async () => {
+    wrapper = mountList()
 
-    await wrapper.findAll('[data-test="move-up"]')[1].trigger('click')
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[3]!.trigger('click')
+    chooseFromMenu('Move up')
 
-    expect(wrapper.emitted('reorder')).toEqual([[1, 0]])
+    expect(wrapper.emitted('reorder')).toEqual([[3, 2]])
   })
 
-  it('emits relabel with the item index and new section label when edited', async () => {
-    const wrapper = mount(SectionedPathList, { props: { items } })
+  it('sets a lesson’s section', async () => {
+    wrapper = mountList()
 
-    const labelInputs = wrapper.findAll('[data-test="section-label-input"]')
-    await labelInputs[2].setValue('Ear training')
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[2]!.trigger('click')
+    chooseFromMenu('Section…')
+    await wrapper.vm.$nextTick()
+    const input = document.querySelector<HTMLInputElement>('[data-test="text-entry-input"]')!
+    input.value = 'Reading'
+    input.dispatchEvent(new Event('input'))
+    document.querySelector<HTMLButtonElement>('[data-test="text-entry-confirm"]')!.click()
 
-    expect(wrapper.emitted('relabel')).toEqual([[2, 'Ear training']])
+    expect(wrapper.emitted('relabel')).toEqual([[2, 'Reading']])
   })
 
-  it('emits remove with the item index when a row is removed', async () => {
-    const wrapper = mount(SectionedPathList, { props: { items } })
+  it('opens the lesson', async () => {
+    wrapper = mountList()
 
-    await wrapper.findAll('[data-test="remove-item"]')[2].trigger('click')
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[0]!.trigger('click')
+    chooseFromMenu('Open the lesson')
+
+    expect(push).toHaveBeenCalledWith({ name: 'teacher-content-edit', params: { id: 'cn-1' } })
+  })
+
+  it('removes a lesson from the path', async () => {
+    wrapper = mountList()
+
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[2]!.trigger('click')
+    chooseFromMenu('Remove from path')
 
     expect(wrapper.emitted('remove')).toEqual([[2]])
   })
 
-  it('shows an empty state when there are no items', () => {
-    const wrapper = mount(SectionedPathList, { props: { items: [] } })
+  it('shows an empty state when there are no lessons', () => {
+    wrapper = mount(SectionedPathList, { props: { items: [], lessons } })
 
     expect(wrapper.find('[data-test="path-empty"]').exists()).toBe(true)
   })

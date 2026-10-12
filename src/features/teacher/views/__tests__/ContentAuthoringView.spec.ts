@@ -74,6 +74,16 @@ const ARTICLE_BODY: components['schemas']['PromptDocument'] = {
 }
 const VIDEO_URL = 'https://cdn.example.com/lesson.mp4'
 
+function blockers(wrapper: ReturnType<typeof mountView>) {
+  return wrapper.findAll('[data-test="save-blocker"]').map((item) => item.text())
+}
+
+async function publishConfirmed(wrapper: ReturnType<typeof mountView>) {
+  await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
+  await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+  await flushPromises()
+}
+
 function mountView() {
   return mount(ContentAuthoringView, {
     global: {
@@ -175,18 +185,18 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="status-panel"]').exists()).toBe(false)
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('t')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="status-panel-primary"]').text()).toBe('Publish')
       expect(wrapper.find('[data-test="no-versions"]').exists()).toBe(true)
     })
 
@@ -217,13 +227,13 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Alternate picking basics')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Alternate picking basics')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
       expect(POST).toHaveBeenCalledWith('/content-nodes', {
@@ -252,7 +262,7 @@ describe('ContentAuthoringView', () => {
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await classify(wrapper)
       await wrapper.get('[data-test="instrument-option-i-guitar"]').trigger('click')
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
       expect(POST.mock.calls[0]?.[1].body.instrument_ids).toEqual(['i-guitar'])
@@ -265,7 +275,31 @@ describe('ContentAuthoringView', () => {
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
     }
 
-    it('keeps Save disabled until a video has a media URL', async () => {
+    it('Save with nothing entered saves nothing and lists what is missing', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(POST).not.toHaveBeenCalled()
+      expect(blockers(wrapper)).toEqual(['Add the video', 'Add a skill', 'Add a concept'])
+      for (const field of ['body', 'skills', 'concepts']) {
+        expect(wrapper.find(`[data-field="${field}"]`).exists()).toBe(true)
+      }
+    })
+
+    it('an article asks for its text instead', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.get('[data-test="content-type-article"]').trigger('click')
+
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+
+      expect(blockers(wrapper)[0]).toBe('Write the article')
+    })
+
+    it('the list goes once the video has its link', async () => {
       routeGET({
         '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
         '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
@@ -273,12 +307,12 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
       await classify(wrapper)
-
-      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      expect(blockers(wrapper)).toEqual(['Add the video'])
 
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
 
-      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
     })
 
     it('flags a media URL that is not http(s) and keeps Save disabled', async () => {
@@ -296,12 +330,13 @@ describe('ContentAuthoringView', () => {
 
       expect(wrapper.get('[data-test="media-url-error"]').text()).toBe('Enter a full link starting with http:// or https://')
       expect(wrapper.get('[data-test="media-url-input"]').attributes('aria-invalid')).toBe('true')
-      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      expect(blockers(wrapper)).toEqual(['Add the video'])
 
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
 
       expect(wrapper.find('[data-test="media-url-error"]').exists()).toBe(false)
-      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
     })
 
     it('swaps the media URL field for the rich-text editor when the type is article', async () => {
@@ -331,12 +366,12 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Picking theory')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Picking theory')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.get('[data-test="content-type-article"]').trigger('click')
       await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', ARTICLE_BODY)
       await classify(wrapper)
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
       expect(POST).toHaveBeenCalledWith('/content-nodes', {
@@ -450,13 +485,13 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('t')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('t')
       await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
       await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
       expect(wrapper.find('[data-test="challenge-section"]').exists()).toBe(true)
@@ -479,7 +514,7 @@ describe('ContentAuthoringView', () => {
       await flushPromises()
 
       expect(GET).toHaveBeenCalledWith('/content-nodes/{content_node_id}', { params: { path: { content_node_id: 'cn-1' } } })
-      expect((wrapper.get('input[placeholder="Untitled content"]').element as HTMLInputElement).value).toBe('t')
+      expect((wrapper.get('input[placeholder="Untitled lesson"]').element as HTMLInputElement).value).toBe('t')
       expect(wrapper.get('[data-test="review-state"]').text()).toContain('pending')
       expect(wrapper.text()).toContain('alternate-picking')
       expect(wrapper.text()).toContain('picking-technique')
@@ -513,8 +548,8 @@ describe('ContentAuthoringView', () => {
       const wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('input[placeholder="Untitled content"]').setValue('Updated title')
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Updated title')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
       expect(PUT).toHaveBeenCalledWith('/content-nodes/{content_node_id}', {
@@ -540,7 +575,7 @@ describe('ContentAuthoringView', () => {
       expect(wrapper.find('img[src="https://cdn.test/thumbnails/cn.png"]').exists()).toBe(true)
 
       await wrapper.get('[data-test="thumbnail-remove"]').trigger('click')
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
       expect(PUT.mock.calls[0]?.[1].body).not.toHaveProperty('thumbnail_url')
@@ -563,14 +598,16 @@ describe('ContentAuthoringView', () => {
 
       expect(wrapper.findComponent(PromptEditor).props('modelValue')).toEqual(ARTICLE_BODY)
       expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
 
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Edited')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
 
       expect(PUT).toHaveBeenCalledWith('/content-nodes/{content_node_id}', {
         params: { path: { content_node_id: 'cn-1' } },
         body: {
-          title: 't',
+          title: 'Edited',
           rich_content: ARTICLE_BODY,
           classification: { skill_ids: ['s-1'], concept_ids: ['c-1'], difficulty_level: 'beginner' },
           language_codes: ['any'],
@@ -1090,7 +1127,7 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.get('[data-test="publish-status"]').text()).toContain('Not published yet')
+        expect(wrapper.get('[data-test="status-panel-message"]').text()).toContain('Not published yet')
         expect(wrapper.find('[data-test="no-versions"]').exists()).toBe(true)
       })
 
@@ -1132,7 +1169,7 @@ describe('ContentAuthoringView', () => {
         expect(GET).toHaveBeenCalledWith('/content-nodes/{content_node_id}/versions', {
           params: { path: { content_node_id: 'cn-1' } },
         })
-        expect(wrapper.get('[data-test="publish-status"]').text()).toMatch(/version 2/i)
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Published · v2')
         const rows = wrapper.findAll('[data-test="version-row"]')
         expect(rows).toHaveLength(2)
         expect(rows[0].text()).toContain('Version 2')
@@ -1163,9 +1200,9 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('input[placeholder="Untitled content"]').setValue('Edited title')
-        await wrapper.get('[data-test="publish-button"]').trigger('click')
-        await flushPromises()
+        await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Edited title')
+        expect(wrapper.get('[data-test="status-panel-primary"]').text()).toBe('Publish changes')
+        await publishConfirmed(wrapper)
 
         expect(PUT).toHaveBeenCalledWith(
           '/content-nodes/{content_node_id}',
@@ -1175,7 +1212,8 @@ describe('ContentAuthoringView', () => {
           params: { path: { content_node_id: 'cn-1' } },
         })
         expect(PUT.mock.invocationCallOrder[0]).toBeLessThan(POST.mock.invocationCallOrder[0])
-        expect(wrapper.get('[data-test="publish-status"]').text()).toMatch(/version 2/i)
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Published · v2')
+        expect(wrapper.get('[data-test="status-panel-message"]').text()).toBe('Learners get version 2.')
         const rows = wrapper.findAll('[data-test="version-row"]')
         expect(rows).toHaveLength(2)
         expect(rows[0].text()).toContain('Edited title')
@@ -1194,8 +1232,7 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="publish-button"]').trigger('click')
-        await flushPromises()
+        await publishConfirmed(wrapper)
 
         expect(PUT).toHaveBeenCalledWith(
           '/content-nodes/{content_node_id}',
@@ -1212,14 +1249,13 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="publish-button"]').trigger('click')
-        await flushPromises()
+        await publishConfirmed(wrapper)
 
         expect(PUT).toHaveBeenCalled()
         expect(POST).not.toHaveBeenCalled()
       })
 
-      it('disables publishing while the draft could not be saved', async () => {
+      it('lists what a publish needs while the draft could not be saved', async () => {
         routeGET({
           '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
           '/content-nodes/{content_node_id}/versions': okResponse([]),
@@ -1229,7 +1265,8 @@ describe('ContentAuthoringView', () => {
 
         await wrapper.get('[data-test="media-url-input"]').setValue('not a url')
 
-        expect(wrapper.get('[data-test="publish-button"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.findAll('[data-test="status-panel-missing-item"]').map((item) => item.text())).toEqual(['Add the video'])
+        expect(wrapper.get('[data-test="status-panel-primary"]').attributes('disabled')).toBeDefined()
       })
 
       it('disables publishing while a thumbnail is still uploading', async () => {
@@ -1240,12 +1277,12 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.get('[data-test="publish-button"]').attributes('disabled')).toBeUndefined()
+        expect(wrapper.get('[data-test="status-panel-primary"]').attributes('disabled')).toBeUndefined()
 
         wrapper.findComponent(ThumbnailField).vm.$emit('uploading', true)
         await flushPromises()
 
-        expect(wrapper.get('[data-test="publish-button"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.get('[data-test="status-panel-primary"]').attributes('disabled')).toBeDefined()
       })
 
       it('shows a retryable error when the history fails to load', async () => {
@@ -1268,13 +1305,14 @@ describe('ContentAuthoringView', () => {
         expect(wrapper.findAll('[data-test="version-row"]')).toHaveLength(1)
       })
 
-      it('hides publishing from a teacher who did not create the node, without fetching its history', async () => {
+      it('offers no Publish to a teacher who did not create the node, says who does, and fetches no history', async () => {
         currentUser.profile.user_id = 't-other'
         routeGET({ '/content-nodes/{content_node_id}': okResponse(contentNodeFixture) })
         const wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="status-panel-primary"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="status-panel-message"]').text()).toContain('Its author or an admin publishes it.')
         expect(GET).not.toHaveBeenCalledWith('/content-nodes/{content_node_id}/versions', expect.anything())
       })
 
@@ -1288,7 +1326,7 @@ describe('ContentAuthoringView', () => {
         const wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(true)
+        expect(wrapper.get('[data-test="status-panel-primary"]').text()).toBe('Publish')
       })
     })
   })
@@ -1387,7 +1425,7 @@ describe('ContentAuthoringView', () => {
       await flushPromises()
       expect(status(wrapper)).toBe('uploaded')
 
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
       expect(PUT.mock.calls[0]?.[1].body.media_url).toBe(UPLOADED_URL)
     })
@@ -1399,7 +1437,7 @@ describe('ContentAuthoringView', () => {
       chooseVideo(wrapper)
       await flushPromises()
 
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       await flushPromises()
       expect(PUT).not.toHaveBeenCalled()
 
@@ -1415,7 +1453,7 @@ describe('ContentAuthoringView', () => {
       chooseVideo(wrapper)
       await flushPromises()
 
-      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
       FakeXhr.last?.finish(403)
       await flushPromises()
 
@@ -1453,6 +1491,18 @@ describe('ContentAuthoringView', () => {
       expect(status(wrapper)).toBe('uploading')
     })
 
+    it('asks before leaving with unsaved edits', async () => {
+      const wrapper = await mountSavedLesson()
+      await wrapper.get('input[placeholder="Untitled lesson"]').setValue('Edited title')
+
+      const leaving = leaveGuard?.()
+      await flushPromises()
+      expect(wrapper.get('[role="alertdialog"]').text()).toContain('Leave without saving?')
+      await wrapper.get('[data-test="confirm-dialog-cancel"]').trigger('click')
+
+      expect(await leaving).toBe(false)
+    })
+
     it('leaves without asking when nothing is uploading', async () => {
       await mountSavedLesson()
 
@@ -1485,7 +1535,8 @@ describe('ContentAuthoringView', () => {
 
       expect(status(wrapper)).toBe(expected)
       expect((wrapper.get('[data-test="media-url-input"]').element as HTMLInputElement).value).toBe('')
-      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      expect(blockers(wrapper)).toEqual(['Add the video'])
     })
 
     it('plays the uploaded video', async () => {

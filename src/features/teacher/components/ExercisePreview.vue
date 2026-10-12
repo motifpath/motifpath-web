@@ -3,8 +3,8 @@ import { computed, ref } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import ExerciseView from '@/shared/components/ExerciseView.vue'
-import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
-import ModalOverlay from '@/shared/components/ModalOverlay.vue'
+import AppButton from '@/shared/components/AppButton.vue'
+import PreviewLayer from '@/shared/components/PreviewLayer.vue'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 import type { components } from '@/api/generated/core-domain'
 
@@ -30,17 +30,27 @@ const direction = computed(() => (orientation.value === 'landscape' ? 'row' : 'c
 const allowMultiple = computed(() => hasMultipleCorrectOptions(props.options))
 
 const { t } = useTypedT()
+
+// Graded the way a student's answer would be, by the caller, so the view itself never learns
+// which option is right. A fresh attempt remounts the view, dropping the previous picks.
+const reveal = ref<{ correctOptionIds: string[] } | undefined>(undefined)
+const attempt = ref(0)
+
+function check() {
+  reveal.value = { correctOptionIds: props.options.filter((option) => option.is_correct).map((option) => option.option_id) }
+}
+
+function tryAgain() {
+  reveal.value = undefined
+  attempt.value += 1
+}
 </script>
 
 <template>
-  <ModalOverlay
-    :open="open"
-    panel-class="flex max-h-[90vh] w-[720px] flex-col overflow-hidden rounded-xl bg-surface-raised shadow-level2"
-    @close="emit('close')"
-  >
-    <div class="flex items-center justify-between border-b border-border px-5 py-[18px]">
-      <span class="text-base font-bold text-ink">{{ t('exercisePreviewModal.title') }}</span>
-      <div class="flex items-center gap-2.5">
+  <PreviewLayer :open="open" :title="t('previewLayer.asStudent')" @close="emit('close')">
+    <div class="flex flex-col items-center gap-3">
+      <div class="flex w-full flex-wrap items-center justify-between gap-2">
+        <span class="text-xs text-ink-muted">{{ t('exercisePreviewModal.description') }}</span>
         <div class="flex gap-1 rounded-md bg-surface-sunken p-[3px]">
           <button
             type="button"
@@ -61,20 +71,14 @@ const { t } = useTypedT()
             {{ t('exercisePreviewModal.landscape') }}
           </button>
         </div>
-        <ModalCloseButton @close="emit('close')" />
       </div>
-    </div>
-
-    <div class="overflow-y-auto p-5">
-      <span class="text-xs text-ink-subtle">
-        {{ t('exercisePreviewModal.description') }}
-      </span>
       <div
         data-test="preview-frame"
-        class="mx-auto mt-3 overflow-y-auto rounded-xl border border-border bg-surface p-[18px]"
+        class="max-w-full overflow-y-auto rounded-xl border border-border bg-surface-raised p-[18px]"
         :class="orientation === 'landscape' ? 'h-[375px] w-[667px]' : 'h-[667px] w-[375px]'"
       >
         <ExerciseView
+          :key="attempt"
           :prompt="prompt"
           :exercise-type="exerciseType"
           :options="options"
@@ -83,8 +87,13 @@ const { t } = useTypedT()
           :audio-url="audioUrl"
           :allow-multiple="allowMultiple"
           :direction="direction"
+          :reveal="reveal"
         />
       </div>
+      <AppButton v-if="!reveal" data-test="preview-check" @click="check">{{ t('exercisePreviewModal.check') }}</AppButton>
+      <AppButton v-else data-test="preview-try-again" variant="secondary" @click="tryAgain">
+        {{ t('exercisePreviewModal.tryAgain') }}
+      </AppButton>
     </div>
-  </ModalOverlay>
+  </PreviewLayer>
 </template>

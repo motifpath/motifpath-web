@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
-import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
+import ExercisePreview from '@/features/teacher/components/ExercisePreview.vue'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
@@ -12,17 +12,17 @@ const options: Option[] = [
   { option_id: 'o2', label: 'Legato', is_correct: false },
 ]
 
-describe('ExercisePreviewModal', () => {
+describe('ExercisePreview', () => {
   it('renders nothing when closed', () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: { open: false, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
-    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="preview-layer"]').exists()).toBe(false)
   })
 
   it('mounts the real ExerciseView with the given prompt and options when open', () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('Name this technique'), exerciseType: 'text_response', options },
     })
 
@@ -31,7 +31,7 @@ describe('ExercisePreviewModal', () => {
   })
 
   it('forwards imageUrl/audioUrl through to the real ExerciseView', () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: {
         open: true,
         prompt: plainTextPrompt('p'),
@@ -45,7 +45,7 @@ describe('ExercisePreviewModal', () => {
   })
 
   it('never leaks which option is correct in its own markup', () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
@@ -54,7 +54,7 @@ describe('ExercisePreviewModal', () => {
   })
 
   it('defaults to portrait (column) layout', () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
@@ -62,7 +62,7 @@ describe('ExercisePreviewModal', () => {
   })
 
   it('switches ExerciseView to row (landscape) layout on toggle', async () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
@@ -73,7 +73,7 @@ describe('ExercisePreviewModal', () => {
   })
 
   it('sizes the preview frame like a real mobile screen and scrolls overflow internally, instead of clipping content', () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
@@ -84,7 +84,7 @@ describe('ExercisePreviewModal', () => {
   })
 
   it('swaps the frame to landscape dimensions on toggle', async () => {
-    const wrapper = mount(ExercisePreviewModal, {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
@@ -95,23 +95,47 @@ describe('ExercisePreviewModal', () => {
     expect(frame.classes()).toContain('w-[667px]')
   })
 
-  it('emits close when the close button is clicked', async () => {
-    const wrapper = mount(ExercisePreviewModal, {
+  it('shows the real ExerciseView full screen under the Preview bar', () => {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
 
-    await wrapper.get('[data-test="close-modal"]').trigger('click')
+    expect(wrapper.get('[data-test="preview-bar"]').text()).toContain('Preview as student')
+    expect(wrapper.get('[data-test="preview-layer"]').findComponent({ name: 'ExerciseView' }).exists()).toBe(true)
+  })
+
+  it('× closes it', async () => {
+    const wrapper = mount(ExercisePreview, {
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
+    })
+
+    await wrapper.get('[data-test="preview-close"]').trigger('click')
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
+})
 
-  it('emits close when the overlay is clicked', async () => {
-    const wrapper = mount(ExercisePreviewModal, {
+describe('ExercisePreview — grading', () => {
+  it('Check grades the answer as a student’s would be, marking the right options', async () => {
+    const wrapper = mount(ExercisePreview, {
       props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
     })
+    expect(wrapper.getComponent({ name: 'ExerciseView' }).props('reveal')).toBeUndefined()
 
-    await wrapper.get('[data-test="overlay-scrim"]').trigger('click')
+    await wrapper.get('[data-test="preview-check"]').trigger('click')
 
-    expect(wrapper.emitted('close')).toHaveLength(1)
+    expect(wrapper.getComponent({ name: 'ExerciseView' }).props('reveal')).toEqual({ correctOptionIds: ['o1'] })
+  })
+
+  it('Try again clears the grade for another go', async () => {
+    const wrapper = mount(ExercisePreview, {
+      props: { open: true, prompt: plainTextPrompt('p'), exerciseType: 'text_response', options },
+    })
+    await wrapper.get('[data-test="preview-check"]').trigger('click')
+
+    await wrapper.get('[data-test="preview-try-again"]').trigger('click')
+
+    expect(wrapper.getComponent({ name: 'ExerciseView' }).props('reveal')).toBeUndefined()
+    expect(wrapper.find('[data-test="preview-check"]').exists()).toBe(true)
   })
 })

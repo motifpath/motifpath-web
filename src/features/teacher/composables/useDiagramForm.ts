@@ -230,6 +230,9 @@ function inOfferedOrder(codes: string[]): string[] {
   return [...new Set(codes)].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
 }
 
+/** What a diagram needs before it can be saved. */
+export type DiagramField = 'names' | 'text' | 'positions' | 'notes' | 'regions' | 'playbacks' | 'skills' | 'concepts'
+
 export function useDiagramForm() {
   // The diagram's name per language code; a language with no name is absent or blank.
   const names = ref<LocalizedNames>({})
@@ -385,6 +388,20 @@ export function useDiagramForm() {
       })
       .map((region) => region.id),
   )
+  /** What a save still needs, in the order of the editor. */
+  const missing = computed<DiagramField[]>(() => {
+    const fields: DiagramField[] = []
+    if (!hasName.value) fields.push('names')
+    else if (!hasCompleteText.value) fields.push('text')
+    if (!hasPositions.value) fields.push('positions')
+    else if (!hasCompletePositions.value) fields.push('notes')
+    if (invalidRegionIds.value.length > 0) fields.push('regions')
+    if (invalidPlaybackIds.value.length > 0) fields.push('playbacks')
+    if (skillIds.value.length === 0) fields.push('skills')
+    if (conceptIds.value.length === 0) fields.push('concepts')
+    return fields
+  })
+
   const canSave = computed(
     () =>
       hasName.value &&
@@ -666,7 +683,30 @@ export function useDiagramForm() {
   /** Records the server's copy of a just-saved diagram, so later saves are updates against it. */
   function markSaved(diagram: Diagram) {
     savedColor.value = diagram.color ?? null
+    baseline.value = snapshot()
   }
+
+  // The form as a save would send it, to tell whether anything is left unsaved.
+  function snapshot(): string {
+    return JSON.stringify([
+      names.value,
+      languages.value,
+      instrumentId.value,
+      instrumentIds.value,
+      rootNote.value,
+      labelDisplay.value,
+      color.value,
+      mode.value,
+      positions.value,
+      playbacks.value,
+      defaultPlaybackId.value,
+      regions.value,
+      skillIds.value,
+      conceptIds.value,
+    ])
+  }
+  const baseline = ref(snapshot())
+  const isDirty = computed(() => snapshot() !== baseline.value)
 
   function loadFromDiagram(diagram: Diagram) {
     names.value = { ...diagram.names }
@@ -686,6 +726,7 @@ export function useDiagramForm() {
     regions.value = (diagram.regions ?? []).map(toLocalRegion)
     skillIds.value = diagram.classification.skills.map((s) => s.node_id)
     conceptIds.value = diagram.classification.concepts.map((c) => c.node_id)
+    baseline.value = snapshot()
   }
 
   /**
@@ -750,6 +791,8 @@ export function useDiagramForm() {
     hasCompletePositions,
     hasClassification,
     canSave,
+    missing,
+    isDirty,
     addPosition,
     removePosition,
     setPositionShape,

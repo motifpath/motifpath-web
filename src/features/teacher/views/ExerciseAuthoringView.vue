@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { AlignLeft, AudioLines, ChevronRight, Eye, Image, Images, TriangleAlert } from 'lucide-vue-next'
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { AlignLeft, AudioLines, AudioWaveform, ChevronRight, Crosshair, Eye, Images, Lock, TriangleAlert } from 'lucide-vue-next'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import AudioSelectionOptionsEditor from '@/features/teacher/components/AudioSelectionOptionsEditor.vue'
-import ExercisePreviewModal from '@/features/teacher/components/ExercisePreviewModal.vue'
+import ExercisePreview from '@/features/teacher/components/ExercisePreview.vue'
 import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
 import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
 import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulusEditor.vue'
@@ -21,12 +21,18 @@ import { useExerciseForm, type ExerciseType } from '@/features/teacher/composabl
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
 import { useStimulusDiagram } from '@/features/teacher/composables/useStimulusDiagram'
 import { useUpdateExercise } from '@/features/teacher/composables/useUpdateExercise'
-import AppBar from '@/shared/components/AppBar.vue'
+import AppButton from '@/shared/components/AppButton.vue'
+import EditorAppBar from '@/shared/components/EditorAppBar.vue'
+import EditorBody from '@/shared/components/EditorBody.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LanguageCodesPicker from '@/shared/components/LanguageCodesPicker.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
+import SaveBlockers from '@/shared/components/SaveBlockers.vue'
+import TypeRow from '@/shared/components/TypeRow.vue'
+import UnsavedChangesGuard from '@/shared/components/UnsavedChangesGuard.vue'
+import { useSaveBlockers } from '@/shared/composables/useSaveBlockers'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useToast } from '@/shared/composables/useToast'
 import { diagramStimulusOptions } from '@/shared/utils/diagramAnswerCells'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -42,7 +48,8 @@ const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
 
-const { isCompact } = useIsCompact()
+const { sizeClass, isCompact } = useSizeClass()
+const isExpanded = computed(() => sizeClass.value === 'expanded')
 const { t } = useTypedT()
 
 const route = useRoute()
@@ -97,13 +104,33 @@ function revokeIfBlob(url: string | undefined | null): void {
   if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
 }
 
-const exerciseTypes = computed<{ value: ExerciseType; label: string; icon: typeof Image }[]>(() => [
-  { value: 'image_recognition', label: t('common.exerciseTypes.image_recognition'), icon: Image },
-  { value: 'text_response', label: t('common.exerciseTypes.text_response'), icon: AlignLeft },
-  { value: 'audio_recognition', label: t('common.exerciseTypes.audio_recognition'), icon: AudioLines },
-  { value: 'image_choice', label: t('common.exerciseTypes.image_choice'), icon: Images },
-  { value: 'audio_selection', label: t('common.exerciseTypes.audio_selection'), icon: AudioLines },
-])
+const exerciseTypes = computed<{ value: ExerciseType; label: string; description: string; icon: typeof Images }[]>(() =>
+  (
+    [
+      ['image_recognition', Crosshair],
+      ['image_choice', Images],
+      ['text_response', AlignLeft],
+      ['audio_recognition', AudioLines],
+      ['audio_selection', AudioWaveform],
+    ] as const
+  ).map(([value, icon]) => ({
+    value,
+    icon,
+    label: t(`common.exerciseTypes.${value}`),
+    description: t(`exerciseAuthoringView.typeDescriptions.${value}`),
+  })),
+)
+
+// A new exercise starts by choosing its type; the type can change until the first save, and the
+// API keeps it fixed after that.
+const typeChosen = ref(isEditMode)
+const typeLocked = computed(() => !!savedExerciseId.value)
+const lockedType = computed(() => exerciseTypes.value.find((type) => type.value === form.exerciseType.value))
+
+function chooseType(type: ExerciseType) {
+  form.exerciseType.value = type
+  typeChosen.value = true
+}
 
 // Nothing is uploaded until save — picking a file only sets a local blob:
 // preview, so an abandoned edit never leaves an orphaned object in storage.
@@ -275,24 +302,24 @@ const previewOptions = computed(() => {
   return form.toCreateExerciseRequest().options ?? []
 })
 const saving = ref(false)
-const justSaved = ref(false)
-let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
-onUnmounted(() => clearTimeout(justSavedTimeout))
-
 const toast = useToast()
 
-// Classification is a mandatory dimension for gap detection and the
-// recommendation engine -- both skill_ids and concept_ids must be non-empty
-// on the backend, so a save attempt without them is rejected outright.
-const hasClassification = computed(
-  () => form.skillIds.value.length > 0 && form.conceptIds.value.length > 0,
+const missingToSave = computed(() =>
+  form.missing.value.map((field) => ({ field, label: t(`exerciseAuthoringView.missing.${field}`) })),
 )
+const saveBlockers = useSaveBlockers(missingToSave)
+
+// A file picked but not uploaded yet is unsaved too: it only goes up on Save.
+const hasPendingFiles = computed(() => !!stimulusFile.value || Object.keys(optionFiles).length > 0)
+const isDirty = computed(() => form.isDirty.value || hasPendingFiles.value)
+
+const saveState = computed(() => {
+  if (saving.value) return 'saving'
+  return isDirty.value || !savedExerciseId.value ? 'unsaved' : 'saved'
+})
 
 async function save() {
-  // Re-checked here, not just via the AppBar button's disabled state — the
-  // button is the only other line of defense, and this one doesn't depend
-  // on a click ever happening through it.
-  if (!form.hasCorrectOption.value || !form.hasValidStimulusPlayback.value || !hasClassification.value) return
+  if (saving.value || !saveBlockers.readyToSave()) return
 
   saving.value = true
   // The exercise this form is currently backing, not the route it was
@@ -309,10 +336,7 @@ async function save() {
     savedExerciseId.value = exercise.exercise_id
     linkedChallengeIds.value = exercise.challenge_ids
     linkedContentNodeIds.value = exercise.content_node_ids ?? []
-
-    justSaved.value = true
-    clearTimeout(justSavedTimeout)
-    justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
+    form.markSaved()
     toast.success(isUpdate ? t('exerciseAuthoringView.exerciseUpdated') : t('exerciseAuthoringView.exerciseCreated'))
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('exerciseAuthoringView.saveFailed'))
@@ -320,19 +344,25 @@ async function save() {
     saving.value = false
   }
 }
+
+const cardClass = 'flex flex-col gap-4 rounded-2xl border border-border bg-surface-raised p-4'
+const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-muted'
+const labelClass = 'text-sm font-semibold text-ink'
+const hintClass = 'text-xs text-ink-muted'
+const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 text-base text-ink'
 </script>
 
 <template>
   <TeachShell section="teacher-exercises" bar="none">
   <div class="flex flex-1 flex-col bg-surface">
-    <AppBar
-      :compact="isCompact"
-      :primary-nav-to="{ name: 'teacher-exercises' }"
-      :breadcrumb-label="isEditMode ? form.title.value || t('exerciseAuthoringView.editExerciseBreadcrumb') : t('exerciseAuthoringView.newExerciseBreadcrumb')"
-      :show-save="canAuthor"
-      :save-disabled="!form.hasCorrectOption.value || !form.hasValidStimulusPlayback.value || !hasClassification || saving"
-      :just-saved="justSaved"
-      :on-save="save"
+    <EditorAppBar
+      :compact="!isExpanded"
+      :section-label="t('nav.exercises')"
+      :section-to="{ name: 'teacher-exercises' }"
+      :title="isEditMode ? form.title.value || t('exerciseAuthoringView.editExerciseBreadcrumb') : t('exerciseAuthoringView.newExerciseBreadcrumb')"
+      :save-state="saveState"
+      :can-save="canAuthor && typeChosen && !loadingExercise && !loadError"
+      @save="save"
     />
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
@@ -349,41 +379,102 @@ async function save() {
       <LoadFailed :message="t('exerciseAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
-    <div
-      v-else
-      data-test="authoring-body"
-      class="flex flex-1"
-      :class="isCompact ? 'flex-col' : 'flex-row'"
-    >
-      <main
-        class="flex min-w-0 flex-1 flex-col gap-6"
-        :class="isCompact ? 'px-4 pb-6 pt-[20px]' : 'px-[48px] pb-[80px] pt-10'"
-      >
-        <div class="flex flex-col gap-1.5">
-          <input
-            v-model="form.title.value"
-            type="text"
-            :placeholder="t('exerciseAuthoringView.titlePlaceholder')"
-            class="border-none bg-transparent font-bold text-ink outline-none"
-            :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
-          />
-          <span class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.titleHint') }}</span>
-        </div>
+    <EditorBody v-else-if="!typeChosen" data-test="type-chooser" :two-columns="false">
+      <h2 class="text-lg font-semibold text-ink">{{ t('exerciseAuthoringView.chooseTypeHeading') }}</h2>
+      <TypeRow
+        v-for="type in exerciseTypes"
+        :key="type.value"
+        :data-test="`type-choice-${type.value}`"
+        :icon="type.icon"
+        :label="type.label"
+        :description="type.description"
+        @click="chooseType(type.value)"
+      />
+      <p :class="hintClass">{{ t('exerciseAuthoringView.typeLockedAfterSave') }}</p>
+    </EditorBody>
 
-        <div class="flex flex-col gap-2">
-          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.promptLabel') }}</label>
+    <EditorBody v-else data-test="authoring-body" :two-columns="isExpanded">
+      <template #side>
+        <section :class="cardClass">
+          <h2 :class="eyebrowClass">{{ t('common.studentPreview') }}</h2>
+          <AppButton data-test="open-preview" variant="secondary" block @click="previewOpen = true">
+            <Eye :size="18" aria-hidden="true" />
+            {{ t('exerciseAuthoringView.previewAsStudent') }}
+          </AppButton>
+        </section>
+        <section :class="cardClass">
+          <div data-test="reuse-indicator" class="flex flex-col gap-4">
+            <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">{{ t('exerciseAuthoringView.usageHeading') }}</span>
+            <p v-if="!savedExerciseId" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageUnsaved') }}</p>
+            <template v-else>
+              <div data-test="usage-challenges" class="flex flex-col gap-2">
+                <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usageChallengesHeading') }}</span>
+                <p v-if="linkedChallengeIds.length === 0" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageNoChallenges') }}</p>
+                <ul v-else class="flex flex-col gap-2">
+                  <li
+                    v-for="id in linkedChallengeIds"
+                    :key="id"
+                    class="flex items-center gap-2.5 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-[0.8125rem]"
+                  >
+                    <span class="h-2 w-2 flex-shrink-0 rounded-full bg-accent"></span>
+                    {{ id }}
+                  </li>
+                </ul>
+              </div>
+
+              <div data-test="usage-path-exercises" class="flex flex-col gap-2">
+                <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usagePathExercisesHeading') }}</span>
+                <p v-if="linkedContentNodeIds.length === 0" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageNoPathExercises') }}</p>
+                <ul v-else class="flex flex-col gap-2">
+                  <li
+                    v-for="id in linkedContentNodeIds"
+                    :key="id"
+                    class="flex items-center gap-2.5 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-[0.8125rem]"
+                  >
+                    <span class="h-2 w-2 flex-shrink-0 rounded-full bg-accent"></span>
+                    {{ id }}
+                  </li>
+                </ul>
+              </div>
+
+              <div data-test="usage-practice-sessions" class="flex flex-col gap-2">
+                <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usagePracticeSessionsHeading') }}</span>
+                <p v-if="form.skillIds.value.length === 0" class="text-sm text-ink-subtle">
+                  {{ t('exerciseAuthoringView.usageNotEligible') }}
+                </p>
+                <p v-else class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageEligible') }}</p>
+              </div>
+            </template>
+          </div>
+        </section>
+      </template>
+
+      <SaveBlockers :items="saveBlockers.shown.value" :reveal="saveBlockers.reveal.value" />
+
+      <section :class="cardClass">
+        <h2 :class="eyebrowClass">{{ t('exerciseAuthoringView.details') }}</h2>
+        <label class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('exerciseAuthoringView.titleLabel') }}</span>
+          <input v-model="form.title.value" type="text" :placeholder="t('exerciseAuthoringView.titlePlaceholder')" :class="inputClass" />
+          <span :class="hintClass">{{ t('exerciseAuthoringView.titleHint') }}</span>
+        </label>
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('exerciseAuthoringView.promptLabel') }}</span>
           <PromptEditor v-model="form.prompt.value" />
         </div>
-
-        <div class="flex flex-col gap-2.5">
-          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.exerciseTypeLabel') }}</label>
-          <div class="flex w-fit gap-2 rounded-lg bg-surface-sunken p-1" :class="{ 'flex-wrap': isCompact }">
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('exerciseAuthoringView.exerciseTypeLabel') }}</span>
+          <p v-if="typeLocked" data-test="locked-type" class="flex items-center gap-2 text-sm font-semibold text-ink">
+            <component :is="lockedType?.icon" :size="16" aria-hidden="true" />
+            {{ lockedType?.label }}
+            <Lock :size="14" class="text-ink-muted" aria-hidden="true" />
+          </p>
+          <div v-else class="flex w-fit gap-2 rounded-lg bg-surface-sunken p-1" :class="{ 'flex-wrap': isCompact }">
             <button
               v-for="type in exerciseTypes"
               :key="type.value"
               type="button"
               :data-test="`type-tab-${type.value}`"
-              :disabled="isEditMode"
               class="flex items-center gap-2 rounded-md px-4 py-[9px] text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               :class="form.exerciseType.value === type.value ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
               @click="form.exerciseType.value = type.value"
@@ -392,86 +483,82 @@ async function save() {
               {{ type.label }}
             </button>
           </div>
-          <span class="text-sm text-ink-subtle">
-            {{
-              isEditMode
-                ? t('exerciseAuthoringView.typeLockedHint')
-                : t('exerciseAuthoringView.typeUnlockedHint')
-            }}
+          <span :class="hintClass">
+            {{ typeLocked ? t('exerciseAuthoringView.typeLockedHint') : t('exerciseAuthoringView.typeLockedAfterSave') }}
           </span>
         </div>
-
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.instrumentsLabel') }}</span>
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('exerciseAuthoringView.instrumentsLabel') }}</span>
           <InstrumentPicker v-model="form.instrumentIds.value" />
         </div>
-
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">{{ t('exerciseAuthoringView.languagesLabel') }}</span>
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('exerciseAuthoringView.languagesLabel') }}</span>
           <LanguageCodesPicker v-model="form.languageCodes.value" />
         </div>
+      </section>
 
-        <div
-          v-if="!form.hasCorrectOption.value"
-          data-test="no-correct-banner"
-          class="flex items-center gap-2.5 rounded-md border border-danger bg-danger-muted px-4 py-3"
-        >
-          <TriangleAlert :size="18" class="flex-shrink-0 text-danger" aria-hidden="true" />
-          <span class="text-sm font-semibold text-danger">
-            {{ t('exerciseAuthoringView.noCorrectOptionWarning') }}
-          </span>
+      <div
+        v-if="!form.hasCorrectOption.value"
+        data-test="no-correct-banner"
+        class="flex items-center gap-2.5 rounded-md border border-danger bg-danger-muted px-4 py-3"
+      >
+        <TriangleAlert :size="18" class="flex-shrink-0 text-danger" aria-hidden="true" />
+        <span class="text-sm font-semibold text-danger">
+          {{ t('exerciseAuthoringView.noCorrectOptionWarning') }}
+        </span>
+      </div>
+
+      <section :class="cardClass" data-field="options">
+        <div data-field="stimulus" class="contents">
+          <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-3">
+            <button
+              type="button"
+              data-test="choose-stimulus"
+              class="flex w-fit items-center gap-2.5 rounded-md border border-border bg-surface-raised py-2 pl-2.5 pr-2"
+              @click="stimulusPickerOpen = true"
+            >
+              <span class="text-left">
+                <span class="block text-[0.8125rem] font-semibold text-ink">{{
+                  showsDiagramStimulus ? t('exerciseAuthoringView.diagramSelected') : stimulusImageLabel
+                }}</span>
+                <span class="block text-xs text-ink-subtle">{{ t('exerciseAuthoringView.chooseImageOrDiagram') }}</span>
+              </span>
+              <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
+            </button>
+            <template v-if="showsDiagramStimulus && form.stimulusDiagram.value">
+              <LoadingSkeleton v-if="stimulus.status.value === 'loading'" />
+              <DiagramStimulusEditor
+                v-else-if="stimulus.diagram.value && stimulus.instrument.value"
+                :key="`${stimulus.diagram.value.diagram_id}-${stimulusPick}`"
+                :diagram="stimulus.diagram.value"
+                :instrument="stimulus.instrument.value"
+                :diagram-ref="form.stimulusDiagram.value"
+                @update:diagram-ref="form.setStimulusDiagram"
+              />
+              <LoadFailed
+                v-else-if="stimulus.status.value === 'error'"
+                data-test="stimulus-diagram-error"
+                :message="t('diagramEmbedPicker.loadErrorMessage')"
+                @retry="stimulus.retry"
+              />
+              <p v-else data-test="stimulus-diagram-unavailable" class="text-sm text-ink-muted">
+                {{ t('diagramEmbedPicker.unavailable') }}
+              </p>
+            </template>
+          </div>
+          <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
+            <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.audioStimulusLabel') }}</label>
+            <button
+              type="button"
+              data-test="choose-stimulus"
+              class="w-fit rounded-md border border-border bg-surface-raised px-3 py-2 text-sm font-semibold"
+              @click="stimulusPickerOpen = true"
+            >
+              {{ stimulusButtonLabel }}
+            </button>
+            <audio v-if="form.audioUrl.value" :src="form.audioUrl.value" controls class="w-full" />
+          </div>
         </div>
-
-        <div v-if="form.exerciseType.value === 'image_recognition'" class="flex flex-col gap-3">
-          <button
-            type="button"
-            data-test="choose-stimulus"
-            class="flex w-fit items-center gap-2.5 rounded-md border border-border bg-surface-raised py-2 pl-2.5 pr-2"
-            @click="stimulusPickerOpen = true"
-          >
-            <span class="text-left">
-              <span class="block text-[0.8125rem] font-semibold text-ink">{{
-                showsDiagramStimulus ? t('exerciseAuthoringView.diagramSelected') : stimulusImageLabel
-              }}</span>
-              <span class="block text-xs text-ink-subtle">{{ t('exerciseAuthoringView.chooseImageOrDiagram') }}</span>
-            </span>
-            <ChevronRight :size="14" class="text-ink-subtle" aria-hidden="true" />
-          </button>
-          <template v-if="showsDiagramStimulus && form.stimulusDiagram.value">
-            <LoadingSkeleton v-if="stimulus.status.value === 'loading'" />
-            <DiagramStimulusEditor
-              v-else-if="stimulus.diagram.value && stimulus.instrument.value"
-              :key="`${stimulus.diagram.value.diagram_id}-${stimulusPick}`"
-              :diagram="stimulus.diagram.value"
-              :instrument="stimulus.instrument.value"
-              :diagram-ref="form.stimulusDiagram.value"
-              @update:diagram-ref="form.setStimulusDiagram"
-            />
-            <LoadFailed
-              v-else-if="stimulus.status.value === 'error'"
-              data-test="stimulus-diagram-error"
-              :message="t('diagramEmbedPicker.loadErrorMessage')"
-              @retry="stimulus.retry"
-            />
-            <p v-else data-test="stimulus-diagram-unavailable" class="text-sm text-ink-muted">
-              {{ t('diagramEmbedPicker.unavailable') }}
-            </p>
-          </template>
-        </div>
-
-        <div v-else-if="form.exerciseType.value === 'audio_recognition'" class="flex flex-col gap-2">
-          <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.audioStimulusLabel') }}</label>
-          <button
-            type="button"
-            data-test="choose-stimulus"
-            class="w-fit rounded-md border border-border bg-surface-raised px-3 py-2 text-sm font-semibold"
-            @click="stimulusPickerOpen = true"
-          >
-            {{ stimulusButtonLabel }}
-          </button>
-          <audio v-if="form.audioUrl.value" :src="form.audioUrl.value" controls class="w-full" />
-        </div>
-
         <ImageRegionEditor
           v-if="form.exerciseType.value === 'image_recognition' && form.stimulusSource.value === 'image'"
           v-model:new-region-shape="form.newRegionShape.value"
@@ -518,13 +605,14 @@ async function save() {
           @add="form.addAudioOption"
         />
 
-        <div class="flex flex-col gap-4 border-t border-border pt-2">
-          <div>
-            <label class="text-sm font-semibold">{{ t('exerciseAuthoringView.classificationLabel') }}</label>
-            <span class="-mt-1 block text-[0.8125rem] text-ink-subtle">
-              {{ t('exerciseAuthoringView.classificationHint') }}
-            </span>
-          </div>
+      </section>
+
+      <section :class="cardClass">
+        <div>
+          <h2 :class="eyebrowClass">{{ t('exerciseAuthoringView.classificationLabel') }}</h2>
+          <span :class="hintClass">{{ t('exerciseAuthoringView.classificationHint') }}</span>
+        </div>
+        <div data-field="concepts">
           <SkillConceptTreePicker
             :label="t('classificationFields.conceptLabel')"
             :nodes="conceptNodes"
@@ -538,6 +626,8 @@ async function save() {
             @update:selected-ids="form.conceptIds.value = $event"
             @retry="retryConcepts"
           />
+        </div>
+        <div data-field="skills">
           <SkillConceptTreePicker
             :label="t('classificationFields.skillLabel')"
             :nodes="skillNodes"
@@ -552,77 +642,8 @@ async function save() {
             @retry="retrySkills"
           />
         </div>
-
-      </main>
-
-      <aside
-        class="flex flex-col gap-5 bg-surface-raised"
-        :class="
-          isCompact
-            ? 'w-full border-t border-border px-4 py-5'
-            : 'w-[360px] flex-shrink-0 border-l border-border px-[28px] py-[32px]'
-        "
-      >
-        <div data-test="reuse-indicator" class="flex flex-col gap-4">
-          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">{{ t('exerciseAuthoringView.usageHeading') }}</span>
-          <p v-if="!savedExerciseId" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageUnsaved') }}</p>
-          <template v-else>
-            <div data-test="usage-challenges" class="flex flex-col gap-2">
-              <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usageChallengesHeading') }}</span>
-              <p v-if="linkedChallengeIds.length === 0" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageNoChallenges') }}</p>
-              <ul v-else class="flex flex-col gap-2">
-                <li
-                  v-for="id in linkedChallengeIds"
-                  :key="id"
-                  class="flex items-center gap-2.5 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-[0.8125rem]"
-                >
-                  <span class="h-2 w-2 flex-shrink-0 rounded-full bg-accent"></span>
-                  {{ id }}
-                </li>
-              </ul>
-            </div>
-
-            <div data-test="usage-path-exercises" class="flex flex-col gap-2">
-              <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usagePathExercisesHeading') }}</span>
-              <p v-if="linkedContentNodeIds.length === 0" class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageNoPathExercises') }}</p>
-              <ul v-else class="flex flex-col gap-2">
-                <li
-                  v-for="id in linkedContentNodeIds"
-                  :key="id"
-                  class="flex items-center gap-2.5 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-[0.8125rem]"
-                >
-                  <span class="h-2 w-2 flex-shrink-0 rounded-full bg-accent"></span>
-                  {{ id }}
-                </li>
-              </ul>
-            </div>
-
-            <div data-test="usage-practice-sessions" class="flex flex-col gap-2">
-              <span class="text-xs font-semibold text-ink-muted">{{ t('exerciseAuthoringView.usagePracticeSessionsHeading') }}</span>
-              <p v-if="form.skillIds.value.length === 0" class="text-sm text-ink-subtle">
-                {{ t('exerciseAuthoringView.usageNotEligible') }}
-              </p>
-              <p v-else class="text-sm text-ink-subtle">{{ t('exerciseAuthoringView.usageEligible') }}</p>
-            </div>
-          </template>
-        </div>
-
-        <div class="h-px bg-border"></div>
-
-        <div class="flex flex-col gap-2.5">
-          <span class="text-[0.8125rem] font-bold uppercase tracking-wide text-ink-muted">{{ t('common.studentPreview') }}</span>
-          <button
-            type="button"
-            data-test="open-preview"
-            class="flex items-center justify-center gap-2 rounded-md border border-border bg-surface-raised p-[11px] text-[0.8125rem] font-semibold"
-            @click="previewOpen = true"
-          >
-            <Eye :size="15" aria-hidden="true" />
-            {{ t('exerciseAuthoringView.previewAsStudent') }}
-          </button>
-        </div>
-      </aside>
-    </div>
+      </section>
+    </EditorBody>
 
     <ImagePickerModal
       :open="stimulusPickerOpen && stimulusKind === 'audio'"
@@ -638,7 +659,7 @@ async function save() {
       @diagram="onStimulusDiagram"
       @close="stimulusPickerOpen = false"
     />
-    <ExercisePreviewModal
+    <ExercisePreview
       :open="previewOpen"
       :prompt="form.prompt.value"
       :exercise-type="form.exerciseType.value"
@@ -648,6 +669,7 @@ async function save() {
       :audio-url="form.audioUrl.value"
       @close="previewOpen = false"
     />
+    <UnsavedChangesGuard :dirty="isDirty" :message="t('exerciseAuthoringView.leaveMessage')" />
   </div>
   </TeachShell>
 </template>

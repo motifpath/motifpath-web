@@ -69,6 +69,23 @@ describe('useCourseForm', () => {
     })
   })
 
+  describe('missing', () => {
+    it('names every field a new course still needs, in the order of the form', () => {
+      expect(useCourseForm().missing.value).toEqual(['title', 'summary', 'level', 'checkpoints'])
+    })
+
+    it('is empty once the course can be saved', () => {
+      expect(filledForm().missing.value).toEqual([])
+    })
+
+    it('names a language once it is cleared', () => {
+      const form = filledForm()
+      form.language.value = ''
+
+      expect(form.missing.value).toEqual(['language'])
+    })
+  })
+
   describe('toRequest', () => {
     it('maps the form, trimming text and sending checkpoints in order', () => {
       const form = filledForm()
@@ -165,7 +182,6 @@ describe('useCourseForm', () => {
       form.loadFromCourse(course)
 
       expect(form.checkpoints.value.map((c) => c.pathTitle)).toEqual(['Open chords', null])
-      expect(form.checkpointsMissingPathTitle.value).toEqual(['lp-2'])
     })
 
     it("fills in a path title once it's known", () => {
@@ -175,7 +191,6 @@ describe('useCourseForm', () => {
       form.setPathTitle('lp-2', 'Travis picking')
 
       expect(form.checkpoints.value[1]!.pathTitle).toBe('Travis picking')
-      expect(form.checkpointsMissingPathTitle.value).toEqual([])
     })
   })
 
@@ -187,7 +202,6 @@ describe('useCourseForm', () => {
     form.loadFromCourse(course)
 
     expect(form.checkpoints.value.map((c) => c.pathTitle)).toEqual(['Open chords', 'Travis picking'])
-    expect(form.checkpointsMissingPathTitle.value).toEqual([])
   })
 
   describe('isDirty', () => {
