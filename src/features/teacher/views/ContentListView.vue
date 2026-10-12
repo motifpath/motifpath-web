@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-import { useListContentNodes } from '@/features/teacher/composables/useListContentNodes'
-import InstrumentFilterSelect from '@/shared/components/InstrumentFilterSelect.vue'
-import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
-import StateBlock from '@/shared/components/StateBlock.vue'
-import LoadFailed from '@/shared/components/LoadFailed.vue'
-import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import type { components } from '@/api/generated/core-domain'
+import AuthoringList from '@/features/teacher/components/AuthoringList.vue'
+import { useAuthoringFilterLabels } from '@/features/teacher/composables/useAuthoringFilterLabels'
+import { useAuthoringStatusChip } from '@/features/teacher/composables/useAuthoringStatusChip'
+import AuthoringRow from '@/shared/components/AuthoringRow.vue'
+import TeachShell from '@/shared/components/TeachShell.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
-import TeachShell from '@/shared/components/TeachShell.vue'
+
+type ContentNode = components['schemas']['ContentNode']
 
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
@@ -20,102 +20,50 @@ const canAuthor = computed(
 )
 
 const { t } = useTypedT()
-const {
-  contentNodes,
-  instrumentId,
-  total,
-  isLoading,
-  isLoadingMore,
-  error,
-  loadMoreError,
-  retry,
-  loadMore,
-} = useListContentNodes()
+const { typeLabel, languageLabel } = useAuthoringFilterLabels()
+const { lessonStatus } = useAuthoringStatusChip()
 const { instrumentsLabel } = useInstrumentNames()
+
+/** The type, the instruments and the languages: "Video · Guitar · English". */
+function meta(lesson: ContentNode): string {
+  const languages = lesson.languages.map((language) => languageLabel(language.code)).join(', ')
+  return [typeLabel(lesson.content_type), instrumentsLabel(lesson.instrument_ids), languages]
+    .filter((part) => part !== '')
+    .join(' · ')
+}
 </script>
 
 <template>
   <TeachShell section="teacher-content">
-  <div class="flex flex-1 flex-col bg-surface">
+    <div class="flex flex-1 flex-col bg-surface">
+      <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
+        <p class="max-w-md text-center text-ink-muted">{{ t('contentListView.permissionDenied') }}</p>
+      </div>
 
-    <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
-      <p class="max-w-md text-center text-ink-muted">
-        {{ t('contentListView.permissionDenied') }}
-      </p>
-    </div>
-
-    <div v-else class="flex flex-1 flex-col gap-6 px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
-      <div class="flex items-center justify-between">
-        <h1 class="text-lg font-bold text-ink sm:text-xl">{{ t('contentListView.heading') }}</h1>
-        <RouterLink
-          :to="{ name: 'teacher-content-new' }"
-          data-test="new-content-node"
-          class="flex items-center gap-1.5 rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg"
+      <div v-else class="flex flex-1 flex-col px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
+        <AuthoringList
+          section="lessons"
+          :title="t('contentListView.heading')"
+          :new-label="t('contentListView.newContentLabel')"
+          :new-to="{ name: 'teacher-content-new' }"
+          :empty-title="t('contentListView.emptyHeading')"
+          :empty-message="t('contentListView.emptyMessage')"
+          :load-failed-message="t('contentListView.errorMessage')"
         >
-          <Plus :size="14" aria-hidden="true" />
-          {{ t('contentListView.newContentLabel') }}
-        </RouterLink>
-      </div>
-
-      <InstrumentFilterSelect v-model="instrumentId" class="w-fit" />
-
-      <LoadingSkeleton v-if="isLoading" data-test="loading" />
-
-      <LoadFailed v-else-if="error" data-test="error" :message="t('contentListView.errorMessage')" @retry="retry" />
-
-      <div
-        v-else-if="contentNodes.length === 0 && instrumentId"
-        data-test="no-matches"
-        class="flex flex-col items-start gap-2 text-sm text-ink-muted"
-      >
-        {{ t('contentListView.noMatchesMessage') }}
-        <button type="button" class="font-semibold text-accent-text underline" @click="instrumentId = null">
-          {{ t('contentListView.showEveryInstrument') }}
-        </button>
-      </div>
-
-      <StateBlock
-        v-else-if="contentNodes.length === 0"
-        data-test="empty"
-        kind="empty"
-        :title="t('contentListView.emptyHeading')"
-        :message="t('contentListView.emptyMessage')"
-      >
-        <template #action>
-          <RouterLink :to="{ name: 'teacher-content-new' }" class="text-sm font-semibold text-accent-text underline">
-            {{ t('contentListView.newContentLabel') }}
-          </RouterLink>
-        </template>
-      </StateBlock>
-
-      <template v-else>
-        <ul class="flex flex-col gap-2">
-          <li v-for="contentNode in contentNodes" :key="contentNode.content_node_id">
-            <RouterLink
-              :to="{ name: 'teacher-content-edit', params: { id: contentNode.content_node_id } }"
-              data-test="content-node-row"
-              class="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-raised px-4 py-3"
+          <template #item="{ item }">
+            <AuthoringRow
+              :title="item.title"
+              :meta="meta(item)"
+              :status="lessonStatus(item)"
+              :to="{ name: 'teacher-content-edit', params: { id: item.content_node_id } }"
             >
-              <div class="flex min-w-0 items-center gap-3">
-                <ThumbnailImage :url="contentNode.thumbnail_url" />
-                <div class="flex min-w-0 flex-col gap-0.5">
-                  <span class="font-semibold text-ink">{{ contentNode.title }}</span>
-                  <span class="text-sm text-ink-subtle">{{ instrumentsLabel(contentNode.instrument_ids) }}</span>
-                </div>
-              </div>
-              <span class="text-sm text-ink-subtle">{{ t(`common.contentTypes.${contentNode.content_type}`) }}</span>
-            </RouterLink>
-          </li>
-        </ul>
-        <LoadMoreButton
-          :loaded="contentNodes.length"
-          :total="total"
-          :loading="isLoadingMore"
-          :failed="loadMoreError"
-          @load="loadMore"
-        />
-      </template>
+              <template #leading>
+                <ThumbnailImage :url="item.thumbnail_url" size-class="h-14 w-14 rounded-xl" />
+              </template>
+            </AuthoringRow>
+          </template>
+        </AuthoringList>
+      </div>
     </div>
-  </div>
   </TeachShell>
 </template>
