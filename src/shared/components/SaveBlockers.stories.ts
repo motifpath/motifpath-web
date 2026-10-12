@@ -9,7 +9,7 @@ const meta = {
     items: [
       { label: 'Mark at least one option correct', field: 'options' },
       { label: 'Add a skill', field: 'skills' },
-      { label: 'Pick a tempo from 40 to 300 BPM', field: 'stimulus' },
+      { label: 'Pick a tempo from 20 to 300 BPM', field: 'stimulus' },
     ],
   },
 } satisfies Meta<typeof SaveBlockers>
