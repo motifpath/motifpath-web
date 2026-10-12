@@ -70,6 +70,19 @@ describe('AuthoringFiltersLayer', () => {
     expect(showButton(wrapper).text()).toBe('Show 46 diagrams')
   })
 
+  it('counts nothing while closed, and counts the draft once opened', async () => {
+    const count = vi.fn().mockResolvedValue(46)
+    const wrapper = mountLayer({ open: false, count })
+    await settle()
+    expect(count).not.toHaveBeenCalled()
+
+    await wrapper.setProps({ open: true })
+    await settle()
+
+    expect(count).toHaveBeenCalledTimes(1)
+    expect(showButton(wrapper).text()).toBe('Show 46 diagrams')
+  })
+
   it("follows each choice with the total, without applying it", async () => {
     const count = vi.fn().mockResolvedValue(1284)
     const wrapper = mountLayer({ count })

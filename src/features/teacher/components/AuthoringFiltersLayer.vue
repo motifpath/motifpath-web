@@ -56,18 +56,20 @@ const total = ref<number | null>(null)
 watch(
   () => props.open,
   (open) => {
-    if (!open) return
+    if (!open) return recount()
     draft.value = copy(props.filters)
     page.value = 'filters'
   },
 )
 
 // Only the newest count may show: an older one that answers late would name the wrong total.
+// A closed layer counts nothing; opening it sets the draft, which counts it.
 let latestCount = 0
 let countTimer: ReturnType<typeof setTimeout> | undefined
 function recount() {
   clearTimeout(countTimer)
   const request = ++latestCount
+  if (!props.open) return
   countTimer = setTimeout(async () => {
     const counted = await props.count(copy(draft.value))
     if (request === latestCount) total.value = counted
@@ -161,7 +163,6 @@ const instrumentName = computed(
           v-if="page === 'filters'"
           v-model="draft"
           :section="section"
-          layout="layer"
           :instruments="instruments"
           :skill-nodes="skillNodes"
           :concept-nodes="conceptNodes"
@@ -176,7 +177,6 @@ const instrumentName = computed(
           :nodes="page === 'skills' ? skillNodes : conceptNodes"
           :instrument-id="draft.instrument ?? null"
           :instrument-name="instrumentName"
-          layout="drill"
           @done="page = 'filters'"
         />
         <AuthorFilterPicker
