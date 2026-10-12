@@ -89,16 +89,16 @@ export const chordG = makeChord('chord-g', 'G', [gOpen, gEShape], { root_pitch_c
 export const chordC = makeChord('chord-c', 'C', [cOpen, cBarre])
 
 /**
- * "Asa Branca" at revision 2: "[G]Quando olhei a [C]terra ardendo" in its first section, then a
+ * "Amazing Grace" at revision 2: "[G]Amazing grace, how [C]sweet the sound" in its first section, then a
  * chorus. Override `body` for other lines.
  */
 export function makeLearnerSongChart(overrides: Partial<LearnerSongChart> = {}): LearnerSongChart {
   return {
-    song_chart_id: 'chart-asa-branca',
+    song_chart_id: 'chart-amazing-grace',
     revision_number: 2,
-    title: 'Asa Branca',
-    artist: 'Luiz Gonzaga',
-    language: 'pt_BR',
+    title: 'Amazing Grace',
+    artist: 'John Newton',
+    language: 'en',
     concert_key: 'G',
     capo_fret: 0,
     tempo_bpm: null,
@@ -109,13 +109,13 @@ export function makeLearnerSongChart(overrides: Partial<LearnerSongChart> = {}):
       content: [
         makeSection([
           makeLyricLine(
-            ['Quando olhei a ', makeAnchor('a1', 'G', { chordDefinitionId: 'chord-g' })],
-            ['terra ardendo', makeAnchor('a2', 'C', { chordDefinitionId: 'chord-c' })],
+            ['Amazing grace, how ', makeAnchor('a1', 'G', { chordDefinitionId: 'chord-g' })],
+            ['sweet the sound', makeAnchor('a2', 'C', { chordDefinitionId: 'chord-c' })],
           ),
         ]),
-        makeSection([makeLyricLine(['Que braseiro', makeAnchor('a3', 'G', { chordDefinitionId: 'chord-g' })])], {
+        makeSection([makeLyricLine(["'Twas grace that taught", makeAnchor('a3', 'G', { chordDefinitionId: 'chord-g' })])], {
           kind: 'chorus',
-          label: 'Refrão',
+          label: 'Chorus',
         }),
       ],
     },
@@ -127,7 +127,7 @@ export function makeLearnerSongChart(overrides: Partial<LearnerSongChart> = {}):
 
 const ana = { user_id: 'u-ana', display_name: 'Ana' }
 
-/** A song chart as admins see it: a draft of "Asa Branca", never published. */
+/** A song chart as admins see it: a draft of "Amazing Grace", never published. */
 export function makeSongChart(
   id: string,
   draft: Partial<SongChartDraft> = {},
@@ -162,11 +162,11 @@ export function makeSongChart(
 }
 
 /** A published revision summary, published by Ana. */
-export function makeRevisionSummary(revision: number, title = 'Asa Branca') {
-  return { revision_number: revision, title, artist: 'Luiz Gonzaga', language: 'pt_BR', concert_key: 'G', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
+export function makeRevisionSummary(revision: number, title = 'Amazing Grace') {
+  return { revision_number: revision, title, artist: 'John Newton', language: 'en', concert_key: 'G', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
 }
 
-/** A published revision of "Asa Branca", published and confirmed by Ana. */
+/** A published revision of "Amazing Grace", published and confirmed by Ana. */
 export function makeRevision(revision: number): components['schemas']['SongChartRevision'] {
   const learner = makeLearnerSongChart()
   return {

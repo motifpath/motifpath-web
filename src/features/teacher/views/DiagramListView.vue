@@ -4,22 +4,20 @@ import { computed } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { type DiagramScope, useDiagramLibrary } from '@/features/teacher/composables/useDiagramLibrary'
-import AppBar from '@/shared/components/AppBar.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 const currentUser = useCurrentUserStore()
 const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
 
-const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
 
@@ -44,8 +42,8 @@ const {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'teacher-diagrams' }" />
+  <TeachShell section="teacher-diagrams">
+  <div class="flex flex-1 flex-col bg-surface">
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
@@ -175,4 +173,5 @@ const {
       </template>
     </div>
   </div>
+  </TeachShell>
 </template>

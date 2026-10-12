@@ -31,6 +31,9 @@ import KnowledgeMapEditorView from '@/features/admin/views/KnowledgeMapEditorVie
 import { useToast } from '@/shared/composables/useToast'
 import type { components } from '@/api/generated/core-domain'
 
+// The pages' own content is under test, not Teach's navigation around it.
+const TeachShellStub = { template: '<div><slot /></div>' }
+
 type KnowledgeNode = components['schemas']['KnowledgeNode']
 type KnowledgeEdge = components['schemas']['KnowledgeEdge']
 
@@ -96,7 +99,7 @@ async function mountEditor(query: Record<string, string> = {}) {
   await router.push({ name: 'admin-knowledge-map', query })
   await router.isReady()
   const wrapper = mount(defineComponent({ components: { RouterView }, template: '<RouterView />' }), {
-    global: { plugins: [createPinia(), router], stubs: { AppBar: true } },
+    global: { plugins: [createPinia(), router], stubs: { AppBar: true, TeachShell: TeachShellStub } },
     attachTo: document.body,
   })
   await flushPromises()

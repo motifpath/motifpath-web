@@ -26,10 +26,18 @@ vi.mock('@/shared/utils/downloadText', async (importOriginal) => ({
 }))
 
 import SongChartEditorView from '@/features/admin/views/SongChartEditorView.vue'
-import { makeLyricLine, makeRevision, makeRevisionSummary, makeSection, makeSongChart } from '@/shared/testUtils/songChart'
+import { clearChordLookups } from '@/shared/composables/useChordLookup'
+import { mockViewport } from '@/shared/testUtils/viewport'
+import { makeAnchor, makeLyricLine, makeRevision, makeRevisionSummary, makeSection, makeSongChart } from '@/shared/testUtils/songChart'
+
+// The pages' own content is under test, not Teach's navigation around it.
+const TeachShellStub = { template: '<div><slot /></div>' }
 
 const ok = <T>(data: T, status = 200) => Promise.resolve({ data, response: new Response(null, { status }) })
 const fail = <T>(error: T, status: number) => Promise.resolve({ error, response: new Response(null, { status }) })
+
+/** A draft whose rights an admin has confirmed. */
+const rightsConfirmed = { rights_confirmed: true, rights_confirmation: { confirmed_by: { user_id: 'u-ana', display_name: 'Ana' }, confirmed_at: '2026-10-07T12:00:00Z' } }
 
 const ciranda = { type: 'doc' as const, content: [makeSection([makeLyricLine(['Ciranda, cirandinha', null])])] }
 
@@ -50,7 +58,7 @@ function serve(chart: SongChart | null, revisions = [] as components['schemas'][
   GET.mockImplementation((path: string) => {
     if (path === '/song-charts/{song_chart_id}' && chart) return ok(chart)
     if (path === '/song-charts/{song_chart_id}/revisions') return ok(revisions)
-    if (path === '/song-charts/{song_chart_id}/chordpro') return ok('{title: Asa Branca}\n')
+    if (path === '/song-charts/{song_chart_id}/chordpro') return ok('{title: Amazing Grace}\n')
     return fail({ message: 'not found' }, 404)
   })
 }
@@ -68,7 +76,7 @@ async function mountAt(path: string) {
   await router.push(path)
   const wrapper = mount(
     defineComponent({ render: () => h(RouterView) }),
-    { global: { plugins: [router], stubs: { AppBar: true, SongChartLyricsEditor: LyricsEditorStub } } },
+    { global: { plugins: [router], stubs: { AppBar: true, TeachShell: TeachShellStub, SongChartLyricsEditor: LyricsEditorStub } } },
   )
   await flushPromises()
   return { wrapper, router }
@@ -90,6 +98,8 @@ beforeEach(() => {
   POST.mockReset()
   PUT.mockReset()
   downloadText.mockReset()
+  clearChordLookups()
+  mockViewport(1280)
   serve(null)
 })
 
@@ -108,8 +118,8 @@ describe('SongChartEditorView', () => {
 
     it('is saved as a draft, and the editor then edits it', async () => {
       const { wrapper, router } = await mountAt('/admin/song-charts/new')
-      await wrapper.get('[data-test="title"]').setValue('Asa Branca')
-      await wrapper.get('[data-test="artist"]').setValue('Luiz Gonzaga')
+      await wrapper.get('[data-test="title"]').setValue('Amazing Grace')
+      await wrapper.get('[data-test="artist"]').setValue('John Newton')
       await wrapper.get('[data-test="language"]').setValue('pt_BR')
       await click(wrapper, '[data-test="write-line"]')
       const created = makeSongChart('chart-new', { body: ciranda })
@@ -118,7 +128,7 @@ describe('SongChartEditorView', () => {
 
       await click(wrapper, '[data-test="save"]')
 
-      expect(POST).toHaveBeenCalledWith('/song-charts', { body: expect.objectContaining({ title: 'Asa Branca', rights_confirmed: false }) })
+      expect(POST).toHaveBeenCalledWith('/song-charts', { body: expect.objectContaining({ title: 'Amazing Grace', rights_confirmed: false }) })
       expect(router.currentRoute.value.fullPath).toBe('/admin/song-charts/chart-new')
     })
 
@@ -152,6 +162,25 @@ describe('SongChartEditorView', () => {
       expect(POST).toHaveBeenCalledTimes(1)
     })
 
+    it('reads ChordPro from a chosen file', async () => {
+      const { wrapper } = await mountAt('/admin/song-charts/new')
+      POST.mockReturnValueOnce(ok({ title: 'Ciranda, Cirandinha', artist: null, concert_key: null, capo_fret: 0, tempo_bpm: null, time_signature: null, body: ciranda, import_warnings: [] }))
+
+      await click(wrapper, '[data-test="import"]')
+      await click(wrapper, '[data-test="import-source-file"]')
+      const input = wrapper.get('[data-test="chordpro-file"]')
+      Object.defineProperty(input.element, 'files', { value: [new File(['{title: Ciranda, Cirandinha}'], 'ciranda.cho')] })
+      await input.trigger('change')
+      await flushPromises()
+      expect(wrapper.get('[data-test="chordpro-file-name"]').text()).toBe('ciranda.cho')
+      // The file is read on a later tick; Import is offered once its text is in.
+      await vi.waitFor(() => expect(wrapper.get('[data-test="chordpro-read"]').attributes('disabled')).toBeUndefined())
+      await click(wrapper, '[data-test="chordpro-read"]')
+
+      expect(POST).toHaveBeenCalledWith('/song-charts/chordpro/read', expect.objectContaining({ body: '{title: Ciranda, Cirandinha}' }))
+      expect(valueOf(wrapper, '[data-test="title"]')).toBe('Ciranda, Cirandinha')
+    })
+
     it('asks before replacing lyrics already in the editor, and cancelling keeps them', async () => {
       serve(makeSongChart('chart-1'))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')
@@ -164,7 +193,7 @@ describe('SongChartEditorView', () => {
       expect(POST).not.toHaveBeenCalled()
       await click(wrapper, '[data-test="confirm-dialog-cancel"]')
       expect(POST).not.toHaveBeenCalled()
-      expect(wrapper.get('[data-test="lyrics-text"]').text()).toContain('Quando olhei')
+      expect(wrapper.get('[data-test="lyrics-text"]').text()).toContain('Amazing grace')
     })
 
     it('keeps the pasted text and says why it was refused', async () => {
@@ -185,25 +214,28 @@ describe('SongChartEditorView', () => {
 
       await click(wrapper, '[data-test="export"]')
 
-      expect(downloadText).toHaveBeenCalledWith('amazing-grace.cho', '{title: Asa Branca}\n')
+      expect(downloadText).toHaveBeenCalledWith('amazing-grace.cho', '{title: Amazing Grace}\n')
     })
   })
 
   describe('an existing chart', () => {
-    it("lists the draft's chords that didn't fully resolve, saying which block publishing", async () => {
-      serve(
-        makeSongChart('chart-1', {
-          warnings: [
-            { anchor_id: 'a6', section_index: 1, line_index: 0, written_symbol: 'C/B', warning: 'bass_not_in_catalog', blocks_publication: false },
-            { anchor_id: 'a8', section_index: 1, line_index: 1, written_symbol: 'H7', warning: 'unparsed_symbol', blocks_publication: true },
-          ],
-        }),
-      )
+    it("lists in the status every reason the draft can't be published, and Publish waits", async () => {
+      const lines = { type: 'doc' as const, content: [makeSection([makeLyricLine(['Ciranda', null]), makeLyricLine(['vamos todos', makeAnchor('a8', 'H7')])])] }
+      serve(makeSongChart('chart-1', { body: lines }))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')
 
-      const rows = wrapper.findAll('[data-test="chord-warning"]')
-      expect(rows.map((r) => r.attributes('data-blocks'))).toEqual(['false', 'true'])
-      expect(rows[1]!.text()).toContain('H7')
+      expect(wrapper.findAll('[data-test="blocker"]').map((b) => b.text())).toEqual(['Confirm the rights', '“H7” in Verse, line 2, isn’t a chord'])
+      expect(wrapper.get('[data-test="publish"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('enables Publish once the rights are confirmed and every chord is fine', async () => {
+      serve(makeSongChart('chart-1'))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await wrapper.get('[data-test="rights-confirmed"]').setValue(true)
+
+      expect(wrapper.find('[data-test="blocker"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="publish"]').attributes('disabled')).toBeUndefined()
     })
 
     it('shows who confirmed the rights', async () => {
@@ -233,18 +265,18 @@ describe('SongChartEditorView', () => {
 
   describe('publishing and withdrawing', () => {
     it('shows the new revision once published', async () => {
-      serve(makeSongChart('chart-1'))
+      serve(makeSongChart('chart-1', rightsConfirmed))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')
       POST.mockReturnValueOnce(ok({ revision_number: 1 }, 201))
       serve(makeSongChart('chart-1', {}, { status: 'published', published_revision: makeRevisionSummary(1) }))
 
       await click(wrapper, '[data-test="publish"]')
 
-      expect(wrapper.get('[data-test="status"]').text()).toContain('revision 1')
+      expect(wrapper.get('[data-test="status-text"]').text()).toContain('revision 1')
     })
 
-    it('lists every reason publishing is refused', async () => {
-      serve(makeSongChart('chart-1'))
+    it('lists every reason the server refuses to publish', async () => {
+      serve(makeSongChart('chart-1', rightsConfirmed))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')
       POST.mockReturnValueOnce(
         fail({
@@ -259,7 +291,7 @@ describe('SongChartEditorView', () => {
       const refusal = wrapper.get('[data-test="publish-refusal"]')
       expect(refusal.findAll('[data-test="refusal-reason"]')).toHaveLength(2)
       expect(refusal.text()).toContain('H7')
-      expect(wrapper.get('[data-test="status"]').text()).toContain('Draft')
+      expect(wrapper.get('[data-test="status-text"]').text()).toContain('Draft')
     })
 
     it('offers no withdrawal for a chart that is not published', async () => {
@@ -284,8 +316,48 @@ describe('SongChartEditorView', () => {
       await click(wrapper, '[data-test="withdraw-confirm"]')
 
       expect(POST).toHaveBeenCalledWith('/song-charts/{song_chart_id}/withdraw', expect.objectContaining({ body: { reason: 'The rights holder asked us to' } }))
-      expect(wrapper.get('[data-test="withdrawal"]').text()).toContain('The rights holder asked us to')
-      expect(wrapper.get('[data-test="withdrawal"]').text()).toContain('Ana')
+      expect(wrapper.get('[data-test="status-text"]').text()).toContain('The rights holder asked us to')
+      expect(wrapper.get('[data-test="status-text"]').text()).toContain('Ana')
+    })
+  })
+
+  describe('on a phone', () => {
+    beforeEach(() => mockViewport(390))
+
+    it('keeps the status, details and rights, and shows the lyrics as learners see them', async () => {
+      serve(makeSongChart('chart-1'))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      expect(wrapper.find('[data-test="status-panel"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="title"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="rights-confirmed"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="lyrics"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="lyrics-read-only"]').text()).toContain('Amazing grace')
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+    })
+  })
+
+  describe('withdrawing, in more detail', () => {
+    const published = () => makeSongChart('chart-1', {}, { status: 'published', published_revision: makeRevisionSummary(1) })
+
+    it('says what learners lose, and needs a reason', async () => {
+      serve(published())
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="withdraw"]')
+
+      expect(wrapper.get('[data-test="withdraw-consequence"]').text()).toContain('Learners lose it')
+      expect(wrapper.get('[data-test="withdraw-confirm"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('is a sheet on a phone', async () => {
+      mockViewport(390)
+      serve(published())
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="withdraw"]')
+
+      expect(wrapper.get('[data-test="withdraw-panel"]').attributes('data-layout')).toBe('sheet')
     })
   })
 

@@ -27,6 +27,7 @@ import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 type Course = components['schemas']['Course']
 type LearningPath = components['schemas']['LearningPath']
@@ -232,7 +233,8 @@ const bodyReady = computed(() => !isLoading.value && !loadError.value)
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
+  <TeachShell section="teacher-courses" bar="none">
+  <div class="flex flex-1 flex-col bg-surface">
     <AppBar
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-courses' }"
@@ -396,4 +398,5 @@ const bodyReady = computed(() => !isLoading.value && !loadError.value)
       @cancel="answerLeave(false)"
     />
   </div>
+  </TeachShell>
 </template>

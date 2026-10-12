@@ -12,7 +12,6 @@ import MoveNodeModal from '@/features/admin/components/MoveNodeModal.vue'
 import NodePickerModal from '@/features/admin/components/NodePickerModal.vue'
 import { useKnowledgeMap, type WriteOutcome } from '@/features/admin/composables/useKnowledgeMap'
 import { refusalText } from '@/features/admin/utils/knowledgeMap'
-import AppBar from '@/shared/components/AppBar.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
@@ -23,6 +22,7 @@ import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { ancestorIds, toTreeNodes } from '@/shared/utils/skillConceptTree'
 import type { components } from '@/api/generated/core-domain'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 type KnowledgeNode = components['schemas']['KnowledgeNode']
 type KnowledgeNodeKind = components['schemas']['KnowledgeNodeKind']
@@ -315,8 +315,8 @@ function removeEdge(edgeId: string) {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'admin-knowledge-map' }" />
+  <TeachShell section="admin-knowledge-map">
+  <div class="flex flex-1 flex-col bg-surface">
 
     <div class="flex flex-1 flex-col gap-4 px-4 pb-10 pt-6 sm:px-[48px] sm:pt-8">
       <h1 class="text-lg font-bold text-ink sm:text-xl">{{ t('knowledgeMap.heading') }}</h1>
@@ -531,4 +531,5 @@ function removeEdge(edgeId: string) {
       />
     </div>
   </div>
+  </TeachShell>
 </template>

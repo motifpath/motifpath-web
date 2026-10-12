@@ -81,7 +81,8 @@
     "diagramUnavailable": "This diagram can't be shown. Edit it to choose another, or remove it.",
     "insertSongChart": "Insert song chart",
     "songChart": "Song chart",
-    "removeSongChart": "Remove song chart"
+    "replaceSongChart": "Replace",
+    "removeSongChartShort": "Remove"
   },
   "textOptionsEditor": {
     "markedCorrectAriaLabel": "Marked correct",
@@ -736,9 +737,17 @@
   },
   "songChartPicker": {
     "title": "Insert a song chart",
-    "searchPlaceholder": "Title or artist",
+    "searchPlaceholder": "Search title or artist",
     "loadFailed": "Couldn't load the song charts.",
-    "none": "No published song chart matches."
+    "none": "No published song chart matches.",
+    "count": "{count} published song chart | {count} published song charts",
+    "note": "Drafts and withdrawn charts aren't listed. If a chart is withdrawn later, its card disappears from the lesson.",
+    "asLearnersSee": "As learners see it in the lesson",
+    "cardNote": "Tapping the card opens the reader over the lesson; a video pauses and resumes at the same moment.",
+    "openingLines": "Opening lines",
+    "insert": "Insert",
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "videoSource": {
     "upload": "Upload a video",

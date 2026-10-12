@@ -37,7 +37,7 @@ async function mountCard(opener?: (id: string) => void) {
   })
   await router.push('/')
   const wrapper = mount(SongChartCard, {
-    props: { songChartId: 'chart-asa-branca' },
+    props: { songChartId: 'chart-amazing-grace' },
     global: { plugins: [router], provide: opener ? { [SONG_CHART_OPENER]: opener } : {} },
   })
   await flushPromises()
@@ -56,13 +56,12 @@ describe('SongChartCard', () => {
   it('shows the song, its key, and how it starts with its chords', async () => {
     const { wrapper } = await mountCard()
 
-    expect(chartOf).toHaveBeenCalledWith('chart-asa-branca')
+    expect(chartOf).toHaveBeenCalledWith('chart-amazing-grace')
     const card = wrapper.get('[data-test="song-chart-card"]')
-    expect(card.text()).toContain('Asa Branca')
-    expect(card.text()).toContain('Luiz Gonzaga')
-    expect(card.get('[data-test="song-chart-card-key"]').text()).toContain('G')
+    expect(card.text()).toContain('Amazing Grace')
+    expect(card.get('[data-test="song-chart-card-meta"]').text()).toBe('John Newton · Key G')
     expect(card.findAll('[data-test="card-chord"]').map((c) => c.text())).toEqual(['G', 'C'])
-    expect(card.findAll('[data-test="card-word"]').map((w) => w.element.textContent).join('')).toBe('Quando olhei a terra ardendo')
+    expect(card.findAll('[data-test="card-word"]').map((w) => w.element.textContent).join('')).toBe('Amazing grace, how sweet the sound')
   })
 
   it('shows nothing for a chart that can no longer be read', async () => {
@@ -81,7 +80,7 @@ describe('SongChartCard', () => {
 
     await wrapper.get('[data-test="song-chart-card"]').trigger('click')
 
-    expect(opener).toHaveBeenCalledWith('chart-asa-branca')
+    expect(opener).toHaveBeenCalledWith('chart-amazing-grace')
     expect(router.currentRoute.value.name).toBe('home')
   })
 
@@ -91,6 +90,6 @@ describe('SongChartCard', () => {
     await wrapper.get('[data-test="song-chart-card"]').trigger('click')
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/songs/chart-asa-branca')
+    expect(router.currentRoute.value.fullPath).toBe('/songs/chart-amazing-grace')
   })
 })

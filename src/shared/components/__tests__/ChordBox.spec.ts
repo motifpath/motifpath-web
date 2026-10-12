@@ -43,6 +43,13 @@ describe('ChordBox', () => {
     ])
   })
 
+  it("writes a root dot's finger number in the surface colour, so it reads on the ink dot in light and dark", () => {
+    const wrapper = mountBox(g7Open)
+
+    const root = wrapper.findAll('[data-test="finger-dot"]').find((d) => d.get('circle').classes('fill-ink'))!
+    expect(root.get('text').classes()).toContain('fill-surface')
+  })
+
   it('marks open strings "o" and muted strings "x" above the box', () => {
     const wrapper = mountBox(cOpen)
 

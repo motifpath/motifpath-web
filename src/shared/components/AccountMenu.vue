@@ -185,7 +185,7 @@ function chooseLanguage(code: SupportedLocale) {
             :label="t('accountMenu.teach')"
             :value="t('accountMenu.teachValue')"
             chevron
-            :to="{ name: 'teacher-content' }"
+            :to="{ name: 'teach' }"
             @click="close"
           />
           <div class="my-1 h-px bg-border" />

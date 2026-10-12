@@ -1,9 +1,9 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
-import TempoControl from '@/features/student/components/TempoControl.vue'
+import TempoControl from '@/shared/components/TempoControl.vue'
 
-type Props = { tempo: number; slowest: number; goal: number; best: number | null; metronome: boolean; disabled: boolean }
+type Props = { tempo: number; slowest: number; goal: number | null; goalLabel: string; best: number | null; metronome: boolean; disabled: boolean }
 
 function mountControl(props: Partial<Props> = {}) {
   return mount(TempoControl, {
@@ -48,6 +48,18 @@ describe('TempoControl', () => {
 
     expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 80 BPM')
     expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 100 BPM')
+  })
+
+  it('marks no goal when there is none', () => {
+    const wrapper = mountControl({ goal: null, best: null })
+
+    expect(wrapper.find('[data-test="tempo-tick-goal"]').exists()).toBe(false)
+  })
+
+  it('names the goal as it is given', () => {
+    const wrapper = mountControl({ goalLabel: 'Song tempo 100 BPM' })
+
+    expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Song tempo 100 BPM')
   })
 
   it('marks no best clean tempo before the first clean take', () => {

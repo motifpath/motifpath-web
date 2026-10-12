@@ -4,7 +4,7 @@
     "practice": "Practice",
     "findCourse": "Find a course",
     "findPath": "Find a path",
-    "content": "Content",
+    "content": "Lessons",
     "paths": "Paths",
     "courses": "Courses",
     "exercises": "Exercises",
@@ -255,7 +255,7 @@
     "voicings": "Voicings",
     "closeSheet": "Close",
     "voicingUnavailable": "This voicing can't be shown.",
-    "missingBass": "Showing {chord}: the bass {bass} isn't in these voicings.",
+    "missingBass": "Shows {chord} — the bass note {bass} isn't shown",
     "sectionKind": {
       "verse": "Verse",
       "chorus": "Chorus",
@@ -266,18 +266,25 @@
       "other": "Song"
     },
     "openVoicing": "Open",
-    "foldCard": "Fold",
-    "unfoldCard": "Unfold",
-    "view": "View",
-    "boxView": "Box",
-    "neckView": "Neck",
-    "openChart": "Open the song"
+    "minimizeCard": "Minimize",
+    "expandCard": "Show the chord {chord}",
+    "noCapo": "No capo",
+    "draft": "Draft",
+    "chordsInSong": "Chords in this song",
+    "songTempo": "Song tempo {bpm} BPM",
+    "youreAt": "you're at {bpm}",
+    "atTempo": "At {bpm} BPM",
+    "metronomeKeys": "M on / off · − + tempo",
+    "playedToast": "Marked {title} as played",
+    "previewTitle": "Preview",
+    "previewBanner": "Preview of the draft · nothing is recorded"
   },
   "songChartPage": {
     "close": "Close",
     "unavailableHeading": "This song chart isn't available",
     "unavailableMessage": "It may have been taken down, or the link may be wrong.",
-    "loadFailed": "Couldn't load the song chart."
+    "loadFailed": "Couldn't load the song chart.",
+    "goHome": "Go home"
   },
   "sheetHeader": {
     "back": "Back",
@@ -336,5 +343,17 @@
     "continue": "Continue with Google",
     "busy": "Setting up your account…"
   },
-  "signedOutToast": "You're signed out. Your practice and progress are saved."
+  "signedOutToast": "You're signed out. Your practice and progress are saved.",
+  "tempoControl": {
+    "label": "Tempo",
+    "metronome": "Metronome",
+    "bpm": "{bpm} BPM",
+    "bestTick": "Best clean {bpm} BPM",
+    "goalTick": "Goal {bpm} BPM",
+    "typeTempo": "Type a tempo in BPM"
+  },
+  "teach": {
+    "intro": "Build and look after what your students learn. Quick fixes work here; big edits are easier on a computer.",
+    "admin": "Admin"
+  }
 }

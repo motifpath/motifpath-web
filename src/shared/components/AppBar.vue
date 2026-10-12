@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ArrowLeft } from 'lucide-vue-next'
+import { computed, inject, ref } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
 import AccountMenu from '@/shared/components/AccountMenu.vue'
 import BrandMark from '@/shared/components/BrandMark.vue'
 import Icon from '@/shared/components/Icon.vue'
+import { IN_TEACH_SHELL } from '@/shared/components/teachShellContext'
 import { type NavSection, TEACHER_SECTIONS, authoringSectionsFor } from '@/shared/navigation'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
@@ -33,6 +35,8 @@ const { t } = useTypedT()
 const currentUser = useCurrentUserStore()
 
 const hasCrumb = computed(() => !!props.breadcrumbLabel)
+// Inside Teach the shell offers the sections, the way home and the account, so the bar doesn't.
+const inTeachShell = inject(IN_TEACH_SHELL, false)
 
 // Permanent authoring sections, resolved against `primaryNavTo`'s route name (never
 // route-inferred, same explicit-prop style as breadcrumbLabel), which also drives which tab
@@ -67,8 +71,17 @@ function closeDrawer(): void {
   <div
     class="sticky top-0 z-20 flex h-16 items-center gap-4 bg-surface-raised px-5 shadow-level1"
   >
+    <RouterLink
+      v-if="compact && inTeachShell"
+      :to="primaryNavTo ?? { name: fallbackSection.name }"
+      data-test="app-bar-back"
+      :aria-label="t(activeSection.labelKey)"
+      class="-ml-2 flex h-10 w-10 items-center justify-center rounded-[10px] text-ink"
+    >
+      <ArrowLeft :size="18" aria-hidden="true" />
+    </RouterLink>
     <button
-      v-if="compact"
+      v-else-if="compact"
       type="button"
       data-test="app-bar-menu"
       :aria-label="t('appBar.menuAriaLabel')"
@@ -78,15 +91,15 @@ function closeDrawer(): void {
       <Icon name="menu" :size="18" />
     </button>
 
-    <RouterLink :to="{ name: 'home' }" data-test="app-bar-home" class="flex items-center gap-2.5">
+    <RouterLink v-if="!inTeachShell" :to="{ name: 'home' }" data-test="app-bar-home" class="flex items-center gap-2.5">
       <BrandMark />
       <span class="text-[15px] font-bold text-ink">{{ t('appBar.brand') }}</span>
     </RouterLink>
 
     <template v-if="!compact">
-      <div class="h-[22px] w-px bg-border" />
+      <div v-if="!inTeachShell" class="h-[22px] w-px bg-border" />
 
-      <div v-if="!hasCrumb" data-test="app-bar-tabs" class="flex items-center gap-1">
+      <div v-if="!hasCrumb && !inTeachShell" data-test="app-bar-tabs" class="flex items-center gap-1">
         <RouterLink
           v-for="item in navItems"
           :key="item.name"
@@ -97,7 +110,7 @@ function closeDrawer(): void {
         >
       </div>
 
-      <div v-else class="flex items-center gap-1.5 text-[13px]">
+      <div v-else-if="hasCrumb" class="flex items-center gap-1.5 text-[13px]">
         <RouterLink :to="primaryNavTo ?? { name: fallbackSection.name }" class="text-ink-muted">{{
           t(activeSection.labelKey)
         }}</RouterLink>
@@ -130,7 +143,7 @@ function closeDrawer(): void {
       {{ t('buttons.save') }}
     </button>
 
-    <AccountMenu />
+    <AccountMenu v-if="!inTeachShell || compact" />
 
     <template v-if="compact && drawerOpen">
       <div

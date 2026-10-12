@@ -4,9 +4,9 @@
  * It stays between the item's floor and its target, unless the student chose to play faster,
  * and never goes below a tempo the student chose: only the student lowers that.
  */
-import { MIN_TEMPO_BPM } from '@/shared/utils/sequence'
+import { MIN_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
 
-export const TEMPO_STEP_BPM = 5
+export { TEMPO_STEP_BPM }
 /** Clean takes in a row at one tempo that move the ladder up. */
 const CLEANS_TO_ADVANCE = 2
 /** The share of the target a first session starts at, as core composes it. */

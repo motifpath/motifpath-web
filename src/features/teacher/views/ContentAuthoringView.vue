@@ -39,6 +39,7 @@ import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
 import type { components } from '@/api/generated/core-domain'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 type CreateExpandedContentRequest = components['schemas']['CreateExpandedContentRequest']
 type UpdateExpandedContentRequest = components['schemas']['UpdateExpandedContentRequest']
@@ -505,7 +506,8 @@ async function onSaveChallenge({
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
+  <TeachShell section="teacher-content" bar="none">
+  <div class="flex flex-1 flex-col bg-surface">
     <AppBar
       :compact="isCompact"
       :primary-nav-to="{ name: 'teacher-content' }"
@@ -812,4 +814,5 @@ async function onSaveChallenge({
       </div>
     </OverlayLayer>
   </div>
+  </TeachShell>
 </template>

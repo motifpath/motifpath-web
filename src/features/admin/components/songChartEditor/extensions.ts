@@ -1,8 +1,11 @@
-import { Mark, Node } from '@tiptap/core'
+import { Extension, Mark, Node } from '@tiptap/core'
 import type { Extensions } from '@tiptap/core'
 import Document from '@tiptap/extension-document'
 import History from '@tiptap/extension-history'
 import Text from '@tiptap/extension-text'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+import type { EditorState } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 /** The kinds of part a song has. */
 export const SECTION_KINDS = ['verse', 'chorus', 'bridge', 'intro', 'outro', 'instrumental', 'other'] as const
@@ -68,7 +71,64 @@ export const ChordAnchor = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ['span', { ...HTMLAttributes, class: 'song-chart-chord' }, 0],
 })
 
-/** Everything the song chart editor's schema holds, and undo. */
-export function songChartExtensions(): Extensions {
-  return [SongChartDoc, Section, LyricLine, Comment, Text, ChordAnchor, History]
+/** A chord written in the lyrics that stops the chart from being published. */
+export type ChordProblem = 'not_a_chord' | 'not_in_catalog'
+
+export interface ChordProblemsOptions {
+  /** What is wrong with a written symbol; null when nothing is, or nothing is known yet. */
+  problemOf: (symbol: string) => ChordProblem | null
+  /** The sentence shown under a line for one of its chords' problems. */
+  reasonOf: (symbol: string, problem: ChordProblem) => string
+}
+
+/** Dispatched with this key when the answers about chords change, so the marks are drawn again. */
+export const chordProblemsKey = new PluginKey<DecorationSet>('chordProblems')
+
+/**
+ * Marks each chord that stops publishing where it is written (`data-problem` on the chord), and
+ * puts the first one's reason under its line (`data-problem-reason` on the line), so an author
+ * sees what to fix without leaving the lyrics.
+ */
+export const ChordProblems = Extension.create<ChordProblemsOptions>({
+  name: 'chordProblems',
+  addOptions() {
+    return { problemOf: () => null, reasonOf: (symbol) => symbol }
+  },
+  addProseMirrorPlugins() {
+    const { problemOf, reasonOf } = this.options
+    function decorate(state: EditorState): DecorationSet {
+      const decorations: Decoration[] = []
+      state.doc.descendants((node, pos) => {
+        if (node.type.name !== 'lyricLine') return node.type.name !== 'comment'
+        let reason: string | null = null
+        node.forEach((child, offset) => {
+          const mark = child.marks.find((m) => m.type.name === 'chordAnchor')
+          const symbol = typeof mark?.attrs.writtenSymbol === 'string' ? mark.attrs.writtenSymbol : null
+          const problem = symbol ? problemOf(symbol) : null
+          if (!symbol || !problem) return
+          const from = pos + 1 + offset
+          decorations.push(Decoration.inline(from, from + child.nodeSize, { 'data-problem': problem }))
+          reason ??= reasonOf(symbol, problem)
+        })
+        if (reason) decorations.push(Decoration.node(pos, pos + node.nodeSize, { 'data-problem-reason': reason }))
+        return false
+      })
+      return DecorationSet.create(state.doc, decorations)
+    }
+    return [
+      new Plugin({
+        key: chordProblemsKey,
+        state: {
+          init: (_, state) => decorate(state),
+          apply: (tr, old, _, state) => (tr.docChanged || tr.getMeta(chordProblemsKey) ? decorate(state) : old),
+        },
+        props: { decorations: (state) => chordProblemsKey.getState(state) },
+      }),
+    ]
+  },
+})
+
+/** Everything the song chart editor's schema holds, and undo; chord problems marked as `chordProblems` says. */
+export function songChartExtensions(chordProblems?: Partial<ChordProblemsOptions>): Extensions {
+  return [SongChartDoc, Section, LyricLine, Comment, Text, ChordAnchor, History, ChordProblems.configure(chordProblems ?? {})]
 }

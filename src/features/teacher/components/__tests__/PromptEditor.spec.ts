@@ -1,4 +1,7 @@
 import { mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
+import { EditorContent } from '@tiptap/vue-3'
+import type { Editor } from '@tiptap/vue-3'
 import { nextTick } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -486,21 +489,79 @@ describe('PromptEditor', () => {
 
       await wrapper.get('[data-test="prompt-toolbar-song-chart"]').trigger('click')
       expect(wrapper.getComponent(SongChartPickerModal).props('open')).toBe(true)
-      wrapper.getComponent(SongChartPickerModal).vm.$emit('pick', 'chart-asa-branca')
+      wrapper.getComponent(SongChartPickerModal).vm.$emit('pick', 'chart-amazing-grace')
       await nextTick()
 
       const nodes = lastEmittedDocument(wrapper).content
-      expect(nodes.find((n) => n.type === 'songChart')?.attrs).toEqual({ songChartId: 'chart-asa-branca' })
+      expect(nodes.find((n) => n.type === 'songChart')?.attrs).toEqual({ songChartId: 'chart-amazing-grace' })
       expect(wrapper.findComponent(SongChartPickerModal).exists()).toBe(false)
     })
 
+    async function mountWithChart() {
+      const modelValue: PromptDocument = {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Play along' }] },
+          { type: 'songChart', attrs: { songChartId: 'chart-amazing-grace' } },
+        ],
+      }
+      const wrapper = mount(PromptEditor, { props: { modelValue, songCharts: true }, global: { stubs } })
+      await nextTick()
+      await nextTick()
+      return wrapper
+    }
+
+    /** Selects the song chart node, as a tap on it does in a browser. */
+    async function selectChart(wrapper: VueWrapper) {
+      const editor = wrapper.findComponent(EditorContent).props('editor') as Editor
+      let pos = -1
+      editor.state.doc.descendants((node, at) => {
+        if (node.type.name === 'songChart') pos = at
+      })
+      editor.commands.setNodeSelection(pos)
+      await nextTick()
+    }
+
+    it("offers Replace and Remove on a selected song chart, and neither while it isn't", async () => {
+      const wrapper = await mountWithChart()
+      expect(wrapper.find('[data-test="prompt-song-chart-replace"]').exists()).toBe(false)
+
+      await selectChart(wrapper)
+
+      expect(wrapper.get('[data-test="prompt-song-chart-chip"]').text()).toBe('Song chart')
+      expect(wrapper.find('[data-test="prompt-song-chart-replace"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="prompt-song-chart-remove"]').exists()).toBe(true)
+    })
+
+    it('replaces a selected song chart in place with the one picked', async () => {
+      const wrapper = await mountWithChart()
+      await selectChart(wrapper)
+
+      await wrapper.get('[data-test="prompt-song-chart-replace"]').trigger('click')
+      wrapper.getComponent(SongChartPickerModal).vm.$emit('pick', 'chart-oh-susanna')
+      await nextTick()
+
+      const doc = lastEmittedDocument(wrapper)
+      expect(doc.content.map((n) => n.type)).toEqual(['paragraph', 'songChart'])
+      expect(doc.content[1]!.attrs).toEqual({ songChartId: 'chart-oh-susanna' })
+    })
+
+    it('removes a selected song chart', async () => {
+      const wrapper = await mountWithChart()
+      await selectChart(wrapper)
+
+      await wrapper.get('[data-test="prompt-song-chart-remove"]').trigger('click')
+
+      expect(lastEmittedDocument(wrapper).content.some((n) => n.type === 'songChart')).toBe(false)
+    })
+
     it('shows an embedded song chart as its card', async () => {
-      const modelValue: PromptDocument = { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-asa-branca' } }] }
+      const modelValue: PromptDocument = { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-amazing-grace' } }] }
       const wrapper = mount(PromptEditor, { props: { modelValue, songCharts: true }, global: { stubs } })
       await nextTick()
       await nextTick()
 
-      expect(wrapper.get('[data-test="song-chart-card"]').attributes('data-song-chart-id')).toBe('chart-asa-branca')
+      expect(wrapper.get('[data-test="song-chart-card"]').attributes('data-song-chart-id')).toBe('chart-amazing-grace')
     })
   })
 })

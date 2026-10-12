@@ -6,7 +6,6 @@ import {
   type LearningPathStatus,
   useLearningPathLibrary,
 } from '@/features/teacher/composables/useLearningPathLibrary'
-import AppBar from '@/shared/components/AppBar.vue'
 import CourseCard from '@/shared/components/CourseCard.vue'
 import CourseFilters from '@/shared/components/CourseFilters.vue'
 import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
@@ -14,9 +13,9 @@ import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import TeachShell from '@/shared/components/TeachShell.vue'
 
 const STATUS_TABS: (LearningPathStatus | null)[] = [null, 'draft', 'published']
 
@@ -28,7 +27,6 @@ const canAuthor = computed(
 // creator filter.
 const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
-const { isCompact } = useIsCompact()
 const { t } = useTypedT()
 const {
   paths,
@@ -53,8 +51,8 @@ function statusLabel(tab: LearningPathStatus | null): string {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-surface">
-    <AppBar :compact="isCompact" :primary-nav-to="{ name: 'teacher-paths' }" />
+  <TeachShell section="teacher-paths">
+  <div class="flex flex-1 flex-col bg-surface">
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
       <p class="max-w-md text-center text-ink-muted">
@@ -190,4 +188,5 @@ function statusLabel(tab: LearningPathStatus | null): string {
       </template>
     </div>
   </div>
+  </TeachShell>
 </template>

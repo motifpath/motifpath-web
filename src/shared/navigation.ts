@@ -1,4 +1,4 @@
-import { Compass, Guitar, House, Library, Route } from 'lucide-vue-next'
+import { Compass, Dumbbell, FileText, Grid3x3, Guitar, House, Library, Music, Network, Route } from 'lucide-vue-next'
 import type { FunctionalComponent } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
@@ -63,21 +63,23 @@ export interface NavSection {
   /** Route name the section links to. */
   name: string
   labelKey: NavLabelKey
+  icon: FunctionalComponent
 }
 
-/** The authoring sections, for teachers and admins. */
+/** The authoring sections, for teachers and admins, in the order things are composed: a course of
+ *  paths, a path of lessons, a lesson with exercises and diagrams. */
 export const TEACHER_SECTIONS: NavSection[] = [
-  { name: 'teacher-content', labelKey: 'nav.content' },
-  { name: 'teacher-paths', labelKey: 'nav.paths' },
-  { name: 'teacher-courses', labelKey: 'nav.courses' },
-  { name: 'teacher-exercises', labelKey: 'nav.exercises' },
-  { name: 'teacher-diagrams', labelKey: 'nav.diagrams' },
+  { name: 'teacher-courses', labelKey: 'nav.courses', icon: Library },
+  { name: 'teacher-paths', labelKey: 'nav.paths', icon: Route },
+  { name: 'teacher-content', labelKey: 'nav.content', icon: FileText },
+  { name: 'teacher-exercises', labelKey: 'nav.exercises', icon: Dumbbell },
+  { name: 'teacher-diagrams', labelKey: 'nav.diagrams', icon: Grid3x3 },
 ]
 
 /** The sections that change what everyone else authors against, for admins only. */
 export const ADMIN_SECTIONS: NavSection[] = [
-  { name: 'admin-knowledge-map', labelKey: 'nav.knowledgeMap' },
-  { name: 'admin-song-charts', labelKey: 'nav.songCharts' },
+  { name: 'admin-knowledge-map', labelKey: 'nav.knowledgeMap', icon: Network },
+  { name: 'admin-song-charts', labelKey: 'nav.songCharts', icon: Music },
 ]
 
 /** The authoring sections role can reach: the teacher ones, plus the admin ones for an admin. */

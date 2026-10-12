@@ -25,10 +25,10 @@ describe('usePublishedSongChart', () => {
     const chart = makeLearnerSongChart()
     respond({ data: chart, status: 200 })
 
-    const { chart: loaded, instrument, isLoading } = usePublishedSongChart('chart-asa-branca')
+    const { chart: loaded, instrument, isLoading } = usePublishedSongChart('chart-amazing-grace')
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(GET).toHaveBeenCalledWith('/song-charts/{song_chart_id}/published', { params: { path: { song_chart_id: 'chart-asa-branca' } } })
+    expect(GET).toHaveBeenCalledWith('/song-charts/{song_chart_id}/published', { params: { path: { song_chart_id: 'chart-amazing-grace' } } })
     expect(loaded.value).toEqual(chart)
     await vi.waitFor(() => expect(instrument.value).toEqual(guitar))
   })

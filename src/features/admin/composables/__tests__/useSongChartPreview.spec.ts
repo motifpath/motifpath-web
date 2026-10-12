@@ -26,10 +26,10 @@ describe('useSongChartPreview', () => {
     const chart = makeLearnerSongChart({ revision_number: null })
     respond({ data: chart, status: 200 })
 
-    const { chart: loaded, instrument, isLoading } = useSongChartPreview('chart-asa-branca')
+    const { chart: loaded, instrument, isLoading } = useSongChartPreview('chart-amazing-grace')
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
-    expect(GET).toHaveBeenCalledWith('/song-charts/{song_chart_id}/preview', { params: { path: { song_chart_id: 'chart-asa-branca' } } })
+    expect(GET).toHaveBeenCalledWith('/song-charts/{song_chart_id}/preview', { params: { path: { song_chart_id: 'chart-amazing-grace' } } })
     expect(loaded.value).toEqual(chart)
     await vi.waitFor(() => expect(instrument.value).toEqual(guitar))
   })
@@ -37,7 +37,7 @@ describe('useSongChartPreview', () => {
   it('has no instrument for a chart without chords', async () => {
     respond({ data: makeLearnerSongChart({ chords: [], diagrams: [] }), status: 200 })
 
-    const { instrument, isLoading } = useSongChartPreview('chart-asa-branca')
+    const { instrument, isLoading } = useSongChartPreview('chart-amazing-grace')
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
     expect(instrument.value).toBeNull()

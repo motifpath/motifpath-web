@@ -22,7 +22,7 @@ describe('fileSlug', () => {
     ['Amazing Grace', 'amazing-grace'],
     ['Ciranda, Cirandinha', 'ciranda-cirandinha'],
     ['Oh! Susanna', 'oh-susanna'],
-    ['Asa Branca (ao vivo)', 'asa-branca-ao-vivo'],
+    ['Amazing Grace (live)', 'amazing-grace-live'],
     ['Pé de Pano', 'pe-de-pano'],
     ['!!!', 'untitled'],
   ])('names "%s" as %s', (title, slug) => {

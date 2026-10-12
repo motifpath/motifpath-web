@@ -4,7 +4,7 @@
     "practice": "Praticar",
     "findCourse": "Encontrar um curso",
     "findPath": "Encontrar uma trilha",
-    "content": "Conteúdo",
+    "content": "Aulas",
     "paths": "Trilhas",
     "courses": "Cursos",
     "exercises": "Exercícios",
@@ -255,7 +255,7 @@
     "voicings": "Formas",
     "closeSheet": "Fechar",
     "voicingUnavailable": "Não foi possível mostrar esta forma.",
-    "missingBass": "Mostrando {chord}: o baixo {bass} não está nestas formas.",
+    "missingBass": "Mostra {chord} — o baixo {bass} não aparece",
     "sectionKind": {
       "verse": "Estrofe",
       "chorus": "Refrão",
@@ -266,18 +266,25 @@
       "other": "Música"
     },
     "openVoicing": "Solta",
-    "foldCard": "Recolher",
-    "unfoldCard": "Expandir",
-    "view": "Visualização",
-    "boxView": "Diagrama",
-    "neckView": "Braço",
-    "openChart": "Abrir a música"
+    "minimizeCard": "Minimizar",
+    "expandCard": "Mostrar o acorde {chord}",
+    "noCapo": "Sem capotraste",
+    "draft": "Rascunho",
+    "chordsInSong": "Acordes desta música",
+    "songTempo": "Andamento da música {bpm} BPM",
+    "youreAt": "você está em {bpm}",
+    "atTempo": "Em {bpm} BPM",
+    "metronomeKeys": "M liga / desliga · − + andamento",
+    "playedToast": "{title} marcada como tocada",
+    "previewTitle": "Prévia",
+    "previewBanner": "Prévia do rascunho · nada é registrado"
   },
   "songChartPage": {
     "close": "Fechar",
     "unavailableHeading": "Esta cifra não está disponível",
     "unavailableMessage": "Ela pode ter sido retirada, ou o link pode estar errado.",
-    "loadFailed": "Não foi possível carregar a cifra."
+    "loadFailed": "Não foi possível carregar a cifra.",
+    "goHome": "Ir para o início"
   },
   "sheetHeader": {
     "back": "Voltar",
@@ -336,5 +343,17 @@
     "continue": "Continuar com o Google",
     "busy": "Configurando sua conta…"
   },
-  "signedOutToast": "Você saiu. Sua prática e seu progresso estão salvos."
+  "signedOutToast": "Você saiu. Sua prática e seu progresso estão salvos.",
+  "tempoControl": {
+    "label": "Andamento",
+    "metronome": "Metrônomo",
+    "bpm": "{bpm} BPM",
+    "bestTick": "Melhor limpa {bpm} BPM",
+    "goalTick": "Meta {bpm} BPM",
+    "typeTempo": "Digite um andamento em BPM"
+  },
+  "teach": {
+    "intro": "Crie e cuide do que seus alunos aprendem. Ajustes rápidos funcionam aqui; edições grandes são mais fáceis no computador.",
+    "admin": "Admin"
+  }
 }

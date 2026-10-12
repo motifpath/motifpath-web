@@ -177,7 +177,9 @@ const mutedStrings = computed(() => [...props.voicing.muted_strings].sort((a, b)
       :data-x="dot.x"
     >
       <circle :cx="dot.x" :cy="dot.y" :r="DOT_RADIUS" :class="dot.root ? 'fill-ink' : 'fill-accent'" />
-      <text :x="dot.x" :y="dot.y + 4" text-anchor="middle" class="fill-accent-fg text-[11px] font-bold">{{ dot.finger }}</text>
+      <text :x="dot.x" :y="dot.y + 4" text-anchor="middle" class="text-[11px] font-bold" :class="dot.root ? 'fill-surface' : 'fill-accent-fg'">
+        {{ dot.finger }}
+      </text>
     </g>
 
     <circle

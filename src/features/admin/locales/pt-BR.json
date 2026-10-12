@@ -91,14 +91,12 @@
   "songChartPreview": {
     "notFoundHeading": "Cifra não encontrada",
     "notFoundMessage": "Nenhuma cifra tem este link. Ela pode ter sido excluída.",
-    "loadFailed": "Não foi possível carregar a cifra.",
-    "note": "Prévia do rascunho, como um aluno a leria. Nada do que você fizer aqui é registrado."
+    "loadFailed": "Não foi possível carregar a cifra."
   },
   "songChartList": {
     "heading": "Cifras",
     "newChart": "Nova cifra",
-    "searchLabel": "Buscar",
-    "searchPlaceholder": "Título ou artista",
+    "searchPlaceholder": "Buscar título ou artista",
     "statusLabel": "Situação",
     "allStatuses": "Todas",
     "status": {
@@ -106,12 +104,21 @@
       "published": "Publicada",
       "withdrawn": "Retirada"
     },
-    "publishedAt": "Publicada · revisão {revision}",
     "loadFailed": "Não foi possível carregar as cifras.",
     "noMatchesHeading": "Nenhuma cifra encontrada",
     "noMatchesMessage": "Tente outro título ou artista, ou outra situação.",
     "emptyHeading": "Nenhuma cifra ainda",
-    "emptyMessage": "Comece escrevendo uma ou importando ChordPro."
+    "emptyMessage": "Comece escrevendo uma ou importando ChordPro.",
+    "count": "{count} cifra | {count} cifras",
+    "revision": "Revisão {revision}",
+    "neverPublished": "nunca publicada",
+    "rightsNotConfirmed": "direitos não confirmados",
+    "withdrawnMeta": "retirada",
+    "updatedBy": "alterada por {name}, {when}",
+    "today": "hoje",
+    "unpublishedChanges": "Alterações não publicadas",
+    "clearSearch": "Limpar busca",
+    "publishedAt": "Publicada · revisão {revision}"
   },
   "songChartEditor": {
     "lyricsLabel": "Letra e acordes",
@@ -125,9 +132,7 @@
     "putChord": "Pôr acorde",
     "changeChord": "Trocar acorde",
     "removeChord": "Tirar acorde",
-    "selectToPut": "Selecione uma palavra ou sílaba para pôr um acorde nela.",
     "bestVoicing": "Melhor forma (os alunos a veem primeiro)",
-    "chordsToFix": "Acordes que impedem a publicação:",
     "chordCheck": {
       "ok": "No catálogo de acordes.",
       "no_chord": "Sem acorde aqui.",
@@ -135,14 +140,19 @@
       "unsupported": "Um tipo de acorde que o catálogo não tem.",
       "not_in_catalog": "Não está no catálogo de acordes.",
       "without_bass": "Mostrado sem o baixo; o catálogo não tem este baixo."
-    }
+    },
+    "notAChordReason": "“{symbol}” não é um acorde",
+    "notInCatalogReason": "“{symbol}” não está no catálogo de acordes",
+    "undo": "Desfazer",
+    "redo": "Refazer",
+    "chordHint": "Selecione uma palavra ou sílaba e toque em Acorde (ou digite [ ) para pôr um acorde nela. Os acordes são conferidos enquanto você escreve."
   },
   "songChartEditorView": {
     "untitled": "Nova cifra",
     "unsaved": "alterações não salvas",
     "import": "Importar ChordPro",
-    "export": "Exportar ChordPro",
-    "preview": "Prévia",
+    "export": "Exportar .cho",
+    "preview": "Ver como aluno",
     "publish": "Publicar",
     "withdraw": "Retirar",
     "save": "Salvar",
@@ -151,7 +161,6 @@
       "rights_not_confirmed": "Ninguém confirmou que os direitos da música foram verificados.",
       "unresolved_chords": "Alguns acordes impedem a publicação:"
     },
-    "withdrawnBy": "Retirada por {name} em {date}: {reason}",
     "details": "Detalhes",
     "title": "Título",
     "artist": "Artista",
@@ -171,29 +180,42 @@
       "unbalanced_section": "um início ou fim de seção que não corresponde",
       "empty_section": "uma seção sem linhas"
     },
-    "chordWarnings": "Acordes não resolvidos por completo",
-    "chordWarning": {
-      "unparsed_symbol": "não é um acorde",
-      "unsupported_quality": "um tipo de acorde que o catálogo não tem",
-      "chord_not_in_catalog": "não está no catálogo de acordes",
-      "voicing_unavailable": "a forma escolhida não é mais oferecida",
-      "bass_not_in_catalog": "mostrado sem o baixo"
-    },
     "blocksPublishing": "impede a publicação",
-    "rightsConfirmed": "Os direitos da música foram verificados",
+    "rightsConfirmed": "Verifiquei os direitos: domínio público, original ou licenciada para os alunos daqui",
     "rightsConfirmedBy": "Confirmado por {name} em {date}",
     "revisions": "Revisões publicadas",
     "revision": "Revisão {revision}, publicada por {name} em {date}",
     "importHeading": "Importar ChordPro",
     "importHint": "Cole o texto ChordPro. Ele preenche o editor; nada é salvo até você salvar.",
     "importAction": "Importar",
-    "withdrawHeading": "Retirar esta cifra?",
-    "withdrawHint": "Os alunos não poderão mais lê-la. Diga o motivo, para os outros administradores.",
+    "withdrawHeading": "Retirar “{title}”?",
     "replaceHeading": "Substituir a letra?",
     "replaceMessage": "A letra importada substitui a do editor. Nada é salvo até você salvar.",
     "replace": "Substituir",
     "leaveHeading": "Descartar alterações não salvas?",
     "leaveMessage": "Suas alterações nesta cifra não foram salvas.",
-    "discard": "Descartar"
+    "discard": "Descartar",
+    "rightsNote": "Salvo com o rascunho. Quem confirmou e quando aparece aqui.",
+    "noRevisions": "Nenhuma ainda — publicar cria a revisão 1.",
+    "largerScreen": "Colocar acordes precisa de uma tela maior. Status, detalhes e direitos funcionam aqui.",
+    "importSource": "De onde vem o ChordPro",
+    "pasteText": "Colar texto",
+    "chooseFileTab": "Escolher arquivo",
+    "chooseFile": "Escolha um arquivo .cho ou .txt",
+    "nothingSaved": "Nada é salvo até você salvar. As diretivas preenchem os detalhes; linhas que não puderem ser lidas são listadas depois da importação.",
+    "withdrawConsequence": "Os alunos perdem a cifra na hora: o link diz que ela não está disponível, e as aulas que a mostram deixam de exibir o cartão. Você pode publicá-la de novo depois.",
+    "withdrawReason": "Por quê (fica guardado com a cifra)"
+  },
+  "songChartStatus": {
+    "new": "Nova — salve para começar um rascunho.",
+    "draft": "Rascunho — nunca publicada. Os alunos não a veem.",
+    "published": "Publicada — os alunos leem a revisão {revision}.",
+    "withdrawn": "Retirada por {name} em {date}: {reason}",
+    "beforeYouPublish": "Antes de publicar:",
+    "confirmRights": "Confirme os direitos",
+    "notAChord": "“{symbol}” em {section}, linha {line}, não é um acorde",
+    "notInCatalog": "“{symbol}” em {section}, linha {line}, não está no catálogo de acordes",
+    "publishAgain": "Publicar de novo",
+    "withdraw": "Retirar…"
   }
 }

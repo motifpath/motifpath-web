@@ -55,13 +55,13 @@ describe('useSongChartEditor', () => {
 
     it('is created on its first save', async () => {
       const editor = useSongChartEditor(ref(null))
-      Object.assign(editor.details, { title: 'Asa Branca', artist: 'Luiz Gonzaga', language: 'pt_BR' })
+      Object.assign(editor.details, { title: 'Amazing Grace', artist: 'John Newton', language: 'pt_BR' })
       editor.body.value = saved.draft.body
       POST.mockReturnValueOnce(ok(saved, 201))
 
       expect(await editor.save()).toBe('saved')
       expect(POST).toHaveBeenCalledWith('/song-charts', {
-        body: expect.objectContaining({ title: 'Asa Branca', artist: 'Luiz Gonzaga', language: 'pt_BR', rights_confirmed: false, body: saved.draft.body }),
+        body: expect.objectContaining({ title: 'Amazing Grace', artist: 'John Newton', language: 'pt_BR', rights_confirmed: false, body: saved.draft.body }),
       })
       expect(editor.chart.value).toEqual(saved)
       expect(editor.isDirty.value).toBe(false)
@@ -72,7 +72,7 @@ describe('useSongChartEditor', () => {
     it("loads the draft's details and lyrics", async () => {
       const editor = await loaded(makeSongChart('chart-1', { capo_fret: 3 }))
 
-      expect(editor.details.title).toBe('Asa Branca')
+      expect(editor.details.title).toBe('Amazing Grace')
       expect(editor.details.capoFret).toBe(3)
       expect(editor.body.value).toEqual(saved.draft.body)
       expect(editor.isDirty.value).toBe(false)
@@ -106,18 +106,18 @@ describe('useSongChartEditor', () => {
   describe('ChordPro', () => {
     it('fills the lyrics and the details the text sets, keeping the rest, and saves nothing', async () => {
       const editor = useSongChartEditor(ref(null))
-      editor.details.artist = 'Luiz Gonzaga'
+      editor.details.artist = 'John Newton'
       POST.mockReturnValueOnce(
         ok({
-          title: 'Asa Branca', artist: null, concert_key: null, capo_fret: 2, tempo_bpm: null, time_signature: null,
+          title: 'Amazing Grace', artist: null, concert_key: null, capo_fret: 2, tempo_bpm: null, time_signature: null,
           body: otherLine, import_warnings: [{ line: 3, kind: 'unsupported_directive', text: '{define: G}' }],
         }),
       )
 
-      expect(await editor.readChordPro('{title: Asa Branca}')).toBe('read')
-      expect(POST).toHaveBeenCalledWith('/song-charts/chordpro/read', expect.objectContaining({ body: '{title: Asa Branca}' }))
-      expect(editor.details.title).toBe('Asa Branca')
-      expect(editor.details.artist).toBe('Luiz Gonzaga')
+      expect(await editor.readChordPro('{title: Amazing Grace}')).toBe('read')
+      expect(POST).toHaveBeenCalledWith('/song-charts/chordpro/read', expect.objectContaining({ body: '{title: Amazing Grace}' }))
+      expect(editor.details.title).toBe('Amazing Grace')
+      expect(editor.details.artist).toBe('John Newton')
       expect(editor.details.capoFret).toBe(2)
       expect(editor.body.value).toEqual(otherLine)
       expect(editor.importWarnings.value).toEqual([{ line: 3, kind: 'unsupported_directive', text: '{define: G}' }])
@@ -134,9 +134,9 @@ describe('useSongChartEditor', () => {
 
     it('exports the saved draft', async () => {
       const editor = await loaded()
-      GET.mockImplementation(() => ok('{title: Asa Branca}\n'))
+      GET.mockImplementation(() => ok('{title: Amazing Grace}\n'))
 
-      expect(await editor.exportChordPro()).toBe('{title: Asa Branca}\n')
+      expect(await editor.exportChordPro()).toBe('{title: Amazing Grace}\n')
     })
   })
 
