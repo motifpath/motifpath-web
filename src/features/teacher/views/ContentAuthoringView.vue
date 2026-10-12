@@ -602,7 +602,7 @@ const hintClass = 'text-xs text-ink-muted'
         </div>
         <div v-if="form.contentType.value !== 'video'" class="flex flex-col gap-2">
           <label class="text-sm font-semibold">{{ t('contentAuthoringView.articleBodyLabel') }}</label>
-          <PromptEditor v-model="form.richContent.value" song-charts />
+          <PromptEditor v-model="form.richContent.value" :label="t('contentAuthoringView.articleBodyLabel')" song-charts />
         </div>
       </section>
 
