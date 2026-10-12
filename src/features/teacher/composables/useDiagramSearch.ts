@@ -11,10 +11,10 @@ const SEARCH_DEBOUNCE_MS = 300
 /**
  * The diagram library, searched: by part of a name (applied once typing
  * pauses), an exact root note, kind (templates or custom) and author, on
- * top of a fixed instrument when one is given. Any change starts over from
- * the first page.
+ * top of a fixed instrument when one is given, and only diagrams that can
+ * play when `playable`. Any change starts over from the first page.
  */
-export function useDiagramSearch(instrumentId: () => string | undefined) {
+export function useDiagramSearch(instrumentId: () => string | undefined, options: { playable?: boolean } = {}) {
   const nameText = ref('')
   const rootNote = ref('')
   const kind = ref<Diagram['kind'] | null>(null)
@@ -27,6 +27,7 @@ export function useDiagramSearch(instrumentId: () => string | undefined) {
     rootNote: rootNote.value,
     ...(kind.value ? { kind: kind.value } : {}),
     ...(author.value ? { createdBy: author.value.user_id } : {}),
+    ...(options.playable ? { playable: true } : {}),
   }))
 
   let searchTimer: ReturnType<typeof setTimeout> | undefined

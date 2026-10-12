@@ -946,6 +946,21 @@ describe('DiagramAuthoringView', () => {
       )
     })
 
+    it('keeps a playback an exercise plays, saying which exercise plays it', async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+      PATCH.mockResolvedValueOnce({
+        data: undefined,
+        error: { message: 'a playback an exercise plays can\'t be removed: playback "Strum" is the sound of "Major or minor?"' },
+        response: { status: 409 },
+      })
+
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+      await new Promise((r) => setTimeout(r, 0))
+
+      const errors = useToast().toasts.value.filter((toast) => toast.kind === 'error').map((toast) => toast.message)
+      expect(errors).toEqual(['A playback an exercise plays can\'t be removed: playback "Strum" is the sound of "Major or minor?"'])
+    })
+
     it('lets an admin save a copy as a new basic template', async () => {
       currentUser.profile.role = 'admin'
       currentUser.profile.user_id = 'u-admin'

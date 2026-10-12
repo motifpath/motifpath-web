@@ -20,11 +20,8 @@
   },
   "audioSelectionOptionsEditor": {
     "addLabel": "Add audio option",
-    "chooseAudioAriaLabel": "Choose audio",
-    "chooseAudio": "Choose audio",
-    "changeAudioAriaLabel": "Change audio",
-    "change": "Change",
-    "labelPlaceholder": "Button label shown to the student"
+    "labelPlaceholder": "Sound 1",
+    "labelAriaLabel": "Label students see"
   },
   "exercisePreviewModal": {
     "portrait": "Portrait",
@@ -107,10 +104,6 @@
     "imageSelected": "Image selected",
     "noImageSelected": "No image selected",
     "audioStimulusLabel": "Audio stimulus — what the student listens to",
-    "chooseStimulusImage": "Choose stimulus image",
-    "changeStimulusImage": "Change stimulus image",
-    "chooseStimulusAudio": "Choose stimulus audio",
-    "changeStimulusAudio": "Change stimulus audio",
     "classificationLabel": "Classification",
     "classificationHint": "Makes this exercise findable outside its original path — e.g. as a remediation suggestion.",
     "usageHeading": "Where this exercise is used",
@@ -615,7 +608,8 @@
     "kindCustom": "Custom",
     "authorLabel": "Author",
     "clearFilters": "Clear filters",
-    "noMatches": "No diagrams match these filters."
+    "noMatches": "No diagrams match these filters.",
+    "playableCount": "Only diagrams with a playback · {count}"
   },
   "diagramEmbedPicker": {
     "loadErrorMessage": "We couldn't load this diagram.",
@@ -929,5 +923,53 @@
     },
     "showUnknown": "Show results",
     "close": "Close filters"
+  },
+  "soundSettings": {
+    "hiddenNote": "Students hear this without seeing the board. After they answer, “What you heard” shows it and lets them replay it.",
+    "playback": "Playback",
+    "tempo": "Tempo (BPM)",
+    "tempoHint": "Blank plays at the playback’s own tempo.",
+    "tempoInvalid": "Pick a whole tempo from {min} to {max} BPM.",
+    "length": "Length",
+    "voice": "Sound",
+    "voiceDefault": "Instrument default",
+    "direction": "Direction",
+    "directions": {
+      "as_authored": "As written",
+      "reversed": "Reversed"
+    },
+    "hearIt": "Hear it",
+    "stop": "Stop"
+  },
+  "soundPicker": {
+    "title": "Sound from a diagram",
+    "sourceLabel": "Where the sound comes from",
+    "sourceDiagrams": "Diagrams",
+    "sourceChords": "Chords",
+    "changeDiagram": "Change diagram",
+    "changeChord": "Change chord",
+    "cancel": "Cancel",
+    "use": "Use this sound",
+    "loadFailed": "We couldn’t load this diagram.",
+    "unavailable": "This diagram can’t be played to students yet."
+  },
+  "soundSource": {
+    "choose": "Choose the sound",
+    "chooseHint": "Upload audio, or play a diagram or a chord",
+    "chooseTitle": "Choose the sound",
+    "upload": "Upload audio",
+    "fromDiagram": "From a diagram",
+    "chooseNote": "From a diagram: students hear it first; the shape is shown only after they answer (“What you heard”).",
+    "diagramTitle": "{diagram} — {playback}",
+    "diagramMeta": "From a diagram · {bpm} BPM · {length}",
+    "fileTitle": "Uploaded audio",
+    "fileMeta": "An audio file",
+    "hidden": "Hidden from students until they answer.",
+    "play": "Play",
+    "stop": "Stop",
+    "more": "More for {title}",
+    "change": "Change sound",
+    "edit": "Edit settings",
+    "remove": "Remove"
   }
 }

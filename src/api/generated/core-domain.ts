@@ -9709,6 +9709,13 @@ export interface operations {
                  *     listed only when asked for; any lists both.
                  */
                 purpose?: "general" | "chord_voicing" | "any";
+                /**
+                 * @description true lists only diagrams with at least one playback, the ones a
+                 *     listening exercise can play as its sound; the total counts only
+                 *     those. Omitted or false lists diagrams whether they have
+                 *     playbacks or not.
+                 */
+                playable?: boolean;
             };
             header?: never;
             path?: never;

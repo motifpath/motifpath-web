@@ -20,11 +20,8 @@
   },
   "audioSelectionOptionsEditor": {
     "addLabel": "Adicionar opção de áudio",
-    "chooseAudioAriaLabel": "Escolher áudio",
-    "chooseAudio": "Escolher áudio",
-    "changeAudioAriaLabel": "Alterar áudio",
-    "change": "Alterar",
-    "labelPlaceholder": "Rótulo do botão mostrado ao aluno"
+    "labelPlaceholder": "Som 1",
+    "labelAriaLabel": "Rótulo que os alunos veem"
   },
   "exercisePreviewModal": {
     "portrait": "Retrato",
@@ -107,10 +104,6 @@
     "imageSelected": "Imagem selecionada",
     "noImageSelected": "Nenhuma imagem selecionada",
     "audioStimulusLabel": "Estímulo de áudio — o que o aluno escuta",
-    "chooseStimulusImage": "Escolher imagem de estímulo",
-    "changeStimulusImage": "Alterar imagem de estímulo",
-    "chooseStimulusAudio": "Escolher áudio de estímulo",
-    "changeStimulusAudio": "Alterar áudio de estímulo",
     "classificationLabel": "Classificação",
     "classificationHint": "Torna este exercício localizável fora de sua trilha original — por exemplo, como sugestão de reforço.",
     "usageHeading": "Onde este exercício é usado",
@@ -615,7 +608,8 @@
     "kindCustom": "Personalizados",
     "authorLabel": "Autor",
     "clearFilters": "Limpar filtros",
-    "noMatches": "Nenhum diagrama corresponde a estes filtros."
+    "noMatches": "Nenhum diagrama corresponde a estes filtros.",
+    "playableCount": "Só diagramas com reprodução · {count}"
   },
   "diagramEmbedPicker": {
     "loadErrorMessage": "Não foi possível carregar este diagrama.",
@@ -929,5 +923,53 @@
     },
     "showUnknown": "Mostrar resultados",
     "close": "Fechar filtros"
+  },
+  "soundSettings": {
+    "hiddenNote": "Os alunos ouvem isto sem ver o diagrama. Depois de responder, “O que você ouviu” mostra o diagrama e deixa tocar de novo.",
+    "playback": "Reprodução",
+    "tempo": "Andamento (BPM)",
+    "tempoHint": "Em branco, toca no andamento da própria reprodução.",
+    "tempoInvalid": "Escolha um andamento inteiro de {min} a {max} BPM.",
+    "length": "Duração",
+    "voice": "Som",
+    "voiceDefault": "Padrão do instrumento",
+    "direction": "Sentido",
+    "directions": {
+      "as_authored": "Como escrito",
+      "reversed": "Invertido"
+    },
+    "hearIt": "Ouvir",
+    "stop": "Parar"
+  },
+  "soundPicker": {
+    "title": "Som de um diagrama",
+    "sourceLabel": "De onde vem o som",
+    "sourceDiagrams": "Diagramas",
+    "sourceChords": "Acordes",
+    "changeDiagram": "Trocar diagrama",
+    "changeChord": "Trocar acorde",
+    "cancel": "Cancelar",
+    "use": "Usar este som",
+    "loadFailed": "Não foi possível carregar este diagrama.",
+    "unavailable": "Este diagrama ainda não pode ser tocado para os alunos."
+  },
+  "soundSource": {
+    "choose": "Escolher o som",
+    "chooseHint": "Envie um áudio, ou toque um diagrama ou um acorde",
+    "chooseTitle": "Escolher o som",
+    "upload": "Enviar áudio",
+    "fromDiagram": "De um diagrama",
+    "chooseNote": "De um diagrama: os alunos ouvem primeiro; o formato só aparece depois que respondem (“O que você ouviu”).",
+    "diagramTitle": "{diagram} — {playback}",
+    "diagramMeta": "De um diagrama · {bpm} BPM · {length}",
+    "fileTitle": "Áudio enviado",
+    "fileMeta": "Um arquivo de áudio",
+    "hidden": "Escondido dos alunos até responderem.",
+    "play": "Tocar",
+    "stop": "Parar",
+    "more": "Mais opções de {title}",
+    "change": "Trocar som",
+    "edit": "Editar ajustes",
+    "remove": "Remover"
   }
 }

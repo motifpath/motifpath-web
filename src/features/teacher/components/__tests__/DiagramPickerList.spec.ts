@@ -46,7 +46,14 @@ function diagramQueries() {
 }
 
 function mountPicker(
-  props: { instrumentId?: string; excludeIds?: string[]; emptyHeading?: string; emptyMessage?: string; pickedDiagramId?: string | null } = {},
+  props: {
+    instrumentId?: string
+    excludeIds?: string[]
+    emptyHeading?: string
+    emptyMessage?: string
+    pickedDiagramId?: string | null
+    playable?: boolean
+  } = {},
 ) {
   return mount(DiagramPickerList, { props: { instrumentId: 'instrument-guitar', excludeIds: [], ...props } })
 }
@@ -71,6 +78,35 @@ describe('DiagramPickerList', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-test="diagram-count"]').text()).toBe('126 diagrams')
+  })
+
+  describe('for a sound', () => {
+    it('asks only for the diagrams that can play, and says so with their count', async () => {
+      serve(() => page([pentatonic], 14))
+      const wrapper = mountPicker({ playable: true })
+      await flushPromises()
+
+      expect(diagramQueries()[0]).toMatchObject({ playable: true })
+      expect(wrapper.get('[data-test="diagram-count"]').text()).toBe('Only diagrams with a playback · 14')
+    })
+
+    it('keeps asking only for them when the filters change', async () => {
+      serve(() => page([pentatonic], 14))
+      const wrapper = mountPicker({ playable: true })
+      await flushPromises()
+
+      await wrapper.get('[data-test="diagram-root-filter"]').setValue('A')
+      await flushPromises()
+
+      expect(diagramQueries().at(-1)).toMatchObject({ playable: true, root_note: 'A' })
+    })
+
+    it('asks for every diagram otherwise', async () => {
+      serve(() => page([pentatonic, major]))
+      mountPicker()
+      await flushPromises()
+      expect(diagramQueries()[0]).not.toHaveProperty('playable')
+    })
   })
 
   it('keeps the search and filters out of the scrolling results', async () => {
