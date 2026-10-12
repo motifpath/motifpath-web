@@ -71,6 +71,11 @@ describe('KnowledgeFilterPicker, drilling in', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 
+  it("names an area's open button with what it shows, then the area", () => {
+    const open = row(mountPicker(), 'Scales').get('[data-test="knowledge-row-open"]')
+    expect(open.attributes('aria-label')).toBe('3 skills, open Scales')
+  })
+
   it('counts the skills an area opens onto', () => {
     const wrapper = mountPicker()
     expect(row(wrapper, 'Scales').get('[data-test="knowledge-row-open"]').text()).toBe('3 skills')

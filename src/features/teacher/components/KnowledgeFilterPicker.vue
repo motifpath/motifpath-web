@@ -62,6 +62,11 @@ function childrenOf(id: string | null): TreeNode[] {
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
+/** What an area's open button shows: how many it opens onto ("3 skills"). */
+function openLabel(count: number): string {
+  return t(`knowledgeFilter.${props.kind}.open`, { count })
+}
+
 function childCount(id: string): number {
   return childrenOf(id).length
 }
@@ -247,12 +252,12 @@ function indent(depth: number): string {
           v-if="row.opens > 0"
           type="button"
           data-test="knowledge-row-open"
-          :aria-label="t('knowledgeFilter.openAriaLabel', { name: row.node.name })"
+          :aria-label="t('knowledgeFilter.openAriaLabel', { shown: openLabel(row.opens), name: row.node.name })"
           :aria-expanded="layout === 'inline' ? (row.expanded ? 'true' : 'false') : undefined"
           class="inline-flex min-h-12 shrink-0 items-center gap-1 pl-3 text-xs font-medium text-ink-muted hover:text-ink"
           @click="open(row)"
         >
-          <span>{{ t(`knowledgeFilter.${kind}.open`, { count: row.opens }) }}</span>
+          <span>{{ openLabel(row.opens) }}</span>
           <ChevronDown v-if="layout === 'inline' && row.expanded" :size="16" aria-hidden="true" />
           <ChevronRight v-else :size="16" aria-hidden="true" />
         </button>

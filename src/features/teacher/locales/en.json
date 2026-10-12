@@ -878,7 +878,7 @@
     "recent": "Recent",
     "allInstruments": "All instruments",
     "instrumentScope": "Instrument",
-    "openAriaLabel": "Open {name}",
+    "openAriaLabel": "{shown}, open {name}",
     "loadFailed": "Couldn't load the list.",
     "retry": "Try again",
     "loading": "Loading…"
