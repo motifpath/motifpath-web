@@ -1,53 +1,47 @@
 <script setup lang="ts">
-import { Check } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
-import type { components } from '@/api/generated/core-domain'
+import LearningCard from '@/features/student/components/LearningCard.vue'
+import LearningItemMenu from '@/features/student/components/LearningItemMenu.vue'
+import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
+import {
+  LeaveFailedAfterSwitchError,
+  useLeaveLearningItem,
+} from '@/features/student/composables/useLeaveLearningItem'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
-import {
-  type CurrentPathTarget,
-  useSetCurrentPath,
-} from '@/features/student/composables/useSetCurrentPath'
-import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
+import { type CurrentPathTarget, useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
-import CourseCard from '@/shared/components/CourseCard.vue'
-import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import StateBlock from '@/shared/components/StateBlock.vue'
+import { buildLearning, nextInProgress, type LearningItem } from '@/features/student/utils/learning'
+import AppButton from '@/shared/components/AppButton.vue'
+import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import SectionHeader from '@/shared/components/SectionHeader.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-type CourseEnrollment = components['schemas']['CourseEnrollment']
-type StudentPath = components['schemas']['StudentPath']
-type EnrollmentStatus = CourseEnrollment['status']
-
-const STATUS_ORDER: Record<EnrollmentStatus, number> = { active: 0, completed: 1, abandoned: 2 }
-
 const { t } = useTypedT()
 const toast = useToast()
+const router = useRouter()
 
 const enrollmentsState = useMyCourseEnrollments()
 const standaloneState = useMyStandalonePaths()
-// The current path only decides which entry is marked current; having none
-// yet ('no-path') is an ordinary state, not a failure.
+// The current path only decides which row is current; having none yet ('no-path') is an ordinary
+// state, not a failure.
 const currentState = useStudentPath()
 useCourseCompletionRedirect(() => completedCourseEnrollmentId(currentState.data.value))
 const { setCurrentPath } = useSetCurrentPath()
+const { leave } = useLeaveLearningItem()
 
 const isLoading = computed(
-  () =>
-    enrollmentsState.isLoading.value ||
-    standaloneState.isLoading.value ||
-    currentState.isLoading.value,
+  () => enrollmentsState.isLoading.value || standaloneState.isLoading.value || currentState.isLoading.value,
 )
 const currentFailed = computed(() => currentState.error.value === 'load-failed')
-const hasError = computed(
-  () => enrollmentsState.error.value || standaloneState.error.value || currentFailed.value,
-)
+const hasError = computed(() => enrollmentsState.error.value || standaloneState.error.value || currentFailed.value)
 
 function retry() {
   if (enrollmentsState.error.value) void enrollmentsState.retry()
@@ -55,67 +49,48 @@ function retry() {
   if (currentFailed.value) void currentState.retry()
 }
 
-const enrollments = computed(() =>
-  [...enrollmentsState.enrollments.value].sort(
-    (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
-  ),
+const groups = computed(() =>
+  buildLearning(enrollmentsState.enrollments.value, standaloneState.paths.value, currentState.data.value),
 )
-const activePaths = computed(() => standaloneState.paths.value.filter((p) => !p.archived_at))
-const archivedPaths = computed(() => standaloneState.paths.value.filter((p) => !!p.archived_at))
 const isEmpty = computed(
-  () => enrollments.value.length === 0 && standaloneState.paths.value.length === 0,
+  () => enrollmentsState.enrollments.value.length === 0 && standaloneState.paths.value.length === 0,
 )
-
-const currentEnrollmentId = computed(() => currentState.data.value?.course_enrollment_id ?? null)
-const currentStandalonePathId = computed(() =>
-  currentState.data.value && !currentState.data.value.course_enrollment_id
-    ? currentState.data.value.student_path_id
-    : null,
-)
-
-function enrollmentMeta(enrollment: CourseEnrollment): string {
-  if (enrollment.status === 'completed') return t('myCoursesView.statusCompleted')
-  if (enrollment.status === 'abandoned') return t('myCoursesView.statusAbandoned')
-  return enrollment.active_checkpoint_position && enrollment.checkpoint_count !== undefined
-    ? t('myCoursesView.learningPath', {
-        position: enrollment.active_checkpoint_position,
-        count: enrollment.checkpoint_count,
-      })
-    : ''
-}
-
-// A path the learner enrolled in themselves needs no "assigned by" line.
-function assignedBySomeoneElse(path: StudentPath): boolean {
-  return path.assigned_by.user_id !== path.student.user_id
-}
-
-const switching = ref(false)
+const leftOpen = ref(false)
 
 // What is current now, as a target to come back to; null when nothing is.
 function currentTarget(): CurrentPathTarget | null {
   const data = currentState.data.value
   if (!data) return null
-  return data.course_enrollment_id
-    ? { courseEnrollmentId: data.course_enrollment_id }
-    : { studentPathId: data.student_path_id }
+  return data.course_enrollment_id ? { courseEnrollmentId: data.course_enrollment_id } : { studentPathId: data.student_path_id }
 }
 
-// The switch answers with the new current path, so the list re-marks it in place: reloading would
-// swap the whole list for a skeleton and lose the scroll position and keyboard focus.
-async function makeCurrent(target: CurrentPathTarget) {
-  currentState.data.value = await setCurrentPath(target)
+const switching = ref(false)
+
+function openDetail(item: LearningItem) {
+  void router.push(
+    item.kind === 'course'
+      ? { name: 'course-detail', params: { courseId: item.detailId } }
+      : { name: 'path-detail', params: { learningPathId: item.detailId } },
+  )
 }
 
-// Switching is reversible, so it happens at once with an Undo, never behind a confirm.
-async function switchTo(target: CurrentPathTarget, title: string) {
+// The row is the action: it continues the item, making it current first when it isn't. Switching
+// is reversible, so it happens at once with an Undo, never behind a confirm. A finished or left
+// item has nothing to continue, so it opens its detail.
+async function openItem(item: LearningItem) {
+  if (item.state === 'finished' || item.state === 'left') return openDetail(item)
+  if (item.state === 'current') return void router.push({ name: 'path' })
+  if (switching.value) return
+
   const previous = currentTarget()
   switching.value = true
   try {
-    await makeCurrent(target)
+    currentState.data.value = await setCurrentPath(item.target)
     toast.neutral(
-      t('myCoursesView.switchedToast', { title }),
-      previous ? { action: { label: t('myCoursesView.undo'), run: () => void undo(previous) } } : {},
+      t('learningView.nowOn', { title: item.title }),
+      previous ? { action: { label: t('learningView.undo'), run: () => void undo(previous) } } : {},
     )
+    void router.push({ name: 'path' })
   } catch (e) {
     toast.error(e instanceof Error ? e.message : String(e))
   } finally {
@@ -125,159 +100,178 @@ async function switchTo(target: CurrentPathTarget, title: string) {
 
 async function undo(previous: CurrentPathTarget) {
   try {
-    await makeCurrent(previous)
+    currentState.data.value = await setCurrentPath(previous)
   } catch (e) {
     toast.error(e instanceof Error ? e.message : String(e))
+  }
+}
+
+// ── ⋯ and leaving ─────────────────────────────────────────────────────────
+
+const menuItem = ref<LearningItem | null>(null)
+const menuTrigger = ref<HTMLElement | null>(null)
+const menuOpen = ref(false)
+
+function openMenu(item: LearningItem, trigger: HTMLElement) {
+  menuItem.value = item
+  menuTrigger.value = trigger
+  menuOpen.value = true
+}
+
+function menuDetails() {
+  const item = menuItem.value
+  menuOpen.value = false
+  if (item) openDetail(item)
+}
+
+const leaving = ref<LearningItem | null>(null)
+const leaveNext = computed(() => (leaving.value ? nextInProgress(groups.value, leaving.value) : null))
+const leaveBusy = ref(false)
+
+function menuLeave() {
+  leaving.value = menuItem.value
+  menuOpen.value = false
+}
+
+const leaveMessage = computed(() => {
+  const item = leaving.value
+  if (!item) return ''
+  const message = item.kind === 'course' ? t('learningView.leaveCourseMessage') : t('learningView.removePathMessage')
+  return item.state === 'current' && leaveNext.value
+    ? `${message} ${t('learningView.continueWith', { title: leaveNext.value.title })}`
+    : message
+})
+
+// The leave answers with what changed, so the list moves the row in place: reloading would swap
+// the whole list for a skeleton and lose the scroll position and keyboard focus.
+function applyLeft(result: Awaited<ReturnType<typeof leave>>) {
+  const { enrollment, path } = result
+  if (enrollment) {
+    enrollmentsState.enrollments.value = enrollmentsState.enrollments.value.map((e) =>
+      e.course_enrollment_id === enrollment.course_enrollment_id ? enrollment : e,
+    )
+  }
+  if (path) {
+    standaloneState.paths.value = standaloneState.paths.value.map((p) =>
+      p.student_path_id === path.student_path_id ? path : p,
+    )
+  }
+  if (result.current !== undefined) currentState.data.value = result.current
+}
+
+async function confirmLeave() {
+  const item = leaving.value
+  if (!item) return
+  const next = leaveNext.value
+  leaveBusy.value = true
+  try {
+    applyLeft(await leave(item, next))
+  } catch (e) {
+    if (e instanceof LeaveFailedAfterSwitchError) {
+      currentState.data.value = e.current
+      toast.error(t('learningView.leaveFailedAfterSwitch', { now: next?.title ?? '', title: item.title }))
+    } else {
+      toast.error(e instanceof Error ? e.message : String(e))
+    }
+  } finally {
+    leaveBusy.value = false
+    leaving.value = null
   }
 }
 </script>
 
 <template>
   <section class="flex flex-col gap-6">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('myCoursesView.heading') }}</h1>
-      <div v-if="!isEmpty" class="flex flex-wrap gap-4">
-        <RouterLink :to="{ name: 'course-catalog' }" class="text-sm font-semibold text-accent-text underline">
-          {{ t('myCoursesView.findAnotherCourse') }}
-        </RouterLink>
-        <RouterLink :to="{ name: 'path-catalog' }" class="text-sm font-semibold text-accent-text underline">
-          {{ t('myCoursesView.findPath') }}
-        </RouterLink>
-      </div>
-    </div>
+    <h1 class="text-xl font-semibold text-accent-text sm:text-2xl">{{ t('learningView.heading') }}</h1>
 
     <LoadingSkeleton v-if="isLoading" data-test="loading" />
 
-    <LoadFailed
-      v-else-if="hasError"
-      data-test="error"
-      :message="t('myCoursesView.errorMessage')"
-      @retry="retry"
-    />
+    <LoadFailed v-else-if="hasError" data-test="error" :message="t('learningView.errorMessage')" @retry="retry" />
 
     <StateBlock
       v-else-if="isEmpty"
       data-test="empty"
       kind="empty"
-      :title="t('myCoursesView.emptyHeading')"
-      :message="t('myCoursesView.emptyMessage')"
+      :title="t('learningView.emptyHeading')"
+      :message="t('learningView.emptyMessage')"
     >
       <template #action>
-        <div class="flex flex-wrap justify-center gap-4">
-          <RouterLink :to="{ name: 'course-catalog' }" class="text-sm font-semibold text-accent-text underline">
-            {{ t('myCoursesView.browseCatalog') }}
-          </RouterLink>
-          <RouterLink :to="{ name: 'path-catalog' }" class="text-sm font-semibold text-accent-text underline">
-            {{ t('myCoursesView.browsePathCatalog') }}
-          </RouterLink>
-        </div>
+        <AppButton :to="{ name: 'course-catalog' }" data-test="explore">
+          {{ t('learningView.explore') }}
+        </AppButton>
       </template>
     </StateBlock>
 
-    <template v-else>
-      <div v-if="enrollments.length" class="flex flex-col gap-3">
-        <h2 class="text-lg font-semibold text-ink">{{ t('myCoursesView.coursesHeading') }}</h2>
-        <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <li v-for="enrollment in enrollments" :key="enrollment.course_enrollment_id">
-            <CourseCard
-              data-test="my-course-item"
-              :title="enrollment.course_title"
-              :summary="enrollment.course_summary"
-              :created-by="enrollment.course_created_by"
-              :level="enrollment.course_level"
-              :checkpoint-count="enrollment.checkpoint_count"
-              :thumbnail-url="enrollment.course_thumbnail_url"
-            >
-              <template #supporting>
-                <p class="text-sm text-ink-muted">{{ enrollmentMeta(enrollment) }}</p>
-              </template>
-              <template #actions>
-                <template v-if="enrollment.course_enrollment_id === currentEnrollmentId">
-                  <span data-test="current" class="flex items-center gap-1 text-sm font-semibold text-success">
-                    <Check :size="16" aria-hidden="true" />
-                    {{ t('myCoursesView.current') }}
-                  </span>
-                  <span data-test="open">
-                    <RouterLink :to="{ name: 'path' }" class="text-sm font-semibold text-accent-text underline">
-                      {{ t('myCoursesView.open') }}
-                    </RouterLink>
-                  </span>
-                </template>
-                <PrimaryButton
-                  v-else-if="enrollment.status === 'active'"
-                  data-test="switch"
-                  :disabled="switching"
-                  @click="switchTo({ courseEnrollmentId: enrollment.course_enrollment_id }, enrollment.course_title)"
-                >
-                  {{ t('myCoursesView.switch') }}
-                </PrimaryButton>
-              </template>
-            </CourseCard>
+    <!-- One 560 px column; two would squeeze the titles. From a 1120 px window, where two fit beside
+         the sidebar, the same rows in two columns — a list to manage, not a shelf to browse. -->
+    <div v-else class="flex w-full max-w-[35rem] flex-col gap-6 min-[70rem]:max-w-[59.5rem]">
+      <div
+        v-if="!groups.inProgress.length"
+        data-test="nothing-in-progress"
+        class="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface-raised p-4"
+      >
+        <p class="text-base font-semibold text-ink">{{ t('learningView.nothingInProgress') }}</p>
+        <RouterLink :to="{ name: 'course-catalog' }" class="text-sm font-semibold text-accent-text underline">
+          {{ t('learningView.findNextCourse') }}
+        </RouterLink>
+      </div>
+
+      <div v-if="groups.inProgress.length" data-test="learning-group-in-progress" class="flex flex-col gap-2">
+        <SectionHeader :label="t('learningView.inProgress')" :count="String(groups.inProgress.length)" />
+        <ul class="grid gap-3 min-[70rem]:grid-cols-2">
+          <li v-for="item in groups.inProgress" :key="item.key">
+            <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
         </ul>
       </div>
 
-      <div v-if="activePaths.length" class="flex flex-col gap-3">
-        <h2 class="text-lg font-semibold text-ink">{{ t('myCoursesView.pathsHeading') }}</h2>
-        <ul class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <li v-for="path in activePaths" :key="path.student_path_id">
-            <CourseCard
-              kind="path"
-              data-test="my-course-item"
-              :title="path.title"
-              :summary="path.summary"
-              :created-by="path.created_by"
-              :level="path.level"
-              :thumbnail-url="path.thumbnail_url"
-            >
-              <template #supporting>
-                <p data-test="path-progress" class="text-sm text-ink-muted">
-                  {{ t('myCoursesView.pathProgress', { completed: path.completed_count, count: path.lesson_count }) }}
-                </p>
-                <p v-if="assignedBySomeoneElse(path)" class="text-sm text-ink-muted">
-                  {{ t('myCoursesView.assignedBy', { name: path.assigned_by.display_name }) }}
-                </p>
-              </template>
-              <template #actions>
-                <template v-if="path.student_path_id === currentStandalonePathId">
-                  <span data-test="current" class="flex items-center gap-1 text-sm font-semibold text-success">
-                    <Check :size="16" aria-hidden="true" />
-                    {{ t('myCoursesView.current') }}
-                  </span>
-                  <span data-test="open">
-                    <RouterLink :to="{ name: 'path' }" class="text-sm font-semibold text-accent-text underline">
-                      {{ t('myCoursesView.open') }}
-                    </RouterLink>
-                  </span>
-                </template>
-                <PrimaryButton
-                  v-else
-                  data-test="switch"
-                  :disabled="switching"
-                  @click="switchTo({ studentPathId: path.student_path_id }, path.title)"
-                >
-                  {{ t('myCoursesView.switch') }}
-                </PrimaryButton>
-              </template>
-            </CourseCard>
+      <div v-if="groups.finished.length" data-test="learning-group-finished" class="flex flex-col gap-2">
+        <SectionHeader :label="t('learningView.finished')" :count="String(groups.finished.length)" />
+        <ul class="grid gap-3 min-[70rem]:grid-cols-2">
+          <li v-for="item in groups.finished" :key="item.key">
+            <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
         </ul>
       </div>
 
-      <div v-if="archivedPaths.length" data-test="archived-paths" class="flex flex-col gap-2">
-        <h3 class="text-sm font-semibold uppercase tracking-wide text-ink-subtle">
-          {{ t('myCoursesView.archivedHeading') }}
-        </h3>
-        <ul class="flex flex-col gap-1">
-          <li
-            v-for="path in archivedPaths"
-            :key="path.student_path_id"
-            class="text-sm text-ink-muted"
-          >
-            {{ path.title }}
+      <div v-if="groups.left.length" data-test="learning-group-left" class="flex flex-col gap-2">
+        <SectionHeader
+          :label="t('learningView.left')"
+          :count="String(groups.left.length)"
+          foldable
+          :done="false"
+          :expanded="leftOpen"
+          @toggle="leftOpen = !leftOpen"
+        />
+        <ul v-if="leftOpen" class="grid gap-3 min-[70rem]:grid-cols-2">
+          <li v-for="item in groups.left" :key="item.key">
+            <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
         </ul>
       </div>
-    </template>
+    </div>
+
+    <LearningItemMenu
+      :open="menuOpen"
+      :item="menuItem"
+      :trigger="menuTrigger"
+      @close="menuOpen = false"
+      @details="menuDetails"
+      @leave="menuLeave"
+    />
+
+    <ConfirmDialog
+      :open="!!leaving"
+      :title="
+        leaving?.kind === 'path'
+          ? t('learningView.removePathTitle', { title: leaving.title })
+          : t('learningView.leaveCourseTitle', { title: leaving?.title ?? '' })
+      "
+      :message="leaveMessage"
+      :confirm-label="leaving?.kind === 'path' ? t('learningView.removePathConfirm') : t('learningView.leaveCourseConfirm')"
+      :busy="leaveBusy"
+      @confirm="confirmLeave"
+      @cancel="leaving = null"
+    />
   </section>
 </template>
