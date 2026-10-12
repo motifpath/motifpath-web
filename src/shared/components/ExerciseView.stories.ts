@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 
 import type { components } from '@/api/generated/core-domain'
+import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 
 import ExerciseView from './ExerciseView.vue'
@@ -38,4 +39,30 @@ export const LongPortuguese: Story = {
       { option_id: 'o2', label: 'Tríade menor em posição fundamental', is_correct: false },
     ],
   },
+}
+
+// A listening exercise whose sound is the fixture diagram's playback: hidden until the answer.
+const riffSound = makeDiagramRef({ playback: { playback_id: 'playback-riff', direction: 'as_authored', loop: false } })
+const majorOrMinor: Option[] = [
+  { option_id: 'major', label: 'Major', is_correct: false },
+  { option_id: 'minor', label: 'Minor', is_correct: true },
+]
+const soundsFromDiagrams: Option[] = ['Sound 1', 'Sound 2', 'Sound 3'].map((label, i) => ({
+  option_id: `s${i + 1}`,
+  label,
+  diagram_ref: riffSound,
+  is_correct: i === 2,
+}))
+
+export const ListeningToADiagram: Story = {
+  args: { exerciseType: 'audio_recognition', prompt: plainTextPrompt('Is this chord major or minor?'), options: majorOrMinor, diagramRef: riffSound },
+}
+export const ListeningToADiagramAnswered: Story = {
+  args: { ...ListeningToADiagram.args, selectedOptionIds: ['major'], reveal: { correctOptionIds: ['minor'] } },
+}
+export const SoundsFromDiagrams: Story = {
+  args: { exerciseType: 'audio_selection', prompt: plainTextPrompt('Which of these sounds is a minor chord?'), options: soundsFromDiagrams },
+}
+export const SoundsFromDiagramsAnswered: Story = {
+  args: { ...SoundsFromDiagrams.args, selectedOptionIds: ['s2'], reveal: { correctOptionIds: ['s3'] } },
 }

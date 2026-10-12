@@ -95,7 +95,8 @@
     "markWrong": "Sua resposta, errada",
     "choiceMarkedRight": "{choice}, resposta certa",
     "choiceMarkedWrong": "{choice}, sua resposta, errada",
-    "chooseCount": "Escolha {count}"
+    "chooseCount": "Escolha {count}",
+    "soundNumber": "Som {number}"
   },
   "modalCloseButton": {
     "ariaLabel": "Fechar"
@@ -416,5 +417,18 @@
   "rootNoteSelect": {
     "label": "Nota fundamental",
     "any": "Qualquer"
+  },
+  "listenControl": {
+    "listen": "Ouvir",
+    "sound": "{name} · {bpm} BPM"
+  },
+  "whatYouHeard": {
+    "heading": "O que você ouviu: {name}",
+    "playAgain": "Tocar de novo"
+  },
+  "revealedSound": {
+    "yours": "{label} · sua resposta",
+    "right": "{label} · resposta certa",
+    "folded": "{label} · {name}"
   }
 }

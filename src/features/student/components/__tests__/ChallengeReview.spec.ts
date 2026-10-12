@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import ChallengeReview from '@/features/student/components/ChallengeReview.vue'
 import type { ReviewEntry } from '@/features/student/composables/usePracticeSession'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
+import { makeDiagramRef } from '@/shared/testUtils/diagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
 
@@ -101,5 +102,39 @@ describe('ChallengeReview', () => {
     const view = wrapper.getComponent(ExerciseView)
     expect(view.props('selectedOptionIds')).toEqual(['r2'])
     expect(view.props('reveal')).toEqual({ correctOptionIds: ['r1'] })
+  })
+
+  describe('a sound played from a diagram', () => {
+    const aMinor = makeDiagramRef({ diagram_id: 'a-minor', playback: { playback_id: 'strum', direction: 'as_authored', loop: false } })
+    const major = { option_id: 'major', is_correct: false, label: 'Major' }
+    const minor = { option_id: 'minor', is_correct: true, label: 'Minor' }
+    const stubs = { WhatYouHeard: { name: 'WhatYouHeard', props: ['sound'], template: '<div data-test="what-you-heard" />' } }
+
+    it('reveals what each diagram sound was, under the answer', () => {
+      const heard: ReviewEntry = {
+        exercise: exercise({ exercise_id: 'ex-2', exercise_type: 'audio_recognition', diagram_ref: aMinor, options: [major, minor] }),
+        number: 2,
+        chosen: [{ option: minor, key: 2, right: true }],
+        missed: [],
+      }
+
+      const wrapper = mount(ChallengeReview, { props: { entries: [heard] }, global: { stubs } })
+
+      expect(wrapper.get('[data-test="review-answer"]').text()).toContain('Minor')
+      expect(wrapper.getComponent({ name: 'WhatYouHeard' }).props('sound')).toEqual(aMinor)
+    })
+
+    it('has nothing to reveal for an uploaded clip', () => {
+      const clip: ReviewEntry = {
+        exercise: exercise({ exercise_type: 'audio_recognition', audio_url: 'https://media.test/fifth.mp3', options: [major, minor] }),
+        number: 1,
+        chosen: [{ option: minor, key: 2, right: true }],
+        missed: [],
+      }
+
+      const wrapper = mount(ChallengeReview, { props: { entries: [clip] }, global: { stubs } })
+
+      expect(wrapper.find('[data-test="what-you-heard"]').exists()).toBe(false)
+    })
   })
 })

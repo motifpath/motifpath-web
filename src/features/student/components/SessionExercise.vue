@@ -63,7 +63,8 @@ watch(
 
 const missingMessage = computed(() => {
   if (missing.value === 'unavailable') return t('sessionExercise.unavailable')
-  return exercise.value.exercise_type === 'audio_recognition' ? t('sessionExercise.soundFailed') : t('sessionExercise.pictureFailed')
+  const hearing = exercise.value.exercise_type === 'audio_recognition' || exercise.value.exercise_type === 'audio_selection'
+  return hearing ? t('sessionExercise.soundFailed') : t('sessionExercise.pictureFailed')
 })
 
 const shown = computed(() => props.answer?.optionIds ?? chosen.value)

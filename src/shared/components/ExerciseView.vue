@@ -6,11 +6,16 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
 import AudioOption from '@/shared/components/AudioOption.vue'
+import DiagramAudioOption from '@/shared/components/DiagramAudioOption.vue'
 import Icon from '@/shared/components/Icon.vue'
 import ImageOption from '@/shared/components/ImageOption.vue'
+import ListenControl from '@/shared/components/ListenControl.vue'
 import OptionTile from '@/shared/components/OptionTile.vue'
 import ExercisePrompt from '@/shared/components/ExercisePrompt.vue'
 import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
+import RevealedSoundOption from '@/shared/components/RevealedSoundOption.vue'
+import WhatYouHeard from '@/shared/components/WhatYouHeard.vue'
+import { stopDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
@@ -40,7 +45,9 @@ const props = withDefaults(
     /**
      * A prebuilt diagram as the image_recognition stimulus, in place of
      * imageUrl: its positions are the choices, each option naming its own
-     * through diagram_position_id.
+     * through diagram_position_id. For audio_recognition, the diagram whose
+     * playback is the sound to hear, in place of audioUrl: never drawn before
+     * the answer is graded, and revealed afterwards.
      */
     diagramRef?: DiagramRef
     /** Prebuilt diagrams stacked on one board as the image_recognition stimulus, in place of a
@@ -183,8 +190,11 @@ const isLandscape = computed(() => props.direction === 'row')
 // A single shared, hidden player — not one <audio> per option — so two clips can never overlap:
 // playing another option's clip always stops the one sounding first.
 const audioPlayerEl = ref<HTMLAudioElement | null>(null)
-// Which option's clip is sounding. Playing is not choosing: it never touches the selection.
+// Which option's clip is sounding, and which option's diagram: one at a time, a clip starting
+// silences a diagram and a diagram starting silences a clip. Playing is not choosing: it never
+// touches the selection.
 const playingOptionId = ref<string | null>(null)
+const soundingDiagramOptionId = ref<string | null>(null)
 
 const emit = defineEmits<{
   /** A clip started or stopped sounding, so a caller can time an answer from the last one heard. */
@@ -192,6 +202,42 @@ const emit = defineEmits<{
   /** The stimulus didn't load, or can't be shown on this device. */
   stimulusMissing: [reason: MissingReason]
 }>()
+
+// Said once when the first sound starts and once when the last one stops, whichever kind they are.
+watch(
+  () => playingOptionId.value !== null || soundingDiagramOptionId.value !== null,
+  (sounding) => emit('playing', sounding),
+  { flush: 'sync' },
+)
+
+/** A sound option's name: its label, else its place among the sounds. */
+function soundLabel(option: Option, index: number): string {
+  return option.label ?? t('exerciseView.soundNumber', { number: index + 1 })
+}
+
+/** Whose sound an option is once graded: the student's answer, the right one they missed, or neither. */
+function roleOf(optionId: string): 'yours' | 'right' | null {
+  if (isSelected(optionId)) return 'yours'
+  return props.reveal?.correctOptionIds.includes(optionId) ? 'right' : null
+}
+
+/** A diagram option started or stopped sounding; starting silences a clip. */
+function onDiagramOptionPlaying(optionId: string, playing: boolean): void {
+  if (playing) {
+    soundingDiagramOptionId.value = optionId
+    stopClip()
+  } else if (soundingDiagramOptionId.value === optionId) {
+    soundingDiagramOptionId.value = null
+  }
+}
+
+/** Silences every sound, such as when the answer is in or the next exercise arrives. */
+function stopSounds(): void {
+  stopClip()
+  if (soundingDiagramOptionId.value === null) return
+  stopDiagramPlayback()
+  soundingDiagramOptionId.value = null
+}
 
 function onDiagramStatus(status: string): void {
   if (status === 'unavailable') emit('stimulusMissing', 'unavailable')
@@ -205,7 +251,6 @@ function stopClip(): void {
   if (playingOptionId.value === null) return
   audioPlayerEl.value?.pause()
   playingOptionId.value = null
-  emit('playing', false)
 }
 
 /** Plays an option's clip from the top, or stops it when it is the one sounding. */
@@ -217,12 +262,14 @@ function togglePlay(option: Option): void {
     return
   }
   if (!option.audio_url) return
-  const wasSounding = playingOptionId.value !== null
   el.pause()
   el.src = option.audio_url
   el.currentTime = 0
   playingOptionId.value = option.option_id
-  if (!wasSounding) emit('playing', true)
+  if (soundingDiagramOptionId.value !== null) {
+    stopDiagramPlayback()
+    soundingDiagramOptionId.value = null
+  }
   el.play().catch(() => {
     if (playingOptionId.value === option.option_id) onClipStopped()
   })
@@ -233,9 +280,7 @@ function togglePlay(option: Option): void {
  * the audio). A clip still counted as sounding would time the next answer as instant.
  */
 function onClipStopped(): void {
-  if (playingOptionId.value === null) return
   playingOptionId.value = null
-  emit('playing', false)
 }
 
 // The pause of a clip being replaced arrives after the new one has started; only a pause that
@@ -248,7 +293,7 @@ function onPlayerPause(): void {
 watch(
   () => props.reveal,
   (reveal) => {
-    if (reveal) stopClip()
+    if (reveal) stopSounds()
   },
 )
 
@@ -256,7 +301,7 @@ watch(
 // mustn't sound over the next one.
 watch(
   () => props.options,
-  () => stopClip(),
+  () => stopSounds(),
 )
 </script>
 
@@ -373,6 +418,15 @@ watch(
         <div v-if="isAudioRecognition && stimulusMissing" data-test="stimulus-missing" class="mb-2">
           <slot name="stimulus-notice" />
         </div>
+        <template v-else-if="isAudioRecognition && diagramRef">
+          <ListenControl
+            v-if="!reveal"
+            :sound="diagramRef"
+            class="mb-2"
+            @playing="emit('playing', $event)"
+            @missing="emit('stimulusMissing', $event)"
+          />
+        </template>
         <audio
           v-else-if="isAudioRecognition && audioUrl"
           data-test="exercise-audio-play"
@@ -403,6 +457,7 @@ watch(
             @click="select(option.option_id)"
           />
         </div>
+        <WhatYouHeard v-if="isAudioRecognition && diagramRef && reveal" :sound="diagramRef" class="mt-4" />
       </template>
 
       <div
@@ -434,18 +489,43 @@ watch(
       </div>
 
       <div v-else-if="isAudioSelection" class="flex flex-col gap-2">
-        <AudioOption
-          v-for="option in options"
-          :key="option.option_id"
-          data-test="exercise-option"
-          :data-selected="isSelected(option.option_id)"
-          :data-mark="markOf(option.option_id)"
-          :label="option.label ?? ''"
-          :state="stateOf(option.option_id)"
-          :playing="playingOptionId === option.option_id"
-          @select="select(option.option_id)"
-          @play="togglePlay(option)"
-        />
+        <div v-if="stimulusMissing" data-test="stimulus-missing">
+          <slot name="stimulus-notice" />
+        </div>
+        <template v-for="(option, i) in options" :key="option.option_id">
+          <RevealedSoundOption
+            v-if="option.diagram_ref && reveal"
+            data-test="exercise-option"
+            :data-mark="markOf(option.option_id)"
+            :label="soundLabel(option, i)"
+            :sound="option.diagram_ref"
+            :role="roleOf(option.option_id)"
+            :mark="markOf(option.option_id)"
+          />
+          <DiagramAudioOption
+            v-else-if="option.diagram_ref"
+            data-test="exercise-option"
+            :data-selected="isSelected(option.option_id)"
+            :data-locked="stimulusMissing"
+            :label="soundLabel(option, i)"
+            :sound="option.diagram_ref"
+            :state="stateOf(option.option_id)"
+            @select="select(option.option_id)"
+            @playing="onDiagramOptionPlaying(option.option_id, $event)"
+            @missing="emit('stimulusMissing', $event)"
+          />
+          <AudioOption
+            v-else
+            data-test="exercise-option"
+            :data-selected="isSelected(option.option_id)"
+            :data-mark="markOf(option.option_id)"
+            :label="soundLabel(option, i)"
+            :state="stateOf(option.option_id)"
+            :playing="playingOptionId === option.option_id"
+            @select="select(option.option_id)"
+            @play="togglePlay(option)"
+          />
+        </template>
         <audio ref="audioPlayerEl" class="hidden" @ended="onClipStopped" @error="onClipStopped" @pause="onPlayerPause" />
       </div>
     </div>

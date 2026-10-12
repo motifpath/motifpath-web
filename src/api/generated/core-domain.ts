@@ -3497,7 +3497,9 @@ export interface components {
              * @description The diagram's full list of playbacks, replacing the current one;
              *     an empty list removes every playback. A playback sent with the
              *     playback_id of an existing one keeps that id, so usages that
-             *     chose it still find it. Omitted leaves the playbacks unchanged.
+             *     chose it still find it. A playback that an exercise plays as its
+             *     sound must stay in the list (see the 409 response). Omitted
+             *     leaves the playbacks unchanged.
              */
             playbacks?: components["schemas"]["DiagramPlaybackInput"][];
             /**
@@ -4458,7 +4460,10 @@ export interface components {
                  *     the id and plays the default playback instead; saving the
                  *     usage again with the same id is still accepted, so an edit
                  *     elsewhere in the usage (or in the document that embeds it)
-                 *     isn't blocked by the removal.
+                 *     isn't blocked by the removal. When the usage is an
+                 *     exercise's sound, playback_id is required and the playback
+                 *     can't be removed from the diagram while the exercise uses
+                 *     it.
                  */
                 playback_id?: string | null;
                 /**
@@ -5780,7 +5785,8 @@ export interface components {
              *     options carry a region on image_url (or are derived from
              *     diagram_ref/diagram_stack_ref — see below); image_choice
              *     options each carry their own image_url or diagram_ref;
-             *     audio_selection options each carry their own audio_url.
+             *     audio_selection options each carry their own sound, an
+             *     audio_url or a diagram_ref that plays.
              * @enum {string}
              */
             exercise_type: "text_response" | "audio_recognition" | "image_recognition" | "image_choice" | "audio_selection";
@@ -5804,14 +5810,24 @@ export interface components {
              */
             image_url?: string;
             /**
-             * @description A single prebuilt diagram as this exercise's stimulus, replacing
-             *     image_url. Only meaningful when exercise_type is
-             *     image_recognition. Its correct_position_ids must be set (or the
-             *     deprecated correct_intervals) — for a fretted diagram, every
-             *     fretboard cell of its answer window becomes one of this
-             *     exercise's options automatically (see Option.fret_cell);
-             *     options must be omitted when this is given. Mutually exclusive with image_url and
-             *     diagram_stack_ref.
+             * @description A single prebuilt diagram as this exercise's stimulus. Its
+             *     meaning depends on exercise_type:
+             *
+             *     - image_recognition: the stimulus board, replacing image_url.
+             *       Its correct_position_ids must be set (or the deprecated
+             *       correct_intervals) — for a fretted diagram, every fretboard
+             *       cell of its answer window becomes one of this exercise's
+             *       options automatically (see Option.fret_cell); options must be
+             *       omitted when this is given. Mutually exclusive with image_url
+             *       and diagram_stack_ref.
+             *     - audio_recognition: the stimulus sound, replacing audio_url —
+             *       exactly one of the two is given. The diagram must have at least one
+             *     playback; its playback must be set, name one of the diagram's
+             *     playbacks by playback_id, and not loop. Students never see
+             *     the diagram before answering; it is revealed afterwards.
+             *       Options are authored as usual.
+             *
+             *     Absent for every other exercise_type.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
             /**
@@ -5825,8 +5841,9 @@ export interface components {
             diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
-             * @description The stimulus audio for this exercise. Required when exercise_type
-             *     is audio_recognition; absent otherwise.
+             * @description The stimulus audio for this exercise, an uploaded clip. For
+             *     exercise_type audio_recognition, required unless diagram_ref is
+             *     given instead, and mutually exclusive with it; absent otherwise.
              */
             audio_url?: string;
             /**
@@ -5933,10 +5950,13 @@ export interface components {
              */
             image_url?: string;
             /**
-             * @description A single prebuilt diagram as this exercise's stimulus, replacing
-             *     image_url, replacing the current value. Only meaningful when the
-             *     exercise's exercise_type is image_recognition. Mutually
-             *     exclusive with image_url and diagram_stack_ref.
+             * @description A single prebuilt diagram as this exercise's stimulus,
+             *     replacing the current value. For an image_recognition exercise
+             *     it is the stimulus board, mutually exclusive with image_url and
+             *     diagram_stack_ref. For an audio_recognition exercise it is the
+             *     stimulus sound, mutually exclusive with audio_url, under the
+             *     same rules as on creation. Absent for every other
+             *     exercise_type.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
             /**
@@ -5948,8 +5968,10 @@ export interface components {
             diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
-             * @description The stimulus audio for this exercise. Required when the
-             *     exercise's exercise_type is audio_recognition; absent otherwise.
+             * @description The stimulus audio for this exercise, an uploaded clip,
+             *     replacing the current value. For an audio_recognition exercise,
+             *     mutually exclusive with diagram_ref: after the update the
+             *     exercise has exactly one of the two. Absent otherwise.
              */
             audio_url?: string;
             /**
@@ -6020,9 +6042,11 @@ export interface components {
              */
             image_url?: string;
             /**
-             * @description The single prebuilt diagram used as this exercise's stimulus,
-             *     present only when exercise_type is image_recognition and the
-             *     exercise uses one diagram rather than a stack.
+             * @description The single prebuilt diagram used as this exercise's stimulus:
+             *     the board of an image_recognition exercise that uses one diagram
+             *     rather than a stack, or the sound of an audio_recognition
+             *     exercise that plays a diagram instead of an uploaded clip.
+             *     Absent otherwise.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
             /**
@@ -6033,7 +6057,9 @@ export interface components {
             diagram_stack_ref?: components["schemas"]["DiagramStackRef"];
             /**
              * Format: uri
-             * @description The stimulus audio for this exercise, present when exercise_type is audio_recognition.
+             * @description The stimulus audio for this exercise, present when exercise_type
+             *     is audio_recognition and its sound is an uploaded clip rather
+             *     than a diagram_ref.
              */
             audio_url?: string;
             /**
@@ -6117,8 +6143,9 @@ export interface components {
          *     options carry region, or are entirely server-derived (see
          *     diagram_id/diagram_position_id) when the exercise uses diagram_ref/
          *     diagram_stack_ref instead of image_url; image_choice options carry
-         *     image_url or diagram_ref; audio_selection options carry audio_url;
-         *     text_response/audio_recognition options carry label.
+         *     image_url or diagram_ref; audio_selection options carry a sound,
+         *     audio_url or diagram_ref, and optionally a label; text_response/
+         *     audio_recognition options carry label.
          */
         Option: {
             /**
@@ -6130,7 +6157,10 @@ export interface components {
             is_correct: boolean;
             /**
              * @description The text shown for this option. Required for text_response and
-             *     audio_recognition options; absent otherwise.
+             *     audio_recognition options. Optional for audio_selection
+             *     options: the name shown next to the sound, which students see
+             *     before answering, so it should stay neutral (e.g. "Sound 1").
+             *     Absent for the other types.
              */
             label?: string;
             /**
@@ -6140,19 +6170,30 @@ export interface components {
              */
             image_url?: string;
             /**
-             * @description A prebuilt diagram rendered as this option's own thumbnail,
-             *     replacing image_url — e.g. "which of these four diagrams shows
-             *     C major?" where each option is a different diagram. Only
-             *     meaningful for image_choice options; correct_position_ids and
-             *     correct_intervals are ignored here since correctness is this
-             *     Option's own is_correct.
-             *     Mutually exclusive with image_url.
+             * @description A prebuilt diagram as this option's own content. Correctness is
+             *     always this Option's own is_correct, so correct_position_ids and
+             *     correct_intervals are ignored here. Its meaning depends on the
+             *     exercise_type:
+             *
+             *     - image_choice: the option's thumbnail, replacing image_url —
+             *       e.g. "which of these four diagrams shows C major?" where each
+             *       option is a different diagram. Mutually exclusive with
+             *       image_url.
+             *     - audio_selection: the option's sound, replacing audio_url —
+             *       exactly one of the two is given, and options of one exercise
+             *       may mix them. The diagram must have at least one
+             *     playback; its playback must be set, name one of the diagram's
+             *     playbacks by playback_id, and not loop. Students never see
+             *     the diagram before answering; it is revealed afterwards.
+             *
+             *     Absent for every other exercise_type.
              */
             diagram_ref?: components["schemas"]["DiagramRef"];
             /**
              * Format: uri
-             * @description The audio clip shown for this option. Required for
-             *     audio_selection options; absent otherwise.
+             * @description The uploaded audio clip this option plays. For audio_selection
+             *     options, required unless diagram_ref is given instead, and
+             *     mutually exclusive with it; absent otherwise.
              */
             audio_url?: string;
             region?: components["schemas"]["OptionRegion"];
@@ -7999,9 +8040,12 @@ export interface operations {
             /**
              * @description The request body failed schema validation, no option has
              *     is_correct set to true, an instrument_ids entry does not
-             *     reference an existing instrument, or a skill or concept does not
+             *     reference an existing instrument, a skill or concept does not
              *     suit the exercise's instruments (see CreateExerciseRequest) —
-             *     reported against skill_ids or concept_ids.
+             *     reported against skill_ids or concept_ids — or a sound is not
+             *     exactly one of an audio_url or a diagram_ref that plays (a
+             *     diagram with a playback, a playback_id of it, no loop) —
+             *     reported against audio_url or diagram_ref, or the option's.
              */
             400: {
                 headers: {
@@ -8766,10 +8810,11 @@ export interface operations {
             /**
              * @description The request body failed schema validation, no option has
              *     is_correct set to true, an instrument_ids entry does not
-             *     reference an existing instrument, or a skill or concept does not
+             *     reference an existing instrument, a skill or concept does not
              *     suit the instruments the exercise has after the update (see
              *     UpdateExerciseRequest) — reported against skill_ids or
-             *     concept_ids.
+             *     concept_ids — or a sound is not exactly one of an audio_url or
+             *     a diagram_ref that plays, under the same rules as on creation.
              */
             400: {
                 headers: {
@@ -9933,7 +9978,11 @@ export interface operations {
             };
             /**
              * @description The diagram is a chord_voicing diagram, which only the chord
-             *     catalog can change.
+             *     catalog can change; or the new playbacks leave out a playback
+             *     that an exercise plays as its sound (an audio_recognition
+             *     stimulus or an audio_selection option). The error names the
+             *     playback and the exercises that use it. Such a playback can
+             *     still be changed, just not removed.
              */
             409: {
                 headers: {

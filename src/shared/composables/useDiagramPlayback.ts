@@ -36,8 +36,9 @@ const START_DELAY_SECONDS = 0.1
 // Only one diagram plays at a time: starting one stops whichever was playing.
 let stopPlaying: (() => void) | null = null
 
-// Recordings never change at their URL, so one fetch a page puts each in the HTTP cache.
-const prefetched = new Set<string>()
+// Recordings never change at their URL, so one fetch a page puts each in the HTTP cache. A failed
+// fetch is forgotten, so the next check fetches it again.
+const prefetched = new Map<string, Promise<boolean>>()
 
 function sameIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, i) => id === b[i])
@@ -46,6 +47,25 @@ function sameIds(a: string[], b: string[]): boolean {
 /** Forgets which recordings were prefetched. For tests. */
 export function clearPrefetchedSamples() {
   prefetched.clear()
+}
+
+/** Stops whichever diagram is playing, such as when a clip starts sounding instead. */
+export function stopDiagramPlayback() {
+  stopPlaying?.()
+}
+
+function fetchSample(url: string): Promise<boolean> {
+  const known = prefetched.get(url)
+  if (known) return known
+  const pending = fetch(url)
+    .then((response) => response.ok)
+    .catch(() => false)
+    .then((ok) => {
+      if (!ok) prefetched.delete(url)
+      return ok
+    })
+  prefetched.set(url, pending)
+  return pending
 }
 
 /** Each position's sounding pitch; null where the tuning doesn't give one. */
@@ -84,7 +104,7 @@ export function isPlayable(source: PlaybackSource): boolean {
  * accented, read when Play is pressed.
  */
 export function useDiagramPlayback(
-  source: MaybeRefOrGetter<PlaybackSource>,
+  source: MaybeRefOrGetter<PlaybackSource | null>,
   options: { metronome?: MaybeRefOrGetter<boolean> } = {},
 ) {
   const { coreApi } = useApi()
@@ -92,21 +112,23 @@ export function useDiagramPlayback(
   const state = ref<PlaybackState>('idle')
   const activePositionIds = shallowRef<string[]>([])
 
-  const played = computed(() => playedPlayback(toValue(source)))
+  const sourceNow = computed(() => toValue(source))
+  const played = computed(() => (sourceNow.value ? playedPlayback(sourceNow.value) : null))
   const timeSignature = computed<TimeSignature>(() => played.value?.time_signature ?? { beats: 4, beat_value: 4 })
 
   const effectiveTempo = computed(
-    () => toValue(source).playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
+    () => sourceNow.value?.playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
   )
   const tempo = ref(effectiveTempo.value)
 
-  const pitches = computed(() => positionPitches(toValue(source)))
+  const pitches = computed(() => (sourceNow.value ? positionPitches(sourceNow.value) : new Map<string | undefined, number | null>()))
   const pitchOf = (positionId: string) => pitches.value.get(positionId) ?? null
 
-  const canPlay = computed(() => isPlayable(toValue(source)))
+  const canPlay = computed(() => sourceNow.value !== null && isPlayable(sourceNow.value))
 
   const voiceId = computed(() => {
-    const { instrument, playback } = toValue(source)
+    if (!sourceNow.value) return undefined
+    const { instrument, playback } = sourceNow.value
     return playback?.voice_id ?? instrument.default_voice_id
   })
 
@@ -117,17 +139,24 @@ export function useDiagramPlayback(
     return voice
   }
 
-  /** Fetches the voice's recordings ahead of Play, such as when the player scrolls into view. */
-  async function prefetch() {
-    if (!canPlay.value) return
+  /**
+   * Fetches the voice's recordings ahead of Play and says whether all of them came: false when the
+   * voice or a recording can't be had, so a sound that must play can be known lost before Play.
+   */
+  async function checkVoice(): Promise<boolean> {
     try {
       const voice = await findVoice()
-      const urls = voice.samples.map((sample) => sample.url).filter((url) => !prefetched.has(url))
-      urls.forEach((url) => prefetched.add(url))
-      await Promise.all(urls.map((url) => fetch(url).catch(() => prefetched.delete(url))))
+      const fetched = await Promise.all(voice.samples.map((sample) => fetchSample(sample.url)))
+      return fetched.every(Boolean)
     } catch {
-      // Play loads what's missing.
+      return false
     }
+  }
+
+  /** Fetches the voice's recordings ahead of Play, such as when the player scrolls into view. */
+  async function prefetch() {
+    // Play loads what's missing.
+    if (canPlay.value) await checkVoice()
   }
 
   let run: PlaybackRun | null = null
@@ -170,7 +199,7 @@ export function useDiagramPlayback(
     context = audio
     state.value = 'loading'
 
-    const { playback } = toValue(source)
+    const playback = sourceNow.value?.playback
     const steps = played.value?.steps ?? []
     const signature = timeSignature.value
     try {
@@ -205,7 +234,7 @@ export function useDiagramPlayback(
   function toggle() {
     if (state.value === 'playing' || state.value === 'loading') {
       stop()
-    } else {
+    } else if (canPlay.value) {
       state.value = 'idle'
       void play()
     }
@@ -217,7 +246,7 @@ export function useDiagramPlayback(
 
   // Another diagram, or another way of playing it, starts over at its own tempo.
   watch(
-    () => JSON.stringify([toValue(source).diagram, toValue(source).playback]),
+    () => JSON.stringify([sourceNow.value?.diagram, sourceNow.value?.playback]),
     () => {
       stop()
       state.value = 'idle'
@@ -227,5 +256,5 @@ export function useDiagramPlayback(
 
   onScopeDispose(stop)
 
-  return { canPlay, state, activePositionIds, tempo, toggle, stop, prefetch }
+  return { canPlay, state, activePositionIds, tempo, toggle, stop, prefetch, checkVoice }
 }
