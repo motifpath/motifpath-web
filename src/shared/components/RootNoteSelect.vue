@@ -20,7 +20,7 @@ function onChange(event: Event) {
 <template>
   <div class="flex flex-col gap-1.5">
     <label :for="id" class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{{ t('rootNoteSelect.label') }}</label>
-    <div class="relative w-24">
+    <div class="relative w-28">
       <select
         :id="id"
         :value="note ?? ''"
