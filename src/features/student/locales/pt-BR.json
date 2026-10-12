@@ -138,7 +138,8 @@
     "lessonsSummary": "{completed} de {count} aula concluída | {completed} de {count} aulas concluídas",
     "startAgainCourse": "Recomeçar da parte 1",
     "startAgainPath": "Recomeçar da primeira aula",
-    "more": "Mais opções para {title}"
+    "more": "Mais opções para {title}",
+    "newVersion": "Nova versão disponível"
   },
   "partRow": {
     "part": "Parte {position}",
@@ -153,9 +154,24 @@
     "courseDetails": "Detalhes do curso",
     "pathDetails": "Detalhes da trilha",
     "leaveCourse": "Sair do curso",
-    "removePath": "Remover de Aprender"
+    "removePath": "Remover de Aprender",
+    "update": "Atualizar para a versão mais recente"
+  },
+  "updateCopy": {
+    "title": "Atualizar {title}?",
+    "courseMessage": "Você recebe as partes, aulas e imagem mais recentes. As aulas que você concluiu continuam concluídas. Se a aula em que você está foi removida, você continua na próxima que ainda não concluiu. Não é possível desfazer.",
+    "pathMessage": "Você recebe as aulas e a imagem mais recentes. As aulas que você concluiu continuam concluídas. Se a aula em que você está foi removida, você continua na próxima que ainda não concluiu. Não é possível desfazer.",
+    "updateCourse": "Atualizar curso",
+    "updatePath": "Atualizar trilha",
+    "notNow": "Agora não",
+    "tryAgain": "Tentar de novo",
+    "courseFailed": "Não foi possível atualizar o curso. Nada mudou. Verifique sua conexão e tente de novo.",
+    "pathFailed": "Não foi possível atualizar a trilha. Nada mudou. Verifique sua conexão e tente de novo.",
+    "upToDate": "Você já tem a versão mais recente de {title}"
   },
   "courseDetailView": {
+    "newVersionHeading": "Há uma versão mais recente",
+    "newVersionMessage": "Receba as partes, aulas e imagem mais recentes. As aulas que você concluiu continuam concluídas.",
     "errorMessage": "Não foi possível carregar este curso.",
     "notFoundHeading": "Este curso ainda não foi publicado",
     "notFoundMessage": "Este curso não está disponível no catálogo.",
@@ -208,6 +224,9 @@
     "moreFromTeacher": "Mais deste professor"
   },
   "pathDetailView": {
+    "backToLearning": "Voltar para Aprender",
+    "newVersionHeading": "Há uma versão mais recente",
+    "newVersionMessage": "Receba as aulas e a imagem mais recentes. As aulas que você concluiu continuam concluídas.",
     "errorMessage": "Não foi possível carregar esta trilha.",
     "notFoundHeading": "Esta trilha ainda não foi publicada",
     "notFoundMessage": "Esta trilha não está disponível no catálogo.",

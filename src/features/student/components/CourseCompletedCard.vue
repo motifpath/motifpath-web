@@ -32,7 +32,7 @@ const size = computed(() => {
     data-test="course-completed"
     class="flex flex-col items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-center"
   >
-    <ThumbnailImage :url="enrollment.course_thumbnail_url" size-class="aspect-video w-full rounded-lg" />
+    <ThumbnailImage :url="enrollment.course_thumbnail_url" fit="contain" size-class="aspect-video w-full rounded-lg" />
     <PartyPopper class="h-9 w-9 text-accent-text" aria-hidden="true" />
     <h1 class="text-lg font-semibold text-ink">
       {{ t('courseCompletedView.finished', { title: enrollment.course_title }) }}

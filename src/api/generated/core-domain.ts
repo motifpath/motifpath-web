@@ -2121,10 +2121,10 @@ export interface paths {
          *     anywhere show as completed in the copy. If the caller already
          *     holds a non-archived standalone StudentPath copied from this path
          *     (there is never more than one), that copy is made current and
-         *     returned (200) instead of creating a second one. To take a newer
-         *     version of the path, the caller archives that copy first: an
-         *     archived copy is not reused, so enrolling again creates a fresh
-         *     copy. Any user may enroll,
+         *     returned (200) instead of creating a second one. To take the
+         *     path's latest content, the caller updates that copy in place, or
+         *     archives it first: an archived copy is not reused, so enrolling
+         *     again creates a fresh copy. Any user may enroll,
          *     whatever their role.
          */
         post: operations["enrollInLearningPath"];
@@ -2197,6 +2197,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/students/me/course-enrollments/{course_enrollment_id}/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update a course enrollment to the course's latest published content
+         * @description Moves an active enrollment to the course's latest published
+         *     version, at the learner's explicit request. The enrollment is
+         *     re-pinned to that version, and its title, summary, level,
+         *     thumbnail and checkpoint count are read from it. Lesson progress
+         *     is kept per content node, so finished lessons stay finished.
+         *
+         *     The active checkpoint: if its learning path is still a checkpoint
+         *     of the latest version, the learner stays on it at its new
+         *     position, and its student path is updated to the learning path's
+         *     current lessons and presentation, keeping its id. Otherwise that
+         *     student path is archived and the active checkpoint becomes the
+         *     first checkpoint of the latest version whose lessons the learner
+         *     has not all completed, copied as on a normal advance. If every
+         *     checkpoint is already completed, the enrollment completes.
+         *     Checkpoints before the active one count as passed.
+         *
+         *     The update cannot be undone. It never changes which course or
+         *     path is current. Updating an enrollment with no update available
+         *     changes nothing and returns it as it is.
+         */
+        post: operations["updateCourseEnrollmentToLatest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/students/me/paths/{student_path_id}/archive": {
         parameters: {
             query?: never;
@@ -2216,6 +2254,36 @@ export interface paths {
          *     the same terms as abandoning a course enrollment.
          */
         post: operations["archiveStandaloneStudentPath"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/paths/{student_path_id}/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update a standalone student path to its template's latest content
+         * @description Replaces a standalone StudentPath's items with its learning path's
+         *     current items, at the learner's explicit request. Each item
+         *     resolves to its content node's latest published version, as on
+         *     any copy. The title, summary, level and thumbnail are refreshed
+         *     from the learning path. The path keeps its id, its assigner, and
+         *     whether it is current. Lesson progress is kept per content node,
+         *     so finished lessons stay finished, and the next lesson is the
+         *     first one not yet completed.
+         *
+         *     The update cannot be undone. Updating a path with no update
+         *     available changes nothing and returns it as it is.
+         */
+        post: operations["updateStandalonePathToLatest"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4691,7 +4759,8 @@ export interface components {
          * @description A student's own copy of a learning path template's items. Created by
          *     copying a LearningPath at assign time; independently editable
          *     afterwards and never affected by later changes to the template it
-         *     was copied from.
+         *     was copied from, unless the student explicitly updates it to the
+         *     template's latest content.
          */
         StudentPath: {
             /**
@@ -4742,6 +4811,8 @@ export interface components {
             lesson_count: number;
             /** @description Number of this path's items whose content node the student has completed, here or in any other path. */
             completed_count: number;
+            /** @description True when this standalone path can be updated to its template's latest published content: it is not archived, not finished, its template is still published, and the template's lessons (their order and section labels), title, summary, level or thumbnail differ from this copy. Always false for a path that belongs to a course enrollment; the enrollment is updated instead. */
+            update_available: boolean;
         };
         /** @description A content node in the student's learning path with their current progress state. */
         StudentPathItem: {
@@ -5304,6 +5375,8 @@ export interface components {
              * @description Timestamp at which the student enrolled.
              */
             enrolled_at: string;
+            /** @description True when this active enrollment can be updated to the course's latest published content: a newer published course version exists, or the active checkpoint's student path differs from its learning path's current lessons, title, summary, level or thumbnail. Always false for a completed or abandoned enrollment. */
+            update_available: boolean;
         };
         /** @description Payload for switching the caller's current course or path. Exactly one of course_enrollment_id or student_path_id must be given. */
         SetCurrentPathRequest: {
@@ -12683,6 +12756,56 @@ export interface operations {
             };
         };
     };
+    updateCourseEnrollmentToLatest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the enrollment to update. */
+                course_enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The enrollment after the update. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseEnrollment"];
+                };
+            };
+            /** @description The course_enrollment_id is not a valid UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No active enrollment with this ID exists for the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     archiveStandaloneStudentPath: {
         parameters: {
             query?: never;
@@ -12732,6 +12855,73 @@ export interface operations {
              *     have nothing else eligible to become current. Switch to
              *     another course or path first via PUT
              *     /students/me/current-path.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    updateStandalonePathToLatest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the standalone StudentPath to update. */
+                student_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The StudentPath after the update. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPath"];
+                };
+            };
+            /** @description The student_path_id is not a valid UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description No non-archived standalone StudentPath with this ID exists for
+             *     the caller. A StudentPath that belongs to a course enrollment is
+             *     also refused here with this status; update its enrollment
+             *     instead.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The path cannot be updated: every lesson is already completed,
+             *     or its learning path is no longer published.
              */
             409: {
                 headers: {

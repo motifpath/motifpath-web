@@ -2,10 +2,14 @@
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue'
 import { useCatalogPath } from '@/features/student/composables/useCatalogPath'
 import { useEnrollInLearningPath } from '@/features/student/composables/useEnrollInLearningPath'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
+import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
+import { buildLearning, type LearningItem } from '@/features/student/utils/learning'
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
+import AppButton from '@/shared/components/AppButton.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
@@ -27,15 +31,23 @@ const { path, isLoading, error, notFound, retry } = useCatalogPath(learningPathI
 const held = useMyStandalonePaths()
 const { enrollInLearningPath } = useEnrollInLearningPath()
 
-// Opened from a new student's Where to start, the way back is there; otherwise the catalog.
+// Opened from Learning, the way back is there; from a new student's Where to start, there;
+// otherwise the catalog.
+const fromLearning = route.name === 'learning-path'
 const fromWhereToStart = computed(() => whereToStartReturn(route.query))
-const backToCatalog = computed(
-  () =>
+const backToCatalog = computed(() => {
+  if (fromLearning) return { name: 'my-courses' }
+  return (
     fromWhereToStart.value ??
     (route.query.fromCatalog === 'true'
       ? { name: 'path-catalog', query: { returnFromPath: learningPathId } }
-      : { name: 'path-catalog' }),
-)
+      : { name: 'path-catalog' })
+  )
+})
+const backLabel = computed(() => {
+  if (fromLearning) return t('pathDetailView.backToLearning')
+  return fromWhereToStart.value ? t('firstRun.backToWhereToStart') : t('pathDetailView.backToCatalog')
+})
 
 // Enrolling in a path the learner already holds reopens their copy, so the
 // same action continues it.
@@ -43,6 +55,24 @@ const alreadyHeld = computed(() =>
   held.paths.value.some((p) => !p.archived_at && p.source_template_id === learningPathId),
 )
 const sections = computed(() => groupPathSections(path.value?.items ?? []))
+
+// The learner's own copy of this path, when they hold one in progress, and whether a newer version
+// of it can be taken.
+const heldItem = computed(
+  () =>
+    buildLearning([], held.paths.value, null).inProgress.find(
+      (item) => item.detailId === learningPathId,
+    ) ?? null,
+)
+const updating = ref<LearningItem | null>(null)
+
+function applyUpdated(result: UpdateResult) {
+  const updated = result.path
+  updating.value = null
+  if (!updated) return
+  held.paths.value = held.paths.value.map((p) => (p.student_path_id === updated.student_path_id ? updated : p))
+  toast.success(t('updateCopy.upToDate', { title: updated.title }))
+}
 
 const enrolling = ref(false)
 
@@ -67,7 +97,7 @@ async function enroll() {
   <section class="flex flex-col gap-6">
     <div data-test="back-to-catalog" class="w-fit">
       <RouterLink :to="backToCatalog" class="text-sm font-semibold text-accent-text underline">
-        {{ fromWhereToStart ? t('firstRun.backToWhereToStart') : t('pathDetailView.backToCatalog') }}
+        {{ backLabel }}
       </RouterLink>
     </div>
 
@@ -126,6 +156,17 @@ async function enroll() {
                   : t('pathDetailView.enroll')
             }}
           </PrimaryButton>
+          <div
+            v-if="heldItem?.updateAvailable"
+            data-test="update-card"
+            class="flex flex-col items-start gap-2 rounded-lg bg-surface-sunken p-4"
+          >
+            <p class="text-sm font-semibold text-ink">{{ t('pathDetailView.newVersionHeading') }}</p>
+            <p class="text-sm text-ink-muted">{{ t('pathDetailView.newVersionMessage') }}</p>
+            <AppButton data-test="update-path" variant="secondary" block @click="updating = heldItem">
+              {{ t('updateCopy.updatePath') }}
+            </AppButton>
+          </div>
         </aside>
       </div>
 
@@ -145,5 +186,7 @@ async function enroll() {
         </div>
       </div>
     </template>
+
+    <UpdateCopyDialog :item="updating" @updated="applyUpdated" @cancel="updating = null" />
   </section>
 </template>

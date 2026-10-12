@@ -19,6 +19,18 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 export const Busy: Story = { args: { busy: true } }
+export const Primary: Story = {
+  args: { title: 'Update Guitar foundations?', confirmLabel: 'Update course', cancelLabel: 'Not now', tone: 'primary' },
+}
+export const Failed: Story = {
+  args: {
+    title: 'Update Guitar foundations?',
+    confirmLabel: 'Try again',
+    cancelLabel: 'Not now',
+    tone: 'primary',
+    error: "We couldn't update the course. Nothing changed. Check your connection and try again.",
+  },
+}
 export const DefaultCancel: Story = { args: { cancelLabel: undefined } }
 export const LongPortuguese: Story = {
   args: {

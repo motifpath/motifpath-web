@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import PartRow from '@/features/student/components/PartRow.vue'
+import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
 import {
   LeaveFailedAfterSwitchError,
@@ -13,8 +14,9 @@ import { useMyStandalonePaths } from '@/features/student/composables/useMyStanda
 import { usePublishedCourse } from '@/features/student/composables/usePublishedCourse'
 import { type CurrentPathTarget, useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
 import { buildCourseOutline, courseStanding } from '@/features/student/utils/courseOutline'
-import { buildLearning, nextInProgress } from '@/features/student/utils/learning'
+import { buildLearning, type LearningItem, nextInProgress } from '@/features/student/utils/learning'
 import { whereToStartReturn } from '@/features/student/utils/whereToStartReturn'
 import AppButton from '@/shared/components/AppButton.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
@@ -205,6 +207,20 @@ const leaveMessage = computed(() => {
     : message
 })
 
+// ── Taking a newer version ────────────────────────────────────────────────
+
+const updating = ref<LearningItem | null>(null)
+
+function applyUpdated(result: UpdateResult) {
+  const updated = result.enrollment
+  updating.value = null
+  if (!updated) return
+  enrollmentState.enrollments.value = enrollmentState.enrollments.value.map((e) =>
+    e.course_enrollment_id === updated.course_enrollment_id ? updated : e,
+  )
+  toast.success(t('updateCopy.upToDate', { title: updated.course_title }))
+}
+
 async function confirmLeave() {
   const item = learningItem.value
   if (!item) return
@@ -308,7 +324,7 @@ async function confirmLeave() {
       <div
         class="contents min-[1120px]:sticky min-[1120px]:top-5 min-[1120px]:flex min-[1120px]:flex-col min-[1120px]:gap-3 min-[1120px]:rounded-lg min-[1120px]:border min-[1120px]:border-border min-[1120px]:bg-surface-raised min-[1120px]:p-4"
       >
-        <ThumbnailImage class="order-1" :url="course.thumbnail_url" size-class="aspect-video w-full rounded-lg" />
+        <ThumbnailImage class="order-1" :url="course.thumbnail_url" fit="contain" size-class="aspect-video w-full rounded-lg" />
 
         <div class="order-3 flex flex-col gap-3">
           <div v-if="enrollment" data-test="course-progress">
@@ -349,6 +365,17 @@ async function confirmLeave() {
               {{ t('courseDetailView.leftBefore') }}
             </p>
           </template>
+          <div
+            v-if="learningItem?.updateAvailable"
+            data-test="update-card"
+            class="flex flex-col items-start gap-2 rounded-lg bg-surface-sunken p-4"
+          >
+            <p class="text-sm font-semibold text-ink">{{ t('courseDetailView.newVersionHeading') }}</p>
+            <p class="text-sm text-ink-muted">{{ t('courseDetailView.newVersionMessage') }}</p>
+            <AppButton data-test="update-course" variant="secondary" block @click="updating = learningItem">
+              {{ t('updateCopy.updateCourse') }}
+            </AppButton>
+          </div>
         </div>
 
         <!-- Last on the page on a phone; in the side card beside the outline on a wide screen. -->
@@ -373,5 +400,7 @@ async function confirmLeave() {
       @confirm="confirmLeave"
       @cancel="confirmingLeave = false"
     />
+
+    <UpdateCopyDialog :item="updating" @updated="applyUpdated" @cancel="updating = null" />
   </section>
 </template>

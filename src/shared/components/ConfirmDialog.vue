@@ -2,6 +2,7 @@
 import { useId } from 'vue'
 
 import AppButton from '@/shared/components/AppButton.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
 import OverlayLayer from '@/shared/components/OverlayLayer.vue'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -19,8 +20,15 @@ withDefaults(
     cancelLabel?: string
     /** Disables the confirm button while the confirmed action runs. */
     busy?: boolean
+    /**
+     * Destructive when the action loses something; primary when it can't be undone but loses
+     * nothing the student did.
+     */
+    tone?: 'destructive' | 'primary'
+    /** Why the confirmed action failed; the dialog stays open so it can be tried again. */
+    error?: string
   }>(),
-  { cancelLabel: undefined, busy: false },
+  { cancelLabel: undefined, busy: false, tone: 'destructive', error: undefined },
 )
 const emit = defineEmits<{ confirm: []; cancel: [] }>()
 
@@ -46,10 +54,11 @@ const messageId = useId()
       <div v-if="isCompact" class="mx-auto mb-2 h-1 w-9 rounded-full bg-border" aria-hidden="true" />
       <h2 :id="titleId" class="text-lg font-semibold text-ink">{{ title }}</h2>
       <p :id="messageId" class="text-sm text-ink-muted">{{ message }}</p>
-      <!-- Phone: destructive on top, safe at the bottom where the thumb rests, so a slip lands on
-           the safe choice. Wider: safe left, destructive right. -->
+      <InlineNotice v-if="error" :message="error" />
+      <!-- Phone: the confirming verb on top, safe at the bottom where the thumb rests, so a slip
+           lands on the safe choice. Wider: safe left, confirming verb right. -->
       <div v-if="isCompact" class="mt-2 flex flex-col gap-2">
-        <AppButton data-test="confirm-dialog-confirm" variant="destructive" block :busy="busy" @click="emit('confirm')">
+        <AppButton data-test="confirm-dialog-confirm" :variant="tone" block :busy="busy" @click="emit('confirm')">
           {{ confirmLabel }}
         </AppButton>
         <AppButton data-test="confirm-dialog-cancel" variant="secondary" block data-autofocus @click="emit('cancel')">
@@ -60,7 +69,7 @@ const messageId = useId()
         <AppButton data-test="confirm-dialog-cancel" variant="secondary" data-autofocus @click="emit('cancel')">
           {{ cancelLabel ?? t('confirmDialog.cancel') }}
         </AppButton>
-        <AppButton data-test="confirm-dialog-confirm" variant="destructive" :busy="busy" @click="emit('confirm')">
+        <AppButton data-test="confirm-dialog-confirm" :variant="tone" :busy="busy" @click="emit('confirm')">
           {{ confirmLabel }}
         </AppButton>
       </div>

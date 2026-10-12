@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * What a Learning row holds besides continuing: its details, and leaving it. A sheet on a phone;
- * on wider screens a menu beside the ⋯ that opened it.
+ * What a Learning row holds besides continuing: taking a newer version when there is one, its
+ * details, and leaving it. A sheet on a phone; on wider screens a menu beside the ⋯ that opened it.
  */
-import { Info, LogOut } from 'lucide-vue-next'
+import { Info, LogOut, RefreshCw } from 'lucide-vue-next'
 import { ref, watch } from 'vue'
 
 import type { LearningItem } from '@/features/student/utils/learning'
@@ -14,7 +14,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 import { anchoredPosition, type AnchoredPosition } from '@/shared/utils/anchoredPosition'
 
 const props = defineProps<{ open: boolean; item: LearningItem | null; trigger: HTMLElement | null }>()
-const emit = defineEmits<{ close: []; details: []; leave: [] }>()
+const emit = defineEmits<{ close: []; details: []; leave: []; update: [] }>()
 
 const { t } = useTypedT()
 const { isCompact } = useSizeClass()
@@ -56,6 +56,13 @@ watch(
         <div class="mx-auto mt-2 h-1 w-9 rounded-full bg-border" aria-hidden="true" />
         <p class="truncate px-4 pb-1 pt-3 text-base font-semibold text-ink">{{ item.title }}</p>
       </template>
+      <MenuRow
+        v-if="item.updateAvailable"
+        data-test="learning-menu-update"
+        :icon="RefreshCw"
+        :label="t('learningMenu.update')"
+        @click="emit('update')"
+      />
       <MenuRow
         data-test="learning-menu-details"
         :icon="Info"

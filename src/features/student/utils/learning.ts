@@ -27,12 +27,18 @@ export interface LearningItem {
   detailId: string
   /** When it was started, the order within a group. */
   startedAt: string
+  /** A newer published version can be taken; only ever true while it is in progress. */
+  updateAvailable: boolean
 }
 
 export interface LearningGroups {
   inProgress: LearningItem[]
   finished: LearningItem[]
   left: LearningItem[]
+}
+
+function inProgress(state: LearningState): boolean {
+  return state === 'current' || state === 'in-progress'
 }
 
 function fromEnrollment(enrollment: CourseEnrollment, current: StudentPathView | null): LearningItem {
@@ -63,6 +69,7 @@ function fromEnrollment(enrollment: CourseEnrollment, current: StudentPathView |
     target: { courseEnrollmentId: enrollment.course_enrollment_id },
     detailId: enrollment.course_id,
     startedAt: enrollment.enrolled_at,
+    updateAvailable: inProgress(state) && enrollment.update_available,
   }
 }
 
@@ -87,6 +94,7 @@ function fromStandalonePath(path: StudentPath, current: StudentPathView | null):
     target: { studentPathId: path.student_path_id },
     detailId: path.source_template_id,
     startedAt: path.assigned_at,
+    updateAvailable: inProgress(state) && path.update_available,
   }
 }
 
