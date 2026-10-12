@@ -13,9 +13,17 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 const route = reactive<{ params: { id?: string } }>({ params: {} })
+type LeaveGuard = () => boolean | Promise<boolean>
+let leaveGuard: LeaveGuard | null = null
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof VueRouter>('vue-router')
-  return { ...actual, useRoute: () => route }
+  return {
+    ...actual,
+    useRoute: () => route,
+    onBeforeRouteLeave: (guard: LeaveGuard) => {
+      leaveGuard = guard
+    },
+  }
 })
 
 const currentUser = reactive({ profile: { user_id: 't-1', role: 'teacher' as 'student' | 'teacher' | 'admin' } })
@@ -142,6 +150,7 @@ describe('ContentAuthoringView', () => {
     PUT.mockReset()
     DELETE.mockReset()
     route.params = {}
+    leaveGuard = null
     currentUser.profile.role = 'teacher'
     currentUser.profile.user_id = 't-1'
     mockMatchMedia(false)
@@ -1281,6 +1290,212 @@ describe('ContentAuthoringView', () => {
 
         expect(wrapper.find('[data-test="publish-section"]').exists()).toBe(true)
       })
+    })
+  })
+
+  describe('video upload', () => {
+    const MB = 1024 * 1024
+    const UPLOADED_URL = 'https://media.test/lessons/0f8fad5b-d9cb-469f-a165-70867728950e.mp4'
+
+    /** A stand-in for XMLHttpRequest that each test finishes by hand. */
+    class FakeXhr {
+      static last: FakeXhr | null = null
+      status = 0
+      upload: { onprogress: ((e: { loaded: number; total: number }) => void) | null } = { onprogress: null }
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      onabort: (() => void) | null = null
+      constructor() {
+        FakeXhr.last = this
+      }
+      open() {}
+      setRequestHeader() {}
+      send() {}
+      abort() {
+        this.onabort?.()
+      }
+      finish(status: number) {
+        this.status = status
+        this.onload?.()
+      }
+    }
+
+    function videoFile(name = 'open-chords-lesson.mp4', size = 980 * MB) {
+      const file = new File(['x'], name, { type: 'video/mp4' })
+      Object.defineProperty(file, 'size', { value: size })
+      return file
+    }
+
+    function chooseVideo(wrapper: ReturnType<typeof mountView>, file = videoFile()) {
+      const input = wrapper.get<HTMLInputElement>('[data-test="video-source-file-input"]').element
+      Object.defineProperty(input, 'files', { value: [file], configurable: true })
+      input.dispatchEvent(new Event('change'))
+    }
+
+    function grantUploadUrl() {
+      POST.mockResolvedValueOnce({
+        data: { upload_url: 'https://storage.test/put?sig=1', object_url: UPLOADED_URL, expires_at: '2026-10-12T00:15:00Z' },
+        error: undefined,
+        response: { status: 201 },
+      })
+    }
+
+    async function mountSavedLesson(mediaUrl = VIDEO_URL) {
+      route.params = { id: 'cn-1' }
+      routeGET({
+        '/content-nodes/{content_node_id}': {
+          data: { ...contentNodeFixture, media_url: mediaUrl },
+          error: undefined,
+          response: { status: 200 },
+        },
+      })
+      const wrapper = mountView()
+      await flushPromises()
+      return wrapper
+    }
+
+    const status = (wrapper: ReturnType<typeof mountView>) => wrapper.get('[data-test="video-source"]').attributes('data-status')
+
+    beforeEach(() => {
+      FakeXhr.last = null
+      vi.stubGlobal('XMLHttpRequest', FakeXhr)
+      return () => vi.unstubAllGlobals()
+    })
+
+    it('offers an upload above the link field, which is now "Or paste a link"', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(status(wrapper)).toBe('idle')
+      expect(wrapper.get('label[for="content-media-url"]').text()).toBe('Or paste a link')
+      const card = wrapper.get('[data-test="video-source"]').element
+      const link = wrapper.get('[data-test="media-url-input"]').element
+      expect(card.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('uploads a chosen MP4 and saves its URL as the lesson\'s video', async () => {
+      const wrapper = await mountSavedLesson()
+      grantUploadUrl()
+      PUT.mockResolvedValueOnce({ data: { ...contentNodeFixture, media_url: UPLOADED_URL }, error: undefined, response: { status: 200 } })
+
+      chooseVideo(wrapper)
+      await flushPromises()
+      expect(status(wrapper)).toBe('uploading')
+      expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(false)
+
+      FakeXhr.last?.finish(200)
+      await flushPromises()
+      expect(status(wrapper)).toBe('uploaded')
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+      expect(PUT.mock.calls[0]?.[1].body.media_url).toBe(UPLOADED_URL)
+    })
+
+    it('saves once the upload in progress has finished', async () => {
+      const wrapper = await mountSavedLesson()
+      grantUploadUrl()
+      PUT.mockResolvedValueOnce({ data: { ...contentNodeFixture, media_url: UPLOADED_URL }, error: undefined, response: { status: 200 } })
+      chooseVideo(wrapper)
+      await flushPromises()
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      await flushPromises()
+      expect(PUT).not.toHaveBeenCalled()
+
+      FakeXhr.last?.finish(200)
+      await flushPromises()
+      expect(PUT).toHaveBeenCalledTimes(1)
+      expect(PUT.mock.calls[0]?.[1].body.media_url).toBe(UPLOADED_URL)
+    })
+
+    it('does not save when the upload it was waiting for fails', async () => {
+      const wrapper = await mountSavedLesson()
+      grantUploadUrl()
+      chooseVideo(wrapper)
+      await flushPromises()
+
+      await wrapper.get('[data-test="app-bar-save"]').trigger('click')
+      FakeXhr.last?.finish(403)
+      await flushPromises()
+
+      expect(PUT).not.toHaveBeenCalled()
+      expect(status(wrapper)).toBe('failed')
+      expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(true)
+    })
+
+    it('asks before leaving during an upload, and cancels it on leaving', async () => {
+      const wrapper = await mountSavedLesson()
+      grantUploadUrl()
+      chooseVideo(wrapper)
+      await flushPromises()
+
+      const leaving = leaveGuard?.()
+      await flushPromises()
+      expect(wrapper.get('[role="alertdialog"]').text()).toContain('Leave and cancel the upload?')
+
+      await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+      expect(await leaving).toBe(true)
+      expect(status(wrapper)).toBe('idle')
+    })
+
+    it('stays when the teacher keeps the upload going', async () => {
+      const wrapper = await mountSavedLesson()
+      grantUploadUrl()
+      chooseVideo(wrapper)
+      await flushPromises()
+
+      const leaving = leaveGuard?.()
+      await flushPromises()
+      await wrapper.get('[data-test="confirm-dialog-cancel"]').trigger('click')
+
+      expect(await leaving).toBe(false)
+      expect(status(wrapper)).toBe('uploading')
+    })
+
+    it('leaves without asking when nothing is uploading', async () => {
+      await mountSavedLesson()
+
+      expect(await leaveGuard?.()).toBe(true)
+    })
+
+    it('shows a video uploaded earlier as the uploaded video, without the link field', async () => {
+      const wrapper = await mountSavedLesson(UPLOADED_URL)
+
+      expect(status(wrapper)).toBe('stored')
+      expect(wrapper.find('[data-test="media-url-input"]').exists()).toBe(false)
+    })
+
+    it('keeps a pasted link in the link field, with the upload offered', async () => {
+      const wrapper = await mountSavedLesson('https://youtu.be/abc123')
+
+      expect(status(wrapper)).toBe('idle')
+      expect((wrapper.get('[data-test="media-url-input"]').element as HTMLInputElement).value).toBe('https://youtu.be/abc123')
+    })
+
+    it.each([
+      ['video-source-use-link', 'idle'],
+      ['video-source-remove', 'idle'],
+    ])('%s clears the uploaded video and shows an empty link field', async (action, expected) => {
+      const wrapper = await mountSavedLesson(UPLOADED_URL)
+
+      await wrapper.get('[data-test="video-source-more"]').trigger('click')
+      await wrapper.get(`[data-test="${action}"]`).trigger('click')
+      await flushPromises()
+
+      expect(status(wrapper)).toBe(expected)
+      expect((wrapper.get('[data-test="media-url-input"]').element as HTMLInputElement).value).toBe('')
+      expect(wrapper.get('[data-test="app-bar-save"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('plays the uploaded video', async () => {
+      const wrapper = await mountSavedLesson(UPLOADED_URL)
+
+      await wrapper.get('[data-test="video-source-more"]').trigger('click')
+      await wrapper.get('[data-test="video-source-play"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="video-preview"] video').attributes('src')).toBe(UPLOADED_URL)
     })
   })
 })

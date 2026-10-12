@@ -2,7 +2,8 @@ import { useApi } from '@/shared/composables/useApi'
 import { describeApiError } from '@/shared/utils/apiError'
 import type { components } from '@/api/generated/core-domain'
 
-type MediaContentType = components['schemas']['CreateMediaUploadUrlRequest']['content_type']
+// Videos go through useVideoUpload, which uploads with progress and a size limit.
+type MediaContentType = Exclude<components['schemas']['CreateMediaUploadUrlRequest']['content_type'], 'video'>
 type MediaUploadPurpose = components['schemas']['CreateMediaUploadUrlRequest']['purpose']
 
 // The backend presigns the upload URL against one fixed, representative MIME

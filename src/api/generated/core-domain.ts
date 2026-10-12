@@ -6219,8 +6219,8 @@ export interface components {
         };
         /**
          * @description Payload requesting a presigned URL to upload a content-authoring media
-         *     asset (exercise/prompt image or audio, or an addition to the shared
-         *     image-picker library).
+         *     asset (exercise/prompt image or audio, an addition to the shared
+         *     image-picker library, a thumbnail, or a video lesson's video).
          */
         CreateMediaUploadUrlRequest: {
             /**
@@ -6229,10 +6229,12 @@ export interface components {
              *     library_asset stores the object under the shared, predefined
              *     image-picker library's prefix. thumbnail stores an image shown for
              *     a course, learning path or content node in lists and cards; its
-             *     content_type must be image.
+             *     content_type must be image. lesson_video stores the video a video
+             *     content node plays; its content_type must be video, and it is the
+             *     only purpose that accepts video.
              * @enum {string}
              */
-            purpose: "exercise_asset" | "library_asset" | "thumbnail";
+            purpose: "exercise_asset" | "library_asset" | "thumbnail" | "lesson_video";
             /**
              * Format: uuid
              * @description The exercise this upload belongs to. Required when purpose is
@@ -6240,15 +6242,26 @@ export interface components {
              */
             exercise_id?: string;
             /**
-             * @description The media type of the file being uploaded.
+             * @description The media type of the file being uploaded. video means an MP4
+             *     file (H.264 video, AAC audio), uploaded with the Content-Type
+             *     video/mp4; it requires purpose lesson_video and file_size.
              * @enum {string}
              */
-            content_type: "image" | "audio";
+            content_type: "image" | "audio" | "video";
             /**
              * @description The original file name, used to derive the stored object's file
-             *     extension. Not used as the object's storage key.
+             *     extension. Not used as the object's storage key. For video it
+             *     must end in .mp4 (any case).
              */
             file_name: string;
+            /**
+             * Format: int64
+             * @description The file's size in bytes. Required when content_type is video,
+             *     where it may be at most 1073741824 (1 GB); optional otherwise.
+             *     When given, the issued URL only accepts an upload of exactly this
+             *     many bytes.
+             */
+            file_size?: number;
         };
         /**
          * @description A presigned upload URL and the object's eventual read URL. The caller
@@ -8835,8 +8848,11 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body failed schema validation, or purpose is
-             *     exercise_asset without an exercise_id.
+             * @description The request body failed schema validation; purpose is
+             *     exercise_asset without an exercise_id; content_type and purpose
+             *     don't match (video only with lesson_video, image only for
+             *     thumbnail); or a video has no file_size, a file_size over 1 GB, or
+             *     a file_name not ending in .mp4.
              */
             400: {
                 headers: {
