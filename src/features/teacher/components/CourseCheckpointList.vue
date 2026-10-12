@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ArrowRight, Pencil, Trash2 } from 'lucide-vue-next'
-import { computed, ref, useId } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import type { CheckpointDraft } from '@/features/teacher/composables/useCourseForm'
-import AppButton from '@/shared/components/AppButton.vue'
 import OrderedList from '@/shared/components/OrderedList.vue'
 import OrderedRow, { type OrderedRowAction } from '@/shared/components/OrderedRow.vue'
-import OverlayPanel from '@/shared/components/OverlayPanel.vue'
+import TextEntrySheet from '@/shared/components/TextEntrySheet.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 /** What the course editor knows of a checkpoint's path: whether learners can get it, and its size. */
@@ -67,19 +66,17 @@ function onAction(index: number, id: string) {
   else if (id === 'remove') emit('remove', index)
 }
 
-const renaming = ref<{ index: number; value: string; placeholder: string } | null>(null)
-const renameInputId = useId()
+// The checkpoint being renamed in this course, if any.
+const renamingIndex = ref<number | null>(null)
+const renaming = computed(() => (renamingIndex.value === null ? null : (props.checkpoints[renamingIndex.value] ?? null)))
 
 function startRename(index: number) {
-  const checkpoint = props.checkpoints[index]
-  if (!checkpoint) return
-  renaming.value = { index, value: checkpoint.override, placeholder: checkpoint.pathTitle ?? '' }
+  renamingIndex.value = index
 }
 
-function confirmRename() {
-  if (!renaming.value) return
-  emit('updateOverride', renaming.value.index, renaming.value.value.trim())
-  renaming.value = null
+function confirmRename(value: string) {
+  if (renamingIndex.value !== null) emit('updateOverride', renamingIndex.value, value)
+  renamingIndex.value = null
 }
 </script>
 
@@ -104,24 +101,16 @@ function confirmRename() {
       />
     </OrderedList>
 
-    <OverlayPanel :open="renaming !== null" :title="t('courseCheckpointList.rename')" @close="renaming = null">
-      <form v-if="renaming" class="flex flex-col gap-2" @submit.prevent="confirmRename">
-        <label :for="renameInputId" class="text-sm font-semibold text-ink">{{ t('courseCheckpointList.renameLabel') }}</label>
-        <input
-          :id="renameInputId"
-          v-model="renaming.value"
-          data-test="checkpoint-rename-input"
-          type="text"
-          :placeholder="renaming.placeholder"
-          class="h-12 rounded-xl border border-border bg-surface-sunken px-3 text-base text-ink"
-        />
-        <p class="text-xs text-ink-muted">{{ t('courseCheckpointList.renameHint') }}</p>
-      </form>
-      <template #actions>
-        <AppButton data-test="checkpoint-rename-confirm" block @click="confirmRename">
-          {{ t('courseCheckpointList.renameConfirm') }}
-        </AppButton>
-      </template>
-    </OverlayPanel>
+    <TextEntrySheet
+      :open="renaming !== null"
+      :title="t('courseCheckpointList.rename')"
+      :label="t('courseCheckpointList.renameLabel')"
+      :hint="t('courseCheckpointList.renameHint')"
+      :placeholder="renaming?.pathTitle ?? ''"
+      :value="renaming?.override ?? ''"
+      :confirm-label="t('courseCheckpointList.renameConfirm')"
+      @confirm="confirmRename"
+      @close="renamingIndex = null"
+    />
   </div>
 </template>

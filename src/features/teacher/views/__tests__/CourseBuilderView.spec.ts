@@ -335,10 +335,10 @@ describe('CourseBuilderView', () => {
       await flushPromises()
 
       await chooseFromRowMenu(wrapper, 0, 'Rename in this course')
-      const input = document.querySelector<HTMLInputElement>('[data-test="checkpoint-rename-input"]')!
+      const input = document.querySelector<HTMLInputElement>('[data-test="text-entry-input"]')!
       input.value = 'Stage 1'
       input.dispatchEvent(new Event('input'))
-      document.querySelector<HTMLButtonElement>('[data-test="checkpoint-rename-confirm"]')!.click()
+      document.querySelector<HTMLButtonElement>('[data-test="text-entry-confirm"]')!.click()
       await flushPromises()
 
       expect(rowTitles(wrapper)).toEqual(['1 · Stage 1', '2 · Stage 2'])

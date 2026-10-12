@@ -92,15 +92,15 @@ describe('CourseCheckpointList', () => {
     menuItem('Rename in this course').click()
     await wrapper.vm.$nextTick()
 
-    const input = document.querySelector<HTMLInputElement>('[data-test="checkpoint-rename-input"]')!
+    const input = document.querySelector<HTMLInputElement>('[data-test="text-entry-input"]')!
     expect(input.placeholder).toBe('First chords')
     input.value = 'Your first chords'
     input.dispatchEvent(new Event('input'))
-    document.querySelector<HTMLButtonElement>('[data-test="checkpoint-rename-confirm"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-test="text-entry-confirm"]')!.click()
     await wrapper.vm.$nextTick()
 
     expect(wrapper.emitted('updateOverride')).toEqual([[0, 'Your first chords']])
-    expect(document.querySelector('[data-test="checkpoint-rename-input"]')).toBeNull()
+    expect(document.querySelector('[data-test="text-entry-input"]')).toBeNull()
   })
 
   it('a blank name goes back to the path’s own title', async () => {
@@ -110,11 +110,11 @@ describe('CourseCheckpointList', () => {
     menuItem('Rename in this course').click()
     await wrapper.vm.$nextTick()
 
-    const input = document.querySelector<HTMLInputElement>('[data-test="checkpoint-rename-input"]')!
+    const input = document.querySelector<HTMLInputElement>('[data-test="text-entry-input"]')!
     expect(input.value).toBe('Strumming')
     input.value = '  '
     input.dispatchEvent(new Event('input'))
-    document.querySelector<HTMLButtonElement>('[data-test="checkpoint-rename-confirm"]')!.click()
+    document.querySelector<HTMLButtonElement>('[data-test="text-entry-confirm"]')!.click()
 
     expect(wrapper.emitted('updateOverride')).toEqual([[1, '']])
   })
