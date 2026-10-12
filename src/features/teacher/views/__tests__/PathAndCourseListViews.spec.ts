@@ -54,9 +54,12 @@ const course = {
   checkpoint_count: 4,
 }
 
+const LIST_PATHS = ['/learning-paths', '/courses']
+
 function answer(listPath: string, items: unknown[]) {
   GET.mockImplementation((requested: string) => {
     if (requested === listPath) return Promise.resolve({ data: { items, total: items.length, limit: 20, offset: 0 } })
+    if (LIST_PATHS.includes(requested)) return Promise.resolve({ data: { items: [], total: 0, limit: 20, offset: 0 } })
     if (requested === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument({ names: { en: 'Guitar' } })] })
     return Promise.resolve({ data: [] })
   })
@@ -76,7 +79,8 @@ async function mountView(view: Component, routeName: string) {
 
 beforeEach(() => {
   GET.mockReset()
-  GET.mockResolvedValue({ data: [] })
+  // A request still in flight from the previous test gets the same shapes as this one's.
+  answer('/learning-paths', [])
   window.localStorage.clear()
   currentUser.profile.role = 'teacher'
   vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
