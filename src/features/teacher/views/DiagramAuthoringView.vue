@@ -597,15 +597,16 @@ async function saveAs(names: Record<string, string>) {
             @remove="form.removePosition"
           >
             <template #toolbar>
-              <div class="flex items-center justify-between">
+              <!-- Wraps on a narrow screen: a row wider than the screen would widen the whole page. -->
+              <div class="flex flex-wrap items-center justify-between gap-2">
                 <label class="text-sm font-semibold">{{
                   te('diagramAuthoringView.positionsLabel')
                 }}</label>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     data-test="add-overlay"
-                    class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted"
+                    class="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted"
                     @click="overlaying = true"
                   >
                     <Layers :size="14" aria-hidden="true" />
@@ -614,7 +615,7 @@ async function saveAs(names: Record<string, string>) {
                   <button
                     type="button"
                     data-test="open-preview-modal"
-                    class="flex items-center gap-1.5 rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    class="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-border px-3 py-1 text-xs font-semibold text-ink-muted disabled:cursor-not-allowed disabled:opacity-50"
                     :disabled="!previewDiagram"
                     :title="previewDiagram ? undefined : te('diagramAuthoringView.previewEmpty')"
                     @click="showPreviewModal = true"
