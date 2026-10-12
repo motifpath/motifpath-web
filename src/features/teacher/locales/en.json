@@ -892,5 +892,15 @@
     "loadFailed": "Couldn't load the list.",
     "retry": "Try again",
     "loading": "Loading…"
+  },
+  "authorFilter": {
+    "title": "Author",
+    "search": "Search authors",
+    "anyone": "Anyone",
+    "me": "Me — {name}",
+    "loading": "Loading authors…",
+    "loadFailed": "Couldn't load the authors.",
+    "retry": "Try again",
+    "noMatches": "No author matches."
   }
 }

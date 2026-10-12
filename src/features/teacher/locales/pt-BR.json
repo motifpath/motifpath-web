@@ -892,5 +892,15 @@
     "loadFailed": "Não foi possível carregar a lista.",
     "retry": "Tentar de novo",
     "loading": "Carregando…"
+  },
+  "authorFilter": {
+    "title": "Autor",
+    "search": "Buscar autores",
+    "anyone": "Qualquer pessoa",
+    "me": "Eu — {name}",
+    "loading": "Carregando autores…",
+    "loadFailed": "Não foi possível carregar os autores.",
+    "retry": "Tentar de novo",
+    "noMatches": "Nenhum autor encontrado."
   }
 }
