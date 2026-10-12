@@ -32,7 +32,7 @@ describe('ChallengeConfigPanel', () => {
     expect((wrapper.get('[data-test="shuffle-options"]').element as HTMLInputElement).checked).toBe(false)
   })
 
-  it('emits update:subjectSkillId and clears subjectConceptId when a skill is picked', async () => {
+  it('emits update:subjectSkillId and keeps the subject concept when a skill is picked', async () => {
     const wrapper = mount(ChallengeConfigPanel, {
       props: {
         subjectSkillId: undefined,
@@ -49,10 +49,10 @@ describe('ChallengeConfigPanel', () => {
     await wrapper.get('[data-test="tree-node-radio"][value="s-1"]').setValue(true)
 
     expect(wrapper.emitted('update:subjectSkillId')).toEqual([['s-1']])
-    expect(wrapper.emitted('update:subjectConceptId')).toEqual([[undefined]])
+    expect(wrapper.emitted('update:subjectConceptId')).toBeUndefined()
   })
 
-  it('emits update:subjectConceptId and clears subjectSkillId when a concept is picked', async () => {
+  it('emits update:subjectConceptId and keeps the subject skill when a concept is picked', async () => {
     const wrapper = mount(ChallengeConfigPanel, {
       props: {
         subjectSkillId: 's-1',
@@ -69,7 +69,27 @@ describe('ChallengeConfigPanel', () => {
     await wrapper.get('[data-test="tree-node-radio"][value="c-1"]').setValue(true)
 
     expect(wrapper.emitted('update:subjectConceptId')).toEqual([['c-1']])
+    expect(wrapper.emitted('update:subjectSkillId')).toBeUndefined()
+  })
+
+  it('clears only the subject skill when the teacher removes it', async () => {
+    const wrapper = mount(ChallengeConfigPanel, {
+      props: {
+        subjectSkillId: 's-1',
+        subjectConceptId: 'c-1',
+        skillNodes,
+        conceptNodes,
+        passThreshold: 70,
+        shuffleExercises: false,
+        shuffleOptions: false,
+      },
+    })
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.get('[data-test="tree-selection-remove"]').trigger('click')
+
     expect(wrapper.emitted('update:subjectSkillId')).toEqual([[undefined]])
+    expect(wrapper.emitted('update:subjectConceptId')).toBeUndefined()
   })
 
   it('emits update events for pass threshold and shuffle flags', async () => {

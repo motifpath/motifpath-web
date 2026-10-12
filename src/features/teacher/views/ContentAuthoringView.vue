@@ -323,11 +323,15 @@ const challengeInitial = computed<ChallengeModalInitial | null>(() => {
   }
 })
 
+// A challenge may assess a skill, a concept, or both; the skill is named first.
 const challengeSubjectName = computed(() => {
   const c = challenge.value
   if (!c) return ''
-  const subjectId = c.subject_skill_id ?? c.subject_concept_id
-  return subjectId ? nodeName(subjectId) : ''
+  return [c.subject_skill_id, c.subject_concept_id]
+    .filter((id): id is string => !!id)
+    .map((id) => nodeName(id))
+    .filter((name) => name !== '')
+    .join(', ')
 })
 
 // Timed pop-ups only make sense once the node exists server-side, same as

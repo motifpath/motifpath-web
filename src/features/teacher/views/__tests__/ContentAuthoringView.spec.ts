@@ -716,6 +716,20 @@ describe('ContentAuthoringView', () => {
         expect((wrapper.get('[data-test="pass-threshold"]').element as HTMLInputElement).value).toBe('80')
       })
 
+      it('names both subjects in the summary when the challenge assesses a skill and a concept', async () => {
+        routeGET({
+          '/content-nodes/{content_node_id}': okResponse(contentNodeFixture),
+          '/knowledge-nodes?kind=skill': okResponse([skillFixture]),
+          '/knowledge-nodes?kind=concept': okResponse([conceptFixture]),
+          '/content-nodes/{content_node_id}/challenges': okResponse([{ ...challengeFixture, subject_concept_id: 'c-1' }]),
+          '/challenges/{challenge_id}/exercises': okResponse([exerciseFixture('e-1', 'Name the chord')]),
+        })
+        const wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="challenge-summary"]').text()).toContain('Subject: alternate-picking, picking-technique')
+      })
+
       it('warns when an existing challenge has no exercises', async () => {
         routeChallenge([])
         const wrapper = mountView()

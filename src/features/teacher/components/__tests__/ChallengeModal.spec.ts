@@ -145,6 +145,20 @@ describe('ChallengeModal', () => {
     ])
   })
 
+  it('saves both a subject skill and a subject concept when the teacher picks both', async () => {
+    const wrapper = mount(ChallengeModal, { props: baseProps })
+    await pickSubjectSkill(wrapper)
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1]!.trigger('click')
+    await wrapper.get('[data-test="tree-node-radio"][value="c-1"]').setValue(true)
+    await pickExercise(wrapper, 'Name the chord')
+
+    await wrapper.get('[data-test="save-challenge"]').trigger('click')
+
+    expect(wrapper.emitted('save')?.[0]?.[0]).toMatchObject({
+      fields: { subject_skill_id: 's-1', subject_concept_id: 'c-1' },
+    })
+  })
+
   it('pre-fills from an existing challenge and its linked exercises', () => {
     const wrapper = mount(ChallengeModal, {
       props: {
