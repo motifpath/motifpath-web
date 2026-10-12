@@ -412,5 +412,9 @@
     "buttonApplied": "Filtros, {count} aplicados",
     "remove": "Remover {label}",
     "clearAll": "Limpar tudo"
+  },
+  "rootNoteSelect": {
+    "label": "Nota fundamental",
+    "any": "Qualquer"
   }
 }

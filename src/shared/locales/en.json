@@ -412,5 +412,9 @@
     "buttonApplied": "Filters, {count} applied",
     "remove": "Remove {label}",
     "clearAll": "Clear all"
+  },
+  "rootNoteSelect": {
+    "label": "Root note",
+    "any": "Any"
   }
 }
