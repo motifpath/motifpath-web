@@ -1,7 +1,8 @@
-import { mount, RouterLinkStub } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, reactive } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -9,7 +10,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 const currentUser = reactive({
-  profile: { user_id: 'u-teacher', role: 'teacher' as 'student' | 'teacher' | 'admin' },
+  profile: { user_id: 'u-teacher', role: 'teacher' as 'student' | 'teacher' | 'admin', display_name: 'Bob Ferreira' },
 })
 vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
@@ -25,234 +26,120 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
   }),
 }))
 
-function mockMatchMedia(compact: boolean): void {
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: compact,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }))
-}
-
 import { i18n } from '@/i18n'
 import DiagramListView from '@/features/teacher/views/DiagramListView.vue'
+import type { components } from '@/api/generated/core-domain'
+import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import { mockViewport } from '@/shared/testUtils/viewport'
 
-function page(items: unknown[], total = items.length) {
-  return { data: { items, total, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } }
+type Diagram = components['schemas']['Diagram']
+
+function diagram(id: string, overrides: Partial<Diagram> = {}): Diagram {
+  return makeFrettedDiagram({ diagram_id: id, names: { en: `Diagram ${id}` }, kind: 'custom', root_note: 'A', ...overrides })
 }
 
-const flush = () => new Promise((r) => setTimeout(r, 0))
-
-
-// The filter panel has its own spec; here it only needs to take the page's
-// filter state and show the page's own extra filters.
-const CourseFiltersStub = defineComponent({
-  name: 'CourseFilters',
-  props: {
-    hasActiveFilters: Boolean,
-    teacherScope: { type: String, default: null },
-    instrumentFilter: Boolean,
-    languageFilter: Boolean,
-    levelFilter: { type: Boolean, default: true },
-    singleClassification: Boolean,
-    searchPlaceholder: { type: String, default: undefined },
-    searchText: { type: String, default: '' },
-  },
-  emits: ['update:searchText', 'update:language', 'update:teacher', 'clear'],
-  template: '<div data-test="course-filters"><slot /></div>',
-})
-
-function mountView() {
-  return mount(DiagramListView, {
-    global: {
-      plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub, CourseFilters: CourseFiltersStub },
-    },
+function answer(diagrams: unknown[]) {
+  GET.mockImplementation((path: string) => {
+    if (path === '/diagrams') return Promise.resolve({ data: { items: diagrams, total: diagrams.length, limit: 20, offset: 0 } })
+    if (path === '/instruments') {
+      return Promise.resolve({ data: [makeFrettedInstrument({ names: { en: 'Guitar', pt_BR: 'Violão' } })] })
+    }
+    return Promise.resolve({ data: [] })
   })
 }
+
+async function mountView() {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/teach/diagrams', name: 'teacher-diagrams', component: DiagramListView }],
+  })
+  await router.push('/teach/diagrams')
+  await router.isReady()
+  const wrapper = mount(DiagramListView, {
+    global: { plugins: [createPinia(), router], stubs: { RouterLink: RouterLinkStub } },
+  })
+  await flushPromises()
+  return wrapper
+}
+
+beforeEach(() => {
+  GET.mockReset()
+  answer([])
+  window.localStorage.clear()
+  currentUser.profile.role = 'teacher'
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
+  mockViewport(390)
+})
+afterEach(() => vi.unstubAllGlobals())
 
 describe('DiagramListView', () => {
-  beforeEach(() => {
-    GET.mockReset()
-    currentUser.profile.role = 'teacher'
-    mockMatchMedia(false)
-  })
-
-  it('shows a permission-denied state for a student instead of the list', () => {
+  it('shows a permission-denied state for a student instead of the list', async () => {
     currentUser.profile.role = 'student'
-    GET.mockResolvedValueOnce(page([]))
-    const wrapper = mountView()
+    answer([])
+    const wrapper = await mountView()
 
     expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
   })
 
-  it('shows a loading state while fetching', () => {
-    GET.mockReturnValueOnce(new Promise(() => {}))
-    const wrapper = mountView()
+  it('offers a new diagram from the title', async () => {
+    answer([diagram('d-1')])
+    const wrapper = await mountView()
 
-    expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
+    expect(wrapper.get('h1').text()).toBe('Diagrams')
+    expect(wrapper.get('[data-test="authoring-new"]').findComponent(RouterLinkStub).props('to')).toEqual({
+      name: 'teacher-diagram-new',
+    })
   })
 
-  it('shows an error state with retry when loading fails', async () => {
-    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
+  it('shows each diagram as a tile with its board, opening its editor', async () => {
+    answer([diagram('d-1'), diagram('d-2')])
+    const wrapper = await mountView()
 
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(true)
-
-    GET.mockResolvedValueOnce(page([]))
-    await wrapper.get('[data-test="retry"]').trigger('click')
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(false)
-  })
-
-  it('shows an empty state with a link to create the first diagram', async () => {
-    GET.mockResolvedValueOnce(page([]))
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(wrapper.find('[data-test="empty"]').exists()).toBe(true)
-    const link = wrapper.get('[data-test="empty"]').findComponent(RouterLinkStub)
-    expect(link.props('to')).toEqual({ name: 'teacher-diagram-new' })
-  })
-
-  it('lists diagrams, each linking to its edit route', async () => {
-    GET.mockResolvedValueOnce(
-      page([
-        { diagram_id: 'd-1', names: { en: 'Minor Pentatonic — Position 1' }, instrument_id: 'i-1', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
-        { diagram_id: 'd-2', names: { en: 'C Major Scale' }, instrument_id: 'i-1', kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
-      ]),
-    )
-    const wrapper = mountView()
-    await flush()
-
-    expect(wrapper.text()).toContain('Minor Pentatonic — Position 1')
-    expect(wrapper.text()).toContain('C Major Scale')
-
+    expect(wrapper.findAll('[data-test="diagram-thumbnail"]')).toHaveLength(2)
     const links = wrapper
       .findAllComponents(RouterLinkStub)
-      .filter((l) => typeof l.props('to') === 'object' && (l.props('to') as { name?: string }).name === 'teacher-diagram-edit')
-    expect(links.map((l) => l.props('to'))).toEqual(
-      expect.arrayContaining([
-        { name: 'teacher-diagram-edit', params: { id: 'd-1' } },
-        { name: 'teacher-diagram-edit', params: { id: 'd-2' } },
-      ]),
-    )
+      .map((link) => link.props('to'))
+      .filter((to) => typeof to === 'object' && 'name' in to && to.name === 'teacher-diagram-edit')
+    expect(links).toEqual([
+      { name: 'teacher-diagram-edit', params: { id: 'd-1' } },
+      { name: 'teacher-diagram-edit', params: { id: 'd-2' } },
+    ])
   })
 
-  it("names each diagram in the viewer's language", async () => {
+  it('names each diagram in the viewer’s language, with its instrument and root', async () => {
     i18n.global.locale.value = 'pt-BR'
     try {
-      GET.mockResolvedValueOnce(
-        page([{ diagram_id: 'd-1', names: { en: 'Major Scale', pt_BR: 'Escala maior' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }]),
-      )
-      const wrapper = mountView()
-      await flush()
+      answer([diagram('d-1', { names: { en: 'Major scale', pt_BR: 'Escala maior' } })])
+      const wrapper = await mountView()
 
-      expect(wrapper.get('[data-test="diagram-row"]').text()).toContain('Escala maior')
+      expect(wrapper.get('[data-test="diagram-tile-name"]').text()).toBe('Escala maior')
+      expect(wrapper.get('[data-test="diagram-tile-meta"]').text()).toBe('Violão · Nota A')
     } finally {
       i18n.global.locale.value = 'en'
     }
   })
 
-  it('marks basic diagrams as templates, and only them', async () => {
-    GET.mockResolvedValueOnce(
-      page([
-        { diagram_id: 'd-1', names: { en: 'Mine' }, kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
-        { diagram_id: 'd-2', names: { en: 'Template' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
-      ]),
-    )
-    const wrapper = mountView()
-    await flush()
+  it('leaves the root out of the meta line of a diagram without one', async () => {
+    answer([diagram('d-1', { root_note: null })])
+    const wrapper = await mountView()
 
-    const rows = wrapper.findAll('[data-test="diagram-row"]')
-    expect(rows[0]!.find('[data-test="template-badge"]').exists()).toBe(false)
-    expect(rows[1]!.find('[data-test="template-badge"]').text()).toBe('Template')
+    expect(wrapper.get('[data-test="diagram-tile-meta"]').text()).toBe('Guitar')
   })
 
-  it('narrows the list to templates, then to my own diagrams, and back to all', async () => {
-    GET.mockResolvedValue(page([]))
-    const wrapper = mountView()
-    await flush()
-    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0 } } })
-    expect(wrapper.get('[data-test="filter-all"]').attributes('aria-pressed')).toBe('true')
+  it('marks templates, and only them', async () => {
+    answer([diagram('d-1', { kind: 'basic' }), diagram('d-2')])
+    const wrapper = await mountView()
 
-    await wrapper.get('[data-test="filter-templates"]').trigger('click')
-    await flush()
-    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0, kind: 'basic' } } })
-    expect(wrapper.get('[data-test="filter-templates"]').attributes('aria-pressed')).toBe('true')
-
-    await wrapper.get('[data-test="filter-mine"]').trigger('click')
-    await flush()
-    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0, created_by: 'u-teacher' } } })
-
-    await wrapper.get('[data-test="filter-all"]').trigger('click')
-    await flush()
-    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0 } } })
+    expect(wrapper.findAll('[data-test="template-badge"]')).toHaveLength(1)
   })
 
-  it('shows how many diagrams are loaded and loads the next page on request', async () => {
-    GET.mockResolvedValueOnce(page([{ diagram_id: 'd-1', names: { en: 'A' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], 2))
-    const wrapper = mountView()
-    await flush()
+  it('offers the Diagrams filters', async () => {
+    answer([])
+    const wrapper = await mountView()
 
-    expect(wrapper.text()).toContain('Showing 1 of 2')
+    await wrapper.get('[data-test="authoring-filters-button"] button').trigger('click')
 
-    GET.mockResolvedValueOnce({
-      data: { items: [{ diagram_id: 'd-2', names: { en: 'B' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } }], total: 2, limit: 20, offset: 1 },
-      error: undefined,
-      response: { status: 200 },
-    })
-    await wrapper.get('[data-test="load-more"]').trigger('click')
-    await flush()
-
-    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 1 } } })
-    expect(wrapper.findAll('[data-test="diagram-row"]')).toHaveLength(2)
-  })
-
-  it('offers name search, instrument, language and single skill and concept filters, but no level or creator', async () => {
-    GET.mockResolvedValue(page([]))
-    const wrapper = mountView()
-    await flush()
-
-    expect(wrapper.getComponent(CourseFiltersStub).props()).toMatchObject({
-      teacherScope: null,
-      instrumentFilter: true,
-      languageFilter: true,
-      levelFilter: false,
-      singleClassification: true,
-      searchPlaceholder: 'Search diagrams by name',
-    })
-  })
-
-  it('narrows the list to a root note, within the chosen scope', async () => {
-    GET.mockResolvedValue(page([]))
-    const wrapper = mountView()
-    await flush()
-
-    await wrapper.get('[data-test="filter-templates"]').trigger('click')
-    await wrapper.get('[data-test="root-note-filter"]').setValue('F#')
-    await flush()
-
-    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0, kind: 'basic', root_note: 'F#' } } })
-  })
-
-  it('offers to clear the filters when they match nothing, keeping the scope', async () => {
-    GET.mockResolvedValue(page([]))
-    const wrapper = mountView()
-    await flush()
-    await wrapper.get('[data-test="filter-mine"]').trigger('click')
-    await wrapper.get('[data-test="root-note-filter"]').setValue('Bb')
-    await flush()
-
-    expect(wrapper.find('[data-test="empty"]').exists()).toBe(false)
-    await wrapper.get('[data-test="no-matches"] [data-test="clear-filters"]').trigger('click')
-    await flush()
-
-    expect(GET).toHaveBeenLastCalledWith('/diagrams', { params: { query: { limit: 20, offset: 0, created_by: 'u-teacher' } } })
-    expect(wrapper.get('[data-test="filter-mine"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-test="filter-group-root"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="filter-group-kind"]').exists()).toBe(true)
   })
 })

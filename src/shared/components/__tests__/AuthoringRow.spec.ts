@@ -21,4 +21,16 @@ describe('AuthoringRow', () => {
 
     expect(wrapper.find('[data-test="authoring-row-status"]').exists()).toBe(false)
   })
+
+  it('shows a thumbnail or a kind icon before the title when given one', () => {
+    const wrapper = mount(AuthoringRow, {
+      props: { title: 'Open chords', meta: 'Video', status: null, to: '/x' },
+      slots: { leading: '<img data-test="row-thumbnail" />' },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+
+    const html = wrapper.html()
+    expect(wrapper.find('[data-test="row-thumbnail"]').exists()).toBe(true)
+    expect(html.indexOf('row-thumbnail')).toBeLessThan(html.indexOf('authoring-row-title'))
+  })
 })

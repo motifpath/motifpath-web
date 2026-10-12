@@ -151,12 +151,7 @@
     "heading": "Exercícios",
     "loadErrorMessage": "Não foi possível carregar os exercícios.",
     "emptyHeading": "Ainda não há exercícios",
-    "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável.",
-    "searchPlaceholder": "Buscar exercícios pelo título",
-    "typeFilterLabel": "Tipo",
-    "anyType": "Qualquer tipo",
-    "noMatchesHeading": "Nenhum exercício encontrado",
-    "noMatchesMessage": "Nenhum exercício corresponde a estes filtros. Tente remover alguns."
+    "emptyMessage": "Crie seu primeiro exercício para começar a construir o repositório reutilizável."
   },
   "diagramPreviewModal": {
     "title": "Pré-visualização do diagrama"
@@ -166,18 +161,7 @@
     "loadErrorMessage": "Não foi possível carregar os diagramas.",
     "emptyHeading": "Ainda não há diagramas",
     "emptyMessage": "Crie seu primeiro diagrama para começar a construir a biblioteca reutilizável.",
-    "scopeLabel": "Mostrar",
-    "scopes": {
-      "all": "Todos",
-      "templates": "Modelos",
-      "mine": "Meus"
-    },
-    "templateBadge": "Modelo",
-    "searchPlaceholder": "Buscar diagramas pelo nome",
-    "rootNoteFilterLabel": "Tônica",
-    "rootNotePlaceholder": "ex.: A, F#, Bb",
-    "noMatchesHeading": "Nenhum diagrama encontrado",
-    "noMatchesMessage": "Nenhum diagrama corresponde a estes filtros. Tente remover alguns."
+    "templateBadge": "Modelo"
   },
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "Novo diagrama",
@@ -389,9 +373,7 @@
     "newContentLabel": "Nova lição",
     "errorMessage": "Não foi possível carregar as lições.",
     "emptyHeading": "Ainda não há lições",
-    "emptyMessage": "Crie sua primeira lição em vídeo ou artigo para começar a montar a biblioteca.",
-    "noMatchesMessage": "Nenhuma lição é para este instrumento.",
-    "showEveryInstrument": "Mostrar todos os instrumentos"
+    "emptyMessage": "Crie sua primeira lição em vídeo ou artigo para começar a montar a biblioteca."
   },
   "pathBuilderView": {
     "permissionDenied": "Esta página é apenas para professores e administradores — sua conta não tem permissão para criar trilhas de aprendizagem.",
@@ -442,13 +424,7 @@
     "newPathLabel": "Nova trilha",
     "errorMessage": "Não foi possível carregar as trilhas de aprendizagem.",
     "emptyHeading": "Ainda não há trilhas",
-    "emptyMessage": "Organize lições em uma trilha ordenada para os alunos seguirem.",
-    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
-    "noMatchesHeading": "Nenhuma trilha encontrada",
-    "searchPlaceholder": "Buscar trilhas pelo título",
-    "statusTabsLabel": "Status",
-    "allStatuses": "Todas",
-    "editPath": "Editar"
+    "emptyMessage": "Organize lições em uma trilha ordenada para os alunos seguirem."
   },
   "challengeModal": {
     "buildTitle": "Montar desafio",
@@ -515,17 +491,10 @@
   "courseListView": {
     "heading": "Cursos",
     "permissionDenied": "Apenas professores e administradores podem gerenciar cursos.",
-    "allStatuses": "Todos",
-    "statusTabsLabel": "Status do curso",
     "errorMessage": "Não foi possível carregar seus cursos.",
     "emptyHeading": "Nenhum curso ainda",
     "emptyMessage": "Os cursos que você criar aparecerão aqui.",
-    "noMatchesHeading": "Nenhum curso encontrado",
-    "noMatchesMessage": "Tente menos filtros ou outra busca.",
-    "unpublishedChanges": "Alterações não publicadas",
-    "courseTeacher": "por {name}",
-    "newCourse": "Novo curso",
-    "editCourse": "Editar curso"
+    "newCourse": "Novo curso"
   },
   "thumbnailField": {
     "upload": "Enviar imagem",
@@ -843,5 +812,122 @@
     "remove": "Remover",
     "megabytes": "{value} MB",
     "gigabytes": "{value} GB"
+  },
+  "authoringList": {
+    "count": {
+      "diagrams": "{shown} diagrama | {shown} diagramas",
+      "exercises": "{shown} exercício | {shown} exercícios",
+      "lessons": "{shown} lição | {shown} lições",
+      "paths": "{shown} trilha | {shown} trilhas",
+      "courses": "{shown} curso | {shown} cursos"
+    },
+    "countOf": {
+      "diagrams": "{shown} de {total} diagrama | {shown} de {total} diagramas",
+      "exercises": "{shown} de {total} exercício | {shown} de {total} exercícios",
+      "lessons": "{shown} de {total} lição | {shown} de {total} lições",
+      "paths": "{shown} de {total} trilha | {shown} de {total} trilhas",
+      "courses": "{shown} de {total} curso | {shown} de {total} cursos"
+    },
+    "sort": {
+      "title": "Ordenar",
+      "byTitle": "Nome A–Z",
+      "byUpdated": "Alterados recentemente",
+      "buttonAriaLabel": "Ordenar: {sort}"
+    },
+    "newAriaLabel": "Novo",
+    "searchPlaceholder": {
+      "diagrams": "Buscar diagramas",
+      "exercises": "Buscar exercícios",
+      "lessons": "Buscar lições",
+      "paths": "Buscar trilhas",
+      "courses": "Buscar cursos"
+    },
+    "status": {
+      "all": "Todos",
+      "draft": "Rascunhos",
+      "published": "Publicados",
+      "retired": "Descontinuados",
+      "unpublished_changes": "Alterações não publicadas"
+    },
+    "statusLabel": "Status",
+    "rootChip": "Nota {note}",
+    "noMatchesTitle": "Nada encontrado",
+    "noMatchesMessage": "Tente outra busca ou menos filtros.",
+    "clearFilters": "Limpar filtros",
+    "me": "Eu"
+  },
+  "knowledgeFilter": {
+    "skill": {
+      "title": "Habilidades",
+      "search": "Buscar habilidades",
+      "open": "{count} habilidade | {count} habilidades",
+      "done": "Concluir | Concluir · {count} habilidade | Concluir · {count} habilidades",
+      "note": "Escolher uma área inclui ela e todas as habilidades dentro dela.",
+      "chosen": "Habilidades escolhidas",
+      "noMatches": "Nenhuma habilidade encontrada."
+    },
+    "concept": {
+      "title": "Conceitos",
+      "search": "Buscar conceitos",
+      "open": "{count} conceito | {count} conceitos",
+      "done": "Concluir | Concluir · {count} conceito | Concluir · {count} conceitos",
+      "note": "Escolher uma área inclui ela e todos os conceitos dentro dela.",
+      "chosen": "Conceitos escolhidos",
+      "noMatches": "Nenhum conceito encontrado."
+    },
+    "recent": "Recentes",
+    "allInstruments": "Todos os instrumentos",
+    "instrumentScope": "Instrumento",
+    "openAriaLabel": "{shown}, abrir {name}",
+    "loadFailed": "Não foi possível carregar a lista.",
+    "retry": "Tentar de novo",
+    "loading": "Carregando…"
+  },
+  "authorFilter": {
+    "title": "Autor",
+    "search": "Buscar autores",
+    "anyone": "Qualquer pessoa",
+    "me": "Eu — {name}",
+    "loading": "Carregando autores…",
+    "loadFailed": "Não foi possível carregar os autores.",
+    "retry": "Tentar de novo",
+    "noMatches": "Nenhum autor encontrado."
+  },
+  "authoringFilters": {
+    "title": "Filtros",
+    "clearAll": "Limpar tudo",
+    "any": "Qualquer",
+    "me": "Eu",
+    "groups": {
+      "type": "Tipo",
+      "level": "Nível",
+      "instrument": "Instrumento",
+      "kind": "Origem",
+      "shows": "Mostra",
+      "root": "Nota fundamental",
+      "language": "Idioma",
+      "skills": "Habilidade",
+      "concepts": "Conceito",
+      "author": "Autor"
+    },
+    "kind": {
+      "all": "Todos",
+      "templates": "Modelos",
+      "custom": "Personalizados"
+    },
+    "shows": {
+      "diagrams": "Diagramas",
+      "chord_voicings": "Formas de acorde",
+      "both": "Ambos"
+    },
+    "show": {
+      "diagrams": "Mostrar {shown} diagrama | Mostrar {shown} diagramas",
+      "exercises": "Mostrar {shown} exercício | Mostrar {shown} exercícios",
+      "lessons": "Mostrar {shown} lição | Mostrar {shown} lições",
+      "paths": "Mostrar {shown} trilha | Mostrar {shown} trilhas",
+      "courses": "Mostrar {shown} curso | Mostrar {shown} cursos"
+    },
+    "showUnknown": "Mostrar resultados",
+    "close": "Fechar filtros"
   }
 }

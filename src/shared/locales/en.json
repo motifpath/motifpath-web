@@ -401,5 +401,20 @@
   "teach": {
     "intro": "Build and look after what your students learn. Quick fixes work here; big edits are easier on a computer.",
     "admin": "Admin"
+  },
+  "listEnd": {
+    "loading": "Loading more…",
+    "failed": "Couldn't load more.",
+    "retry": "Try again"
+  },
+  "filters": {
+    "button": "Filters",
+    "buttonApplied": "Filters, {count} applied",
+    "remove": "Remove {label}",
+    "clearAll": "Clear all"
+  },
+  "rootNoteSelect": {
+    "label": "Root note",
+    "any": "Any"
   }
 }

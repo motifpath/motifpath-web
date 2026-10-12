@@ -3,7 +3,8 @@ import { onScopeDispose, ref, watch } from 'vue'
 import { useApi } from '@/shared/composables/useApi'
 import type { components } from '@/api/generated/core-domain'
 
-type UserRef = components['schemas']['UserRef']
+/** A creator with how many of the list's items they made that the caller can see. */
+export type CreatorRef = components['schemas']['CreatorRef']
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -11,10 +12,17 @@ const SEARCH_DEBOUNCE_MS = 300
  * Which list the creators belong to: the learner course catalog (published
  * courses, the same for everyone), the learner path catalog (published
  * paths), the caller's authoring course list, the authoring path library
- * (every path, any status), the diagram library the caller can see, or the
- * exercise pool.
+ * (every path, any status), the diagram library the caller can see, the
+ * exercise pool, or the lessons.
  */
-export type CourseCreatorsScope = 'catalog' | 'path-catalog' | 'managed' | 'path-library' | 'diagrams' | 'exercises'
+export type CourseCreatorsScope =
+  | 'catalog'
+  | 'path-catalog'
+  | 'managed'
+  | 'path-library'
+  | 'diagrams'
+  | 'exercises'
+  | 'lessons'
 
 const ENDPOINT = {
   catalog: '/catalog/creators',
@@ -23,6 +31,7 @@ const ENDPOINT = {
   'path-library': '/learning-paths/creators',
   diagrams: '/diagrams/creators',
   exercises: '/exercises/creators',
+  lessons: '/content-nodes/creators',
 } as const
 
 /**
@@ -33,7 +42,7 @@ const ENDPOINT = {
 export function useCourseCreators(scope: CourseCreatorsScope = 'catalog') {
   const { coreApi } = useApi()
 
-  const creators = ref<UserRef[]>([])
+  const creators = ref<CreatorRef[]>([])
   const nameQuery = ref('')
   const isLoading = ref(false)
   const error = ref(false)

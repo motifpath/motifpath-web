@@ -151,12 +151,7 @@
     "heading": "Exercises",
     "loadErrorMessage": "We couldn't load the exercises.",
     "emptyHeading": "No exercises yet",
-    "emptyMessage": "Create your first exercise to start building the reusable pool.",
-    "searchPlaceholder": "Search exercises by title",
-    "typeFilterLabel": "Type",
-    "anyType": "Any type",
-    "noMatchesHeading": "No matching exercises",
-    "noMatchesMessage": "No exercise matches these filters. Try removing some."
+    "emptyMessage": "Create your first exercise to start building the reusable pool."
   },
   "diagramPreviewModal": {
     "title": "Diagram preview"
@@ -166,18 +161,7 @@
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "No diagrams yet",
     "emptyMessage": "Create your first diagram to start building the reusable library.",
-    "scopeLabel": "Show",
-    "scopes": {
-      "all": "All",
-      "templates": "Templates",
-      "mine": "Mine"
-    },
-    "templateBadge": "Template",
-    "searchPlaceholder": "Search diagrams by name",
-    "rootNoteFilterLabel": "Root note",
-    "rootNotePlaceholder": "e.g. A, F#, Bb",
-    "noMatchesHeading": "No matching diagrams",
-    "noMatchesMessage": "No diagram matches these filters. Try removing some."
+    "templateBadge": "Template"
   },
   "diagramAuthoringView": {
     "newDiagramBreadcrumb": "New diagram",
@@ -389,9 +373,7 @@
     "newContentLabel": "New lesson",
     "errorMessage": "We couldn't load the lessons.",
     "emptyHeading": "No lessons yet",
-    "emptyMessage": "Create your first video or article lesson to start building the library.",
-    "noMatchesMessage": "No lesson is for this instrument.",
-    "showEveryInstrument": "Show every instrument"
+    "emptyMessage": "Create your first video or article lesson to start building the library."
   },
   "pathBuilderView": {
     "permissionDenied": "This page is for teachers and admins only — your account doesn't have permission to author learning paths.",
@@ -442,13 +424,7 @@
     "newPathLabel": "New path",
     "errorMessage": "We couldn't load the learning paths.",
     "emptyHeading": "No paths yet",
-    "emptyMessage": "Assemble lessons into an ordered path for students to follow.",
-    "noMatchesMessage": "Try fewer filters or a different search.",
-    "noMatchesHeading": "No matching paths",
-    "searchPlaceholder": "Search paths by title",
-    "statusTabsLabel": "Status",
-    "allStatuses": "All",
-    "editPath": "Edit"
+    "emptyMessage": "Assemble lessons into an ordered path for students to follow."
   },
   "challengeModal": {
     "buildTitle": "Build challenge",
@@ -515,17 +491,10 @@
   "courseListView": {
     "heading": "Courses",
     "permissionDenied": "Only teachers and admins can manage courses.",
-    "allStatuses": "All",
-    "statusTabsLabel": "Course status",
     "errorMessage": "We couldn't load your courses.",
     "emptyHeading": "No courses yet",
     "emptyMessage": "Courses you create will appear here.",
-    "noMatchesHeading": "No matching courses",
-    "noMatchesMessage": "Try fewer filters or a different search.",
-    "unpublishedChanges": "Unpublished changes",
-    "courseTeacher": "by {name}",
-    "newCourse": "New course",
-    "editCourse": "Edit course"
+    "newCourse": "New course"
   },
   "thumbnailField": {
     "upload": "Upload image",
@@ -843,5 +812,122 @@
     "remove": "Remove",
     "megabytes": "{value} MB",
     "gigabytes": "{value} GB"
+  },
+  "authoringList": {
+    "count": {
+      "diagrams": "{shown} diagram | {shown} diagrams",
+      "exercises": "{shown} exercise | {shown} exercises",
+      "lessons": "{shown} lesson | {shown} lessons",
+      "paths": "{shown} path | {shown} paths",
+      "courses": "{shown} course | {shown} courses"
+    },
+    "countOf": {
+      "diagrams": "{shown} of {total} diagram | {shown} of {total} diagrams",
+      "exercises": "{shown} of {total} exercise | {shown} of {total} exercises",
+      "lessons": "{shown} of {total} lesson | {shown} of {total} lessons",
+      "paths": "{shown} of {total} path | {shown} of {total} paths",
+      "courses": "{shown} of {total} course | {shown} of {total} courses"
+    },
+    "sort": {
+      "title": "Sort",
+      "byTitle": "Name A–Z",
+      "byUpdated": "Recently changed",
+      "buttonAriaLabel": "Sort: {sort}"
+    },
+    "newAriaLabel": "New",
+    "searchPlaceholder": {
+      "diagrams": "Search diagrams",
+      "exercises": "Search exercises",
+      "lessons": "Search lessons",
+      "paths": "Search paths",
+      "courses": "Search courses"
+    },
+    "status": {
+      "all": "All",
+      "draft": "Drafts",
+      "published": "Published",
+      "retired": "Retired",
+      "unpublished_changes": "Unpublished changes"
+    },
+    "statusLabel": "Status",
+    "rootChip": "Root {note}",
+    "noMatchesTitle": "Nothing matches",
+    "noMatchesMessage": "Try another search or fewer filters.",
+    "clearFilters": "Clear filters",
+    "me": "Me"
+  },
+  "knowledgeFilter": {
+    "skill": {
+      "title": "Skills",
+      "search": "Search skills",
+      "open": "{count} skill | {count} skills",
+      "done": "Done | Done · {count} skill | Done · {count} skills",
+      "note": "Choosing an area matches it and every skill under it.",
+      "chosen": "Chosen skills",
+      "noMatches": "No skill matches."
+    },
+    "concept": {
+      "title": "Concepts",
+      "search": "Search concepts",
+      "open": "{count} concept | {count} concepts",
+      "done": "Done | Done · {count} concept | Done · {count} concepts",
+      "note": "Choosing an area matches it and every concept under it.",
+      "chosen": "Chosen concepts",
+      "noMatches": "No concept matches."
+    },
+    "recent": "Recent",
+    "allInstruments": "All instruments",
+    "instrumentScope": "Instrument",
+    "openAriaLabel": "{shown}, open {name}",
+    "loadFailed": "Couldn't load the list.",
+    "retry": "Try again",
+    "loading": "Loading…"
+  },
+  "authorFilter": {
+    "title": "Author",
+    "search": "Search authors",
+    "anyone": "Anyone",
+    "me": "Me — {name}",
+    "loading": "Loading authors…",
+    "loadFailed": "Couldn't load the authors.",
+    "retry": "Try again",
+    "noMatches": "No author matches."
+  },
+  "authoringFilters": {
+    "title": "Filters",
+    "clearAll": "Clear all",
+    "any": "Any",
+    "me": "Me",
+    "groups": {
+      "type": "Type",
+      "level": "Level",
+      "instrument": "Instrument",
+      "kind": "Kind",
+      "shows": "Shows",
+      "root": "Root note",
+      "language": "Language",
+      "skills": "Skill",
+      "concepts": "Concept",
+      "author": "Author"
+    },
+    "kind": {
+      "all": "All",
+      "templates": "Templates",
+      "custom": "Custom"
+    },
+    "shows": {
+      "diagrams": "Diagrams",
+      "chord_voicings": "Chord voicings",
+      "both": "Both"
+    },
+    "show": {
+      "diagrams": "Show {shown} diagram | Show {shown} diagrams",
+      "exercises": "Show {shown} exercise | Show {shown} exercises",
+      "lessons": "Show {shown} lesson | Show {shown} lessons",
+      "paths": "Show {shown} path | Show {shown} paths",
+      "courses": "Show {shown} course | Show {shown} courses"
+    },
+    "showUnknown": "Show results",
+    "close": "Close filters"
   }
 }

@@ -401,5 +401,20 @@
   "teach": {
     "intro": "Crie e cuide do que seus alunos aprendem. Ajustes rápidos funcionam aqui; edições grandes são mais fáceis no computador.",
     "admin": "Admin"
+  },
+  "listEnd": {
+    "loading": "Carregando mais…",
+    "failed": "Não foi possível carregar mais.",
+    "retry": "Tentar de novo"
+  },
+  "filters": {
+    "button": "Filtros",
+    "buttonApplied": "Filtros, {count} aplicados",
+    "remove": "Remover {label}",
+    "clearAll": "Limpar tudo"
+  },
+  "rootNoteSelect": {
+    "label": "Nota fundamental",
+    "any": "Qualquer"
   }
 }

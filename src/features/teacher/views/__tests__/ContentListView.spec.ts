@@ -1,14 +1,17 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
-const currentUser = reactive({ profile: { role: 'teacher' as 'student' | 'teacher' | 'admin' } })
+const currentUser = reactive({
+  profile: { user_id: 'u-teacher', role: 'teacher' as 'student' | 'teacher' | 'admin', display_name: 'Bob Ferreira' },
+})
 vi.mock('@/stores/currentUser', () => ({
   useCurrentUserStore: () => currentUser,
 }))
@@ -23,180 +26,119 @@ vi.mock('@/features/auth/composables/useAuth', () => ({
   }),
 }))
 
-function mockMatchMedia(compact: boolean): void {
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: compact,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }))
+import ContentListView from '@/features/teacher/views/ContentListView.vue'
+import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import { mockViewport } from '@/shared/testUtils/viewport'
+
+function lesson(id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    content_node_id: id,
+    title: `Lesson ${id}`,
+    content_type: 'video',
+    languages: [{ code: 'en', name: 'English' }],
+    instrument_ids: ['instrument-guitar'],
+    latest_published_version: null,
+    has_unpublished_changes: true,
+    ...overrides,
+  }
 }
 
-const instruments = [{ instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] }]
-
-import ContentListView from '@/features/teacher/views/ContentListView.vue'
-
-function mountView() {
-  return mount(ContentListView, {
-    global: {
-      plugins: [createPinia()],
-      stubs: { RouterLink: RouterLinkStub },
-    },
+function answer(lessons: unknown[]) {
+  GET.mockImplementation((path: string) => {
+    if (path === '/content-nodes') return Promise.resolve({ data: { items: lessons, total: lessons.length, limit: 20, offset: 0 } })
+    if (path === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument({ names: { en: 'Guitar' } })] })
+    return Promise.resolve({ data: [] })
   })
 }
+
+async function mountView() {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/teach/lessons', name: 'teacher-content', component: ContentListView }],
+  })
+  await router.push('/teach/lessons')
+  await router.isReady()
+  const wrapper = mount(ContentListView, {
+    global: { plugins: [createPinia(), router], stubs: { RouterLink: RouterLinkStub } },
+  })
+  await flushPromises()
+  return wrapper
+}
+
+beforeEach(() => {
+  GET.mockReset()
+  answer([])
+  window.localStorage.clear()
+  currentUser.profile.role = 'teacher'
+  vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} })
+  mockViewport(390)
+})
+afterEach(() => vi.unstubAllGlobals())
 
 describe('ContentListView', () => {
-  beforeEach(() => {
-    GET.mockReset()
-    GET.mockImplementation((requestPath: string) =>
-      Promise.resolve(
-        requestPath === '/instruments'
-          ? { data: instruments, error: undefined, response: { status: 200 } }
-          : { data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } },
-      ),
-    )
-    currentUser.profile.role = 'teacher'
-    mockMatchMedia(false)
-  })
-
-  it('shows a permission-denied state for a student instead of the list', () => {
+  it('shows a permission-denied state for a student instead of the list', async () => {
     currentUser.profile.role = 'student'
-    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
-    const wrapper = mountView()
+    const wrapper = await mountView()
 
     expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
   })
 
-  it('shows a loading state while fetching', () => {
-    GET.mockReturnValueOnce(new Promise(() => {}))
-    const wrapper = mountView()
+  it('offers a new lesson from the title', async () => {
+    const wrapper = await mountView()
 
-    expect(wrapper.find('[data-test="loading"]').exists()).toBe(true)
-  })
-
-  it('shows an error state with retry when loading fails', async () => {
-    GET.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(true)
-
-    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
-    await wrapper.get('[data-test="retry"]').trigger('click')
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(false)
-  })
-
-  it('shows an empty state with a link to create the first content node', async () => {
-    GET.mockResolvedValueOnce({ data: { items: [], total: 0, limit: 20, offset: 0 }, error: undefined, response: { status: 200 } })
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(wrapper.find('[data-test="empty"]').exists()).toBe(true)
-    const link = wrapper.get('[data-test="empty"]').findComponent(RouterLinkStub)
-    expect(link.props('to')).toEqual({ name: 'teacher-content-new' })
-  })
-
-  it('lists content nodes, each linking to its edit route', async () => {
-    GET.mockResolvedValueOnce({
-      data: {
-        items: [
-          {
-            content_node_id: 'cn-1', instrument_ids: [],
-            title: 'Alternate picking basics',
-            content_type: 'video',
-            classification: { skill: 's', concept: 'c', difficulty_level: 'beginner', review_state: 'pending' },
-          },
-          {
-            content_node_id: 'cn-2', instrument_ids: [],
-            title: 'Chord theory primer',
-            content_type: 'article',
-            classification: { skill: 's', concept: 'c', difficulty_level: 'advanced', review_state: 'confirmed' },
-          },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      },
-      error: undefined,
-      response: { status: 200 },
+    expect(wrapper.get('h1').text()).toBe('Lessons')
+    expect(wrapper.get('[data-test="authoring-new"]').findComponent(RouterLinkStub).props('to')).toEqual({
+      name: 'teacher-content-new',
     })
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
+  })
 
-    expect(wrapper.text()).toContain('Alternate picking basics')
-    expect(wrapper.text()).toContain('Chord theory primer')
-    expect(wrapper.text()).toContain('Article')
+  it('lists each lesson with its thumbnail, type, instrument, language and status, opening its editor', async () => {
+    answer([lesson('c-1', { title: 'Open chords', thumbnail_url: 'https://cdn/x.png', latest_published_version: 3, has_unpublished_changes: false })])
+    const wrapper = await mountView()
 
+    expect(wrapper.get('[data-test="authoring-row-title"]').text()).toBe('Open chords')
+    expect(wrapper.get('[data-test="authoring-row-meta"]').text()).toBe('Video · Guitar · English')
+    expect(wrapper.get('[data-test="authoring-row-status"]').text()).toBe('Published · v3')
+    expect(wrapper.get('img').attributes('src')).toBe('https://cdn/x.png')
     const links = wrapper
       .findAllComponents(RouterLinkStub)
-      .filter((l) => typeof l.props('to') === 'object' && (l.props('to') as { name?: string }).name === 'teacher-content-edit')
-    expect(links.map((l) => l.props('to'))).toEqual(
-      expect.arrayContaining([
-        { name: 'teacher-content-edit', params: { id: 'cn-1' } },
-        { name: 'teacher-content-edit', params: { id: 'cn-2' } },
-      ]),
-    )
+      .map((link) => link.props('to'))
+      .filter((to) => typeof to === 'object' && 'name' in to && to.name === 'teacher-content-edit')
+    expect(links).toEqual([{ name: 'teacher-content-edit', params: { id: 'c-1' } }])
   })
 
-  it('loads the next page when the teacher asks for more', async () => {
-    GET.mockResolvedValueOnce({
-      data: { items: [{ content_node_id: 'cn-1', instrument_ids: [], title: 'Alternate picking basics', content_type: 'video' }], total: 2, limit: 20, offset: 0 },
-      error: undefined,
-      response: { status: 200 },
-    })
-    const wrapper = mountView()
-    await new Promise((r) => setTimeout(r, 0))
-    expect(wrapper.text()).toContain('Showing 1 of 2')
+  it('shows a placeholder for a lesson without a thumbnail', async () => {
+    answer([lesson('c-1')])
+    const wrapper = await mountView()
 
-    GET.mockResolvedValueOnce({
-      data: { items: [{ content_node_id: 'cn-2', instrument_ids: [], title: 'Chord theory primer', content_type: 'article' }], total: 2, limit: 20, offset: 1 },
-      error: undefined,
-      response: { status: 200 },
-    })
-    await wrapper.get('[data-test="load-more"]').trigger('click')
-    await new Promise((r) => setTimeout(r, 0))
-
-    expect(GET).toHaveBeenLastCalledWith('/content-nodes', { params: { query: { limit: 20, offset: 1 } } })
-    expect(wrapper.findAll('[data-test="content-node-row"]')).toHaveLength(2)
-    expect(wrapper.find('[data-test="load-more"]').exists()).toBe(false)
-  })
-  it("shows each item's thumbnail, or a placeholder, and its instruments", async () => {
-    GET.mockResolvedValueOnce({
-      data: {
-        items: [
-          { content_node_id: 'cn-1', title: 'Alternate picking basics', content_type: 'video', instrument_ids: ['i-guitar'], thumbnail_url: 'https://cdn.test/thumbnails/cn-1.png', classification: { skills: [], concepts: [], difficulty_level: 'beginner', review_state: 'pending' } },
-          { content_node_id: 'cn-2', title: 'Chord theory primer', content_type: 'article', instrument_ids: [], classification: { skills: [], concepts: [], difficulty_level: 'advanced', review_state: 'confirmed' } },
-        ],
-        total: 2,
-        limit: 20,
-        offset: 0,
-      },
-      error: undefined,
-      response: { status: 200 },
-    })
-    const wrapper = mountView()
-    await flushPromises()
-
-    const rows = wrapper.findAll('[data-test="content-node-row"]')
-    expect(rows[0]!.get('img').attributes('src')).toMatch(/^https:\/\/cdn.test\/thumbnails\//)
-    expect(rows[0]!.text()).toContain('Guitar')
-    expect(rows[1]!.find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
-    expect(rows[1]!.text()).toContain('Every instrument')
+    expect(wrapper.find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
+    expect(wrapper.get('[data-test="authoring-row-status"]').text()).toBe('Draft')
   })
 
-  it('filters by instrument, and says when nothing matches', async () => {
-    const wrapper = mountView()
-    await flushPromises()
+  it('offers the lesson status chips', async () => {
+    const wrapper = await mountView()
 
-    await wrapper.get('[data-test="instrument-filter"]').setValue('i-guitar')
-    await flushPromises()
+    expect(wrapper.findAll('[data-test="status-chips"] button').map((chip) => chip.text())).toEqual([
+      'All',
+      'Drafts',
+      'Published',
+      'Unpublished changes',
+    ])
+  })
 
-    expect(GET).toHaveBeenLastCalledWith('/content-nodes', { params: { query: { limit: 20, offset: 0, instrument_id: 'i-guitar' } } })
-    expect(wrapper.find('[data-test="no-matches"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="empty"]').exists()).toBe(false)
+  it('offers the Lessons filters: type, level, instrument, language, skills, concepts and author', async () => {
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-test="authoring-filters-button"] button').trigger('click')
+
+    expect(wrapper.findAll('[data-test^="filter-group-"]').map((group) => group.attributes('data-test'))).toEqual([
+      'filter-group-type',
+      'filter-group-level',
+      'filter-group-instrument',
+      'filter-group-language',
+      'filter-group-skills',
+      'filter-group-concepts',
+      'filter-group-author',
+    ])
   })
 })
