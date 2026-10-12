@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 
 import LearningCard from '@/features/student/components/LearningCard.vue'
 import LearningItemMenu from '@/features/student/components/LearningItemMenu.vue'
+import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue'
 import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
 import {
   LeaveFailedAfterSwitchError,
@@ -13,6 +14,7 @@ import { useMyCourseEnrollments } from '@/features/student/composables/useMyCour
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
 import { type CurrentPathTarget, useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
 import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
 import { buildLearning, nextInProgress, type LearningItem } from '@/features/student/utils/learning'
 import AppButton from '@/shared/components/AppButton.vue'
@@ -159,6 +161,34 @@ function applyLeft(result: Awaited<ReturnType<typeof leave>>) {
   if (result.current !== undefined) currentState.data.value = result.current
 }
 
+// ── Taking a newer version ────────────────────────────────────────────────
+
+const updating = ref<LearningItem | null>(null)
+
+function menuUpdate() {
+  updating.value = menuItem.value
+  menuOpen.value = false
+}
+
+// Like a leave, the update answers with the changed row, so it is put in place. It can't be
+// undone, so the toast offers no Undo.
+function applyUpdated(result: UpdateResult) {
+  const { enrollment, path } = result
+  updating.value = null
+  if (enrollment) {
+    enrollmentsState.enrollments.value = enrollmentsState.enrollments.value.map((e) =>
+      e.course_enrollment_id === enrollment.course_enrollment_id ? enrollment : e,
+    )
+  }
+  if (path) {
+    standaloneState.paths.value = standaloneState.paths.value.map((p) =>
+      p.student_path_id === path.student_path_id ? path : p,
+    )
+  }
+  const title = enrollment?.course_title ?? path?.title
+  if (title) toast.success(t('updateCopy.upToDate', { title }))
+}
+
 async function confirmLeave() {
   const item = leaving.value
   if (!item) return
@@ -258,7 +288,10 @@ async function confirmLeave() {
       @close="menuOpen = false"
       @details="menuDetails"
       @leave="menuLeave"
+      @update="menuUpdate"
     />
+
+    <UpdateCopyDialog :item="updating" @updated="applyUpdated" @cancel="updating = null" />
 
     <ConfirmDialog
       :open="!!leaving"
