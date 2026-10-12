@@ -32,6 +32,22 @@ describe('useCourseCreators', () => {
     expect(creators.value).toEqual([bob, carol])
   })
 
+  it('keeps how many items each creator has', async () => {
+    GET.mockResolvedValueOnce(ok([{ ...bob, item_count: 214 }]))
+
+    const { creators, isLoading } = useCourseCreators('diagrams')
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(creators.value[0]?.item_count).toBe(214)
+  })
+
+  it("lists the lesson creators from the lessons' own endpoint", async () => {
+    const { isLoading } = useCourseCreators('lessons')
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    expect(GET).toHaveBeenCalledWith('/content-nodes/creators', { params: { query: {} } })
+  })
+
   it('waits for typing to pause, then asks the server for creators matching the trimmed name', async () => {
     vi.useFakeTimers()
     const { nameQuery } = useCourseCreators()
