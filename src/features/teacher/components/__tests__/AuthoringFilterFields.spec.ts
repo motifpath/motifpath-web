@@ -1,10 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-const GET = vi.fn()
-vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { GET }, eventApi: {} }),
-}))
+import { mount } from '@vue/test-utils'
+import { describe, expect, it } from 'vitest'
 
 import AuthoringFilterFields from '@/features/teacher/components/AuthoringFilterFields.vue'
 import type { AuthoringListFilters } from '@/features/teacher/utils/authoringListQuery'
@@ -27,7 +22,6 @@ function mountFields(props: Partial<Props> = {}) {
     props: {
       section: 'diagrams',
       modelValue: { skills: [], concepts: [] },
-      layout: 'layer',
       instruments,
       skillNodes: skills,
       conceptNodes: [],
@@ -52,11 +46,6 @@ function chip(wrapper: ReturnType<typeof mountFields>, key: string, label: strin
 
 const lastFilters = (wrapper: ReturnType<typeof mountFields>) =>
   wrapper.emitted<[AuthoringListFilters]>('update:modelValue')?.at(-1)?.[0]
-
-beforeEach(() => {
-  GET.mockReset()
-  GET.mockResolvedValue({ data: [] })
-})
 
 describe('AuthoringFilterFields', () => {
   it("shows the section's filters in order", () => {
@@ -121,7 +110,7 @@ describe('AuthoringFilterFields', () => {
     expect(lastFilters(wrapper)).toEqual({ skills: [], concepts: [], root: 'A' })
   })
 
-  describe('in the layer', () => {
+  describe('Skill, Concept and Author', () => {
     it('sums up the chosen skills, and opens the Skills page', async () => {
       const wrapper = mountFields({ modelValue: { skills: ['pentatonic', 'modes'], concepts: [] } })
       const row = group(wrapper, 'skills').get('button')
@@ -149,24 +138,6 @@ describe('AuthoringFilterFields', () => {
 
       await group(wrapper, 'author').get('button').trigger('click')
       expect(wrapper.emitted('open')).toEqual([['author']])
-    })
-  })
-
-  describe('in the side panel', () => {
-    it('shows the skill tree and the authors in place', async () => {
-      const wrapper = mountFields({ layout: 'panel' })
-      await flushPromises()
-
-      expect(group(wrapper, 'skills').find('[data-test="knowledge-row"]').exists()).toBe(true)
-      expect(group(wrapper, 'author').find('[data-test="author-option"]').exists()).toBe(true)
-    })
-
-    it('chooses a skill in place', async () => {
-      const wrapper = mountFields({ layout: 'panel' })
-
-      await group(wrapper, 'skills').get('[data-test="knowledge-row-choose"]').trigger('click')
-
-      expect(lastFilters(wrapper)).toEqual({ skills: ['scales'], concepts: [] })
     })
   })
 })

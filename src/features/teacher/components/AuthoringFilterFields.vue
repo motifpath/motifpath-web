@@ -2,20 +2,15 @@
 /**
  * The filters one Teach section takes, in its order, bound to a set of filters. Single choices
  * are chips with Any (Kind's All and Shows' Diagrams are their defaults); the root note is one
- * selector. Skill, Concept and Author open their own page in the `layer` (a phone's or a
- * tablet's filters), summing up the choice; in the `panel` (a computer's side panel) they show
- * in place.
+ * selector. Skill, Concept and Author open their own page, and their rows sum up the choice.
  */
 import { BookOpen, Network, UserRound } from 'lucide-vue-next'
 import { computed } from 'vue'
 
-import AuthorFilterPicker from '@/features/teacher/components/AuthorFilterPicker.vue'
-import KnowledgeFilterPicker from '@/features/teacher/components/KnowledgeFilterPicker.vue'
 import { useAuthoringFilterLabels } from '@/features/teacher/composables/useAuthoringFilterLabels'
 import {
   type AuthoringListFilters,
   type AuthoringSection,
-  CREATORS_SCOPE,
   DIAGRAM_KINDS,
   DIAGRAM_SHOWS,
   type FilterKey,
@@ -35,7 +30,6 @@ type PageKey = 'skills' | 'concepts' | 'author'
 
 const props = defineProps<{
   section: AuthoringSection
-  layout: 'layer' | 'panel'
   instruments: { id: string; name: string }[]
   skillNodes: TreeNode[]
   conceptNodes: TreeNode[]
@@ -47,7 +41,6 @@ const filters = defineModel<AuthoringListFilters>({ required: true })
 const emit = defineEmits<{ open: [page: PageKey] }>()
 
 const { t } = useTypedT()
-
 
 const keys = computed(() => sectionFilters(props.section))
 
@@ -97,17 +90,6 @@ function setRoot(root: string | undefined) {
   filters.value = next
 }
 
-function setAuthor(author: string | undefined) {
-  const next: AuthoringListFilters = { ...filters.value }
-  if (author === undefined) delete next.author
-  else next.author = author
-  filters.value = next
-}
-
-function setKnowledge(key: 'skills' | 'concepts', ids: string[]) {
-  filters.value = { ...filters.value, [key]: ids }
-}
-
 function knowledgeSummary(key: 'skills' | 'concepts'): string {
   const ids = filters.value[key]
   if (ids.length === 0) return t('authoringFilters.any')
@@ -124,10 +106,6 @@ const authorSummary = computed(() => {
   if (author === props.me?.user_id) return t('authoringFilters.me')
   return props.authorName ?? '…'
 })
-
-const instrumentName = computed(
-  () => props.instruments.find((instrument) => instrument.id === filters.value.instrument)?.name ?? null,
-)
 
 const GROUP_HEADING = 'text-xs font-semibold uppercase tracking-wide text-ink-subtle'
 </script>
@@ -154,7 +132,6 @@ const GROUP_HEADING = 'text-xs font-semibold uppercase tracking-wide text-ink-su
 
       <div v-else-if="key === 'skills' || key === 'concepts'" :data-test="`filter-group-${key}`">
         <MenuRow
-          v-if="layout === 'layer'"
           class="-mx-4"
           :label="t(`authoringFilters.groups.${key}`)"
           :icon="key === 'skills' ? Network : BookOpen"
@@ -162,23 +139,10 @@ const GROUP_HEADING = 'text-xs font-semibold uppercase tracking-wide text-ink-su
           chevron
           @click="emit('open', key)"
         />
-        <div v-else class="flex flex-col gap-2">
-          <h3 :class="GROUP_HEADING">{{ t(`authoringFilters.groups.${key}`) }}</h3>
-          <KnowledgeFilterPicker
-            :kind="key === 'skills' ? 'skill' : 'concept'"
-            :nodes="key === 'skills' ? skillNodes : conceptNodes"
-            :model-value="filters[key]"
-            :instrument-id="filters.instrument ?? null"
-            :instrument-name="instrumentName"
-            layout="inline"
-            @update:model-value="setKnowledge(key, $event)"
-          />
-        </div>
       </div>
 
       <div v-else-if="key === 'author'" data-test="filter-group-author">
         <MenuRow
-          v-if="layout === 'layer'"
           class="-mx-4"
           :label="t('authoringFilters.groups.author')"
           :icon="UserRound"
@@ -186,16 +150,6 @@ const GROUP_HEADING = 'text-xs font-semibold uppercase tracking-wide text-ink-su
           chevron
           @click="emit('open', 'author')"
         />
-        <div v-else class="flex flex-col gap-2">
-          <h3 :class="GROUP_HEADING">{{ t('authoringFilters.groups.author') }}</h3>
-          <AuthorFilterPicker
-            :scope="CREATORS_SCOPE[section]"
-            :section="section"
-            :me="me"
-            :model-value="filters.author"
-            @update:model-value="setAuthor"
-          />
-        </div>
       </div>
     </template>
   </div>

@@ -24,6 +24,5 @@ const meta: Meta<typeof KnowledgeFilterPicker> = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const DrillIn: Story = { parameters: { viewport: { defaultViewport: 'mobile1' } } }
-export const Inline: Story = { args: { layout: 'inline' } }
+export const Skills: Story = { parameters: { viewport: { defaultViewport: 'mobile1' } } }
 export const Concepts: Story = { args: { kind: 'concept', modelValue: [] } }

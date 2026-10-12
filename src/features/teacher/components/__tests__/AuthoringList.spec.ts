@@ -178,25 +178,25 @@ describe('AuthoringList', () => {
     expect(listQueries('diagrams').at(-1)).toEqual(expect.objectContaining({ kind: 'custom' }))
   })
 
-  it('shows the filters as a side panel on a computer, applying at once', async () => {
-    mockViewport(1280)
-    answer('diagrams', { items: [], total: 0 })
-    const { wrapper } = await mountList('diagrams')
+  it('opens the filters as a dialog on a large computer too, leaving the list the width', async () => {
+    mockViewport(1440)
+    answer('diagrams', { items: [], total: 0, sectionTotal: 10 })
+    const { wrapper } = await mountList('diagrams', '/list?kind=custom')
 
-    expect(wrapper.find('[data-test="authoring-filters-button"]').exists()).toBe(false)
-    const panel = wrapper.get('[data-test="authoring-filters-panel"]')
-    expect(wrapper.get(`#${panel.attributes('aria-labelledby')}`).text()).toBe('Filters')
-    const custom = wrapper
-      .get('[data-test="authoring-filters-panel"] [data-test="filter-group-kind"]')
+    expect(wrapper.find('[data-test="authoring-filters-panel"]').exists()).toBe(false)
+    await wrapper.get('[data-test="authoring-filters-button"] button').trigger('click')
+    const templates = wrapper
+      .get('[data-test="filter-group-kind"]')
       .findAll('button[aria-pressed]')
-      .find((chip) => chip.text() === 'Custom')!
-    await custom.trigger('click')
+      .find((chip) => chip.text() === 'Templates')!
+    await templates.trigger('click')
+    await wrapper.get('[data-test="filters-show"]').trigger('click')
     await flushPromises()
 
-    expect(listQueries('diagrams').at(-1)).toEqual(expect.objectContaining({ kind: 'custom' }))
+    expect(listQueries('diagrams').at(-1)).toEqual(expect.objectContaining({ kind: 'basic' }))
   })
 
-  it('opens the filters as a dialog below 1200 px, leaving the list the width', async () => {
+  it('opens the filters as a dialog on a small computer, leaving the list the width', async () => {
     mockViewport(1024)
     answer('diagrams', { items: [], total: 0, sectionTotal: 10 })
     const { wrapper } = await mountList('diagrams', '/list?kind=custom')

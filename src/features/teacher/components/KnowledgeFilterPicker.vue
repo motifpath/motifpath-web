@@ -4,12 +4,11 @@
  * unchooses it; choosing an area matches it and everything under it, which the picker says.
  * The chosen ones show as removable chips at the top.
  *
- * `drill` (a phone's full-screen layer): the areas, then "N skills ›" opens one with a path back
- * up, recent choices first, and Done. `inline` (a computer's side panel): the same tree with
- * areas that expand in place, applying as it goes. Both keep to the filtered instrument, with
- * All instruments to widen.
+ * It starts on the areas; "N skills ›" opens one, with a path back up. Recent choices come
+ * first, Done goes back to the filters, and the tree keeps to the filtered instrument, with All
+ * instruments to widen.
  */
-import { Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { Check, ChevronRight } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
@@ -17,19 +16,15 @@ import FilterChip from '@/shared/components/FilterChip.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import SearchField from '@/shared/components/SearchField.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { ancestorIds, suitsInstruments, treeRows, type TreeNode } from '@/shared/utils/skillConceptTree'
+import { ancestorIds, suitsInstruments, type TreeNode } from '@/shared/utils/skillConceptTree'
 
-const props = withDefaults(
-  defineProps<{
-    kind: 'skill' | 'concept'
-    nodes: TreeNode[]
-    /** The filtered instrument; null for every instrument. */
-    instrumentId: string | null
-    instrumentName: string | null
-    layout?: 'drill' | 'inline'
-  }>(),
-  { layout: 'drill' },
-)
+const props = defineProps<{
+  kind: 'skill' | 'concept'
+  nodes: TreeNode[]
+  /** The filtered instrument; null for every instrument. */
+  instrumentId: string | null
+  instrumentName: string | null
+}>()
 const chosen = defineModel<string[]>({ required: true })
 const emit = defineEmits<{ done: [] }>()
 
@@ -42,7 +37,6 @@ const search = ref('')
 const allInstruments = ref(false)
 /** The area opened while drilling in; null at the top. */
 const openedId = ref<string | null>(null)
-const expandedIds = ref(new Set<string>())
 const recentIds = ref<string[]>(readRecent())
 
 const byId = computed(() => new Map(props.nodes.map((node) => [node.id, node])))
@@ -81,10 +75,8 @@ function pathOf(node: TreeNode): string {
 
 interface Row {
   node: TreeNode
-  depth: number
   meta: string
   opens: number
-  expanded: boolean
 }
 
 const rows = computed<Row[]>(() => {
@@ -92,24 +84,9 @@ const rows = computed<Row[]>(() => {
     return props.nodes
       .filter((node) => inScope(node) && matches(node))
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((node) => ({ node, depth: 0, meta: pathOf(node), opens: 0, expanded: false }))
+      .map((node) => ({ node, meta: pathOf(node), opens: 0 }))
   }
-  if (props.layout === 'inline') {
-    return treeRows(props.nodes, { include: inScope, match: null, expandedIds: expandedIds.value }).map((row) => ({
-      node: row.node,
-      depth: row.depth,
-      meta: '',
-      opens: row.hasChildren ? childCount(row.node.id) : 0,
-      expanded: row.expanded,
-    }))
-  }
-  return childrenOf(openedId.value).map((node) => ({
-    node,
-    depth: 0,
-    meta: '',
-    opens: childCount(node.id),
-    expanded: false,
-  }))
+  return childrenOf(openedId.value).map((node) => ({ node, meta: '', opens: childCount(node.id) }))
 })
 
 /** The opened area and the areas above it, top first. */
@@ -122,7 +99,7 @@ const trail = computed(() => {
 })
 
 const recentNodes = computed(() =>
-  props.layout === 'drill' && !query.value && openedId.value === null
+  !query.value && openedId.value === null
     ? recentIds.value.map((id) => byId.value.get(id)).filter((node): node is TreeNode => !!node && inScope(node))
     : [],
 )
@@ -145,14 +122,7 @@ function toggle(id: string) {
 }
 
 function open(row: Row) {
-  if (props.layout === 'drill') {
-    openedId.value = row.node.id
-    return
-  }
-  const next = new Set(expandedIds.value)
-  if (next.has(row.node.id)) next.delete(row.node.id)
-  else next.add(row.node.id)
-  expandedIds.value = next
+  openedId.value = row.node.id
 }
 
 function readRecent(): string[] {
@@ -173,11 +143,6 @@ function rememberRecent(id: string) {
   }
 }
 
-// Tailwind needs whole class names, so each depth maps to a fixed indent.
-const INDENTS = ['pl-0', 'pl-5', 'pl-10', 'pl-14', 'pl-20']
-function indent(depth: number): string {
-  return INDENTS[Math.min(depth, INDENTS.length - 1)] ?? 'pl-0'
-}
 </script>
 
 <template>
@@ -224,7 +189,7 @@ function indent(depth: number): string {
       </button>
     </section>
 
-    <nav v-if="layout === 'drill' && trail.length && !query" data-test="knowledge-path" class="flex flex-wrap items-center text-sm font-semibold text-accent-text">
+    <nav v-if="trail.length && !query" data-test="knowledge-path" class="flex flex-wrap items-center text-sm font-semibold text-accent-text">
       <button type="button" data-test="knowledge-path-root" class="min-h-10 hover:underline" @click="openedId = null">{{ t(`knowledgeFilter.${kind}.title`) }}</button>
       <template v-for="(node, index) in trail" :key="node.id">
         <span aria-hidden="true">{{ ' › ' }}</span>
@@ -234,7 +199,7 @@ function indent(depth: number): string {
     </nav>
 
     <ul class="flex flex-col">
-      <li v-for="row in rows" :key="row.node.id" data-test="knowledge-row" class="flex items-center" :class="indent(row.depth)">
+      <li v-for="row in rows" :key="row.node.id" data-test="knowledge-row" class="flex items-center">
         <button
           type="button"
           data-test="knowledge-row-choose"
@@ -253,13 +218,11 @@ function indent(depth: number): string {
           type="button"
           data-test="knowledge-row-open"
           :aria-label="t('knowledgeFilter.openAriaLabel', { shown: openLabel(row.opens), name: row.node.name })"
-          :aria-expanded="layout === 'inline' ? (row.expanded ? 'true' : 'false') : undefined"
           class="inline-flex min-h-12 shrink-0 items-center gap-1 pl-3 text-xs font-medium text-ink-muted hover:text-ink"
           @click="open(row)"
         >
           <span>{{ openLabel(row.opens) }}</span>
-          <ChevronDown v-if="layout === 'inline' && row.expanded" :size="16" aria-hidden="true" />
-          <ChevronRight v-else :size="16" aria-hidden="true" />
+          <ChevronRight :size="16" aria-hidden="true" />
         </button>
       </li>
     </ul>
@@ -267,7 +230,7 @@ function indent(depth: number): string {
 
     <p class="text-xs text-ink-muted">{{ t(`knowledgeFilter.${kind}.note`) }}</p>
 
-    <PrimaryButton v-if="layout === 'drill'" data-test="knowledge-done" class="mt-auto" @click="emit('done')">{{
+    <PrimaryButton data-test="knowledge-done" class="mt-auto" @click="emit('done')">{{
       t(`knowledgeFilter.${kind}.done`, { count: chosen.length })
     }}</PrimaryButton>
   </div>

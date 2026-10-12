@@ -38,7 +38,7 @@ function row(wrapper: ReturnType<typeof mountPicker>, name: string) {
 
 beforeEach(() => window.localStorage.clear())
 
-describe('KnowledgeFilterPicker, drilling in', () => {
+describe('KnowledgeFilterPicker', () => {
   it('starts on the top areas, by name', () => {
     expect(rowLabels(mountPicker())).toEqual(['Piano voicings', 'Scales'])
   })
@@ -151,17 +151,5 @@ describe('KnowledgeFilterPicker, drilling in', () => {
 
     expect(wrapper.get('[data-test="knowledge-done"]').text()).toBe('Done · 1 concept')
     expect(wrapper.text()).toContain('Choosing an area matches it and every concept under it.')
-  })
-})
-
-describe('KnowledgeFilterPicker, inline', () => {
-  it('shows the tree with areas that expand in place, and no Done', async () => {
-    const wrapper = mountPicker({ layout: 'inline' })
-    expect(rowLabels(wrapper)).toEqual(['Piano voicings', 'Scales'])
-    expect(wrapper.find('[data-test="knowledge-done"]').exists()).toBe(false)
-
-    await row(wrapper, 'Scales').get('[data-test="knowledge-row-open"]').trigger('click')
-
-    expect(rowLabels(wrapper)).toEqual(['Piano voicings', 'Scales', 'Major scale', 'Modes', 'Pentatonic shapes'])
   })
 })

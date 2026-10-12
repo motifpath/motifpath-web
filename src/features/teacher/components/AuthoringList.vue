@@ -3,16 +3,15 @@
  * One Teach section's list, the same pattern for every section: the title and New, status chips
  * where the section has a publish state, the search and the filters, the applied filters as
  * removable chips, the count with the sort, then the items, 20 at a time as the end comes into
- * view. On a phone or a tablet the filters open in a layer; on a computer they are a side panel
- * that applies at once. The search, filters and sort live in the address and are remembered per
+ * view. The filters open in a layer: full screen on a phone, a dialog on anything wider, so the
+ * list always has the full width. The search, filters and sort live in the address and are remembered per
  * section. Each view draws its own items through the `item` slot.
  */
 import { Plus } from 'lucide-vue-next'
-import { computed, ref, useId } from 'vue'
+import { computed, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 
 import AuthoringCountSort from '@/features/teacher/components/AuthoringCountSort.vue'
-import AuthoringFilterFields from '@/features/teacher/components/AuthoringFilterFields.vue'
 import AuthoringFiltersLayer from '@/features/teacher/components/AuthoringFiltersLayer.vue'
 import { useAuthoringFilterLabels } from '@/features/teacher/composables/useAuthoringFilterLabels'
 import { type AuthoringSectionItems, useAuthoringList } from '@/features/teacher/composables/useAuthoringList'
@@ -39,7 +38,6 @@ import { useCourseCreators } from '@/shared/composables/useCourseCreators'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
-import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -65,10 +63,6 @@ defineSlots<{ item(props: { item: AuthoringSectionItems[S] }): unknown }>()
 const { t } = useTypedT()
 const { sizeClass } = useSizeClass()
 const isExpanded = computed(() => sizeClass.value === 'expanded')
-// Beside the Teach sidebar, a panel narrower screens can't spare would squeeze the list to a
-// column or two; below this width the filters open as a dialog instead.
-const { matches: hasRoomForPanel } = useMediaQuery('(min-width: 1200px)')
-const showPanel = computed(() => isExpanded.value && hasRoomForPanel.value)
 const labels = useAuthoringFilterLabels()
 
 const listState = useAuthoringListState(props.section)
@@ -156,7 +150,6 @@ function clearNarrowing() {
 }
 
 const filtersOpen = ref(false)
-const panelTitleId = useId()
 
 function countFor(filters: AuthoringListFilters) {
   return list.countFor({ ...state, filters })
@@ -182,7 +175,7 @@ useListReturn({
         class="w-72 min-w-0 shrink"
         :placeholder="t(`authoringList.searchPlaceholder.${section}`)"
       />
-      <div v-if="isExpanded && !showPanel" data-test="authoring-filters-button">
+      <div v-if="isExpanded" data-test="authoring-filters-button">
         <FilterButton :count="filterCount" @click="filtersOpen = true" />
       </div>
       <RouterLink
@@ -213,107 +206,74 @@ useListReturn({
       </div>
     </div>
 
-    <div class="flex gap-6">
-      <aside
-        v-if="showPanel"
-        data-test="authoring-filters-panel"
-        :aria-labelledby="panelTitleId"
-        class="sticky top-4 flex max-h-[calc(100vh-2rem)] w-[320px] shrink-0 flex-col gap-3 self-start overflow-y-auto rounded-2xl border border-border bg-surface-raised p-4"
-      >
-        <div class="flex items-center justify-between">
-          <h2 :id="panelTitleId" class="text-base font-semibold text-ink">{{ t('authoringFilters.title') }}</h2>
-          <button
-            v-if="filterCount > 0"
-            type="button"
-            class="text-sm font-semibold text-accent-text hover:underline"
-            @click="listState.clearFilters()"
-          >
-            {{ t('authoringFilters.clearAll') }}
-          </button>
-        </div>
-        <AuthoringFilterFields
-          :model-value="state.filters"
-          :section="section"
-          layout="panel"
-          :instruments="instruments"
-          :skill-nodes="skillNodes"
-          :concept-nodes="conceptNodes"
-          :me="me"
-          :author-name="authorName"
-          @update:model-value="listState.setFilters"
-        />
-      </aside>
+    <div class="flex min-w-0 flex-col gap-3">
+      <AppliedFilters :chips="chips" @remove="removeChip" @clear="listState.clearFilters()" />
+      <AuthoringCountSort
+        v-if="!list.error.value"
+        :section="section"
+        :shown="list.total.value"
+        :section-total="list.sectionTotal.value"
+        :narrowed="narrowed"
+        :sort="state.sort"
+        @update:sort="listState.setSort"
+      />
 
-      <div class="flex min-w-0 flex-1 flex-col gap-3">
-        <AppliedFilters :chips="chips" @remove="removeChip" @clear="listState.clearFilters()" />
-        <AuthoringCountSort
-          v-if="!list.error.value"
-          :section="section"
-          :shown="list.total.value"
-          :section-total="list.sectionTotal.value"
-          :narrowed="narrowed"
-          :sort="state.sort"
-          @update:sort="listState.setSort"
-        />
-
-        <LoadingSkeleton v-if="list.isLoading.value && items.length === 0" data-test="authoring-loading" />
-        <div v-else-if="list.error.value" data-test="authoring-load-failed">
-          <LoadFailed :message="loadFailedMessage" @retry="list.reload()" />
-        </div>
-        <StateBlock
-          v-else-if="items.length === 0 && !narrowed"
-          data-test="authoring-empty"
-          kind="empty"
-          :title="emptyTitle"
-          :message="emptyMessage"
-        >
-          <template #action>
-            <RouterLink :to="newTo" class="text-sm font-semibold text-accent-text underline">{{ newLabel }}</RouterLink>
-          </template>
-        </StateBlock>
-        <StateBlock
-          v-else-if="items.length === 0"
-          data-test="authoring-no-matches"
-          kind="empty"
-          :title="t('authoringList.noMatchesTitle')"
-          :message="t('authoringList.noMatchesMessage')"
-        >
-          <template #action>
-            <button
-              type="button"
-              data-test="authoring-clear-filters"
-              class="text-sm font-semibold text-accent-text underline"
-              @click="clearNarrowing"
-            >
-              {{ t('authoringList.clearFilters') }}
-            </button>
-          </template>
-        </StateBlock>
-        <template v-else>
-          <ul
-            data-test="authoring-items"
-            :class="
-              grid
-                ? 'grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]'
-                : 'flex max-w-[880px] flex-col gap-2'
-            "
-          >
-            <li v-for="(item, index) in items" :key="index">
-              <slot name="item" :item="item" />
-            </li>
-          </ul>
-          <ListEndLoader
-            :has-more="list.hasMore.value"
-            :loading="list.isLoadingMore.value"
-            :failed="list.loadMoreError.value"
-            @load="list.loadMore()"
-          />
-        </template>
+      <LoadingSkeleton v-if="list.isLoading.value && items.length === 0" data-test="authoring-loading" />
+      <div v-else-if="list.error.value" data-test="authoring-load-failed">
+        <LoadFailed :message="loadFailedMessage" @retry="list.reload()" />
       </div>
+      <StateBlock
+        v-else-if="items.length === 0 && !narrowed"
+        data-test="authoring-empty"
+        kind="empty"
+        :title="emptyTitle"
+        :message="emptyMessage"
+      >
+        <template #action>
+          <RouterLink :to="newTo" class="text-sm font-semibold text-accent-text underline">{{ newLabel }}</RouterLink>
+        </template>
+      </StateBlock>
+      <StateBlock
+        v-else-if="items.length === 0"
+        data-test="authoring-no-matches"
+        kind="empty"
+        :title="t('authoringList.noMatchesTitle')"
+        :message="t('authoringList.noMatchesMessage')"
+      >
+        <template #action>
+          <button
+            type="button"
+            data-test="authoring-clear-filters"
+            class="text-sm font-semibold text-accent-text underline"
+            @click="clearNarrowing"
+          >
+            {{ t('authoringList.clearFilters') }}
+          </button>
+        </template>
+      </StateBlock>
+      <template v-else>
+        <ul
+          data-test="authoring-items"
+          :class="
+            grid
+              ? 'grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]'
+              : 'flex max-w-[880px] flex-col gap-2'
+          "
+        >
+          <li v-for="(item, index) in items" :key="index">
+            <slot name="item" :item="item" />
+          </li>
+        </ul>
+        <ListEndLoader
+          :has-more="list.hasMore.value"
+          :loading="list.isLoadingMore.value"
+          :failed="list.loadMoreError.value"
+          @load="list.loadMore()"
+        />
+      </template>
     </div>
 
     <AuthoringFiltersLayer
-      v-if="!showPanel"
       :open="filtersOpen"
       :section="section"
       :filters="state.filters"
