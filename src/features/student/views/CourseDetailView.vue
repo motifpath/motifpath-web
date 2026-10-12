@@ -293,8 +293,13 @@ async function confirmLeave() {
             <StatusChip v-for="(chip, index) in chips" :key="index" data-test="course-chip" :label="chip" />
           </div>
           <h1 data-test="course-detail-title" class="text-xl font-semibold text-ink">{{ course.title }}</h1>
-          <p v-if="course.created_by" data-test="course-detail-byline" class="text-xs text-ink-muted">
-            {{ t('courseCard.byline', { name: course.created_by.display_name }) }}
+          <p v-if="course.created_by" data-test="course-detail-byline" class="text-xs">
+            <RouterLink
+              :to="{ name: 'course-catalog', query: { teacher: course.created_by.user_id } }"
+              class="font-semibold text-accent-text underline"
+            >
+              {{ t('courseCard.byline', { name: course.created_by.display_name }) }}
+            </RouterLink>
           </p>
           <p data-test="course-detail-summary" class="text-base text-ink-muted">{{ course.summary }}</p>
         </div>

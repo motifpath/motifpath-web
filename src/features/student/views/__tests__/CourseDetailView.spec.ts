@@ -251,6 +251,15 @@ describe('CourseDetailView', () => {
     expect(wrapper.get('[data-test="course-detail-summary"]').text()).toContain('one part at a time')
   })
 
+  it('opens Discover on courses filtered by the teacher from the byline', () => {
+    const byline = mountView().get('[data-test="course-detail-byline"]')
+
+    expect(byline.findComponent(RouterLinkStub).props('to')).toEqual({
+      name: 'course-catalog',
+      query: { teacher: course().created_by.user_id },
+    })
+  })
+
   it('shows the whole course picture, never cropped', () => {
     published.course.value = { ...course(), thumbnail_url: 'https://cdn.example/t.png' }
 
