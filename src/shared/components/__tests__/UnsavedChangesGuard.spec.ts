@@ -72,6 +72,20 @@ describe('UnsavedChangesGuard', () => {
     document.querySelector<HTMLButtonElement>('[data-test="confirm-dialog-confirm"]')!.click()
 
     expect(await leaving).toBe(true)
+    expect(wrapper!.emitted('leave')).toHaveLength(1)
+  })
+
+  it('takes the editor’s own question when leaving loses more than edits', async () => {
+    wrapper = mount(UnsavedChangesGuard, {
+      props: { dirty: true, message: 'The video is still uploading.', title: 'Leave and cancel the upload?', keepLabel: 'Keep uploading' },
+      attachTo: document.body,
+    })
+
+    void leaveGuard!()
+    await flushPromises()
+
+    expect(document.body.textContent).toContain('Leave and cancel the upload?')
+    expect(document.querySelector('[data-test="confirm-dialog-cancel"]')?.textContent?.trim()).toBe('Keep uploading')
   })
 
   it('asks the browser to confirm closing the page with unsaved changes', () => {
