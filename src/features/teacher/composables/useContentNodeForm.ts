@@ -12,6 +12,9 @@ type ReviewState = components['schemas']['Classification']['review_state']
 type PromptDocument = components['schemas']['PromptDocument']
 
 const EMPTY_BODY: PromptDocument = { type: 'doc', content: [] }
+
+/** A field a lesson needs before it can be saved. */
+export type ContentNodeField = 'body' | 'skills' | 'concepts'
 const LANGUAGE_AGNOSTIC = ['any']
 
 /**
@@ -51,6 +54,16 @@ export function useContentNodeForm() {
       mediaUrl.value.trim() !== '' &&
       !isHttpUrl(mediaUrl.value.trim()),
   )
+
+  // Skills and concepts drive gap detection and recommendations, so the API refuses a lesson
+  // without at least one of each.
+  const missing = computed<ContentNodeField[]>(() => {
+    const fields: ContentNodeField[] = []
+    if (!hasBody.value) fields.push('body')
+    if (skillIds.value.length === 0) fields.push('skills')
+    if (conceptIds.value.length === 0) fields.push('concepts')
+    return fields
+  })
 
   function body() {
     return contentType.value === 'video'
@@ -108,7 +121,15 @@ export function useContentNodeForm() {
     thumbnailUrl.value = contentNode.thumbnail_url
     // The API rejects an empty set, so a node stored without any is re-saved as language-agnostic.
     languageCodes.value = contentNode.languages.length > 0 ? contentNode.languages.map((l) => l.code) : LANGUAGE_AGNOSTIC
+    baseline.value = snapshot()
   }
+
+  // What a save sends, to tell whether anything is left unsaved.
+  function snapshot(): string {
+    return JSON.stringify(toUpdateContentNodeRequest())
+  }
+  const baseline = ref(snapshot())
+  const isDirty = computed(() => snapshot() !== baseline.value)
 
   return {
     title,
@@ -122,6 +143,8 @@ export function useContentNodeForm() {
     instrumentIds,
     thumbnailUrl,
     hasBody,
+    missing,
+    isDirty,
     mediaUrlInvalid,
     toCreateContentNodeRequest,
     toUpdateContentNodeRequest,

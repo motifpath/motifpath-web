@@ -354,3 +354,59 @@ describe('useContentNodeForm', () => {
     })
   })
 })
+
+describe('useContentNodeForm — what a save needs and what is unsaved', () => {
+  function savedLesson() {
+    const form = useContentNodeForm()
+    form.loadFromContentNode({
+      content_node_id: 'cn-1',
+      teacher: { user_id: 't-1', display_name: 'Teacher One' },
+      title: 'Open chords: G, C, D',
+      content_type: 'video',
+      media_url: 'https://video.test/open-chords.mp4',
+      classification: {
+        skills: [knowledgeNode('s-1')],
+        concepts: [knowledgeNode('c-1', { kind: 'concept' })],
+        difficulty_level: 'beginner',
+        review_state: 'confirmed',
+      },
+      languages: [],
+      instrument_ids: [],
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      has_unpublished_changes: false,
+    })
+    return form
+  }
+
+  it('a new lesson needs its body, a skill and a concept, in the order of the form', () => {
+    expect(useContentNodeForm().missing.value).toEqual(['body', 'skills', 'concepts'])
+  })
+
+  it('a loaded lesson needs nothing', () => {
+    expect(savedLesson().missing.value).toEqual([])
+  })
+
+  it('names a cleared skill', () => {
+    const form = savedLesson()
+    form.skillIds.value = []
+
+    expect(form.missing.value).toEqual(['skills'])
+  })
+
+  it('a loaded lesson has nothing unsaved until it is edited', () => {
+    const form = savedLesson()
+    expect(form.isDirty.value).toBe(false)
+
+    form.title.value = 'Open chords'
+    expect(form.isDirty.value).toBe(true)
+  })
+
+  it('a new lesson has nothing unsaved until something is entered', () => {
+    const form = useContentNodeForm()
+    expect(form.isDirty.value).toBe(false)
+
+    form.title.value = 'Open chords'
+    expect(form.isDirty.value).toBe(true)
+  })
+})

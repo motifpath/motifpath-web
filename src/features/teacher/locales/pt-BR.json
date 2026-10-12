@@ -327,12 +327,6 @@
     "challengesLoading": "Carregando desafios…",
     "instrumentsLabel": "Instrumentos",
     "thumbnailLabel": "Miniatura",
-    "publishingLabel": "Publicação",
-    "notPublishedYet": "Ainda não publicado — este conteúdo só pode entrar na trilha de um aluno depois de publicado.",
-    "publishedAs": "Os alunos recebem a versão {version}.",
-    "publishButton": "Publicar",
-    "publishing": "Publicando…",
-    "publishHint": "Publicar salva suas alterações e cria uma nova versão. Quem já recebeu este conteúdo continua com a versão que recebeu.",
     "publishedVersion": "Versão {version} publicada.",
     "publishFailed": "Falha ao publicar o nó de conteúdo",
     "videoLabel": "Vídeo",
@@ -340,7 +334,16 @@
     "uploadLeaveMessage": "O vídeo ainda está sendo enviado. Sair interrompe o envio, e a lição mantém o vídeo que tinha.",
     "uploadLeaveConfirm": "Sair",
     "uploadLeaveCancel": "Continuar enviando",
-    "videoPreviewTitle": "Vídeo"
+    "videoPreviewTitle": "Vídeo",
+    "details": "Detalhes",
+    "missing": {
+      "video": "Adicione o vídeo",
+      "article": "Escreva o artigo",
+      "skills": "Adicione uma habilidade",
+      "concepts": "Adicione um conceito"
+    },
+    "leaveMessage": "Suas alterações nesta lição não foram salvas e serão perdidas.",
+    "titleLabel": "Título da lição"
   },
   "contentVersionHistory": {
     "heading": "Histórico de versões",

@@ -327,12 +327,6 @@
     "challengesLoading": "Loading challenges…",
     "instrumentsLabel": "Instruments",
     "thumbnailLabel": "Thumbnail",
-    "publishingLabel": "Publishing",
-    "notPublishedYet": "Not published yet — this content can't be added to a student's path until you publish it.",
-    "publishedAs": "Students get version {version}.",
-    "publishButton": "Publish",
-    "publishing": "Publishing…",
-    "publishHint": "Publishing saves your changes and creates a new version. Students who already have this content keep the version they got.",
     "publishedVersion": "Published version {version}.",
     "publishFailed": "Failed to publish the content node",
     "videoLabel": "Video",
@@ -340,7 +334,16 @@
     "uploadLeaveMessage": "The video is still uploading. Leaving stops it, and the lesson keeps the video it had.",
     "uploadLeaveConfirm": "Leave",
     "uploadLeaveCancel": "Keep uploading",
-    "videoPreviewTitle": "Video"
+    "videoPreviewTitle": "Video",
+    "details": "Details",
+    "missing": {
+      "video": "Add the video",
+      "article": "Write the article",
+      "skills": "Add a skill",
+      "concepts": "Add a concept"
+    },
+    "leaveMessage": "Your changes to this lesson haven't been saved and will be lost.",
+    "titleLabel": "Lesson title"
   },
   "contentVersionHistory": {
     "heading": "Version history",

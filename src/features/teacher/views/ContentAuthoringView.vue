@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, shallowRef, useId, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, useId, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import ArticlePopupListEditor from '@/features/teacher/components/ArticlePopupListEditor.vue'
 import ChallengeModal, { type ChallengeModalInitial } from '@/features/teacher/components/ChallengeModal.vue'
@@ -8,6 +8,7 @@ import ClassificationFields from '@/features/teacher/components/ClassificationFi
 import ContentTypeToggle from '@/features/teacher/components/ContentTypeToggle.vue'
 import ContentVersionHistory from '@/features/teacher/components/ContentVersionHistory.vue'
 import ExpandedContentModal from '@/features/teacher/components/ExpandedContentModal.vue'
+import LessonStatusPanel from '@/features/teacher/components/LessonStatusPanel.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import VideoSource, { type VideoSourceState } from '@/features/teacher/components/VideoSource.vue'
@@ -26,15 +27,18 @@ import { usePublishContentNode } from '@/features/teacher/composables/usePublish
 import { useSaveChallenge } from '@/features/teacher/composables/useSaveChallenge'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
 import { isUploadedLessonVideo, useVideoUpload } from '@/features/teacher/composables/useVideoUpload'
-import AppBar from '@/shared/components/AppBar.vue'
-import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
+import EditorAppBar from '@/shared/components/EditorAppBar.vue'
+import EditorBody from '@/shared/components/EditorBody.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import OverlayLayer from '@/shared/components/OverlayLayer.vue'
+import SaveBlockers from '@/shared/components/SaveBlockers.vue'
 import SheetHeader from '@/shared/components/SheetHeader.vue'
+import UnsavedChangesGuard from '@/shared/components/UnsavedChangesGuard.vue'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
+import { useSaveBlockers } from '@/shared/composables/useSaveBlockers'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -50,7 +54,8 @@ const canAuthor = computed(
   () => currentUser.profile?.role === 'teacher' || currentUser.profile?.role === 'admin',
 )
 
-const { isCompact } = useIsCompact()
+const { sizeClass, isCompact } = useSizeClass()
+const isExpanded = computed(() => sizeClass.value === 'expanded')
 const { t } = useTypedT()
 
 const route = useRoute()
@@ -88,6 +93,7 @@ const {
 const savedContentNodeId = ref('')
 const savedTeacherId = ref('')
 const latestPublishedVersion = ref<number | null>(null)
+const hasUnpublishedChanges = ref(true)
 // The server checks a challenge's exercises against the saved lesson, so the
 // exercise picker follows the saved instruments, not unsaved picks in the form.
 const savedInstrumentIds = ref<string[]>([])
@@ -97,6 +103,7 @@ function applySavedContentNode(contentNode: ContentNode) {
   savedContentNodeId.value = contentNode.content_node_id
   savedTeacherId.value = contentNode.teacher.user_id
   latestPublishedVersion.value = contentNode.latest_published_version ?? null
+  hasUnpublishedChanges.value = contentNode.has_unpublished_changes
   savedInstrumentIds.value = [...contentNode.instrument_ids]
 }
 
@@ -160,48 +167,26 @@ async function awaitVideoUpload(): Promise<boolean> {
   return true
 }
 
-// Leaving while a video uploads asks first: in the app through a dialog, and
-// on closing or reloading the tab through the browser's own prompt.
-const leaveDialogOpen = ref(false)
-let resolveLeave: ((leave: boolean) => void) | null = null
-
-function answerLeave(leave: boolean) {
-  leaveDialogOpen.value = false
-  if (leave) videoUpload.cancel()
-  resolveLeave?.(leave)
-  resolveLeave = null
-}
-
-onBeforeRouteLeave(() => {
-  if (!videoUploading.value) return true
-  leaveDialogOpen.value = true
-  return new Promise<boolean>((resolve) => (resolveLeave = resolve))
-})
-
-function onBeforeUnload(event: BeforeUnloadEvent) {
-  if (videoUploading.value) event.preventDefault()
-}
-onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
-onBeforeUnmount(() => {
-  window.removeEventListener('beforeunload', onBeforeUnload)
-  videoUpload.cancel()
-})
-const justSaved = ref(false)
-let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
-onUnmounted(() => clearTimeout(justSavedTimeout))
+// Leaving cancels an upload still running; the guard asks first.
+onBeforeUnmount(() => videoUpload.cancel())
 
 const toast = useToast()
 
-// Classification is a mandatory dimension for gap detection and the
-// recommendation engine -- both skill_ids and concept_ids must be non-empty
-// on the backend, so a save attempt without them is rejected outright.
-const hasClassification = computed(
-  () => form.skillIds.value.length > 0 && form.conceptIds.value.length > 0,
-)
 // A video still uploading counts as the body: saving waits for it (below).
-const canSave = computed(
-  () => hasClassification.value && (form.hasBody.value || videoUploading.value) && !thumbnailUploading.value,
+const missingToSave = computed(() =>
+  form.missing.value
+    .filter((field) => !(field === 'body' && videoUploading.value))
+    .map((field) => ({
+      field,
+      label: t(`contentAuthoringView.missing.${field === 'body' ? form.contentType.value : field}`),
+    })),
 )
+const saveBlockers = useSaveBlockers(missingToSave)
+
+const saveState = computed(() => {
+  if (saving.value || publishing.value) return 'saving'
+  return form.isDirty.value || videoUploading.value || !savedContentNodeId.value ? 'unsaved' : 'saved'
+})
 
 async function persist() {
   const contentNode = savedContentNodeId.value
@@ -211,7 +196,7 @@ async function persist() {
 }
 
 async function save() {
-  if (!canSave.value) return
+  if (saving.value || publishing.value || thumbnailUploading.value || !saveBlockers.readyToSave()) return
 
   saving.value = true
   const isUpdate = !!savedContentNodeId.value
@@ -219,10 +204,6 @@ async function save() {
   try {
     if (!(await awaitVideoUpload())) return
     await persist()
-
-    justSaved.value = true
-    clearTimeout(justSavedTimeout)
-    justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
     toast.success(isUpdate ? t('contentAuthoringView.contentNodeUpdated') : t('contentAuthoringView.contentNodeCreated'))
   } catch (e) {
     toast.error(e instanceof Error ? e.message : t('contentAuthoringView.saveContentNodeFailed'))
@@ -257,7 +238,7 @@ const publishing = ref(false)
 // A publish snapshots the node's saved state, so the draft on screen is saved
 // first -- otherwise unsaved edits would silently be left out of the version.
 async function publish() {
-  if (!canSave.value) return
+  if (missingToSave.value.length || thumbnailUploading.value) return
 
   publishing.value = true
   try {
@@ -270,6 +251,7 @@ async function publish() {
     }
     const version = await publishContentNode(savedContentNodeId.value)
     latestPublishedVersion.value = version.version_number
+    hasUnpublishedChanges.value = false
     toast.success(t('contentAuthoringView.publishedVersion', { version: version.version_number }))
     await versionsState.value?.retry()
   } catch (e) {
@@ -503,19 +485,24 @@ async function onSaveChallenge({
     }
   }
 }
+
+const cardClass = 'flex flex-col gap-4 rounded-2xl border border-border bg-surface-raised p-4'
+const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-muted'
+const labelClass = 'text-sm font-semibold text-ink'
+const hintClass = 'text-xs text-ink-muted'
 </script>
 
 <template>
   <TeachShell section="teacher-content" bar="none">
   <div class="flex flex-1 flex-col bg-surface">
-    <AppBar
-      :compact="isCompact"
-      :primary-nav-to="{ name: 'teacher-content' }"
-      :breadcrumb-label="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"
-      :show-save="canAuthor"
-      :save-disabled="saving || publishing || !canSave"
-      :just-saved="justSaved"
-      :on-save="save"
+    <EditorAppBar
+      :compact="!isExpanded"
+      :section-label="t('nav.content')"
+      :section-to="{ name: 'teacher-content' }"
+      :title="isEditMode ? form.title.value || t('contentAuthoringView.editBreadcrumb') : t('contentAuthoringView.newBreadcrumb')"
+      :save-state="saveState"
+      :can-save="canAuthor && !loadingContentNode && !loadError"
+      @save="save"
     />
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
@@ -532,103 +519,121 @@ async function onSaveChallenge({
       <LoadFailed :message="t('contentAuthoringView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
-    <main
-      v-else
-      data-test="authoring-body"
-      class="flex min-w-0 flex-1 flex-col gap-6"
-      :class="isCompact ? 'px-4 pb-6 pt-[20px]' : 'px-[48px] pb-[80px] pt-10'"
-    >
-      <div class="flex flex-col gap-1.5">
-        <input
-          v-model="form.title.value"
-          type="text"
-          :placeholder="t('contentAuthoringView.titlePlaceholder')"
-          class="border-none bg-transparent font-bold text-ink outline-none"
-          :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
+    <EditorBody v-else data-test="authoring-body" :two-columns="isExpanded">
+      <template v-if="savedContentNodeId" #side>
+        <LessonStatusPanel
+          :latest-published-version="latestPublishedVersion"
+          :has-unpublished-changes="hasUnpublishedChanges"
+          :has-unsaved-changes="form.isDirty.value"
+          :can-publish="canPublish"
+          :missing="missingToSave.map((item) => item.label)"
+          :busy="publishing || saving || thumbnailUploading"
+          @publish="publish"
         />
-        <span class="text-sm text-ink-subtle">{{ t('contentAuthoringView.titleHint') }}</span>
-      </div>
+        <section v-if="canPublish" :class="cardClass">
+          <h2 :class="eyebrowClass">{{ t('contentVersionHistory.heading') }}</h2>
+          <ContentVersionHistory
+            :versions="versionsState?.versions.value ?? []"
+            :loading="versionsState?.isLoading.value ?? true"
+            :error="versionsState?.error.value ?? false"
+            :latest-version="latestPublishedVersion"
+            @retry="versionsState?.retry()"
+          />
+        </section>
+      </template>
 
-      <div class="flex flex-col gap-2.5">
-        <label class="text-sm font-semibold">{{ t('contentAuthoringView.contentTypeLabel') }}</label>
-        <ContentTypeToggle v-model="form.contentType.value" :disabled="isEditMode" />
-        <span class="text-sm text-ink-subtle">
-          {{
-            isEditMode
-              ? t('contentAuthoringView.typeLockedHint')
-              : t('contentAuthoringView.typeUnlockedHint')
-          }}
-        </span>
-      </div>
+      <SaveBlockers :items="saveBlockers.shown.value" :reveal="saveBlockers.reveal.value" />
 
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
-        <InstrumentPicker v-model="form.instrumentIds.value" />
-      </div>
+      <section :class="cardClass">
+        <h2 :class="eyebrowClass">{{ t('contentAuthoringView.details') }}</h2>
+        <label class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('contentAuthoringView.titleLabel') }}</span>
+          <input
+            v-model="form.title.value"
+            type="text"
+            :placeholder="t('contentAuthoringView.titlePlaceholder')"
+            class="h-12 rounded-xl border border-border bg-surface-sunken px-3 text-base text-ink"
+          />
+          <span :class="hintClass">{{ t('contentAuthoringView.titleHint') }}</span>
+        </label>
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('contentAuthoringView.contentTypeLabel') }}</span>
+          <ContentTypeToggle v-model="form.contentType.value" :disabled="isEditMode" />
+          <span :class="hintClass">
+            {{ isEditMode ? t('contentAuthoringView.typeLockedHint') : t('contentAuthoringView.typeUnlockedHint') }}
+          </span>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
+          <InstrumentPicker v-model="form.instrumentIds.value" />
+        </div>
+      </section>
 
-      <div v-if="form.contentType.value === 'video'" class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">{{ t('contentAuthoringView.videoLabel') }}</span>
-        <VideoSource
-          :state="videoSourceState"
-          @choose="onChooseVideo"
-          @cancel="videoUpload.cancel()"
-          @retry="onRetryVideo"
-          @play="videoPreviewOpen = true"
-          @use-link="clearVideo(true)"
-          @remove="clearVideo(false)"
-        />
-      </div>
+      <section :class="cardClass" data-field="body">
+        <div v-if="form.contentType.value === 'video'" class="flex flex-col gap-2">
+          <span class="text-sm font-semibold">{{ t('contentAuthoringView.videoLabel') }}</span>
+          <VideoSource
+            :state="videoSourceState"
+            @choose="onChooseVideo"
+            @cancel="videoUpload.cancel()"
+            @retry="onRetryVideo"
+            @play="videoPreviewOpen = true"
+            @use-link="clearVideo(true)"
+            @remove="clearVideo(false)"
+          />
+        </div>
+        <div v-if="form.contentType.value === 'video' && showVideoLink" class="flex flex-col gap-2">
+          <label for="content-media-url" class="text-sm font-semibold">{{ t('contentAuthoringView.mediaUrlLabel') }}</label>
+          <input
+            id="content-media-url"
+            ref="mediaUrlInput"
+            v-model="form.mediaUrl.value"
+            data-test="media-url-input"
+            type="url"
+            :aria-invalid="form.mediaUrlInvalid.value"
+            :placeholder="t('contentAuthoringView.mediaUrlPlaceholder')"
+            class="w-full rounded-md border bg-surface-raised px-3 py-2 text-sm text-ink"
+            :class="form.mediaUrlInvalid.value ? 'border-danger' : 'border-border'"
+          />
+          <span v-if="form.mediaUrlInvalid.value" data-test="media-url-error" class="text-sm text-danger">
+            {{ t('contentAuthoringView.mediaUrlInvalid') }}
+          </span>
+          <span v-else class="text-sm text-ink-subtle">{{ t('contentAuthoringView.mediaUrlHint') }}</span>
+        </div>
+        <div v-if="form.contentType.value !== 'video'" class="flex flex-col gap-2">
+          <label class="text-sm font-semibold">{{ t('contentAuthoringView.articleBodyLabel') }}</label>
+          <PromptEditor v-model="form.richContent.value" song-charts />
+        </div>
+      </section>
 
-      <div v-if="form.contentType.value === 'video' && showVideoLink" class="flex flex-col gap-2">
-        <label for="content-media-url" class="text-sm font-semibold">{{ t('contentAuthoringView.mediaUrlLabel') }}</label>
-        <input
-          id="content-media-url"
-          ref="mediaUrlInput"
-          v-model="form.mediaUrl.value"
-          data-test="media-url-input"
-          type="url"
-          :aria-invalid="form.mediaUrlInvalid.value"
-          :placeholder="t('contentAuthoringView.mediaUrlPlaceholder')"
-          class="w-full rounded-md border bg-surface-raised px-3 py-2 text-sm text-ink"
-          :class="form.mediaUrlInvalid.value ? 'border-danger' : 'border-border'"
-        />
-        <span v-if="form.mediaUrlInvalid.value" data-test="media-url-error" class="text-sm text-danger">
-          {{ t('contentAuthoringView.mediaUrlInvalid') }}
-        </span>
-        <span v-else class="text-sm text-ink-subtle">{{ t('contentAuthoringView.mediaUrlHint') }}</span>
-      </div>
+      <section :class="cardClass" data-field="skills">
+        <h2 :class="eyebrowClass">{{ t('contentAuthoringView.classificationLabel') }}</h2>
+        <div data-field="concepts">
+          <ClassificationFields
+            v-model:skill-ids="form.skillIds.value"
+            v-model:concept-ids="form.conceptIds.value"
+            v-model:difficulty-level="form.difficultyLevel.value"
+            :skill-nodes="skillNodes"
+            :concept-nodes="conceptNodes"
+            :skills-loading="skillsLoading"
+            :concepts-loading="conceptsLoading"
+            :skills-error="skillsError"
+            :concepts-error="conceptsError"
+            :instrument-ids="form.instrumentIds.value"
+            :suggested-skill-ids="suggestedSkillIds"
+            :suggested-concept-ids="suggestedConceptIds"
+            :review-state="form.reviewState.value"
+            :can-create-nodes="currentUser.profile?.role === 'admin'"
+            @retry-skills="retrySkills"
+            @retry-concepts="retryConcepts"
+          />
+        </div>
+      </section>
 
-      <div v-if="form.contentType.value !== 'video'" class="flex flex-col gap-2">
-        <label class="text-sm font-semibold">{{ t('contentAuthoringView.articleBodyLabel') }}</label>
-        <PromptEditor v-model="form.richContent.value" song-charts />
-      </div>
-
-      <div class="flex flex-col gap-2 border-t border-border pt-4">
-        <label class="text-sm font-semibold">{{ t('contentAuthoringView.classificationLabel') }}</label>
-        <ClassificationFields
-          v-model:skill-ids="form.skillIds.value"
-          v-model:concept-ids="form.conceptIds.value"
-          v-model:difficulty-level="form.difficultyLevel.value"
-          :skill-nodes="skillNodes"
-          :concept-nodes="conceptNodes"
-          :skills-loading="skillsLoading"
-          :concepts-loading="conceptsLoading"
-          :skills-error="skillsError"
-          :concepts-error="conceptsError"
-          :instrument-ids="form.instrumentIds.value"
-          :suggested-skill-ids="suggestedSkillIds"
-          :suggested-concept-ids="suggestedConceptIds"
-          :review-state="form.reviewState.value"
-          :can-create-nodes="currentUser.profile?.role === 'admin'"
-          @retry-skills="retrySkills"
-          @retry-concepts="retryConcepts"
-        />
-      </div>
-
-      <div class="flex flex-col gap-2">
-        <span class="text-sm font-semibold">{{ t('contentAuthoringView.thumbnailLabel') }}</span>
+      <section :class="cardClass">
+        <h2 :class="eyebrowClass">{{ t('contentAuthoringView.thumbnailLabel') }}</h2>
         <ThumbnailField v-model="form.thumbnailUrl.value" @uploading="thumbnailUploading = $event" />
-      </div>
+      </section>
 
       <div v-if="savedContentNodeId && form.contentType.value === 'video'" class="flex flex-col gap-2 border-t border-border pt-4">
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.timedPopupsLabel') }}</label>
@@ -641,7 +646,6 @@ async function onSaveChallenge({
           @remove="onRemoveExpandedContent"
         />
       </div>
-
       <div v-else-if="savedContentNodeId && form.contentType.value === 'article'" class="flex flex-col gap-2 border-t border-border pt-4">
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.paragraphPopupsLabel') }}</label>
         <ArticlePopupListEditor
@@ -726,40 +730,7 @@ async function onSaveChallenge({
         </div>
       </div>
 
-      <div v-if="canPublish" data-test="publish-section" class="flex flex-col gap-3 border-t border-border pt-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex flex-col gap-0.5">
-            <label class="text-sm font-semibold">{{ t('contentAuthoringView.publishingLabel') }}</label>
-            <span data-test="publish-status" class="text-sm text-ink-subtle">
-              {{
-                latestPublishedVersion === null
-                  ? t('contentAuthoringView.notPublishedYet')
-                  : t('contentAuthoringView.publishedAs', { version: latestPublishedVersion })
-              }}
-            </span>
-          </div>
-          <button
-            type="button"
-            data-test="publish-button"
-            :disabled="publishing || saving || !canSave"
-            class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
-            @click="publish"
-          >
-            {{ publishing ? t('contentAuthoringView.publishing') : t('contentAuthoringView.publishButton') }}
-          </button>
-        </div>
-        <span class="text-sm text-ink-subtle">{{ t('contentAuthoringView.publishHint') }}</span>
-
-        <label class="text-sm font-semibold">{{ t('contentVersionHistory.heading') }}</label>
-        <ContentVersionHistory
-          :versions="versionsState?.versions.value ?? []"
-          :loading="versionsState?.isLoading.value ?? true"
-          :error="versionsState?.error.value ?? false"
-          :latest-version="latestPublishedVersion"
-          @retry="versionsState?.retry()"
-        />
-      </div>
-    </main>
+    </EditorBody>
 
     <ExpandedContentModal
       :open="popupModalOpen"
@@ -784,14 +755,12 @@ async function onSaveChallenge({
       @close="challengeModalOpen = false"
     />
 
-    <ConfirmDialog
-      :open="leaveDialogOpen"
-      :title="t('contentAuthoringView.uploadLeaveTitle')"
-      :message="t('contentAuthoringView.uploadLeaveMessage')"
-      :confirm-label="t('contentAuthoringView.uploadLeaveConfirm')"
-      :cancel-label="t('contentAuthoringView.uploadLeaveCancel')"
-      @confirm="answerLeave(true)"
-      @cancel="answerLeave(false)"
+    <UnsavedChangesGuard
+      :dirty="form.isDirty.value || videoUploading"
+      :message="videoUploading ? t('contentAuthoringView.uploadLeaveMessage') : t('contentAuthoringView.leaveMessage')"
+      :title="videoUploading ? t('contentAuthoringView.uploadLeaveTitle') : undefined"
+      :keep-label="videoUploading ? t('contentAuthoringView.uploadLeaveCancel') : undefined"
+      @leave="videoUpload.cancel()"
     />
 
     <OverlayLayer :open="videoPreviewOpen" :placement="isCompact ? 'bottom' : 'center'" @close="videoPreviewOpen = false">
