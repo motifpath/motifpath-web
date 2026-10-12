@@ -460,3 +460,22 @@ describe('useDiagramPlayback — stopping from outside', () => {
     expect(() => stopDiagramPlayback()).not.toThrow()
   })
 })
+
+describe('useDiagramPlayback — a source still loading', () => {
+  it('offers no Play and plays nothing until the source is there', async () => {
+    const source = ref<{ diagram: Diagram; instrument: Instrument; playback: Playback | null } | null>(null)
+    const scope = effectScope()
+    const player = scope.run(() => useDiagramPlayback(source))!
+    expect(player.canPlay.value).toBe(false)
+    player.toggle()
+    await nextTick()
+    expect(player.state.value).toBe('idle')
+    await expect(player.checkVoice()).resolves.toBe(false)
+
+    source.value = { diagram: makeSequencedFrettedDiagram(), instrument: makeFrettedInstrument(), playback: { ...AS_AUTHORED, tempo_bpm: 72 } }
+    await nextTick()
+    expect(player.canPlay.value).toBe(true)
+    expect(player.tempo.value).toBe(72)
+    scope.stop()
+  })
+})

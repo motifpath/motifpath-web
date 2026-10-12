@@ -104,7 +104,7 @@ export function isPlayable(source: PlaybackSource): boolean {
  * accented, read when Play is pressed.
  */
 export function useDiagramPlayback(
-  source: MaybeRefOrGetter<PlaybackSource>,
+  source: MaybeRefOrGetter<PlaybackSource | null>,
   options: { metronome?: MaybeRefOrGetter<boolean> } = {},
 ) {
   const { coreApi } = useApi()
@@ -112,21 +112,23 @@ export function useDiagramPlayback(
   const state = ref<PlaybackState>('idle')
   const activePositionIds = shallowRef<string[]>([])
 
-  const played = computed(() => playedPlayback(toValue(source)))
+  const sourceNow = computed(() => toValue(source))
+  const played = computed(() => (sourceNow.value ? playedPlayback(sourceNow.value) : null))
   const timeSignature = computed<TimeSignature>(() => played.value?.time_signature ?? { beats: 4, beat_value: 4 })
 
   const effectiveTempo = computed(
-    () => toValue(source).playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
+    () => sourceNow.value?.playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
   )
   const tempo = ref(effectiveTempo.value)
 
-  const pitches = computed(() => positionPitches(toValue(source)))
+  const pitches = computed(() => (sourceNow.value ? positionPitches(sourceNow.value) : new Map<string | undefined, number | null>()))
   const pitchOf = (positionId: string) => pitches.value.get(positionId) ?? null
 
-  const canPlay = computed(() => isPlayable(toValue(source)))
+  const canPlay = computed(() => sourceNow.value !== null && isPlayable(sourceNow.value))
 
   const voiceId = computed(() => {
-    const { instrument, playback } = toValue(source)
+    if (!sourceNow.value) return undefined
+    const { instrument, playback } = sourceNow.value
     return playback?.voice_id ?? instrument.default_voice_id
   })
 
@@ -197,7 +199,7 @@ export function useDiagramPlayback(
     context = audio
     state.value = 'loading'
 
-    const { playback } = toValue(source)
+    const playback = sourceNow.value?.playback
     const steps = played.value?.steps ?? []
     const signature = timeSignature.value
     try {
@@ -232,7 +234,7 @@ export function useDiagramPlayback(
   function toggle() {
     if (state.value === 'playing' || state.value === 'loading') {
       stop()
-    } else {
+    } else if (canPlay.value) {
       state.value = 'idle'
       void play()
     }
@@ -244,7 +246,7 @@ export function useDiagramPlayback(
 
   // Another diagram, or another way of playing it, starts over at its own tempo.
   watch(
-    () => JSON.stringify([toValue(source).diagram, toValue(source).playback]),
+    () => JSON.stringify([sourceNow.value?.diagram, sourceNow.value?.playback]),
     () => {
       stop()
       state.value = 'idle'
