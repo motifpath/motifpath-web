@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils'
+import { Monitor } from 'lucide-vue-next'
 import { describe, expect, it } from 'vitest'
 
 import InlineNotice from '@/shared/components/InlineNotice.vue'
@@ -20,5 +21,12 @@ describe('InlineNotice', () => {
     expect(wrapper.classes()).toContain('bg-warning-muted')
     expect(wrapper.classes()).not.toContain('bg-danger-muted')
     expect(wrapper.find('svg.lucide-circle-alert').exists()).toBe(true)
+  })
+
+  it('can show the icon that says what is missing, such as a larger screen', () => {
+    const wrapper = mount(InlineNotice, { props: { message: 'Placing chords needs a larger screen.', tone: 'unavailable', icon: Monitor } })
+
+    expect(wrapper.find('svg.lucide-monitor').exists()).toBe(true)
+    expect(wrapper.find('svg.lucide-circle-alert').exists()).toBe(false)
   })
 })
