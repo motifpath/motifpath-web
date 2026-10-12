@@ -263,9 +263,9 @@ async function confirmLeave() {
          actions a 320 px card that stays in view; the same elements, regrouped. -->
     <div
       v-else-if="course"
-      class="flex w-full max-w-[35rem] flex-col gap-4 min-[70rem]:grid min-[70rem]:max-w-[59rem] min-[70rem]:grid-cols-[minmax(0,37.5rem)_20rem] min-[70rem]:items-start min-[70rem]:gap-x-6"
+      class="flex w-full max-w-[35rem] flex-col gap-4 min-[1120px]:grid min-[1120px]:max-w-[59rem] min-[1120px]:grid-cols-[minmax(0,37.5rem)_20rem] min-[1120px]:items-start min-[1120px]:gap-x-6"
     >
-      <div class="contents min-[70rem]:flex min-[70rem]:flex-col min-[70rem]:gap-4">
+      <div class="contents min-[1120px]:flex min-[1120px]:flex-col min-[1120px]:gap-4">
         <PageBackBar :title="back.title" :to="back.to" :back-label="back.label" />
 
         <div class="order-2 flex flex-col gap-2">
@@ -306,7 +306,7 @@ async function confirmLeave() {
       </div>
 
       <div
-        class="contents min-[70rem]:sticky min-[70rem]:top-5 min-[70rem]:flex min-[70rem]:flex-col min-[70rem]:gap-3 min-[70rem]:rounded-lg min-[70rem]:border min-[70rem]:border-border min-[70rem]:bg-surface-raised min-[70rem]:p-4"
+        class="contents min-[1120px]:sticky min-[1120px]:top-5 min-[1120px]:flex min-[1120px]:flex-col min-[1120px]:gap-3 min-[1120px]:rounded-lg min-[1120px]:border min-[1120px]:border-border min-[1120px]:bg-surface-raised min-[1120px]:p-4"
       >
         <ThumbnailImage class="order-1" :url="course.thumbnail_url" size-class="aspect-video w-full rounded-lg" />
 
@@ -356,7 +356,7 @@ async function confirmLeave() {
           v-if="enrollment"
           type="button"
           data-test="leave"
-          class="order-5 min-h-12 w-fit rounded-full px-3 text-sm font-semibold text-danger hover:bg-danger-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus min-[70rem]:w-full"
+          class="order-5 min-h-12 w-fit rounded-full px-3 text-sm font-semibold text-danger hover:bg-danger-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus min-[1120px]:w-full"
           @click="confirmingLeave = true"
         >
           {{ t('courseDetailView.leave') }}

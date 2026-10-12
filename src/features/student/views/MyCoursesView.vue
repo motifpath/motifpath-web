@@ -204,7 +204,7 @@ async function confirmLeave() {
 
     <!-- One 560 px column; two would squeeze the titles. From a 1120 px window, where two fit beside
          the sidebar, the same rows in two columns — a list to manage, not a shelf to browse. -->
-    <div v-else class="flex w-full max-w-[35rem] flex-col gap-6 min-[70rem]:max-w-[59.5rem]">
+    <div v-else class="flex w-full max-w-[35rem] flex-col gap-6 min-[1120px]:max-w-[59.5rem]">
       <div
         v-if="!groups.inProgress.length"
         data-test="nothing-in-progress"
@@ -218,7 +218,7 @@ async function confirmLeave() {
 
       <div v-if="groups.inProgress.length" data-test="learning-group-in-progress" class="flex flex-col gap-2">
         <SectionHeader :label="t('learningView.inProgress')" :count="String(groups.inProgress.length)" />
-        <ul class="grid gap-3 min-[70rem]:grid-cols-2">
+        <ul class="grid gap-3 min-[1120px]:grid-cols-2">
           <li v-for="item in groups.inProgress" :key="item.key">
             <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
@@ -227,7 +227,7 @@ async function confirmLeave() {
 
       <div v-if="groups.finished.length" data-test="learning-group-finished" class="flex flex-col gap-2">
         <SectionHeader :label="t('learningView.finished')" :count="String(groups.finished.length)" />
-        <ul class="grid gap-3 min-[70rem]:grid-cols-2">
+        <ul class="grid gap-3 min-[1120px]:grid-cols-2">
           <li v-for="item in groups.finished" :key="item.key">
             <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
@@ -243,7 +243,7 @@ async function confirmLeave() {
           :expanded="leftOpen"
           @toggle="leftOpen = !leftOpen"
         />
-        <ul v-if="leftOpen" class="grid gap-3 min-[70rem]:grid-cols-2">
+        <ul v-if="leftOpen" class="grid gap-3 min-[1120px]:grid-cols-2">
           <li v-for="item in groups.left" :key="item.key">
             <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
