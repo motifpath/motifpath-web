@@ -7,7 +7,13 @@ vi.mock('@/shared/composables/useEventTracking', () => ({
 
 const measureExerciseAudio = vi.fn()
 vi.mock('@/shared/utils/exerciseAudio', () => ({
-  measureExerciseAudio: (exercise: unknown) => measureExerciseAudio(exercise),
+  measureExerciseAudio: (exercise: unknown, loadDiagram: unknown) => measureExerciseAudio(exercise, loadDiagram),
+}))
+
+const fetchDiagram = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({ useApi: () => ({ coreApi: { name: 'core' }, eventApi: {} }) }))
+vi.mock('@/shared/composables/useEmbeddedDiagram', () => ({
+  fetchDiagram: (coreApi: unknown, diagramId: string) => fetchDiagram(coreApi, diagramId),
 }))
 
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
@@ -510,6 +516,16 @@ describe('usePracticeSessionRun', () => {
       const [first, second] = tracked('practice.item_answered')
       expect(first.response).not.toHaveProperty('audio_ms')
       expect(second.response).toMatchObject({ audio_ms: 2600 })
+    })
+
+    it('measures a sound played from a diagram with the diagram as core has it', async () => {
+      const diagram = { diagram_id: 'a-minor' }
+      fetchDiagram.mockResolvedValue(diagram)
+      usePracticeSessionRun(mixed)
+
+      const loadDiagram = measureExerciseAudio.mock.calls[0]![1] as (id: string) => Promise<unknown>
+      await expect(loadDiagram('a-minor')).resolves.toBe(diagram)
+      expect(fetchDiagram).toHaveBeenCalledWith({ name: 'core' }, 'a-minor')
     })
 
     describe('with sound options', () => {

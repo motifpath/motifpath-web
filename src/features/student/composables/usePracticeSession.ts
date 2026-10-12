@@ -1,6 +1,7 @@
 import { computed, onUnmounted, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
 import { useApi } from '@/shared/composables/useApi'
+import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
 import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
 import { isExactMatch } from '@/shared/utils/exerciseOptions'
@@ -223,7 +224,7 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
       shownAt.clear()
       audioMs.clear()
       for (const exercise of exercisesResult.data) {
-        void measureExerciseAudio(exercise).then((ms) => {
+        void measureExerciseAudio(exercise, (diagramId) => fetchDiagram(coreApi, diagramId)).then((ms) => {
           if (ms !== undefined && myEpoch === loadEpoch) audioMs.set(exercise.exercise_id, ms)
         })
       }

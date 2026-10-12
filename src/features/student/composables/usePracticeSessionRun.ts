@@ -4,6 +4,8 @@ import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
 import { ladderFloor, nextTempo } from '@/features/student/utils/tempoLadder'
 import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
+import { useApi } from '@/shared/composables/useApi'
+import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
 import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
 import { isExactMatch } from '@/shared/utils/exerciseOptions'
@@ -114,6 +116,7 @@ export interface PracticeSessionRunOptions {
  */
 export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOptions = {}) {
   const { track } = useEventTracking()
+  const { coreApi } = useApi()
 
   const index = ref(0)
   const takes = ref<RatedTake[]>([])
@@ -163,7 +166,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   for (const item of plan.items) {
     const exercise = item.exercise
     if (item.kind !== 'exercise' || !exercise) continue
-    void measureExerciseAudio(exercise).then((ms) => {
+    void measureExerciseAudio(exercise, (diagramId) => fetchDiagram(coreApi, diagramId)).then((ms) => {
       if (ms !== undefined) audioMs.set(exercise.exercise_id, ms)
     })
   }
