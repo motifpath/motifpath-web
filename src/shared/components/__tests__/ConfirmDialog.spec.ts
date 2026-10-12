@@ -115,4 +115,32 @@ describe('ConfirmDialog', () => {
     expect(wrapper.find('[data-test="overlay-dialog"]').exists()).toBe(true)
     expect(buttonOrder(wrapper)).toEqual(['confirm-dialog-cancel', 'confirm-dialog-confirm'])
   })
+
+  it('confirms in the danger colour by default', () => {
+    const wrapper = mountAt(1280)
+
+    expect(wrapper.get('[data-test="confirm-dialog-confirm"]').classes()).toContain('bg-danger')
+  })
+
+  it('confirms with a primary button when nothing done is lost', () => {
+    const wrapper = mountAt(390, { tone: 'primary' })
+
+    expect(wrapper.get('[data-test="confirm-dialog-confirm"]').classes()).not.toContain('bg-danger')
+    expect(buttonOrder(wrapper)).toEqual(['confirm-dialog-confirm', 'confirm-dialog-cancel'])
+  })
+
+  it('shows what went wrong as an alert above the buttons, keeping the dialog open', () => {
+    const wrapper = mountAt(1280, { error: 'Nothing changed. Try again.' })
+
+    const notice = wrapper.get('[data-test="inline-notice"]')
+    expect(notice.attributes('role')).toBe('alert')
+    expect(notice.text()).toBe('Nothing changed. Try again.')
+    expect(wrapper.find('[data-test="overlay-dialog"]').exists()).toBe(true)
+  })
+
+  it('has no notice without an error', () => {
+    const wrapper = mountAt(1280)
+
+    expect(wrapper.find('[data-test="inline-notice"]').exists()).toBe(false)
+  })
 })

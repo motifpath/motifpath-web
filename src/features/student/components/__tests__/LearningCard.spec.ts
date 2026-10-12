@@ -43,6 +43,27 @@ describe('LearningCard', () => {
     expect(card.get('[data-test="learning-eyebrow"]').text()).toBe('Path · Assigned by Ana')
   })
 
+  it('shows a new-version icon before the eyebrow, keeping the part and progress', () => {
+    const card = mountCard(only(buildLearning([enrollment({ update_available: true })], [], null)))
+
+    const icon = card.get('[data-test="learning-new-version"]')
+    expect(icon.text()).toBe('New version available')
+    expect(card.get('[data-test="learning-eyebrow"]').text()).toContain('Course · Part 2 of 4')
+    expect(card.text()).toContain('1 of 4 parts')
+  })
+
+  it('has no new-version icon when the item is up to date', () => {
+    const card = mountCard(only(buildLearning([enrollment()], [], null)))
+
+    expect(card.find('[data-test="learning-new-version"]').exists()).toBe(false)
+  })
+
+  it('shows the whole picture, never cropped', () => {
+    const card = mountCard(only(buildLearning([enrollment({ course_thumbnail_url: 'https://cdn.example/t.png' })], [], null)))
+
+    expect(card.get('img').classes()).toContain('object-contain')
+  })
+
   it('marks the current item with a badge', () => {
     const card = mountCard(only(buildLearning([enrollment()], [], currentPath())))
 

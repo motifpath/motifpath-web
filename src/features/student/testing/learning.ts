@@ -21,6 +21,7 @@ export function makeEnrollment(overrides: Partial<CourseEnrollment> = {}): Cours
     active_checkpoint_student_path_id: 'sp-e1',
     active_checkpoint_position: 2,
     enrolled_at: '2026-09-02T00:00:00Z',
+    update_available: false,
     ...overrides,
   }
 }
@@ -39,6 +40,7 @@ export function makeStandalonePath(overrides: Partial<StudentPath> = {}): Studen
     course_checkpoint_position: null,
     lesson_count: 9,
     completed_count: 5,
+    update_available: false,
     ...overrides,
   }
 }

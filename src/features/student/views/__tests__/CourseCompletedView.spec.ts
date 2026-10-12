@@ -179,6 +179,12 @@ describe('CourseCompletedView', () => {
     expect(card.get('img').attributes('src')).toBe('https://cdn.example.test/foundations.png')
   })
 
+  it('shows the whole course picture, never cropped', () => {
+    enrollments.enrollments.value = [finished()]
+
+    expect(mountView().get('[data-test="course-completed"] img').classes()).toContain('object-contain')
+  })
+
   it('counts only the parts when the published course cannot be read', () => {
     enrollments.enrollments.value = [finished()]
     published.course.value = null

@@ -84,6 +84,11 @@ vi.mock('@/shared/composables/useInstrumentNames', () => ({
   }),
 }))
 
+const update = vi.fn()
+vi.mock('@/features/student/composables/useUpdateLearningItem', () => ({
+  useUpdateLearningItem: () => ({ update }),
+}))
+
 const toast = { success: vi.fn(), error: vi.fn(), neutral: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
@@ -246,6 +251,12 @@ describe('CourseDetailView', () => {
     expect(wrapper.get('[data-test="course-detail-summary"]').text()).toContain('one part at a time')
   })
 
+  it('shows the whole course picture, never cropped', () => {
+    published.course.value = { ...course(), thumbnail_url: 'https://cdn.example/t.png' }
+
+    expect(mountView().get('img').classes()).toContain('object-contain')
+  })
+
   it('renders a legacy course with no author', () => {
     const legacy = course() as unknown as Record<string, unknown>
     delete legacy.created_by
@@ -265,6 +276,35 @@ describe('CourseDetailView', () => {
     expect(wrapper.get('[data-test="course-progress"]').text()).toContain('Part 2 of 4')
     expect(wrapper.get('[data-test="continue"]').text()).toBe('Continue part 2')
     expect(wrapper.find('[data-test="start"]').exists()).toBe(false)
+  })
+
+  it('offers a newer version in a quiet card under Continue', () => {
+    enrollments.enrollments.value = [enrollment({ update_available: true })]
+    const wrapper = mountView()
+
+    const card = wrapper.get('[data-test="update-card"]')
+    expect(card.text()).toContain('A newer version is available')
+    expect(card.get('[data-test="update-course"]').text()).toBe('Update course')
+  })
+
+  it('has no update card when the course is up to date', () => {
+    enrollments.enrollments.value = [enrollment()]
+
+    expect(mountView().find('[data-test="update-card"]').exists()).toBe(false)
+  })
+
+  it('updates through the same confirm, then drops the card with a success toast', async () => {
+    enrollments.enrollments.value = [enrollment({ update_available: true })]
+    update.mockResolvedValueOnce({ enrollment: enrollment({ update_available: false, course_version_number: 2 }) })
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="update-course"]').trigger('click')
+    expect(inLayer('[role="alertdialog"]').textContent).toContain('Update Guitar foundations?')
+    inLayer('[data-test="confirm-dialog-confirm"]').click()
+    await flushPromises()
+
+    expect(toast.success).toHaveBeenCalledWith('Guitar foundations is up to date')
+    expect(wrapper.find('[data-test="update-card"]').exists()).toBe(false)
   })
 
   it('makes the course current, with an Undo, then opens My path', async () => {

@@ -124,7 +124,8 @@
     "lessonsSummary": "{completed} of {count} lesson done | {completed} of {count} lessons done",
     "startAgainCourse": "Start again from part 1",
     "startAgainPath": "Start again from the first lesson",
-    "more": "More for {title}"
+    "more": "More for {title}",
+    "newVersion": "New version available"
   },
   "partRow": {
     "part": "Part {position}",
@@ -139,9 +140,24 @@
     "courseDetails": "Course details",
     "pathDetails": "Path details",
     "leaveCourse": "Leave course",
-    "removePath": "Remove from Learning"
+    "removePath": "Remove from Learning",
+    "update": "Update to the latest version"
+  },
+  "updateCopy": {
+    "title": "Update {title}?",
+    "courseMessage": "You get the latest parts, lessons and picture. Lessons you finished stay finished. If the lesson you are on was removed, you continue at the next one you haven't finished. This can't be undone.",
+    "pathMessage": "You get the latest lessons and picture. Lessons you finished stay finished. If the lesson you are on was removed, you continue at the next one you haven't finished. This can't be undone.",
+    "updateCourse": "Update course",
+    "updatePath": "Update path",
+    "notNow": "Not now",
+    "tryAgain": "Try again",
+    "courseFailed": "We couldn't update the course. Nothing changed. Check your connection and try again.",
+    "pathFailed": "We couldn't update the path. Nothing changed. Check your connection and try again.",
+    "upToDate": "{title} is up to date"
   },
   "courseDetailView": {
+    "newVersionHeading": "A newer version is available",
+    "newVersionMessage": "Get the latest parts, lessons and picture. Lessons you finished stay finished.",
     "errorMessage": "We couldn't load this course.",
     "notFoundHeading": "This course is not published yet",
     "notFoundMessage": "This course is not available in the catalog.",
@@ -180,6 +196,9 @@
     "prompt": "My question or recording:"
   },
   "pathDetailView": {
+    "backToLearning": "Back to Learning",
+    "newVersionHeading": "A newer version is available",
+    "newVersionMessage": "Get the latest lessons and picture. Lessons you finished stay finished.",
     "errorMessage": "We couldn't load this path.",
     "notFoundHeading": "This path is not published yet",
     "notFoundMessage": "This path is not available in the catalog.",

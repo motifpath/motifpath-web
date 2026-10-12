@@ -60,6 +60,11 @@ vi.mock('@/features/student/composables/useLeaveLearningItem', () => ({
   LeaveFailedAfterSwitchError,
 }))
 
+const update = vi.fn()
+vi.mock('@/features/student/composables/useUpdateLearningItem', () => ({
+  useUpdateLearningItem: () => ({ update }),
+}))
+
 const toast = { success: vi.fn(), error: vi.fn(), neutral: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
@@ -334,7 +339,7 @@ describe('MyCoursesView', () => {
     await group(wrapper, 'left').get('button').trigger('click')
     await row(wrapper, 'Open chords').get('[data-test="learning-row"]').trigger('click')
 
-    expect(push).toHaveBeenCalledWith({ name: 'path-detail', params: { learningPathId: 'lp-7' } })
+    expect(push).toHaveBeenCalledWith({ name: 'learning-path', params: { learningPathId: 'lp-7' } })
   })
 
   // ── The ⋯ menu and leaving ─────────────────────────────────────────────
@@ -452,5 +457,59 @@ describe('MyCoursesView', () => {
 
     expect(group(wrapper, 'in-progress').exists()).toBe(false)
     expect(group(wrapper, 'left').text()).toContain('1')
+  })
+
+  describe('updating to the latest version', () => {
+    async function chooseUpdate(wrapper: ReturnType<typeof mountView>, title: string) {
+      await row(wrapper, title).get('[data-test="learning-more"]').trigger('click')
+      inLayer('[data-test="learning-menu-update"]').click()
+      await flushPromises()
+    }
+
+    it('confirms first, then puts the updated course in its row with a success toast and no Undo', async () => {
+      enrollments.enrollments.value = [{ ...guitar, update_available: true }]
+      const updated = { ...guitar, update_available: false, course_thumbnail_url: 'https://cdn.example/new.png' }
+      update.mockResolvedValueOnce({ enrollment: updated })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await chooseUpdate(wrapper, 'Guitar foundations')
+      expect(inLayer('[role="alertdialog"]').textContent).toContain('Update Guitar foundations?')
+      inLayer('[data-test="confirm-dialog-confirm"]').click()
+      await flushPromises()
+
+      expect(update).toHaveBeenCalledWith(expect.objectContaining({ title: 'Guitar foundations' }))
+      expect(toast.success).toHaveBeenCalledWith('Guitar foundations is up to date')
+      expect(row(wrapper, 'Guitar foundations').find('[data-test="learning-new-version"]').exists()).toBe(false)
+      expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+      expect(setCurrentPath).not.toHaveBeenCalled()
+    })
+
+    it('leaves the row as it was on Not now', async () => {
+      enrollments.enrollments.value = [{ ...guitar, update_available: true }]
+      const wrapper = mountView()
+      await flushPromises()
+
+      await chooseUpdate(wrapper, 'Guitar foundations')
+      inLayer('[data-test="confirm-dialog-cancel"]').click()
+      await flushPromises()
+
+      expect(update).not.toHaveBeenCalled()
+      expect(row(wrapper, 'Guitar foundations').find('[data-test="learning-new-version"]').exists()).toBe(true)
+    })
+
+    it('puts an updated path in its row', async () => {
+      const openChords = standalonePath({ student_path_id: 'sp-1', title: 'Open chords', update_available: true })
+      standalone.paths.value = [openChords]
+      update.mockResolvedValueOnce({ path: { ...openChords, update_available: false, lesson_count: 10 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await chooseUpdate(wrapper, 'Open chords')
+      inLayer('[data-test="confirm-dialog-confirm"]').click()
+      await flushPromises()
+
+      expect(row(wrapper, 'Open chords').text()).toContain('5 of 10 lessons')
+    })
   })
 })

@@ -174,6 +174,14 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/features/student/views/CourseDetailView.vue'),
       },
       {
+        // A path the student holds, opened from Learning: the same detail as path-detail, with
+        // Learning highlighted and the way back leading there.
+        path: 'mine/paths/:learningPathId',
+        name: 'learning-path',
+        meta: { requiresAuth: true },
+        component: () => import('@/features/student/views/PathDetailView.vue'),
+      },
+      {
         path: 'mine/:enrollmentId/completed',
         name: 'course-completed',
         meta: { requiresAuth: true },
