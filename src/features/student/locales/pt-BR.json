@@ -134,9 +134,7 @@
     "enroll": "Inscrever-se",
     "enrolling": "Inscrevendo…",
     "enrolledToast": "Você está inscrito em {title}.",
-    "continue": "Continuar curso",
-    "outlineHeading": "Estrutura do curso",
-    "learningPath": "Trilha de aprendizagem {position}"
+    "continue": "Continuar curso"
   },
   "courseCompletedView": {
     "errorMessage": "Não foi possível carregar seu curso.",

@@ -134,9 +134,7 @@
     "enroll": "Enroll",
     "enrolling": "Enrolling…",
     "enrolledToast": "You are now enrolled in {title}.",
-    "continue": "Continue course",
-    "outlineHeading": "Course outline",
-    "learningPath": "Learning path {position}"
+    "continue": "Continue course"
   },
   "courseCompletedView": {
     "errorMessage": "We couldn't load your course.",
