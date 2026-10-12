@@ -58,7 +58,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { clearVoiceCache } from '@/shared/composables/useListVoices'
-import { clearPrefetchedSamples, isPlayable, useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
+import { clearPrefetchedSamples, isPlayable, stopDiagramPlayback, useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 
 const VOICES = ['acoustic-guitar', 'nylon-guitar'].map((voice_id) => ({
   voice_id,
@@ -409,5 +409,54 @@ describe('useDiagramPlayback — prefetching', () => {
   it('ignores a failed fetch', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))))
     await expect(setup().player.prefetch()).resolves.toBeUndefined()
+  })
+})
+
+describe('useDiagramPlayback — checking the voice before Play', () => {
+  it('says the voice is ready once its recordings are fetched', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response()))
+    await expect(setup().player.checkVoice()).resolves.toBe(true)
+  })
+
+  it('says the voice failed when a recording can’t be fetched', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new Error('offline'))))
+    await expect(setup().player.checkVoice()).resolves.toBe(false)
+  })
+
+  it('says the voice failed when a recording answers with an error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 404 })))
+    await expect(setup().player.checkVoice()).resolves.toBe(false)
+  })
+
+  it('says the voice failed when the voices can’t be loaded', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response()))
+    GET.mockResolvedValue({ data: undefined, error: { title: 'down' }, response: { status: 503 } })
+    await expect(setup().player.checkVoice()).resolves.toBe(false)
+  })
+
+  it('fetches a recording again after it failed, so Try again can work', async () => {
+    const fetch = vi.fn<(url: string) => Promise<Response>>(async () => Promise.reject(new Error('offline')))
+    vi.stubGlobal('fetch', fetch)
+    const { player } = setup()
+    await player.checkVoice()
+    fetch.mockImplementation(async () => new Response())
+
+    await expect(player.checkVoice()).resolves.toBe(true)
+  })
+})
+
+describe('useDiagramPlayback — stopping from outside', () => {
+  it('stops whichever diagram is playing, so another sound can take over', async () => {
+    const { player } = setup()
+    await play(player)
+
+    stopDiagramPlayback()
+
+    expect(player.state.value).toBe('idle')
+    expect(sounding()).toEqual([])
+  })
+
+  it('does nothing when no diagram is playing', () => {
+    expect(() => stopDiagramPlayback()).not.toThrow()
   })
 })

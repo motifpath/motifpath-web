@@ -36,8 +36,9 @@ const START_DELAY_SECONDS = 0.1
 // Only one diagram plays at a time: starting one stops whichever was playing.
 let stopPlaying: (() => void) | null = null
 
-// Recordings never change at their URL, so one fetch a page puts each in the HTTP cache.
-const prefetched = new Set<string>()
+// Recordings never change at their URL, so one fetch a page puts each in the HTTP cache. A failed
+// fetch is forgotten, so the next check fetches it again.
+const prefetched = new Map<string, Promise<boolean>>()
 
 function sameIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, i) => id === b[i])
@@ -46,6 +47,25 @@ function sameIds(a: string[], b: string[]): boolean {
 /** Forgets which recordings were prefetched. For tests. */
 export function clearPrefetchedSamples() {
   prefetched.clear()
+}
+
+/** Stops whichever diagram is playing, such as when a clip starts sounding instead. */
+export function stopDiagramPlayback() {
+  stopPlaying?.()
+}
+
+function fetchSample(url: string): Promise<boolean> {
+  const known = prefetched.get(url)
+  if (known) return known
+  const pending = fetch(url)
+    .then((response) => response.ok)
+    .catch(() => false)
+    .then((ok) => {
+      if (!ok) prefetched.delete(url)
+      return ok
+    })
+  prefetched.set(url, pending)
+  return pending
 }
 
 /** Each position's sounding pitch; null where the tuning doesn't give one. */
@@ -117,17 +137,24 @@ export function useDiagramPlayback(
     return voice
   }
 
-  /** Fetches the voice's recordings ahead of Play, such as when the player scrolls into view. */
-  async function prefetch() {
-    if (!canPlay.value) return
+  /**
+   * Fetches the voice's recordings ahead of Play and says whether all of them came: false when the
+   * voice or a recording can't be had, so a sound that must play can be known lost before Play.
+   */
+  async function checkVoice(): Promise<boolean> {
     try {
       const voice = await findVoice()
-      const urls = voice.samples.map((sample) => sample.url).filter((url) => !prefetched.has(url))
-      urls.forEach((url) => prefetched.add(url))
-      await Promise.all(urls.map((url) => fetch(url).catch(() => prefetched.delete(url))))
+      const fetched = await Promise.all(voice.samples.map((sample) => fetchSample(sample.url)))
+      return fetched.every(Boolean)
     } catch {
-      // Play loads what's missing.
+      return false
     }
+  }
+
+  /** Fetches the voice's recordings ahead of Play, such as when the player scrolls into view. */
+  async function prefetch() {
+    // Play loads what's missing.
+    if (canPlay.value) await checkVoice()
   }
 
   let run: PlaybackRun | null = null
@@ -227,5 +254,5 @@ export function useDiagramPlayback(
 
   onScopeDispose(stop)
 
-  return { canPlay, state, activePositionIds, tempo, toggle, stop, prefetch }
+  return { canPlay, state, activePositionIds, tempo, toggle, stop, prefetch, checkVoice }
 }
