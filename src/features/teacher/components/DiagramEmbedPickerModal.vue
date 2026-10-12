@@ -49,7 +49,7 @@ function apply() {
 <template>
   <ModalOverlay
     :open="open"
-    panel-class="flex h-dvh w-screen flex-col gap-4 bg-surface-raised p-4 sm:h-[85vh] sm:w-[1040px] sm:max-w-[92vw] sm:rounded-xl sm:p-5 sm:shadow-level2"
+    panel-class="-m-4 flex h-dvh w-screen flex-col gap-4 bg-surface-raised p-4 sm:m-0 sm:h-[85vh] sm:w-[1040px] sm:max-w-[92vw] sm:rounded-xl sm:p-5 sm:shadow-level2"
     @close="emit('close')"
   >
     <div class="flex items-center justify-between">

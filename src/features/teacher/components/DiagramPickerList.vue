@@ -155,7 +155,7 @@ const KIND_CHIPS = [
         <ul
           data-test="diagram-picker-results"
           :aria-busy="isLoading"
-          class="grid grid-cols-1 gap-2 transition-opacity sm:grid-cols-2"
+          class="grid grid-cols-1 gap-2 p-0.5 transition-opacity sm:grid-cols-2 lg:grid-cols-3"
           :class="{ 'opacity-50': isLoading }"
         >
           <li v-for="diagram in offered" :key="diagram.diagram_id">
