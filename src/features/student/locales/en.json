@@ -140,6 +140,15 @@
     "startAgainPath": "Start again from the first lesson",
     "more": "More for {title}"
   },
+  "partRow": {
+    "part": "Part {position}",
+    "lessons": "{count} lesson | {count} lessons",
+    "lessonsDone": "{completed} of {count} lesson done | {completed} of {count} lessons done",
+    "done": "Done",
+    "lessonDone": "Done",
+    "moreDone": "{count} more done",
+    "more": "… {count} more"
+  },
   "learningMenu": {
     "courseDetails": "Course details",
     "pathDetails": "Path details",

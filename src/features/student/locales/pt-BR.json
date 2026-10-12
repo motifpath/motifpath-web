@@ -140,6 +140,15 @@
     "startAgainPath": "Recomeçar da primeira aula",
     "more": "Mais opções para {title}"
   },
+  "partRow": {
+    "part": "Parte {position}",
+    "lessons": "{count} aula | {count} aulas",
+    "lessonsDone": "{completed} de {count} aula concluída | {completed} de {count} aulas concluídas",
+    "done": "Concluída",
+    "lessonDone": "Concluída",
+    "moreDone": "Mais {count} concluída | Mais {count} concluídas",
+    "more": "… mais {count}"
+  },
   "learningMenu": {
     "courseDetails": "Detalhes do curso",
     "pathDetails": "Detalhes da trilha",
