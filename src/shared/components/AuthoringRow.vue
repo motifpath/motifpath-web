@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * One item in an authoring list: its title, one meta line, a status chip when the item has a
- * publish state, and a chevron. The whole row opens the item's editor. The same row at every size.
+ * One item in an authoring list: a thumbnail or a kind icon when given one (the `leading` slot),
+ * its title, one meta line, a status chip when the item has a publish state, and a chevron. The whole row opens the item's editor. The same row at every size.
  */
 import { ChevronRight } from 'lucide-vue-next'
 import type { RouteLocationRaw } from 'vue-router'
@@ -22,6 +22,7 @@ defineProps<{
     :to="to"
     class="flex min-h-20 items-center gap-3 rounded-2xl border border-border bg-surface-raised py-3 pl-3 pr-2 hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
   >
+    <slot name="leading" />
     <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
       <span data-test="authoring-row-title" class="w-full truncate text-base font-semibold text-ink">{{ title }}</span>
       <span data-test="authoring-row-meta" class="w-full truncate text-xs font-medium text-ink-muted">{{ meta }}</span>
