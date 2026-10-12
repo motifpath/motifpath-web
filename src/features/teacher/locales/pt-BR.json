@@ -615,7 +615,8 @@
     "kindCustom": "Personalizados",
     "authorLabel": "Autor",
     "clearFilters": "Limpar filtros",
-    "noMatches": "Nenhum diagrama corresponde a estes filtros."
+    "noMatches": "Nenhum diagrama corresponde a estes filtros.",
+    "playableCount": "Só diagramas com reprodução · {count}"
   },
   "diagramEmbedPicker": {
     "loadErrorMessage": "Não foi possível carregar este diagrama.",

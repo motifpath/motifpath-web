@@ -15,6 +15,8 @@ export interface DiagramFilters {
   rootNote?: string
   /** A Language.code the diagram must have a name in. */
   language?: string
+  /** Only diagrams with at least one playback, the ones a listening exercise can play. */
+  playable?: boolean
 }
 
 /**
@@ -37,6 +39,7 @@ export function useListDiagrams(filters: () => DiagramFilters = () => ({})) {
           ...(f.name ? { name: f.name } : {}),
           ...(f.rootNote ? { root_note: f.rootNote } : {}),
           ...(f.language ? { language: f.language } : {}),
+          ...(f.playable ? { playable: true } : {}),
         },
       },
     })

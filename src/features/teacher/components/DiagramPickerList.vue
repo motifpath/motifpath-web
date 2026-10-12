@@ -5,7 +5,8 @@
  * colors, shapes and labels can be told apart. Searchable by name, root
  * note, kind and author, with a live count; the search and filters stay put
  * and only the results scroll, so the caller gives it a bounded height. The
- * diagram already picked is marked. Mount it only while it's shown, so each
+ * diagram already picked is marked. With `playable` (a sound to choose) it
+ * lists only diagrams that can play, and says so. Mount it only while it's shown, so each
  * showing fetches a fresh list. Only picks; the caller decides what the pick does.
  */
 import { Check, Search } from 'lucide-vue-next'
@@ -35,8 +36,10 @@ const props = withDefaults(
     emptyMessage?: string
     /** The diagram picked before, marked among the results. */
     pickedDiagramId?: string | null
+    /** Only diagrams with a playback, for a listening exercise's sound. */
+    playable?: boolean
   }>(),
-  { instrumentId: undefined, excludeIds: () => [], emptyHeading: undefined, emptyMessage: undefined, pickedDiagramId: null },
+  { instrumentId: undefined, excludeIds: () => [], emptyHeading: undefined, emptyMessage: undefined, pickedDiagramId: null, playable: false },
 )
 const emit = defineEmits<{ select: [diagram: Diagram] }>()
 
@@ -47,7 +50,7 @@ const { instruments } = useListInstruments()
 const {
   diagrams, total, hasMore, isLoading, isLoadingMore, error, loadMoreError, reload, loadMore,
   nameText, rootNote, kind, author, hasActiveFilters, clearFilters,
-} = useDiagramSearch(() => props.instrumentId)
+} = useDiagramSearch(() => props.instrumentId, { playable: props.playable })
 const offered = computed(() => diagrams.value.filter((d) => !props.excludeIds.includes(d.diagram_id)))
 
 const KIND_CHIPS = [
@@ -107,7 +110,7 @@ const KIND_CHIPS = [
       </div>
       <div class="flex min-h-6 items-center justify-between gap-3">
         <p v-if="!error && !(isLoading && diagrams.length === 0)" data-test="diagram-count" class="text-xs font-medium text-ink-muted">
-          {{ t('diagramPickerList.count', { count: total }) }}
+          {{ playable ? t('diagramPickerList.playableCount', { count: total }) : t('diagramPickerList.count', { count: total }) }}
         </p>
         <button
           v-if="hasActiveFilters"

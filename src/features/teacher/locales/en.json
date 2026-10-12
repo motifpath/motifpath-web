@@ -615,7 +615,8 @@
     "kindCustom": "Custom",
     "authorLabel": "Author",
     "clearFilters": "Clear filters",
-    "noMatches": "No diagrams match these filters."
+    "noMatches": "No diagrams match these filters.",
+    "playableCount": "Only diagrams with a playback · {count}"
   },
   "diagramEmbedPicker": {
     "loadErrorMessage": "We couldn't load this diagram.",
