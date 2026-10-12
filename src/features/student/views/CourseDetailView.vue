@@ -324,7 +324,7 @@ async function confirmLeave() {
       <div
         class="contents min-[1120px]:sticky min-[1120px]:top-5 min-[1120px]:flex min-[1120px]:flex-col min-[1120px]:gap-3 min-[1120px]:rounded-lg min-[1120px]:border min-[1120px]:border-border min-[1120px]:bg-surface-raised min-[1120px]:p-4"
       >
-        <ThumbnailImage class="order-1" :url="course.thumbnail_url" size-class="aspect-video w-full rounded-lg" />
+        <ThumbnailImage class="order-1" :url="course.thumbnail_url" fit="contain" size-class="aspect-video w-full rounded-lg" />
 
         <div class="order-3 flex flex-col gap-3">
           <div v-if="enrollment" data-test="course-progress">

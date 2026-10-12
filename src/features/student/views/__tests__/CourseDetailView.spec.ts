@@ -237,6 +237,12 @@ describe('CourseDetailView', () => {
     expect(wrapper.get('[data-test="course-detail-summary"]').text()).toContain('one part at a time')
   })
 
+  it('shows the whole course picture, never cropped', () => {
+    published.course.value = { ...course(), thumbnail_url: 'https://cdn.example/t.png' }
+
+    expect(mountView().get('img').classes()).toContain('object-contain')
+  })
+
   it('renders a legacy course with no author', () => {
     const legacy = course() as unknown as Record<string, unknown>
     delete legacy.created_by

@@ -58,6 +58,12 @@ describe('LearningCard', () => {
     expect(card.find('[data-test="learning-new-version"]').exists()).toBe(false)
   })
 
+  it('shows the whole picture, never cropped', () => {
+    const card = mountCard(only(buildLearning([enrollment({ course_thumbnail_url: 'https://cdn.example/t.png' })], [], null)))
+
+    expect(card.get('img').classes()).toContain('object-contain')
+  })
+
   it('marks the current item with a badge', () => {
     const card = mountCard(only(buildLearning([enrollment()], [], currentPath())))
 

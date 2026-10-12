@@ -55,7 +55,7 @@ function onMore(event: MouseEvent) {
       @click="emit('open')"
     >
       <span class="relative shrink-0">
-        <ThumbnailImage v-if="item.thumbnailUrl" :url="item.thumbnailUrl" size-class="aspect-video w-24 rounded-md" />
+        <ThumbnailImage v-if="item.thumbnailUrl" :url="item.thumbnailUrl" fit="contain" size-class="aspect-video w-24 rounded-md" />
         <span
           v-else
           data-test="learning-thumb-fallback"
