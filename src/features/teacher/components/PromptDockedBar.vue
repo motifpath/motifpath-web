@@ -32,13 +32,14 @@ function openContext() {
 
 <template>
   <Teleport to="body">
-    <!-- Its offset follows the keyboard's height as the browser reports it: a runtime value no
-         utility class can hold. -->
+    <!-- Above every overlay layer (z-40): inside a pop-up's modal the bar would otherwise sit under
+         the modal's scrim, and a tap on it would close the modal. Its offset follows the keyboard's
+         height as the browser reports it: a runtime value no utility class can hold. -->
     <div
       data-test="prompt-docked-bar"
       role="toolbar"
       :aria-label="t('promptEditor.format')"
-      class="fixed inset-x-0 z-30 flex items-center border-t border-border bg-surface-raised px-1 shadow-level2"
+      class="fixed inset-x-0 z-50 flex items-center border-t border-border bg-surface-raised px-1 shadow-level2"
       :style="{ bottom: `${keyboardInset}px` }"
       @mousedown.prevent
     >

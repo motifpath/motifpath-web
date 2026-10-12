@@ -147,7 +147,9 @@ const linkHref = ref('')
 // editor would raise the keyboard over the sheet.
 const commands = usePromptCommands(editor, () => !isCompact.value || openSheet.value === null)
 
-const dockedBarShown = computed(() => isCompact.value && (commands.focused.value || openSheet.value !== null))
+// The bar sits above every layer, so it stays usable inside a pop-up's modal; it steps aside while
+// one of its own sheets is open, which it would otherwise cover.
+const dockedBarShown = computed(() => isCompact.value && commands.focused.value && openSheet.value === null)
 
 function showSheet(sheet: Sheet) {
   openSheet.value = sheet

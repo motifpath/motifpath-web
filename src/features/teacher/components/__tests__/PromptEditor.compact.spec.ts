@@ -188,12 +188,12 @@ describe('PromptEditor on a phone', () => {
       expect(find('prompt-format-sheet')).not.toBeNull()
     })
 
-    it('keeps the bar while the sheet is open, and returns to typing when it closes', async () => {
+    it('steps the bar aside while the sheet is open, and returns to typing when it closes', async () => {
       const w = await mountEditor(plainTextPrompt('Hello'))
       await focusEditor(w)
       await tap('prompt-bar-format')
-      await w.get('.ProseMirror').trigger('blur')
-      expect(find('prompt-docked-bar')).not.toBeNull()
+      // The bar sits above every layer — a pop-up's modal included — so it would cover the sheet.
+      expect(find('prompt-docked-bar')).toBeNull()
 
       const focus = vi.spyOn(editorOf(w).view, 'focus')
       await tap('overlay-close')
