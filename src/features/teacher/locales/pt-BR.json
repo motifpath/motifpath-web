@@ -291,9 +291,9 @@
     "contentTypeLabel": "Tipo de conteúdo",
     "typeLockedHint": "O tipo não pode ser alterado após a criação.",
     "typeUnlockedHint": "Vídeo ou artigo — isso determina quais pop-ups cronometrados este nó pode ter.",
-    "mediaUrlLabel": "URL do vídeo",
+    "mediaUrlLabel": "Ou cole um link",
     "mediaUrlPlaceholder": "https://…",
-    "mediaUrlHint": "Um arquivo de vídeo direto (MP4) ou um link do YouTube — os alunos assistem no player da lição.",
+    "mediaUrlHint": "Um link do YouTube ou de um arquivo MP4 — os alunos assistem no player da lição.",
     "mediaUrlInvalid": "Informe um link completo começando com http:// ou https://",
     "articleBodyLabel": "Artigo",
     "classificationLabel": "Classificação",
@@ -329,7 +329,13 @@
     "publishing": "Publicando…",
     "publishHint": "Publicar salva suas alterações e cria uma nova versão. Quem já recebeu este conteúdo continua com a versão que recebeu.",
     "publishedVersion": "Versão {version} publicada.",
-    "publishFailed": "Falha ao publicar o nó de conteúdo"
+    "publishFailed": "Falha ao publicar o nó de conteúdo",
+    "videoLabel": "Vídeo",
+    "uploadLeaveTitle": "Sair e cancelar o envio?",
+    "uploadLeaveMessage": "O vídeo ainda está sendo enviado. Sair interrompe o envio, e a lição mantém o vídeo que tinha.",
+    "uploadLeaveConfirm": "Sair",
+    "uploadLeaveCancel": "Continuar enviando",
+    "videoPreviewTitle": "Vídeo"
   },
   "contentVersionHistory": {
     "heading": "Histórico de versões",
@@ -733,5 +739,29 @@
     "searchPlaceholder": "Título ou artista",
     "loadFailed": "Não foi possível carregar as cifras.",
     "none": "Nenhuma cifra publicada encontrada."
+  },
+  "videoSource": {
+    "upload": "Enviar um vídeo",
+    "limits": "MP4 (H.264) · até 1 GB",
+    "progress": "{loaded} de {total} · {percent}%",
+    "progressLabel": "Enviando {name}: {percent}%",
+    "cancel": "Cancelar envio",
+    "failed": "O envio parou. Verifique sua conexão e tente de novo.",
+    "retry": "Tentar de novo",
+    "refusedTitle": "Não dá para enviar {name}",
+    "refusedFormat": "Só MP4 (H.264), até 1 GB. No iPhone, ajuste Câmera › Formatos › Mais Compatível.",
+    "refusedSize": "{name} tem {size}; o limite é 1 GB.",
+    "chooseAnother": "Escolher outro arquivo",
+    "uploaded": "MP4 · {size} · enviado",
+    "storedTitle": "Vídeo enviado",
+    "stored": "MP4 · enviado",
+    "more": "Opções do vídeo",
+    "menuTitle": "Vídeo",
+    "play": "Reproduzir",
+    "replace": "Substituir",
+    "useLink": "Usar um link",
+    "remove": "Remover",
+    "megabytes": "{value} MB",
+    "gigabytes": "{value} GB"
   }
 }

@@ -291,9 +291,9 @@
     "contentTypeLabel": "Content type",
     "typeLockedHint": "Type can't be changed after creation.",
     "typeUnlockedHint": "Video or article — this determines which timed pop-ups this node can carry.",
-    "mediaUrlLabel": "Video URL",
+    "mediaUrlLabel": "Or paste a link",
     "mediaUrlPlaceholder": "https://…",
-    "mediaUrlHint": "A direct video file (MP4) or a YouTube link — students watch it in the lesson player.",
+    "mediaUrlHint": "A YouTube link or a link to an MP4 file — students watch it in the lesson player.",
     "mediaUrlInvalid": "Enter a full link starting with http:// or https://",
     "articleBodyLabel": "Article",
     "classificationLabel": "Classification",
@@ -329,7 +329,13 @@
     "publishing": "Publishing…",
     "publishHint": "Publishing saves your changes and creates a new version. Students who already have this content keep the version they got.",
     "publishedVersion": "Published version {version}.",
-    "publishFailed": "Failed to publish the content node"
+    "publishFailed": "Failed to publish the content node",
+    "videoLabel": "Video",
+    "uploadLeaveTitle": "Leave and cancel the upload?",
+    "uploadLeaveMessage": "The video is still uploading. Leaving stops it, and the lesson keeps the video it had.",
+    "uploadLeaveConfirm": "Leave",
+    "uploadLeaveCancel": "Keep uploading",
+    "videoPreviewTitle": "Video"
   },
   "contentVersionHistory": {
     "heading": "Version history",
@@ -733,5 +739,29 @@
     "searchPlaceholder": "Title or artist",
     "loadFailed": "Couldn't load the song charts.",
     "none": "No published song chart matches."
+  },
+  "videoSource": {
+    "upload": "Upload a video",
+    "limits": "MP4 (H.264) · up to 1 GB",
+    "progress": "{loaded} of {total} · {percent}%",
+    "progressLabel": "Uploading {name}: {percent}%",
+    "cancel": "Cancel upload",
+    "failed": "Upload stopped. Check your connection and try again.",
+    "retry": "Try again",
+    "refusedTitle": "{name} can’t be uploaded",
+    "refusedFormat": "Only MP4 (H.264), up to 1 GB. On an iPhone, set Camera › Formats › Most Compatible.",
+    "refusedSize": "{name} is {size}; the limit is 1 GB.",
+    "chooseAnother": "Choose another file",
+    "uploaded": "MP4 · {size} · uploaded",
+    "storedTitle": "Uploaded video",
+    "stored": "MP4 · uploaded",
+    "more": "Video options",
+    "menuTitle": "Video",
+    "play": "Play",
+    "replace": "Replace",
+    "useLink": "Use a link instead",
+    "remove": "Remove",
+    "megabytes": "{value} MB",
+    "gigabytes": "{value} GB"
   }
 }

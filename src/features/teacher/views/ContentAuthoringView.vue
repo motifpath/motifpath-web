@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, shallowRef, useId, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 
 import ArticlePopupListEditor from '@/features/teacher/components/ArticlePopupListEditor.vue'
 import ChallengeModal, { type ChallengeModalInitial } from '@/features/teacher/components/ChallengeModal.vue'
@@ -10,6 +10,7 @@ import ContentVersionHistory from '@/features/teacher/components/ContentVersionH
 import ExpandedContentModal from '@/features/teacher/components/ExpandedContentModal.vue'
 import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
+import VideoSource, { type VideoSourceState } from '@/features/teacher/components/VideoSource.vue'
 import VideoTimelineEditor from '@/features/teacher/components/VideoTimelineEditor.vue'
 import { useContentNode } from '@/features/teacher/composables/useContentNode'
 import { useContentNodeForm } from '@/features/teacher/composables/useContentNodeForm'
@@ -24,10 +25,14 @@ import { useListExpandedContent } from '@/features/teacher/composables/useListEx
 import { usePublishContentNode } from '@/features/teacher/composables/usePublishContentNode'
 import { useSaveChallenge } from '@/features/teacher/composables/useSaveChallenge'
 import { useUpdateContentNode } from '@/features/teacher/composables/useUpdateContentNode'
+import { isUploadedLessonVideo, useVideoUpload } from '@/features/teacher/composables/useVideoUpload'
 import AppBar from '@/shared/components/AppBar.vue'
+import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import OverlayLayer from '@/shared/components/OverlayLayer.vue'
+import SheetHeader from '@/shared/components/SheetHeader.vue'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useIsCompact } from '@/shared/composables/useIsCompact'
 import { useToast } from '@/shared/composables/useToast'
@@ -104,6 +109,82 @@ watch(
 
 const saving = ref(false)
 const thumbnailUploading = ref(false)
+
+// The lesson's video is either uploaded here or a pasted link. The card
+// stands for an upload (in progress, or one saved earlier); the link field
+// shows whenever no upload is the video.
+const videoUpload = useVideoUpload()
+const videoUploading = computed(() => videoUpload.state.value.status === 'uploading')
+const videoSourceState = computed<VideoSourceState>(() => {
+  const upload = videoUpload.state.value
+  if (upload.status !== 'idle') return upload
+  return isUploadedLessonVideo(form.mediaUrl.value) ? { status: 'stored' } : { status: 'idle' }
+})
+const showVideoLink = computed(() => !['uploading', 'uploaded', 'stored'].includes(videoSourceState.value.status))
+const mediaUrlInput = ref<HTMLInputElement | null>(null)
+
+async function onChooseVideo(file: File) {
+  const url = await videoUpload.choose(file)
+  if (url) form.mediaUrl.value = url
+}
+
+async function onRetryVideo() {
+  const url = await videoUpload.retry()
+  if (url) form.mediaUrl.value = url
+}
+
+// "Use a link instead" and "Remove" both drop the uploaded video; the first
+// also puts the cursor in the link field.
+async function clearVideo(focusLink: boolean) {
+  videoUpload.reset()
+  form.mediaUrl.value = ''
+  if (!focusLink) return
+  await nextTick()
+  mediaUrlInput.value?.focus()
+}
+
+const videoPreviewOpen = ref(false)
+const videoPreviewTitleId = useId()
+
+/**
+ * Waits for a video upload in progress so a save carries its URL. False when
+ * the upload failed or was cancelled meanwhile: there is then nothing new to
+ * save as the video.
+ */
+async function awaitVideoUpload(): Promise<boolean> {
+  if (!videoUploading.value) return true
+  const url = await videoUpload.settled()
+  if (!url) return false
+  form.mediaUrl.value = url
+  return true
+}
+
+// Leaving while a video uploads asks first: in the app through a dialog, and
+// on closing or reloading the tab through the browser's own prompt.
+const leaveDialogOpen = ref(false)
+let resolveLeave: ((leave: boolean) => void) | null = null
+
+function answerLeave(leave: boolean) {
+  leaveDialogOpen.value = false
+  if (leave) videoUpload.cancel()
+  resolveLeave?.(leave)
+  resolveLeave = null
+}
+
+onBeforeRouteLeave(() => {
+  if (!videoUploading.value) return true
+  leaveDialogOpen.value = true
+  return new Promise<boolean>((resolve) => (resolveLeave = resolve))
+})
+
+function onBeforeUnload(event: BeforeUnloadEvent) {
+  if (videoUploading.value) event.preventDefault()
+}
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  videoUpload.cancel()
+})
 const justSaved = ref(false)
 let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
 onUnmounted(() => clearTimeout(justSavedTimeout))
@@ -116,7 +197,10 @@ const toast = useToast()
 const hasClassification = computed(
   () => form.skillIds.value.length > 0 && form.conceptIds.value.length > 0,
 )
-const canSave = computed(() => hasClassification.value && form.hasBody.value && !thumbnailUploading.value)
+// A video still uploading counts as the body: saving waits for it (below).
+const canSave = computed(
+  () => hasClassification.value && (form.hasBody.value || videoUploading.value) && !thumbnailUploading.value,
+)
 
 async function persist() {
   const contentNode = savedContentNodeId.value
@@ -132,6 +216,7 @@ async function save() {
   const isUpdate = !!savedContentNodeId.value
 
   try {
+    if (!(await awaitVideoUpload())) return
     await persist()
 
     justSaved.value = true
@@ -175,6 +260,7 @@ async function publish() {
 
   publishing.value = true
   try {
+    if (!(await awaitVideoUpload())) return
     try {
       await persist()
     } catch (e) {
@@ -479,9 +565,23 @@ async function onSaveChallenge({
       </div>
 
       <div v-if="form.contentType.value === 'video'" class="flex flex-col gap-2">
+        <span class="text-sm font-semibold">{{ t('contentAuthoringView.videoLabel') }}</span>
+        <VideoSource
+          :state="videoSourceState"
+          @choose="onChooseVideo"
+          @cancel="videoUpload.cancel()"
+          @retry="onRetryVideo"
+          @play="videoPreviewOpen = true"
+          @use-link="clearVideo(true)"
+          @remove="clearVideo(false)"
+        />
+      </div>
+
+      <div v-if="form.contentType.value === 'video' && showVideoLink" class="flex flex-col gap-2">
         <label for="content-media-url" class="text-sm font-semibold">{{ t('contentAuthoringView.mediaUrlLabel') }}</label>
         <input
           id="content-media-url"
+          ref="mediaUrlInput"
           v-model="form.mediaUrl.value"
           data-test="media-url-input"
           type="url"
@@ -496,7 +596,7 @@ async function onSaveChallenge({
         <span v-else class="text-sm text-ink-subtle">{{ t('contentAuthoringView.mediaUrlHint') }}</span>
       </div>
 
-      <div v-else class="flex flex-col gap-2">
+      <div v-if="form.contentType.value !== 'video'" class="flex flex-col gap-2">
         <label class="text-sm font-semibold">{{ t('contentAuthoringView.articleBodyLabel') }}</label>
         <PromptEditor v-model="form.richContent.value" song-charts />
       </div>
@@ -681,5 +781,35 @@ async function onSaveChallenge({
       @save="onSaveChallenge"
       @close="challengeModalOpen = false"
     />
+
+    <ConfirmDialog
+      :open="leaveDialogOpen"
+      :title="t('contentAuthoringView.uploadLeaveTitle')"
+      :message="t('contentAuthoringView.uploadLeaveMessage')"
+      :confirm-label="t('contentAuthoringView.uploadLeaveConfirm')"
+      :cancel-label="t('contentAuthoringView.uploadLeaveCancel')"
+      @confirm="answerLeave(true)"
+      @cancel="answerLeave(false)"
+    />
+
+    <OverlayLayer :open="videoPreviewOpen" :placement="isCompact ? 'bottom' : 'center'" @close="videoPreviewOpen = false">
+      <div
+        data-test="video-preview"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="videoPreviewTitleId"
+        class="flex flex-col bg-surface-raised pb-4 shadow-level3"
+        :class="isCompact ? 'w-full rounded-t-xl pb-safe' : 'w-[min(48rem,calc(100vw-2rem))] rounded-xl'"
+      >
+        <SheetHeader
+          :kind="isCompact ? 'sheet' : 'dialog'"
+          :title="t('contentAuthoringView.videoPreviewTitle')"
+          :title-id="videoPreviewTitleId"
+          closable
+          @close="videoPreviewOpen = false"
+        />
+        <video :src="form.mediaUrl.value" controls playsinline class="mx-4 aspect-video rounded-lg bg-ink" />
+      </div>
+    </OverlayLayer>
   </div>
 </template>
