@@ -864,7 +864,28 @@
       "byTitle": "Name A–Z",
       "byUpdated": "Recently changed",
       "buttonAriaLabel": "Sort: {sort}"
-    }
+    },
+    "newAriaLabel": "New",
+    "searchPlaceholder": {
+      "diagrams": "Search diagrams",
+      "exercises": "Search exercises",
+      "lessons": "Search lessons",
+      "paths": "Search paths",
+      "courses": "Search courses"
+    },
+    "status": {
+      "all": "All",
+      "draft": "Drafts",
+      "published": "Published",
+      "retired": "Retired",
+      "unpublished_changes": "Unpublished changes"
+    },
+    "statusLabel": "Status",
+    "rootChip": "Root {note}",
+    "noMatchesTitle": "Nothing matches",
+    "noMatchesMessage": "Try another search or fewer filters.",
+    "clearFilters": "Clear filters",
+    "me": "Me"
   },
   "knowledgeFilter": {
     "skill": {

@@ -11,6 +11,7 @@ import { computed } from 'vue'
 
 import AuthorFilterPicker from '@/features/teacher/components/AuthorFilterPicker.vue'
 import KnowledgeFilterPicker from '@/features/teacher/components/KnowledgeFilterPicker.vue'
+import { useAuthoringFilterLabels } from '@/features/teacher/composables/useAuthoringFilterLabels'
 import {
   type AuthoringListFilters,
   type AuthoringSection,
@@ -22,12 +23,11 @@ import {
   sectionFilters,
   sectionTypes,
 } from '@/features/teacher/utils/authoringListQuery'
-import { OFFERED_LANGUAGE_CODES, type MessageKey } from '@/i18n'
+import { OFFERED_LANGUAGE_CODES } from '@/i18n'
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
 import MenuRow from '@/shared/components/MenuRow.vue'
 import RootNoteSelect from '@/shared/components/RootNoteSelect.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { languageLabelKey } from '@/shared/utils/languageLabels'
 import type { TreeNode } from '@/shared/utils/skillConceptTree'
 
 type SingleKey = Exclude<FilterKey, 'skills' | 'concepts' | 'root' | 'author'>
@@ -56,41 +56,25 @@ interface Option {
   label: string
 }
 
-const TYPE_LABELS: Record<string, MessageKey> = {
-  image_recognition: 'common.exerciseTypes.image_recognition',
-  image_choice: 'common.exerciseTypes.image_choice',
-  audio_recognition: 'common.exerciseTypes.audio_recognition',
-  audio_selection: 'common.exerciseTypes.audio_selection',
-  text_response: 'common.exerciseTypes.text_response',
-  video: 'common.contentTypes.video',
-  article: 'common.contentTypes.article',
-}
-
-function typeLabel(type: string): string {
-  const key = TYPE_LABELS[type]
-  return key ? t(key) : type
-}
+const { typeLabel, levelLabel, kindLabel, showsLabel, languageLabel } = useAuthoringFilterLabels()
 
 const choices = computed<Record<SingleKey, Option[]>>(() => {
   const any = { value: undefined, label: t('authoringFilters.any') }
   return {
     type: [any, ...sectionTypes(props.section).map((type) => ({ value: type, label: typeLabel(type) }))],
-    level: [any, ...LEVELS.map((level) => ({ value: level, label: t(`levels.${level}`) }))],
+    level: [any, ...LEVELS.map((level) => ({ value: level, label: levelLabel(level) }))],
     instrument: [any, ...props.instruments.map((instrument) => ({ value: instrument.id, label: instrument.name }))],
     kind: [
       { value: undefined, label: t('authoringFilters.kind.all') },
-      ...DIAGRAM_KINDS.map((kind) => ({ value: kind, label: t(`authoringFilters.kind.${kind}`) })),
+      ...DIAGRAM_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) })),
     ],
     shows: [
       { value: undefined, label: t('authoringFilters.shows.diagrams') },
-      ...DIAGRAM_SHOWS.map((shows) => ({ value: shows, label: t(`authoringFilters.shows.${shows}`) })),
+      ...DIAGRAM_SHOWS.map((shows) => ({ value: shows, label: showsLabel(shows) })),
     ],
     language: [
       any,
-      ...OFFERED_LANGUAGE_CODES.map((code) => {
-        const key = languageLabelKey(code)
-        return { value: code, label: key ? t(key) : code }
-      }),
+      ...OFFERED_LANGUAGE_CODES.map((code) => ({ value: code, label: languageLabel(code) })),
     ],
   }
 })

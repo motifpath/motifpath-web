@@ -864,7 +864,28 @@
       "byTitle": "Nome A–Z",
       "byUpdated": "Alterados recentemente",
       "buttonAriaLabel": "Ordenar: {sort}"
-    }
+    },
+    "newAriaLabel": "Novo",
+    "searchPlaceholder": {
+      "diagrams": "Buscar diagramas",
+      "exercises": "Buscar exercícios",
+      "lessons": "Buscar lições",
+      "paths": "Buscar trilhas",
+      "courses": "Buscar cursos"
+    },
+    "status": {
+      "all": "Todos",
+      "draft": "Rascunhos",
+      "published": "Publicados",
+      "retired": "Descontinuados",
+      "unpublished_changes": "Alterações não publicadas"
+    },
+    "statusLabel": "Status",
+    "rootChip": "Nota {note}",
+    "noMatchesTitle": "Nada encontrado",
+    "noMatchesMessage": "Tente outra busca ou menos filtros.",
+    "clearFilters": "Limpar filtros",
+    "me": "Eu"
   },
   "knowledgeFilter": {
     "skill": {
