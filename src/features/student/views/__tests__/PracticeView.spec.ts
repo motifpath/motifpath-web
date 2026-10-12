@@ -208,6 +208,25 @@ describe('PracticeView', () => {
       expect(view.props('panes')).toBe(true)
     })
 
+    it('plays a diagram sound with no board and nothing revealed, even once chosen, until the review', async () => {
+      const aMinor = makeDiagramRef({ diagram_id: 'a-minor', playback: { playback_id: 'strum', direction: 'as_authored', loop: false } })
+      inProgress(1, ['o1'], [exercise('ex-1'), exercise('ex-2', { exercise_type: 'audio_recognition', diagram_ref: aMinor })])
+      const wrapper = mount(PracticeView, {
+        props: { nodeId: 'node-1' },
+        attachTo: document.body,
+        global: {
+          stubs: {
+            ListenControl: { name: 'ListenControl', props: ['sound'], template: '<div data-test="listen-control" />' },
+            WhatYouHeard: { template: '<div data-test="what-you-heard" />' },
+          },
+        },
+      })
+
+      expect(wrapper.getComponent({ name: 'ListenControl' }).props('sound')).toEqual(aMinor)
+      expect(wrapper.find('[data-test="what-you-heard"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="embedded-diagram"]').exists()).toBe(false)
+    })
+
     it('forwards a choice to the session, without revealing anything', async () => {
       inProgress(2)
       const wrapper = mountView()

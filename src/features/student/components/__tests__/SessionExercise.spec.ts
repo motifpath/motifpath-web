@@ -281,6 +281,13 @@ describe('SessionExercise', () => {
       expect(bar(wrapper).find('[data-test="next-item"]').exists()).toBe(true)
     })
 
+    it('says a sound among the options didn’t load, not a picture', async () => {
+      const wrapper = mountExercise({ item: sounds })
+      await missing(wrapper, 'failed_to_load')
+
+      expect(wrapper.get('[data-test="inline-notice"]').text()).toBe('The sound didn’t load. You need to hear it to answer — try again, or skip it.')
+    })
+
     it('starts the next exercise with its stimulus expected', async () => {
       const wrapper = mountExercise({ item: listening })
       await missing(wrapper, 'failed_to_load')
@@ -414,5 +421,29 @@ describe('SessionExercise', () => {
 
     expect(wrapper.get('[data-test="stimulus-pane"]').find('[data-test="exercise-stimulus-image"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="interaction-pane"]').find('[data-test="item-title"]').text()).toBe('Name the interval')
+  })
+
+  describe('a sound played from a diagram', () => {
+    const aMinor = makeDiagramRef({ diagram_id: 'a-minor', playback: { playback_id: 'strum', direction: 'as_authored', loop: false } })
+    const fromADiagram: Item = { ...listening, item_key: 'exercise:ex-5' }
+    fromADiagram.exercise = { ...listening.exercise!, exercise_id: 'ex-5', audio_url: undefined, diagram_ref: aMinor }
+    const stubs = {
+      ListenControl: { name: 'ListenControl', props: ['sound'], template: '<div data-test="listen-control" />' },
+      WhatYouHeard: { name: 'WhatYouHeard', props: ['sound'], template: '<div data-test="what-you-heard" />' },
+    }
+    const mountFromADiagram = (answer: Answer = null) =>
+      mount(SessionExercise, { props: { item: fromADiagram, answer }, attachTo: document.body, global: { stubs } })
+
+    it('offers Listen and no reveal before the answer', () => {
+      const wrapper = mountFromADiagram()
+      expect(wrapper.find('[data-test="listen-control"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="what-you-heard"]').exists()).toBe(false)
+    })
+
+    it('shows what was heard with the feedback once answered', () => {
+      const wrapper = mountFromADiagram({ optionIds: ['right'], correct: true })
+      expect(wrapper.getComponent({ name: 'WhatYouHeard' }).props('sound')).toEqual(aMinor)
+      expect(wrapper.find('[data-test="answer-feedback"]').exists()).toBe(true)
+    })
   })
 })

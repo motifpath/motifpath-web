@@ -4,12 +4,14 @@
  * exercise with the answer the student moved on with, marked right or wrong, and the right one
  * under a wrong answer. An exercise answered on its stimulus (image regions, diagram markers) has
  * options with no names to list, so it shows the stimulus with the answer marked on it instead.
+ * A listening exercise whose sound was a diagram reveals that diagram under the answer.
  */
 import { CircleCheck, CircleX } from 'lucide-vue-next'
 
 import type { ReviewEntry } from '@/features/student/composables/usePracticeSession'
 import ExerciseView from '@/shared/components/ExerciseView.vue'
 import PromptRenderer from '@/shared/components/PromptRenderer.vue'
+import WhatYouHeard from '@/shared/components/WhatYouHeard.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 defineProps<{ entries: ReviewEntry[] }>()
@@ -79,6 +81,11 @@ const rowClasses = {
             <CircleCheck :size="24" class="shrink-0 text-success" aria-hidden="true" />
             <span class="sr-only">{{ t('challengeRun.review.right') }}</span>
           </div>
+          <WhatYouHeard
+            v-if="entry.exercise.exercise_type === 'audio_recognition' && entry.exercise.diagram_ref"
+            :sound="entry.exercise.diagram_ref"
+            class="mt-2"
+          />
         </template>
 
         <ExerciseView
