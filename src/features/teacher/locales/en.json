@@ -959,5 +959,24 @@
     "use": "Use this sound",
     "loadFailed": "We couldn’t load this diagram.",
     "unavailable": "This diagram can’t be played to students yet."
+  },
+  "soundSource": {
+    "choose": "Choose the sound",
+    "chooseHint": "Upload audio, or play a diagram or a chord",
+    "chooseTitle": "Choose the sound",
+    "upload": "Upload audio",
+    "fromDiagram": "From a diagram",
+    "chooseNote": "From a diagram: students hear it first; the shape is shown only after they answer (“What you heard”).",
+    "diagramTitle": "{diagram} — {playback}",
+    "diagramMeta": "From a diagram · {bpm} BPM · {length}",
+    "fileTitle": "Uploaded audio",
+    "fileMeta": "An audio file",
+    "hidden": "Hidden from students until they answer.",
+    "play": "Play",
+    "stop": "Stop",
+    "more": "More for {title}",
+    "change": "Change sound",
+    "edit": "Edit settings",
+    "remove": "Remove"
   }
 }

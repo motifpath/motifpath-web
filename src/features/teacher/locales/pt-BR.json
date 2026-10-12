@@ -959,5 +959,24 @@
     "use": "Usar este som",
     "loadFailed": "Não foi possível carregar este diagrama.",
     "unavailable": "Este diagrama ainda não pode ser tocado para os alunos."
+  },
+  "soundSource": {
+    "choose": "Escolher o som",
+    "chooseHint": "Envie um áudio, ou toque um diagrama ou um acorde",
+    "chooseTitle": "Escolher o som",
+    "upload": "Enviar áudio",
+    "fromDiagram": "De um diagrama",
+    "chooseNote": "De um diagrama: os alunos ouvem primeiro; o formato só aparece depois que respondem (“O que você ouviu”).",
+    "diagramTitle": "{diagram} — {playback}",
+    "diagramMeta": "De um diagrama · {bpm} BPM · {length}",
+    "fileTitle": "Áudio enviado",
+    "fileMeta": "Um arquivo de áudio",
+    "hidden": "Escondido dos alunos até responderem.",
+    "play": "Tocar",
+    "stop": "Parar",
+    "more": "Mais opções de {title}",
+    "change": "Trocar som",
+    "edit": "Editar ajustes",
+    "remove": "Remover"
   }
 }
