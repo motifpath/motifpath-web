@@ -170,6 +170,8 @@
     "upToDate": "{title} is up to date"
   },
   "courseDetailView": {
+    "newVersionHeading": "A newer version is available",
+    "newVersionMessage": "Get the latest parts, lessons and picture. Lessons you finished stay finished.",
     "errorMessage": "We couldn't load this course.",
     "notFoundHeading": "This course is not published yet",
     "notFoundMessage": "This course is not available in the catalog.",

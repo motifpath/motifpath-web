@@ -170,6 +170,8 @@
     "upToDate": "Você já tem a versão mais recente de {title}"
   },
   "courseDetailView": {
+    "newVersionHeading": "Há uma versão mais recente",
+    "newVersionMessage": "Receba as partes, aulas e imagem mais recentes. As aulas que você concluiu continuam concluídas.",
     "errorMessage": "Não foi possível carregar este curso.",
     "notFoundHeading": "Este curso ainda não foi publicado",
     "notFoundMessage": "Este curso não está disponível no catálogo.",
