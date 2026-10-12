@@ -8,12 +8,23 @@ import { overlayInPlaceKey } from '@/shared/composables/overlayInPlace'
 import { installOverlayHistory } from '@/shared/composables/useOverlayHistory'
 
 let wrappers: VueWrapper[] = []
+// jsdom steps through history asynchronously, like a browser, and how long that takes depends on
+// how loaded the test run is: tests wait for the outcome itself, never for a fixed pause.
+const WAIT = { timeout: 2000 }
+
+/** Waits until the current history entry is no layer's. */
+function layerEntryGone() {
+  return vi.waitFor(() => expect(window.history.state?.overlay).toBeFalsy(), WAIT)
+}
+
 afterEach(async () => {
   wrappers.forEach((wrapper) => wrapper.unmount())
   wrappers = []
   // A layer unmounted while open takes its history entry off a moment later; let that finish
-  // here rather than inside the next test.
-  await new Promise((resolve) => setTimeout(resolve, 30))
+  // here rather than inside the next test. A test that leaves a layer's entry behind on purpose
+  // never sees it go, so the wait gives up quietly and the entry is cleared by hand.
+  await layerEntryGone().catch(() => undefined)
+  window.history.replaceState(null, '')
 })
 
 /** A page with a trigger button and a layer it opens, attached to the document so focus is real. */
@@ -135,18 +146,12 @@ describe('OverlayLayer', () => {
       expect(window.history.state?.overlay).toBeTruthy()
 
       await wrapper.get('[data-test="panel"]').trigger('keydown', { key: 'Escape' })
-      // history.back() is asynchronous in a browser and in jsdom alike.
-      await new Promise((resolve) => setTimeout(resolve, 20))
 
-      expect(window.history.state?.overlay).toBeFalsy()
+      await layerEntryGone()
     })
   })
 
   describe('with the app router', () => {
-    function settle() {
-      return new Promise((resolve) => setTimeout(resolve, 30))
-    }
-
     let routeUpdates = 0
 
     async function mountRoutedPage() {
@@ -184,9 +189,7 @@ describe('OverlayLayer', () => {
       await nextTick()
 
       window.history.back()
-      // jsdom delivers popstate asynchronously; under a loaded test run a fixed
-      // pause can end before it arrives, so wait for the layer to close.
-      await vi.waitFor(() => expect(wrapper.find('[data-test="panel"]').exists()).toBe(false), { timeout: 2000 })
+      await vi.waitFor(() => expect(wrapper.find('[data-test="panel"]').exists()).toBe(false), WAIT)
 
       expect(router.currentRoute.value.name).toBe('page')
     })
@@ -197,7 +200,7 @@ describe('OverlayLayer', () => {
       await nextTick()
 
       await wrapper.get('[data-test="panel"]').trigger('keydown', { key: 'Escape' })
-      await settle()
+      await layerEntryGone()
 
       expect(router.currentRoute.value.name).toBe('page')
       expect(window.location.pathname).toBe('/page')
@@ -209,10 +212,9 @@ describe('OverlayLayer', () => {
       await nextTick()
 
       await router.push('/other')
-      await settle()
 
+      await vi.waitFor(() => expect(wrapper.find('[data-test="other"]').exists()).toBe(true), WAIT)
       expect(router.currentRoute.value.name).toBe('other')
-      expect(wrapper.find('[data-test="other"]').exists()).toBe(true)
     })
 
     it("stepping over the layer's own entry is not a navigation: the page's route guards don't run", async () => {
@@ -220,12 +222,12 @@ describe('OverlayLayer', () => {
       await wrapper.get('[data-test="trigger"]').trigger('click')
       await nextTick()
       await wrapper.get('[data-test="panel"]').trigger('keydown', { key: 'Escape' })
-      await settle()
+      await layerEntryGone()
 
       await wrapper.get('[data-test="trigger"]').trigger('click')
       await nextTick()
       window.history.back()
-      await settle()
+      await vi.waitFor(() => expect(wrapper.find('[data-test="panel"]').exists()).toBe(false), WAIT)
 
       expect(routeUpdates).toBe(0)
     })
@@ -238,10 +240,12 @@ describe('OverlayLayer', () => {
 
       await wrapper.get('[data-test="panel"]').trigger('keydown', { key: 'Escape' })
       void router.push('/other')
-      await settle()
+      await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('other'), WAIT)
+      // Gives a wrong step back the chance to happen; a slow run can only make this pass late,
+      // never fail it.
+      await new Promise((resolve) => setTimeout(resolve, 30))
 
       expect(back).not.toHaveBeenCalled()
-      expect(router.currentRoute.value.name).toBe('other')
       back.mockRestore()
     })
   })
