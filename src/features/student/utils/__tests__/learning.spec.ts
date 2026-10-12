@@ -176,3 +176,34 @@ describe('nextInProgress', () => {
     expect(nextInProgress(only, only.inProgress[0]!)).toBeNull()
   })
 })
+
+describe('buildLearning — a newer version', () => {
+  it('marks a course or path in progress that the server says is behind', () => {
+    const groups = buildLearning(
+      [enrollment({ update_available: true })],
+      [standalonePath({ update_available: true })],
+      null,
+    )
+
+    expect(groups.inProgress.map((item) => item.updateAvailable)).toEqual([true, true])
+  })
+
+  it('leaves an up-to-date item unmarked', () => {
+    const groups = buildLearning([enrollment()], [standalonePath()], null)
+
+    expect(groups.inProgress.map((item) => item.updateAvailable)).toEqual([false, false])
+  })
+
+  it('never marks a finished or left item', () => {
+    const groups = buildLearning(
+      [
+        enrollment({ course_enrollment_id: 'e-1', status: 'completed', update_available: true }),
+        enrollment({ course_enrollment_id: 'e-2', status: 'abandoned', update_available: true }),
+      ],
+      [standalonePath({ lesson_count: 9, completed_count: 9, update_available: true })],
+      null,
+    )
+
+    expect([...groups.finished, ...groups.left].some((item) => item.updateAvailable)).toBe(false)
+  })
+})
