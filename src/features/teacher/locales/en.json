@@ -285,7 +285,7 @@
   },
   "challengeConfigPanel": {
     "subjectLabel": "Subject",
-    "subjectHint": "Exactly one of skill or concept — must be one of this node's own linked skills/concepts.",
+    "subjectHint": "A skill, a concept, or both — each must be one of this node's own linked skills/concepts.",
     "subjectSkillLabel": "Subject skill",
     "subjectConceptLabel": "Subject concept",
     "passThresholdLabel": "Pass threshold (%)",

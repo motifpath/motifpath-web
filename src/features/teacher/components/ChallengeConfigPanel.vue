@@ -22,16 +22,6 @@ const emit = defineEmits<{
   'update:shuffleOptions': [value: boolean]
 }>()
 
-function onSkillSelected(ids: string[]) {
-  emit('update:subjectSkillId', ids[0])
-  if (ids[0]) emit('update:subjectConceptId', undefined)
-}
-
-function onConceptSelected(ids: string[]) {
-  emit('update:subjectConceptId', ids[0])
-  if (ids[0]) emit('update:subjectSkillId', undefined)
-}
-
 const { t } = useTypedT()
 </script>
 
@@ -48,7 +38,7 @@ const { t } = useTypedT()
       :selected-ids="subjectSkillId ? [subjectSkillId] : []"
       :allowed-ids="allowedSkillIds ?? null"
       :multiple="false"
-      @update:selected-ids="onSkillSelected"
+      @update:selected-ids="emit('update:subjectSkillId', $event[0])"
     />
 
     <SkillConceptTreePicker
@@ -57,7 +47,7 @@ const { t } = useTypedT()
       :selected-ids="subjectConceptId ? [subjectConceptId] : []"
       :allowed-ids="allowedConceptIds ?? null"
       :multiple="false"
-      @update:selected-ids="onConceptSelected"
+      @update:selected-ids="emit('update:subjectConceptId', $event[0])"
     />
 
     <div class="flex flex-col gap-1.5">
