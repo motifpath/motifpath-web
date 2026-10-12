@@ -2,7 +2,19 @@
 import { computed } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-const props = defineProps<{ completed: number; total: number }>()
+const props = withDefaults(
+  defineProps<{
+    completed: number
+    total: number
+    /** The short count beside the bar, when it needs a unit ("1 of 4 parts"). */
+    label?: string
+    /** The bar's full sentence for a screen reader, to go with `label`. */
+    summary?: string
+    /** `success` for something finished. */
+    tone?: 'accent' | 'success'
+  }>(),
+  { label: undefined, summary: undefined, tone: 'accent' },
+)
 
 const percent = computed(() => (props.total === 0 ? 0 : (props.completed / props.total) * 100))
 
@@ -18,10 +30,15 @@ const { t } = useTypedT()
       :aria-valuenow="completed"
       aria-valuemin="0"
       :aria-valuemax="total"
-      :aria-label="t('progressMeter.summary', { completed, total })"
+      :aria-label="summary ?? t('progressMeter.summary', { completed, total })"
     >
-      <div class="h-1.5 rounded-full bg-accent" :style="{ width: `${percent}%` }" />
+      <div
+        data-test="progress-fill"
+        class="h-1.5 rounded-full"
+        :class="tone === 'success' ? 'bg-success' : 'bg-accent'"
+        :style="{ width: `${percent}%` }"
+      />
     </div>
-    <span class="text-sm tabular-nums text-ink-muted" aria-hidden="true">{{ t('progressMeter.short', { completed, total }) }}</span>
+    <span class="text-sm tabular-nums text-ink-muted" aria-hidden="true">{{ label ?? t('progressMeter.short', { completed, total }) }}</span>
   </div>
 </template>
