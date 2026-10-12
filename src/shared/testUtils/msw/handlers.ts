@@ -23,6 +23,7 @@ export const endpoints = {
   practiceSummary: '*/students/me/practice-summary',
   studentPath: '*/students/me/path',
   publishedSongChart: '*/song-charts/:song_chart_id/published',
+  publishedCourse: '*/courses/:course_id/published',
   startingPoints: '*/catalog/starting-points',
   catalogPaths: '*/catalog/paths',
   catalogCourses: '*/catalog/courses',
@@ -76,6 +77,9 @@ export const defaultHandlers: Record<Endpoint, HttpHandler> = {
   studentPath: respondWith('studentPath', fixtures.studentPath),
   publishedSongChart: http.get(endpoints.publishedSongChart, ({ params }) =>
     HttpResponse.json(makeLearnerSongChart({ song_chart_id: String(params.song_chart_id) })),
+  ),
+  publishedCourse: http.get(endpoints.publishedCourse, ({ params }) =>
+    HttpResponse.json({ ...fixtures.publishedCourse, course_id: String(params.course_id) }),
   ),
   songCharts: respondWith('songCharts', { items: [], total: 0, limit: 20, offset: 0 }),
   events: http.post(endpoints.events, () => new HttpResponse(null, { status: 202 })),

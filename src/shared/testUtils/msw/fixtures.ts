@@ -185,3 +185,24 @@ export const startingPoints: Schemas['StartingPoints'] = {
     { kind: 'course', course: basics },
   ],
 }
+
+/** "Guitar foundations" as published: 4 parts, 44 lessons. */
+export const publishedCourse: Schemas['CourseDetail'] = {
+  course_id: 'course-guitar-foundations',
+  title: 'Guitar foundations',
+  summary: 'Chords, strumming and your first songs, one part at a time.',
+  level: 'beginner',
+  language: 'en',
+  created_by: creators[0]!,
+  status: 'published',
+  published_at: '2026-09-01T00:00:00Z',
+  instrument_ids: ['instrument-guitar'],
+  checkpoints: [
+    { position: 1, title: 'Open chords', items: [] },
+    { position: 2, title: 'Major triads', items: [] },
+    { position: 3, title: 'Seventh chords', items: [] },
+    { position: 4, title: 'Accompany a song', items: [] },
+  ],
+  checkpoint_count: 4,
+  lesson_count: 44,
+}
