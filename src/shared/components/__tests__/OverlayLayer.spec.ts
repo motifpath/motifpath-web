@@ -184,9 +184,10 @@ describe('OverlayLayer', () => {
       await nextTick()
 
       window.history.back()
-      await settle()
+      // jsdom delivers popstate asynchronously; under a loaded test run a fixed
+      // pause can end before it arrives, so wait for the layer to close.
+      await vi.waitFor(() => expect(wrapper.find('[data-test="panel"]').exists()).toBe(false), { timeout: 2000 })
 
-      expect(wrapper.find('[data-test="panel"]').exists()).toBe(false)
       expect(router.currentRoute.value.name).toBe('page')
     })
 
