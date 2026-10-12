@@ -11,8 +11,8 @@
  * preview plays with them.
  *
  * A chord (a diagram with a voicing's chord data) previews as its chord box,
- * with Box | Neck; the box takes no taps, so positions are hidden or marked
- * on the neck.
+ * with Box | Neck; a tap on a note marks or hides it on the box as on the
+ * neck.
  *
  * Edits the draft it's given; the caller reads the ref from it.
  */
@@ -143,6 +143,11 @@ function intervalLabel(code: IntervalCode): string {
         :label="localizedName(diagram.names)"
         :scale="2"
         :active-position-ids="playingPositionIds"
+        :selectable-position-ids="allPositionIds"
+        :hidden-position-ids="draft.hiddenPositionIds.value"
+        reveal-hidden
+        :correct-position-ids="answers ? draft.correctPositionIds.value : []"
+        @select="onPositionClick"
       />
       <FrettedDiagramView
         v-else-if="instrument && previewRef"

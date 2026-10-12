@@ -39,10 +39,10 @@ const VOICES = [
 const guitar = makeFrettedInstrument()
 const playable = makeSequencedFrettedDiagram()
 
-function mountControls(diagram: Diagram, initial: DiagramRef | null = null) {
+function mountControls(diagram: Diagram, initial: DiagramRef | null = null, answers = false) {
   const draft = useDiagramEmbedDraft(initial)
   draft.select(diagram)
-  const wrapper = mount(DiagramRefControls, { props: { diagram, instrument: guitar, draft } })
+  const wrapper = mount(DiagramRefControls, { props: { diagram, instrument: guitar, draft, answers } })
   return { wrapper, draft }
 }
 
@@ -216,6 +216,32 @@ describe('DiagramRefControls preview of a chord', () => {
 
     expect(preview(wrapper).findComponent(FrettedDiagramView).exists()).toBe(true)
     expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
+  })
+
+  it("hides and shows a chord's notes by tapping them on its box, faded so they can be shown again", async () => {
+    const { wrapper } = mountControls(chord)
+    await flushPromises()
+    const box = () => preview(wrapper).getComponent(ChordBox)
+    const first = chord.positions[0]!.position_id!
+
+    expect(box().props('selectablePositionIds')).toEqual(chord.positions.map((p) => p.position_id))
+    expect(box().props('revealHidden')).toBe(true)
+    box().vm.$emit('select', first)
+    await flushPromises()
+
+    expect(box().props('hiddenPositionIds')).toEqual([first])
+  })
+
+  it("marks a stimulus chord's answers on its box", async () => {
+    const { wrapper } = mountControls(chord, null, true)
+    await flushPromises()
+    const box = () => preview(wrapper).getComponent(ChordBox)
+    const first = chord.positions[0]!.position_id!
+
+    box().vm.$emit('select', first)
+    await flushPromises()
+
+    expect(box().props('correctPositionIds')).toEqual([first])
   })
 
   it("doesn't say students can't see a diagram it draws, with or without a playback", async () => {
