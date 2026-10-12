@@ -123,7 +123,7 @@ const MENU_ROW =
           <Square v-if="filePlaying" :size="16" fill="currentColor" aria-hidden="true" />
           <Play v-else :size="20" aria-hidden="true" />
         </button>
-        <audio ref="player" :src="sound.url" class="hidden" @play="filePlaying = true" @pause="filePlaying = false" @ended="filePlaying = false" />
+        <audio ref="player" :src="sound.url" preload="none" class="hidden" @play="filePlaying = true" @pause="filePlaying = false" @ended="filePlaying = false" />
       </template>
       <button
         type="button"
