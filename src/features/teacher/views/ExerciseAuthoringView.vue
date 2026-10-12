@@ -460,7 +460,7 @@ const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 
         </label>
         <div class="flex flex-col gap-1.5">
           <span :class="labelClass">{{ t('exerciseAuthoringView.promptLabel') }}</span>
-          <PromptEditor v-model="form.prompt.value" />
+          <PromptEditor v-model="form.prompt.value" :label="t('exerciseAuthoringView.promptLabel')" />
         </div>
         <div class="flex flex-col gap-1.5">
           <span :class="labelClass">{{ t('exerciseAuthoringView.exerciseTypeLabel') }}</span>

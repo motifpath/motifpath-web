@@ -50,52 +50,24 @@ const StyledTableHeader = TableHeader.extend({
 import TextAlign from '@tiptap/extension-text-align'
 import TiptapText from '@tiptap/extension-text'
 import { BackgroundColor, Color, TextStyle } from '@tiptap/extension-text-style'
-import ColorPaletteMenu from '@/shared/components/ColorPaletteMenu.vue'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
-import {
-  Baseline,
-  Bold as BoldIcon,
-  Columns3,
-  Redo2,
-  Undo2,
-  Frame,
-  Guitar,
-  Heading1,
-  Heading2,
-  Heading3,
-  Highlighter,
-  Image as ImageIcon,
-  Italic as ItalicIcon,
-  Link as LinkIcon,
-  List,
-  ListOrdered,
-  Merge,
-  Minus,
-  AlignCenter,
-  AlignJustify,
-  AlignLeft,
-  AlignRight,
-  PaintBucket,
-  PanelLeft,
-  PanelTop,
-  Pilcrow,
-  Plus,
-  Rows3,
-  Split,
-  SquareDashed,
-  Strikethrough,
-  Table2,
-  Trash2,
-  Music,
-} from 'lucide-vue-next'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import DiagramEmbedPickerModal from '@/features/teacher/components/DiagramEmbedPickerModal.vue'
+import PromptDockedBar from '@/features/teacher/components/PromptDockedBar.vue'
+import PromptFormatSheet from '@/features/teacher/components/PromptFormatSheet.vue'
+import PromptInsertSheet from '@/features/teacher/components/PromptInsertSheet.vue'
+import PromptLinkSheet from '@/features/teacher/components/PromptLinkSheet.vue'
+import PromptTableSheet from '@/features/teacher/components/PromptTableSheet.vue'
+import PromptWideToolbar from '@/features/teacher/components/PromptWideToolbar.vue'
 import SongChartPickerModal from '@/features/teacher/components/SongChartPickerModal.vue'
 import { PromptSongChartNode } from '@/features/teacher/components/promptSongChartNode'
 import { PromptDiagramNode } from '@/features/teacher/components/promptDiagramNode'
+import { CellsAcrossSelection } from '@/features/teacher/components/cellsAcrossSelection'
 import { useMediaUpload } from '@/features/teacher/composables/useMediaUpload'
+import { usePromptCommands } from '@/features/teacher/composables/usePromptCommands'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { parseDiagramEmbed } from '@/shared/utils/diagramEmbed'
 import { useToast } from '@/shared/composables/useToast'
 import type { components } from '@/api/generated/core-domain'
@@ -106,6 +78,8 @@ type DiagramRef = components['schemas']['DiagramRef']
 const props = withDefaults(
   defineProps<{
     modelValue: PromptDocument
+    /** Names the text field for assistive technology: the label the form shows beside it. */
+    label: string
     /** Whether the document may embed song charts: only lesson content does, never an exercise. */
     songCharts?: boolean
   }>(),
@@ -126,10 +100,9 @@ function toWireDocument(json: unknown): PromptDocument {
   return JSON.parse(JSON.stringify(json))
 }
 
-const activeStateTick = ref(0)
-
 const editor = useEditor({
   content: toWireDocument(props.modelValue),
+  editorProps: { attributes: { 'aria-label': props.label } },
   extensions: [
     History,
     Document,
@@ -152,6 +125,7 @@ const editor = useEditor({
     TableRow,
     StyledTableHeader,
     StyledTableCell,
+    CellsAcrossSelection,
     TiptapImage,
     PromptDiagramNode.configure({ onEdit: editDiagram }),
     PromptSongChartNode.configure({ onReplace: replaceSongChart }),
@@ -159,42 +133,70 @@ const editor = useEditor({
   onUpdate: ({ editor: current }) => {
     emit('update:modelValue', toWireDocument(current.getJSON()))
   },
-  // @tiptap/vue-3's editor ref is a plain shallowRef set once on mount —
-  // it never re-fires Vue's reactivity on its own, so isActive() calls in
-  // the template (button highlighting, the table-controls v-if) would
-  // otherwise never re-evaluate as the selection moves or marks toggle.
-  // Bumping this counter on every transaction, and reading it inside the
-  // isActive() helper below, gives the template a dependency to re-render
-  // the whole toolbar on.
-  onTransaction: () => {
-    activeStateTick.value++
-  },
 })
 
-function isActive(
-  nameOrAttrs: string | Record<string, unknown>,
-  attrs?: Record<string, unknown>,
-): boolean {
-  void activeStateTick.value
-  if (!editor.value) return false
-  return typeof nameOrAttrs === 'string'
-    ? editor.value.isActive(nameOrAttrs, attrs)
-    : editor.value.isActive(nameOrAttrs)
+const { isCompact } = useSizeClass()
+
+// On a phone the commands are spread over a docked bar and sheets; only one sheet is open at a time.
+// The Link sheet is a dialog from Medium up, in place of a browser prompt.
+type Sheet = 'format' | 'insert' | 'table' | 'link'
+const openSheet = ref<Sheet | null>(null)
+const linkHref = ref('')
+
+// A command run from an open sheet on a phone leaves the focus where it is: putting it back in the
+// editor would raise the keyboard over the sheet.
+const commands = usePromptCommands(editor, () => !isCompact.value || openSheet.value === null)
+
+const dockedBarShown = computed(() => isCompact.value && (commands.focused.value || openSheet.value !== null))
+
+function showSheet(sheet: Sheet) {
+  openSheet.value = sheet
+}
+/** Closes the open sheet; on a phone, `refocus` returns the cursor to the text, keyboard and all. */
+function closeSheet({ refocus = true } = {}) {
+  openSheet.value = null
+  if (refocus && isCompact.value) editor.value?.commands.focus()
 }
 
-function canUndo(): boolean {
-  void activeStateTick.value
-  return editor.value?.can().undo() ?? false
+function openLinkSheet() {
+  linkHref.value = commands.currentLink()
+  showSheet('link')
 }
-function canRedo(): boolean {
-  void activeStateTick.value
-  return editor.value?.can().redo() ?? false
+function applyLink(href: string) {
+  closeSheet({ refocus: false })
+  commands.setLink(href)
 }
-function undo() {
-  editor.value?.chain().focus().undo().run()
+function removeLink() {
+  closeSheet({ refocus: false })
+  commands.unsetLink()
 }
-function redo() {
-  editor.value?.chain().focus().redo().run()
+
+function insertTableFromSheet() {
+  closeSheet({ refocus: false })
+  commands.insertTable()
+}
+function pickImageFromSheet() {
+  closeSheet({ refocus: false })
+  pickImage()
+}
+function insertDiagramFromSheet() {
+  closeSheet({ refocus: false })
+  insertDiagram()
+}
+function insertSongChartFromSheet() {
+  closeSheet({ refocus: false })
+  openSongChartPicker()
+}
+
+function editSelectedBlock() {
+  const block = commands.selectedBlock()
+  if (!block) return
+  if (block.type === 'diagram') editDiagram(block.pos)
+  else replaceSongChart(block.pos)
+}
+
+function hideKeyboard() {
+  editor.value?.commands.blur()
 }
 
 // The prompt field can be reloaded out from under the editor when a teacher
@@ -210,84 +212,6 @@ watch(
   },
 )
 
-function setHeading(level: 1 | 2 | 3) {
-  editor.value?.chain().focus().toggleHeading({ level }).run()
-}
-function setParagraph() {
-  editor.value?.chain().focus().setParagraph().run()
-}
-function setAlign(align: 'left' | 'center' | 'right' | 'justify') {
-  editor.value?.chain().focus().setTextAlign(align).run()
-}
-function insertTable() {
-  editor.value?.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run()
-}
-function addColumn() {
-  editor.value?.chain().focus().addColumnAfter().run()
-}
-function deleteColumn() {
-  editor.value?.chain().focus().deleteColumn().run()
-}
-function addRow() {
-  editor.value?.chain().focus().addRowAfter().run()
-}
-function deleteRow() {
-  editor.value?.chain().focus().deleteRow().run()
-}
-function deleteTable() {
-  editor.value?.chain().focus().deleteTable().run()
-}
-function toggleHeaderRow() {
-  editor.value?.chain().focus().toggleHeaderRow().run()
-}
-function toggleHeaderColumn() {
-  editor.value?.chain().focus().toggleHeaderColumn().run()
-}
-function toggleHeaderCell() {
-  editor.value?.chain().focus().toggleHeaderCell().run()
-}
-function mergeCells() {
-  editor.value?.chain().focus().mergeCells().run()
-}
-function splitCell() {
-  editor.value?.chain().focus().splitCell().run()
-}
-function currentCellAttrs(): Record<string, unknown> {
-  if (!editor.value) return {}
-  return editor.value.isActive('tableHeader') ? editor.value.getAttributes('tableHeader') : editor.value.getAttributes('tableCell')
-}
-function currentCellBackground(): string | null {
-  void activeStateTick.value
-  const color = currentCellAttrs().backgroundColor
-  return typeof color === 'string' ? color : null
-}
-function currentTextStyle(key: 'color' | 'backgroundColor'): string | null {
-  void activeStateTick.value
-  const value = editor.value?.getAttributes('textStyle')[key]
-  return typeof value === 'string' ? value : null
-}
-function toggleCellBorder() {
-  const hasNoBorder = currentCellAttrs().borderColor === 'transparent'
-  editor.value?.chain().focus().setCellAttribute('borderColor', hasNoBorder ? null : 'transparent').run()
-}
-function setCellBackground(color: string | null) {
-  editor.value?.chain().focus().setCellAttribute('backgroundColor', color).run()
-}
-function setLink() {
-  const url = window.prompt(t('promptEditor.linkUrlPrompt'))
-  if (!url) return
-  editor.value?.chain().focus().setLink({ href: url }).run()
-}
-function setFontColor(color: string | null) {
-  const chain = editor.value?.chain().focus()
-  if (color) chain?.setColor(color).run()
-  else chain?.unsetColor().run()
-}
-function setBackgroundColor(color: string | null) {
-  const chain = editor.value?.chain().focus()
-  if (color) chain?.setBackgroundColor(color).run()
-  else chain?.unsetBackgroundColor().run()
-}
 function pickImage() {
   imageInput.value?.click()
 }
@@ -376,362 +300,56 @@ async function onImagePicked(event: Event) {
 
 <template>
   <div class="flex flex-col gap-2">
-    <div class="sticky top-16 z-10 flex flex-col gap-1.5 bg-surface pb-1.5">
-      <div
-        class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5"
-      >
-        <button
-          type="button"
-          data-test="prompt-toolbar-undo"
-          class="rounded p-1.5 text-ink-muted disabled:opacity-40"
-          :title="t('promptEditor.undo')"
-          :disabled="!canUndo()"
-          @click="undo()"
-        >
-          <Undo2 :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-redo"
-          class="rounded p-1.5 text-ink-muted disabled:opacity-40"
-          :title="t('promptEditor.redo')"
-          :disabled="!canRedo()"
-          @click="redo()"
-        >
-          <Redo2 :size="16" aria-hidden="true" />
-        </button>
-
-        <div class="mx-1 h-4 w-px bg-border" />
-
-        <button
-          type="button"
-          data-test="prompt-toolbar-h1"
-          class="rounded p-1.5"
-          :class="isActive('heading', { level: 1 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setHeading(1)"
-        >
-          <Heading1 :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-h2"
-          class="rounded p-1.5"
-          :class="isActive('heading', { level: 2 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setHeading(2)"
-        >
-          <Heading2 :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-h3"
-          class="rounded p-1.5"
-          :class="isActive('heading', { level: 3 }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setHeading(3)"
-        >
-          <Heading3 :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-paragraph"
-          class="rounded p-1.5"
-          :class="isActive('paragraph') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setParagraph()"
-        >
-          <Pilcrow :size="16" aria-hidden="true" />
-        </button>
-
-        <div class="mx-1 h-4 w-px bg-border" />
-
-        <button
-          type="button"
-          data-test="prompt-toolbar-bold"
-          class="rounded p-1.5"
-          :class="isActive('bold') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="editor?.chain().focus().toggleBold().run()"
-        >
-          <BoldIcon :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-italic"
-          class="rounded p-1.5"
-          :class="isActive('italic') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="editor?.chain().focus().toggleItalic().run()"
-        >
-          <ItalicIcon :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-strike"
-          class="rounded p-1.5"
-          :class="isActive('strike') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="editor?.chain().focus().toggleStrike().run()"
-        >
-          <Strikethrough :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-highlight"
-          class="rounded p-1.5"
-          :class="isActive('highlight') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="editor?.chain().focus().toggleHighlight().run()"
-        >
-          <Highlighter :size="16" aria-hidden="true" />
-        </button>
-        <ColorPaletteMenu
-          test-id="prompt-toolbar-font-color"
-          :title="t('promptEditor.fontColor')"
-          :model-value="currentTextStyle('color')"
-          @select="setFontColor"
-        >
-          <Baseline :size="16" aria-hidden="true" />
-        </ColorPaletteMenu>
-        <ColorPaletteMenu
-          test-id="prompt-toolbar-background-color"
-          :title="t('promptEditor.backgroundColor')"
-          :model-value="currentTextStyle('backgroundColor')"
-          @select="setBackgroundColor"
-        >
-          <PaintBucket :size="16" aria-hidden="true" />
-        </ColorPaletteMenu>
-
-        <div class="mx-1 h-4 w-px bg-border" />
-
-        <button
-          type="button"
-          data-test="prompt-toolbar-align-left"
-          class="rounded p-1.5"
-          :class="isActive({ textAlign: 'left' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setAlign('left')"
-        >
-          <AlignLeft :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-align-center"
-          class="rounded p-1.5"
-          :class="isActive({ textAlign: 'center' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setAlign('center')"
-        >
-          <AlignCenter :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-align-right"
-          class="rounded p-1.5"
-          :class="isActive({ textAlign: 'right' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setAlign('right')"
-        >
-          <AlignRight :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-align-justify"
-          class="rounded p-1.5"
-          :class="
-            isActive({ textAlign: 'justify' }) ? 'bg-accent text-accent-fg' : 'text-ink-muted'
-          "
-          @click="setAlign('justify')"
-        >
-          <AlignJustify :size="16" aria-hidden="true" />
-        </button>
-
-        <div class="mx-1 h-4 w-px bg-border" />
-
-        <button
-          type="button"
-          data-test="prompt-toolbar-bullet-list"
-          class="rounded p-1.5"
-          :class="isActive('bulletList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="editor?.chain().focus().toggleBulletList().run()"
-        >
-          <List :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-ordered-list"
-          class="rounded p-1.5"
-          :class="isActive('orderedList') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="editor?.chain().focus().toggleOrderedList().run()"
-        >
-          <ListOrdered :size="16" aria-hidden="true" />
-        </button>
-
-        <div class="mx-1 h-4 w-px bg-border" />
-
-        <button
-          type="button"
-          data-test="prompt-toolbar-link"
-          class="rounded p-1.5"
-          :class="isActive('link') ? 'bg-accent text-accent-fg' : 'text-ink-muted'"
-          @click="setLink()"
-        >
-          <LinkIcon :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-table"
-          class="rounded p-1.5 text-ink-muted"
-          @click="insertTable()"
-        >
-          <Table2 :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-image"
-          class="rounded p-1.5 text-ink-muted"
-          @click="pickImage()"
-        >
-          <ImageIcon :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-toolbar-diagram"
-          class="rounded p-1.5 text-ink-muted"
-          :title="t('promptEditor.insertDiagram')"
-          :aria-label="t('promptEditor.insertDiagram')"
-          @click="insertDiagram()"
-        >
-          <Guitar :size="16" aria-hidden="true" />
-        </button>
-        <button
-          v-if="songCharts"
-          type="button"
-          data-test="prompt-toolbar-song-chart"
-          class="rounded p-1.5 text-ink-muted"
-          :title="t('promptEditor.insertSongChart')"
-          :aria-label="t('promptEditor.insertSongChart')"
-          @click="openSongChartPicker"
-        >
-          <Music :size="16" aria-hidden="true" />
-        </button>
-        <input
-          ref="imageInput"
-          type="file"
-          accept="image/*"
-          class="hidden"
-          data-test="prompt-toolbar-image-input"
-          @change="onImagePicked"
-        />
-      </div>
-
-      <div
-        v-if="isActive('table')"
-        data-test="prompt-table-toolbar"
-        class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5 text-ink-muted"
-      >
-        <button
-          type="button"
-          data-test="prompt-table-add-column"
-          class="relative rounded p-1.5"
-          :title="t('promptEditor.addColumn')"
-          @click="addColumn()"
-        >
-          <Columns3 :size="16" aria-hidden="true" />
-          <Plus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-table-delete-column"
-          class="relative rounded p-1.5"
-          :title="t('promptEditor.deleteColumn')"
-          @click="deleteColumn()"
-        >
-          <Columns3 :size="16" aria-hidden="true" />
-          <Minus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
-        </button>
-        <div class="mx-1 h-4 w-px bg-border" />
-        <button
-          type="button"
-          data-test="prompt-table-add-row"
-          class="relative rounded p-1.5"
-          :title="t('promptEditor.addRow')"
-          @click="addRow()"
-        >
-          <Rows3 :size="16" aria-hidden="true" />
-          <Plus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-table-delete-row"
-          class="relative rounded p-1.5"
-          :title="t('promptEditor.deleteRow')"
-          @click="deleteRow()"
-        >
-          <Rows3 :size="16" aria-hidden="true" />
-          <Minus :size="10" class="absolute bottom-0.5 right-0.5" aria-hidden="true" />
-        </button>
-        <div class="mx-1 h-4 w-px bg-border" />
-        <button
-          type="button"
-          data-test="prompt-table-toggle-header-row"
-          class="rounded p-1.5"
-          :title="t('promptEditor.toggleHeaderRow')"
-          @click="toggleHeaderRow()"
-        >
-          <PanelTop :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-table-toggle-header-column"
-          class="rounded p-1.5"
-          :title="t('promptEditor.toggleHeaderColumn')"
-          @click="toggleHeaderColumn()"
-        >
-          <PanelLeft :size="16" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          data-test="prompt-table-toggle-header-cell"
-          class="rounded p-1.5"
-          :title="t('promptEditor.toggleHeaderCell')"
-          @click="toggleHeaderCell()"
-        >
-          <Frame :size="16" aria-hidden="true" />
-        </button>
-        <div class="mx-1 h-4 w-px bg-border" />
-        <button type="button" data-test="prompt-table-merge-cells" class="rounded p-1.5" :title="t('promptEditor.mergeCells')" @click="mergeCells()">
-          <Merge :size="16" aria-hidden="true" />
-        </button>
-        <button type="button" data-test="prompt-table-split-cell" class="rounded p-1.5" :title="t('promptEditor.splitCell')" @click="splitCell()">
-          <Split :size="16" aria-hidden="true" />
-        </button>
-        <div class="mx-1 h-4 w-px bg-border" />
-        <button
-          type="button"
-          data-test="prompt-table-toggle-border"
-          class="rounded p-1.5"
-          :title="t('promptEditor.toggleCellBorder')"
-          @click="toggleCellBorder()"
-        >
-          <SquareDashed :size="16" aria-hidden="true" />
-        </button>
-        <ColorPaletteMenu
-          test-id="prompt-table-cell-background"
-          :title="t('promptEditor.cellBackgroundColor')"
-          :model-value="currentCellBackground()"
-          @select="setCellBackground"
-        >
-          <PaintBucket :size="16" aria-hidden="true" />
-        </ColorPaletteMenu>
-        <div class="mx-1 h-4 w-px bg-border" />
-        <button
-          type="button"
-          data-test="prompt-table-delete"
-          class="rounded p-1.5 text-danger"
-          :title="t('promptEditor.deleteTable')"
-          @click="deleteTable()"
-        >
-          <Trash2 :size="16" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
+    <PromptWideToolbar
+      v-if="!isCompact"
+      :commands="commands"
+      :song-charts="songCharts"
+      @link="openLinkSheet"
+      @image="pickImage"
+      @diagram="insertDiagram"
+      @song-chart="openSongChartPicker"
+    />
+    <input
+      ref="imageInput"
+      type="file"
+      accept="image/*"
+      class="hidden"
+      data-test="prompt-toolbar-image-input"
+      @change="onImagePicked"
+    />
 
     <EditorContent
       data-test="prompt-editor-content"
       class="prompt-editor-content rounded-md border border-border bg-surface-raised p-3 text-base"
       :editor="editor"
     />
+
+    <!-- The docked bar is fixed over the page's foot: this room lets the last lines scroll above it. -->
+    <div v-if="dockedBarShown" class="h-14 shrink-0" aria-hidden="true" />
+    <PromptDockedBar
+      v-if="dockedBarShown"
+      :commands="commands"
+      @format="showSheet('format')"
+      @insert="showSheet('insert')"
+      @table="showSheet('table')"
+      @edit="editSelectedBlock"
+      @hide-keyboard="hideKeyboard"
+    />
+    <template v-if="isCompact">
+      <PromptFormatSheet :open="openSheet === 'format'" :commands="commands" @close="closeSheet()" />
+      <PromptInsertSheet
+        :open="openSheet === 'insert'"
+        :song-charts="songCharts"
+        @close="closeSheet()"
+        @link="openLinkSheet"
+        @table="insertTableFromSheet"
+        @image="pickImageFromSheet"
+        @diagram="insertDiagramFromSheet"
+        @song-chart="insertSongChartFromSheet"
+      />
+      <PromptTableSheet :open="openSheet === 'table'" :commands="commands" @close="closeSheet()" />
+    </template>
+    <PromptLinkSheet :open="openSheet === 'link'" :href="linkHref" @apply="applyLink" @remove="removeLink" @close="closeSheet()" />
 
     <DiagramEmbedPickerModal
       :open="diagramPickerOpen"

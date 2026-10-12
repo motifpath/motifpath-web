@@ -34,15 +34,24 @@ function lastEmittedDocument(wrapper: ReturnType<typeof mount>): PromptDocument 
 
 describe('PromptEditor', () => {
   it("renders the initial document's text", async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello world') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello world') } })
     await nextTick()
     await nextTick()
 
     expect(wrapper.text()).toContain('Hello world')
   })
 
+  it('names its text field with the label it is given', async () => {
+    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt(''), label: 'Prompt shown to the student' } })
+    await nextTick()
+    await nextTick()
+
+    const field = wrapper.get('.ProseMirror')
+    expect(field.attributes('aria-label')).toBe('Prompt shown to the student')
+  })
+
   it('shows every required toolbar button', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('') } })
     await nextTick()
 
     const expected = [
@@ -78,7 +87,7 @@ describe('PromptEditor', () => {
 
   it('shows the font and background color at the cursor on the toolbar indicators', async () => {
     const doc = coloredTextPrompt('Hello', { color: '#EF4444', backgroundColor: '#3B82F6' })
-    const wrapper = mount(PromptEditor, { props: { modelValue: doc } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: doc } })
     await nextTick()
     await nextTick()
 
@@ -98,7 +107,7 @@ describe('PromptEditor', () => {
     }
 
     it('applies a chosen font color and background color to the selection', async () => {
-      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
       await nextTick()
       await nextTick()
       await selectAll(wrapper)
@@ -114,7 +123,7 @@ describe('PromptEditor', () => {
 
     it('removes the font color and the background color when the default swatch is chosen', async () => {
       const doc = coloredTextPrompt('Hello', { color: '#EF4444', backgroundColor: '#3B82F6' })
-      const wrapper = mount(PromptEditor, { props: { modelValue: doc } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: doc } })
       await nextTick()
       await nextTick()
       await selectAll(wrapper)
@@ -132,7 +141,7 @@ describe('PromptEditor', () => {
   })
 
   it('offers only the fixed palette for text and background color — no free color input', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
 
     expect(wrapper.find('input[type="color"]').exists()).toBe(false)
@@ -147,7 +156,7 @@ describe('PromptEditor', () => {
   })
 
   it('toggling a heading changes the current block and emits the updated document', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
 
     await wrapper.find('[data-test="prompt-toolbar-h2"]').trigger('click')
@@ -158,7 +167,7 @@ describe('PromptEditor', () => {
   })
 
   it('undo reverts the last change and redo re-applies it', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
 
     expect(wrapper.find('[data-test="prompt-toolbar-undo"]').attributes('disabled')).toBeDefined()
@@ -180,7 +189,7 @@ describe('PromptEditor', () => {
   })
 
   it('toggling bulleted list wraps the current block and emits the updated document', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
 
     await wrapper.find('[data-test="prompt-toolbar-bullet-list"]').trigger('click')
@@ -191,7 +200,7 @@ describe('PromptEditor', () => {
   })
 
   it('inserting a table adds a table node and emits the updated document', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
 
     await wrapper.find('[data-test="prompt-toolbar-table"]').trigger('click')
@@ -201,8 +210,44 @@ describe('PromptEditor', () => {
     expect(doc.content.some((node) => node.type === 'table')).toBe(true)
   })
 
+  it('inserts a 3 × 3 table with a header row', async () => {
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
+    await nextTick()
+
+    await wrapper.find('[data-test="prompt-toolbar-table"]').trigger('click')
+    await nextTick()
+
+    const rows = lastEmittedDocument(wrapper).content.find((node) => node.type === 'table')?.content ?? []
+    expect(rows).toHaveLength(3)
+    expect(rows[0]?.content?.map((cell) => cell.type)).toEqual(['tableHeader', 'tableHeader', 'tableHeader'])
+    expect(rows[1]?.content).toHaveLength(3)
+  })
+
+  it('sets a link from the Link dialog, never a browser prompt', async () => {
+    const browserPrompt = vi.spyOn(window, 'prompt')
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('open') }, attachTo: document.body })
+    await nextTick()
+    await nextTick()
+    await wrapper.get('.ProseMirror').trigger('keydown', { key: 'a', ctrlKey: true })
+
+    await wrapper.get('[data-test="prompt-toolbar-link"]').trigger('click')
+    await nextTick()
+    const input = document.querySelector<HTMLInputElement>('[data-test="prompt-link-address"]')!
+    input.value = 'https://example.com/open-strings'
+    input.dispatchEvent(new Event('input'))
+    await nextTick()
+    document.querySelector<HTMLButtonElement>('[data-test="prompt-link-apply"]')!.click()
+    await nextTick()
+
+    expect(browserPrompt).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-test="overlay-dialog"]')).toBeNull()
+    const marks = lastEmittedDocument(wrapper).content[0]?.content?.[0]?.marks
+    expect(marks).toContainEqual({ type: 'link', attrs: expect.objectContaining({ href: 'https://example.com/open-strings' }) })
+    wrapper.unmount()
+  })
+
   it('shows table row/column controls only while the cursor is inside a table, and can add/remove a column and a row', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
     expect(wrapper.find('[data-test="prompt-table-toolbar"]').exists()).toBe(false)
 
@@ -241,7 +286,7 @@ describe('PromptEditor', () => {
   })
 
   it('toggles a cell between header and regular, and paints its background and border', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
     await wrapper.find('[data-test="prompt-toolbar-table"]').trigger('click')
     await nextTick()
@@ -294,7 +339,7 @@ describe('PromptEditor', () => {
   })
 
   it('has merge and split cell buttons available inside a table', async () => {
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') } })
     await nextTick()
     await wrapper.find('[data-test="prompt-toolbar-table"]').trigger('click')
     await nextTick()
@@ -311,7 +356,7 @@ describe('PromptEditor', () => {
 
   it('uploads the picked file and inserts an image node on the image button', async () => {
     upload.mockResolvedValueOnce('https://cdn.example.com/library/circle-of-fifths.png')
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('') } })
     await nextTick()
 
     const file = new File(['x'], 'circle.png', { type: 'image/png' })
@@ -329,7 +374,7 @@ describe('PromptEditor', () => {
   it('shows a toast and does not insert an image when the upload fails', async () => {
     useToast().clear()
     upload.mockRejectedValueOnce(new Error('Upload failed with status 500'))
-    const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('') } })
+    const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('') } })
     await nextTick()
 
     const file = new File(['x'], 'circle.png', { type: 'image/png' })
@@ -362,7 +407,7 @@ describe('PromptEditor', () => {
     }
 
     async function mountEditor(modelValue: PromptDocument) {
-      const wrapper = mount(PromptEditor, { props: { modelValue } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue } })
       await nextTick()
       await nextTick()
       return wrapper
@@ -464,7 +509,7 @@ describe('PromptEditor', () => {
     const stubs = { SongChartPickerModal: true, SongChartCard: { props: ['songChartId'], template: '<div data-test="song-chart-card" :data-song-chart-id="songChartId" />' } }
 
     it('offers no song chart where song charts have no place, such as an exercise prompt', async () => {
-      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Hello') }, global: { stubs } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Hello') }, global: { stubs } })
       await nextTick()
 
       expect(wrapper.find('[data-test="prompt-toolbar-song-chart"]').exists()).toBe(false)
@@ -472,7 +517,7 @@ describe('PromptEditor', () => {
 
     it('loads no song charts until the teacher opens the picker', async () => {
       GET.mockClear()
-      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Play along'), songCharts: true } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Play along'), songCharts: true } })
       await nextTick()
 
       expect(GET.mock.calls.some(([path]) => path === '/song-charts')).toBe(false)
@@ -484,7 +529,7 @@ describe('PromptEditor', () => {
     })
 
     it('inserts the picked song chart', async () => {
-      const wrapper = mount(PromptEditor, { props: { modelValue: plainTextPrompt('Play along'), songCharts: true }, global: { stubs } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue: plainTextPrompt('Play along'), songCharts: true }, global: { stubs } })
       await nextTick()
 
       await wrapper.get('[data-test="prompt-toolbar-song-chart"]').trigger('click')
@@ -505,7 +550,7 @@ describe('PromptEditor', () => {
           { type: 'songChart', attrs: { songChartId: 'chart-amazing-grace' } },
         ],
       }
-      const wrapper = mount(PromptEditor, { props: { modelValue, songCharts: true }, global: { stubs } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue, songCharts: true }, global: { stubs } })
       await nextTick()
       await nextTick()
       return wrapper
@@ -557,7 +602,7 @@ describe('PromptEditor', () => {
 
     it('shows an embedded song chart as its card', async () => {
       const modelValue: PromptDocument = { type: 'doc', content: [{ type: 'songChart', attrs: { songChartId: 'chart-amazing-grace' } }] }
-      const wrapper = mount(PromptEditor, { props: { modelValue, songCharts: true }, global: { stubs } })
+      const wrapper = mount(PromptEditor, { props: { label: 'Prompt', modelValue, songCharts: true }, global: { stubs } })
       await nextTick()
       await nextTick()
 
