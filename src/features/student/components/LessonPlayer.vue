@@ -276,12 +276,13 @@ function onAsideHandleKeydown(event: KeyboardEvent): void {
       <Icon name="grip" :size="14" />
     </div>
 
+    <!-- The dark ground is the video's letterbox only: a cue follows the theme, as the page does. -->
     <div
       v-if="$slots.aside"
       ref="asideEl"
       data-test="player-aside"
       :style="asideStyle"
-      class="relative flex flex-col self-stretch overflow-y-auto p-3"
+      class="relative flex flex-col self-stretch overflow-y-auto bg-surface p-3"
       :class="canResizeAside ? 'w-80 shrink-0 xl:w-1/3' : 'min-h-0 w-full'"
     >
       <button

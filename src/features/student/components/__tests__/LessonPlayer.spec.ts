@@ -184,6 +184,12 @@ describe('LessonPlayer', () => {
       expect(classes).toContain('xl:w-1/3')
     })
 
+    it("draws the aside on the theme's surface, not the video's dark ground, so a cue reads as the page does in light mode", () => {
+      const wrapper = mountPlayer(true)
+
+      expect(wrapper.get('[data-test="player-aside"]').classes()).toContain('bg-surface')
+    })
+
     it('stretches the aside to the full height of the row, not the zero-height box a flex child gets by default when it has no cue showing', () => {
       const wrapper = mountPlayer(true)
 
