@@ -111,6 +111,12 @@ describe('parseListQuery', () => {
     expect(parseListQuery('exercises', { status: 'draft' }).status).toBeNull()
   })
 
+  it('reads Shows "Diagrams" as the default, not as a filter', () => {
+    const state = parseListQuery('diagrams', { shows: 'diagrams' })
+    expect(state.filters.shows).toBeUndefined()
+    expect(activeFilterCount(state)).toBe(0)
+  })
+
   it('reads one root note from the chromatic scale', () => {
     expect(parseListQuery('diagrams', { root: 'F#' }).filters.root).toBe('F#')
     expect(parseListQuery('diagrams', { root: 'H' }).filters.root).toBeUndefined()

@@ -23,7 +23,8 @@ export type FilterKey =
   | 'author'
 
 export type DiagramKindChoice = 'templates' | 'custom'
-export type DiagramShowsChoice = 'diagrams' | 'chord_voicings' | 'both'
+/** What a diagram list shows besides its default, plain diagrams. */
+export type DiagramShowsChoice = 'chord_voicings' | 'both'
 
 export interface AuthoringListFilters {
   type?: string
@@ -77,7 +78,7 @@ const SECTION_TYPES: Partial<Record<AuthoringSection, readonly string[]>> = {
 
 export const LEVELS = ['beginner', 'early_intermediate', 'intermediate', 'advanced', 'expert'] as const
 export const DIAGRAM_KINDS: DiagramKindChoice[] = ['templates', 'custom']
-export const DIAGRAM_SHOWS: DiagramShowsChoice[] = ['diagrams', 'chord_voicings', 'both']
+export const DIAGRAM_SHOWS: DiagramShowsChoice[] = ['chord_voicings', 'both']
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const LANGUAGE_CODE = /^[a-z]{2,3}(-[A-Z]{2})?$/
