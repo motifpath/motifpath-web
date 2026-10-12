@@ -10,7 +10,7 @@ const meta = {
     components: { OverviewStrip },
     setup: () => ({ args }),
     template: `<div class="w-80"><OverviewStrip v-bind="args">
-      <svg viewBox="0 0 1200 240" class="block w-full"><rect width="1200" height="240" class="fill-fretboard-inlay" /></svg>
+      <svg viewBox="0 0 1200 240" class="block w-full"><rect width="1200" height="240" class="fill-surface-raised" /></svg>
     </OverviewStrip></div>`,
   }),
 } satisfies Meta<typeof OverviewStrip>

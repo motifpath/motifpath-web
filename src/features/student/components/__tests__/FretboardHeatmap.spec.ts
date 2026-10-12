@@ -87,11 +87,11 @@ describe('FretboardHeatmap', () => {
     expect(cellAt(wrapper, 1, 0).attributes('data-level')).toBe('new')
   })
 
-  it('draws the board as diagrams do: wood grain, at a readable size that scrolls on a narrow screen', async () => {
+  it('draws the board as diagrams do, at a readable size that scrolls on a narrow screen', async () => {
     const wrapper = mount(FretboardHeatmap, { props: { instrumentId: GUITAR } })
     await flushPromises()
 
-    expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="fretboard-area"]').exists()).toBe(true)
     expect(Number(wrapper.get('[data-test="fretboard-heatmap"] svg').attributes('width'))).toBeGreaterThanOrEqual(11 * MIN_COLUMN_GAP_WITH_NUT)
     expect(wrapper.get('[data-test="heatmap-scroll"]').classes()).toContain('overflow-x-auto')
   })

@@ -219,7 +219,7 @@ describe('FrettedDiagramView', () => {
       props: { diagram: openDiagram, instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() },
     })
     const nutX = Number(open.findAll('[data-test="fret-number"]')[0]!.attributes('x'))
-    const wood = open.get('[data-test="fretboard-wood"]')
+    const wood = open.get('[data-test="fretboard-area"]')
     const woodEnd = Number(wood.attributes('x')) + Number(wood.attributes('width'))
 
     expect(Number(wood.attributes('x'))).toBe(nutX)
@@ -233,7 +233,7 @@ describe('FrettedDiagramView', () => {
     })
     const firstWire = closed.findAll('[data-test="fret-wire"]')[0]!
     const firstFretX = Number(firstWire.attributes('x')) + Number(firstWire.attributes('width')) / 2
-    expect(Number(closed.get('[data-test="fretboard-wood"]').attributes('x'))).toBeCloseTo(firstFretX)
+    expect(Number(closed.get('[data-test="fretboard-area"]').attributes('x'))).toBeCloseTo(firstFretX)
   })
 
   it('renders an accessible label on the root svg element', () => {
@@ -624,7 +624,7 @@ describe('FrettedDiagramView', () => {
       it('places a control near its region’s last fret, and controls sharing that fret side by side', () => {
         const wrapper = mountInfo()
         const wire8 = wrapper.findAll('[data-test="fret-wire"]').find((w) => w.attributes('data-fret') === '8')!
-        const fret8 = Number(wire8.attributes('x')) + 1.5
+        const fret8 = Number(wire8.attributes('x')) + Number(wire8.attributes('width')) / 2
         const lefts = controls(wrapper).map(leftPx).sort((a, b) => a - b)
 
         expect(lefts.at(-1)! + 44).toBeCloseTo(fret8)
@@ -652,7 +652,7 @@ describe('FrettedDiagramView', () => {
       it('seats the controls right on top of the board, with no gap of their own', () => {
         const withRail = mountInfo()
         const withoutRail = mountInfo({ regionInfo: false })
-        const woodTop = (wrapper: ReturnType<typeof mountInfo>) => Number(wrapper.get('[data-test="fretboard-wood"]').attributes('y'))
+        const woodTop = (wrapper: ReturnType<typeof mountInfo>) => Number(wrapper.get('[data-test="fretboard-area"]').attributes('y'))
 
         expect(woodTop(withRail)).toBeLessThanOrEqual(2)
         expect(woodTop(withoutRail)).toBeGreaterThan(woodTop(withRail))
@@ -861,7 +861,7 @@ describe('FrettedDiagramView', () => {
     })
 
     it('seats the board right under a rail holding only its controls', () => {
-      const wood = Number(mountWithControls().get('[data-test="fretboard-wood"]').attributes('y'))
+      const wood = Number(mountWithControls().get('[data-test="fretboard-area"]').attributes('y'))
 
       expect(wood).toBeLessThanOrEqual(2)
     })
@@ -1435,7 +1435,6 @@ describe('FrettedDiagramView', () => {
       expect(svg.attributes('viewBox')).toBeDefined()
       expect(svg.classes()).toContain('w-full')
       expect(wrapper.find('[data-test="board-scroll"]').exists()).toBe(false)
-      expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(false)
     })
   })
 
@@ -1480,21 +1479,11 @@ describe('FrettedDiagramView', () => {
       expect(new Set(widths).size).toBe(1)
     })
 
-    it('draws metal fret wires and a wood grain', () => {
+    it('draws the flat board every diagram shares', () => {
       const wrapper = mountDiagram()
 
-      expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(true)
-      const wire = wrapper.get('[data-test="fret-wire"]')
-      expect(wire.attributes('fill')).toMatch(/^url\(#.+-metal\)$/)
-    })
-
-    it('keeps its own paint ids when the same diagram is drawn twice on a page', () => {
-      const props = { diagram: makeFrettedDiagram(), instrument: makeFrettedInstrument(), diagramRef: makeDiagramRef() }
-      const page = mount(defineComponent({ render: () => [h(FrettedDiagramView, props), h(FrettedDiagramView, props)] }))
-
-      const fills = page.findAll('[data-test="fretboard-wood"]').map((wood) => wood.attributes('fill'))
-      expect(fills).toHaveLength(2)
-      expect(fills[0]).not.toBe(fills[1])
+      expect(wrapper.get('[data-test="fretboard-area"]').classes()).toContain('fill-surface-raised')
+      expect(wrapper.get('[data-test="fret-wire"]').classes()).toContain('fill-border')
     })
   })
 

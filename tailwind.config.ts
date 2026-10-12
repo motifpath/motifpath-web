@@ -54,12 +54,9 @@ colors['whatsapp'] = '#25D366'
 // fixed by that brand, not by either MotifPath theme.
 colors['google-disc'] = '#FFFFFF'
 
-// Fretboard materials are feature-scoped to the fretboard drawings rather than
-// motifpath-brand roles; their values sit beside --color-fretboard-wood in
-// src/assets/main.css.
-for (const material of ['fretboard-inlay', 'fretboard-string', 'fretboard-metal-shadow', 'fretboard-sounding']) {
-  colors[material] = `rgb(var(--color-${material}) / <alpha-value>)`
-}
+// The sounding ring is feature-scoped to the diagram drawings rather than a motifpath-brand role;
+// its value sits in src/assets/main.css.
+colors['fretboard-sounding'] = 'rgb(var(--color-fretboard-sounding) / <alpha-value>)'
 
 // Elevation shadows are full box-shadow strings (already colour-complete per
 // theme), so they resolve straight from the custom property.

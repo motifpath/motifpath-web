@@ -11,10 +11,10 @@ const meta = {
     setup: () => ({ args }),
     template: `<div class="w-80"><BoardViewport v-bind="args">
       <svg :width="args.contentWidth" height="160" :viewBox="'0 0 ' + args.contentWidth + ' 160'" class="block max-w-none">
-        <rect :width="args.contentWidth" height="160" class="fill-fretboard-inlay" />
+        <rect :width="args.contentWidth" height="160" class="fill-surface-raised" />
       </svg>
       <template #overview>
-        <svg :viewBox="'0 0 ' + args.contentWidth + ' 160'" class="block w-full"><rect :width="args.contentWidth" height="160" class="fill-fretboard-inlay" /></svg>
+        <svg :viewBox="'0 0 ' + args.contentWidth + ' 160'" class="block w-full"><rect :width="args.contentWidth" height="160" class="fill-surface-raised" /></svg>
       </template>
     </BoardViewport></div>`,
   }),
