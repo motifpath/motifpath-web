@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Circle, ImageOff, Minus, Plus, Square, X } from 'lucide-vue-next'
+import { Check, Circle, ImageOff, Minus, Monitor, Plus, Square, X } from 'lucide-vue-next'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 import { clamp, type Region } from '@/features/teacher/composables/useExerciseForm'
@@ -9,6 +10,9 @@ const props = defineProps<{
   imageUrl: string
   regions: Region[]
   newRegionShape: 'circle' | 'rectangle'
+  /** Drawing, moving and resizing need a pointer: on a phone the regions are only shown, and which
+   *  is correct stays a tap. */
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -66,14 +70,14 @@ function percentFromEvent(container: HTMLElement, clientX: number, clientY: numb
 }
 
 function onCanvasClick(event: MouseEvent) {
-  if (!props.imageUrl || !imageLoaded.value) return
+  if (props.readOnly || !props.imageUrl || !imageLoaded.value) return
   const container = event.currentTarget as HTMLElement
   const { x, y } = percentFromEvent(container, event.clientX, event.clientY)
   emit('add-region', x, y)
 }
 
 function startDrag(region: Region, event: MouseEvent) {
-  if (!imageLoaded.value) return
+  if (props.readOnly || !imageLoaded.value) return
   event.stopPropagation()
   event.preventDefault()
   const container = (event.currentTarget as HTMLElement).parentElement
@@ -95,7 +99,7 @@ function startDrag(region: Region, event: MouseEvent) {
 
 <template>
   <div class="flex flex-col gap-3.5">
-    <div class="flex items-center gap-2">
+    <div v-if="!props.readOnly" class="flex items-center gap-2">
       <span class="text-sm text-ink-subtle">{{ t('imageRegionEditor.newRegion') }}</span>
       <div class="flex gap-1 rounded-md bg-surface-sunken p-1">
         <button
@@ -122,7 +126,7 @@ function startDrag(region: Region, event: MouseEvent) {
     <div
       data-test="region-canvas"
       class="relative overflow-hidden rounded-lg border border-border bg-surface-sunken"
-      :class="props.imageUrl ? 'cursor-crosshair' : 'cursor-default'"
+      :class="props.imageUrl && !props.readOnly ? 'cursor-crosshair' : 'cursor-default'"
       @click="onCanvasClick"
     >
       <div
@@ -145,8 +149,10 @@ function startDrag(region: Region, event: MouseEvent) {
       <div
         v-for="(region, index) in props.regions"
         :key="region.id"
-        class="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-grab select-none items-center justify-center text-xs font-bold shadow"
+        data-test="region-marker"
+        class="absolute flex -translate-x-1/2 -translate-y-1/2 select-none items-center justify-center text-xs font-bold shadow"
         :class="[
+          props.readOnly ? 'cursor-default' : 'cursor-grab',
           region.shape === 'circle' ? 'rounded-full' : 'rounded-sm',
           region.correct ? 'border-2 border-success bg-success-muted text-success' : 'border-2 border-accent bg-accent-muted text-accent',
         ]"
@@ -163,7 +169,37 @@ function startDrag(region: Region, event: MouseEvent) {
       </div>
     </div>
 
-    <div class="flex flex-col gap-2">
+    <template v-if="props.readOnly">
+      <InlineNotice data-test="larger-screen-notice" tone="unavailable" :icon="Monitor" :message="t('imageRegionEditor.largerScreen')" />
+      <div class="flex flex-col gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">{{ t('imageRegionEditor.answerLabel') }}</span>
+        <p v-if="props.regions.length === 0" data-test="no-regions" class="text-sm text-ink-muted">
+          {{ t('imageRegionEditor.noRegions') }}
+        </p>
+        <div
+          v-for="(region, index) in props.regions"
+          :key="region.id"
+          data-test="region-answer"
+          class="flex min-h-14 items-center gap-3 rounded-lg border bg-surface-raised px-4 py-2"
+          :class="region.correct ? 'border-2 border-success' : 'border-border'"
+        >
+          <span class="flex-1 text-sm text-ink">{{ t('imageRegionEditor.region', { number: index + 1 }) }}</span>
+          <button
+            type="button"
+            data-test="region-toggle"
+            :aria-pressed="region.correct"
+            class="flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm"
+            :class="region.correct ? 'bg-success-muted font-semibold text-success' : 'border border-border text-ink-muted'"
+            @click="emit('toggle-region', region.id)"
+          >
+            <Check v-if="region.correct" :size="16" aria-hidden="true" />
+            {{ region.correct ? t('imageRegionEditor.correct') : t('imageRegionEditor.markCorrect') }}
+          </button>
+        </div>
+      </div>
+    </template>
+
+    <div v-else class="flex flex-col gap-2">
       <div
         v-for="(region, index) in props.regions"
         :key="region.id"

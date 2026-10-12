@@ -220,4 +220,59 @@ describe('ImageRegionEditor', () => {
 
     expect(wrapper.emitted('update:stimulus-size')).toBeUndefined()
   })
+
+  describe('read-only, on a phone', () => {
+    function mountReadOnly(shown: Region[] = regions) {
+      return mount(ImageRegionEditor, {
+        props: { imageUrl: 'https://cdn.example.com/fret.png', regions: shown, newRegionShape: 'circle', readOnly: true },
+      })
+    }
+
+    it('shows the regions, numbered, with the larger-screen note under the image', () => {
+      const wrapper = mountReadOnly()
+
+      expect(wrapper.findAll('[data-test="region-marker"]').map((m) => m.text())).toEqual(['1', '2'])
+      const notice = wrapper.get('[data-test="larger-screen-notice"]')
+      expect(notice.text()).toBe('Drawing or moving regions is best done on a larger screen. Which region is correct can be changed here.')
+      expect(notice.find('svg.lucide-monitor').exists()).toBe(true)
+    })
+
+    it('draws, moves and resizes nothing', async () => {
+      const wrapper = mountReadOnly()
+      await wrapper.get('img').trigger('load')
+
+      await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 10, clientY: 10 })
+      await wrapper.get('[data-test="region-marker"]').trigger('mousedown')
+
+      expect(wrapper.emitted('add-region')).toBeUndefined()
+      expect(wrapper.find('[data-test="shape-circle"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="region-remove"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="grow"]').exists()).toBe(false)
+    })
+
+    it('lists each region under the answer, the correct one as Correct and the rest as Mark correct', () => {
+      const wrapper = mountReadOnly()
+
+      expect(wrapper.text()).toContain('Answer — which regions are correct')
+      const rows = wrapper.findAll('[data-test="region-answer"]')
+      expect(rows.map((r) => r.get('[data-test="region-toggle"]').text())).toEqual(['Correct', 'Mark correct'])
+      expect(rows[0].text()).toContain('Region 1')
+    })
+
+    it('marks a region correct with a tap', async () => {
+      const wrapper = mountReadOnly()
+
+      await wrapper.findAll('[data-test="region-toggle"]')[1].trigger('click')
+
+      expect(wrapper.emitted('toggle-region')).toEqual([['r2']])
+    })
+
+    it('says no regions have been drawn yet when the image has none', () => {
+      const wrapper = mountReadOnly([])
+
+      expect(wrapper.get('[data-test="no-regions"]').text()).toBe('No regions have been drawn yet.')
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+    })
+  })
 })
+

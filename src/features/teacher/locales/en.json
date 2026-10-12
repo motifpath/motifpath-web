@@ -52,7 +52,12 @@
     "region": "Region {number}",
     "size": "Size",
     "width": "Width",
-    "height": "Height"
+    "height": "Height",
+    "largerScreen": "Drawing or moving regions is best done on a larger screen. Which region is correct can be changed here.",
+    "answerLabel": "Answer — which regions are correct",
+    "correct": "Correct",
+    "markCorrect": "Mark correct",
+    "noRegions": "No regions have been drawn yet."
   },
   "promptEditor": {
     "undo": "Undo",
