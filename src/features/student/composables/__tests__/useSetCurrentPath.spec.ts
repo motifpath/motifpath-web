@@ -5,12 +5,18 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { PUT }, eventApi: {} }),
 }))
 
+const { announceCurrentPath } = vi.hoisted(() => ({ announceCurrentPath: vi.fn() }))
+vi.mock('@/features/student/composables/currentPathAnnouncer', () => ({ announceCurrentPath }))
+
 import { useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
 
 const pathView = { student_path_id: 'sp-1', title: 'Open chords' }
 
 describe('useSetCurrentPath', () => {
-  beforeEach(() => PUT.mockReset())
+  beforeEach(() => {
+    PUT.mockReset()
+    announceCurrentPath.mockReset()
+  })
 
   it('makes a course enrollment current and returns the new current path', async () => {
     PUT.mockResolvedValueOnce({ data: pathView, error: undefined, response: { status: 200 } })
@@ -45,5 +51,20 @@ describe('useSetCurrentPath', () => {
     const { setCurrentPath } = useSetCurrentPath()
 
     await expect(setCurrentPath({ studentPathId: 'sp-9' })).rejects.toThrow('That path is archived')
+  })
+
+  it('tells every open read of the current path about the switch', async () => {
+    PUT.mockResolvedValueOnce({ data: pathView, error: undefined, response: { status: 200 } })
+
+    await useSetCurrentPath().setCurrentPath({ studentPathId: 'sp-1' })
+
+    expect(announceCurrentPath).toHaveBeenCalledWith(pathView)
+  })
+
+  it('tells nobody about a refused switch', async () => {
+    PUT.mockResolvedValueOnce({ data: undefined, error: { message: 'no' }, response: { status: 404 } })
+
+    await expect(useSetCurrentPath().setCurrentPath({ studentPathId: 'sp-9' })).rejects.toThrow()
+    expect(announceCurrentPath).not.toHaveBeenCalled()
   })
 })

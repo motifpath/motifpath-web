@@ -1,5 +1,5 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import type * as VueRouter from 'vue-router'
 
@@ -44,6 +44,22 @@ vi.mock('@/features/student/composables/useSetCurrentPath', () => ({
   useSetCurrentPath: () => ({ setCurrentPath }),
 }))
 
+const { leave, LeaveFailedAfterSwitchError } = vi.hoisted(() => {
+  class LeaveFailedAfterSwitchError extends Error {
+    constructor(
+      message: string,
+      readonly current: unknown,
+    ) {
+      super(message)
+    }
+  }
+  return { leave: vi.fn(), LeaveFailedAfterSwitchError }
+})
+vi.mock('@/features/student/composables/useLeaveLearningItem', () => ({
+  useLeaveLearningItem: () => ({ leave }),
+  LeaveFailedAfterSwitchError,
+}))
+
 const toast = { success: vi.fn(), error: vi.fn(), neutral: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
@@ -57,69 +73,45 @@ vi.mock('vue-router', async () => {
 })
 
 import MyCoursesView from '@/features/student/views/MyCoursesView.vue'
+import {
+  makeCurrentPath as currentPath,
+  makeEnrollment as enrollment,
+  makeStandalonePath as standalonePath,
+} from '@/features/student/testing/learning'
 
-const alice = { user_id: 'st-1', display_name: 'Alice Souza' }
-
-function enrollment(overrides: Partial<CourseEnrollment> = {}): CourseEnrollment {
-  return {
-    course_enrollment_id: 'e-1',
-    student: alice,
-    course_id: 'c-1',
-    course_title: 'Fingerstyle journey',
-    course_summary: 'From first arpeggios to full arrangements.',
-    course_level: 'beginner',
-    course_created_by: { user_id: 't-1', display_name: 'Bob Martins' },
-    course_version_number: 1,
-    checkpoint_count: 3,
-    status: 'active',
-    active_checkpoint_student_path_id: 'sp-e1',
-    active_checkpoint_position: 2,
-    enrolled_at: '2026-09-02T00:00:00Z',
-    ...overrides,
-  }
-}
-
-function standalonePath(overrides: Partial<StudentPath> = {}): StudentPath {
-  return {
-    student_path_id: 'sp-1',
-    student: alice,
-    source_template_id: 'lp-1',
-    title: 'Open chords warm-up',
-    assigned_by: { user_id: 't-1', display_name: 'Bob Martins' },
-    assigned_at: '2026-09-01T00:00:00Z',
-    archived_at: null,
-    source_course_enrollment_id: null,
-    course_checkpoint_position: null,
-    lesson_count: 0,
-    completed_count: 0,
-    ...overrides,
-  }
-}
-
-function currentPath(overrides: Partial<StudentPathView>): StudentPathView {
-  return {
-    student_path_id: 'sp-e1',
-    source_template_id: 'lp-e1',
-    title: 'Stage 2',
-    course_enrollment_id: 'e-1',
-    course_checkpoint_position: 2,
-    current_position: 1,
-    items: [],
-    course_completed: false,
-    ...overrides,
-  }
-}
+const guitar = enrollment({ course_enrollment_id: 'e-1', course_id: 'c-1', course_title: 'Guitar foundations', enrolled_at: '2026-09-01T00:00:00Z' })
+const rhythm = enrollment({ course_enrollment_id: 'e-2', course_id: 'c-2', course_title: 'Reading rhythm', enrolled_at: '2026-09-03T00:00:00Z' })
 
 function mountView() {
-  return mount(MyCoursesView, { global: { stubs: { RouterLink: RouterLinkStub } } })
+  return mount(MyCoursesView, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub } } })
 }
 
-function card(wrapper: ReturnType<typeof mountView>, title: string) {
-  const match = wrapper
-    .findAll('[data-test="my-course-item"]')
-    .find((c) => c.text().includes(title))
-  if (!match) throw new Error(`no card titled ${title}`)
-  return match
+function group(wrapper: ReturnType<typeof mountView>, name: 'in-progress' | 'finished' | 'left') {
+  return wrapper.find(`[data-test="learning-group-${name}"]`)
+}
+
+function titlesIn(wrapper: ReturnType<typeof mountView>, name: 'in-progress' | 'finished' | 'left') {
+  return group(wrapper, name)
+    .findAll('[data-test="learning-title"]')
+    .map((title) => title.text())
+}
+
+function row(wrapper: ReturnType<typeof mountView>, title: string) {
+  const card = wrapper.findAll('[data-test="learning-card"]').find((c) => c.text().includes(title))
+  if (!card) throw new Error(`no row titled ${title}`)
+  return card
+}
+
+function inLayer(selector: string): HTMLElement {
+  const element = document.querySelector<HTMLElement>(selector)
+  if (!element) throw new Error(`nothing matches ${selector}`)
+  return element
+}
+
+async function chooseLeave(wrapper: ReturnType<typeof mountView>, title: string) {
+  await row(wrapper, title).get('[data-test="learning-more"]').trigger('click')
+  inLayer('[data-test="learning-menu-leave"]').click()
+  await flushPromises()
 }
 
 describe('MyCoursesView', () => {
@@ -136,6 +128,10 @@ describe('MyCoursesView', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
   it('takes the student to the course-completed screen when this read finds their course just completed', () => {
     current.data.value = currentPath({ course_enrollment_id: 'e-1', course_completed: true })
 
@@ -144,7 +140,7 @@ describe('MyCoursesView', () => {
     expect(replace).toHaveBeenCalledWith({ name: 'course-completed', params: { enrollmentId: 'e-1' } })
   })
 
-  it('stays on My courses while the current course is in progress', () => {
+  it('stays on Learning while the current course is in progress', () => {
     current.data.value = currentPath({ course_enrollment_id: 'e-1' })
 
     mountView()
@@ -152,357 +148,309 @@ describe('MyCoursesView', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
-  it('shows a loading state while anything is still loading', () => {
+  it('is headed Learning', () => {
+    expect(mountView().get('h1').text()).toBe('Learning')
+  })
+
+  // ── States ──────────────────────────────────────────────────────────────
+
+  it('shows skeleton rows while anything is still loading', () => {
     standalone.isLoading.value = true
 
     expect(mountView().find('[data-test="loading"]').exists()).toBe(true)
   })
 
-  it('shows an error state whose retry reloads everything that failed', async () => {
+  it('shows a notice in place of the list whose Try again reloads what failed', async () => {
     enrollments.error.value = true
 
     await mountView().get('[data-test="retry"]').trigger('click')
 
     expect(enrollments.retry).toHaveBeenCalled()
+    expect(standalone.retry).not.toHaveBeenCalled()
   })
 
   it('still lists everything when the student has no current path yet', () => {
     current.error.value = 'no-path'
-    enrollments.enrollments.value = [enrollment()]
+    enrollments.enrollments.value = [guitar]
+
+    expect(titlesIn(mountView(), 'in-progress')).toEqual(['Guitar foundations'])
+  })
+
+  it('says nothing is here yet and points to Discover when the student has started nothing', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="empty"]').text()).toContain('Nothing here yet')
+    const explore = wrapper.getComponent<typeof RouterLinkStub>('[data-test="explore"]')
+    expect(explore.text()).toBe('Explore courses and paths')
+    expect(explore.props('to')).toEqual({ name: 'course-catalog' })
+  })
+
+  it('puts a Nothing in progress card above Finished when everything is finished or left', () => {
+    enrollments.enrollments.value = [enrollment({ status: 'completed' })]
 
     const wrapper = mountView()
 
-    expect(wrapper.find('[data-test="error"]').exists()).toBe(false)
-    expect(card(wrapper, 'Fingerstyle journey').find('[data-test="switch"]').exists()).toBe(true)
+    const card = wrapper.get('[data-test="nothing-in-progress"]')
+    expect(card.text()).toContain('Nothing in progress')
+    expect(card.getComponent<typeof RouterLinkStub>(RouterLinkStub).props('to')).toEqual({ name: 'course-catalog' })
+    expect(group(wrapper, 'in-progress').exists()).toBe(false)
   })
 
-  it('is headed My learning', () => {
-    expect(mountView().get('h1').text()).toBe('My learning')
-  })
+  // ── The list ────────────────────────────────────────────────────────────
 
-  it('points a student with no courses or paths to both catalogs', () => {
-    const empty = mountView().get('[data-test="empty"]')
-
-    expect(empty.findAllComponents(RouterLinkStub).map((l: { props: (key: string) => unknown }) => l.props('to'))).toEqual([
-      { name: 'course-catalog' },
-      { name: 'path-catalog' },
-    ])
-  })
-
-  it('always offers a way to find another course or a path', () => {
-    enrollments.enrollments.value = [enrollment()]
-
-    const links = mountView().findAllComponents(RouterLinkStub)
-
-    expect(links.map((l) => l.props('to'))).toContainEqual({ name: 'course-catalog' })
-    expect(links.map((l) => l.props('to'))).toContainEqual({ name: 'path-catalog' })
-  })
-
-  it('shows each standalone path on the shared card, labeled as a path, with its lesson progress', () => {
-    standalone.paths.value = [
-      standalonePath({
-        summary: 'Five chords, cleanly.',
-        level: 'beginner',
-        created_by: { user_id: 't-2', display_name: 'Carol Dias' },
-        thumbnail_url: 'https://cdn.test/open-chords.png',
-        lesson_count: 4,
-        completed_count: 1,
-      }),
+  it('groups courses and paths together under In progress, Finished and Left', async () => {
+    enrollments.enrollments.value = [
+      guitar,
+      enrollment({ course_enrollment_id: 'e-3', course_title: 'First songs', status: 'completed' }),
+      enrollment({ course_enrollment_id: 'e-4', course_title: 'Blues basics', status: 'abandoned' }),
     ]
-
-    const pathCard = card(mountView(), 'Open chords warm-up')
-
-    expect(pathCard.get('[data-test="course-card-label"]').text()).toBe('Path')
-    expect(pathCard.text()).toContain('Five chords, cleanly.')
-    expect(pathCard.get('[data-test="course-byline"]').text()).toContain('Carol Dias')
-    expect(pathCard.get('[data-test="course-level"]').text()).toBe('Beginner')
-    expect(pathCard.get('img').attributes('src')).toBe('https://cdn.test/open-chords.png')
-    expect(pathCard.get('[data-test="path-progress"]').text()).toBe('1 of 4 lessons')
-  })
-
-  it('says who assigned a path, but not when the learner enrolled themselves', () => {
-    standalone.paths.value = [
-      standalonePath(),
-      standalonePath({ student_path_id: 'sp-2', title: 'Self-picked', assigned_by: alice }),
-    ]
+    standalone.paths.value = [standalonePath({ title: 'Open chords' })]
 
     const wrapper = mountView()
+    await group(wrapper, 'left').get('button').trigger('click')
 
-    expect(card(wrapper, 'Open chords warm-up').text()).toContain('Assigned by Bob Martins')
-    expect(card(wrapper, 'Self-picked').text()).not.toContain('Assigned by')
+    expect(titlesIn(wrapper, 'in-progress')).toEqual(['Guitar foundations', 'Open chords'])
+    expect(titlesIn(wrapper, 'finished')).toEqual(['First songs'])
+    expect(titlesIn(wrapper, 'left')).toEqual(['Blues basics'])
   })
 
-  it('offers to open the current course or path', () => {
-    enrollments.enrollments.value = [enrollment()]
-    standalone.paths.value = [standalonePath()]
+  it('lists the current item first, then the most recently started', () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    standalone.paths.value = [standalonePath({ title: 'Open chords', assigned_at: '2026-09-02T00:00:00Z' })]
     current.data.value = currentPath({ course_enrollment_id: 'e-1' })
 
-    const wrapper = mountView()
-
-    const open = card(wrapper, 'Fingerstyle journey').get('[data-test="open"]')
-    expect(open.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'path' })
-    expect(card(wrapper, 'Open chords warm-up').find('[data-test="open"]').exists()).toBe(false)
+    expect(titlesIn(mountView(), 'in-progress')).toEqual(['Guitar foundations', 'Reading rhythm', 'Open chords'])
   })
 
-  it('lists each course enrollment with its learning-path progress and status', () => {
+  it('folds Left into one row with its count, with no done check', async () => {
     enrollments.enrollments.value = [
-      enrollment(),
-      enrollment({
-        course_enrollment_id: 'e-2',
-        course_title: 'Jazz voicings',
-        status: 'completed',
-      }),
-      enrollment({
-        course_enrollment_id: 'e-3',
-        course_title: 'Blues basics',
-        status: 'abandoned',
-      }),
+      enrollment({ course_enrollment_id: 'e-4', course_title: 'Blues basics', status: 'abandoned', enrolled_at: '2026-08-01T00:00:00Z' }),
+      enrollment({ course_enrollment_id: 'e-5', course_title: 'Slide guitar', status: 'abandoned', enrolled_at: '2026-09-01T00:00:00Z' }),
     ]
 
     const wrapper = mountView()
+    const toggle = group(wrapper, 'left').get('button')
 
-    expect(card(wrapper, 'Fingerstyle journey').text()).toContain('Learning path 2 of 3')
-    expect(card(wrapper, 'Jazz voicings').text()).toContain('Completed')
-    expect(card(wrapper, 'Blues basics').text()).toContain('Left')
+    expect(toggle.text()).toContain('Left')
+    expect(toggle.text()).toContain('2')
+    expect(toggle.find('[data-test="section-done"]').exists()).toBe(false)
+    expect(titlesIn(wrapper, 'left')).toEqual([])
+
+    await toggle.trigger('click')
+
+    expect(titlesIn(wrapper, 'left')).toEqual(['Slide guitar', 'Blues basics'])
   })
 
-  it('shows the presentation pinned to the enrollment version', () => {
-    enrollments.enrollments.value = [enrollment()]
+  // ── Tapping a row ───────────────────────────────────────────────────────
 
-    const pinned = card(mountView(), 'Fingerstyle journey')
-
-    expect(pinned.text()).toContain('From first arpeggios to full arrangements.')
-    expect(pinned.text()).toContain('Bob Martins')
-    expect(pinned.text()).toContain('Beginner')
-    expect(pinned.text()).toContain('3 learning paths')
-  })
-
-  it('keeps legacy enrollments usable while their presentation metadata is unavailable', () => {
-    const legacyEnrollment = enrollment() as unknown as Record<string, unknown>
-    delete legacyEnrollment.course_created_by
-    delete legacyEnrollment.checkpoint_count
-    enrollments.enrollments.value = [legacyEnrollment as unknown as CourseEnrollment]
-
-    const legacyCard = card(mountView(), 'Fingerstyle journey')
-
-    expect(legacyCard.find('[data-test="course-byline"]').exists()).toBe(false)
-    expect(legacyCard.find('[data-test="course-checkpoints"]').exists()).toBe(false)
-  })
-
-  it("shows the thumbnail of the course version each enrollment is on, and a placeholder for standalone paths", () => {
-    enrollments.enrollments.value = [
-      enrollment({ course_thumbnail_url: 'https://cdn.test/thumbnails/v2.png' }),
-      enrollment({ course_enrollment_id: 'e-2', course_title: 'Jazz voicings' }),
-    ]
-    standalone.paths.value = [standalonePath({ title: 'Warm-ups' })]
-
-    const wrapper = mountView()
-
-    expect(card(wrapper, 'Fingerstyle journey').get('img').attributes('src')).toBe('https://cdn.test/thumbnails/v2.png')
-    expect(card(wrapper, 'Jazz voicings').find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
-    expect(card(wrapper, 'Warm-ups').find('[data-test="thumbnail-placeholder"]').exists()).toBe(true)
-  })
-
-  it('offers to switch only to active enrollments', () => {
-    enrollments.enrollments.value = [
-      enrollment(),
-      enrollment({
-        course_enrollment_id: 'e-2',
-        course_title: 'Jazz voicings',
-        status: 'completed',
-      }),
-    ]
-
-    const wrapper = mountView()
-
-    expect(card(wrapper, 'Fingerstyle journey').find('[data-test="switch"]').exists()).toBe(true)
-    expect(card(wrapper, 'Jazz voicings').find('[data-test="switch"]').exists()).toBe(false)
-  })
-
-  it('marks the current course as current instead of offering to switch to it', () => {
-    enrollments.enrollments.value = [
-      enrollment(),
-      enrollment({ course_enrollment_id: 'e-2', course_title: 'Jazz voicings' }),
-    ]
+  it('opens My path on the current item, with no switch and no toast', async () => {
+    enrollments.enrollments.value = [guitar]
     current.data.value = currentPath({ course_enrollment_id: 'e-1' })
 
-    const wrapper = mountView()
+    await row(mountView(), 'Guitar foundations').get('[data-test="learning-row"]').trigger('click')
 
-    const currentCard = card(wrapper, 'Fingerstyle journey')
-    expect(currentCard.find('[data-test="current"]').exists()).toBe(true)
-    expect(currentCard.find('[data-test="switch"]').exists()).toBe(false)
-    expect(card(wrapper, 'Jazz voicings').find('[data-test="switch"]').exists()).toBe(true)
+    expect(push).toHaveBeenCalledWith({ name: 'path' })
+    expect(setCurrentPath).not.toHaveBeenCalled()
+    expect(toast.neutral).not.toHaveBeenCalled()
   })
 
-  it('marks the current standalone path as current, with a way to open it', () => {
-    standalone.paths.value = [standalonePath()]
-    current.data.value = currentPath({ student_path_id: 'sp-1', course_enrollment_id: null })
+  it('makes another item in progress current, opens My path and offers Undo', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+    setCurrentPath.mockResolvedValueOnce(currentPath({ course_enrollment_id: 'e-2' }))
 
-    const currentCard = card(mountView(), 'Open chords warm-up')
-    expect(currentCard.find('[data-test="current"]').exists()).toBe(true)
-    expect(currentCard.find('[data-test="open"]').exists()).toBe(true)
-    expect(currentCard.find('[data-test="switch"]').exists()).toBe(false)
-  })
-
-  it('lists archived paths apart, without a switch action', () => {
-    standalone.paths.value = [
-      standalonePath(),
-      standalonePath({
-        student_path_id: 'sp-2',
-        title: 'Old scales',
-        archived_at: '2026-09-10T00:00:00Z',
-      }),
-    ]
-
-    const wrapper = mountView()
-
-    const archived = wrapper.get('[data-test="archived-paths"]')
-    expect(archived.text()).toContain('Old scales')
-    expect(archived.find('[data-test="switch"]').exists()).toBe(false)
-    expect(card(wrapper, 'Open chords warm-up').find('[data-test="switch"]').exists()).toBe(true)
-  })
-
-  it('switches to a course at once and stays, so the list shows it as current', async () => {
-    enrollments.enrollments.value = [enrollment()]
-    setCurrentPath.mockResolvedValueOnce(currentPath({}))
-    const wrapper = mountView()
-
-    await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+    await row(mountView(), 'Reading rhythm').get('[data-test="learning-row"]').trigger('click')
     await flushPromises()
 
-    expect(setCurrentPath).toHaveBeenCalledWith({ courseEnrollmentId: 'e-1' })
-    expect(card(wrapper, 'Fingerstyle journey').find('[data-test="current"]').exists()).toBe(true)
+    expect(setCurrentPath).toHaveBeenCalledWith({ courseEnrollmentId: 'e-2' })
+    expect(push).toHaveBeenCalledWith({ name: 'path' })
+    expect(toast.neutral).toHaveBeenCalledWith('Now on Reading rhythm', {
+      action: { label: 'Undo', run: expect.any(Function) },
+    })
+  })
+
+  it('switches back on Undo', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+    setCurrentPath.mockResolvedValue(currentPath())
+
+    await row(mountView(), 'Reading rhythm').get('[data-test="learning-row"]').trigger('click')
+    await flushPromises()
+    toast.neutral.mock.calls[0]?.[1].action.run()
+    await flushPromises()
+
+    expect(setCurrentPath).toHaveBeenLastCalledWith({ courseEnrollmentId: 'e-1' })
+  })
+
+  it('switches back to a standalone path on Undo', async () => {
+    enrollments.enrollments.value = [rhythm]
+    standalone.paths.value = [standalonePath({ student_path_id: 'sp-1' })]
+    current.data.value = currentPath({ student_path_id: 'sp-1', course_enrollment_id: undefined })
+    setCurrentPath.mockResolvedValue(currentPath())
+
+    await row(mountView(), 'Reading rhythm').get('[data-test="learning-row"]').trigger('click')
+    await flushPromises()
+    toast.neutral.mock.calls[0]?.[1].action.run()
+    await flushPromises()
+
+    expect(setCurrentPath).toHaveBeenLastCalledWith({ studentPathId: 'sp-1' })
+  })
+
+  it('offers no Undo when nothing was current before', async () => {
+    enrollments.enrollments.value = [rhythm]
+    setCurrentPath.mockResolvedValueOnce(currentPath({ course_enrollment_id: 'e-2' }))
+
+    await row(mountView(), 'Reading rhythm').get('[data-test="learning-row"]').trigger('click')
+    await flushPromises()
+
+    expect(toast.neutral).toHaveBeenCalledWith('Now on Reading rhythm', {})
+  })
+
+  it('reports a refused switch and stays on Learning', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+    setCurrentPath.mockRejectedValueOnce(new Error('Could not switch'))
+
+    await row(mountView(), 'Reading rhythm').get('[data-test="learning-row"]').trigger('click')
+    await flushPromises()
+
+    expect(toast.error).toHaveBeenCalledWith('Could not switch')
     expect(push).not.toHaveBeenCalled()
   })
 
-  it('keeps the list on screen while switching, without reloading it', async () => {
-    enrollments.enrollments.value = [enrollment()]
-    let finish!: (view: StudentPathView) => void
-    setCurrentPath.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
-    const wrapper = mountView()
+  it('opens the detail of a finished course', async () => {
+    enrollments.enrollments.value = [enrollment({ course_id: 'c-7', course_title: 'First songs', status: 'completed' })]
 
-    await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
-    finish(currentPath({}))
+    await row(mountView(), 'First songs').get('[data-test="learning-row"]').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({ name: 'course-detail', params: { courseId: 'c-7' } })
+    expect(setCurrentPath).not.toHaveBeenCalled()
+  })
+
+  it('opens the detail of a removed path, to start it again', async () => {
+    standalone.paths.value = [standalonePath({ source_template_id: 'lp-7', archived_at: '2026-09-20T00:00:00Z' })]
+
+    const wrapper = mountView()
+    await group(wrapper, 'left').get('button').trigger('click')
+    await row(wrapper, 'Open chords').get('[data-test="learning-row"]').trigger('click')
+
+    expect(push).toHaveBeenCalledWith({ name: 'path-detail', params: { learningPathId: 'lp-7' } })
+  })
+
+  // ── The ⋯ menu and leaving ─────────────────────────────────────────────
+
+  it("opens a course's details from its ⋯ menu", async () => {
+    enrollments.enrollments.value = [rhythm]
+
+    const wrapper = mountView()
+    await row(wrapper, 'Reading rhythm').get('[data-test="learning-more"]').trigger('click')
+    inLayer('[data-test="learning-menu-details"]').click()
     await flushPromises()
 
-    expect(current.retry).not.toHaveBeenCalled()
-    expect(wrapper.find('[data-test="loading"]').exists()).toBe(false)
-    expect(current.data.value?.course_enrollment_id).toBe('e-1')
+    expect(push).toHaveBeenCalledWith({ name: 'course-detail', params: { courseId: 'c-2' } })
   })
 
-  it('switches to a standalone path', async () => {
-    standalone.paths.value = [standalonePath()]
-    setCurrentPath.mockResolvedValueOnce(
-      currentPath({ student_path_id: 'sp-1', course_enrollment_id: null }),
-    )
-    const wrapper = mountView()
+  it('asks before leaving a course, saying what is lost and what stays', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
 
-    await card(wrapper, 'Open chords warm-up').get('[data-test="switch"]').trigger('click')
+    await chooseLeave(mountView(), 'Reading rhythm')
+
+    const dialog = inLayer('[role="alertdialog"]')
+    expect(dialog.textContent).toContain('Leave Reading rhythm?')
+    expect(dialog.textContent).toContain('You lose your place. Starting again begins at part 1. Your practice and skill levels stay.')
+    expect(leave).not.toHaveBeenCalled()
+  })
+
+  it('moves a left course to Left, with no Undo', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+    leave.mockResolvedValueOnce({ enrollment: { ...rhythm, status: 'abandoned' } })
+
+    const wrapper = mountView()
+    await chooseLeave(wrapper, 'Reading rhythm')
+    inLayer('[data-test="confirm-dialog-confirm"]').click()
     await flushPromises()
 
-    expect(setCurrentPath).toHaveBeenCalledWith({ studentPathId: 'sp-1' })
+    expect(leave).toHaveBeenCalledWith(expect.objectContaining({ title: 'Reading rhythm' }), expect.objectContaining({ title: 'Guitar foundations' }))
+    expect(titlesIn(wrapper, 'in-progress')).toEqual(['Guitar foundations'])
+    expect(group(wrapper, 'left').text()).toContain('1')
+    expect(toast.neutral).not.toHaveBeenCalled()
   })
 
-  describe('Undo, as the switch is reversible and gets no confirm', () => {
-    function undoAction() {
-      const [message, options] = toast.neutral.mock.calls[0]
-      return { message: message as string, action: (options as { action: { label: string; run: () => void } }).action }
-    }
+  it('names the item that becomes current when leaving the current one', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
 
-    it('says which course is now current and offers Undo', async () => {
-      enrollments.enrollments.value = [enrollment(), enrollment({ course_enrollment_id: 'e-0', course_title: 'Major triads' })]
-      current.data.value = currentPath({ course_enrollment_id: 'e-0' })
-      setCurrentPath.mockResolvedValue(currentPath({}))
-      const wrapper = mountView()
+    await chooseLeave(mountView(), 'Guitar foundations')
 
-      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
-      await flushPromises()
-
-      const { message, action } = undoAction()
-      expect(message).toBe('Fingerstyle journey is now your current course.')
-      expect(action.label).toBe('Undo')
-    })
-
-    it('switches back to the course that was current before', async () => {
-      enrollments.enrollments.value = [enrollment(), enrollment({ course_enrollment_id: 'e-0', course_title: 'Major triads' })]
-      current.data.value = currentPath({ course_enrollment_id: 'e-0' })
-      setCurrentPath.mockResolvedValueOnce(currentPath({})).mockResolvedValueOnce(currentPath({ course_enrollment_id: 'e-0' }))
-      const wrapper = mountView()
-      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
-      await flushPromises()
-
-      undoAction().action.run()
-      await flushPromises()
-
-      expect(setCurrentPath).toHaveBeenLastCalledWith({ courseEnrollmentId: 'e-0' })
-      expect(card(wrapper, 'Major triads').find('[data-test="current"]').exists()).toBe(true)
-    })
-
-    it('switches back to a standalone path that was current before', async () => {
-      enrollments.enrollments.value = [enrollment()]
-      current.data.value = currentPath({ student_path_id: 'sp-0', course_enrollment_id: null })
-      setCurrentPath.mockResolvedValue(currentPath({}))
-      const wrapper = mountView()
-      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
-      await flushPromises()
-
-      undoAction().action.run()
-      await flushPromises()
-
-      expect(setCurrentPath).toHaveBeenLastCalledWith({ studentPathId: 'sp-0' })
-    })
-
-    it('offers no Undo when nothing was current before', async () => {
-      enrollments.enrollments.value = [enrollment()]
-      setCurrentPath.mockResolvedValue(currentPath({}))
-      const wrapper = mountView()
-
-      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
-      await flushPromises()
-
-      expect(toast.neutral).toHaveBeenCalledWith('Fingerstyle journey is now your current course.', {})
-    })
-
-    it('reports an Undo the server refused', async () => {
-      enrollments.enrollments.value = [enrollment()]
-      current.data.value = currentPath({ course_enrollment_id: 'e-0' })
-      setCurrentPath.mockResolvedValueOnce(currentPath({})).mockRejectedValueOnce(new Error('That course is no longer active'))
-      const wrapper = mountView()
-      await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
-      await flushPromises()
-
-      undoAction().action.run()
-      await flushPromises()
-
-      expect(toast.error).toHaveBeenCalledWith('That course is no longer active')
-    })
+    expect(inLayer('[role="alertdialog"]').textContent).toContain("You'll continue with Reading rhythm.")
   })
 
-  it('disables every switch while one is in flight', async () => {
-    enrollments.enrollments.value = [enrollment()]
-    standalone.paths.value = [standalonePath()]
-    setCurrentPath.mockReturnValueOnce(new Promise(() => {}))
+  it('marks the next item current once the current one is left', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+    leave.mockResolvedValueOnce({
+      enrollment: { ...guitar, status: 'abandoned' },
+      current: currentPath({ course_enrollment_id: 'e-2' }),
+    })
+
     const wrapper = mountView()
-
-    await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
-
-    for (const button of wrapper.findAll('[data-test="switch"]')) {
-      expect(button.attributes('disabled')).toBeDefined()
-    }
-  })
-
-  it('reports a refused switch', async () => {
-    enrollments.enrollments.value = [enrollment()]
-    setCurrentPath.mockRejectedValueOnce(new Error('That course is no longer active'))
-    const wrapper = mountView()
-
-    await card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').trigger('click')
+    await chooseLeave(wrapper, 'Guitar foundations')
+    inLayer('[data-test="confirm-dialog-confirm"]').click()
     await flushPromises()
 
-    expect(toast.error).toHaveBeenCalledWith('That course is no longer active')
-    expect(push).not.toHaveBeenCalled()
-    expect(
-      card(wrapper, 'Fingerstyle journey').get('[data-test="switch"]').attributes('disabled'),
-    ).toBeUndefined()
+    expect(row(wrapper, 'Reading rhythm').attributes('data-state')).toBe('current')
+  })
+
+  it('says where the student is when the leave fails after the switch', async () => {
+    enrollments.enrollments.value = [guitar, rhythm]
+    current.data.value = currentPath({ course_enrollment_id: 'e-1' })
+    leave.mockRejectedValueOnce(new LeaveFailedAfterSwitchError('refused', currentPath({ course_enrollment_id: 'e-2' })))
+
+    const wrapper = mountView()
+    await chooseLeave(wrapper, 'Guitar foundations')
+    inLayer('[data-test="confirm-dialog-confirm"]').click()
+    await flushPromises()
+
+    expect(toast.error).toHaveBeenCalledWith("You're now on Reading rhythm, but Guitar foundations wasn't left. Try again.")
+    expect(titlesIn(wrapper, 'in-progress')).toEqual(['Reading rhythm', 'Guitar foundations'])
+  })
+
+  it('reports a refused leave and keeps the item in progress', async () => {
+    enrollments.enrollments.value = [rhythm]
+    leave.mockRejectedValueOnce(new Error('Could not leave'))
+
+    const wrapper = mountView()
+    await chooseLeave(wrapper, 'Reading rhythm')
+    inLayer('[data-test="confirm-dialog-confirm"]').click()
+    await flushPromises()
+
+    expect(toast.error).toHaveBeenCalledWith('Could not leave')
+    expect(titlesIn(wrapper, 'in-progress')).toEqual(['Reading rhythm'])
+  })
+
+  it('asks before removing a standalone path, in its own words', async () => {
+    standalone.paths.value = [standalonePath({ title: 'Open chords' })]
+
+    await chooseLeave(mountView(), 'Open chords')
+
+    const dialog = inLayer('[role="alertdialog"]')
+    expect(dialog.textContent).toContain('Remove Open chords?')
+    expect(dialog.textContent).toContain('You lose your place in it. Your practice and skill levels stay.')
+  })
+
+  it('moves a removed path to Left', async () => {
+    const openChords = standalonePath({ title: 'Open chords' })
+    standalone.paths.value = [openChords]
+    leave.mockResolvedValueOnce({ path: { ...openChords, archived_at: '2026-10-12T00:00:00Z' } })
+
+    const wrapper = mountView()
+    await chooseLeave(wrapper, 'Open chords')
+    inLayer('[data-test="confirm-dialog-confirm"]').click()
+    await flushPromises()
+
+    expect(group(wrapper, 'in-progress').exists()).toBe(false)
+    expect(group(wrapper, 'left').text()).toContain('1')
   })
 })

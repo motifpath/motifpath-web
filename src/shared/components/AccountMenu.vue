@@ -12,6 +12,7 @@ import SegmentedControl from '@/shared/components/SegmentedControl.vue'
 import SheetHeader from '@/shared/components/SheetHeader.vue'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { anchoredPosition, type AnchoredPosition } from '@/shared/utils/anchoredPosition'
 import { useCurrentUserStore } from '@/stores/currentUser'
 import { useThemeStore, type ThemePreference } from '@/stores/theme'
 
@@ -39,7 +40,7 @@ const themeStore = useThemeStore()
 const open = ref(false)
 const view = ref<'main' | 'language'>('main')
 const trigger = ref<HTMLElement | null>(null)
-const position = ref<{ top?: string; bottom?: string; left?: string; right?: string }>({})
+const position = ref<AnchoredPosition>({})
 const languageTitleId = useId()
 
 const role = computed(() => currentUser.profile?.role)
@@ -71,14 +72,7 @@ const appearanceOptions = computed(() => PREFERENCES.map((value) => ({ value, la
 function place() {
   const rect = trigger.value?.getBoundingClientRect()
   if (!rect) return
-  const gap = 8
-  const vertical =
-    rect.top > window.innerHeight / 2
-      ? { bottom: `${window.innerHeight - rect.top + gap}px` }
-      : { top: `${rect.bottom + gap}px` }
-  const horizontal =
-    rect.left > window.innerWidth / 2 ? { right: `${window.innerWidth - rect.right}px` } : { left: `${rect.left}px` }
-  position.value = { ...vertical, ...horizontal }
+  position.value = anchoredPosition(rect, { width: window.innerWidth, height: window.innerHeight })
 }
 
 function show() {

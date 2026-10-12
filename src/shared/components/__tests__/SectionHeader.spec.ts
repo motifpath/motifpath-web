@@ -26,4 +26,17 @@ describe('SectionHeader', () => {
 
     expect(wrapper.get('button').attributes('aria-expanded')).toBe('true')
   })
+
+  it('marks a folded section done with a check', () => {
+    const wrapper = mount(SectionHeader, { props: { label: 'Open chords', count: '5 of 5', foldable: true } })
+
+    expect(wrapper.find('[data-test="section-done"]').exists()).toBe(true)
+  })
+
+  it('folds a group that is not done without a check', () => {
+    const wrapper = mount(SectionHeader, { props: { label: 'Left', count: '2', foldable: true, done: false } })
+
+    expect(wrapper.find('[data-test="section-done"]').exists()).toBe(false)
+    expect(wrapper.get('button').text()).toContain('Left')
+  })
 })

@@ -170,3 +170,38 @@ export const EscTakesTheEntryOff: Story = historyStory(
   },
   'page',
 )
+
+/** A layer that hands off to another (a menu row that opens a confirm) leaves one entry, so one Back closes it. */
+export const HandsOffToAnotherLayer: Story = historyStory(
+  defineComponent({
+    components: { OverlayLayer },
+    setup() {
+      const menu = ref(false)
+      const confirm = ref(false)
+      return {
+        menu,
+        confirm,
+        handOff: () => {
+          menu.value = false
+          confirm.value = true
+        },
+      }
+    },
+    template: `<div><button id="open" @click="menu = true">Open</button>
+      <OverlayLayer :open="menu" @close="menu = false"><button id="hand-off" @click="handOff">Leave</button></OverlayLayer>
+      <OverlayLayer :open="confirm" @close="confirm = false"><p id="confirm">Sure?</p></OverlayLayer></div>`,
+  }),
+  async (canvas, userEvent) => {
+    await userEvent.click(canvas.querySelector('#open')!)
+    await settle(100)
+    await userEvent.click(document.querySelector('#hand-off')!)
+    await settle(300)
+    await expect(document.querySelector('#confirm')).not.toBeNull()
+    await expect(window.history.state?.overlay).toBeTruthy()
+    window.history.back()
+    await settle(400)
+    await expect(document.querySelector('#confirm')).toBeNull()
+    await expect(window.history.state?.overlay).toBeFalsy()
+  },
+  'page',
+)
