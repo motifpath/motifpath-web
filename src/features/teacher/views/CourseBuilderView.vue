@@ -1,29 +1,33 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import type { components } from '@/api/generated/core-domain'
-import CourseCheckpointList from '@/features/teacher/components/CourseCheckpointList.vue'
+import CourseCheckpointList, { type CheckpointPathInfo } from '@/features/teacher/components/CourseCheckpointList.vue'
+import CoursePreview from '@/features/teacher/components/CoursePreview.vue'
 import CourseStatusPanel from '@/features/teacher/components/CourseStatusPanel.vue'
 import LearningPathPickerModal from '@/features/teacher/components/LearningPathPickerModal.vue'
-import PublishedCourseModal from '@/features/teacher/components/PublishedCourseModal.vue'
 import ThumbnailField from '@/features/teacher/components/ThumbnailField.vue'
 import {
   DraftLearningPathsError,
   useCourse,
   useCourseMutations,
-  useLearningPathTitles,
+  useCheckpointPaths,
 } from '@/features/teacher/composables/useCourseAuthoring'
 import { useCourseForm } from '@/features/teacher/composables/useCourseForm'
-import AppBar from '@/shared/components/AppBar.vue'
-import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
+import AppButton from '@/shared/components/AppButton.vue'
+import EditorAppBar from '@/shared/components/EditorAppBar.vue'
+import EditorBody from '@/shared/components/EditorBody.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
 import LanguageSelect from '@/shared/components/LanguageSelect.vue'
 import LevelPicker from '@/shared/components/LevelPicker.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
-import { useIsCompact } from '@/shared/composables/useIsCompact'
+import SaveBlockers from '@/shared/components/SaveBlockers.vue'
+import UnsavedChangesGuard from '@/shared/components/UnsavedChangesGuard.vue'
+import { useSaveBlockers } from '@/shared/composables/useSaveBlockers'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -38,7 +42,8 @@ const canAuthor = computed(
 )
 const isAdmin = computed(() => currentUser.profile?.role === 'admin')
 
-const { isCompact } = useIsCompact()
+const { sizeClass } = useSizeClass()
+const isExpanded = computed(() => sizeClass.value === 'expanded')
 const { t } = useTypedT()
 const toast = useToast()
 const router = useRouter()
@@ -59,7 +64,15 @@ const {
 
 const form = useCourseForm()
 const { createCourse, replaceCourse, publishCourse, retireCourse, reactivateCourse } = useCourseMutations()
-const { lookUp: lookUpPathTitles } = useLearningPathTitles(form.setPathTitle)
+// What the editor knows of each checkpoint's path, which a course doesn't carry.
+const pathInfo = ref<Record<string, CheckpointPathInfo>>({})
+function recordPath(path: LearningPath) {
+  pathInfo.value = { ...pathInfo.value, [path.learning_path_id]: { status: path.status, lessonCount: path.items.length } }
+}
+const { lookUp: lookUpPaths } = useCheckpointPaths((learningPathId, path) => {
+  form.setPathTitle(learningPathId, path.title)
+  recordPath(path)
+})
 
 // The course as the server last described it, for its status and actions;
 // null until a new course is first saved.
@@ -68,7 +81,7 @@ const savedCourse = ref<Course | null>(null)
 function applySavedCourse(course: Course) {
   savedCourse.value = course
   form.loadFromCourse(course)
-  void lookUpPathTitles(form.checkpointsMissingPathTitle.value)
+  void lookUpPaths([...new Set(form.checkpoints.value.map((checkpoint) => checkpoint.learningPathId))])
 }
 
 watch(
@@ -85,13 +98,27 @@ const readOnly = computed(() => savedCourse.value?.status === 'retired')
 const saving = ref(false)
 const busy = ref(false)
 const thumbnailUploading = ref(false)
-const justSaved = ref(false)
-let justSavedTimeout: ReturnType<typeof setTimeout> | undefined
-onUnmounted(() => clearTimeout(justSavedTimeout))
 
-const canSave = computed(
-  () => form.isValid.value && !saving.value && !busy.value && !thumbnailUploading.value,
-)
+const saveState = computed(() => {
+  if (saving.value) return 'saving'
+  return form.isDirty.value || !savedCourse.value ? 'unsaved' : 'saved'
+})
+
+const missingLabels = computed(() => form.missing.value.map((field) => ({ field, label: t(`courseBuilderView.missing.${field}`) })))
+const saveBlockers = useSaveBlockers(missingLabels)
+
+async function onSave() {
+  if (busy.value || thumbnailUploading.value || !saveBlockers.readyToSave()) return
+  await save()
+}
+
+// What a publish needs beyond a save: every checkpoint's path published.
+const missingToPublish = computed(() => [
+  ...missingLabels.value.map((item) => item.label),
+  ...form.checkpoints.value
+    .filter((checkpoint) => pathInfo.value[checkpoint.learningPathId]?.status === 'draft')
+    .map((checkpoint) => t('courseBuilderView.publishPathFirst', { title: checkpoint.pathTitle ?? '' })),
+])
 
 /** Saves the form; resolves to the saved course, or null when saving failed. */
 async function saveForm(): Promise<Course | null> {
@@ -118,19 +145,8 @@ async function save() {
   const isUpdate = !!savedCourse.value
   const course = await saveForm()
   if (!course) return
-  justSaved.value = true
-  clearTimeout(justSavedTimeout)
-  justSavedTimeout = setTimeout(() => (justSaved.value = false), 2000)
   toast.success(isUpdate ? t('courseBuilderView.courseSaved') : t('courseBuilderView.courseCreated'))
 }
-
-// Publishing the unchanged latest version again would only add an
-// identical version.
-const publishDisabled = computed(() => {
-  const course = savedCourse.value
-  if (!course || !form.isValid.value) return true
-  return course.status === 'published' && !course.has_unpublished_changes && !form.isDirty.value
-})
 
 async function runAction(action: () => Promise<void>, failureMessage: string) {
   busy.value = true
@@ -189,10 +205,11 @@ function onReactivate() {
 }
 
 const pickerOpen = ref(false)
-const outlineOpen = ref(false)
+const previewOpen = ref(false)
 
 function onPathPicked(path: LearningPath) {
   pickerOpen.value = false
+  recordPath(path)
   form.addCheckpoint(path)
 }
 
@@ -201,48 +218,32 @@ function onUpdateOverride(index: number, value: string) {
   if (checkpoint) checkpoint.override = value
 }
 
-// Leaving with unsaved changes asks first: in the app through a dialog, and
-// on closing or reloading the tab through the browser's own prompt.
-const leaveDialogOpen = ref(false)
-let resolveLeave: ((leave: boolean) => void) | null = null
-
-function answerLeave(leave: boolean) {
-  leaveDialogOpen.value = false
-  resolveLeave?.(leave)
-  resolveLeave = null
-}
-
-onBeforeRouteLeave(() => {
-  if (!form.isDirty.value || readOnly.value) return true
-  leaveDialogOpen.value = true
-  return new Promise<boolean>((resolve) => (resolveLeave = resolve))
-})
-
-function onBeforeUnload(event: BeforeUnloadEvent) {
-  if (form.isDirty.value && !readOnly.value) event.preventDefault()
-}
-onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
-onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
-
 const breadcrumbLabel = computed(() =>
   routeCourseId || savedCourse.value
     ? form.title.value || t('courseBuilderView.editBreadcrumb')
     : t('courseBuilderView.newBreadcrumb'),
 )
 const bodyReady = computed(() => !isLoading.value && !loadError.value)
+
+const cardClass = 'flex flex-col gap-4 rounded-2xl border border-border bg-surface-raised p-4'
+const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-muted'
+const labelClass = 'text-sm font-semibold text-ink'
+const hintClass = 'text-xs text-ink-muted'
+const inputClass = 'h-12 rounded-xl border border-border bg-surface-sunken px-3 text-base text-ink disabled:cursor-not-allowed'
+const textareaClass = 'rounded-xl border border-border bg-surface-sunken px-3 py-2 text-base text-ink disabled:cursor-not-allowed'
 </script>
 
 <template>
   <TeachShell section="teacher-courses" bar="none">
   <div class="flex flex-1 flex-col bg-surface">
-    <AppBar
-      :compact="isCompact"
-      :primary-nav-to="{ name: 'teacher-courses' }"
-      :breadcrumb-label="breadcrumbLabel"
-      :show-save="canAuthor && bodyReady && !readOnly"
-      :save-disabled="!canSave"
-      :just-saved="justSaved"
-      :on-save="save"
+    <EditorAppBar
+      :compact="!isExpanded"
+      :section-label="t('nav.courses')"
+      :section-to="{ name: 'teacher-courses' }"
+      :title="breadcrumbLabel"
+      :save-state="saveState"
+      :can-save="canAuthor && bodyReady && !notFound && !readOnly"
+      @save="onSave"
     />
 
     <div v-if="!canAuthor" data-test="permission-denied" class="flex flex-1 items-center justify-center p-10">
@@ -268,135 +269,95 @@ const bodyReady = computed(() => !isLoading.value && !loadError.value)
       <LoadFailed :message="t('courseBuilderView.loadErrorMessage')" @retry="retryLoad" />
     </div>
 
-    <main
-      v-else
-      data-test="builder-body"
-      class="flex min-w-0 flex-1 gap-8"
-      :class="isCompact ? 'flex-col px-4 pb-6 pt-[20px]' : 'items-start px-[48px] pb-[80px] pt-10'"
-    >
-      <div class="flex min-w-0 flex-1 flex-col gap-6">
-        <p
-          v-if="readOnly"
-          data-test="retired-notice"
-          class="rounded-md border border-border bg-surface-sunken px-4 py-3 text-sm text-ink-muted"
-        >
-          {{ isAdmin ? t('courseBuilderView.retiredNoticeAdmin') : t('courseBuilderView.retiredNotice') }}
-        </p>
+    <EditorBody v-else data-test="builder-body" :two-columns="isExpanded">
+      <template v-if="savedCourse" #side>
+        <CourseStatusPanel
+          :course="savedCourse"
+          :is-admin="isAdmin"
+          :missing="missingToPublish"
+          :busy="busy"
+          :has-unsaved-changes="form.isDirty.value"
+          @publish="onPublish"
+          @retire="onRetire"
+          @reactivate="onReactivate"
+          @preview="previewOpen = true"
+        />
+      </template>
 
-        <div class="flex flex-col gap-1.5">
+      <SaveBlockers :items="saveBlockers.shown.value" :reveal="saveBlockers.reveal.value" />
+
+      <section :class="cardClass">
+        <h2 :class="eyebrowClass">{{ t('courseBuilderView.details') }}</h2>
+        <label class="flex flex-col gap-1.5" data-field="title">
+          <span :class="labelClass">{{ t('courseBuilderView.titleLabel') }}</span>
           <input
             v-model="form.title.value"
             data-test="course-title"
             type="text"
             :disabled="readOnly"
-            :aria-label="t('courseBuilderView.titleLabel')"
             :placeholder="t('courseBuilderView.titlePlaceholder')"
-            class="border-none bg-transparent font-bold text-ink outline-none disabled:cursor-not-allowed"
-            :class="isCompact ? 'text-[1.375rem] leading-[1.75rem]' : 'text-xl'"
+            :class="inputClass"
           />
-          <span class="text-sm text-ink-subtle">{{ t('courseBuilderView.titleHint') }}</span>
-        </div>
+          <span :class="hintClass">{{ t('courseBuilderView.titleHint') }}</span>
+        </label>
 
-        <label class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">{{ t('courseBuilderView.summaryLabel') }}</span>
+        <label class="flex flex-col gap-1.5" data-field="summary">
+          <span :class="labelClass">{{ t('courseBuilderView.summaryLabel') }}</span>
           <textarea
             v-model="form.summary.value"
             data-test="course-summary"
             rows="3"
             :disabled="readOnly"
             :placeholder="t('courseBuilderView.summaryPlaceholder')"
-            class="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm disabled:cursor-not-allowed"
+            :class="textareaClass"
           />
         </label>
 
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">{{ t('courseBuilderView.levelLabel') }}</span>
-          <LevelPicker
-            v-model="form.level.value"
-            :label="t('courseBuilderView.levelLabel')"
-            :disabled="readOnly"
-            class="w-fit"
-          />
+        <div class="flex flex-col gap-1.5" data-field="level">
+          <span :class="labelClass">{{ t('courseBuilderView.levelLabel') }}</span>
+          <LevelPicker v-model="form.level.value" :label="t('courseBuilderView.levelLabel')" :disabled="readOnly" class="w-fit" />
         </div>
 
-        <label class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">{{ t('courseBuilderView.languageLabel') }}</span>
-          <LanguageSelect
-            v-model="form.language.value"
-            data-test="course-language"
-            :disabled="readOnly"
-            class="w-fit"
-          />
-          <span class="text-sm text-ink-subtle">{{ t('courseBuilderView.languageHint') }}</span>
+        <label class="flex flex-col gap-1.5" data-field="language">
+          <span :class="labelClass">{{ t('courseBuilderView.languageLabel') }}</span>
+          <LanguageSelect v-model="form.language.value" data-test="course-language" :disabled="readOnly" class="w-fit" />
+          <span :class="hintClass">{{ t('courseBuilderView.languageHint') }}</span>
         </label>
 
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">{{ t('courseBuilderView.instrumentsLabel') }}</span>
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('courseBuilderView.instrumentsLabel') }}</span>
           <InstrumentPicker v-model="form.instrumentIds.value" :disabled="readOnly" />
         </div>
 
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-semibold">{{ t('courseBuilderView.thumbnailLabel') }}</span>
-          <ThumbnailField
-            v-model="form.thumbnailUrl.value"
-            :disabled="readOnly"
-            @uploading="thumbnailUploading = $event"
-          />
+        <div class="flex flex-col gap-1.5">
+          <span :class="labelClass">{{ t('courseBuilderView.thumbnailLabel') }}</span>
+          <ThumbnailField v-model="form.thumbnailUrl.value" :disabled="readOnly" @uploading="thumbnailUploading = $event" />
         </div>
+      </section>
 
-        <div class="flex flex-col gap-3 border-t border-border pt-4">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold">{{ t('courseBuilderView.checkpointsLabel') }}</span>
-            <button
-              v-if="!readOnly"
-              type="button"
-              data-test="add-checkpoint"
-              class="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[0.8125rem] font-semibold text-accent-fg"
-              @click="pickerOpen = true"
-            >
-              <Plus :size="14" aria-hidden="true" />
-              {{ t('courseBuilderView.addCheckpoint') }}
-            </button>
-          </div>
-          <CourseCheckpointList
-            :checkpoints="form.checkpoints.value"
-            :disabled="readOnly"
-            @move="form.moveCheckpoint"
-            @remove="form.removeCheckpoint"
-            @update-override="onUpdateOverride"
-          />
+      <section :class="cardClass" data-field="checkpoints">
+        <div class="flex flex-col gap-1">
+          <h2 :class="eyebrowClass">{{ t('courseBuilderView.checkpointsHeading', { count: form.checkpoints.value.length }) }}</h2>
+          <p v-if="!readOnly && form.checkpoints.value.length > 1" :class="hintClass">{{ t('courseBuilderView.checkpointsHint') }}</p>
         </div>
-      </div>
-
-      <CourseStatusPanel
-        v-if="savedCourse"
-        :course="savedCourse"
-        :is-admin="isAdmin"
-        :publish-disabled="publishDisabled || !canSave"
-        :busy="busy"
-        :has-unsaved-changes="form.isDirty.value"
-        :class="isCompact ? 'w-full' : 'w-72 shrink-0'"
-        @publish="onPublish"
-        @retire="onRetire"
-        @reactivate="onReactivate"
-        @show-outline="outlineOpen = true"
-      />
-    </main>
+        <CourseCheckpointList
+          :checkpoints="form.checkpoints.value"
+          :path-info="pathInfo"
+          :disabled="readOnly"
+          @move="form.moveCheckpoint"
+          @remove="form.removeCheckpoint"
+          @update-override="onUpdateOverride"
+        />
+        <AppButton v-if="!readOnly" data-test="add-checkpoint" variant="secondary" block @click="pickerOpen = true">
+          <Plus :size="18" aria-hidden="true" />
+          {{ t('courseBuilderView.addCheckpoint') }}
+        </AppButton>
+      </section>
+    </EditorBody>
 
     <LearningPathPickerModal v-if="pickerOpen" :open="pickerOpen" @select="onPathPicked" @close="pickerOpen = false" />
-    <PublishedCourseModal
-      v-if="outlineOpen && savedCourse"
-      :course-id="savedCourse.course_id"
-      @close="outlineOpen = false"
-    />
-    <ConfirmDialog
-      :open="leaveDialogOpen"
-      :title="t('courseBuilderView.leaveTitle')"
-      :message="t('courseBuilderView.leaveMessage')"
-      :confirm-label="t('courseBuilderView.leaveConfirm')"
-      @confirm="answerLeave(true)"
-      @cancel="answerLeave(false)"
-    />
+    <CoursePreview v-if="previewOpen && savedCourse" :course-id="savedCourse.course_id" @close="previewOpen = false" />
+    <UnsavedChangesGuard :dirty="form.isDirty.value && !readOnly" :message="t('courseBuilderView.leaveMessage')" />
   </div>
   </TeachShell>
 </template>

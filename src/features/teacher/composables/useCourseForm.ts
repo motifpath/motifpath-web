@@ -18,6 +18,9 @@ export interface CheckpointDraft {
   override: string
 }
 
+/** A field a course needs before it can be saved. */
+export type CourseField = 'title' | 'summary' | 'level' | 'language' | 'checkpoints'
+
 let nextKey = 0
 
 function newKey(): string {
@@ -40,14 +43,17 @@ export function useCourseForm() {
   const thumbnailUrl = ref<string | undefined>(undefined)
   const checkpoints = ref<CheckpointDraft[]>([])
 
-  const isValid = computed(
-    () =>
-      title.value.trim() !== '' &&
-      summary.value.trim() !== '' &&
-      level.value !== null &&
-      language.value !== '' &&
-      checkpoints.value.length > 0,
-  )
+  /** What a save still needs, in the order of the form. */
+  const missing = computed<CourseField[]>(() => {
+    const fields: CourseField[] = []
+    if (title.value.trim() === '') fields.push('title')
+    if (summary.value.trim() === '') fields.push('summary')
+    if (level.value === null) fields.push('level')
+    if (language.value === '') fields.push('language')
+    if (checkpoints.value.length === 0) fields.push('checkpoints')
+    return fields
+  })
+  const isValid = computed(() => missing.value.length === 0)
 
   function checkpointInputs(): CourseRequest['checkpoints'] {
     return checkpoints.value.map((checkpoint) => {
@@ -158,6 +164,7 @@ export function useCourseForm() {
     instrumentIds,
     thumbnailUrl,
     checkpoints,
+    missing,
     isValid,
     isDirty,
     toRequest,

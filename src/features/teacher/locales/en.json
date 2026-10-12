@@ -494,11 +494,16 @@
   },
   "courseCheckpointList": {
     "empty": "No checkpoints yet. Add a learning path to start the course.",
-    "dragHandleAriaLabel": "Drag to reorder",
-    "overrideAriaLabel": "Title for checkpoint {position}",
-    "moveUpAriaLabel": "Move checkpoint up",
-    "moveDownAriaLabel": "Move checkpoint down",
-    "removeAriaLabel": "Remove checkpoint"
+    "path": "Path",
+    "lessons": "{count} lesson | {count} lessons",
+    "published": "Published",
+    "draftPublishFirst": "Draft — publish it first",
+    "rename": "Rename in this course",
+    "renameLabel": "Title in this course",
+    "renameHint": "Leave it blank to use the path's own title.",
+    "renameConfirm": "Rename",
+    "open": "Open the path",
+    "remove": "Remove from course"
   },
   "learningPathPickerModal": {
     "title": "Add a checkpoint",
@@ -514,9 +519,6 @@
     "updated": "Updated {date}"
   },
   "courseStatusPanel": {
-    "statusLabel": "Status",
-    "publishedVersion": "Published · v{version}",
-    "showOutline": "See what learners see",
     "publish": "Publish",
     "retire": "Retire",
     "reactivate": "Reactivate",
@@ -526,12 +528,25 @@
     "retireMessage": "The course leaves the catalog, so no one new can enroll. Existing enrollments are unaffected.",
     "reactivateTitle": "Reactivate this course?",
     "reactivateMessage": "The course returns to the catalog with its latest published version. Unpublished changes stay unpublished.",
-    "adminPublishesNote": "An admin publishes courses. Learners won't see this course or your changes until then.",
-    "retireNeedsSave": "Save your changes before retiring the course."
+    "retireNeedsSave": "Save your changes before retiring the course.",
+    "adminPublishes": "An admin publishes courses — your saved changes reach learners when they do.",
+    "retiredMessage": "Retired — it can't be changed. An admin can reactivate it.",
+    "retiredMessageAdmin": "Retired — it can't be changed. Reactivate it to edit it again."
   },
-  "publishedCourseModal": {
-    "title": "What learners see",
-    "errorMessage": "Couldn't load the published course."
+  "pathStatusPanel": {
+    "publishedMessage": "In the path catalog — learners who start it get it as it is saved.",
+    "adminPublishes": "An admin publishes paths — your saved changes reach learners when they do.",
+    "publishTitle": "Publish this path?",
+    "publishMessage": "Your changes are saved first. The path is listed in the path catalog, and learners who start it from now on get it as it is saved."
+  },
+  "lessonStatusPanel": {
+    "authorPublishes": "Its author or an admin publishes it.",
+    "publishTitle": "Publish this lesson?",
+    "publishMessage": "Your changes are saved first. Learners who get this lesson from now on get this version; learners who already have it keep theirs."
+  },
+  "coursePreview": {
+    "enroll": "Enroll (not in preview)",
+    "loadFailed": "Couldn't load the published course."
   },
   "courseBuilderView": {
     "permissionDenied": "This page is for teachers and admins only — your account can't build courses.",
@@ -540,8 +555,6 @@
     "loadErrorMessage": "Couldn't load this course.",
     "newBreadcrumb": "New course",
     "editBreadcrumb": "Edit course",
-    "retiredNotice": "This course is retired, so it can't be changed. An admin can reactivate it.",
-    "retiredNoticeAdmin": "This course is retired, so it can't be changed. Reactivate it to edit it again.",
     "titleLabel": "Course title",
     "titlePlaceholder": "Untitled course",
     "titleHint": "Learners see this title in the course catalog.",
@@ -552,7 +565,6 @@
     "languageHint": "The language the course is written in. Learners can filter the catalog by it.",
     "instrumentsLabel": "Instruments",
     "thumbnailLabel": "Thumbnail",
-    "checkpointsLabel": "Checkpoints",
     "addCheckpoint": "Add checkpoint",
     "saveFailed": "Couldn't save the course.",
     "courseCreated": "Course created",
@@ -563,10 +575,19 @@
     "retireFailed": "Couldn't retire the course.",
     "reactivated": "Course reactivated",
     "reactivateFailed": "Couldn't reactivate the course.",
-    "leaveTitle": "Leave without saving?",
     "leaveMessage": "Your changes to this course haven't been saved and will be lost.",
-    "leaveConfirm": "Leave",
-    "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}"
+    "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}",
+    "missing": {
+      "title": "Add a title",
+      "summary": "Add a summary",
+      "level": "Choose a level",
+      "language": "Choose a language",
+      "checkpoints": "Add a checkpoint"
+    },
+    "publishPathFirst": "Publish the path “{title}”",
+    "details": "Details",
+    "checkpointsHeading": "Checkpoints · {count}",
+    "checkpointsHint": "Each checkpoint is a path. Drag ⠿ or use ⋮ to move one."
   },
   "diagramPickerList": {
     "count": "{count} diagram | {count} diagrams",

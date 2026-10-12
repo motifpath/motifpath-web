@@ -11,7 +11,7 @@ import type { components } from '@/api/generated/core-domain'
 import {
   useCourse,
   useCourseMutations,
-  useLearningPathTitles,
+  useCheckpointPaths,
   usePublishedCourse,
 } from '@/features/teacher/composables/useCourseAuthoring'
 
@@ -97,13 +97,13 @@ describe('course authoring composables', () => {
     })
   })
 
-  describe('useLearningPathTitles', () => {
-    it("looks up each path's title once", async () => {
+  describe('useCheckpointPaths', () => {
+    it('looks up each path once, passing on the whole path', async () => {
       GET.mockImplementation((_path: string, options: { params: { path: { learning_path_id: string } } }) =>
-        Promise.resolve(ok({ learning_path_id: options.params.path.learning_path_id, title: `Title ${options.params.path.learning_path_id}` })),
+        Promise.resolve(ok({ learning_path_id: options.params.path.learning_path_id, title: `Title ${options.params.path.learning_path_id}`, status: 'draft', items: [] })),
       )
       const found: [string, string][] = []
-      const { lookUp } = useLearningPathTitles((id, title) => found.push([id, title]))
+      const { lookUp } = useCheckpointPaths((id, path) => found.push([id, path.title]))
 
       await lookUp(['lp-1', 'lp-2'])
       await lookUp(['lp-1'])
@@ -117,9 +117,9 @@ describe('course authoring composables', () => {
 
     it('skips a path that fails to load, and tries it again later', async () => {
       GET.mockResolvedValueOnce({ error: { message: 'boom' }, response: new Response(null, { status: 500 }) })
-      GET.mockResolvedValueOnce(ok({ learning_path_id: 'lp-1', title: 'Open chords' }))
+      GET.mockResolvedValueOnce(ok({ learning_path_id: 'lp-1', title: 'Open chords', status: 'draft', items: [] }))
       const found: [string, string][] = []
-      const { lookUp } = useLearningPathTitles((id, title) => found.push([id, title]))
+      const { lookUp } = useCheckpointPaths((id, path) => found.push([id, path.title]))
 
       await lookUp(['lp-1'])
       expect(found).toEqual([])

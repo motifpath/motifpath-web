@@ -69,6 +69,23 @@ describe('useCourseForm', () => {
     })
   })
 
+  describe('missing', () => {
+    it('names every field a new course still needs, in the order of the form', () => {
+      expect(useCourseForm().missing.value).toEqual(['title', 'summary', 'level', 'checkpoints'])
+    })
+
+    it('is empty once the course can be saved', () => {
+      expect(filledForm().missing.value).toEqual([])
+    })
+
+    it('names a language once it is cleared', () => {
+      const form = filledForm()
+      form.language.value = ''
+
+      expect(form.missing.value).toEqual(['language'])
+    })
+  })
+
   describe('toRequest', () => {
     it('maps the form, trimming text and sending checkpoints in order', () => {
       const form = filledForm()

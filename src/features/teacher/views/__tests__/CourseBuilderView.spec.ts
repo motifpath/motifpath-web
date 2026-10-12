@@ -54,7 +54,8 @@ const libraryPath = {
   teacher: { user_id: 'u-tomas', display_name: 'Tomás' },
   level: 'beginner',
   instrument_ids: [],
-  items: [],
+  status: 'published',
+  items: [{ position: 1, content_node_id: 'n-1', title: 'E minor', content_type: 'video' }],
   created_at: '2026-08-01T00:00:00Z',
   updated_at: '2026-08-02T12:00:00Z',
 }
@@ -87,12 +88,14 @@ function failure(status: number) {
   return { data: undefined, error: { message: 'boom' }, response: new Response(null, { status }) }
 }
 
-function routeGET(courseResult: unknown = ok(course())) {
+function routeGET(courseResult: unknown = ok(course()), draftPathIds: string[] = []) {
   GET.mockImplementation((path: string, options?: { params?: { path?: { learning_path_id?: string } } }) => {
     if (path === '/courses/{course_id}') return Promise.resolve(courseResult)
     if (path === '/learning-paths/{learning_path_id}') {
       const id = options?.params?.path?.learning_path_id
-      return Promise.resolve(ok({ ...libraryPath, learning_path_id: id, title: id === 'lp-2' ? 'Travis picking' : 'Open chords' }))
+      const title = id === 'lp-2' ? 'Travis picking' : 'Open chords'
+      const status = draftPathIds.includes(id ?? '') ? 'draft' : 'published'
+      return Promise.resolve(ok({ ...libraryPath, learning_path_id: id, title, status }))
     }
     if (path === '/learning-paths') return Promise.resolve(ok({ items: [libraryPath], total: 1, limit: 20, offset: 0 }))
     if (path === '/courses/{course_id}/published') {
@@ -123,7 +126,20 @@ function mountView() {
 type Wrapper = ReturnType<typeof mountView>
 
 function saveButton(wrapper: Wrapper) {
-  return wrapper.get('[data-test="app-bar-save"]')
+  return wrapper.get('[data-test="editor-app-bar-save"]')
+}
+
+function rowTitles(wrapper: Wrapper) {
+  return wrapper.findAll('[data-test="ordered-row-title"]').map((title) => title.text())
+}
+
+async function chooseFromRowMenu(wrapper: Wrapper, row: number, label: string) {
+  await wrapper.findAll('[data-test="ordered-row-menu"]')[row]!.trigger('click')
+  const item = [...document.querySelectorAll<HTMLButtonElement>('[data-test="ordered-row-menu-item"]')].find(
+    (candidate) => candidate.textContent?.trim() === label,
+  )
+  item!.click()
+  await flushPromises()
 }
 
 async function fillNewCourse(wrapper: Wrapper) {
@@ -150,7 +166,10 @@ describe('CourseBuilderView', () => {
     mockMatchMedia()
     routeGET()
   })
-  afterEach(() => wrapper?.unmount())
+  afterEach(() => {
+    wrapper?.unmount()
+    document.body.innerHTML = ''
+  })
 
   it('shows a permission notice to a student', () => {
     currentUser.profile.role = 'student'
@@ -160,14 +179,40 @@ describe('CourseBuilderView', () => {
   })
 
   describe('a new course', () => {
-    it('keeps Save disabled until title, summary, level and a checkpoint are set', async () => {
+    it('Save with something missing saves nothing and lists what is missing', async () => {
       wrapper = mountView()
       await flushPromises()
-      expect(saveButton(wrapper).attributes('disabled')).toBeDefined()
+
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(POST).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-test="save-blockers"]').text()).toContain('Before you can save:')
+      expect(wrapper.findAll('[data-test="save-blocker"]').map((item) => item.text())).toEqual([
+        'Add a title',
+        'Add a summary',
+        'Choose a level',
+        'Add a checkpoint',
+      ])
+    })
+
+    it('the list goes once nothing is missing', async () => {
+      wrapper = mountView()
+      await flushPromises()
+      await saveButton(wrapper).trigger('click')
 
       await fillNewCourse(wrapper)
 
-      expect(saveButton(wrapper).attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
+    })
+
+    it('every field the list names is there to jump to', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      for (const field of ['title', 'summary', 'level', 'checkpoints']) {
+        expect(wrapper.find(`[data-field="${field}"]`).exists()).toBe(true)
+      }
     })
 
     it('adds the picked path as a checkpoint', async () => {
@@ -177,7 +222,8 @@ describe('CourseBuilderView', () => {
       await fillNewCourse(wrapper)
 
       expect(wrapper.find('[data-test="path-picker-row"]').exists()).toBe(false)
-      expect(wrapper.get('[data-test="checkpoint-path-title"]').text()).toBe('Open chords')
+      expect(rowTitles(wrapper)).toEqual(['1 · Open chords'])
+      expect(wrapper.get('[data-test="ordered-row-meta"]').text()).toBe('Path · 1 lesson · Published')
     })
 
     it('creates the course, moves to its edit URL, and updates the same course on the next save', async () => {
@@ -214,7 +260,7 @@ describe('CourseBuilderView', () => {
       wrapper = mountView()
       await flushPromises()
 
-      expect(wrapper.find('[data-test="course-status"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="status-panel"]').exists()).toBe(false)
     })
 
     it('keeps the form and reports the error when saving fails', async () => {
@@ -237,17 +283,40 @@ describe('CourseBuilderView', () => {
       route.params = { id: 'c-1' }
     })
 
-    it('loads the live draft, looking up the title of a path whose checkpoint is retitled', async () => {
+    it('loads the live draft, naming each checkpoint as learners see it and saying what blocks publishing', async () => {
+      routeGET(ok(course()), ['lp-2'])
       wrapper = mountView()
       await flushPromises()
 
       expect(wrapper.get<HTMLInputElement>('[data-test="course-title"]').element.value).toBe('Fingerstyle Foundations')
-      const titles = wrapper.findAll('[data-test="checkpoint-path-title"]').map((w) => w.text())
-      expect(titles).toEqual(['Open chords', 'Travis picking'])
-      expect(wrapper.findAll<HTMLInputElement>('[data-test="checkpoint-override"]')[1]!.element.value).toBe('Stage 2')
+      expect(rowTitles(wrapper)).toEqual(['1 · Open chords', '2 · Stage 2'])
+      expect(wrapper.findAll('[data-test="ordered-row-meta"]').map((meta) => meta.text())).toEqual([
+        'Path · 1 lesson · Published',
+        'Path · 1 lesson · Draft — publish it first',
+      ])
     })
 
-    it("keeps showing a retitled checkpoint's path title after saving", async () => {
+    it('opens with nothing to save', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="editor-app-bar-section"]').text()).toBe('Courses')
+      expect(wrapper.get('[data-test="editor-app-bar-title"]').text()).toBe('Fingerstyle Foundations')
+    })
+
+    it('an edit makes Save available', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="course-summary"]').setValue('A new summary.')
+
+      expect(saveButton(wrapper).text()).toBe('Save')
+    })
+
+    it("keeps each path's state after saving", async () => {
+      routeGET(ok(course()), ['lp-2'])
       PUT.mockResolvedValueOnce(ok(course()))
       wrapper = mountView()
       await flushPromises()
@@ -256,8 +325,23 @@ describe('CourseBuilderView', () => {
       await saveButton(wrapper).trigger('click')
       await flushPromises()
 
-      const titles = wrapper.findAll('[data-test="checkpoint-path-title"]').map((w) => w.text())
-      expect(titles).toEqual(['Open chords', 'Travis picking'])
+      expect(wrapper.findAll('[data-test="ordered-row-meta"]')[1]!.text()).toBe('Path · 1 lesson · Draft — publish it first')
+      expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
+    })
+
+    it('renames a checkpoint in this course', async () => {
+      PUT.mockResolvedValueOnce(ok(course()))
+      wrapper = mountView()
+      await flushPromises()
+
+      await chooseFromRowMenu(wrapper, 0, 'Rename in this course')
+      const input = document.querySelector<HTMLInputElement>('[data-test="checkpoint-rename-input"]')!
+      input.value = 'Stage 1'
+      input.dispatchEvent(new Event('input'))
+      document.querySelector<HTMLButtonElement>('[data-test="checkpoint-rename-confirm"]')!.click()
+      await flushPromises()
+
+      expect(rowTitles(wrapper)).toEqual(['1 · Stage 1', '2 · Stage 2'])
     })
 
     it('saves the whole form over the course', async () => {
@@ -265,7 +349,7 @@ describe('CourseBuilderView', () => {
       wrapper = mountView()
       await flushPromises()
 
-      await wrapper.findAll('[data-test="checkpoint-move-down"]')[0]!.trigger('click')
+      await chooseFromRowMenu(wrapper, 0, 'Move down')
       await saveButton(wrapper).trigger('click')
       await flushPromises()
 
@@ -286,7 +370,7 @@ describe('CourseBuilderView', () => {
       const notFound = wrapper.get('[data-test="course-not-found"]').element
       const notFoundLinks = wrapper.findAllComponents(RouterLinkStub).filter((link) => notFound.contains(link.element))
       expect(notFoundLinks.map((link) => link.props('to'))).toEqual([{ name: 'teacher-courses' }])
-      expect(wrapper.find('[data-test="app-bar-save"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
     })
 
     it('offers a retry when the course fails to load', async () => {
@@ -306,19 +390,24 @@ describe('CourseBuilderView', () => {
       wrapper = mountView()
       await flushPromises()
 
-      expect(wrapper.find('[data-test="admin-publishes-note"]').exists()).toBe(true)
-      expect(wrapper.find('[data-test="publish-course"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="status-panel-message"]').text()).toContain('An admin publishes courses')
+      expect(wrapper.find('[data-test="status-panel-primary"]').exists()).toBe(false)
     })
 
-    it('shows the published outline', async () => {
+    it('shows what learners see: the learner course page for the published version', async () => {
       routeGET(ok(course({ status: 'published', latest_published_version: 1 })))
       wrapper = mountView()
       await flushPromises()
 
-      await wrapper.get('[data-test="show-outline"]').trigger('click')
+      await wrapper.get('[data-test="see-what-learners-see"]').trigger('click')
       await flushPromises()
 
-      expect(wrapper.find('[data-test="outline-checkpoint"]').exists()).toBe(true)
+      expect(document.querySelector('[data-test="preview-bar"]')).not.toBeNull()
+      expect(document.querySelector('[data-test="course-detail-title"]')?.textContent).toBe('Fingerstyle Foundations')
+
+      document.querySelector<HTMLButtonElement>('[data-test="preview-close"]')!.click()
+      await flushPromises()
+      expect(document.querySelector('[data-test="preview-bar"]')).toBeNull()
     })
 
     describe('for an admin', () => {
@@ -332,15 +421,16 @@ describe('CourseBuilderView', () => {
         wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="publish-course"]').trigger('click')
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
         await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
         await flushPromises()
 
         expect(PUT).toHaveBeenCalled()
         expect(POST).toHaveBeenCalledWith('/courses/{course_id}/publish', { params: { path: { course_id: 'c-1' } } })
         expect(PUT.mock.invocationCallOrder[0]).toBeLessThan(POST.mock.invocationCallOrder[0]!)
-        expect(wrapper.get('[data-test="course-status"]').text()).toBe('Published · v1')
-        expect(wrapper.find('[data-test="unpublished-changes"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Published · v1')
+        expect(wrapper.get('[data-test="status-panel-message"]').text()).toBe('Learners get version 1.')
+        expect(useToast().toasts.value.map((toast) => toast.message)).toContain('Published as version 1')
       })
 
       it('names the draft learning paths when publishing is refused over them', async () => {
@@ -353,7 +443,7 @@ describe('CourseBuilderView', () => {
         wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="publish-course"]').trigger('click')
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
         await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
         await flushPromises()
 
@@ -361,7 +451,7 @@ describe('CourseBuilderView', () => {
         expect(errors.map((toast) => toast.message)).toEqual([
           'Publish these learning paths before the course: Open chords',
         ])
-        expect(wrapper.get('[data-test="course-status"]').text()).toBe('Draft')
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Draft')
       })
 
       it('does not publish when saving first fails', async () => {
@@ -369,22 +459,33 @@ describe('CourseBuilderView', () => {
         wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="publish-course"]').trigger('click')
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
         await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
         await flushPromises()
 
         expect(POST).not.toHaveBeenCalled()
       })
 
-      it('keeps Publish disabled for a published course with nothing new', async () => {
+      it('offers Publish only once there is something new to publish', async () => {
         routeGET(ok(course({ status: 'published', latest_published_version: 2 })))
         wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.get('[data-test="publish-course"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('[data-test="status-panel-primary"]').exists()).toBe(false)
 
         await wrapper.get('[data-test="course-summary"]').setValue('A fresher summary.')
-        expect(wrapper.get('[data-test="publish-course"]').attributes('disabled')).toBeUndefined()
+        expect(wrapper.get('[data-test="status-panel-primary"]').text()).toBe('Publish changes')
+      })
+
+      it('lists the draft paths a publish still needs', async () => {
+        routeGET(ok(course({ has_unpublished_changes: true })), ['lp-2'])
+        wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.findAll('[data-test="status-panel-missing-item"]').map((item) => item.text())).toEqual([
+          'Publish the path “Travis picking”',
+        ])
+        expect(wrapper.get('[data-test="status-panel-primary"]').attributes('disabled')).toBeDefined()
       })
 
       it('retires a published course', async () => {
@@ -393,23 +494,23 @@ describe('CourseBuilderView', () => {
         wrapper = mountView()
         await flushPromises()
 
-        await wrapper.get('[data-test="retire-course"]').trigger('click')
+        await wrapper.get('[data-test="status-panel-secondary"]').trigger('click')
         await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
         await flushPromises()
 
         expect(POST).toHaveBeenCalledWith('/courses/{course_id}/retire', { params: { path: { course_id: 'c-1' } } })
-        expect(wrapper.get('[data-test="course-status"]').text()).toBe('Retired')
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Retired')
       })
 
-      it('keeps Retire disabled while the form has unsaved changes, which retiring would lose', async () => {
+      it('asks to save before retiring, since retiring would lose unsaved changes', async () => {
         routeGET(ok(course({ status: 'published', latest_published_version: 2 })))
         wrapper = mountView()
         await flushPromises()
-        expect(wrapper.get('[data-test="retire-course"]').attributes('disabled')).toBeUndefined()
+        expect(wrapper.find('[data-test="status-panel-secondary"]').exists()).toBe(true)
 
         await wrapper.get('[data-test="course-summary"]').setValue('An unsaved summary.')
 
-        expect(wrapper.get('[data-test="retire-course"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('[data-test="status-panel-secondary"]').exists()).toBe(false)
         expect(wrapper.text()).toContain('Save your changes before retiring the course.')
       })
 
@@ -418,14 +519,14 @@ describe('CourseBuilderView', () => {
         POST.mockResolvedValueOnce(ok(course({ status: 'published', latest_published_version: 2 })))
         wrapper = mountView()
         await flushPromises()
-        expect(wrapper.find('[data-test="app-bar-save"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="editor-app-bar-saved"]').exists()).toBe(false)
 
-        await wrapper.get('[data-test="reactivate-course"]').trigger('click')
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
         await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
         await flushPromises()
 
         expect(POST).toHaveBeenCalledWith('/courses/{course_id}/reactivate', { params: { path: { course_id: 'c-1' } } })
-        expect(wrapper.find('[data-test="app-bar-save"]').exists()).toBe(true)
+        expect(wrapper.find('[data-test="editor-app-bar-saved"]').exists()).toBe(true)
         expect(wrapper.get('[data-test="course-title"]').attributes('disabled')).toBeUndefined()
       })
     })
@@ -437,12 +538,13 @@ describe('CourseBuilderView', () => {
         wrapper = mountView()
         await flushPromises()
 
-        expect(wrapper.find('[data-test="retired-notice"]').exists()).toBe(true)
-        expect(wrapper.find('[data-test="app-bar-save"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="status-panel-message"]').text()).toContain("Retired — it can't be changed.")
+        expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="editor-app-bar-saved"]').exists()).toBe(false)
         expect(wrapper.get('[data-test="course-title"]').attributes('disabled')).toBeDefined()
         expect(wrapper.get('[data-test="course-summary"]').attributes('disabled')).toBeDefined()
         expect(wrapper.find('[data-test="add-checkpoint"]').exists()).toBe(false)
-        expect(wrapper.find('[data-test="checkpoint-remove"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="ordered-row-menu"]').exists()).toBe(false)
       })
     })
 
@@ -461,7 +563,8 @@ describe('CourseBuilderView', () => {
 
         const leaving = leaveGuard!()
         await flushPromises()
-        expect(wrapper.text()).toContain('Leave without saving?')
+        expect(document.body.textContent).toContain('Leave without saving?')
+        expect(document.querySelector('[data-test="confirm-dialog-cancel"]')?.textContent?.trim()).toBe('Keep editing')
         await wrapper.get('[data-test="confirm-dialog-cancel"]').trigger('click')
 
         expect(await leaving).toBe(false)

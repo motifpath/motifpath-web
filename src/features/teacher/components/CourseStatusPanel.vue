@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { Eye } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
+import StatusPanel from '@/shared/components/StatusPanel.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type Course = components['schemas']['Course']
@@ -13,29 +15,56 @@ const props = withDefaults(
     course: Course
     /** Only an admin publishes, retires and reactivates courses. */
     isAdmin: boolean
-    /** Whether there is nothing new to publish, or the form can't be saved first. */
-    publishDisabled: boolean
     /** Whether an action is running. */
     busy: boolean
     /**
-     * Whether the form holds edits not yet saved. A retired course can't be
-     * edited, so retiring waits until they are saved.
+     * Whether the form holds edits not yet saved. Publishing saves them first; a retired course
+     * can't be edited, so retiring waits until they are saved.
      */
     hasUnsavedChanges?: boolean
+    /** What a publish still needs, as the author would add it. */
+    missing?: string[]
   }>(),
-  { hasUnsavedChanges: false },
+  { hasUnsavedChanges: false, missing: () => [] },
 )
-const emit = defineEmits<{ publish: []; retire: []; reactivate: []; showOutline: [] }>()
+const emit = defineEmits<{ publish: []; retire: []; reactivate: []; preview: [] }>()
 
 const { t } = useTypedT()
 
-const statusLabel = computed(() => {
-  const { status, latest_published_version: version } = props.course
-  if (status === 'published' && version) return t('courseStatusPanel.publishedVersion', { version })
-  return t(`courseStatus.${status}`)
+const version = computed(() => props.course.latest_published_version ?? null)
+const isRetired = computed(() => props.course.status === 'retired')
+const isPublished = computed(() => props.course.status === 'published' && version.value !== null)
+const hasChanges = computed(() => props.course.has_unpublished_changes || props.hasUnsavedChanges)
+
+const statusChip = computed(() => {
+  if (isRetired.value) return { label: t('authoringStatus.retired'), tone: 'neutral' } as const
+  if (!isPublished.value) return { label: t('authoringStatus.draft'), tone: 'accent' } as const
+  if (props.course.has_unpublished_changes) return { label: t('authoringStatus.unpublishedChanges'), tone: 'warning' } as const
+  return { label: t('authoringStatus.publishedVersion', { version: version.value }), tone: 'success' } as const
 })
 
-const hasPublishedVersion = computed(() => !!props.course.latest_published_version)
+const message = computed(() => {
+  if (isRetired.value) return props.isAdmin ? t('courseStatusPanel.retiredMessageAdmin') : t('courseStatusPanel.retiredMessage')
+  const now = learnersGetNow()
+  if (props.isAdmin) return now
+  return isPublished.value && !props.course.has_unpublished_changes ? now : `${now} ${t('courseStatusPanel.adminPublishes')}`
+})
+
+function learnersGetNow(): string {
+  if (!isPublished.value) return t('authoringStatus.notPublishedYet')
+  if (!props.course.has_unpublished_changes) return t('authoringStatus.learnersGet', { version: version.value })
+  const stillGet = t('authoringStatus.learnersStillGet', { version: version.value })
+  return props.isAdmin ? `${stillGet} ${t('authoringStatus.publishToGiveThem')}` : stillGet
+}
+
+const primary = computed<{ label: string; action: CourseAction } | null>(() => {
+  if (!props.isAdmin) return null
+  if (isRetired.value) return { label: t('courseStatusPanel.reactivate'), action: 'reactivate' }
+  if (!isPublished.value) return { label: t('authoringStatus.publish'), action: 'publish' }
+  return hasChanges.value ? { label: t('authoringStatus.publishChanges'), action: 'publish' } : null
+})
+
+const canRetire = computed(() => props.isAdmin && isPublished.value && !isRetired.value)
 
 // The action awaiting confirmation; it stays open while the confirmed action
 // runs, and closes once it has finished.
@@ -67,103 +96,41 @@ watch(
 )
 
 const dialog = computed(() => {
-  switch (pending.value) {
-    case 'publish':
-      return {
-        title: t('courseStatusPanel.publishTitle'),
-        message: t('courseStatusPanel.publishMessage'),
-        confirmLabel: t('courseStatusPanel.publish'),
-      }
-    case 'retire':
-      return {
-        title: t('courseStatusPanel.retireTitle'),
-        message: t('courseStatusPanel.retireMessage'),
-        confirmLabel: t('courseStatusPanel.retire'),
-      }
-    case 'reactivate':
-      return {
-        title: t('courseStatusPanel.reactivateTitle'),
-        message: t('courseStatusPanel.reactivateMessage'),
-        confirmLabel: t('courseStatusPanel.reactivate'),
-      }
-    default:
-      return null
+  if (!pending.value) return null
+  return {
+    title: t(`courseStatusPanel.${pending.value}Title`),
+    message: t(`courseStatusPanel.${pending.value}Message`),
+    confirmLabel: t(`courseStatusPanel.${pending.value}`),
   }
 })
 </script>
 
 <template>
-  <aside class="flex flex-col gap-4 rounded-lg border border-border bg-surface-raised p-4">
-    <div class="flex flex-col gap-2">
-      <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
-        {{ t('courseStatusPanel.statusLabel') }}
-      </span>
-      <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
-        <span data-test="course-status" class="rounded-full bg-accent-muted px-2.5 py-0.5 text-accent-text">
-          {{ statusLabel }}
-        </span>
-        <span
-          v-if="course.has_unpublished_changes"
-          data-test="unpublished-changes"
-          class="rounded-full border border-border px-2.5 py-0.5 text-ink-muted"
-        >
-          {{ t('courseListView.unpublishedChanges') }}
-        </span>
-      </div>
-    </div>
+  <div class="flex flex-col gap-3">
+    <StatusPanel
+      :status="statusChip"
+      :message="message"
+      :missing="primary?.action === 'publish' ? missing : []"
+      :primary="primary?.label"
+      :secondary="canRetire && !hasUnsavedChanges ? t('courseStatusPanel.retire') : undefined"
+      :busy="busy"
+      @primary="primary && ask(primary.action)"
+      @secondary="ask('retire')"
+    >
+      <p v-if="canRetire && hasUnsavedChanges" data-test="retire-needs-save" class="text-sm text-ink-muted">
+        {{ t('courseStatusPanel.retireNeedsSave') }}
+      </p>
+    </StatusPanel>
 
     <button
-      v-if="hasPublishedVersion"
+      v-if="version !== null"
       type="button"
-      data-test="show-outline"
-      class="w-fit text-sm font-semibold text-accent-text underline"
-      @click="emit('showOutline')"
+      data-test="see-what-learners-see"
+      class="flex h-10 items-center gap-2 self-start rounded-full px-1 text-sm font-semibold text-accent-text hover:underline"
+      @click="emit('preview')"
     >
-      {{ t('courseStatusPanel.showOutline') }}
+      <Eye :size="18" aria-hidden="true" />{{ t('authoringStatus.seeWhatLearnersSee') }}
     </button>
-
-    <div v-if="isAdmin" class="flex flex-wrap gap-2">
-      <button
-        v-if="course.status !== 'retired'"
-        type="button"
-        data-test="publish-course"
-        :disabled="publishDisabled || busy"
-        class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
-        @click="ask('publish')"
-      >
-        {{ t('courseStatusPanel.publish') }}
-      </button>
-      <button
-        v-if="course.status === 'published'"
-        type="button"
-        data-test="retire-course"
-        :disabled="busy || hasUnsavedChanges"
-        class="rounded-md border border-border bg-surface-raised px-3.5 py-2 text-[0.8125rem] font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-60"
-        @click="ask('retire')"
-      >
-        {{ t('courseStatusPanel.retire') }}
-      </button>
-      <button
-        v-if="course.status === 'retired'"
-        type="button"
-        data-test="reactivate-course"
-        :disabled="busy"
-        class="rounded-md bg-accent px-3.5 py-2 text-[0.8125rem] font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-60"
-        @click="ask('reactivate')"
-      >
-        {{ t('courseStatusPanel.reactivate') }}
-      </button>
-    </div>
-    <p
-      v-if="isAdmin && course.status === 'published' && hasUnsavedChanges"
-      data-test="retire-needs-save"
-      class="text-sm text-ink-subtle"
-    >
-      {{ t('courseStatusPanel.retireNeedsSave') }}
-    </p>
-    <p v-if="!isAdmin" data-test="admin-publishes-note" class="text-sm text-ink-subtle">
-      {{ t('courseStatusPanel.adminPublishesNote') }}
-    </p>
 
     <ConfirmDialog
       :open="dialog !== null"
@@ -174,5 +141,5 @@ const dialog = computed(() => {
       @confirm="onConfirm"
       @cancel="pending = null"
     />
-  </aside>
+  </div>
 </template>

@@ -1,123 +1,147 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type * as VueRouter from 'vue-router'
 
-import CourseCheckpointList from '@/features/teacher/components/CourseCheckpointList.vue'
+const push = vi.fn()
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return { ...actual, useRouter: () => ({ push }) }
+})
+
+import CourseCheckpointList, { type CheckpointPathInfo } from '@/features/teacher/components/CourseCheckpointList.vue'
 import type { CheckpointDraft } from '@/features/teacher/composables/useCourseForm'
 
 const checkpoints: CheckpointDraft[] = [
-  { key: 'k-1', learningPathId: 'lp-1', pathTitle: 'Open chords', override: '' },
-  { key: 'k-2', learningPathId: 'lp-2', pathTitle: 'Travis picking', override: 'Stage 2' },
-  { key: 'k-3', learningPathId: 'lp-3', pathTitle: null, override: 'Stage 3' },
+  { key: 'k-1', learningPathId: 'lp-1', pathTitle: 'First chords', override: '' },
+  { key: 'k-2', learningPathId: 'lp-2', pathTitle: 'Travis picking', override: 'Strumming' },
+  { key: 'k-3', learningPathId: 'lp-3', pathTitle: null, override: '' },
 ]
 
+const pathInfo: Record<string, CheckpointPathInfo> = {
+  'lp-1': { status: 'published', lessonCount: 6 },
+  'lp-2': { status: 'draft', lessonCount: 7 },
+}
+
 function mountList(props: { disabled?: boolean } = {}) {
-  return mount(CourseCheckpointList, { props: { checkpoints, ...props } })
+  return mount(CourseCheckpointList, { props: { checkpoints, pathInfo, ...props }, attachTo: document.body })
+}
+
+function menuItem(label: string): HTMLButtonElement {
+  return [...document.querySelectorAll<HTMLButtonElement>('[data-test="ordered-row-menu-item"]')].find(
+    (item) => item.textContent?.trim() === label,
+  )!
 }
 
 describe('CourseCheckpointList', () => {
+  let wrapper: ReturnType<typeof mount> | null = null
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = null
+    document.body.innerHTML = ''
+    push.mockReset()
+  })
+
   it('says when there are no checkpoints yet', () => {
-    const wrapper = mount(CourseCheckpointList, { props: { checkpoints: [] } })
+    wrapper = mount(CourseCheckpointList, { props: { checkpoints: [], pathInfo: {} } })
 
     expect(wrapper.find('[data-test="checkpoints-empty"]').exists()).toBe(true)
   })
 
-  it("shows each checkpoint's position, path title and override", () => {
-    const wrapper = mountList()
+  it('names each checkpoint by its position and the title learners see', () => {
+    wrapper = mountList()
 
-    const rows = wrapper.findAll('[data-test="checkpoint-row"]')
-    expect(rows).toHaveLength(3)
-    expect(rows[0]!.get('[data-test="checkpoint-position"]').text()).toBe('1')
-    expect(rows[0]!.get('[data-test="checkpoint-path-title"]').text()).toBe('Open chords')
-    expect(rows[1]!.get<HTMLInputElement>('[data-test="checkpoint-override"]').element.value).toBe('Stage 2')
-  })
-
-  it("uses the path's title as the override's placeholder", () => {
-    const wrapper = mountList()
-
-    const input = wrapper.findAll('[data-test="checkpoint-override"]')[0]!
-    expect(input.attributes('placeholder')).toBe('Open chords')
-  })
-
-  it("marks a path title that hasn't loaded yet", () => {
-    const wrapper = mountList()
-
-    expect(wrapper.findAll('[data-test="checkpoint-path-title"]')[2]!.text()).toBe('…')
-  })
-
-  it('emits a typed override', async () => {
-    const wrapper = mountList()
-
-    await wrapper.findAll('[data-test="checkpoint-override"]')[0]!.setValue('Stage 1: Open chords')
-
-    expect(wrapper.emitted('updateOverride')).toEqual([[0, 'Stage 1: Open chords']])
-  })
-
-  it('moves a checkpoint up or down, never past either end', async () => {
-    const wrapper = mountList()
-    const ups = wrapper.findAll('[data-test="checkpoint-move-up"]')
-    const downs = wrapper.findAll('[data-test="checkpoint-move-down"]')
-
-    expect(ups[0]!.attributes('disabled')).toBeDefined()
-    expect(downs[2]!.attributes('disabled')).toBeDefined()
-
-    await ups[1]!.trigger('click')
-    await downs[1]!.trigger('click')
-
-    expect(wrapper.emitted('move')).toEqual([
-      [1, 0],
-      [1, 2],
+    expect(wrapper.findAll('[data-test="ordered-row-title"]').map((title) => title.text())).toEqual([
+      '1 · First chords',
+      '2 · Strumming',
+      '3 · …',
     ])
   })
 
-  it('moves a checkpoint dragged by its handle onto another row', async () => {
-    const wrapper = mountList()
-    const rows = wrapper.findAll('[data-test="checkpoint-row"]')
+  it('says what each path holds and what blocks publishing', () => {
+    wrapper = mountList()
 
-    expect(rows[0]!.attributes('draggable')).toBe('false')
-    await rows[0]!.get('[data-test="checkpoint-drag-handle"]').trigger('pointerdown')
-    expect(rows[0]!.attributes('draggable')).toBe('true')
-    await rows[0]!.trigger('dragstart')
-    await rows[2]!.trigger('dragover')
-    await rows[2]!.trigger('drop')
-
-    expect(wrapper.emitted('move')).toEqual([[0, 2]])
+    const metas = wrapper.findAll('[data-test="ordered-row-meta"]')
+    expect(metas[0]!.text()).toBe('Path · 6 lessons · Published')
+    expect(metas[1]!.text()).toBe('Path · 7 lessons · Draft — publish it first')
+    expect(metas[1]!.classes()).toContain('text-warning')
+    expect(metas[2]!.text()).toBe('Path')
   })
 
-  it('ignores a drop onto the dragged row itself', async () => {
-    const wrapper = mountList()
-    const rows = wrapper.findAll('[data-test="checkpoint-row"]')
+  it('⋮ offers the moves, Rename in this course, Open the path and Remove from course', async () => {
+    wrapper = mountList()
 
-    await rows[1]!.get('[data-test="checkpoint-drag-handle"]').trigger('pointerdown')
-    await rows[1]!.trigger('dragstart')
-    await rows[1]!.trigger('drop')
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[1]!.trigger('click')
 
-    expect(wrapper.emitted('move')).toBeUndefined()
+    const labels = [...document.querySelectorAll('[data-test="ordered-row-menu-item"]')].map((item) => item.textContent?.trim())
+    expect(labels).toEqual(['Move up', 'Move down', 'Rename in this course', 'Open the path', 'Remove from course'])
   })
 
-  it('never drags a row from anywhere but its handle, so its title can be selected', async () => {
-    const wrapper = mountList()
-    const rows = wrapper.findAll('[data-test="checkpoint-row"]')
+  it('moves a checkpoint from its menu', async () => {
+    wrapper = mountList()
 
-    await rows[0]!.trigger('dragstart')
-    await rows[2]!.trigger('drop')
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[1]!.trigger('click')
+    menuItem('Move up').click()
 
-    expect(wrapper.emitted('move')).toBeUndefined()
+    expect(wrapper.emitted('move')).toEqual([[1, 0]])
+  })
+
+  it('renames a checkpoint in this course, with the path’s own title as the placeholder', async () => {
+    wrapper = mountList()
+
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[0]!.trigger('click')
+    menuItem('Rename in this course').click()
+    await wrapper.vm.$nextTick()
+
+    const input = document.querySelector<HTMLInputElement>('[data-test="checkpoint-rename-input"]')!
+    expect(input.placeholder).toBe('First chords')
+    input.value = 'Your first chords'
+    input.dispatchEvent(new Event('input'))
+    document.querySelector<HTMLButtonElement>('[data-test="checkpoint-rename-confirm"]')!.click()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.emitted('updateOverride')).toEqual([[0, 'Your first chords']])
+    expect(document.querySelector('[data-test="checkpoint-rename-input"]')).toBeNull()
+  })
+
+  it('a blank name goes back to the path’s own title', async () => {
+    wrapper = mountList()
+
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[1]!.trigger('click')
+    menuItem('Rename in this course').click()
+    await wrapper.vm.$nextTick()
+
+    const input = document.querySelector<HTMLInputElement>('[data-test="checkpoint-rename-input"]')!
+    expect(input.value).toBe('Strumming')
+    input.value = '  '
+    input.dispatchEvent(new Event('input'))
+    document.querySelector<HTMLButtonElement>('[data-test="checkpoint-rename-confirm"]')!.click()
+
+    expect(wrapper.emitted('updateOverride')).toEqual([[1, '']])
+  })
+
+  it('opens the path', async () => {
+    wrapper = mountList()
+
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[1]!.trigger('click')
+    menuItem('Open the path').click()
+
+    expect(push).toHaveBeenCalledWith({ name: 'teacher-path-edit', params: { id: 'lp-2' } })
   })
 
   it('removes a checkpoint', async () => {
-    const wrapper = mountList()
+    wrapper = mountList()
 
-    await wrapper.findAll('[data-test="checkpoint-remove"]')[1]!.trigger('click')
+    await wrapper.findAll('[data-test="ordered-row-menu"]')[2]!.trigger('click')
+    menuItem('Remove from course').click()
 
-    expect(wrapper.emitted('remove')).toEqual([[1]])
+    expect(wrapper.emitted('remove')).toEqual([[2]])
   })
 
   it('shows the checkpoints read-only while disabled', () => {
-    const wrapper = mountList({ disabled: true })
+    wrapper = mountList({ disabled: true })
 
-    expect(wrapper.find('[data-test="checkpoint-remove"]').exists()).toBe(false)
-    expect(wrapper.find('[data-test="checkpoint-move-up"]').exists()).toBe(false)
-    expect(wrapper.findAll('[data-test="checkpoint-override"]')[0]!.attributes('disabled')).toBeDefined()
-    expect(wrapper.findAll('[data-test="checkpoint-row"]')[0]!.attributes('draggable')).toBe('false')
+    expect(wrapper.findAll('[data-test="ordered-row"]')).toHaveLength(3)
+    expect(wrapper.find('[data-test="ordered-row-handle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="ordered-row-menu"]').exists()).toBe(false)
   })
 })
