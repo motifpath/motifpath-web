@@ -202,12 +202,11 @@
     "errorMessage": "We couldn't load this path.",
     "notFoundHeading": "This path is not published yet",
     "notFoundMessage": "This path is not available in the catalog.",
-    "backToCatalog": "Back to paths",
-    "enroll": "Enroll",
-    "enrolling": "Enrolling…",
     "continue": "Continue path",
     "enrolledToast": "You are now enrolled in {title}.",
-    "outlineHeading": "Path outline"
+    "outlineHeading": "Path outline",
+    "start": "Start path",
+    "inLearning": "In Learning"
   },
   "practiceSessionView": {
     "title": "Practice",

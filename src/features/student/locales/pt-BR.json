@@ -202,12 +202,11 @@
     "errorMessage": "Não foi possível carregar esta trilha.",
     "notFoundHeading": "Esta trilha ainda não foi publicada",
     "notFoundMessage": "Esta trilha não está disponível no catálogo.",
-    "backToCatalog": "Voltar às trilhas",
-    "enroll": "Inscrever-se",
-    "enrolling": "Inscrevendo…",
     "continue": "Continuar trilha",
     "enrolledToast": "Você está inscrito em {title}.",
-    "outlineHeading": "Estrutura da trilha"
+    "outlineHeading": "Estrutura da trilha",
+    "start": "Começar trilha",
+    "inLearning": "Aprendendo"
   },
   "practiceSessionView": {
     "title": "Praticar",

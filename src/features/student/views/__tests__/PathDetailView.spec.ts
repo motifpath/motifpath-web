@@ -56,6 +56,7 @@ vi.mock('vue-router', async () => {
 
 import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import PathDetailView from '@/features/student/views/PathDetailView.vue'
+import PageBackBar from '@/shared/components/PageBackBar.vue'
 
 function pathDetail(overrides: Partial<PathDetail> = {}): PathDetail {
   return {
@@ -113,44 +114,70 @@ describe('PathDetailView', () => {
     vi.clearAllMocks()
   })
 
-  it('shows the path before enrollment, and a Back link that keeps the catalog journey', () => {
+  // ── The way back ────────────────────────────────────────────────────────
+
+  it('goes back to Discover, with its search and filters, when opened from it', () => {
+    const back = mountView().getComponent(PageBackBar)
+
+    expect(back.props('title')).toBe('Discover')
+    expect(back.props('to')).toEqual({ name: 'path-catalog', query: { q: 'chords', returnFromPath: 'lp-1' } })
+  })
+
+  // ── The top ─────────────────────────────────────────────────────────────
+
+  it('shows the path’s chips, title, teacher and summary, and offers Start path', () => {
     const wrapper = mountView()
 
-    expect(wrapper.get('[data-test="back-to-catalog"]').findComponent(RouterLinkStub).props('to')).toEqual({
-      name: 'path-catalog',
-      query: { q: 'chords', returnFromPath: 'lp-1' },
-    })
+    expect(wrapper.findAll('[data-test="path-chip"]').map((chip) => chip.text())).toEqual(['Beginner', 'English'])
     expect(wrapper.get('[data-test="path-detail-title"]').text()).toBe('Open chords')
-    expect(wrapper.get('[data-test="path-detail-byline"]').text()).toContain('Bob Martins')
+    expect(wrapper.get('[data-test="path-detail-byline"]').text()).toBe('by Bob Martins')
+    expect(wrapper.get('[data-test="path-detail-summary"]').text()).toBe('Your first five chords, cleanly.')
     expect(wrapper.get('[data-test="path-detail-lessons"]').text()).toBe('4 lessons')
-    expect(wrapper.text()).toContain('Your first five chords, cleanly.')
-    expect(wrapper.get('[data-test="enroll"]').text()).toBe('Enroll')
+    expect(wrapper.find('[data-test="in-learning-chip"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="path-progress"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="start"]').text()).toBe('Start path')
+  })
+
+  it('opens Discover on paths filtered by the teacher from the byline', () => {
+    const byline = mountView().get('[data-test="path-detail-byline"]')
+
+    expect(byline.findComponent(RouterLinkStub).props('to')).toEqual({
+      name: 'path-catalog',
+      query: { teacher: 'teacher-1' },
+    })
+  })
+
+  it('shows a path in Learning with its chip, its progress and Continue path', () => {
+    held.paths.value = [heldCopy({ completed_count: 1 })]
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="in-learning-chip"]').text()).toBe('In Learning')
+    expect(wrapper.get('[data-test="path-progress"]').text()).toContain('1 of 4 lessons')
+    expect(wrapper.get('[data-test="continue"]').text()).toBe('Continue path')
+    expect(wrapper.find('[data-test="start"]').exists()).toBe(false)
   })
 
   it('leads back to Where to start, with the same answers, when opened from it', () => {
     route.query = { startInstrument: 'inst-guitar', startExperience: 'never_played' }
 
-    const wrapper = mountView()
-    const back = wrapper.get('[data-test="back-to-catalog"]')
+    const back = mountView().getComponent(PageBackBar)
 
-    expect(back.findComponent(RouterLinkStub).props('to')).toEqual({
+    expect(back.props('to')).toEqual({
       name: 'home',
       query: { instrument: 'inst-guitar', experience: 'never_played' },
     })
-    expect(back.text()).toBe('Where to start')
+    expect(back.props('title')).toBe('Where to start')
   })
 
   it('opens a fresh catalog when the learner did not come from it', () => {
     window.localStorage.clear()
 
-    const wrapper = mountView()
-
-    expect(wrapper.get('[data-test="back-to-catalog"]').findComponent(RouterLinkStub).props('to')).toEqual({
-      name: 'path-catalog',
-    })
+    expect(mountView().getComponent(PageBackBar).props('to')).toEqual({ name: 'path-catalog' })
   })
 
-  it('outlines the lessons by section', () => {
+  // ── The outline ─────────────────────────────────────────────────────────
+
+  it('numbers the lessons under their section labels, with how many each has', () => {
     detail.path.value = pathDetail({
       items: [
         { title: 'Welcome' },
@@ -162,20 +189,34 @@ describe('PathDetailView', () => {
 
     const wrapper = mountView()
 
+    expect(wrapper.get('[data-test="outline-heading"]').text()).toBe('Path outline · 4 lessons')
     const sections = wrapper.findAll('[data-test="outline-section"]')
-    expect(sections.map((s) => s.find('h3').exists() ? s.get('h3').text() : null)).toEqual([null, 'Chords', 'Rhythm'])
-    expect(sections.map((s) => s.findAll('li').map((li) => li.text()))).toEqual([
-      ['Welcome'],
-      ['E major', 'A minor'],
-      ['Strum it'],
+    expect(sections.map((s) => (s.find('h3').exists() ? s.get('h3').text() : null))).toEqual([
+      null,
+      'Chords2 lessons',
+      'Rhythm1 lesson',
+    ])
+    expect(sections.map((s) => s.findAll('[data-test="outline-lesson"]').map((li) => li.text()))).toEqual([
+      ['1Welcome'],
+      ['2E major', '3A minor'],
+      ['4Strum it'],
     ])
   })
+
+  it('does not open a lesson from the outline', () => {
+    detail.path.value = pathDetail({ items: [{ title: 'Welcome' }] })
+
+    const outline = mountView().get('[data-test="outline-section"]')
+    expect(outline.findAll('a, button')).toHaveLength(0)
+  })
+
+  // ── The action ──────────────────────────────────────────────────────────
 
   it('enrolls and takes the learner to the path, which is now their current one', async () => {
     enrollInLearningPath.mockResolvedValueOnce(heldCopy())
     const wrapper = mountView()
 
-    await wrapper.get('[data-test="enroll"]').trigger('click')
+    await wrapper.get('[data-test="start"]').trigger('click')
     await flushPromises()
 
     expect(enrollInLearningPath).toHaveBeenCalledWith('lp-1')
@@ -188,9 +229,7 @@ describe('PathDetailView', () => {
     enrollInLearningPath.mockResolvedValueOnce(heldCopy())
     const wrapper = mountView()
 
-    const action = wrapper.get('[data-test="enroll"]')
-    expect(action.text()).toBe('Continue path')
-    await action.trigger('click')
+    await wrapper.get('[data-test="continue"]').trigger('click')
     await flushPromises()
 
     expect(enrollInLearningPath).toHaveBeenCalledWith('lp-1')
@@ -201,19 +240,19 @@ describe('PathDetailView', () => {
   it('does not count an archived copy as held', () => {
     held.paths.value = [heldCopy({ archived_at: '2026-09-10T00:00:00Z' })]
 
-    expect(mountView().get('[data-test="enroll"]').text()).toBe('Enroll')
+    expect(mountView().get('[data-test="start"]').text()).toBe('Start path')
   })
 
   it('reports a failed enrollment and lets the learner try again', async () => {
     enrollInLearningPath.mockRejectedValueOnce(new Error('Learning path not found'))
     const wrapper = mountView()
 
-    await wrapper.get('[data-test="enroll"]').trigger('click')
+    await wrapper.get('[data-test="start"]').trigger('click')
     await flushPromises()
 
     expect(toast.error).toHaveBeenCalledWith('Learning path not found')
     expect(push).not.toHaveBeenCalled()
-    expect(wrapper.get('[data-test="enroll"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[data-test="start"]').attributes('aria-busy')).not.toBe('true')
   })
 
   it('shows loading, not-found and error states', async () => {
@@ -237,10 +276,11 @@ describe('PathDetailView', () => {
   it('leads back to Learning when opened from Learning', () => {
     route.name = 'learning-path'
     route.query = {}
-    const back = mountView().get('[data-test="back-to-catalog"]')
+    const back = mountView().getComponent(PageBackBar)
 
-    expect(back.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'my-courses' })
-    expect(back.text()).toBe('Back to Learning')
+    expect(back.props('to')).toEqual({ name: 'my-courses' })
+    expect(back.props('title')).toBe('Learning')
+    expect(back.props('backLabel')).toBe('Back to Learning')
   })
 
   describe('a newer version of a path the learner holds', () => {
