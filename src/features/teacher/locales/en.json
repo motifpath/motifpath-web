@@ -902,5 +902,42 @@
     "loadFailed": "Couldn't load the authors.",
     "retry": "Try again",
     "noMatches": "No author matches."
+  },
+  "authoringFilters": {
+    "title": "Filters",
+    "clearAll": "Clear all",
+    "any": "Any",
+    "me": "Me",
+    "groups": {
+      "type": "Type",
+      "level": "Level",
+      "instrument": "Instrument",
+      "kind": "Kind",
+      "shows": "Shows",
+      "root": "Root note",
+      "language": "Language",
+      "skills": "Skill",
+      "concepts": "Concept",
+      "author": "Author"
+    },
+    "kind": {
+      "all": "All",
+      "templates": "Templates",
+      "custom": "Custom"
+    },
+    "shows": {
+      "diagrams": "Diagrams",
+      "chord_voicings": "Chord voicings",
+      "both": "Both"
+    },
+    "show": {
+      "diagrams": "Show {shown} diagram | Show {shown} diagrams",
+      "exercises": "Show {shown} exercise | Show {shown} exercises",
+      "lessons": "Show {shown} lesson | Show {shown} lessons",
+      "paths": "Show {shown} path | Show {shown} paths",
+      "courses": "Show {shown} course | Show {shown} courses"
+    },
+    "showUnknown": "Show results",
+    "close": "Close filters"
   }
 }

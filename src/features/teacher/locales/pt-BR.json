@@ -902,5 +902,42 @@
     "loadFailed": "Não foi possível carregar os autores.",
     "retry": "Tentar de novo",
     "noMatches": "Nenhum autor encontrado."
+  },
+  "authoringFilters": {
+    "title": "Filtros",
+    "clearAll": "Limpar tudo",
+    "any": "Qualquer",
+    "me": "Eu",
+    "groups": {
+      "type": "Tipo",
+      "level": "Nível",
+      "instrument": "Instrumento",
+      "kind": "Origem",
+      "shows": "Mostra",
+      "root": "Nota fundamental",
+      "language": "Idioma",
+      "skills": "Habilidade",
+      "concepts": "Conceito",
+      "author": "Autor"
+    },
+    "kind": {
+      "all": "Todos",
+      "templates": "Modelos",
+      "custom": "Personalizados"
+    },
+    "shows": {
+      "diagrams": "Diagramas",
+      "chord_voicings": "Formas de acorde",
+      "both": "Ambos"
+    },
+    "show": {
+      "diagrams": "Mostrar {shown} diagrama | Mostrar {shown} diagramas",
+      "exercises": "Mostrar {shown} exercício | Mostrar {shown} exercícios",
+      "lessons": "Mostrar {shown} lição | Mostrar {shown} lições",
+      "paths": "Mostrar {shown} trilha | Mostrar {shown} trilhas",
+      "courses": "Mostrar {shown} curso | Mostrar {shown} cursos"
+    },
+    "showUnknown": "Mostrar resultados",
+    "close": "Fechar filtros"
   }
 }
