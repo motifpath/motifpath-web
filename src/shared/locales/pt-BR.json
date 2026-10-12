@@ -23,6 +23,50 @@
     "brand": "MotifPath",
     "editingCrumb": "— editando {label}"
   },
+  "editorAppBar": {
+    "back": "Voltar para {section}",
+    "save": "Salvar",
+    "saving": "Salvando…",
+    "saved": "Salvo ✓"
+  },
+  "unsavedChangesGuard": {
+    "title": "Sair sem salvar?",
+    "keepEditing": "Continuar editando",
+    "leave": "Sair"
+  },
+  "statusPanel": {
+    "label": "Status",
+    "beforeYouPublish": "Antes de publicar, adicione:"
+  },
+  "authoringStatus": {
+    "draft": "Rascunho",
+    "published": "Publicado",
+    "publishedVersion": "Publicado · v{version}",
+    "unpublishedChanges": "Alterações não publicadas",
+    "retired": "Descontinuado",
+    "notPublishedYet": "Ainda não publicado — os alunos não o encontram.",
+    "learnersGet": "Os alunos recebem a versão {version}.",
+    "learnersStillGet": "Os alunos ainda recebem a versão {version}.",
+    "publishToGiveThem": "Publique para que recebam suas alterações.",
+    "publish": "Publicar",
+    "publishChanges": "Publicar alterações",
+    "publishedAsVersion": "Publicado como versão {version}",
+    "seeWhatLearnersSee": "Ver o que os alunos veem"
+  },
+  "saveBlockers": {
+    "title": "Antes de salvar:"
+  },
+  "orderedRow": {
+    "moveUp": "Mover para cima",
+    "moveDown": "Mover para baixo",
+    "more": "Mais opções de {title}"
+  },
+  "previewLayer": {
+    "close": "Fechar a prévia",
+    "whatLearnersSee": "Prévia — o que os alunos veem",
+    "asStudent": "Prévia como aluno",
+    "notInPreview": "(não na prévia)"
+  },
   "buttons": {
     "save": "Salvar",
     "saved": "Salvo",
@@ -234,6 +278,10 @@
     "byline": "por {name}",
     "lessons": "{count} lição | {count} lições",
     "learningPaths": "{count} trilha de aprendizagem | {count} trilhas de aprendizagem"
+  },
+  "courseDetailContent": {
+    "outlineHeading": "Estrutura do curso",
+    "learningPath": "Trilha de aprendizagem {position}"
   },
   "practiceShell": {
     "progressLabel": "Progresso"
