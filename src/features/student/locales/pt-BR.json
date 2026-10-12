@@ -159,11 +159,19 @@
     "errorMessage": "Não foi possível carregar este curso.",
     "notFoundHeading": "Este curso ainda não foi publicado",
     "notFoundMessage": "Este curso não está disponível no catálogo.",
-    "backToCatalog": "Voltar aos cursos",
-    "enroll": "Inscrever-se",
-    "enrolling": "Inscrevendo…",
     "enrolledToast": "Você está inscrito em {title}.",
-    "continue": "Continuar curso"
+    "backToLearning": "Voltar para Aprender",
+    "backToDiscover": "Voltar para Explorar",
+    "backToWhereToStart": "Voltar para Por onde começar",
+    "start": "Começar curso",
+    "continuePart": "Continuar parte {position}",
+    "leftBefore": "Você saiu deste curso antes. Recomeçar volta à parte 1.",
+    "finished": "Concluído",
+    "practise": "Praticar o que aprendeu",
+    "openInPath": "Abrir na Trilha",
+    "leave": "Sair deste curso",
+    "outline": "Conteúdo do curso",
+    "parts": "{count} parte | {count} partes"
   },
   "courseCompletedView": {
     "errorMessage": "Não foi possível carregar seu curso.",

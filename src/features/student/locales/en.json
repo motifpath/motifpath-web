@@ -159,11 +159,19 @@
     "errorMessage": "We couldn't load this course.",
     "notFoundHeading": "This course is not published yet",
     "notFoundMessage": "This course is not available in the catalog.",
-    "backToCatalog": "Back to courses",
-    "enroll": "Enroll",
-    "enrolling": "Enrolling…",
     "enrolledToast": "You are now enrolled in {title}.",
-    "continue": "Continue course"
+    "backToLearning": "Back to Learning",
+    "backToDiscover": "Back to Discover",
+    "backToWhereToStart": "Back to Where to start",
+    "start": "Start course",
+    "continuePart": "Continue part {position}",
+    "leftBefore": "You left this course before. Starting again begins at part 1.",
+    "finished": "Finished",
+    "practise": "Practise what you learned",
+    "openInPath": "Open in My path",
+    "leave": "Leave this course",
+    "outline": "Course outline",
+    "parts": "{count} part | {count} parts"
   },
   "courseCompletedView": {
     "errorMessage": "We couldn't load your course.",
