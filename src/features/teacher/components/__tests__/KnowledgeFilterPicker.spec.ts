@@ -126,15 +126,6 @@ describe('KnowledgeFilterPicker', () => {
     expect(mountPicker().text()).toContain('Choosing an area matches it and every skill under it.')
   })
 
-  it('names Done after how many are chosen', async () => {
-    const wrapper = mountPicker({ modelValue: ['pentatonic', 'modes'] })
-    const done = wrapper.get('[data-test="knowledge-done"]')
-
-    expect(done.text()).toBe('Done · 2 skills')
-    await done.trigger('click')
-    expect(wrapper.emitted('done')).toHaveLength(1)
-  })
-
   it('lists recent choices first, at the top', async () => {
     const first = mountPicker()
     await row(first, 'Scales').get('[data-test="knowledge-row-open"]').trigger('click')
@@ -149,7 +140,7 @@ describe('KnowledgeFilterPicker', () => {
   it('uses the concept words for concepts', () => {
     const wrapper = mountPicker({ kind: 'concept', modelValue: ['modes'] })
 
-    expect(wrapper.get('[data-test="knowledge-done"]').text()).toBe('Done · 1 concept')
+    expect(wrapper.find('input[type="search"]').attributes('placeholder')).toBe('Search concepts')
     expect(wrapper.text()).toContain('Choosing an area matches it and every concept under it.')
   })
 })

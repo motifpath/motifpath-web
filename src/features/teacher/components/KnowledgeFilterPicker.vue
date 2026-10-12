@@ -5,15 +5,14 @@
  * The chosen ones show as removable chips at the top.
  *
  * It starts on the areas; "N skills ›" opens one, with a path back up. Recent choices come
- * first, Done goes back to the filters, and the tree keeps to the filtered instrument, with All
- * instruments to widen.
+ * first, and the tree keeps to the filtered instrument, with All instruments to widen. Its page
+ * brings the way back (Done).
  */
 import { Check, ChevronRight } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
 import FilterChip from '@/shared/components/FilterChip.vue'
-import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import SearchField from '@/shared/components/SearchField.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { ancestorIds, suitsInstruments, type TreeNode } from '@/shared/utils/skillConceptTree'
@@ -26,7 +25,6 @@ const props = defineProps<{
   instrumentName: string | null
 }>()
 const chosen = defineModel<string[]>({ required: true })
-const emit = defineEmits<{ done: [] }>()
 
 const { t } = useTypedT()
 
@@ -230,8 +228,5 @@ function rememberRecent(id: string) {
 
     <p class="text-xs text-ink-muted">{{ t(`knowledgeFilter.${kind}.note`) }}</p>
 
-    <PrimaryButton data-test="knowledge-done" class="mt-auto" @click="emit('done')">{{
-      t(`knowledgeFilter.${kind}.done`, { count: chosen.length })
-    }}</PrimaryButton>
   </div>
 </template>

@@ -160,6 +160,25 @@ describe('AuthoringFiltersLayer', () => {
     expect(wrapper.get('[data-test="filter-group-skills"]').text()).toContain('Scales')
   })
 
+  it('keeps Done in the fixed footer on the Skills page, out of what scrolls, counting the choice', async () => {
+    const wrapper = mountLayer()
+    await wrapper.get('[data-test="filter-group-skills"] button').trigger('click')
+
+    expect(wrapper.get('[data-test="filters-body"]').find('[data-test="knowledge-done"]').exists()).toBe(false)
+    const done = () => wrapper.get('[data-test="filters-footer"] [data-test="knowledge-done"]')
+    expect(done().text()).toBe('Done')
+
+    await wrapper.findAll('[data-test="knowledge-row-choose"]')[0]!.trigger('click')
+    expect(done().text()).toBe('Done · 1 skill')
+  })
+
+  it('names Done with the concept words on the Concepts page', async () => {
+    const wrapper = mountLayer({ filters: { skills: [], concepts: ['modes'] }, conceptNodes: skills })
+    await wrapper.get('[data-test="filter-group-concepts"] button').trigger('click')
+
+    expect(wrapper.get('[data-test="filters-footer"] [data-test="knowledge-done"]').text()).toBe('Done · 1 concept')
+  })
+
   it('comes back from the Author page once an author is chosen', async () => {
     const wrapper = mountLayer()
     await wrapper.get('[data-test="filter-group-author"] button').trigger('click')

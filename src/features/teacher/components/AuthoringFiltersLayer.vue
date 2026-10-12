@@ -94,6 +94,12 @@ const showLabel = computed(() =>
       }),
 )
 
+/** Done on the Skills or Concepts page, with how many are chosen ("Done · 2 skills"). */
+const doneLabel = computed(() => {
+  const key = page.value === 'concepts' ? 'concepts' : 'skills'
+  return t(`knowledgeFilter.${key === 'skills' ? 'skill' : 'concept'}.done`, { count: draft.value[key].length })
+})
+
 function clearAll() {
   draft.value = { skills: [], concepts: [] }
 }
@@ -158,7 +164,7 @@ const instrumentName = computed(
         </button>
       </header>
 
-      <div class="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4 pt-2">
+      <div data-test="filters-body" class="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4 pt-2">
         <AuthoringFilterFields
           v-if="page === 'filters'"
           v-model="draft"
@@ -177,7 +183,6 @@ const instrumentName = computed(
           :nodes="page === 'skills' ? skillNodes : conceptNodes"
           :instrument-id="draft.instrument ?? null"
           :instrument-name="instrumentName"
-          @done="page = 'filters'"
         />
         <AuthorFilterPicker
           v-else
@@ -189,8 +194,10 @@ const instrumentName = computed(
         />
       </div>
 
-      <footer v-if="page === 'filters'" class="flex shrink-0 flex-col border-t border-border px-5 pb-safe pt-3">
-        <PrimaryButton data-test="filters-show" class="mb-3" @click="apply">{{ showLabel }}</PrimaryButton>
+      <!-- Fixed below what scrolls, so its action is always in reach. -->
+      <footer v-if="page !== 'author'" data-test="filters-footer" class="flex shrink-0 flex-col border-t border-border px-5 pb-safe pt-3">
+        <PrimaryButton v-if="page === 'filters'" data-test="filters-show" class="mb-3" @click="apply">{{ showLabel }}</PrimaryButton>
+        <PrimaryButton v-else data-test="knowledge-done" class="mb-3" @click="page = 'filters'">{{ doneLabel }}</PrimaryButton>
       </footer>
     </div>
   </OverlayLayer>
