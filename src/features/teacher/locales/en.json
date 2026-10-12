@@ -947,5 +947,17 @@
     },
     "hearIt": "Hear it",
     "stop": "Stop"
+  },
+  "soundPicker": {
+    "title": "Sound from a diagram",
+    "sourceLabel": "Where the sound comes from",
+    "sourceDiagrams": "Diagrams",
+    "sourceChords": "Chords",
+    "changeDiagram": "Change diagram",
+    "changeChord": "Change chord",
+    "cancel": "Cancel",
+    "use": "Use this sound",
+    "loadFailed": "We couldn’t load this diagram.",
+    "unavailable": "This diagram can’t be played to students yet."
   }
 }

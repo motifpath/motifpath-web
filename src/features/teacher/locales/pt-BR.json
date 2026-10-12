@@ -947,5 +947,17 @@
     },
     "hearIt": "Ouvir",
     "stop": "Parar"
+  },
+  "soundPicker": {
+    "title": "Som de um diagrama",
+    "sourceLabel": "De onde vem o som",
+    "sourceDiagrams": "Diagramas",
+    "sourceChords": "Acordes",
+    "changeDiagram": "Trocar diagrama",
+    "changeChord": "Trocar acorde",
+    "cancel": "Cancelar",
+    "use": "Usar este som",
+    "loadFailed": "Não foi possível carregar este diagrama.",
+    "unavailable": "Este diagrama ainda não pode ser tocado para os alunos."
   }
 }
