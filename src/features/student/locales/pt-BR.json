@@ -599,5 +599,20 @@
     },
     "emptyMessage": "Os professores ainda estão criando. Volte em breve.",
     "loadFailed": "O catálogo não carregou. Verifique sua conexão e tente de novo."
+  },
+  "discoverFilters": {
+    "title": "Filtros",
+    "close": "Fechar filtros",
+    "groups": {
+      "levels": "Nível",
+      "instrument": "Instrumento",
+      "language": "Idioma",
+      "teacher": "Professor"
+    },
+    "show": {
+      "courses": "Mostrar {shown} curso | Mostrar {shown} cursos",
+      "paths": "Mostrar {shown} trilha | Mostrar {shown} trilhas"
+    },
+    "showUnknown": "Mostrar resultados"
   }
 }
