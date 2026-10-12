@@ -406,5 +406,11 @@
     "loading": "Carregando mais…",
     "failed": "Não foi possível carregar mais.",
     "retry": "Tentar de novo"
+  },
+  "filters": {
+    "button": "Filtros",
+    "buttonApplied": "Filtros, {count} aplicados",
+    "remove": "Remover {label}",
+    "clearAll": "Limpar tudo"
   }
 }
