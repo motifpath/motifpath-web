@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
  * One row of Learning: a course or a path, recognised by its picture first. The whole row is the
- * action; ⋯ holds the rest. It never carries a button of its own.
+ * action; ⋯ holds the rest. It never carries a button of its own. A refresh icon before the eyebrow
+ * says a newer version can be taken, without hiding where the student is.
  */
-import { BookOpen, Ellipsis, Route } from 'lucide-vue-next'
+import { BookOpen, Ellipsis, RefreshCw, Route } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { LearningItem } from '@/features/student/utils/learning'
@@ -71,7 +72,13 @@ function onMore(event: MouseEvent) {
         </span>
       </span>
       <span class="flex min-w-0 flex-1 flex-col gap-1">
-        <span data-test="learning-eyebrow" class="truncate text-xs font-semibold text-ink-muted">{{ eyebrow }}</span>
+        <span class="flex min-w-0 items-center gap-1">
+          <span v-if="item.updateAvailable" data-test="learning-new-version" class="shrink-0 text-accent-text">
+            <RefreshCw :size="14" aria-hidden="true" />
+            <span class="sr-only">{{ t('learningCard.newVersion') }}</span>
+          </span>
+          <span data-test="learning-eyebrow" class="truncate text-xs font-semibold text-ink-muted">{{ eyebrow }}</span>
+        </span>
         <span data-test="learning-title" class="line-clamp-2 text-base font-semibold text-ink">{{ item.title }}</span>
         <ProgressMeter
           v-if="item.progress && progressLabels"

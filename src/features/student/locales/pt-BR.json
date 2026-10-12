@@ -138,7 +138,8 @@
     "lessonsSummary": "{completed} de {count} aula concluída | {completed} de {count} aulas concluídas",
     "startAgainCourse": "Recomeçar da parte 1",
     "startAgainPath": "Recomeçar da primeira aula",
-    "more": "Mais opções para {title}"
+    "more": "Mais opções para {title}",
+    "newVersion": "Nova versão disponível"
   },
   "partRow": {
     "part": "Parte {position}",

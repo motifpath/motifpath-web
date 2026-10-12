@@ -45,6 +45,12 @@ export const AssignedPath: Story = {
   },
 }
 
+export const NewVersion: Story = {
+  args: {
+    item: first(buildLearning([makeEnrollment({ course_thumbnail_url: thumbnail, update_available: true })], [], makeCurrentPath())),
+  },
+}
+
 export const NoThumbnail: Story = {
   args: { item: first(buildLearning([], [makeStandalonePath()], null)) },
 }
