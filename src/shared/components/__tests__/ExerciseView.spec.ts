@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
+import type * as DiagramPlayback from '@/shared/composables/useDiagramPlayback'
+
 const stopDiagramPlayback = vi.hoisted(() => vi.fn())
 vi.mock('@/shared/composables/useDiagramPlayback', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/shared/composables/useDiagramPlayback')>()),
+  ...(await importOriginal<typeof DiagramPlayback>()),
   stopDiagramPlayback,
 }))
 
@@ -923,7 +925,7 @@ describe('ExerciseView', () => {
       })
 
       it('labels a sound with no label of its own by its place', () => {
-        const wrapper = mountSounds({ options: options.map(({ label: _label, ...option }) => option) })
+        const wrapper = mountSounds({ options: options.map((option) => ({ option_id: option.option_id, diagram_ref: option.diagram_ref, is_correct: option.is_correct })) })
         expect(soundOptions(wrapper).map((option) => option.props('label'))).toEqual(['Sound 1', 'Sound 2', 'Sound 3'])
       })
 

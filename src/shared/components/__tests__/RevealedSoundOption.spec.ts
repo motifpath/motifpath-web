@@ -16,7 +16,7 @@ const SOUND = makeDiagramRef({ diagram_id: 'g-major', playback: { playback_id: '
 
 const stubs = { EmbeddedDiagram: { name: 'EmbeddedDiagram', props: ['embed'], template: '<div data-test="embedded-diagram" />' } }
 
-const mountRevealed = (props: Record<string, unknown>) =>
+const mountRevealed = (props: { role: 'yours' | 'right' | null; mark?: 'right' | 'wrong'; label?: string }) =>
   mount(RevealedSoundOption, { props: { label: 'Sound 2', sound: SOUND, ...props }, global: { stubs } })
 
 describe('RevealedSoundOption', () => {
