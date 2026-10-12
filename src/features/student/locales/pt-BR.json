@@ -89,20 +89,6 @@
     "resizeAside": "Redimensionar o painel de anotações",
     "resetAsideWidth": "Redefinir o painel de anotações para o tamanho padrão"
   },
-  "courseCatalogView": {
-    "errorMessage": "Não foi possível carregar o catálogo de cursos.",
-    "emptyHeading": "Nenhum curso ainda",
-    "emptyMessage": "Novos cursos aparecerão aqui assim que forem publicados.",
-    "noMatchesHeading": "Nenhum curso encontrado",
-    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
-    "enroll": "Inscrever-se",
-    "enrolling": "Inscrevendo…",
-    "enrolled": "Inscrito",
-    "enrolledToast": "Você está inscrito em {title}.",
-    "details": "Detalhes",
-    "moreFromTeacher": "Mais deste professor",
-    "courseTeacher": "por {name}"
-  },
   "learningView": {
     "heading": "Aprender",
     "errorMessage": "Não conseguimos carregar seus cursos e trilhas.",
@@ -208,20 +194,6 @@
     "lessonLine": "Lição: {title}",
     "referenceLine": "Ref: {reference}",
     "prompt": "Minha dúvida ou gravação:"
-  },
-  "pathCatalogView": {
-    "errorMessage": "Não foi possível carregar o catálogo de trilhas.",
-    "emptyHeading": "Nenhuma trilha ainda",
-    "emptyMessage": "Novas trilhas aparecerão aqui assim que forem publicadas.",
-    "noMatchesHeading": "Nenhuma trilha encontrada",
-    "noMatchesMessage": "Tente usar menos filtros ou outra busca.",
-    "searchPlaceholder": "Buscar trilhas",
-    "enroll": "Inscrever-se",
-    "enrolling": "Inscrevendo…",
-    "continue": "Continuar",
-    "enrolledToast": "Você está inscrito em {title}.",
-    "details": "Detalhes",
-    "moreFromTeacher": "Mais deste professor"
   },
   "pathDetailView": {
     "backToLearning": "Voltar para Aprender",
@@ -584,5 +556,48 @@
     "homeError": "Não foi possível carregar seu início.",
     "whatsAppMessage": "Oi! Estou começando no MotifPath e queria ajuda para escolher por onde começar.",
     "backToWhereToStart": "Por onde começar"
+  },
+  "catalogCard": {
+    "inLearning": "Aprendendo",
+    "finished": "Concluído",
+    "parts": "{count} parte | {count} partes",
+    "lessons": "{count} lição | {count} lições"
+  },
+  "discoverView": {
+    "segments": "Cursos ou trilhas",
+    "courses": "Cursos",
+    "paths": "Trilhas",
+    "search": {
+      "courses": "Buscar cursos",
+      "paths": "Buscar trilhas"
+    },
+    "count": {
+      "courses": "{count} curso · A–Z | {count} cursos · A–Z",
+      "paths": "{count} trilha · A–Z | {count} trilhas · A–Z"
+    },
+    "noMatches": {
+      "courses": "Nenhum curso encontrado",
+      "paths": "Nenhuma trilha encontrada"
+    },
+    "nothingFor": {
+      "searchAndFilters": "Nada para “{q}” com {filters}. Tente outra palavra ou menos filtros.",
+      "search": "Nada para “{q}”. Tente outra palavra.",
+      "filters": "Nada com {filters}. Tente menos filtros."
+    },
+    "clearFilters": "Limpar filtros",
+    "otherMatches": {
+      "courses": "{count} curso encontrado | {count} cursos encontrados",
+      "paths": "{count} trilha encontrada | {count} trilhas encontradas"
+    },
+    "showOther": {
+      "courses": "Ver cursos",
+      "paths": "Ver trilhas"
+    },
+    "empty": {
+      "courses": "Nenhum curso ainda",
+      "paths": "Nenhuma trilha ainda"
+    },
+    "emptyMessage": "Os professores ainda estão criando. Volte em breve.",
+    "loadFailed": "O catálogo não carregou. Verifique sua conexão e tente de novo."
   }
 }

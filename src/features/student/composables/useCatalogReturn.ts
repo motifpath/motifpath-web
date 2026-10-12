@@ -1,28 +1,16 @@
 import { nextTick, ref, watch, type Ref } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter, type LocationQuery } from 'vue-router'
 
-import {
-  type CatalogKind,
-  type CatalogReturn,
-  restoreCatalogReturn,
-  saveCatalogReturn,
-} from '@/features/student/utils/catalogReturn'
-import type {
-  CourseListFilterInitialState,
-  CourseListFilterState,
-} from '@/shared/composables/useCourseListFilters'
+import type { DiscoverSegment } from '@/features/student/composables/useDiscoverState'
+import { type CatalogQuery, restoreCatalogReturn, saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 
-export interface CatalogReturnOptions {
-  kind: CatalogKind
-  /** The route name of an item's detail page. */
-  detailRoute: string
-  /** The detail route's param naming the item. */
-  idParam: string
-  /** The query key the detail page's Back link names the item with. */
-  returnQuery: string
-}
+/** Where each segment's items open, and the query key a detail's Back link names the item with. */
+export const CATALOG_DETAIL = {
+  courses: { route: 'course-detail', idParam: 'courseId', returnQuery: 'returnFromCourse' },
+  paths: { route: 'path-detail', idParam: 'learningPathId', returnQuery: 'returnFromPath' },
+} as const
 
-/** The catalog list state a return journey reads and replays. */
+/** The list state a return journey reads and replays. */
 export interface CatalogListState {
   itemCount: Ref<number>
   total: Ref<number>
@@ -31,87 +19,82 @@ export interface CatalogListState {
   error: Ref<boolean>
   loadMoreError: Ref<boolean>
   loadMore: () => Promise<void> | void
-  filters: CourseListFilterState
-  searchText: Ref<string>
+}
+
+function onlyStrings(query: LocationQuery): CatalogQuery {
+  const kept: CatalogQuery = {}
+  for (const [key, value] of Object.entries(query)) {
+    if (typeof value === 'string') kept[key] = value
+    else if (Array.isArray(value)) kept[key] = value.filter((v): v is string => typeof v === 'string')
+  }
+  return kept
 }
 
 /**
- * Keeps a learner's place in a catalog across a visit to one item's details:
- * the filters, the search, how many cards were loaded and the scroll
- * position. Call it before creating the catalog list, start the list from
- * `initialState`, then hand the list to `resume`.
+ * Keeps a student's place in Discover across a visit to one item's details: how many items were
+ * loaded and how far down the page was. The search and filters live in the address, which is
+ * saved too, for the detail's way back. Call it before Discover's state tidies the address.
  */
-export function useCatalogReturn(options: CatalogReturnOptions) {
+export function useCatalogReturn(segment: Ref<DiscoverSegment>) {
   const route = useRoute()
   const router = useRouter()
+  const detail = CATALOG_DETAIL[segment.value]
 
-  // The item whose details the learner is coming back from: named by the
-  // details page's Back link, or, after the browser's Back button, found in
-  // this history entry's record of the page that followed it.
+  // The item whose details the student is coming back from: named by the details page's Back
+  // link, or, after the browser's Back button, found in this history entry's record of the page
+  // that followed it.
   function returningItemId(): string | null {
-    const fromLink = route.query[options.returnQuery]
+    const fromLink = route.query[detail.returnQuery]
     if (typeof fromLink === 'string') return fromLink
     const state: unknown = window.history.state
     if (!state || typeof state !== 'object' || !('forward' in state) || typeof state.forward !== 'string') return null
     const next = router.resolve(state.forward)
-    const id = next.params[options.idParam]
-    return next.name === options.detailRoute && typeof id === 'string' ? id : null
+    const id = next.params[detail.idParam]
+    return next.name === detail.route && typeof id === 'string' ? id : null
   }
 
   const returnedFromId = returningItemId()
-  const restored = returnedFromId ? restoreCatalogReturn(options.kind, returnedFromId) : null
-  const initialState: CourseListFilterInitialState | undefined = restored
-    ? { ...restored.filters, searchText: restored.searchText }
-    : undefined
+  const restored = returnedFromId ? restoreCatalogReturn(segment.value, returnedFromId) : null
 
   function resume(list: CatalogListState) {
-    const pending = ref<Omit<CatalogReturn, 'itemId'> | null>(restored)
+    const pending = ref(restored)
     watch(
       [list.itemCount, list.total, list.isLoading, list.isLoadingMore, list.error, list.loadMoreError],
       () => {
-        const returnState = pending.value
-        if (!returnState || list.isLoading.value || list.isLoadingMore.value) return
+        const place = pending.value
+        if (!place || list.isLoading.value || list.isLoadingMore.value) return
         if (list.error.value) {
           pending.value = null
           return
         }
 
-        // A page that fails to load is not retried here: the learner goes back
-        // to their place among the cards that did load, and Load more offers
-        // the rest.
-        const loadedTarget = Math.min(returnState.loadedCount, list.total.value)
+        // A page that fails to load is not retried here: the student goes back to their place
+        // among the items that did load, and the end of the list offers the rest.
+        const loadedTarget = Math.min(place.loadedCount, list.total.value)
         if (list.itemCount.value < loadedTarget && !list.loadMoreError.value) {
           void list.loadMore()
           return
         }
 
         pending.value = null
-        void nextTick(() => window.scrollTo(0, returnState.scrollY))
+        void nextTick(() => window.scrollTo(0, place.scrollY))
       },
       { immediate: true },
     )
 
     onBeforeRouteLeave((to) => {
-      const id = to.params[options.idParam]
-      if (to.name !== options.detailRoute || typeof id !== 'string') return
-
-      const { filters } = list
-      saveCatalogReturn(options.kind, {
+      const opened = to.name === CATALOG_DETAIL.courses.route ? 'courses' : to.name === CATALOG_DETAIL.paths.route ? 'paths' : null
+      if (!opened) return
+      const id = to.params[CATALOG_DETAIL[opened].idParam]
+      if (typeof id !== 'string') return
+      saveCatalogReturn(opened, {
         itemId: id,
-        filters: {
-          levels: [...filters.levels],
-          skillIds: [...filters.skillIds],
-          conceptIds: [...filters.conceptIds],
-          teacher: filters.teacher ? { ...filters.teacher } : null,
-          instrumentId: filters.instrumentId,
-          language: filters.language,
-        },
-        searchText: list.searchText.value,
+        query: onlyStrings(route.query),
         loadedCount: list.itemCount.value,
         scrollY: window.scrollY,
       })
     })
   }
 
-  return { initialState, resume }
+  return { resume }
 }

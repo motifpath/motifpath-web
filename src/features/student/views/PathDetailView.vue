@@ -6,6 +6,7 @@ import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue
 import { useCatalogPath } from '@/features/student/composables/useCatalogPath'
 import { useEnrollInLearningPath } from '@/features/student/composables/useEnrollInLearningPath'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
+import { discoverBackLink } from '@/features/student/utils/catalogReturn'
 import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
 import { buildLearning, type LearningItem } from '@/features/student/utils/learning'
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
@@ -37,12 +38,7 @@ const fromLearning = route.name === 'learning-path'
 const fromWhereToStart = computed(() => whereToStartReturn(route.query))
 const backToCatalog = computed(() => {
   if (fromLearning) return { name: 'my-courses' }
-  return (
-    fromWhereToStart.value ??
-    (route.query.fromCatalog === 'true'
-      ? { name: 'path-catalog', query: { returnFromPath: learningPathId } }
-      : { name: 'path-catalog' })
-  )
+  return fromWhereToStart.value ?? discoverBackLink('paths', learningPathId)
 })
 const backLabel = computed(() => {
   if (fromLearning) return t('pathDetailView.backToLearning')

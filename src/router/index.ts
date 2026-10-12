@@ -155,9 +155,9 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'course-catalog',
-        // Open to every role: anyone can learn.
+        // Open to every role: anyone can learn. Discover's Courses segment.
         meta: { requiresAuth: true },
-        component: () => import('@/features/student/views/CourseCatalogView.vue'),
+        component: () => import('@/features/student/views/DiscoverView.vue'),
       },
       {
         path: 'mine',
@@ -203,9 +203,9 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'path-catalog',
-        // Open to every role: anyone can learn.
+        // Open to every role: anyone can learn. Discover's Paths segment.
         meta: { requiresAuth: true },
-        component: () => import('@/features/student/views/PathCatalogView.vue'),
+        component: () => import('@/features/student/views/DiscoverView.vue'),
       },
       {
         path: ':learningPathId',
