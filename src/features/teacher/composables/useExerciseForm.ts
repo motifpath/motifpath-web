@@ -32,6 +32,8 @@ export interface ImageOption {
 export interface AudioOption {
   id: string
   audioUrl: string
+  /** A diagram whose playback is the option's sound, instead of a file; one or the other. */
+  diagramRef?: DiagramRef
   /** Shown as the student-facing button label — audio_selection has no visible player. */
   label: string
   correct: boolean
@@ -122,6 +124,15 @@ export function useExerciseForm() {
   const hasDiagramStimulus = computed(
     () => exerciseType.value === 'image_recognition' && stimulusSource.value === 'diagram',
   )
+  // An audio_recognition sound can be a diagram's playback instead of an uploaded file: one or
+  // the other, never both.
+  const soundDiagram = ref<DiagramRef | null>(null)
+
+  /** Plays a diagram as the audio_recognition sound, replacing any file; null removes it. */
+  function setSoundDiagram(diagramRef: DiagramRef | null) {
+    soundDiagram.value = diagramRef
+    if (diagramRef) audioUrl.value = ''
+  }
 
   /** The diagram stimulus as picked, then as edited in the form; it may have no correct position yet. */
   function setStimulusDiagram(diagramRef: DiagramRef | null) {
@@ -157,7 +168,12 @@ export function useExerciseForm() {
   // The stimulus editor reports every edit, a tempo still being typed
   // included, so a tempo the server would reject has to stop the save here.
   const hasValidStimulusPlayback = computed(() => {
-    const tempo = hasDiagramStimulus.value ? stimulusDiagram.value?.playback?.tempo_bpm : null
+    const playback = hasDiagramStimulus.value
+      ? stimulusDiagram.value?.playback
+      : exerciseType.value === 'audio_recognition'
+        ? soundDiagram.value?.playback
+        : null
+    const tempo = playback?.tempo_bpm
     return tempo == null || isValidTempoBpm(tempo)
   })
 
@@ -203,12 +219,21 @@ export function useExerciseForm() {
   const removeImageOption = imageOptionHelpers.remove
 
   const audioOptionHelpers = makeOptionListHelpers(audioOptions)
-  function addAudioOption() {
-    audioOptions.value.push({ id: makeId(), audioUrl: '', label: '', correct: false })
+  /** Adds a sound option under the label students see, which should stay neutral ("Sound 3"). */
+  function addAudioOption(label = '') {
+    audioOptions.value.push({ id: makeId(), audioUrl: '', label, correct: false })
   }
   function setAudioOptionURL(id: string, url: string) {
     const option = audioOptions.value.find((o) => o.id === id)
-    if (option) option.audioUrl = url
+    if (!option) return
+    option.audioUrl = url
+    option.diagramRef = undefined
+  }
+  function setAudioOptionDiagram(id: string, diagramRef: DiagramRef) {
+    const option = audioOptions.value.find((o) => o.id === id)
+    if (!option) return
+    option.diagramRef = diagramRef
+    option.audioUrl = ''
   }
   function editAudioOptionLabel(id: string, label: string) {
     const option = audioOptions.value.find((o) => o.id === id)
@@ -280,8 +305,8 @@ export function useExerciseForm() {
         return audioOptions.value.map((o) => ({
           option_id: o.id,
           is_correct: o.correct,
-          audio_url: o.audioUrl,
           label: o.label,
+          ...(o.diagramRef ? { diagram_ref: o.diagramRef } : { audio_url: o.audioUrl }),
         }))
       case 'image_recognition': {
         const { width: imageWidth, height: imageHeight } = stimulusImageSize.value
@@ -318,7 +343,10 @@ export function useExerciseForm() {
     } else if (exerciseType.value === 'image_recognition' && imageUrl.value) {
       fields.image_url = imageUrl.value
     }
-    if (exerciseType.value === 'audio_recognition' && audioUrl.value) fields.audio_url = audioUrl.value
+    if (exerciseType.value === 'audio_recognition') {
+      if (soundDiagram.value) fields.diagram_ref = soundDiagram.value
+      else if (audioUrl.value) fields.audio_url = audioUrl.value
+    }
     return fields
   }
 
@@ -358,7 +386,10 @@ export function useExerciseForm() {
     languageCodes.value = exercise.languages.length > 0 ? exercise.languages.map((l) => l.code) : ['any']
     imageUrl.value = exercise.image_url ?? ''
     audioUrl.value = exercise.audio_url ?? ''
-    stimulusDiagram.value = exercise.diagram_ref ?? null
+    // An audio_recognition's diagram is its sound, never a board to answer on.
+    const isSound = exercise.exercise_type === 'audio_recognition'
+    soundDiagram.value = isSound ? (exercise.diagram_ref ?? null) : null
+    stimulusDiagram.value = isSound ? null : (exercise.diagram_ref ?? null)
     stimulusStack.value = exercise.diagram_stack_ref ?? null
     stimulusSource.value = stimulusDiagram.value || stimulusStack.value ? 'diagram' : 'image'
     textOptions.value = []
@@ -384,6 +415,7 @@ export function useExerciseForm() {
         audioOptions.value = exercise.options.map((o) => ({
           id: o.option_id,
           audioUrl: o.audio_url ?? '',
+          ...(o.diagram_ref ? { diagramRef: o.diagram_ref } : {}),
           label: o.label ?? '',
           correct: o.is_correct,
         }))
@@ -408,6 +440,7 @@ export function useExerciseForm() {
       languageCodes.value,
       imageUrl.value,
       audioUrl.value,
+      soundDiagram.value,
       stimulusSource.value,
       stimulusDiagram.value,
       stimulusStack.value,
@@ -439,6 +472,8 @@ export function useExerciseForm() {
     stimulusStack,
     hasDiagramStimulus,
     setStimulusDiagram,
+    soundDiagram,
+    setSoundDiagram,
     audioUrl,
     textOptions,
     imageOptions,
@@ -461,6 +496,7 @@ export function useExerciseForm() {
     removeImageOption,
     addAudioOption,
     setAudioOptionURL,
+    setAudioOptionDiagram,
     editAudioOptionLabel,
     toggleAudioOption,
     removeAudioOption,

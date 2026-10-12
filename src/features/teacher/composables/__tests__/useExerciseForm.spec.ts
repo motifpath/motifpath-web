@@ -731,3 +731,115 @@ describe('useExerciseForm — what a save needs and what is unsaved', () => {
     expect(form.isDirty.value).toBe(false)
   })
 })
+
+describe('useExerciseForm — sounds played from a diagram', () => {
+  const strum: DiagramRef = {
+    diagram_id: 'a-minor',
+    layers: { intervals: true },
+    playback: { playback_id: 'strum', direction: 'as_authored', loop: false },
+  }
+
+  describe('audio_recognition', () => {
+    it('saves the diagram as the sound, with no audio file', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.audioUrl.value = 'https://cdn.example.com/old.mp3'
+
+      form.setSoundDiagram(strum)
+
+      const request = form.toCreateExerciseRequest()
+      expect(request.diagram_ref).toEqual(strum)
+      expect(request).not.toHaveProperty('audio_url')
+      expect(form.audioUrl.value).toBe('')
+    })
+
+    it('saves an uploaded file once the diagram sound is removed', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.setSoundDiagram(strum)
+
+      form.setSoundDiagram(null)
+      form.audioUrl.value = 'https://cdn.example.com/fifth.mp3'
+
+      const request = form.toUpdateExerciseRequest()
+      expect(request.audio_url).toBe('https://cdn.example.com/fifth.mp3')
+      expect(request).not.toHaveProperty('diagram_ref')
+    })
+
+    it('loads a diagram sound back as the sound, not as a stimulus board', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(
+        exercise({ exercise_type: 'audio_recognition', diagram_ref: strum, options: [{ option_id: 'o1', is_correct: true, label: 'Minor' }] }),
+      )
+
+      expect(form.soundDiagram.value).toEqual(strum)
+      expect(form.hasDiagramStimulus.value).toBe(false)
+      expect(form.toUpdateExerciseRequest().diagram_ref).toEqual(strum)
+      expect(form.isDirty.value).toBe(false)
+    })
+
+    it('names the sound’s tempo when it is outside 20–300 BPM', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.setSoundDiagram({ ...strum, playback: { ...strum.playback!, tempo_bpm: 400 } })
+      form.addTextOption()
+      form.toggleTextOption(form.textOptions.value[0]!.id)
+      form.skillIds.value = ['s']
+      form.conceptIds.value = ['c']
+
+      expect(form.missing.value).toEqual(['stimulus'])
+    })
+
+    it('is unsaved once a diagram sound is set', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.markSaved()
+      form.setSoundDiagram(strum)
+      expect(form.isDirty.value).toBe(true)
+    })
+  })
+
+  describe('audio_selection', () => {
+    it('gives a new option the neutral label it is handed', () => {
+      const form = useExerciseForm()
+      form.addAudioOption('Sound 3')
+      expect(form.audioOptions.value[0]!.label).toBe('Sound 3')
+    })
+
+    it('saves a diagram option’s sound as its diagram, and a file option’s as its file, mixed', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_selection'
+      form.addAudioOption('Sound 1')
+      form.addAudioOption('Sound 2')
+      const [file, diagram] = form.audioOptions.value
+      form.setAudioOptionURL(file!.id, 'https://cdn.example.com/a.mp3')
+      form.setAudioOptionDiagram(diagram!.id, strum)
+
+      expect(form.toCreateExerciseRequest().options).toEqual([
+        { option_id: file!.id, is_correct: false, label: 'Sound 1', audio_url: 'https://cdn.example.com/a.mp3' },
+        { option_id: diagram!.id, is_correct: false, label: 'Sound 2', diagram_ref: strum },
+      ])
+    })
+
+    it('replaces an option’s file with a diagram, and a diagram with a file', () => {
+      const form = useExerciseForm()
+      form.addAudioOption('Sound 1')
+      const id = form.audioOptions.value[0]!.id
+      form.setAudioOptionURL(id, 'https://cdn.example.com/a.mp3')
+
+      form.setAudioOptionDiagram(id, strum)
+      expect(form.audioOptions.value[0]).toMatchObject({ audioUrl: '', diagramRef: strum })
+
+      form.setAudioOptionURL(id, 'https://cdn.example.com/b.mp3')
+      expect(form.audioOptions.value[0]!.diagramRef).toBeUndefined()
+    })
+
+    it('loads a diagram option back with its diagram', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(
+        exercise({ exercise_type: 'audio_selection', options: [{ option_id: 'o1', is_correct: true, label: 'Sound 1', diagram_ref: strum }] }),
+      )
+      expect(form.audioOptions.value[0]).toMatchObject({ id: 'o1', label: 'Sound 1', diagramRef: strum, audioUrl: '' })
+    })
+  })
+})
