@@ -45,6 +45,7 @@ vi.mock('vue-router', async () => {
   return { ...actual, useRoute: () => route, useRouter: () => ({ push }) }
 })
 
+import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import PathDetailView from '@/features/student/views/PathDetailView.vue'
 
 function pathDetail(overrides: Partial<PathDetail> = {}): PathDetail {
@@ -90,7 +91,8 @@ describe('PathDetailView', () => {
     detail.error.value = false
     detail.notFound.value = false
     held.paths.value = []
-    route.query = { fromCatalog: 'true' }
+    route.query = {}
+    saveCatalogReturn('paths', { itemId: 'lp-1', query: { q: 'chords' }, loadedCount: 20, scrollY: 0 })
     vi.clearAllMocks()
   })
 
@@ -99,7 +101,7 @@ describe('PathDetailView', () => {
 
     expect(wrapper.get('[data-test="back-to-catalog"]').findComponent(RouterLinkStub).props('to')).toEqual({
       name: 'path-catalog',
-      query: { returnFromPath: 'lp-1' },
+      query: { q: 'chords', returnFromPath: 'lp-1' },
     })
     expect(wrapper.get('[data-test="path-detail-title"]').text()).toBe('Open chords')
     expect(wrapper.get('[data-test="path-detail-byline"]').text()).toContain('Bob Martins')
@@ -122,7 +124,7 @@ describe('PathDetailView', () => {
   })
 
   it('opens a fresh catalog when the learner did not come from it', () => {
-    route.query = {}
+    window.localStorage.clear()
 
     const wrapper = mountView()
 

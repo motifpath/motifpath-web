@@ -5,6 +5,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useCatalogPath } from '@/features/student/composables/useCatalogPath'
 import { useEnrollInLearningPath } from '@/features/student/composables/useEnrollInLearningPath'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
+import { discoverBackLink } from '@/features/student/utils/catalogReturn'
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
@@ -31,10 +32,7 @@ const { enrollInLearningPath } = useEnrollInLearningPath()
 const fromWhereToStart = computed(() => whereToStartReturn(route.query))
 const backToCatalog = computed(
   () =>
-    fromWhereToStart.value ??
-    (route.query.fromCatalog === 'true'
-      ? { name: 'path-catalog', query: { returnFromPath: learningPathId } }
-      : { name: 'path-catalog' }),
+    fromWhereToStart.value ?? discoverBackLink('paths', learningPathId),
 )
 
 // Enrolling in a path the learner already holds reopens their copy, so the

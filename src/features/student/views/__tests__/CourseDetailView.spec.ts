@@ -104,6 +104,7 @@ vi.mock('vue-router', async () => {
   }
 })
 
+import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import PageBackBar from '@/shared/components/PageBackBar.vue'
 import {
   makeCurrentPath as currentPath,
@@ -196,13 +197,26 @@ describe('CourseDetailView', () => {
     expect(back.props('to')).toEqual({ name: 'my-courses' })
   })
 
-  it('goes back to the catalog, where it was, when opened from Discover', () => {
+  it('goes back to Discover, with its search and filters, when opened from it', () => {
     route.name = 'course-detail'
-    route.query = { fromCatalog: 'true' }
+    route.query = {}
+    saveCatalogReturn('courses', { itemId: 'c-1', query: { q: 'blues', level: ['beginner'] }, loadedCount: 20, scrollY: 0 })
     const back = mountView().getComponent(PageBackBar)
 
     expect(back.props('title')).toBe('Discover')
-    expect(back.props('to')).toEqual({ name: 'course-catalog', query: { returnFromCourse: 'c-1' } })
+    expect(back.props('to')).toEqual({
+      name: 'course-catalog',
+      query: { q: 'blues', level: ['beginner'], returnFromCourse: 'c-1' },
+    })
+  })
+
+  it('goes back to a fresh Discover when not opened from it', () => {
+    route.name = 'course-detail'
+    route.query = {}
+    window.localStorage.clear()
+    const back = mountView().getComponent(PageBackBar)
+
+    expect(back.props('to')).toEqual({ name: 'course-catalog' })
   })
 
   it('leads back to Where to start, with the same answers, when opened from it', () => {

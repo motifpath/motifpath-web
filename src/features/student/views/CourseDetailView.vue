@@ -13,6 +13,7 @@ import { useMyStandalonePaths } from '@/features/student/composables/useMyStanda
 import { usePublishedCourse } from '@/features/student/composables/usePublishedCourse'
 import { type CurrentPathTarget, useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import { discoverBackLink } from '@/features/student/utils/catalogReturn'
 import { buildCourseOutline, courseStanding } from '@/features/student/utils/courseOutline'
 import { buildLearning, nextInProgress } from '@/features/student/utils/learning'
 import { whereToStartReturn } from '@/features/student/utils/whereToStartReturn'
@@ -70,10 +71,7 @@ const back = computed<{ title: string; label: string; to: RouteLocationRaw }>(()
   return {
     title: t('nav.discover'),
     label: t('courseDetailView.backToDiscover'),
-    to:
-      route.query.fromCatalog === 'true'
-        ? { name: 'course-catalog', query: { returnFromCourse: courseId } }
-        : { name: 'course-catalog' },
+    to: discoverBackLink('courses', courseId),
   }
 })
 

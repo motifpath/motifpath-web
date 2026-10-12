@@ -271,8 +271,6 @@
     "closeDescription": "Close description"
   },
   "courseCard": {
-    "label": "Course",
-    "pathLabel": "Path",
     "byline": "by {name}",
     "lessons": "{count} lesson | {count} lessons",
     "learningPaths": "{count} learning path | {count} learning paths"
@@ -351,11 +349,6 @@
     "roleAdmin": "Admin",
     "en": "English",
     "ptBr": "Português (Brasil)"
-  },
-  "discoverSwitch": {
-    "label": "Catalog",
-    "courses": "Courses",
-    "paths": "Paths"
   },
   "levelBar": {
     "learning": "{count} learning",
