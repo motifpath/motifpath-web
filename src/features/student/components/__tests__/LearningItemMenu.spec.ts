@@ -7,6 +7,8 @@ import { buildLearning, type LearningItem } from '@/features/student/utils/learn
 
 const course = buildLearning([makeEnrollment({ course_title: 'Reading rhythm' })], [], null).inProgress[0] as LearningItem
 const path = buildLearning([], [makeStandalonePath({ title: 'Open chords' })], null).inProgress[0] as LearningItem
+const behind = buildLearning([makeEnrollment({ course_title: 'Reading rhythm', update_available: true })], [], null)
+  .inProgress[0] as LearningItem
 
 function mountMenu(item: LearningItem) {
   return mount(LearningItemMenu, { props: { open: true, item, trigger: null }, attachTo: document.body })
@@ -31,6 +33,20 @@ describe('LearningItemMenu', () => {
     mountMenu(path)
 
     expect(rows()).toEqual(['Path details', 'Remove from Learning'])
+  })
+
+  it('offers the update first, while a newer version exists', () => {
+    mountMenu(behind)
+
+    expect(rows()).toEqual(['Update to the latest version', 'Course details', 'Leave course'])
+  })
+
+  it('asks to update', () => {
+    const menu = mountMenu(behind)
+
+    document.querySelector<HTMLElement>('[data-test="learning-menu-update"]')?.click()
+
+    expect(menu.emitted('update')).toHaveLength(1)
   })
 
   it('is named after the item', () => {

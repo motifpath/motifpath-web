@@ -154,7 +154,8 @@
     "courseDetails": "Course details",
     "pathDetails": "Path details",
     "leaveCourse": "Leave course",
-    "removePath": "Remove from Learning"
+    "removePath": "Remove from Learning",
+    "update": "Update to the latest version"
   },
   "courseDetailView": {
     "errorMessage": "We couldn't load this course.",

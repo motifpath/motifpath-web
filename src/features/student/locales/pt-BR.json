@@ -154,7 +154,8 @@
     "courseDetails": "Detalhes do curso",
     "pathDetails": "Detalhes da trilha",
     "leaveCourse": "Sair do curso",
-    "removePath": "Remover de Aprender"
+    "removePath": "Remover de Aprender",
+    "update": "Atualizar para a versão mais recente"
   },
   "courseDetailView": {
     "errorMessage": "Não foi possível carregar este curso.",
