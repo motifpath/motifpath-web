@@ -68,23 +68,46 @@ describe('EmbeddedDiagram', () => {
       expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
     })
 
-    it('stays a fretboard, with no switch, when its cells are the answers', async () => {
+    it('is answered on its chord box, its hidden notes left out and no switch, when its cells are the answers', async () => {
       serve(chord)
-      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, answerCells: [{ optionId: 'o', string: 1, fret: 2 }] } })
+      const cells = [{ optionId: 'o', string: 1, fret: 2 }]
+      const embed: DiagramEmbed = { kind: 'single', ref: makeDiagramRef({ layers: { label: 'custom', intervals: true, hidden_position_ids: ['p0'] } }) }
+      const wrapper = mount(EmbeddedDiagram, {
+        props: { embed, answerCells: cells, selectedAnswerIds: ['o'], answerMarks: { o: 'right' }, multiple: true },
+      })
       await flushPromises()
 
-      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+      const box = wrapper.getComponent(ChordBox)
+      expect(box.props()).toMatchObject({ answerCells: cells, selectedAnswerIds: ['o'], answerMarks: { o: 'right' }, multiple: true, hiddenPositionIds: ['p0'] })
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(false)
       expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
+
+      box.vm.$emit('selectAnswer', 'o')
+      expect(wrapper.emitted('selectAnswer')).toEqual([['o']])
     })
 
-    it('stays a fretboard as a thumbnail', async () => {
+    it('shows as its chord box as a thumbnail, fitted, with no switch', async () => {
       serve(chord)
-      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, compact: true } })
+      const wrapper = mount(EmbeddedDiagram, { props: { embed: single, compact: true, inert: true } })
       await flushPromises()
 
-      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+      expect(wrapper.getComponent(ChordBox).props('fit')).toBe(true)
+      expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(false)
       expect(wrapper.find('[data-test="chord-view-box"]').exists()).toBe(false)
     })
+  })
+
+  it("keeps a chord thumbnail's Play, which never picks the option around it", async () => {
+    const voicing = makeVoicing('d-open', 'chord-d', { fingering: [{ position_id: 'p0', finger: '1' }] })
+    serve(makeSequencedFrettedDiagram({ names: { en: 'D' }, purpose: 'chord_voicing', chord_voicing: voicing }))
+    const onCard = vi.fn()
+    const wrapper = mount({ components: { EmbeddedDiagram }, setup: () => ({ embed: { kind: 'single', ref: makeDiagramRef({ playback: { direction: 'as_authored', loop: false } }) }, onCard }), template: '<div @click="onCard"><EmbeddedDiagram :embed="embed" compact inert /></div>' })
+    await flushPromises()
+
+    await wrapper.get('[data-test="chord-box-player"]').trigger('click')
+
+    expect(wrapper.findComponent(DiagramPlayer).exists()).toBe(true)
+    expect(onCard).not.toHaveBeenCalled()
   })
 
   it('offers no Box | Neck on a diagram that isn’t a chord voicing', async () => {

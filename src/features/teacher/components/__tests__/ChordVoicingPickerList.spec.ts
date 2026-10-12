@@ -29,8 +29,9 @@ function serveCatalog() {
   })
 }
 
-function mountList() {
+function mountList(props: { pickedDiagramId?: string | null } = {}) {
   return mount(ChordVoicingPickerList, {
+    props,
     global: { stubs: { ChordBox: { props: ['voicing'], template: '<div data-test="chord-box" :data-voicing-id="voicing.chord_voicing_id" />' } } },
   })
 }
@@ -40,6 +41,23 @@ async function search(wrapper: ReturnType<typeof mountList>, symbol: string) {
   await flushPromises()
 }
 
+async function chooseRoot(wrapper: ReturnType<typeof mountList>, root: string) {
+  await wrapper.get('[data-test="chord-root"]').setValue(root)
+  await flushPromises()
+}
+
+async function chooseQuality(wrapper: ReturnType<typeof mountList>, label: string) {
+  const quality = wrapper.findAll('[data-test="chord-quality"]').find((q) => q.text() === label)
+  await quality!.trigger('click')
+  await flushPromises()
+}
+
+const voicingNamesOf = (wrapper: ReturnType<typeof mountList>) =>
+  wrapper.findAll('[data-test="chord-voicing-name"]').map((n) => n.text())
+
+const askedSymbols = () =>
+  GET.mock.calls.filter(([path]) => path === '/chords').map(([, init]) => (init as { params: { query: { symbol: string } } }).params.query.symbol)
+
 beforeEach(() => {
   GET.mockReset()
   serveCatalog()
@@ -48,14 +66,77 @@ beforeEach(() => {
 })
 
 describe('ChordVoicingPickerList', () => {
-  it("shows a chord's voicings as chord boxes, named by where they sit", async () => {
-    const wrapper = mountList()
+  describe('by root and quality', () => {
+    it('offers every quality, one at a time, starting on Major', () => {
+      const wrapper = mountList()
 
-    await search(wrapper, 'G')
+      const qualities = wrapper.findAll('[data-test="chord-quality"]')
+      expect(qualities.map((q) => q.text())).toEqual(['Major', 'm', '7', 'm7', 'maj7', 'sus2', 'sus4', 'dim', 'aug'])
+      expect(qualities.filter((q) => q.attributes('aria-pressed') === 'true').map((q) => q.text())).toEqual(['Major'])
+    })
 
-    const voicings = wrapper.findAll('[data-test="chord-voicing"]')
-    expect(voicings.map((v) => v.find('[data-test="chord-voicing-name"]').text())).toEqual(['Open', '3fr'])
-    expect(voicings.map((v) => v.get('[data-test="chord-box"]').attributes('data-voicing-id'))).toEqual(['g-open', 'g-e-shape-3'])
+    it("lists a root's plain chord, each voicing named by its chord and where it sits", async () => {
+      const wrapper = mountList()
+
+      await chooseRoot(wrapper, 'G')
+
+      expect(voicingNamesOf(wrapper)).toEqual(['G · Open', 'G · 3fr'])
+      expect(wrapper.findAll('[data-test="chord-box"]').map((b) => b.attributes('data-voicing-id'))).toEqual(['g-open', 'g-e-shape-3'])
+    })
+
+    it('chooses only one quality at a time, and looks up the chord they make', async () => {
+      const wrapper = mountList()
+      await chooseRoot(wrapper, 'G')
+
+      await chooseQuality(wrapper, 'm')
+      await chooseQuality(wrapper, 'm7')
+
+      const pressed = wrapper.findAll('[data-test="chord-quality"]').filter((q) => q.attributes('aria-pressed') === 'true')
+      expect(pressed.map((q) => q.text())).toEqual(['m7'])
+      expect(askedSymbols()).toContain('Gm7')
+    })
+  })
+
+  describe('by a typed symbol', () => {
+    it.each(['g', 'G', ' g '])('reads "%s" in any case', async (typed) => {
+      const wrapper = mountList()
+
+      await search(wrapper, typed)
+
+      expect(voicingNamesOf(wrapper)).toEqual(['G · Open', 'G · 3fr'])
+    })
+
+    it('takes over from the root and quality, which a new choice takes back', async () => {
+      const wrapper = mountList()
+      await search(wrapper, 'g')
+      expect(wrapper.findAll('[data-test="chord-quality"]').some((q) => q.attributes('aria-pressed') === 'true')).toBe(false)
+
+      await chooseRoot(wrapper, 'C')
+
+      expect((wrapper.get('[data-test="chord-search"]').element as HTMLInputElement).value).toBe('')
+      expect(askedSymbols()).toContain('C')
+    })
+
+    it("says in words that a symbol isn't a chord, with no message key", async () => {
+      const wrapper = mountList()
+
+      await search(wrapper, 'h7')
+
+      const status = wrapper.get('[data-test="chord-search-status"]')
+      expect(status.attributes('data-kind')).toBe('not_a_chord')
+      expect(status.text()).toBe('“h7” isn’t a chord we can read.')
+      expect(wrapper.find('[data-test="chord-voicing"]').exists()).toBe(false)
+    })
+
+    it("says the catalog doesn't have a chord", async () => {
+      const wrapper = mountList()
+
+      await search(wrapper, 'C#7')
+
+      const status = wrapper.get('[data-test="chord-search-status"]')
+      expect(status.attributes('data-kind')).toBe('not_in_catalog')
+      expect(status.text()).toBe('The chord catalog doesn’t have “C#7”.')
+    })
   })
 
   it("hands back the picked voicing's diagram", async () => {
@@ -67,20 +148,11 @@ describe('ChordVoicingPickerList', () => {
     expect(wrapper.emitted<[{ diagram_id: string }]>('select')?.[0]?.[0].diagram_id).toBe(gEShape.diagram_id)
   })
 
-  it("says a symbol that isn't a chord isn't one", async () => {
-    const wrapper = mountList()
+  it('marks the voicing already picked', async () => {
+    const wrapper = mountList({ pickedDiagramId: gEShape.diagram_id })
+    await search(wrapper, 'G')
 
-    await search(wrapper, 'H7')
-
-    expect(wrapper.get('[data-test="chord-search-status"]').attributes('data-kind')).toBe('not_a_chord')
-    expect(wrapper.find('[data-test="chord-voicing"]').exists()).toBe(false)
-  })
-
-  it("says the catalog doesn't have a chord", async () => {
-    const wrapper = mountList()
-
-    await search(wrapper, 'C#7')
-
-    expect(wrapper.get('[data-test="chord-search-status"]').attributes('data-kind')).toBe('not_in_catalog')
+    const marked = wrapper.findAll('[data-test="chord-voicing"]').filter((v) => v.attributes('aria-current') === 'true')
+    expect(marked.map((v) => v.get('[data-test="chord-voicing-name"]').text())).toEqual(['G · 3fr'])
   })
 })

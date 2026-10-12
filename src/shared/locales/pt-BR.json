@@ -335,6 +335,7 @@
     "label": "Diagramas neste braço"
   },
   "chordView": {
+    "fingeredNote": "Corda {string}, casa {fret}, dedo {finger}",
     "label": "Mostrar o acorde como",
     "box": "Caixa",
     "neck": "Braço"

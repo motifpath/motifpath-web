@@ -11,7 +11,7 @@ const UPPER_FRAME: BoardFrame = { ...OPEN_FRAME, minFret: 9, maxFret: 13, left: 
 const STANDARD_TUNING = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
 
 /** Draws the board inside an <svg>, as its parent renderers do, with `fills` slot content. */
-function mountBoard(props: { frame: BoardFrame; tuning?: string[]; plain?: boolean }, fills?: () => unknown) {
+function mountBoard(props: { frame: BoardFrame; tuning?: string[] }, fills?: () => unknown) {
   return mount(
     defineComponent({
       render: () => h('svg', [h(FretboardBoard, props, fills ? { fills } : undefined)]),
@@ -20,8 +20,8 @@ function mountBoard(props: { frame: BoardFrame; tuning?: string[]; plain?: boole
 }
 
 describe('FretboardBoard', () => {
-  it('lays the wood from the lowest to the highest fret wire, half a string gap beyond the outer strings', () => {
-    const wood = mountBoard({ frame: UPPER_FRAME }).get('[data-test="fretboard-wood"]')
+  it('lays the board from the lowest to the highest fret wire, half a string gap beyond the outer strings', () => {
+    const wood = mountBoard({ frame: UPPER_FRAME }).get('[data-test="fretboard-area"]')
 
     expect(Number(wood.attributes('x'))).toBe(fretLineX(UPPER_FRAME, 9))
     expect(Number(wood.attributes('width'))).toBe(fretLineX(UPPER_FRAME, 13) - fretLineX(UPPER_FRAME, 9))
@@ -34,7 +34,7 @@ describe('FretboardBoard', () => {
     expect(mountBoard({ frame: UPPER_FRAME }).find('[data-test="diagram-nut"]').exists()).toBe(false)
   })
 
-  it('draws a metal wire for every fret of the window, the nut standing in for fret 0', () => {
+  it('draws a fret line for every fret of the window, the nut standing in for fret 0', () => {
     const wires = (frame: BoardFrame) =>
       mountBoard({ frame }).findAll('[data-test="fret-wire"]').map((wire) => Number(wire.attributes('data-fret')))
 
@@ -74,27 +74,31 @@ describe('FretboardBoard', () => {
     expect(Number(numbers[3]!.attributes('x'))).toBe(markerCenterX(OPEN_FRAME, 3))
   })
 
-  it('draws a wood grain, left out of a plain drawing', () => {
-    expect(mountBoard({ frame: OPEN_FRAME }).find('[data-test="board-grain"]').exists()).toBe(true)
-    expect(mountBoard({ frame: OPEN_FRAME, plain: true }).find('[data-test="board-grain"]').exists()).toBe(false)
+  it('draws a flat board in the theme’s colours, with no wood, grain or metal', () => {
+    const wrapper = mountBoard({ frame: OPEN_FRAME, tuning: STANDARD_TUNING })
+
+    expect(wrapper.find('defs').exists()).toBe(false)
+    expect(wrapper.find('[data-test="board-grain"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="fretboard-area"]').classes()).toContain('fill-surface-raised')
+    expect(wrapper.get('[data-test="diagram-nut"]').classes()).toContain('fill-ink')
+    expect(wrapper.findAll('[data-test="fret-wire"]').every((wire) => wire.classes().includes('fill-border'))).toBe(true)
+    expect(wrapper.findAll('[data-test="diagram-string"]').every((string) => string.classes().includes('stroke-ink-subtle'))).toBe(true)
+    expect(wrapper.findAll('[data-test="fret-inlay"]').every((inlay) => inlay.classes().includes('fill-border'))).toBe(true)
+    expect(wrapper.findAll('[data-test="fret-number"]').every((number) => number.classes().includes('fill-ink-subtle'))).toBe(true)
   })
 
-  it('keeps its own paint ids when two boards are drawn on one page', () => {
-    const wrapper = mount(
-      defineComponent({
-        render: () => h('div', [h('svg', [h(FretboardBoard, { frame: OPEN_FRAME })]), h('svg', [h(FretboardBoard, { frame: OPEN_FRAME })])]),
-      }),
-    )
+  it('draws the nut twice as thick as a fret line', () => {
+    const wrapper = mountBoard({ frame: OPEN_FRAME })
 
-    const woodFills = wrapper.findAll('[data-test="fretboard-wood"]').map((wood) => wood.attributes('fill'))
-    expect(woodFills[0]).not.toBe(woodFills[1])
+    const fret = Number(wrapper.get('[data-test="fret-wire"]').attributes('width'))
+    expect(Number(wrapper.get('[data-test="diagram-nut"]').attributes('width'))).toBe(fret * 2)
   })
 
-  it('draws its fills over the wood but under the nut, fret wires and strings', () => {
+  it('draws its fills over the board but under the nut, fret lines and strings', () => {
     const svg = mountBoard({ frame: OPEN_FRAME }, () => h('rect', { 'data-test': 'fill' })).get('svg').element
     const order = [...svg.querySelectorAll('[data-test]')].map((element) => element.getAttribute('data-test'))
 
-    expect(order.indexOf('fill')).toBeGreaterThan(order.indexOf('fretboard-wood'))
+    expect(order.indexOf('fill')).toBeGreaterThan(order.indexOf('fretboard-area'))
     expect(order.indexOf('fill')).toBeLessThan(order.indexOf('diagram-nut'))
     expect(order.indexOf('fill')).toBeLessThan(order.indexOf('fret-wire'))
     expect(order.indexOf('fill')).toBeLessThan(order.indexOf('diagram-string'))

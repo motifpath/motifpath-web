@@ -575,7 +575,7 @@ function noteAlignClass(position: Marker): string {
           :inert="drawingInert || undefined"
           :aria-hidden="drawingInert || undefined"
         >
-          <FretboardBoard :frame="frame" :tuning="instrument.tuning" :plain="compact">
+          <FretboardBoard :frame="frame" :tuning="instrument.tuning">
             <template #fills>
               <rect
                 v-for="region in layout.regions"

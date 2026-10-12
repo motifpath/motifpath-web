@@ -12,8 +12,8 @@
  * only the drawing is inert, and a tap on them never reaches the card around
  * it, so it doesn't pick an option. A stack never plays; its diagrams are named in a legend.
  * A diagram with chord data (a chord voicing's) is drawn as a chord box, read in place, with
- * Box | Neck to switch for this showing; the box takes no taps and has no room as a thumbnail,
- * so a chord whose cells are answers, or a thumbnail, stays a fretboard. `root_override` isn't applied yet: the diagram is drawn, and played,
+ * Box | Neck to switch for this showing. A chord whose cells are answers is answered on its box,
+ * and a thumbnail is its box fitted to the card; neither offers the switch. `root_override` isn't applied yet: the diagram is drawn, and played,
  * as authored.
  */
 import { computed, shallowRef, watch } from 'vue'
@@ -86,9 +86,13 @@ watch(status, (next) => emit('status', next), { immediate: true })
 const activePositionIds = shallowRef<string[]>([])
 
 const { localizedName } = useLocalizedName()
-// A box takes no taps, and a thumbnail has no room for the switch: both stay a fretboard.
 const takesTaps = computed(() => props.selectablePositionIds.length > 0 || props.answerCells.length > 0)
-const chordView = useChordView(() => (props.embed.kind === 'single' && !props.compact && !takesTaps.value ? diagram.value : null))
+const isChord = computed(() => props.embed.kind === 'single' && Boolean(diagram.value?.chord_voicing))
+// A chord being answered, or a thumbnail, is always its box: there's no switch to offer there.
+const fixedBox = computed(() => isChord.value && (props.compact || takesTaps.value))
+const chordView = useChordView(() => (isChord.value && !fixedBox.value ? diagram.value : null))
+const showsBox = computed(() => fixedBox.value || (isChord.value && chordView.view.value === 'box'))
+const hiddenPositionIds = computed(() => diagramRef.value?.layers.hidden_position_ids ?? [])
 
 // The rail keeps room for the player only when there is something to play.
 const playable = computed(
@@ -126,13 +130,23 @@ const playable = computed(
     </div>
     <div data-test="embedded-diagram-drawing">
       <ChordBox
-        v-if="chordView.view.value === 'box' && diagram.chord_voicing"
+        v-if="showsBox && diagram.chord_voicing"
         :voicing="diagram.chord_voicing"
         :diagram="diagram"
         :instrument="instrument"
         :label="localizedName(diagram.names)"
         :scale="2"
+        :fit="props.compact"
+        :aria-hidden="props.inert ? 'true' : undefined"
         :active-position-ids="activePositionIds"
+        :hidden-position-ids="hiddenPositionIds"
+        :selectable-position-ids="props.selectablePositionIds"
+        :answer-cells="props.answerCells"
+        :selected-answer-ids="props.selectedAnswerIds"
+        :answer-marks="props.answerMarks"
+        :multiple="props.multiple"
+        @select="emit('select', $event)"
+        @select-answer="emit('selectAnswer', $event)"
       />
       <FrettedDiagramView
         v-else
@@ -163,6 +177,15 @@ const playable = computed(
           />
         </template>
       </FrettedDiagramView>
+    </div>
+    <!-- A tap on Play never reaches the card around a thumbnail, so it doesn't pick an option. -->
+    <div v-if="fixedBox && playable && diagramRef" data-test="chord-box-player" class="flex" @click.stop @keydown.stop>
+      <DiagramPlayer
+        :diagram="diagram"
+        :instrument="instrument"
+        :playback="diagramRef.playback ?? null"
+        @active="activePositionIds = $event"
+      />
     </div>
     <DiagramLegend v-if="legend.length > 1" :entries="legend" />
     <figcaption v-if="props.caption" class="text-sm text-ink-muted">{{ props.caption }}</figcaption>

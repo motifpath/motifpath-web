@@ -1,17 +1,18 @@
 <script setup lang="ts">
 /**
  * One modal to choose what an exercise shows: an uploaded image, or a
- * prebuilt diagram. An image is taken as soon as it's picked. A diagram is
- * configured in the diagram picker and taken once applied — or, with
- * `chooseOnly` (a stimulus, whose labels, hidden and correct positions are
- * set in the exercise form), taken as soon as it's picked, drawn as its
- * author made it with no answer yet. Rendered at the document body, and a
- * fixed-height panel so switching tabs or filtering never resizes it.
+ * prebuilt diagram or chord. An image is taken as soon as it's picked. A
+ * diagram is configured in the diagram picker and taken once applied, Apply
+ * showing with its settings — or, with `chooseOnly` (a stimulus, whose
+ * labels, hidden and correct positions are set in the exercise form), taken
+ * as soon as it's picked, drawn as its author made it with no answer yet.
+ * Rendered at the document body: a full-screen layer on a phone, else a
+ * fixed-height dialog, so switching tabs or filtering never resizes it; the
+ * picker scrolls its own results, keeping its search in place.
  */
 import { ref, watch } from 'vue'
 
 import DiagramEmbedPicker from '@/features/teacher/components/DiagramEmbedPicker.vue'
-import DiagramPickerList from '@/features/teacher/components/DiagramPickerList.vue'
 import FileDropField from '@/features/teacher/components/FileDropField.vue'
 import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
 import ModalOverlay from '@/shared/components/ModalOverlay.vue'
@@ -41,12 +42,14 @@ const { t } = useTypedT()
 
 const tab = ref<'image' | 'diagram'>('image')
 const chosen = ref<DiagramRef | null>(null)
+const pickerStep = ref<'choose' | 'set'>('choose')
 watch(
   () => props.open,
   (open) => {
     if (!open) return
     tab.value = props.initialDiagram ? 'diagram' : 'image'
     chosen.value = null
+    pickerStep.value = 'choose'
   },
   { immediate: true },
 )
@@ -63,7 +66,7 @@ function apply() {
 <template>
   <ModalOverlay
     :open="open"
-    panel-class="flex h-[85vh] w-[720px] max-w-[92vw] flex-col gap-4 rounded-xl bg-surface-raised p-5 shadow-level2"
+    panel-class="-m-4 flex h-dvh w-screen flex-col gap-4 bg-surface-raised p-4 sm:m-0 sm:h-[85vh] sm:w-[1040px] sm:max-w-[92vw] sm:rounded-xl sm:p-5 sm:shadow-level2"
     @close="emit('close')"
   >
     <div data-test="media-picker" class="contents">
@@ -88,10 +91,16 @@ function apply() {
         </button>
       </div>
 
-      <div class="min-h-0 flex-1 overflow-y-auto">
+      <div data-test="media-picker-body" class="flex min-h-0 flex-1 flex-col">
         <FileDropField v-if="tab === 'image'" @select="emit('image', $event)" />
-        <DiagramPickerList v-else-if="chooseOnly" @select="pick" />
-        <DiagramEmbedPicker v-else :initial="initialDiagram" @change="chosen = $event" />
+        <DiagramEmbedPicker
+          v-else
+          :initial="chooseOnly ? null : initialDiagram"
+          :choose-only="chooseOnly"
+          @change="chosen = $event"
+          @step="pickerStep = $event"
+          @pick="pick"
+        />
       </div>
 
       <div class="flex justify-end gap-2 border-t border-border pt-4">
@@ -104,7 +113,7 @@ function apply() {
           {{ t('diagramEmbedPicker.cancel') }}
         </button>
         <button
-          v-if="tab === 'diagram' && !chooseOnly"
+          v-if="tab === 'diagram' && !chooseOnly && pickerStep === 'set'"
           type="button"
           data-test="media-apply"
           :disabled="!chosen"

@@ -41,12 +41,31 @@ describe('DiagramEmbedPickerModal', () => {
     expect(wrapper.findComponent(DiagramEmbedPicker).exists()).toBe(false)
   })
 
-  it('titles itself for inserting a new diagram, with Insert disabled until one is chosen', async () => {
+  it('titles itself for inserting a new diagram, offering only Cancel while choosing', async () => {
     const wrapper = mountModal()
     await flushPromises()
 
     expect(wrapper.get('[data-test="embed-picker-title"]').text()).toBe('Insert a diagram')
+    expect(wrapper.find('[data-test="embed-picker-apply"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="embed-picker-cancel"]').exists()).toBe(true)
+  })
+
+  it('offers Insert once a pick is being set, disabled while there is nothing to show', async () => {
+    const wrapper = mountModal()
+    await flushPromises()
+
+    wrapper.getComponent(DiagramEmbedPicker).vm.$emit('step', 'set')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="embed-picker-apply"]').text()).toBe('Insert')
     expect(wrapper.get('[data-test="embed-picker-apply"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('leaves the scrolling to the picker, so its search and filters stay put', async () => {
+    const wrapper = mountModal()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="embed-picker-body"]').classes()).not.toContain('overflow-y-auto')
   })
 
   it('applies the chosen ref', async () => {

@@ -65,3 +65,39 @@ export const Sounding: Story = { args: { scale: 2, activePositionIds: ['p6', 'p1
 
 /** An open chord fingered at the 2nd fret still starts at the nut: its open strings ring from it. */
 export const OpenA: Story = { args: { voicing: aOpen, diagram: aOpenDiagram, label: 'A', scale: 2 } }
+
+// Every cell of the open A's window a student can tap, the open strings above the nut included.
+const aCells = [5, 4, 3, 2, 1].flatMap((string) => [0, 1, 2, 3, 4].map((fret) => ({ optionId: `c-${string}-${fret}`, string, fret })))
+
+/** An author's stimulus: hidden notes faded, answers marked, every note a tap. */
+export const Authoring: Story = {
+  args: {
+    voicing: aOpen,
+    diagram: aOpenDiagram,
+    label: 'A',
+    scale: 2,
+    revealHidden: true,
+    hiddenPositionIds: ['a3', 'a2'],
+    correctPositionIds: ['a4', 'a3', 'a2'],
+    selectablePositionIds: ['a5', 'a4', 'a3', 'a2', 'a1'],
+  },
+}
+
+/** A student answering on the box: the hidden notes left out, two cells picked. */
+export const Answering: Story = {
+  args: { voicing: aOpen, diagram: aOpenDiagram, label: 'A', hiddenPositionIds: ['a3', 'a2'], answerCells: aCells, multiple: true, selectedAnswerIds: ['c-3-2', 'c-2-3'] },
+}
+
+/** After Check: a right pick, a wrong pick, and a right cell not picked. */
+export const Graded: Story = {
+  args: {
+    ...Answering.args,
+    answerMarks: { 'c-3-2': 'right', 'c-2-2': 'right', 'c-2-3': 'wrong' },
+  },
+}
+
+/** A thumbnail, fitted to its card. */
+export const Thumbnail: Story = {
+  args: { voicing: aOpen, diagram: aOpenDiagram, label: 'A', fit: true },
+  render: (args) => ({ components: { ChordBox }, setup: () => ({ args }), template: '<div class="w-32"><ChordBox v-bind="args" /></div>' }),
+}

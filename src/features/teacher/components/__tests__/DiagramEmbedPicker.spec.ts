@@ -50,7 +50,7 @@ function intervalChips(wrapper: Picker) {
 
 /** Clicks a marker in the preview, the way an author hides a position. */
 async function clickPosition(wrapper: Picker, positionId: string) {
-  wrapper.getComponent(FrettedDiagramView).vm.$emit('select', positionId)
+  wrapper.get('[data-test="embed-picker-preview"]').getComponent(FrettedDiagramView).vm.$emit('select', positionId)
   await flushPromises()
 }
 
@@ -84,7 +84,7 @@ describe('DiagramEmbedPicker', () => {
     expect(wrapper.get('[data-test="embed-picker-name"]').text()).toBe('A minor pentatonic')
     expect((wrapper.get('[data-test="embed-picker-label"]').element as HTMLSelectElement).value).toBe('custom')
     expect(intervalChips(wrapper).map((chip) => chip.text())).toEqual(['R', 'b3', '4', '5', 'b7'])
-    const preview = wrapper.getComponent(FrettedDiagramView)
+    const preview = wrapper.get('[data-test="embed-picker-preview"]').getComponent(FrettedDiagramView)
     expect(preview.props()).toEqual(
       expect.objectContaining({ revealHidden: true, multiple: true, selectablePositionIds: ['p0', 'p1', 'p2', 'p3', 'p4', 'p5'] }),
     )
@@ -115,7 +115,7 @@ describe('DiagramEmbedPicker', () => {
     await wrapper.get('[data-test="embed-picker-label"]').setValue('note')
 
     expect(lastChange(wrapper)?.layers.label).toBe('note')
-    expect(wrapper.getComponent(FrettedDiagramView).props('diagramRef').layers.label).toBe('note')
+    expect(wrapper.get('[data-test="embed-picker-preview"]').getComponent(FrettedDiagramView).props('diagramRef').layers.label).toBe('note')
   })
 
   it('hides a position by clicking it, and a whole interval from its chip', async () => {
@@ -143,7 +143,7 @@ describe('DiagramEmbedPicker', () => {
 
     expect(lastChange(wrapper)).toBeNull()
     expect(wrapper.find('[data-test="embed-picker-nothing-shown"]').exists()).toBe(true)
-    expect(wrapper.findComponent(FrettedDiagramView).exists()).toBe(true)
+    expect(wrapper.get('[data-test="embed-picker-preview"]').findComponent(FrettedDiagramView).exists()).toBe(true)
   })
 
   it('reports nothing for a diagram students can’t be shown yet, and says so', async () => {
@@ -167,6 +167,43 @@ describe('DiagramEmbedPicker', () => {
 
     expect(wrapper.findAll('[data-test="diagram-option"]')).toHaveLength(1)
     expect(lastChange(wrapper)).toBeNull()
+  })
+
+  it('goes back with the diagram it had picked marked', async () => {
+    serve([penta, piano])
+    const wrapper = mountPicker()
+    await flushPromises()
+    await choose(wrapper, 0)
+
+    await wrapper.get('[data-test="embed-picker-change"]').trigger('click')
+    await flushPromises()
+
+    const marked = wrapper.findAll('[data-test="diagram-option"]').filter((o) => o.attributes('aria-current') === 'true')
+    expect(marked.map((o) => o.get('[data-test="diagram-option-name"]').text())).toEqual(['A minor pentatonic'])
+  })
+
+  it('says which step it is on: choosing, then setting how it shows', async () => {
+    serve([penta])
+    const wrapper = mountPicker()
+    await flushPromises()
+    expect(wrapper.emitted('step')?.at(-1)).toEqual(['choose'])
+
+    await choose(wrapper)
+    expect(wrapper.emitted('step')?.at(-1)).toEqual(['set'])
+
+    await wrapper.get('[data-test="embed-picker-change"]').trigger('click')
+    expect(wrapper.emitted('step')?.at(-1)).toEqual(['choose'])
+  })
+
+  it('only chooses, handing the pick straight back, when how it shows is set elsewhere', async () => {
+    serve([penta])
+    const wrapper = mount(DiagramEmbedPicker, { props: { initial: null, chooseOnly: true } })
+    await flushPromises()
+
+    await choose(wrapper)
+
+    expect(wrapper.emitted<[Diagram]>('pick')?.[0]?.[0].diagram_id).toBe('d-penta')
+    expect(wrapper.find('[data-test="embed-picker-config"]').exists()).toBe(false)
   })
 
   it('reopens an embedded diagram with its own settings, reading an older ref’s switch and subset', async () => {
@@ -224,9 +261,10 @@ describe('DiagramEmbedPicker', () => {
     const voicingDiagram = makeFrettedDiagram({ diagram_id: 'd-g-open', names: { en: 'G — open' }, purpose: 'chord_voicing' })
     const stubs = {
       ChordVoicingPickerList: {
+        props: ['pickedDiagramId'],
         emits: ['select'],
         setup: (_: unknown, { emit }: { emit: (event: 'select', diagram: Diagram) => void }) => ({ pick: () => emit('select', voicingDiagram) }),
-        template: '<button data-test="pick-voicing" @click="pick" />',
+        template: '<button data-test="pick-voicing" :data-picked="pickedDiagramId" @click="pick" />',
       },
     }
 
@@ -252,6 +290,22 @@ describe('DiagramEmbedPicker', () => {
 
       expect(wrapper.get('[data-test="embed-picker-name"]').text()).toBe('G — open')
       expect(lastChange(wrapper)?.diagram_id).toBe('d-g-open')
+    })
+
+    it('goes back to the chords with the voicing it had picked marked', async () => {
+      serve([penta])
+      const wrapper = mount(DiagramEmbedPicker, { props: { initial: null }, global: { stubs } })
+      await flushPromises()
+      await wrapper.get('[data-test="embed-picker-source-chords"]').trigger('click')
+      await wrapper.get('[data-test="pick-voicing"]').trigger('click')
+      await flushPromises()
+
+      const change = wrapper.get('[data-test="embed-picker-change"]')
+      expect(change.text()).toBe('Change chord')
+      await change.trigger('click')
+
+      expect(wrapper.get('[data-test="pick-voicing"]').attributes('data-picked')).toBe('d-g-open')
+      expect(wrapper.get('[data-test="embed-picker-source-chords"]').attributes('aria-pressed')).toBe('true')
     })
   })
 })

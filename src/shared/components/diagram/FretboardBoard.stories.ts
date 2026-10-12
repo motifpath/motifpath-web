@@ -22,4 +22,3 @@ type Story = StoryObj<typeof meta>
 
 export const OpenPosition: Story = {}
 export const UpperFrets: Story = { args: { frame: { ...OPEN_FRAME, minFret: 9, maxFret: 13, left: 4, columnGap: 60 } } }
-export const Plain: Story = { args: { plain: true } }

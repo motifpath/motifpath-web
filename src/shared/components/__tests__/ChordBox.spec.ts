@@ -21,8 +21,23 @@ const g7Open = voicingOf('g7-open', [[6, 3, '3'], [5, 2, '2'], [4, 0, null], [3,
 const gBarre3 = voicingOf('g-e-shape-3', [[6, 3, '1'], [5, 5, '3'], [4, 5, '4'], [3, 4, '2'], [2, 3, '1'], [1, 3, '1']], 3, 5)
 const cOpen = voicingOf('c-open', [[5, 3, '3'], [4, 2, '2'], [3, 0, null], [2, 1, '1'], [1, 0, null]], 0, 3, [6])
 
-function mountBox({ voicing, diagram }: ReturnType<typeof voicingOf>) {
-  return mount(ChordBox, { props: { voicing, diagram, instrument: makeFrettedInstrument(), label: 'G7' } })
+function mountBox({ voicing, diagram }: ReturnType<typeof voicingOf>, extra: Record<string, unknown> = {}) {
+  return mount(ChordBox, { props: { voicing, diagram, instrument: makeFrettedInstrument(), label: 'G7', ...extra } })
+}
+
+/** Each note's state, keyed "string/fret": its dot, or the "o" of an open string. */
+function states(wrapper: ReturnType<typeof mountBox>) {
+  return Object.fromEntries(
+    wrapper.findAll('[data-test="finger-dot"], [data-test="string-open"]').map((n) => [`${n.attributes('data-string')}/${n.attributes('data-fret') ?? 0}`, n.attributes('data-state')]),
+  )
+}
+
+/** How big a place is on screen, in CSS px: its target in the drawing, scaled as the box is drawn. */
+function placeSize(wrapper: ReturnType<typeof mountBox>, target: ReturnType<ReturnType<typeof mountBox>['get']>) {
+  const svg = wrapper.get('svg')
+  const viewBoxWidth = Number(svg.attributes('viewBox')!.split(' ')[2])
+  const ratio = Number(svg.attributes('width')) / viewBoxWidth
+  return { width: Number(target.attributes('width')) * ratio, height: Number(target.attributes('height')) * ratio }
 }
 
 /** The dots as [string, fret, finger], low string first. */
@@ -121,5 +136,104 @@ describe('ChordBox', () => {
 
   it('is described for screen readers', () => {
     expect(mountBox(g7Open).get('svg').attributes('aria-label')).toContain('G7')
+  })
+
+  describe('where its notes are answers', () => {
+    // C open: string 5 fret 3 (p0), string 4 fret 2 (p1), string 3 open (p2), string 2 fret 1 (p3), string 1 open (p4).
+    const p = (i: number) => `c-open-p${i}`
+
+    it('leaves hidden notes out for a student, open strings included', () => {
+      const wrapper = mountBox(cOpen, { hiddenPositionIds: [p(1), p(2)] })
+
+      expect(dots(wrapper).map(([string, fret]) => `${string}/${fret}`)).toEqual(['5/3', '2/1'])
+      expect(wrapper.findAll('[data-test="string-open"]').map((m) => Number(m.attributes('data-string')))).toEqual([1])
+    })
+
+    it('shows an author its hidden notes faded, and its answers marked', () => {
+      const wrapper = mountBox(cOpen, { hiddenPositionIds: [p(1), p(2)], revealHidden: true, correctPositionIds: [p(0), p(1)] })
+
+      expect(states(wrapper)).toEqual({ '5/3': 'correct', '4/2': 'hidden-correct', '3/0': 'hidden', '2/1': 'default', '1/0': 'default' })
+    })
+
+    it("takes a tap on each of an author's notes, open strings included", async () => {
+      const wrapper = mountBox(cOpen, { selectablePositionIds: [p(0), p(1), p(2), p(3), p(4)] })
+
+      expect(wrapper.get('svg').attributes('role')).toBe('group')
+      await wrapper.get('[data-test="finger-dot"][data-string="4"]').trigger('click')
+      await wrapper.get('[data-test="string-open"][data-string="3"]').trigger('keydown', { key: 'Enter' })
+      await wrapper.get('[data-test="finger-dot"][data-string="2"]').trigger('keydown', { key: ' ' })
+
+      expect(wrapper.emitted('select')).toEqual([[p(1)], [p(2)], [p(3)]])
+      expect(wrapper.get('[data-test="finger-dot"][data-string="4"]').attributes('aria-label')).toBe('String 4, fret 2, finger 2')
+      expect(wrapper.get('[data-test="string-open"][data-string="3"]').attributes('aria-label')).toBe('String 3, fret 0')
+    })
+
+    describe("a student's answer cells", () => {
+      const cells = [
+        { optionId: 'o-4-2', string: 4, fret: 2 },
+        { optionId: 'o-3-2', string: 3, fret: 2 },
+        { optionId: 'o-3-3', string: 3, fret: 3 },
+        { optionId: 'o-3-0', string: 3, fret: 0 },
+      ]
+      const student = (extra: Record<string, unknown> = {}) =>
+        mountBox(cOpen, { hiddenPositionIds: [p(1), p(2)], answerCells: cells, multiple: true, ...extra })
+      const cell = (wrapper: ReturnType<typeof mountBox>, optionId: string) => wrapper.get(`[data-test="chord-cell"][data-option-id="${optionId}"]`)
+
+      it('offers every cell as a place to tap, named by where it sits, the open string above the nut included', async () => {
+        const wrapper = student()
+
+        expect(wrapper.findAll('[data-test="chord-cell"]').map((c) => c.attributes('aria-label'))).toEqual([
+          'String 4, fret 2',
+          'String 3, fret 2',
+          'String 3, fret 3',
+          'String 3, fret 0',
+        ])
+        await cell(wrapper, 'o-3-0').trigger('click')
+        await cell(wrapper, 'o-4-2').trigger('keydown', { key: 'Enter' })
+        expect(wrapper.emitted('selectAnswer')).toEqual([['o-3-0'], ['o-4-2']])
+      })
+
+      it('marks a picked cell', () => {
+        const wrapper = student({ selectedAnswerIds: ['o-4-2'] })
+
+        expect(cell(wrapper, 'o-4-2').attributes('data-state')).toBe('asked')
+        expect(cell(wrapper, 'o-4-2').attributes('aria-checked')).toBe('true')
+        expect(cell(wrapper, 'o-3-2').attributes('data-state')).toBe('empty')
+      })
+
+      it('grades picks on the box: right, wrong, and a right cell not picked', () => {
+        const wrapper = student({ selectedAnswerIds: ['o-4-2', 'o-3-3'], answerMarks: { 'o-4-2': 'right', 'o-3-2': 'right', 'o-3-3': 'wrong' } })
+
+        expect(cell(wrapper, 'o-4-2').attributes('data-state')).toBe('right')
+        expect(cell(wrapper, 'o-3-3').attributes('data-state')).toBe('wrong')
+        expect(cell(wrapper, 'o-3-2').attributes('data-state')).toBe('missed')
+        expect(cell(wrapper, 'o-3-3').attributes('aria-label')).toBe('String 3, fret 3, your answer, wrong')
+      })
+
+      it('draws every place at least 48 px each way', () => {
+        const wrapper = student()
+
+        const targets = wrapper.findAll('[data-test="chord-cell-target"]')
+        expect(targets).toHaveLength(cells.length)
+        for (const target of targets) {
+          const size = placeSize(wrapper, target)
+          expect(size.width).toBeGreaterThanOrEqual(48)
+          expect(size.height).toBeGreaterThanOrEqual(48)
+        }
+      })
+
+      it('grows to show a cell beyond its frets', () => {
+        const wrapper = student({ answerCells: [...cells, { optionId: 'o-1-5', string: 1, fret: 5 }] })
+
+        expect(wrapper.findAll('[data-test="fret-row"]')).toHaveLength(5)
+      })
+    })
+  })
+
+  it('fits its container as a thumbnail', () => {
+    const svg = mountBox(cOpen, { fit: true }).get('svg')
+
+    expect(svg.attributes('width')).toBeUndefined()
+    expect(svg.classes()).toContain('w-full')
   })
 })

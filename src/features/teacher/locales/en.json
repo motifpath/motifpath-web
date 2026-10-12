@@ -569,6 +569,7 @@
     "draftPathsBlockPublish": "Publish these learning paths before the course: {titles}"
   },
   "diagramPickerList": {
+    "count": "{count} diagram | {count} diagrams",
     "loadErrorMessage": "We couldn't load the diagrams.",
     "emptyHeading": "No diagrams yet",
     "emptyMessage": "Create a diagram in the Diagrams library first.",
@@ -588,6 +589,7 @@
     "loadErrorMessage": "We couldn't load this diagram.",
     "chooseAnother": "Choose another diagram",
     "changeDiagram": "Change diagram",
+    "changeChord": "Change chord",
     "intervalsLegend": "Positions",
     "unavailable": "Students can't see this diagram yet — only fretted instruments (guitar, bass) can be shown in lessons for now.",
     "insertTitle": "Insert a diagram",
@@ -732,8 +734,14 @@
     "published": "Published"
   },
   "chordVoicingPicker": {
-    "symbolLabel": "Chord",
-    "symbolPlaceholder": "e.g. G7"
+    "rootLabel": "Root",
+    "chooseRoot": "Choose",
+    "symbolLabel": "Or type a chord",
+    "symbolPlaceholder": "e.g. am7",
+    "qualityLabel": "Quality",
+    "major": "Major",
+    "notAChord": "“{symbol}” isn’t a chord we can read.",
+    "notInCatalog": "The chord catalog doesn’t have “{symbol}”."
   },
   "songChartPicker": {
     "title": "Insert a song chart",

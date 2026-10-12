@@ -335,6 +335,7 @@
     "label": "Diagrams on this board"
   },
   "chordView": {
+    "fingeredNote": "String {string}, fret {fret}, finger {finger}",
     "label": "Show the chord as",
     "box": "Box",
     "neck": "Neck"

@@ -128,7 +128,7 @@ const cy = (string: number) => stringLineY(frame.value, string)
           :r="MARKER_RADIUS"
           role="img"
           :aria-label="cell.label"
-          :class="[LEVEL_FILLS[cell.level], cell.level === 'new' ? 'stroke-fretboard-inlay' : 'stroke-surface']"
+          :class="[LEVEL_FILLS[cell.level], cell.level === 'new' ? 'stroke-border' : 'stroke-surface']"
           :stroke-width="cell.level === 'new' ? 1.5 : 2"
         />
         <circle

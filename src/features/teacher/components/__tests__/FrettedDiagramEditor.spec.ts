@@ -564,7 +564,7 @@ describe('FrettedDiagramEditor', () => {
       })
 
       it('seats the controls right on top of the board', () => {
-        const woodTop = (regions: LocalRegion[]) => Number(mountWith(regions).get('[data-test="fretboard-wood"]').attributes('y'))
+        const woodTop = (regions: LocalRegion[]) => Number(mountWith(regions).get('[data-test="fretboard-area"]').attributes('y'))
 
         expect(woodTop([makeLocalRegion()])).toBeLessThanOrEqual(2)
         expect(woodTop([])).toBeGreaterThan(woodTop([makeLocalRegion()]))
@@ -606,7 +606,7 @@ describe('FrettedDiagramEditor', () => {
     it('draws the wood, nut, metal fret wires and inlays across the whole neck', () => {
       const wrapper = mountEditor()
 
-      expect(wrapper.find('[data-test="fretboard-wood"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="fretboard-area"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="diagram-nut"]').exists()).toBe(true)
       expect(wrapper.findAll('[data-test="fret-wire"]')).toHaveLength(24)
       expect(wrapper.findAll('[data-test="fret-inlay"]').map((inlay) => inlay.attributes('data-fret'))).toContain('12')

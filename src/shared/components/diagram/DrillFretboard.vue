@@ -107,7 +107,7 @@ function tap(place: CellPlace) {
 <template>
   <div ref="container" class="w-full select-none" data-test="drill-fretboard">
     <svg :width="width" :height="height" :viewBox="`0 0 ${width} ${height}`" role="group" :aria-label="label" class="block touch-manipulation">
-      <FretboardBoard :frame="frame" :tuning="tuning" plain>
+      <FretboardBoard :frame="frame" :tuning="tuning">
         <template #fills>
           <rect
             v-if="askedString"

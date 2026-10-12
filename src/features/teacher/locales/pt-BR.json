@@ -569,6 +569,7 @@
     "draftPathsBlockPublish": "Publique estas trilhas antes do curso: {titles}"
   },
   "diagramPickerList": {
+    "count": "{count} diagrama | {count} diagramas",
     "loadErrorMessage": "Não foi possível carregar os diagramas.",
     "emptyHeading": "Nenhum diagrama ainda",
     "emptyMessage": "Crie um diagrama na biblioteca de Diagramas primeiro.",
@@ -588,6 +589,7 @@
     "loadErrorMessage": "Não foi possível carregar este diagrama.",
     "chooseAnother": "Escolher outro diagrama",
     "changeDiagram": "Trocar diagrama",
+    "changeChord": "Trocar acorde",
     "intervalsLegend": "Posições",
     "unavailable": "Os alunos ainda não conseguem ver este diagrama — por enquanto, só instrumentos de trastes (violão, baixo) aparecem nas aulas.",
     "insertTitle": "Inserir um diagrama",
@@ -732,8 +734,14 @@
     "published": "Publicada"
   },
   "chordVoicingPicker": {
-    "symbolLabel": "Acorde",
-    "symbolPlaceholder": "ex.: G7"
+    "rootLabel": "Tônica",
+    "chooseRoot": "Escolher",
+    "symbolLabel": "Ou digite um acorde",
+    "symbolPlaceholder": "ex.: am7",
+    "qualityLabel": "Qualidade",
+    "major": "Maior",
+    "notAChord": "“{symbol}” não é um acorde que conseguimos ler.",
+    "notInCatalog": "O catálogo de acordes não tem “{symbol}”."
   },
   "songChartPicker": {
     "title": "Inserir uma cifra",

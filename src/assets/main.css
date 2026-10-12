@@ -44,15 +44,6 @@
   --color-level-accurate: 74 58 167;
   --color-level-fluent: 25 164 114;
   --color-level-retained: 42 120 214;
-  /* Fretboard wood tone — feature-scoped to the diagram viewer/editor, not yet a
-     motifpath-brand role; promote to tokens.json if another surface needs it. */
-  --color-fretboard-wood: 196 158 110;
-  --color-fretboard-wood-edge: 160 120 78;
-  --color-fretboard-grain: 110 72 40;
-  --color-fretboard-metal: 244 242 236;
-  --color-fretboard-metal-shadow: 132 130 124;
-  --color-fretboard-inlay: 250 245 230;
-  --color-fretboard-string: 92 90 86;
   /* A sounding position's dashed ring. */
   --color-fretboard-sounding: 255 213 128;
   --elevation-level0: none;
@@ -89,13 +80,6 @@
   --color-level-accurate: 105 89 197;
   --color-level-fluent: 27 175 122;
   --color-level-retained: 42 120 214;
-  --color-fretboard-wood: 90 66 42;
-  --color-fretboard-wood-edge: 58 42 28;
-  --color-fretboard-grain: 160 115 76;
-  --color-fretboard-metal: 228 225 216;
-  --color-fretboard-metal-shadow: 118 116 110;
-  --color-fretboard-inlay: 226 216 190;
-  --color-fretboard-string: 214 210 200;
   --color-fretboard-sounding: 255 213 128;
   --elevation-level0: none;
   --elevation-level1: 0 1px 2px rgba(3,4,20,.5);
