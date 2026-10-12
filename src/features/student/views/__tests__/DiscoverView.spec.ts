@@ -10,6 +10,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
+import { overlayInPlaceKey } from '@/shared/composables/overlayInPlace'
 import DiscoverView from '@/features/student/views/DiscoverView.vue'
 
 const BRUNO = { user_id: '0b6f5d7e-1c2a-4e3b-9f8d-6a5b4c3d2e1f', display_name: 'Bruno' }
@@ -71,7 +72,7 @@ async function openDiscover(fullPath = '/courses?language=en'): Promise<{ view: 
   const router = testRouter()
   await router.push(fullPath)
   await router.isReady()
-  const view = mount(RouterView, { global: { plugins: [router] } })
+  const view = mount(RouterView, { global: { plugins: [router], provide: { [overlayInPlaceKey as symbol]: true } } })
   await flushPromises()
   return { view, router }
 }
@@ -236,6 +237,63 @@ describe('DiscoverView', () => {
 
       expect(titles(view)).toHaveLength(20)
       expect(scrollTo).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('filters', () => {
+    const SKILL = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+
+    async function openFilters(view: VueWrapper) {
+      await view.get('[data-test="discover-filters"]').trigger('click')
+      await vi.runAllTimersAsync()
+      await flushPromises()
+    }
+
+    function chip(view: VueWrapper, group: string, label: string) {
+      const found = view
+        .get(`[data-test="filter-group-${group}"]`)
+        .findAll('button[aria-pressed]')
+        .find((button) => button.text() === label)
+      if (!found) throw new Error(`no ${group} chip ${label}`)
+      return found
+    }
+
+    beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }))
+    afterEach(() => vi.useRealTimers())
+
+    it('offers level, instrument, language and teacher, and no skill even when one came with the address', async () => {
+      const { view } = await openDiscover(`/courses?skill_ids=${SKILL}`)
+      await openFilters(view)
+
+      const groups = view.findAll('[data-test^="filter-group-"]').map((group) => group.attributes('data-test'))
+      expect(groups).toEqual(['filter-group-levels', 'filter-group-instrument', 'filter-group-language', 'filter-group-teacher'])
+    })
+
+    it('counts what the sheet would show, leaving the list behind it as it is', async () => {
+      const { view } = await openDiscover('/courses?q=')
+      await openFilters(view)
+      world.courses = COURSES.slice(0, 2)
+
+      await chip(view, 'levels', 'Beginner').trigger('click')
+      await vi.runAllTimersAsync()
+      await flushPromises()
+
+      expect(view.get('[data-test="filters-show"]').text()).toBe('Show 2 courses')
+      expect(titles(view)).toHaveLength(3)
+    })
+
+    it('applies the filters when shown: the address, a chip and the count on the button', async () => {
+      const { view, router } = await openDiscover('/courses?q=')
+      await openFilters(view)
+
+      await chip(view, 'levels', 'Beginner').trigger('click')
+      await view.get('[data-test="filters-show"]').trigger('click')
+      await flushPromises()
+
+      expect(view.find('[data-test="filters-body"]').exists()).toBe(false)
+      expect(router.currentRoute.value.query).toEqual({ level: ['beginner'] })
+      expect(view.findAll('[data-test="filter-chip"]').map((filterChip) => filterChip.text())).toEqual(['Beginner'])
+      expect(view.get('[data-test="discover-filters"]').attributes('aria-label')).toBe('Filters, 1 applied')
     })
   })
 })
