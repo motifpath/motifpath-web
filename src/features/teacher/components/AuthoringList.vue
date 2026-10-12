@@ -8,7 +8,7 @@
  * section. Each view draws its own items through the `item` slot.
  */
 import { Plus } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 
 import AuthoringCountSort from '@/features/teacher/components/AuthoringCountSort.vue'
@@ -39,6 +39,7 @@ import { useCourseCreators } from '@/shared/composables/useCourseCreators'
 import { useKnowledgeTrees } from '@/shared/composables/useKnowledgeTrees'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
+import { useMediaQuery } from '@/shared/composables/useMediaQuery'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useCurrentUserStore } from '@/stores/currentUser'
@@ -64,6 +65,10 @@ defineSlots<{ item(props: { item: AuthoringSectionItems[S] }): unknown }>()
 const { t } = useTypedT()
 const { sizeClass } = useSizeClass()
 const isExpanded = computed(() => sizeClass.value === 'expanded')
+// Beside the Teach sidebar, a panel narrower screens can't spare would squeeze the list to a
+// column or two; below this width the filters open as a dialog instead.
+const { matches: hasRoomForPanel } = useMediaQuery('(min-width: 1200px)')
+const showPanel = computed(() => isExpanded.value && hasRoomForPanel.value)
 const labels = useAuthoringFilterLabels()
 
 const listState = useAuthoringListState(props.section)
@@ -151,6 +156,7 @@ function clearNarrowing() {
 }
 
 const filtersOpen = ref(false)
+const panelTitleId = useId()
 
 function countFor(filters: AuthoringListFilters) {
   return list.countFor({ ...state, filters })
@@ -168,13 +174,21 @@ useListReturn({
 
 <template>
   <div class="flex flex-1 flex-col gap-4">
-    <div class="flex flex-wrap items-center gap-3">
-      <h1 class="flex-1 text-xl font-bold text-ink sm:text-2xl">{{ title }}</h1>
-      <SearchField v-if="isExpanded" v-model="searchText" class="w-72" :placeholder="t(`authoringList.searchPlaceholder.${section}`)" />
+    <div class="flex items-center gap-3">
+      <h1 class="mr-auto shrink-0 text-xl font-bold text-ink sm:text-2xl">{{ title }}</h1>
+      <SearchField
+        v-if="isExpanded"
+        v-model="searchText"
+        class="w-72 min-w-0 shrink"
+        :placeholder="t(`authoringList.searchPlaceholder.${section}`)"
+      />
+      <div v-if="isExpanded && !showPanel" data-test="authoring-filters-button">
+        <FilterButton :count="filterCount" @click="filtersOpen = true" />
+      </div>
       <RouterLink
         :to="newTo"
         data-test="authoring-new"
-        class="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-accent px-4 text-sm font-semibold text-accent-fg"
+        class="inline-flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-accent px-4 text-sm font-semibold text-accent-fg"
       >
         <Plus :size="18" aria-hidden="true" />
         {{ newLabel }}
@@ -201,12 +215,13 @@ useListReturn({
 
     <div class="flex gap-6">
       <aside
-        v-if="isExpanded"
+        v-if="showPanel"
         data-test="authoring-filters-panel"
-        class="sticky top-4 flex max-h-[calc(100vh-2rem)] w-[280px] shrink-0 flex-col gap-3 self-start overflow-y-auto rounded-2xl border border-border bg-surface-raised p-4"
+        :aria-labelledby="panelTitleId"
+        class="sticky top-4 flex max-h-[calc(100vh-2rem)] w-[320px] shrink-0 flex-col gap-3 self-start overflow-y-auto rounded-2xl border border-border bg-surface-raised p-4"
       >
         <div class="flex items-center justify-between">
-          <h2 class="text-base font-semibold text-ink">{{ t('authoringFilters.title') }}</h2>
+          <h2 :id="panelTitleId" class="text-base font-semibold text-ink">{{ t('authoringFilters.title') }}</h2>
           <button
             v-if="filterCount > 0"
             type="button"
@@ -229,7 +244,7 @@ useListReturn({
         />
       </aside>
 
-      <div class="flex min-w-0 max-w-[880px] flex-1 flex-col gap-3">
+      <div class="flex min-w-0 flex-1 flex-col gap-3">
         <AppliedFilters :chips="chips" @remove="removeChip" @clear="listState.clearFilters()" />
         <AuthoringCountSort
           v-if="!list.error.value"
@@ -275,7 +290,14 @@ useListReturn({
           </template>
         </StateBlock>
         <template v-else>
-          <ul :class="grid ? 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4' : 'flex flex-col gap-2'">
+          <ul
+            data-test="authoring-items"
+            :class="
+              grid
+                ? 'grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]'
+                : 'flex max-w-[880px] flex-col gap-2'
+            "
+          >
             <li v-for="(item, index) in items" :key="index">
               <slot name="item" :item="item" />
             </li>
@@ -291,7 +313,7 @@ useListReturn({
     </div>
 
     <AuthoringFiltersLayer
-      v-if="!isExpanded"
+      v-if="!showPanel"
       :open="filtersOpen"
       :section="section"
       :filters="state.filters"

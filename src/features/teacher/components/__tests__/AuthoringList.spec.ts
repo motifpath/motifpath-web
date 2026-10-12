@@ -87,6 +87,7 @@ async function mountList(section: AuthoringSection, fullPath = '/list') {
       emptyTitle: 'No diagrams yet',
       emptyMessage: 'A diagram shows notes on the instrument.',
       loadFailedMessage: "Couldn't load your diagrams",
+      grid: section === 'diagrams',
     },
     slots: { item: ({ item }: { item: object }) => h(ItemSlot, { item }) },
     global: {
@@ -183,6 +184,8 @@ describe('AuthoringList', () => {
     const { wrapper } = await mountList('diagrams')
 
     expect(wrapper.find('[data-test="authoring-filters-button"]').exists()).toBe(false)
+    const panel = wrapper.get('[data-test="authoring-filters-panel"]')
+    expect(wrapper.get(`#${panel.attributes('aria-labelledby')}`).text()).toBe('Filters')
     const custom = wrapper
       .get('[data-test="authoring-filters-panel"] [data-test="filter-group-kind"]')
       .findAll('button[aria-pressed]')
@@ -191,6 +194,40 @@ describe('AuthoringList', () => {
     await flushPromises()
 
     expect(listQueries('diagrams').at(-1)).toEqual(expect.objectContaining({ kind: 'custom' }))
+  })
+
+  it('opens the filters as a dialog below 1200 px, leaving the list the width', async () => {
+    mockViewport(1024)
+    answer('diagrams', { items: [], total: 0, sectionTotal: 10 })
+    const { wrapper } = await mountList('diagrams', '/list?kind=custom')
+
+    expect(wrapper.find('[data-test="authoring-filters-panel"]').exists()).toBe(false)
+    const button = wrapper.get('[data-test="authoring-filters-button"] button')
+    expect(button.attributes('aria-label')).toBe('Filters, 1 applied')
+    await button.trigger('click')
+
+    expect(wrapper.find('[data-test="filters-show"]').exists()).toBe(true)
+  })
+
+  it('lays the diagrams out two per row on a phone, and wider as many 168 px+ columns as fit', async () => {
+    mockViewport(1280)
+    answer('diagrams', { items: [{ id: 'd1', title: 'Box 1' }], total: 1 })
+    const { wrapper } = await mountList('diagrams')
+
+    const classes = wrapper.get('[data-test="authoring-items"]').classes()
+    expect(classes).toContain('grid-cols-2')
+    expect(classes).toContain('sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]')
+  })
+
+  it('keeps rows to a readable width, and lets the grid take the whole width', async () => {
+    mockViewport(1280)
+    answer('exercises', { items: [{ id: 'e1', title: 'Name the chord' }], total: 1 })
+    const rows = (await mountList('exercises')).wrapper.get('[data-test="authoring-items"]')
+    expect(rows.classes()).toContain('max-w-[880px]')
+
+    answer('diagrams', { items: [{ id: 'd1', title: 'Box 1' }], total: 1 })
+    const grid = (await mountList('diagrams')).wrapper.get('[data-test="authoring-items"]')
+    expect(grid.classes()).not.toContain('max-w-[880px]')
   })
 
   it('says what the section is for when nothing is authored yet', async () => {

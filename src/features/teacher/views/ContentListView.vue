@@ -40,7 +40,7 @@ function meta(lesson: ContentNode): string {
         <p class="max-w-md text-center text-ink-muted">{{ t('contentListView.permissionDenied') }}</p>
       </div>
 
-      <div v-else class="flex flex-1 flex-col px-4 pb-[80px] pt-6 sm:px-[48px] sm:pt-10">
+      <div v-else class="flex flex-1 flex-col px-4 pb-[80px] pt-6 sm:px-8 sm:pt-10">
         <AuthoringList
           section="lessons"
           :title="t('contentListView.heading')"
