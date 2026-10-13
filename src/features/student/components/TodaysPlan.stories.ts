@@ -15,7 +15,7 @@ function item(itemKey: string, kind: Item['kind'], reason: Item['reason'], field
 
 function cell(fret: number): Item {
   return item(`fretboard_cell:${LAYOUT}:5:${fret}`, 'fretboard_cell', 'weak', {
-    fretboard_cell: { layout_instrument_id: LAYOUT, string: 5, fret, drill: 'name_the_note' },
+    fretboard_cell: { layout_instrument_id: LAYOUT, string: 5, fret, drill: 'name_the_note', fret_window: { from_fret: 0 } },
   })
 }
 

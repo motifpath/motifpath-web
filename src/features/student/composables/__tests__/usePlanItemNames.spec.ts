@@ -58,7 +58,7 @@ const cell: Item = {
   node_id: null,
   level: 'new',
   estimated_seconds: 8,
-  fretboard_cell: { layout_instrument_id: '6ea2d087-ab9c-59dc-9657-8546025414d2', string: 5, fret: 3, drill: 'name_the_note' },
+  fretboard_cell: { layout_instrument_id: '6ea2d087-ab9c-59dc-9657-8546025414d2', string: 5, fret: 3, drill: 'name_the_note', fret_window: { from_fret: 0 } },
 }
 
 function setUp(items: Item[]) {

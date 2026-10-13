@@ -18,7 +18,7 @@ function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_n
     node_id: null,
     level: 'new',
     estimated_seconds: 8,
-    fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill },
+    fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill, fret_window: { from_fret: 0 } },
   }
 }
 

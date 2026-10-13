@@ -14,7 +14,7 @@ function item(itemKey: string, kind: Item['kind'], fields: Partial<Item> = {}): 
 
 function cell(fret: number, drill: 'name_the_note' | 'find_the_note' = 'name_the_note'): Item {
   return item(`fretboard_cell:${LAYOUT}:5:${fret}:${drill}`, 'fretboard_cell', {
-    fretboard_cell: { layout_instrument_id: LAYOUT, string: 5, fret, drill },
+    fretboard_cell: { layout_instrument_id: LAYOUT, string: 5, fret, drill, fret_window: { from_fret: 0 } },
   })
 }
 

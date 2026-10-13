@@ -330,6 +330,14 @@ export interface components {
              *     engagement analytics without a join at query time.
              */
             teacher_id?: string;
+            /**
+             * @description True when the student opened this content node from a course or standalone path
+             *     they had already finished, to review it. Absent or false otherwise, including when
+             *     a completed step is reopened from the student's current path. Marks access after
+             *     completion for analytics only; it never changes how the event affects the
+             *     student's progress, which a completed node keeps in any case.
+             */
+            review?: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -402,6 +410,13 @@ export interface components {
              *     challenge_sequence. Enables per-challenge scoring in the Aggregation Worker.
              */
             challenge_id?: string;
+            /**
+             * @description True when the exercise was started from a content node of a course or standalone
+             *     path the student had already finished, to review it. Absent or false otherwise.
+             *     Marks access after completion for analytics only; the attempt counts as practice
+             *     evidence like any other, and the student's progress is unchanged.
+             */
+            review?: boolean;
         };
         ExerciseStartedEvent: components["schemas"]["TrackingEventBase"] & {
             /** @enum {string} */
