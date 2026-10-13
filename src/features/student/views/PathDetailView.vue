@@ -226,16 +226,18 @@ function continuePath() {
               :label="section.label"
               :count="t('courseCard.lessons', { count: section.rows.length })"
             />
-            <StepRow
-              v-for="row in section.rows"
-              :key="row.contentNodeId"
-              data-test="review-lesson"
-              state="done"
-              :position="row.position"
-              :title="row.title"
-              :meta="row.meta"
-              :to="row.to"
-            />
+            <ul class="flex flex-col">
+              <StepRow
+                v-for="row in section.rows"
+                :key="row.contentNodeId"
+                data-test="review-lesson"
+                state="done"
+                :position="row.position"
+                :title="row.title"
+                :meta="row.meta"
+                :to="row.to"
+              />
+            </ul>
           </div>
         </div>
 

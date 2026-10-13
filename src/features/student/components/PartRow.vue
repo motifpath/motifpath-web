@@ -82,9 +82,9 @@ const listId = computed(() => `part-${props.part.position}-lessons`)
       </span>
     </button>
 
-    <div v-if="expanded && $slots.lessons" :id="listId" data-test="part-lessons" class="flex flex-col pb-2 pl-6">
+    <ul v-if="expanded && $slots.lessons" :id="listId" data-test="part-lessons" class="flex flex-col pb-2 pl-6">
       <slot name="lessons" />
-    </div>
+    </ul>
     <div v-else-if="expanded" class="flex flex-col gap-3 pb-4 pl-14 pr-3">
       <ul :id="listId" data-test="part-lessons" class="flex flex-col gap-1.5 text-sm">
         <template v-for="(line, index) in lines" :key="index">

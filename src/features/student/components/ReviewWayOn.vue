@@ -12,7 +12,7 @@ import NextStepCard from '@/shared/components/NextStepCard.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
-interface NextLessonCard {
+export interface NextLessonCard {
   eyebrow: string
   title: string
   kind: components['schemas']['StudentPathItem']['content_type']
