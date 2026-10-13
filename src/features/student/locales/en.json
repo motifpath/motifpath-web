@@ -161,7 +161,6 @@
     "errorMessage": "We couldn't load this course.",
     "notFoundHeading": "This course is not published yet",
     "notFoundMessage": "This course is not available in the catalog.",
-    "enrolledToast": "You are now enrolled in {title}.",
     "backToLearning": "Back to Learning",
     "backToDiscover": "Back to Discover",
     "backToWhereToStart": "Back to Where to start",
@@ -173,7 +172,8 @@
     "openInPath": "Open in My path",
     "leave": "Leave this course",
     "outline": "Course outline",
-    "parts": "{count} part | {count} parts"
+    "parts": "{count} part | {count} parts",
+    "startedNotCurrent": "{title} is in Learning, but {current} is still current."
   },
   "courseCompletedView": {
     "errorMessage": "We couldn't load your course.",
@@ -203,7 +203,6 @@
     "notFoundHeading": "This path is not published yet",
     "notFoundMessage": "This path is not available in the catalog.",
     "continue": "Continue path",
-    "enrolledToast": "You are now enrolled in {title}.",
     "outlineHeading": "Path outline",
     "start": "Start path",
     "inLearning": "In Learning"
