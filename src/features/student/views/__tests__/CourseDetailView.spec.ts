@@ -459,30 +459,99 @@ describe('CourseDetailView', () => {
     expect(wrapper.find('[data-test="leave"]').exists()).toBe(false)
   })
 
-  it('starts the course and then offers to continue its first part', async () => {
-    enrollInCourse.mockResolvedValueOnce({
-      outcome: 'enrolled',
-      enrollment: enrollment({ course_enrollment_id: 'e-9', active_checkpoint_position: 1 }),
+  describe('starting', () => {
+    const RHYTHM = standalonePath({ student_path_id: 'sp-rhythm', source_template_id: 'lp-rhythm', title: 'Reading rhythm' })
+
+    function rhythmIsCurrent() {
+      standalone.paths.value = [RHYTHM]
+      current.data.value = currentPath({ student_path_id: 'sp-rhythm', title: 'Reading rhythm', course_enrollment_id: null })
+      current.error.value = null
+    }
+
+    function enrolsAs(id: string) {
+      enrollInCourse.mockResolvedValueOnce({
+        outcome: 'enrolled',
+        enrollment: enrollment({ course_enrollment_id: id, active_checkpoint_position: 1 }),
+      })
+    }
+
+    it('enrols, makes the course current and opens My path, with an Undo back, without asking', async () => {
+      rhythmIsCurrent()
+      enrolsAs('e-9')
+      setCurrentPath.mockResolvedValueOnce(currentPath({ course_enrollment_id: 'e-9' }))
+      const wrapper = mountView()
+
+      await wrapper.get('[data-test="start"]').trigger('click')
+      await flushPromises()
+
+      expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+      expect(enrollInCourse).toHaveBeenCalledWith('c-1')
+      expect(setCurrentPath).toHaveBeenCalledWith({ courseEnrollmentId: 'e-9' })
+      expect(push).toHaveBeenCalledWith({ name: 'path' })
+      expect(toast.success).not.toHaveBeenCalled()
+      const [message, options] = toast.neutral.mock.calls[0] ?? []
+      expect(message).toBe('Now on Guitar foundations')
+
+      setCurrentPath.mockResolvedValueOnce(current.data.value)
+      options.action.run()
+      expect(setCurrentPath).toHaveBeenLastCalledWith({ studentPathId: 'sp-rhythm' })
     })
-    const wrapper = mountView()
 
-    await wrapper.get('[data-test="start"]').trigger('click')
-    await flushPromises()
+    it('offers no Undo when nothing was current', async () => {
+      enrolsAs('e-9')
+      setCurrentPath.mockResolvedValueOnce(currentPath({ course_enrollment_id: 'e-9' }))
+      const wrapper = mountView()
 
-    expect(enrollInCourse).toHaveBeenCalledWith('c-1')
-    expect(toast.success).toHaveBeenCalledWith('You are now enrolled in Guitar foundations.')
-    expect(wrapper.get('[data-test="continue"]').text()).toBe('Continue part 1')
-    expect(wrapper.find('[data-test="left-before"]').exists()).toBe(false)
-  })
+      await wrapper.get('[data-test="start"]').trigger('click')
+      await flushPromises()
 
-  it('reloads the enrolments when the course turns out to be started already', async () => {
-    enrollInCourse.mockResolvedValueOnce({ outcome: 'already-enrolled' })
-    const wrapper = mountView()
+      expect(toast.neutral).toHaveBeenCalledWith('Now on Guitar foundations', {})
+      expect(push).toHaveBeenCalledWith({ name: 'path' })
+    })
 
-    await wrapper.get('[data-test="start"]').trigger('click')
-    await flushPromises()
+    it('makes a course it turns out the student had started current, too', async () => {
+      enrollInCourse.mockResolvedValueOnce({ outcome: 'already-enrolled' })
+      enrollments.retry.mockImplementationOnce(async () => {
+        enrollments.enrollments.value = [enrollment({ course_enrollment_id: 'e-7' })]
+      })
+      setCurrentPath.mockResolvedValueOnce(currentPath({ course_enrollment_id: 'e-7' }))
+      const wrapper = mountView()
 
-    expect(enrollments.retry).toHaveBeenCalled()
+      await wrapper.get('[data-test="start"]').trigger('click')
+      await flushPromises()
+
+      expect(enrollments.retry).toHaveBeenCalled()
+      expect(setCurrentPath).toHaveBeenCalledWith({ courseEnrollmentId: 'e-7' })
+      expect(push).toHaveBeenCalledWith({ name: 'path' })
+    })
+
+    it('stays on the detail with an error when enrolling fails, changing nothing', async () => {
+      rhythmIsCurrent()
+      enrollInCourse.mockRejectedValueOnce(new Error('Failed to enroll in the course'))
+      const wrapper = mountView()
+
+      await wrapper.get('[data-test="start"]').trigger('click')
+      await flushPromises()
+
+      expect(toast.error).toHaveBeenCalledWith('Failed to enroll in the course')
+      expect(setCurrentPath).not.toHaveBeenCalled()
+      expect(push).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-test="start"]').attributes('aria-busy')).not.toBe('true')
+    })
+
+    it('says the course is in Learning but the other is still current when the switch fails', async () => {
+      rhythmIsCurrent()
+      enrolsAs('e-9')
+      setCurrentPath.mockRejectedValueOnce(new Error('Failed to switch your current course or path'))
+      const wrapper = mountView()
+
+      await wrapper.get('[data-test="start"]').trigger('click')
+      await flushPromises()
+
+      expect(toast.error).toHaveBeenCalledWith('Guitar foundations is in Learning, but Reading rhythm is still current.')
+      expect(push).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-test="continue"]').text()).toBe('Continue part 1')
+    })
   })
 
   it('shows a finished course with every part done and practice as the way on', () => {

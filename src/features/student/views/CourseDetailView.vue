@@ -124,17 +124,40 @@ function toggle(position: number) {
 
 const starting = ref(false)
 
+/** The enrolment Start made, or the one the student turns out to hold already. */
+async function enrolHere(courseIdToStart: string) {
+  const result = await enrollInCourse(courseIdToStart)
+  if (result.outcome === 'enrolled') {
+    enrollmentState.enrollments.value = [...enrollmentState.enrollments.value, result.enrollment]
+    return result.enrollment
+  }
+  await enrollmentState.retry()
+  return enrollment.value
+}
+
+// Starting enrols, makes the course current (the server only does that when nothing is) and opens
+// My path, at once and with an Undo, since it is reversible. When the switch alone fails, the
+// course is in Learning but the student is still on what they had, so they're told both.
 async function start() {
-  if (!course.value) return
+  if (!course.value || starting.value) return
+  const title = course.value.title
+  const previous = currentTargetOf(currentState.data.value)
+  const previousTitle = learning.value.inProgress.find((item) => item.state === 'current')?.title ?? null
   starting.value = true
   try {
-    const result = await enrollInCourse(course.value.course_id)
-    if (result.outcome === 'enrolled') {
-      enrollmentState.enrollments.value = [...enrollmentState.enrollments.value, result.enrollment]
-      toast.success(t('courseDetailView.enrolledToast', { title: course.value.title }))
-    } else {
-      await enrollmentState.retry()
+    const started = await enrolHere(course.value.course_id)
+    if (!started) return
+    try {
+      await switchTo({ courseEnrollmentId: started.course_enrollment_id }, title, previous)
+    } catch (e) {
+      toast.error(
+        previousTitle
+          ? t('courseDetailView.startedNotCurrent', { title, current: previousTitle })
+          : e instanceof Error ? e.message : String(e),
+      )
+      return
     }
+    void router.push({ name: 'path' })
   } catch (e) {
     toast.error(e instanceof Error ? e.message : String(e))
   } finally {
