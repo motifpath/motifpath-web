@@ -226,4 +226,44 @@ describe('useLessonTracking', () => {
       expect(track).toHaveBeenCalledWith(expect.objectContaining({ duration_seconds: 10 }))
     })
   })
+
+  describe('reviewing a finished course or path', () => {
+    it('emits lesson.started marked as review, even for a completed step', () => {
+      const id = freshNodeId()
+
+      useLessonTracking(lessonFor(id, 'completed'), { review: true })
+
+      expect(lastEvent()).toEqual({
+        event_type: 'lesson.started',
+        content_context: { content_node_id: id, content_type: 'video', teacher_id: 'teacher-1', review: true },
+      })
+    })
+
+    it('emits it once per lesson in a session', () => {
+      const id = freshNodeId()
+      useLessonTracking(lessonFor(id, 'completed'), { review: true })
+      track.mockClear()
+
+      useLessonTracking(lessonFor(id, 'completed'), { review: true })
+
+      expect(track).not.toHaveBeenCalled()
+    })
+
+    it('never emits lesson.completed', async () => {
+      const { complete } = useLessonTracking(lessonFor(freshNodeId(), 'completed'), { review: true })
+      track.mockClear()
+
+      await complete()
+
+      expect(track).not.toHaveBeenCalled()
+    })
+
+    it('leaves the marker off a lesson opened from My path', () => {
+      useLessonTracking(lessonFor(freshNodeId(), 'not_started'))
+
+      expect(lastEvent()).toEqual(
+        expect.objectContaining({ content_context: expect.not.objectContaining({ review: expect.anything() }) }),
+      )
+    })
+  })
 })

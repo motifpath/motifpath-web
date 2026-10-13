@@ -49,8 +49,11 @@ export interface ReviewEntry {
  * gives new answers. Reloads whenever
  * nodeId changes, since Vue Router reuses a mounted component when only a
  * param on the same route record changes.
+ *
+ * With `review`, the challenge is taken again from a course or path the
+ * student has already finished, and every event says so.
  */
-export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
+export function usePracticeSession(nodeId: MaybeRefOrGetter<string>, options: { review?: boolean } = {}) {
   const { coreApi } = useApi()
   const { track } = useEventTracking()
 
@@ -118,6 +121,8 @@ export function usePracticeSession(nodeId: MaybeRefOrGetter<string>) {
       source: 'challenge_sequence' as const,
       content_node_id: toValue(nodeId),
       challenge_id: challenge.value?.challenge_id,
+      // Taken again from a course or path the student has already finished.
+      ...(options.review ? { review: true } : {}),
     }
   }
 

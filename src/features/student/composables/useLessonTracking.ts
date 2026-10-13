@@ -33,8 +33,14 @@ const enteredNodeIds = new Set<string>()
  * duration is left out if the tab was hidden at any point, because the time
  * away cannot be told apart from time watching. It sends at most once per
  * lesson opening, and nothing for a lesson that was already completed.
+ *
+ * With `review`, the lesson was opened from a course or path the student has
+ * already finished: opening it reports lesson.started marked as review,
+ * whatever its status, so access after completion can be told apart, and
+ * nothing is ever completed.
  */
-export function useLessonTracking(lesson: LessonTrackingSource) {
+export function useLessonTracking(lesson: LessonTrackingSource, options: { review?: boolean } = {}) {
+  const review = options.review ?? false
   const { track } = useEventTracking()
 
   let openedAtMs: number | null = null
@@ -54,6 +60,7 @@ export function useLessonTracking(lesson: LessonTrackingSource) {
       content_node_id: node.content_node_id,
       content_type: node.content_type,
       teacher_id: node.teacher.user_id,
+      ...(review ? { review: true } : {}),
     }
   }
 
@@ -63,8 +70,9 @@ export function useLessonTracking(lesson: LessonTrackingSource) {
     completedSent = false
 
     const status = lesson.status.value
-    const eventType =
-      status === 'not_started'
+    const eventType = review
+      ? 'lesson.started'
+      : status === 'not_started'
         ? 'lesson.started'
         : status === 'in_progress'
           ? 'lesson.resumed'
@@ -86,7 +94,7 @@ export function useLessonTracking(lesson: LessonTrackingSource) {
 
   async function complete(): Promise<void> {
     const node = lesson.node.value
-    if (!node || openedAtMs === null || completedSent) return
+    if (review || !node || openedAtMs === null || completedSent) return
     if (lesson.state.value !== 'ready' || lesson.status.value === 'completed') return
 
     completedSent = true
