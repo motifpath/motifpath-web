@@ -12,7 +12,7 @@ import {
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
 import { usePublishedCourse } from '@/features/student/composables/usePublishedCourse'
-import { type CurrentPathTarget, useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
+import { currentTargetOf, useMakeCurrentWithUndo } from '@/features/student/composables/useMakeCurrentWithUndo'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import { discoverBackLink } from '@/features/student/utils/catalogReturn'
 import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
@@ -47,7 +47,7 @@ const enrollmentState = useMyCourseEnrollments()
 const standaloneState = useMyStandalonePaths()
 const currentState = useStudentPath()
 const { enrollInCourse } = useEnrollInCourse()
-const { setCurrentPath } = useSetCurrentPath()
+const { switchTo } = useMakeCurrentWithUndo((view) => (currentState.data.value = view))
 const { leave } = useLeaveLearningItem()
 
 const isLoading = computed(() => courseLoading.value || enrollmentState.isLoading.value)
@@ -142,12 +142,6 @@ async function start() {
   }
 }
 
-function currentTarget(): CurrentPathTarget | null {
-  const data = currentState.data.value
-  if (!data) return null
-  return data.course_enrollment_id ? { courseEnrollmentId: data.course_enrollment_id } : { studentPathId: data.student_path_id }
-}
-
 const continuing = ref(false)
 
 // Continuing opens My path on this course, making it current first when it isn't. Switching is
@@ -160,28 +154,14 @@ async function continueCourse() {
     return
   }
 
-  const previous = currentTarget()
-  const title = course.value.title
   continuing.value = true
   try {
-    currentState.data.value = await setCurrentPath({ courseEnrollmentId: active.course_enrollment_id })
-    toast.neutral(
-      t('learningView.nowOn', { title }),
-      previous ? { action: { label: t('learningView.undo'), run: () => void undo(previous) } } : {},
-    )
+    await switchTo({ courseEnrollmentId: active.course_enrollment_id }, course.value.title, currentTargetOf(currentState.data.value))
     void router.push({ name: 'path' })
   } catch (e) {
     toast.error(e instanceof Error ? e.message : String(e))
   } finally {
     continuing.value = false
-  }
-}
-
-async function undo(previous: CurrentPathTarget) {
-  try {
-    currentState.data.value = await setCurrentPath(previous)
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : String(e))
   }
 }
 

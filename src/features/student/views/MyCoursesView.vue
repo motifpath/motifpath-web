@@ -12,7 +12,7 @@ import {
 } from '@/features/student/composables/useLeaveLearningItem'
 import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
-import { type CurrentPathTarget, useSetCurrentPath } from '@/features/student/composables/useSetCurrentPath'
+import { currentTargetOf, useMakeCurrentWithUndo } from '@/features/student/composables/useMakeCurrentWithUndo'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
 import { completedCourseEnrollmentId } from '@/features/student/utils/courseCompletion'
@@ -36,7 +36,7 @@ const standaloneState = useMyStandalonePaths()
 // state, not a failure.
 const currentState = useStudentPath()
 useCourseCompletionRedirect(() => completedCourseEnrollmentId(currentState.data.value))
-const { setCurrentPath } = useSetCurrentPath()
+const { switchTo } = useMakeCurrentWithUndo((view) => (currentState.data.value = view))
 const { leave } = useLeaveLearningItem()
 
 const isLoading = computed(
@@ -59,13 +59,6 @@ const isEmpty = computed(
 )
 const leftOpen = ref(false)
 
-// What is current now, as a target to come back to; null when nothing is.
-function currentTarget(): CurrentPathTarget | null {
-  const data = currentState.data.value
-  if (!data) return null
-  return data.course_enrollment_id ? { courseEnrollmentId: data.course_enrollment_id } : { studentPathId: data.student_path_id }
-}
-
 const switching = ref(false)
 
 function openDetail(item: LearningItem) {
@@ -84,27 +77,14 @@ async function openItem(item: LearningItem) {
   if (item.state === 'current') return void router.push({ name: 'path' })
   if (switching.value) return
 
-  const previous = currentTarget()
   switching.value = true
   try {
-    currentState.data.value = await setCurrentPath(item.target)
-    toast.neutral(
-      t('learningView.nowOn', { title: item.title }),
-      previous ? { action: { label: t('learningView.undo'), run: () => void undo(previous) } } : {},
-    )
+    await switchTo(item.target, item.title, currentTargetOf(currentState.data.value))
     void router.push({ name: 'path' })
   } catch (e) {
     toast.error(e instanceof Error ? e.message : String(e))
   } finally {
     switching.value = false
-  }
-}
-
-async function undo(previous: CurrentPathTarget) {
-  try {
-    currentState.data.value = await setCurrentPath(previous)
-  } catch (e) {
-    toast.error(e instanceof Error ? e.message : String(e))
   }
 }
 
