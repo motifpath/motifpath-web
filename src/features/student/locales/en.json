@@ -343,7 +343,7 @@
   },
   "sessionFretboardCell": {
     "nameTheNote": "Name this note",
-    "findTheNote": "Find {note} on string {string}",
+    "findTheNote": "Find {note} on string {string}, frets {from}–{to}",
     "board": "Fretboard",
     "notes": "Notes"
   },

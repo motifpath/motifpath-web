@@ -10,7 +10,9 @@ type Item = components['schemas']['PracticeSessionItem']
 const LAYOUT = '6ea2d087-ab9c-59dc-9657-8546025414d2'
 const STANDARD = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
 
-function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note'): Item {
+type FromFret = NonNullable<Item['fretboard_cell']>['fret_window']['from_fret']
+
+function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note', fromFret: FromFret = 0): Item {
   return {
     item_key: `fretboard_cell:${LAYOUT}:${string}:${fret}`,
     kind: 'fretboard_cell',
@@ -18,7 +20,7 @@ function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_n
     node_id: null,
     level: 'new',
     estimated_seconds: 8,
-    fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill },
+    fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill, fret_window: { from_fret: fromFret } },
   }
 }
 
@@ -144,11 +146,21 @@ describe('SessionFretboardCell', () => {
     })
   })
 
+  describe('name the note in a fret window', () => {
+    it('draws only the window, with its cell lit', () => {
+      const wrapper = mountCell({ item: cell(4, 9, 'name_the_note', 7) })
+
+      expect(wrapper.findAll('[data-test="fret-number"]').map((n) => n.text())).toEqual(['7', '8', '9', '10', '11'])
+      const lit = wrapper.get('[data-test="lit-cell"]')
+      expect(`${lit.attributes('data-string')}:${lit.attributes('data-fret')}`).toBe('4:9')
+    })
+  })
+
   describe('find the note', () => {
     it('asks for the note on its string, and takes taps on that string only', async () => {
       const wrapper = mountCell({ item: finding })
 
-      expect(wrapper.get('h2[data-test="item-title"]').text()).toBe('Find F on string 6')
+      expect(wrapper.get('h2[data-test="item-title"]').text()).toBe('Find F on string 6, frets 0–5')
       expect(wrapper.get('[data-test="asked-string"]').attributes('data-string')).toBe('6')
       expect(wrapper.findAll('[data-test="drill-cell"]').every((target) => target.attributes('data-string') === '6')).toBe(true)
       expect(wrapper.find('[data-test="lit-cell"]').exists()).toBe(false)
@@ -156,6 +168,16 @@ describe('SessionFretboardCell', () => {
       await wrapper.findAll('[data-test="drill-cell"]')[2]!.trigger('click')
 
       expect(wrapper.emitted('answer')).toEqual([[{ response_type: 'find_the_note', string: 6, fret: 2 }]])
+    })
+
+    it('names its fret window and takes taps only in it', async () => {
+      const wrapper = mountCell({ item: cell(5, 3, 'find_the_note', 3) })
+
+      expect(wrapper.get('h2[data-test="item-title"]').text()).toBe('Find C on string 5, frets 3–7')
+      expect(wrapper.findAll('[data-test="drill-cell"]').map((target) => target.attributes('data-fret'))).toEqual(['3', '4', '5', '6', '7'])
+
+      await wrapper.findAll('[data-test="drill-cell"]')[0]!.trigger('click')
+      expect(wrapper.emitted('answer')).toEqual([[{ response_type: 'find_the_note', string: 5, fret: 3 }]])
     })
 
     it('marks a wrong tap and reveals where the note is', () => {

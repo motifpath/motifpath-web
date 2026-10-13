@@ -343,7 +343,7 @@
   },
   "sessionFretboardCell": {
     "nameTheNote": "Que nota é esta?",
-    "findTheNote": "Encontre {note} na corda {string}",
+    "findTheNote": "Encontre {note} na corda {string}, casas {from}–{to}",
     "board": "Braço do instrumento",
     "notes": "Notas"
   },

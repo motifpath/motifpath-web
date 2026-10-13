@@ -1,5 +1,7 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { MockInstance } from 'vitest'
+import { nextTick } from 'vue'
 
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 
@@ -73,5 +75,73 @@ describe('DrillFretboard', () => {
 
     expect(wrapper.findAll('[data-test="diagram-mark"]').map((mark) => mark.attributes('data-mark'))).toEqual(['wrong', 'right'])
     expect(places(wrapper, '[data-test="cell-mark"]')).toEqual(['6:2', '6:1'])
+  })
+
+  // Too narrow for the whole neck at a tappable size, the board shows only the drill's window.
+  describe('in a fret window, too narrow for the whole neck', () => {
+    const numbers = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('[data-test="fret-number"]').map((n) => n.text())
+    const widths = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('[data-test="drill-cell"]').map((cell) => Number(cell.attributes('width')))
+
+    it('draws only the window and takes taps only in it', () => {
+      const wrapper = mount(DrillFretboard, {
+        props: { tuning: STANDARD, maxFret: 12, fretWindow: { from: 3, to: 7 }, tapStrings: [6], label: 'Fretboard' },
+      })
+
+      expect(numbers(wrapper)).toEqual(['3', '4', '5', '6', '7'])
+      expect(places(wrapper, '[data-test="drill-cell"]')).toEqual(['6:3', '6:4', '6:5', '6:6', '6:7'])
+      expect(wrapper.find('[data-test="diagram-nut"]').exists()).toBe(false)
+      expect(Math.min(...widths(wrapper))).toBeGreaterThanOrEqual(48)
+    })
+
+    it('at the nut, makes the open-string place left of the nut as wide as a fret', () => {
+      const wrapper = mount(DrillFretboard, {
+        props: { tuning: STANDARD, maxFret: 12, fretWindow: { from: 0, to: 5 }, tapStrings: [6], label: 'Fretboard' },
+      })
+
+      expect(numbers(wrapper)).toEqual(['0', '1', '2', '3', '4', '5'])
+      expect(places(wrapper, '[data-test="drill-cell"]')).toEqual(['6:0', '6:1', '6:2', '6:3', '6:4', '6:5'])
+      const nut = wrapper.get('[data-test="diagram-nut"]')
+      const nutX = Number(nut.attributes('x')) + Number(nut.attributes('width')) / 2
+      const open = wrapper.findAll('[data-test="drill-cell"]')[0]!
+      expect(Number(open.attributes('x')) + Number(open.attributes('width'))).toBeLessThanOrEqual(nutX)
+      expect(Math.min(...widths(wrapper))).toBeGreaterThanOrEqual(48)
+    })
+
+    it('answers a tap on the open-string place as the open string', async () => {
+      const wrapper = mount(DrillFretboard, {
+        props: { tuning: STANDARD, maxFret: 12, fretWindow: { from: 0, to: 5 }, tapStrings: [6], label: 'Fretboard' },
+      })
+
+      await wrapper.findAll('[data-test="drill-cell"]')[0]!.trigger('click')
+      expect(wrapper.emitted('tap')).toEqual([[{ string: 6, fret: 0 }]])
+    })
+
+    it('lights a cell inside the window', () => {
+      const wrapper = mount(DrillFretboard, {
+        props: { tuning: STANDARD, maxFret: 12, fretWindow: { from: 7, to: 11 }, lit: { string: 4, fret: 9 }, label: 'Fretboard' },
+      })
+
+      expect(numbers(wrapper)).toEqual(['7', '8', '9', '10', '11'])
+      expect(places(wrapper, '[data-test="lit-cell"]')).toEqual(['4:9'])
+    })
+  })
+
+  describe('in a fret window, wide enough for the whole neck', () => {
+    let widthSpy: MockInstance
+    beforeEach(() => {
+      widthSpy = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1024)
+    })
+    afterEach(() => widthSpy.mockRestore())
+
+    it('draws the whole neck, dims the frets outside the window and takes taps only in it', async () => {
+      const wrapper = mount(DrillFretboard, {
+        props: { tuning: STANDARD, maxFret: 12, fretWindow: { from: 6, to: 10 }, tapStrings: [6], label: 'Fretboard' },
+      })
+      await nextTick()
+
+      expect(wrapper.findAll('[data-test="fret-number"]')).toHaveLength(13)
+      expect(places(wrapper, '[data-test="drill-cell"]')).toEqual(['6:6', '6:7', '6:8', '6:9', '6:10'])
+      expect(wrapper.findAll('[data-test="outside-window"]').map((zone) => zone.attributes('data-frets'))).toEqual(['0-5', '11-12'])
+    })
   })
 })

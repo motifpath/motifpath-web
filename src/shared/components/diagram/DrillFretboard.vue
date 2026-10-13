@@ -2,8 +2,10 @@
 /**
  * A bare fretboard for timed drills: no diagram on it, only a cell lit for the student to name or
  * tap, the string a question is about, taps on the strings that take them, and a graded answer's
- * marks. It always fits its container from the nut to its last fret, so a timed answer never waits
- * on scrolling. Each cell that takes a tap is named by where it is, never by its note.
+ * marks. It always fits its container, so a timed answer never waits on scrolling. A drill asked in
+ * a fret window takes taps only there, each place at least a touch target wide, the open string's
+ * too: the whole neck is drawn when it fits at that size, the rest dimmed; otherwise only the window.
+ * Each cell that takes a tap is named by where it is, never by its note.
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
@@ -11,9 +13,11 @@ import AnswerMark from '@/shared/components/diagram/AnswerMark.vue'
 import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
 import FretboardBoard from '@/shared/components/diagram/FretboardBoard.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { boardTopFor, fretLineX, MARKER_RADIUS, markerCenterX, ROW_GAP, stringLineY } from '@/shared/utils/fretboardGeometry'
+import { boardTopFor, fretLineX, MARKER_RADIUS, markerCenterX, MIN_COLUMN_GAP, ROW_GAP, stringLineY } from '@/shared/utils/fretboardGeometry'
 import type { BoardFrame } from '@/shared/utils/fretboardGeometry'
 import type { CellPlace } from '@/shared/utils/fretboardCell'
+import { inFretWindow, windowBoardFrets } from '@/shared/utils/fretWindow'
+import type { FretWindowRange } from '@/shared/utils/fretWindow'
 
 export interface CellMark extends CellPlace {
   mark: AnswerMarkKind
@@ -23,8 +27,10 @@ const props = withDefaults(
   defineProps<{
     /** The open-string pitches, lowest string first; one string per pitch. */
     tuning: string[]
-    /** The last fret shown; the board always starts at the nut. */
+    /** The last fret of the whole neck; the neck starts at the nut. */
     maxFret: number
+    /** The frets a drill is asked in; without one, every fret takes taps. */
+    fretWindow?: FretWindowRange | null
     /** Names the drawing for screen readers. */
     label: string
     /** The cell lit for the student. */
@@ -37,14 +43,14 @@ const props = withDefaults(
     locked?: boolean
     marks?: CellMark[]
   }>(),
-  { lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [] },
+  { fretWindow: null, lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [] },
 )
 
 const emit = defineEmits<{ tap: [place: CellPlace] }>()
 
 const { t } = useTypedT()
 
-/** Room left of the nut for an open-string cell, and at the right edge. */
+/** Room left of the nut for an open-string cell without a fret window, and at the board's edges. */
 const NUT_MARGIN = 26
 const EDGE_MARGIN = 4
 // Room under the board for the fret numbers.
@@ -69,15 +75,25 @@ onUnmounted(() => resizeObserver?.disconnect())
 
 const stringCount = computed(() => props.tuning.length)
 
-const frame = computed<BoardFrame>(() => ({
-  minFret: 0,
-  maxFret: props.maxFret,
-  stringCount: stringCount.value,
-  left: NUT_MARGIN,
-  columnGap: (width.value - NUT_MARGIN - EDGE_MARGIN) / Math.max(props.maxFret, 1),
-  rowGap: ROW_GAP,
-  top: boardTopFor(false),
-}))
+/** In a fret window the open string's place, left of the nut, is as wide as a fret's. */
+function windowColumnGap(minFret: number, maxFret: number): number {
+  return minFret === 0 ? (width.value - EDGE_MARGIN) / (maxFret + 1) : (width.value - 2 * EDGE_MARGIN) / (maxFret - minFret)
+}
+
+const wholeNeckFits = computed(() => windowColumnGap(0, props.maxFret) >= MIN_COLUMN_GAP)
+
+/** Only the window when the whole neck won't fit at a tappable size. */
+const drawsOnlyWindow = computed(() => props.fretWindow !== null && !wholeNeckFits.value)
+
+const frame = computed<BoardFrame>(() => {
+  const base = { stringCount: stringCount.value, rowGap: ROW_GAP, top: boardTopFor(false) }
+  if (!props.fretWindow) {
+    return { ...base, minFret: 0, maxFret: props.maxFret, left: NUT_MARGIN, columnGap: (width.value - NUT_MARGIN - EDGE_MARGIN) / Math.max(props.maxFret, 1) }
+  }
+  const { minFret, maxFret } = drawsOnlyWindow.value ? windowBoardFrets(props.fretWindow) : { minFret: 0, maxFret: props.maxFret }
+  const columnGap = windowColumnGap(minFret, maxFret)
+  return { ...base, minFret, maxFret, columnGap, left: minFret === 0 ? columnGap : EDGE_MARGIN }
+})
 
 const height = computed(() => frame.value.top + (stringCount.value - 1) * ROW_GAP + MARGIN_BOTTOM)
 
@@ -91,9 +107,25 @@ function target(place: CellPlace) {
   return { x: left, y: cy(place.string) - ROW_GAP / 2, width: right - left, height: ROW_GAP }
 }
 
-const tapCells = computed(() =>
-  props.tapStrings.flatMap((string) => Array.from({ length: props.maxFret + 1 }, (_, fret) => ({ string, fret }))),
+const tapFrets = computed(() =>
+  Array.from({ length: props.maxFret + 1 }, (_, fret) => fret).filter((fret) => !props.fretWindow || inFretWindow(props.fretWindow, fret)),
 )
+
+const tapCells = computed(() => props.tapStrings.flatMap((string) => tapFrets.value.map((fret) => ({ string, fret }))))
+
+/** The neck either side of the window, when the whole neck is drawn. */
+const outsideWindow = computed(() => {
+  const range = props.fretWindow
+  if (!range || drawsOnlyWindow.value) return []
+  const zones = [
+    { from: 0, to: range.from - 1 },
+    { from: range.to + 1, to: props.maxFret },
+  ].filter((zone) => zone.from <= zone.to)
+  return zones.map((zone) => {
+    const left = target({ string: 1, fret: zone.from }).x
+    return { ...zone, x: left, width: fretLineX(frame.value, zone.to) - left }
+  })
+})
 
 function cellLabel(place: CellPlace): string {
   return place.fret === 0 ? t('drillFretboard.openCell', { string: place.string }) : t('drillFretboard.cell', { string: place.string, fret: place.fret })
@@ -121,6 +153,19 @@ function tap(place: CellPlace) {
           />
         </template>
       </FretboardBoard>
+
+      <rect
+        v-for="zone in outsideWindow"
+        :key="`${zone.from}-${zone.to}`"
+        data-test="outside-window"
+        :data-frets="`${zone.from}-${zone.to}`"
+        :x="zone.x"
+        :y="0"
+        :width="zone.width"
+        :height="height"
+        aria-hidden="true"
+        class="fill-surface opacity-60"
+      />
 
       <circle
         v-if="lit"
