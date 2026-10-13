@@ -2,8 +2,8 @@
 /**
  * One fretboard cell of a practice session, asked the way its drill says. Naming the note: the cell
  * is lit and the student taps one of four near notes, or presses its number; the answer keeps the
- * four in the order shown. Finding the note: the note and its string are named and the student taps where it is on
- * that string. The tap is the answer, since latency counts from the prompt. The parent records and
+ * four in the order shown. Finding the note: the note, its string and its fret window are named and the student taps
+ * where it is on that string, within the window. The tap is the answer, since latency counts from the prompt. The parent records and
  * grades it; feedback shows in place, a wrong answer revealing where the right one was.
  */
 import { CircleCheck, CircleX } from 'lucide-vue-next'
@@ -22,13 +22,14 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { cellNoteName } from '@/shared/utils/fretboardCell'
 import type { CellAnswer, CellPlace } from '@/shared/utils/fretboardCell'
+import { fretWindowRange } from '@/shared/utils/fretWindow'
 import { nameTheNoteChoices } from '@/shared/utils/noteChoices'
 import { optionState } from '@/shared/utils/optionState'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Cell = NonNullable<Item['fretboard_cell']>
 
-/** Generated cells run from the open string to fret 11, so the board shows up to fret 12. */
+/** Generated cells run from the open string to fret 11, so the whole neck shows up to fret 12. */
 const LAST_FRET = 12
 
 const props = defineProps<{
@@ -48,6 +49,7 @@ const { t } = useTypedT()
 
 const cell = computed<Cell>(() => props.item.fretboard_cell!)
 const naming = computed(() => cell.value.drill === 'name_the_note')
+const fretWindow = computed(() => fretWindowRange(cell.value.fret_window.from_fret))
 
 /** The cell's note, spelled with sharps. */
 const rightNote = computed(() => cellNoteName(props.tuning, cell.value) ?? '')
@@ -66,7 +68,7 @@ watch(
 const shown = (noteName: string) => noteName.replace('#', '♯')
 
 const prompt = computed(() =>
-  naming.value ? t('sessionFretboardCell.nameTheNote') : t('sessionFretboardCell.findTheNote', { note: shown(rightNote.value), string: cell.value.string }),
+  naming.value ? t('sessionFretboardCell.nameTheNote') : t('sessionFretboardCell.findTheNote', { note: shown(rightNote.value), string: cell.value.string, from: fretWindow.value.from, to: fretWindow.value.to }),
 )
 
 /** How a graded answer marks a note choice: the one picked, and the right one beside a wrong pick. */
@@ -121,6 +123,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       <DrillFretboard
         :tuning="tuning"
         :max-fret="LAST_FRET"
+        :fret-window="fretWindow"
         :label="t('sessionFretboardCell.board')"
         :lit="naming ? cell : null"
         :asked-string="naming ? null : cell.string"
