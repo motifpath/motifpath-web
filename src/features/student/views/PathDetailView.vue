@@ -5,7 +5,9 @@ import { type RouteLocationRaw, RouterLink, useRoute, useRouter } from 'vue-rout
 import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue'
 import { useCatalogPath } from '@/features/student/composables/useCatalogPath'
 import { useEnrollInLearningPath } from '@/features/student/composables/useEnrollInLearningPath'
+import { currentTargetOf, useMakeCurrentWithUndo } from '@/features/student/composables/useMakeCurrentWithUndo'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
+import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import { discoverBackLink } from '@/features/student/utils/catalogReturn'
 import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
 import { buildLearning, type LearningItem } from '@/features/student/utils/learning'
@@ -34,6 +36,8 @@ const learningPathId = String(route.params.learningPathId)
 const { path, isLoading, error, notFound, retry } = useCatalogPath(learningPathId)
 const held = useMyStandalonePaths()
 const { enrollInLearningPath } = useEnrollInLearningPath()
+const currentState = useStudentPath()
+const { switchTo, announceNowOn } = useMakeCurrentWithUndo((view) => (currentState.data.value = view))
 
 // Opened from Learning, the way back is there; from a new student's Where to start, there;
 // otherwise Discover, at the path the student came from.
@@ -92,22 +96,43 @@ function applyUpdated(result: UpdateResult) {
   toast.success(t('updateCopy.upToDate', { title: updated.title }))
 }
 
-const enrolling = ref(false)
+const busy = ref(false)
 
-// Enrolling always makes the path the learner's current one, so they land on it.
-async function enroll() {
-  if (!path.value) return
-  const wasHeld = heldCopy.value !== null
-  enrolling.value = true
+/** Runs the primary action once at a time; a failure keeps the student on the detail. */
+async function act(action: () => Promise<void>) {
+  if (busy.value) return
+  busy.value = true
   try {
-    await enrollInLearningPath(learningPathId)
-    if (!wasHeld) toast.success(t('pathDetailView.enrolledToast', { title: path.value.title }))
-    await router.push({ name: 'path' })
+    await action()
   } catch (e) {
     toast.error(e instanceof Error ? e.message : String(e))
   } finally {
-    enrolling.value = false
+    busy.value = false
   }
+}
+
+// Enrolling in a path always makes it current, so Start only says so, with an Undo back to what
+// was current, and opens My path. It is reversible, so it doesn't ask first.
+function start() {
+  return act(async () => {
+    if (!path.value) return
+    const previous = currentTargetOf(currentState.data.value)
+    await enrollInLearningPath(learningPathId)
+    announceNowOn(path.value.title, previous)
+    await router.push({ name: 'path' })
+  })
+}
+
+// Continuing opens My path on this path, making it current first when it isn't.
+function continuePath() {
+  return act(async () => {
+    const copy = heldCopy.value
+    if (!copy || !path.value) return
+    if (currentState.data.value?.student_path_id !== copy.student_path_id) {
+      await switchTo({ studentPathId: copy.student_path_id }, path.value.title, currentTargetOf(currentState.data.value))
+    }
+    await router.push({ name: 'path' })
+  })
 }
 </script>
 
@@ -203,10 +228,10 @@ async function enroll() {
             />
           </div>
 
-          <AppButton v-if="heldCopy" data-test="continue" block :busy="enrolling" @click="enroll">
+          <AppButton v-if="heldCopy" data-test="continue" block :busy="busy" @click="continuePath">
             {{ t('pathDetailView.continue') }}
           </AppButton>
-          <AppButton v-else data-test="start" block :busy="enrolling" @click="enroll">
+          <AppButton v-else data-test="start" block :busy="busy" @click="start">
             {{ t('pathDetailView.start') }}
           </AppButton>
 

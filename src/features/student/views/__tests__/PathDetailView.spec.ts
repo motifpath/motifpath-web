@@ -7,6 +7,7 @@ import type { components } from '@/api/generated/core-domain'
 
 type PathDetail = components['schemas']['PathDetail']
 type StudentPath = components['schemas']['StudentPath']
+type StudentPathView = components['schemas']['StudentPathView']
 
 const detail = {
   path: ref<PathDetail | null>(null),
@@ -24,6 +25,21 @@ vi.mock('@/features/student/composables/useMyStandalonePaths', () => ({
   useMyStandalonePaths: () => held,
 }))
 
+const current = {
+  data: ref<StudentPathView | null>(null),
+  error: ref<'no-path' | 'load-failed' | null>('no-path'),
+  isLoading: ref(false),
+  retry: vi.fn(),
+}
+vi.mock('@/features/student/composables/useStudentPath', () => ({
+  useStudentPath: () => current,
+}))
+
+const setCurrentPath = vi.fn()
+vi.mock('@/features/student/composables/useSetCurrentPath', () => ({
+  useSetCurrentPath: () => ({ setCurrentPath }),
+}))
+
 const enrollInLearningPath = vi.fn()
 vi.mock('@/features/student/composables/useEnrollInLearningPath', () => ({
   useEnrollInLearningPath: () => ({ enrollInLearningPath }),
@@ -38,7 +54,7 @@ vi.mock('@/features/student/composables/useUpdateLearningItem', () => ({
   useUpdateLearningItem: () => ({ update }),
 }))
 
-const toast = { success: vi.fn(), error: vi.fn() }
+const toast = { success: vi.fn(), error: vi.fn(), neutral: vi.fn() }
 vi.mock('@/shared/composables/useToast', () => ({
   useToast: () => toast,
 }))
@@ -54,6 +70,7 @@ vi.mock('vue-router', async () => {
   return { ...actual, useRoute: () => route, useRouter: () => ({ push }) }
 })
 
+import { makeCurrentPath as currentPath } from '@/features/student/testing/learning'
 import { saveCatalogReturn } from '@/features/student/utils/catalogReturn'
 import PathDetailView from '@/features/student/views/PathDetailView.vue'
 import PageBackBar from '@/shared/components/PageBackBar.vue'
@@ -108,6 +125,7 @@ describe('PathDetailView', () => {
     detail.error.value = false
     detail.notFound.value = false
     held.paths.value = []
+    current.data.value = null
     route.name = 'path-detail'
     route.query = {}
     saveCatalogReturn('paths', { itemId: 'lp-1', query: { q: 'chords' }, loadedCount: 20, scrollY: 0 })
@@ -212,29 +230,76 @@ describe('PathDetailView', () => {
 
   // ── The action ──────────────────────────────────────────────────────────
 
-  it('enrolls and takes the learner to the path, which is now their current one', async () => {
+  it('starts the path, which the server makes current, and opens My path with an Undo back', async () => {
+    current.data.value = currentPath({ course_enrollment_id: 'e-rhythm', title: 'Reading rhythm · Part 1' })
     enrollInLearningPath.mockResolvedValueOnce(heldCopy())
     const wrapper = mountView()
 
     await wrapper.get('[data-test="start"]').trigger('click')
     await flushPromises()
 
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
     expect(enrollInLearningPath).toHaveBeenCalledWith('lp-1')
-    expect(toast.success).toHaveBeenCalled()
+    expect(setCurrentPath).not.toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith({ name: 'path' })
+    expect(toast.success).not.toHaveBeenCalled()
+    const [message, options] = toast.neutral.mock.calls[0] ?? []
+    expect(message).toBe('Now on Open chords')
+
+    setCurrentPath.mockResolvedValueOnce(current.data.value)
+    options.action.run()
+    expect(setCurrentPath).toHaveBeenCalledWith({ courseEnrollmentId: 'e-rhythm' })
   })
 
-  it('offers to continue a path the learner already holds, reopening their copy', async () => {
-    held.paths.value = [heldCopy()]
+  it('offers no Undo when nothing was current', async () => {
     enrollInLearningPath.mockResolvedValueOnce(heldCopy())
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="start"]').trigger('click')
+    await flushPromises()
+
+    expect(toast.neutral).toHaveBeenCalledWith('Now on Open chords', {})
+  })
+
+  it('makes a held path current first on Continue path, with an Undo, then opens My path', async () => {
+    held.paths.value = [heldCopy()]
+    current.data.value = currentPath({ course_enrollment_id: 'e-rhythm' })
+    setCurrentPath.mockResolvedValueOnce(currentPath({ student_path_id: 'sp-1', course_enrollment_id: null }))
     const wrapper = mountView()
 
     await wrapper.get('[data-test="continue"]').trigger('click')
     await flushPromises()
 
-    expect(enrollInLearningPath).toHaveBeenCalledWith('lp-1')
-    expect(toast.success).not.toHaveBeenCalled()
+    expect(enrollInLearningPath).not.toHaveBeenCalled()
+    expect(setCurrentPath).toHaveBeenCalledWith({ studentPathId: 'sp-1' })
+    expect(toast.neutral.mock.calls[0]?.[0]).toBe('Now on Open chords')
     expect(push).toHaveBeenCalledWith({ name: 'path' })
+  })
+
+  it('opens My path straight away on Continue path when the path is already current', async () => {
+    held.paths.value = [heldCopy()]
+    current.data.value = currentPath({ student_path_id: 'sp-1', course_enrollment_id: null })
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="continue"]').trigger('click')
+    await flushPromises()
+
+    expect(setCurrentPath).not.toHaveBeenCalled()
+    expect(toast.neutral).not.toHaveBeenCalled()
+    expect(push).toHaveBeenCalledWith({ name: 'path' })
+  })
+
+  it('stays on the detail when Continue path cannot switch', async () => {
+    held.paths.value = [heldCopy()]
+    current.data.value = currentPath({ course_enrollment_id: 'e-rhythm' })
+    setCurrentPath.mockRejectedValueOnce(new Error('Failed to switch your current course or path'))
+    const wrapper = mountView()
+
+    await wrapper.get('[data-test="continue"]').trigger('click')
+    await flushPromises()
+
+    expect(toast.error).toHaveBeenCalledWith('Failed to switch your current course or path')
+    expect(push).not.toHaveBeenCalled()
   })
 
   it('does not count an archived copy as held', () => {
