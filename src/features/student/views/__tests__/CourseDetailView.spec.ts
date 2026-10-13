@@ -52,6 +52,17 @@ vi.mock('@/features/student/composables/useStudentPath', () => ({
   useStudentPath: () => current,
 }))
 
+const parts = {
+  parts: ref<StudentPathView[]>([]),
+  isLoading: ref(false),
+  error: ref(false),
+  retry: vi.fn(),
+}
+const useEnrollmentParts = vi.fn<(enrollmentId: () => string | null) => typeof parts>(() => parts)
+vi.mock('@/features/student/composables/useEnrollmentParts', () => ({
+  useEnrollmentParts: (enrollmentId: () => string | null) => useEnrollmentParts(enrollmentId),
+}))
+
 const enrollInCourse = vi.fn()
 vi.mock('@/features/student/composables/useEnrollInCourse', () => ({
   useEnrollInCourse: () => ({ enrollInCourse }),
@@ -157,6 +168,34 @@ function pathItems(done: number, count: number): StudentPathItem[] {
   }))
 }
 
+/** A finished part as the student took it: every lesson done. */
+function finishedPart(position: number, title: string, lessons: string[]): StudentPathView {
+  return {
+    student_path_id: `part-${position}`,
+    source_template_id: `path-${position}`,
+    title,
+    course_enrollment_id: 'e-1',
+    course_checkpoint_position: position,
+    current_position: lessons.length,
+    course_completed: false,
+    items: lessons.map((lesson, index) => ({
+      position: index + 1,
+      content_node_id: `p${position}-n${index + 1}`,
+      content_node_version_id: `p${position}-v${index + 1}`,
+      title: lesson,
+      content_type: index % 2 === 0 ? 'video' : 'article',
+      status: 'completed',
+    })),
+  }
+}
+
+const fourFinishedParts = [
+  finishedPart(1, 'Open chords', ['E minor', 'A minor', 'D major']),
+  finishedPart(2, 'Major triads', ['Root position', 'Inversions']),
+  finishedPart(3, 'Seventh chords', ['Dominant sevenths']),
+  finishedPart(4, 'Accompany a song', ['Strumming along']),
+]
+
 function mountView() {
   return mount(CourseDetailView, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub } } })
 }
@@ -191,6 +230,9 @@ describe('CourseDetailView', () => {
     standalone.paths.value = []
     current.data.value = null
     current.error.value = 'no-path'
+    parts.parts.value = fourFinishedParts
+    parts.isLoading.value = false
+    parts.error.value = false
   })
 
   // ── The way back ────────────────────────────────────────────────────────
@@ -567,6 +609,70 @@ describe('CourseDetailView', () => {
     const practise = wrapper.get('[data-test="practise"]')
     expect(practise.text()).toBe('Practise what you learned')
     expect(practise.findComponent(RouterLinkStub).props('to')).toEqual({ name: 'practice-session' })
+  })
+
+  // ── Reviewing a finished course ─────────────────────────────────────────
+
+  describe('reviewing a finished course', () => {
+    const finished = () => enrollment({ status: 'completed', active_checkpoint_position: null, active_checkpoint_student_path_id: undefined })
+
+    it('reads the parts of the finished enrolment, not of the course as published now', () => {
+      enrollments.enrollments.value = [finished()]
+      const wrapper = mountView()
+
+      expect(useEnrollmentParts.mock.calls[0]?.[0]()).toBe('e-1')
+      expect(wrapper.findAll('[data-test="part-title"]').map((title) => title.text())).toEqual([
+        'Open chords',
+        'Major triads',
+        'Seventh chords',
+        'Accompany a song',
+      ])
+    })
+
+    it('unfolds every part, when tapped, to its lessons, each a row that opens it for review', async () => {
+      enrollments.enrollments.value = [finished()]
+      const wrapper = mountView()
+
+      await wrapper.findAll('[data-test="part-toggle"]')[1]!.trigger('click')
+
+      const rows = wrapper.findAll('[data-test="review-lesson"]')
+      expect(rows.map((row) => row.text())).toEqual([
+        expect.stringContaining('Root position'),
+        expect.stringContaining('Inversions'),
+      ])
+      expect(rows[1]!.findComponent(RouterLinkStub).props('to')).toEqual({
+        name: 'review-lesson',
+        params: { studentPathId: 'part-2', nodeId: 'p2-n2' },
+      })
+      expect(wrapper.find('[data-test="open-in-path"]').exists()).toBe(false)
+    })
+
+    it('opens with every part folded', () => {
+      enrollments.enrollments.value = [finished()]
+      const wrapper = mountView()
+
+      expect(wrapper.find('[data-test="review-lesson"]').exists()).toBe(false)
+    })
+
+    it('offers Try again in place of the outline when the parts fail to load, and keeps practice', async () => {
+      enrollments.enrollments.value = [finished()]
+      parts.parts.value = []
+      parts.error.value = true
+      const wrapper = mountView()
+
+      expect(wrapper.find('[data-test="part-row"]').exists()).toBe(false)
+      await wrapper.get('[data-test="parts-retry"]').trigger('click')
+      expect(parts.retry).toHaveBeenCalled()
+      expect(wrapper.find('[data-test="practise"]').exists()).toBe(true)
+    })
+
+    it('reads no parts for a course in progress, whose lessons open from My path', () => {
+      enrollments.enrollments.value = [enrollment()]
+      const wrapper = mountView()
+
+      expect(useEnrollmentParts.mock.calls[0]?.[0]()).toBeNull()
+      expect(wrapper.find('[data-test="review-lesson"]').exists()).toBe(false)
+    })
   })
 
   // ── Leaving ─────────────────────────────────────────────────────────────

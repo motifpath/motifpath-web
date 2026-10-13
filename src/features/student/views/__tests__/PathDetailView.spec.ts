@@ -35,6 +35,17 @@ vi.mock('@/features/student/composables/useStudentPath', () => ({
   useStudentPath: () => current,
 }))
 
+const heldPath = {
+  view: ref<StudentPathView | null>(null),
+  isLoading: ref(false),
+  error: ref(false),
+  retry: vi.fn(),
+}
+const useHeldStudentPath = vi.fn<(studentPathId: () => string | null) => typeof heldPath>(() => heldPath)
+vi.mock('@/features/student/composables/useHeldStudentPath', () => ({
+  useHeldStudentPath: (studentPathId: () => string | null) => useHeldStudentPath(studentPathId),
+}))
+
 const setCurrentPath = vi.fn()
 vi.mock('@/features/student/composables/useSetCurrentPath', () => ({
   useSetCurrentPath: () => ({ setCurrentPath }),
@@ -125,6 +136,8 @@ describe('PathDetailView', () => {
     detail.error.value = false
     detail.notFound.value = false
     held.paths.value = []
+    heldPath.view.value = null
+    heldPath.error.value = false
     current.data.value = null
     route.name = 'path-detail'
     route.query = {}
@@ -376,6 +389,80 @@ describe('PathDetailView', () => {
       expect(toast.success).toHaveBeenCalledWith('Open chords is up to date')
       expect(wrapper.find('[data-test="update-card"]').exists()).toBe(false)
       wrapper.unmount()
+    })
+  })
+
+  // ── Reviewing a finished path ───────────────────────────────────────────
+
+  describe('reviewing a finished path', () => {
+    const finishedCopy = () => heldCopy({ completed_count: 4, lesson_count: 4 })
+    const finishedView: StudentPathView = {
+      student_path_id: 'sp-1',
+      source_template_id: 'lp-1',
+      title: 'Open chords',
+      current_position: 4,
+      course_completed: false,
+      items: [
+        { position: 1, content_node_id: 'n-1', content_node_version_id: 'v-1', title: 'E minor', content_type: 'video', status: 'completed', section_label: 'First chords' },
+        { position: 2, content_node_id: 'n-2', content_node_version_id: 'v-2', title: 'A minor', content_type: 'video', status: 'completed', section_label: 'First chords' },
+        { position: 3, content_node_id: 'n-3', content_node_version_id: 'v-3', title: 'Reading chord boxes', content_type: 'article', status: 'completed', section_label: 'Reading' },
+        { position: 4, content_node_id: 'n-4', content_node_version_id: 'v-4', title: 'Switching', content_type: 'video', status: 'completed', section_label: 'Reading' },
+      ],
+    }
+
+    beforeEach(() => {
+      route.name = 'learning-path'
+      held.paths.value = [finishedCopy()]
+      heldPath.view.value = finishedView
+    })
+
+    it('says it is finished and offers practice instead of continuing', () => {
+      const wrapper = mountView()
+
+      expect(wrapper.get('[data-test="finished-chip"]').text()).toBe('Finished')
+      expect(wrapper.find('[data-test="continue"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="practise"]').findComponent(RouterLinkStub).props('to')).toEqual({ name: 'practice-session' })
+    })
+
+    it('reads the lessons of the student’s own copy', () => {
+      mountView()
+
+      expect(useHeldStudentPath.mock.calls[0]?.[0]()).toBe('sp-1')
+    })
+
+    it('lists the lessons under their section labels, each done and a row that opens it for review', () => {
+      const wrapper = mountView()
+
+      expect(wrapper.findAll('[data-test="section-header"]').map((header) => header.text())).toEqual([
+        expect.stringContaining('First chords'),
+        expect.stringContaining('Reading'),
+      ])
+      const rows = wrapper.findAll('[data-test="review-lesson"]')
+      expect(rows).toHaveLength(4)
+      expect(rows[2]!.text()).toContain('Reading chord boxes')
+      expect(rows[2]!.findComponent(RouterLinkStub).props('to')).toEqual({
+        name: 'review-lesson',
+        params: { studentPathId: 'sp-1', nodeId: 'n-3' },
+      })
+    })
+
+    it('offers Try again in place of the lessons when they fail to load', async () => {
+      heldPath.view.value = null
+      heldPath.error.value = true
+      const wrapper = mountView()
+
+      expect(wrapper.find('[data-test="review-lesson"]').exists()).toBe(false)
+      await wrapper.get('[data-test="lessons-retry"]').trigger('click')
+      expect(heldPath.retry).toHaveBeenCalled()
+    })
+
+    it('reads no copy for a path still in progress', () => {
+      held.paths.value = [heldCopy({ completed_count: 1 })]
+      const wrapper = mountView()
+
+      expect(useHeldStudentPath.mock.calls[0]?.[0]()).toBeNull()
+      expect(wrapper.find('[data-test="review-lesson"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="continue"]').exists()).toBe(true)
     })
   })
 })

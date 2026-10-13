@@ -5,6 +5,7 @@ import { type RouteLocationRaw, RouterLink, useRoute, useRouter } from 'vue-rout
 import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue'
 import { useCatalogPath } from '@/features/student/composables/useCatalogPath'
 import { useEnrollInLearningPath } from '@/features/student/composables/useEnrollInLearningPath'
+import { useHeldStudentPath } from '@/features/student/composables/useHeldStudentPath'
 import { currentTargetOf, useMakeCurrentWithUndo } from '@/features/student/composables/useMakeCurrentWithUndo'
 import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
@@ -13,6 +14,7 @@ import type { UpdateResult } from '@/features/student/composables/useUpdateLearn
 import { buildLearning, type LearningItem } from '@/features/student/utils/learning'
 import { groupPathSections } from '@/features/student/utils/groupPathSections'
 import AppButton from '@/shared/components/AppButton.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PageBackBar from '@/shared/components/PageBackBar.vue'
@@ -20,6 +22,7 @@ import ProgressMeter from '@/shared/components/ProgressMeter.vue'
 import SectionHeader from '@/shared/components/SectionHeader.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import StatusChip from '@/shared/components/StatusChip.vue'
+import StepRow from '@/shared/components/StepRow.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
@@ -57,6 +60,28 @@ const back = computed<{ title: string; label: string; to: RouteLocationRaw }>(()
 const heldCopy = computed(() =>
   held.paths.value.find((p) => !p.archived_at && p.source_template_id === learningPathId) ?? null,
 )
+// A held copy with every lesson done is finished: its lessons open for review, from the student's
+// own copy, and practice is the way on instead of continuing.
+const finished = computed(() => {
+  const copy = heldCopy.value
+  return copy !== null && copy.lesson_count > 0 && copy.completed_count >= copy.lesson_count
+})
+const heldPathState = useHeldStudentPath(() => (finished.value ? (heldCopy.value?.student_path_id ?? null) : null))
+const reviewSections = computed(() => {
+  const view = heldPathState.view.value
+  if (!view) return []
+  return groupPathSections(view.items).map((section) => ({
+    label: section.label,
+    rows: section.items.map((item) => ({
+      position: item.position,
+      title: item.title,
+      contentNodeId: item.content_node_id,
+      meta: t('pathView.meta.done', { kind: t(`pathView.kind.${item.content_type}`) }),
+      to: { name: 'review-lesson', params: { studentPathId: view.student_path_id, nodeId: item.content_node_id } },
+    })),
+  }))
+})
+
 // Lessons are numbered through the whole path, not per section.
 const sections = computed(() => {
   let number = 0
@@ -173,7 +198,8 @@ function continuePath() {
 
         <div class="order-2 flex flex-col gap-2">
           <div class="flex flex-wrap gap-2">
-            <StatusChip v-if="heldCopy" data-test="in-learning-chip" tone="accent" :label="t('pathDetailView.inLearning')" />
+            <StatusChip v-if="finished" data-test="finished-chip" tone="success" :label="t('courseDetailView.finished')" />
+            <StatusChip v-else-if="heldCopy" data-test="in-learning-chip" tone="accent" :label="t('pathDetailView.inLearning')" />
             <StatusChip v-for="(chip, index) in chips" :key="index" data-test="path-chip" :label="chip" />
           </div>
           <h1 data-test="path-detail-title" class="text-xl font-semibold text-ink">{{ path.title }}</h1>
@@ -185,7 +211,35 @@ function continuePath() {
           <p data-test="path-detail-summary" class="text-base text-ink-muted">{{ path.summary }}</p>
         </div>
 
-        <div v-if="sections.length" class="order-4 flex flex-col gap-3">
+        <div v-if="finished" class="order-4 flex flex-col gap-3">
+          <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ t('pathDetailView.reviewHeading') }}</h2>
+          <template v-if="heldPathState.error.value">
+            <InlineNotice data-test="lessons-error" :message="t('courseDetailView.partsLoadFailed')" />
+            <AppButton data-test="lessons-retry" variant="secondary" block @click="heldPathState.retry()">
+              {{ t('buttons.tryAgain') }}
+            </AppButton>
+          </template>
+          <div v-for="(section, sectionIndex) in reviewSections" v-else :key="sectionIndex" class="flex flex-col gap-1">
+            <SectionHeader
+              v-if="section.label"
+              data-test="section-header"
+              :label="section.label"
+              :count="t('courseCard.lessons', { count: section.rows.length })"
+            />
+            <StepRow
+              v-for="row in section.rows"
+              :key="row.contentNodeId"
+              data-test="review-lesson"
+              state="done"
+              :position="row.position"
+              :title="row.title"
+              :meta="row.meta"
+              :to="row.to"
+            />
+          </div>
+        </div>
+
+        <div v-else-if="sections.length" class="order-4 flex flex-col gap-3">
           <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">
             {{ t('pathDetailView.outlineHeading') }} · {{ lessonCount }}
           </h2>
@@ -223,12 +277,22 @@ function continuePath() {
             <ProgressMeter
               :completed="heldCopy.completed_count"
               :total="heldCopy.lesson_count"
+              :tone="finished ? 'success' : 'accent'"
               :label="t('learningCard.lessons', { completed: heldCopy.completed_count, count: heldCopy.lesson_count })"
               :summary="t('learningCard.lessonsSummary', { completed: heldCopy.completed_count, count: heldCopy.lesson_count })"
             />
           </div>
 
-          <AppButton v-if="heldCopy" data-test="continue" block :busy="busy" @click="continuePath">
+          <AppButton
+            v-if="finished"
+            data-test="practise"
+            variant="secondary"
+            block
+            :to="{ name: 'practice-session' }"
+          >
+            {{ t('courseDetailView.practise') }}
+          </AppButton>
+          <AppButton v-else-if="heldCopy" data-test="continue" block :busy="busy" @click="continuePath">
             {{ t('pathDetailView.continue') }}
           </AppButton>
           <AppButton v-else data-test="start" block :busy="busy" @click="start">

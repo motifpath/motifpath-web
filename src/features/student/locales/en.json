@@ -187,7 +187,8 @@
     "leave": "Leave this course",
     "outline": "Course outline",
     "parts": "{count} part | {count} parts",
-    "startedNotCurrent": "{title} is in Learning, but {current} is still current."
+    "startedNotCurrent": "{title} is in Learning, but {current} is still current.",
+    "partsLoadFailed": "The lessons didn't load."
   },
   "courseCompletedView": {
     "errorMessage": "We couldn't load your course.",
@@ -219,7 +220,8 @@
     "continue": "Continue path",
     "outlineHeading": "Path outline",
     "start": "Start path",
-    "inLearning": "In Learning"
+    "inLearning": "In Learning",
+    "reviewHeading": "Lessons"
   },
   "practiceSessionView": {
     "title": "Practice",
