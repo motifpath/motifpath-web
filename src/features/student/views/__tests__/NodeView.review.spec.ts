@@ -231,6 +231,16 @@ describe('NodeView reviewing a finished course or path', () => {
       expect(wrapper.get('[data-test="opens-later-action"]').findComponent(RouterLinkStub).props('to')).toEqual({ name: 'path' })
     })
 
+    it('names the way back to Learning when the course or path is not known', async () => {
+      setReview({ state: 'opens-later' })
+      review.owner.value = null
+      const wrapper = await mountView()
+
+      const back = wrapper.getComponent({ name: 'PageBackBar' })
+      expect(back.props('to')).toEqual({ name: 'my-courses' })
+      expect(back.props('backLabel')).toBe('Back to Learning')
+    })
+
     it('a lesson that fails to load offers Try again, and the way back stays', async () => {
       setReview({ state: 'error' })
       const wrapper = await mountView()

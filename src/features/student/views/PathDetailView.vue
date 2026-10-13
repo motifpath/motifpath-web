@@ -213,7 +213,8 @@ function continuePath() {
 
         <div v-if="finished" class="order-4 flex flex-col gap-3">
           <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ t('pathDetailView.reviewHeading') }}</h2>
-          <template v-if="heldPathState.error.value">
+          <LoadingSkeleton v-if="heldPathState.isLoading.value" data-test="lessons-loading" shape="lines" />
+          <template v-else-if="heldPathState.error.value">
             <InlineNotice data-test="lessons-error" :message="t('courseDetailView.partsLoadFailed')" />
             <AppButton data-test="lessons-retry" variant="secondary" block @click="heldPathState.retry()">
               {{ t('buttons.tryAgain') }}

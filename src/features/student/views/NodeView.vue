@@ -196,15 +196,17 @@ const reviewNext = computed(() => {
   }
 })
 const ownerTitle = computed(() => reviewLesson?.owner.value?.title ?? '')
-const back = computed(() =>
-  reviewLesson
-    ? {
-        title: ownerTitle.value || t('nav.learning'),
-        to: reviewLesson.owner.value?.to ?? { name: 'my-courses' },
-        label: t('nodeView.review.backTo', { title: ownerTitle.value }),
-      }
-    : { title: lesson.pathTitle.value ?? t('nav.myPath'), to: { name: 'path' }, label: t('nodeView.backToMyPath') },
-)
+// Until the course or path is known (still loading, failed, or one the lesson isn't reviewable
+// from), the way back is Learning, named as such.
+const back = computed(() => {
+  if (!reviewLesson) {
+    return { title: lesson.pathTitle.value ?? t('nav.myPath'), to: { name: 'path' }, label: t('nodeView.backToMyPath') }
+  }
+  const owner = reviewLesson.owner.value
+  return owner
+    ? { title: owner.title, to: owner.to, label: t('nodeView.review.backTo', { title: owner.title }) }
+    : { title: t('nav.learning'), to: { name: 'my-courses' }, label: t('courseDetailView.backToLearning') }
+})
 const practiceRoute = computed(() =>
   reviewing
     ? { name: 'review-practice', params: { studentPathId: studentPathId.value, nodeId: nodeId.value } }

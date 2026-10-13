@@ -647,6 +647,16 @@ describe('CourseDetailView', () => {
       expect(wrapper.find('[data-test="open-in-path"]').exists()).toBe(false)
     })
 
+    it('shows a skeleton in place of the outline while the parts load', () => {
+      enrollments.enrollments.value = [finished()]
+      parts.parts.value = []
+      parts.isLoading.value = true
+      const wrapper = mountView()
+
+      expect(wrapper.find('[data-test="parts-loading"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="part-row"]').exists()).toBe(false)
+    })
+
     it('opens with every part folded', () => {
       enrollments.enrollments.value = [finished()]
       const wrapper = mountView()

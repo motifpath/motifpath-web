@@ -339,6 +339,11 @@ async function confirmLeave() {
           </AppButton>
         </div>
 
+        <div v-else-if="standing.kind === 'finished' && partsState.isLoading.value" class="order-4 flex flex-col gap-2">
+          <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
+          <LoadingSkeleton data-test="parts-loading" shape="lines" />
+        </div>
+
         <div v-else-if="outline.length" class="order-4 flex flex-col gap-2">
           <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
           <ol class="flex flex-col gap-2">

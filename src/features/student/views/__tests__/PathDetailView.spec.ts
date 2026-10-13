@@ -137,6 +137,7 @@ describe('PathDetailView', () => {
     detail.notFound.value = false
     held.paths.value = []
     heldPath.view.value = null
+    heldPath.isLoading.value = false
     heldPath.error.value = false
     current.data.value = null
     route.name = 'path-detail'
@@ -444,6 +445,15 @@ describe('PathDetailView', () => {
         name: 'review-lesson',
         params: { studentPathId: 'sp-1', nodeId: 'n-3' },
       })
+    })
+
+    it('shows a skeleton under the heading while the lessons load', () => {
+      heldPath.view.value = null
+      heldPath.isLoading.value = true
+      const wrapper = mountView()
+
+      expect(wrapper.find('[data-test="lessons-loading"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="review-lesson"]').exists()).toBe(false)
     })
 
     it('offers Try again in place of the lessons when they fail to load', async () => {
