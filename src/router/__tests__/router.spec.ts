@@ -175,6 +175,24 @@ describe('router', () => {
     expect(matched[0]!.path).toBe('/path/nodes/:nodeId/practice')
   })
 
+  it('lets a registered visitor review a lesson of a finished course or path, under Learning', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+
+    await router.push('/courses/mine/review/part-1/lessons/node-abc')
+
+    expect(router.currentRoute.value.name).toBe('review-lesson')
+    expect(router.currentRoute.value.params).toEqual({ studentPathId: 'part-1', nodeId: 'node-abc' })
+    expect(router.currentRoute.value.meta).toEqual(expect.objectContaining({ pushed: true, hidesBottomBar: true }))
+  })
+
+  it("runs a reviewed lesson's challenge in the Practice Shell, with the reviewed path", () => {
+    const resolved = router.resolve('/courses/mine/review/part-1/lessons/node-abc/practice')
+
+    expect(resolved.name).toBe('review-practice')
+    expect(resolved.matched[0]!.path).toBe('/courses/mine/review/:studentPathId/lessons/:nodeId/practice')
+  })
+
   it('sends an unauthenticated visitor from a node practice route to the landing', async () => {
     updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
 

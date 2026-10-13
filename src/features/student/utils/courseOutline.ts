@@ -91,6 +91,48 @@ export function buildCourseOutline(
   })
 }
 
+/** One lesson of a finished part, as a row that opens it for review. */
+export interface FinishedLesson {
+  position: number
+  title: string
+  kind: StudentPathView['items'][number]['content_type']
+  contentNodeId: string
+}
+
+/** A finished part: its place in the outline, the copy it was taken from, and its lessons. */
+export interface FinishedPart {
+  part: OutlinePart
+  studentPathId: string
+  lessons: FinishedLesson[]
+}
+
+/**
+ * A finished course's outline, from the parts the student took — never a newer version of the
+ * course. Every part is done, and its lessons are the student's own copies, to open for review.
+ */
+export function buildFinishedOutline(parts: StudentPathView[]): FinishedPart[] {
+  return parts.map((view, index) => {
+    const lessons = view.items.map((item) => ({
+      position: item.position,
+      title: item.title,
+      kind: item.content_type,
+      contentNodeId: item.content_node_id,
+    }))
+    return {
+      part: {
+        position: view.course_checkpoint_position ?? index + 1,
+        title: view.title,
+        state: 'done',
+        lessonCount: lessons.length,
+        lessonsDone: null,
+        lessons: lessons.map(({ title }) => ({ title })),
+      },
+      studentPathId: view.student_path_id,
+      lessons,
+    }
+  })
+}
+
 export type LessonLine =
   | { kind: 'lesson'; title: string; done?: boolean }
   | { kind: 'more-done'; count: number }

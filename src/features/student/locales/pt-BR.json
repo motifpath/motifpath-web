@@ -79,6 +79,20 @@
       "markAsDone": "Marcar como concluído",
       "marksDone": "Marca o passo {position} como concluído.",
       "marksDoneAndOpens": "Marca o passo {position} como concluído e abre o passo {next}."
+    },
+    "review": {
+      "partMeta": "Parte {part} · Aula {lesson} de {total} · {kind} · Concluída",
+      "pathMeta": "Aula {lesson} de {total} · {kind} · Concluída",
+      "upNextPart": "A seguir · Parte {part} · Aula {lesson} de {total}",
+      "upNextPath": "A seguir · Aula {lesson} de {total}",
+      "backTo": "Voltar para {title}",
+      "lastLesson": "Essa foi a última aula de {title}.",
+      "goToLearning": "Ir para Aprender",
+      "opensLater": {
+        "title": "Esta aula abre depois",
+        "message": "Ela está num curso ou trilha que você ainda não concluiu. Você chega a ela pela Trilha.",
+        "action": "Ir para a Trilha"
+      }
     }
   },
   "lessonPlayer": {
@@ -173,7 +187,8 @@
     "leave": "Sair deste curso",
     "outline": "Conteúdo do curso",
     "parts": "{count} parte | {count} partes",
-    "startedNotCurrent": "{title} está em Aprendendo, mas {current} continua sendo o atual."
+    "startedNotCurrent": "{title} está em Aprendendo, mas {current} continua sendo o atual.",
+    "partsLoadFailed": "As aulas não carregaram."
   },
   "courseCompletedView": {
     "errorMessage": "Não foi possível carregar seu curso.",
@@ -205,7 +220,8 @@
     "continue": "Continuar trilha",
     "outlineHeading": "Estrutura da trilha",
     "start": "Começar trilha",
-    "inLearning": "Aprendendo"
+    "inLearning": "Aprendendo",
+    "reviewHeading": "Aulas"
   },
   "practiceSessionView": {
     "title": "Praticar",

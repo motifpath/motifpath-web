@@ -4,11 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 
 import ArticleLesson from '@/features/student/components/ArticleLesson.vue'
 import CuePanel from '@/features/student/components/CuePanel.vue'
+import ReviewWayOn from '@/features/student/components/ReviewWayOn.vue'
 import SendToTeacher from '@/features/student/components/SendToTeacher.vue'
 import { useCourseCompletionRedirect } from '@/features/student/composables/useCourseCompletionRedirect'
 import { useLessonCompletionSync } from '@/features/student/composables/useLessonCompletionSync'
 import { useLessonNode } from '@/features/student/composables/useLessonNode'
 import { useLessonTracking } from '@/features/student/composables/useLessonTracking'
+import { useReviewLessonNode, type ReviewPlace } from '@/features/student/composables/useReviewLessonNode'
 import { useStepWording } from '@/features/student/composables/useStepWording'
 import { activeCue } from '@/features/student/utils/activeCue'
 import { stepAfter, type MyPathStep } from '@/features/student/utils/myPath'
@@ -49,9 +51,30 @@ const language = computed(() => {
   return typeof raw === 'string' ? raw : undefined
 })
 
-const lesson = useLessonNode(nodeId, { language: () => language.value })
+// Opened from the detail of a finished course or path, the lesson is reviewed: it comes from that
+// course or path instead of My path, nothing about it is locked or completed, and the way back and
+// the way on stay inside it. The route decides, and a route never changes for a mounted screen.
+const reviewing = route.name === 'review-lesson'
+const studentPathId = computed(() => {
+  const raw = route.params.studentPathId
+  return (Array.isArray(raw) ? raw[0] : raw) ?? ''
+})
+const reviewLesson = reviewing ? useReviewLessonNode(() => studentPathId.value, nodeId) : null
+// In review, the parts of the screen My path drives stay empty: no step on My path, no step after
+// it, and no course that this lesson could complete.
+const lesson = reviewLesson
+  ? {
+      ...reviewLesson,
+      completedCourseEnrollmentId: ref<string | null>(null),
+      pathTitle: computed(() => reviewLesson.owner.value?.title ?? null),
+      step: ref<MyPathStep | null>(null),
+      next: ref<MyPathStep | null>(null),
+      current: ref<MyPathStep | null>(null),
+      total: ref(0),
+    }
+  : useLessonNode(nodeId, { language: () => language.value })
 useCourseCompletionRedirect(lesson.completedCourseEnrollmentId)
-const { complete } = useLessonTracking(lesson)
+const { complete } = useLessonTracking(lesson, { review: reviewing })
 const wording = useStepWording()
 
 // The player is a sizeable dependency that only this screen needs, so it is
@@ -99,7 +122,7 @@ const handOff = ref<HandOff>('none')
 // Completion is final (there is no event to un-complete a step), so
 // reopening a completed lesson is for reference only: the video plays like
 // any other lesson's, but nothing here is ever reported again.
-const isReview = computed(() => lesson.status.value === 'completed')
+const isReview = computed(() => reviewing || lesson.status.value === 'completed')
 const isArticle = computed(() => lesson.node.value?.content_type === 'article')
 const articleBody = computed(() => (isArticle.value ? (lesson.node.value?.rich_content ?? null) : null))
 const cue = computed(() => activeCue(lesson.cues.value, playbackSeconds.value))
@@ -108,7 +131,15 @@ const mediaUrl = computed(() => lesson.node.value?.media_url ?? '')
 // video is missing or whose content type has no screen yet.
 const canAskTeacher = computed(() => ['ready', 'no-media'].includes(lesson.state.value))
 
+/** "Part 1 · Lesson 2 of 5 · Video · Done", or without the part in a standalone path. */
+function reviewMeta(place: ReviewPlace): string {
+  const values = { part: place.part ?? 0, lesson: place.lesson, total: place.total, kind: wording.kindLabel(place) }
+  return place.part === null ? t('nodeView.review.pathMeta', values) : t('nodeView.review.partMeta', values)
+}
+
 const stepMeta = computed(() => {
+  const place = reviewLesson?.place.value
+  if (place) return reviewMeta(place)
   const step = lesson.step.value
   if (!step) return null
   const values = { position: step.position, total: lesson.total.value, kind: wording.kindLabel(step) }
@@ -149,6 +180,38 @@ const languageContent = computed(() => {
 const recordedNext = ref<MyPathStep | null>(null)
 const handOffNext = computed(() => recordedNext.value ?? lesson.next.value)
 const nextAction = computed(() => (handOffNext.value ? wording.startAction(handOffNext.value) : null))
+
+/** In review: the lesson after this one in the course or path, as its card offers it. */
+const reviewNext = computed(() => {
+  const next = reviewLesson?.next.value
+  if (!next) return null
+  const { place } = next
+  const values = { part: place.part ?? 0, lesson: place.lesson, total: place.total }
+  return {
+    eyebrow: place.part === null ? t('nodeView.review.upNextPath', values) : t('nodeView.review.upNextPart', values),
+    title: next.title,
+    kind: next.kind,
+    kindLabel: wording.kindLabel(next),
+    to: { name: 'review-lesson', params: { studentPathId: next.studentPathId, nodeId: next.contentNodeId } },
+  }
+})
+const ownerTitle = computed(() => reviewLesson?.owner.value?.title ?? '')
+// Until the course or path is known (still loading, failed, or one the lesson isn't reviewable
+// from), the way back is Learning, named as such.
+const back = computed(() => {
+  if (!reviewLesson) {
+    return { title: lesson.pathTitle.value ?? t('nav.myPath'), to: { name: 'path' }, label: t('nodeView.backToMyPath') }
+  }
+  const owner = reviewLesson.owner.value
+  return owner
+    ? { title: owner.title, to: owner.to, label: t('nodeView.review.backTo', { title: owner.title }) }
+    : { title: t('nav.learning'), to: { name: 'my-courses' }, label: t('courseDetailView.backToLearning') }
+})
+const practiceRoute = computed(() =>
+  reviewing
+    ? { name: 'review-practice', params: { studentPathId: studentPathId.value, nodeId: nodeId.value } }
+    : { name: 'practice', params: { nodeId: nodeId.value } },
+)
 
 // The practice actions sit in a bar at the foot of the screen, where the floating ask-your-teacher
 // button would otherwise cover them.
@@ -224,6 +287,11 @@ onBeforeUnmount(() => {
  * report it.
  */
 async function onEnded(): Promise<void> {
+  // A reviewed lesson completes nothing: its end only offers the way on.
+  if (reviewing) {
+    handOff.value = 'done'
+    return
+  }
   if (isReview.value || handOff.value !== 'none') return
   const myViewing = viewing
   const hasChallenge = lesson.hasChallenge.value
@@ -284,11 +352,7 @@ async function practiseArticle(): Promise<void> {
     class="-mt-5 flex flex-col gap-4 sm:-mt-8"
     :class="fitsScreen ? 'h-dvh' : 'pb-5 sm:pb-8'"
   >
-    <PageBackBar
-      :title="lesson.pathTitle.value ?? t('nav.myPath')"
-      :to="{ name: 'path' }"
-      :back-label="t('nodeView.backToMyPath')"
-    />
+    <PageBackBar :title="back.title" :to="back.to" :back-label="back.label" />
 
     <template v-if="lesson.state.value === 'loading'">
       <h1 class="sr-only">{{ t('nodeView.heading') }}</h1>
@@ -323,6 +387,22 @@ async function practiseArticle(): Promise<void> {
         <template #action>
           <PrimaryButton as="RouterLink" :to="languageContent.action.to" data-test="language-action">
             {{ languageContent.action.label }}
+          </PrimaryButton>
+        </template>
+      </StateBlock>
+    </template>
+
+    <template v-else-if="lesson.state.value === 'opens-later'">
+      <h1 class="sr-only">{{ t('nodeView.heading') }}</h1>
+      <StateBlock
+        data-test="opens-later"
+        kind="locked"
+        :title="t('nodeView.review.opensLater.title')"
+        :message="t('nodeView.review.opensLater.message')"
+      >
+        <template #action>
+          <PrimaryButton as="RouterLink" :to="{ name: 'path' }" data-test="opens-later-action">
+            {{ t('nodeView.review.opensLater.action') }}
           </PrimaryButton>
         </template>
       </StateBlock>
@@ -414,20 +494,21 @@ async function practiseArticle(): Promise<void> {
 
           <!-- The hand-off sits at the end of the text, where reading leads, never in a bar. -->
           <div
-            v-if="!isReview || lesson.hasChallenge.value"
+            v-if="reviewing || !isReview || lesson.hasChallenge.value"
             data-test="article-end"
             class="flex max-w-prose flex-col gap-3 border-t border-border pt-4"
           >
             <AppButton
-              v-if="isReview"
+              v-if="isReview && lesson.hasChallenge.value"
               variant="secondary"
-              :to="{ name: 'practice', params: { nodeId } }"
+              :to="practiceRoute"
               data-test="practise-again"
               block
             >
               {{ t('nodeView.practiseAgain') }}
             </AppButton>
-            <template v-else>
+            <ReviewWayOn v-if="reviewing" :next="reviewNext" :owner-title="ownerTitle" :back="back" />
+            <template v-else-if="!isReview">
               <p class="text-base font-semibold text-ink">{{ t('nodeView.articleEnd.title') }}</p>
               <AppButton
                 :data-test="lesson.hasChallenge.value ? 'practise-this' : 'mark-as-done'"
@@ -457,7 +538,7 @@ async function practiseArticle(): Promise<void> {
                added already holding its message is typically read as silent. Until there is
                something to say it stays in the accessibility tree but takes no room. -->
           <p
-            v-if="handOff !== 'practise'"
+            v-if="handOff !== 'practise' && !reviewing"
             data-test="hand-off-status"
             role="status"
             class="flex items-center gap-2"
@@ -473,7 +554,13 @@ async function practiseArticle(): Promise<void> {
             </template>
           </p>
 
-          <div v-if="handOff === 'done'" class="flex flex-col gap-4">
+          <ReviewWayOn
+            v-if="reviewing && handOff === 'done'"
+            :next="reviewNext"
+            :owner-title="ownerTitle"
+            :back="back"
+          />
+          <div v-else-if="handOff === 'done'" class="flex flex-col gap-4">
             <NextStepCard
               v-if="handOffNext && nextAction"
               :eyebrow="t('pathView.upNext', { position: handOffNext.position, total: lesson.total.value })"
@@ -506,7 +593,7 @@ async function practiseArticle(): Promise<void> {
           <AppButton
             v-else
             variant="secondary"
-            :to="{ name: 'practice', params: { nodeId } }"
+            :to="practiceRoute"
             data-test="practise-again"
             block
           >

@@ -5,6 +5,7 @@ import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from 'vue-rout
 import PartRow from '@/features/student/components/PartRow.vue'
 import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue'
 import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
+import { useEnrollmentParts } from '@/features/student/composables/useEnrollmentParts'
 import {
   LeaveFailedAfterSwitchError,
   useLeaveLearningItem,
@@ -16,17 +17,19 @@ import { currentTargetOf, useMakeCurrentWithUndo } from '@/features/student/comp
 import { useStudentPath } from '@/features/student/composables/useStudentPath'
 import { discoverBackLink } from '@/features/student/utils/catalogReturn'
 import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
-import { buildCourseOutline, courseStanding } from '@/features/student/utils/courseOutline'
+import { buildCourseOutline, buildFinishedOutline, courseStanding } from '@/features/student/utils/courseOutline'
 import { buildLearning, type LearningItem, nextInProgress } from '@/features/student/utils/learning'
 import { whereToStartReturn } from '@/features/student/utils/whereToStartReturn'
 import AppButton from '@/shared/components/AppButton.vue'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PageBackBar from '@/shared/components/PageBackBar.vue'
 import ProgressMeter from '@/shared/components/ProgressMeter.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
 import StatusChip from '@/shared/components/StatusChip.vue'
+import StepRow from '@/shared/components/StepRow.vue'
 import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
 import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
 import { useToast } from '@/shared/composables/useToast'
@@ -81,9 +84,30 @@ const back = computed<{ title: string; label: string; to: RouteLocationRaw }>(()
 
 const standing = computed(() => courseStanding(enrollmentState.enrollments.value, courseId))
 const enrollment = computed(() => (standing.value.kind === 'enrolled' ? standing.value.enrollment : null))
-const outline = computed(() =>
-  course.value ? buildCourseOutline(course.value, standing.value, currentState.data.value) : [],
+
+// A finished course lists the parts the student took — never a newer version — and each lesson
+// opens for review. The parts load only once the course turns out to be finished.
+const finishedEnrollmentId = computed(() =>
+  standing.value.kind === 'finished' ? standing.value.enrollment.course_enrollment_id : null,
 )
+const partsState = useEnrollmentParts(() => finishedEnrollmentId.value)
+const finishedOutline = computed(() => buildFinishedOutline(partsState.parts.value))
+
+const outline = computed(() => {
+  if (standing.value.kind === 'finished') return finishedOutline.value.map(({ part }) => part)
+  return course.value ? buildCourseOutline(course.value, standing.value, currentState.data.value) : []
+})
+
+/** A finished part's lessons as rows that open each one for review. */
+function reviewRowsOf(position: number) {
+  const finishedPart = finishedOutline.value.find(({ part }) => part.position === position)
+  if (!finishedPart) return []
+  return finishedPart.lessons.map((lesson) => ({
+    ...lesson,
+    meta: t('pathView.meta.done', { kind: t(`pathView.kind.${lesson.kind}`) }),
+    to: { name: 'review-lesson', params: { studentPathId: finishedPart.studentPathId, nodeId: lesson.contentNodeId } },
+  }))
+}
 const activePosition = computed(() => enrollment.value?.active_checkpoint_position ?? 1)
 const partCount = computed(() => course.value?.checkpoint_count ?? outline.value.length)
 
@@ -307,11 +331,36 @@ async function confirmLeave() {
           <p data-test="course-detail-summary" class="text-base text-ink-muted">{{ course.summary }}</p>
         </div>
 
-        <div v-if="outline.length" class="order-4 flex flex-col gap-2">
+        <div v-if="standing.kind === 'finished' && partsState.error.value" class="order-4 flex flex-col gap-2">
+          <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
+          <InlineNotice data-test="parts-error" :message="t('courseDetailView.partsLoadFailed')" />
+          <AppButton data-test="parts-retry" variant="secondary" block @click="partsState.retry()">
+            {{ t('buttons.tryAgain') }}
+          </AppButton>
+        </div>
+
+        <div v-else-if="standing.kind === 'finished' && partsState.isLoading.value" class="order-4 flex flex-col gap-2">
+          <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
+          <LoadingSkeleton data-test="parts-loading" shape="lines" />
+        </div>
+
+        <div v-else-if="outline.length" class="order-4 flex flex-col gap-2">
           <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
           <ol class="flex flex-col gap-2">
             <li v-for="part in outline" :key="part.position">
               <PartRow :part="part" :expanded="unfolded.has(part.position)" @toggle="toggle(part.position)">
+                <template v-if="standing.kind === 'finished'" #lessons>
+                  <StepRow
+                    v-for="row in reviewRowsOf(part.position)"
+                    :key="row.contentNodeId"
+                    data-test="review-lesson"
+                    state="done"
+                    :position="row.position"
+                    :title="row.title"
+                    :meta="row.meta"
+                    :to="row.to"
+                  />
+                </template>
                 <button
                   v-if="part.state === 'current'"
                   type="button"

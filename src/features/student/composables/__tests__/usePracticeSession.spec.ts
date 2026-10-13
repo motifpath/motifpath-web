@@ -632,4 +632,32 @@ describe('usePracticeSession', () => {
       }),
     )
   })
+
+  describe('reviewing a finished course or path', () => {
+    it('marks every trigger context as review', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1', { review: true })
+      await flush()
+
+      session.select(['o1'])
+      session.next()
+
+      const contexts = track.mock.calls.map(([event]) => event).filter((event) => event.trigger_context)
+      expect(contexts.map((event) => event.event_type)).toEqual(
+        expect.arrayContaining(['exercise.started', 'exercise.ended', 'practice.item_answered']),
+      )
+      expect(contexts.every((event) => event.trigger_context?.review === true)).toBe(true)
+    })
+
+    it('leaves the marker off a challenge taken from My path', async () => {
+      mockHappyPath()
+      const session = usePracticeSession('node-1')
+      await flush()
+
+      session.select(['o1'])
+      session.next()
+
+      expect(answered()[0]?.trigger_context).not.toHaveProperty('review')
+    })
+  })
 })

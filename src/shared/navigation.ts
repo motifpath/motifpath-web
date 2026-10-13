@@ -25,7 +25,8 @@ export const LEARNER_DESTINATIONS: Destination[] = [
 ]
 
 // The destination each learner route sits under: Your progress belongs to the home, a lesson and a node's practice belong to My path,
-// a finished course and a course or path opened from there to Learning, and a catalog's detail page to Discover.
+// a finished course, a course or path opened from there and a lesson reviewed from it to Learning, and a catalog's
+// detail page to Discover.
 const DESTINATION_OF_ROUTE: Record<string, DestinationId> = {
   home: 'home',
   'your-progress': 'home',
@@ -37,6 +38,8 @@ const DESTINATION_OF_ROUTE: Record<string, DestinationId> = {
   'course-completed': 'learning',
   'learning-course': 'learning',
   'learning-path': 'learning',
+  'review-lesson': 'learning',
+  'review-practice': 'learning',
   'course-catalog': 'discover',
   'course-detail': 'discover',
   'path-catalog': 'discover',

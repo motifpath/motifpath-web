@@ -26,12 +26,15 @@ import { useOptionKeys } from '@/shared/composables/useOptionKeys'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { hasMultipleCorrectOptions } from '@/shared/utils/exerciseOptions'
 
-const props = defineProps<{ nodeId: string }>()
+// A studentPathId means the challenge is taken again from a course or path the student has
+// finished: every event says so, and the run starts and ends on that reviewed lesson.
+const props = defineProps<{ nodeId: string; studentPathId?: string }>()
+const reviewing = computed(() => props.studentPathId !== undefined)
 
 // A getter, not props.nodeId directly — usePracticeSession watches it so a
 // route change that reuses this component (same route record, new :nodeId)
 // still reloads instead of showing the previous node's session.
-const session = usePracticeSession(() => props.nodeId)
+const session = usePracticeSession(() => props.nodeId, { review: reviewing.value })
 // The lesson's title names every exercise's header and the result.
 const titles = useLessonTitles(() => props.nodeId)
 
@@ -64,7 +67,11 @@ useOptionKeys({
   choose: (optionIds) => session.select(optionIds),
 })
 
-const lesson = computed(() => ({ name: 'node', params: { nodeId: props.nodeId } }))
+const lesson = computed(() =>
+  props.studentPathId !== undefined
+    ? { name: 'review-lesson', params: { studentPathId: props.studentPathId, nodeId: props.nodeId } }
+    : { name: 'node', params: { nodeId: props.nodeId } },
+)
 
 /** Back to the lesson: the history entry it came from when there is one, so the lesson isn't stacked twice. */
 function leave() {
@@ -73,6 +80,11 @@ function leave() {
 }
 
 function finish() {
+  // A reviewed lesson's challenge changes nothing, so finishing goes back to that lesson.
+  if (reviewing.value) {
+    leave()
+    return
+  }
   // The lesson was completed before the challenge began, so finishing leads to My path, where a
   // finished path or course is celebrated.
   void router.push({ name: 'path' })

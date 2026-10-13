@@ -58,8 +58,9 @@ const state = {
   retry: vi.fn(),
 }
 
+const usePracticeSession = vi.fn<(nodeId: unknown, options?: { review?: boolean }) => typeof state>(() => state)
 vi.mock('@/features/student/composables/usePracticeSession', () => ({
-  usePracticeSession: () => state,
+  usePracticeSession: (nodeId: unknown, options?: { review?: boolean }) => usePracticeSession(nodeId, options),
 }))
 
 const titles = { pathTitle: ref<string | null>('Blues Basics'), lessonTitle: ref<string | null>('Inversions of C major') }
@@ -406,6 +407,41 @@ describe('PracticeView', () => {
       press('Escape')
 
       expect(router.replace).toHaveBeenCalledWith({ name: 'node', params: { nodeId: 'node-1' } })
+    })
+  })
+
+  describe('in review of a finished course or path', () => {
+    function mountReview() {
+      return mount(PracticeView, { props: { nodeId: 'node-1', studentPathId: 'part-1' }, attachTo: document.body })
+    }
+    const reviewLesson = { name: 'review-lesson', params: { studentPathId: 'part-1', nodeId: 'node-1' } }
+
+    it('runs the challenge marked as review', () => {
+      inProgress()
+      mountReview()
+
+      expect(usePracticeSession).toHaveBeenCalledWith(expect.anything(), { review: true })
+    })
+
+    it('opens the reviewed lesson with × when the run was opened from elsewhere', async () => {
+      window.history.replaceState({ back: '/path' }, '')
+      inProgress(2)
+      const wrapper = mountReview()
+
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+      expect(router.replace).toHaveBeenCalledWith(reviewLesson)
+    })
+
+    it('finishes back on the lesson, not on My path', async () => {
+      state.status.value = 'result'
+      exercises.value = nine
+      const wrapper = mountReview()
+
+      await wrapper.get('[data-test="finish"]').trigger('click')
+
+      expect(router.push).not.toHaveBeenCalledWith({ name: 'path' })
+      expect(router.replace).toHaveBeenCalledWith(reviewLesson)
     })
   })
 })

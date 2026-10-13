@@ -2,7 +2,8 @@
 /**
  * One part of a course in its outline: done (a check), current (highlighted, its number) or
  * upcoming (muted). Tapping it unfolds its lesson titles. The outline only shows them; lessons open
- * from My path, so the slot holds the way there.
+ * from My path, so the slot holds the way there. A finished course's lessons open for review: its
+ * `lessons` slot puts rows that open them in place of the titles.
  */
 import { computed } from 'vue'
 
@@ -81,7 +82,10 @@ const listId = computed(() => `part-${props.part.position}-lessons`)
       </span>
     </button>
 
-    <div v-if="expanded" class="flex flex-col gap-3 pb-4 pl-14 pr-3">
+    <ul v-if="expanded && $slots.lessons" :id="listId" data-test="part-lessons" class="flex flex-col pb-2 pl-6">
+      <slot name="lessons" />
+    </ul>
+    <div v-else-if="expanded" class="flex flex-col gap-3 pb-4 pl-14 pr-3">
       <ul :id="listId" data-test="part-lessons" class="flex flex-col gap-1.5 text-sm">
         <template v-for="(line, index) in lines" :key="index">
           <li

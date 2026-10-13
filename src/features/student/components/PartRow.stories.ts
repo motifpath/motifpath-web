@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite'
 
 import type { OutlinePart } from '@/features/student/utils/courseOutline'
 
+import StepRow from '@/shared/components/StepRow.vue'
+
 import PartRow from './PartRow.vue'
 
 const triads = [
@@ -88,4 +90,33 @@ export const LongPortuguese: Story = {
   args: {
     part: { ...current, title: 'Tríades maiores e menores em todas as regiões do braço' },
   },
+}
+
+/** A part of a finished course, unfolded: its lessons are rows that open each one for review. */
+export const FinishedUnfoldedForReview: Story = {
+  args: {
+    expanded: true,
+    part: {
+      position: 1,
+      title: 'The staff and clefs',
+      state: 'done',
+      lessonCount: 5,
+      lessonsDone: null,
+      lessons: [],
+    },
+  },
+  render: (args) => ({
+    components: { PartRow, StepRow },
+    setup: () => ({
+      args,
+      rows: ['The five-line staff', 'Treble clef', 'Bass clef', 'Ledger lines', 'Reading notes on the staff'].map(
+        (title, index) => ({ title, position: index + 1, meta: index === 2 ? 'Article · Done' : 'Video · Done' }),
+      ),
+    }),
+    template: `<div class="max-w-[35rem]"><PartRow v-bind="args">
+      <template #lessons>
+        <StepRow v-for="row in rows" :key="row.position" state="done" :position="row.position" :title="row.title" :meta="row.meta" to="#" />
+      </template>
+    </PartRow></div>`,
+  }),
 }

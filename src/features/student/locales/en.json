@@ -79,6 +79,20 @@
       "markAsDone": "Mark as done",
       "marksDone": "Marks step {position} done.",
       "marksDoneAndOpens": "Marks step {position} done and opens step {next}."
+    },
+    "review": {
+      "partMeta": "Part {part} · Lesson {lesson} of {total} · {kind} · Done",
+      "pathMeta": "Lesson {lesson} of {total} · {kind} · Done",
+      "upNextPart": "Up next · Part {part} · Lesson {lesson} of {total}",
+      "upNextPath": "Up next · Lesson {lesson} of {total}",
+      "backTo": "Back to {title}",
+      "lastLesson": "That was the last lesson of {title}.",
+      "goToLearning": "Go to Learning",
+      "opensLater": {
+        "title": "This lesson opens later",
+        "message": "It's in a course or path you haven't finished yet. You'll reach it from My path.",
+        "action": "Go to My path"
+      }
     }
   },
   "lessonPlayer": {
@@ -173,7 +187,8 @@
     "leave": "Leave this course",
     "outline": "Course outline",
     "parts": "{count} part | {count} parts",
-    "startedNotCurrent": "{title} is in Learning, but {current} is still current."
+    "startedNotCurrent": "{title} is in Learning, but {current} is still current.",
+    "partsLoadFailed": "The lessons didn't load."
   },
   "courseCompletedView": {
     "errorMessage": "We couldn't load your course.",
@@ -205,7 +220,8 @@
     "continue": "Continue path",
     "outlineHeading": "Path outline",
     "start": "Start path",
-    "inLearning": "In Learning"
+    "inLearning": "In Learning",
+    "reviewHeading": "Lessons"
   },
   "practiceSessionView": {
     "title": "Practice",
