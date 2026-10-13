@@ -1,5 +1,6 @@
 import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 
+import { loadLessonContent } from '@/features/student/composables/lessonContent'
 import { completedCourseEnrollmentId as completedEnrollmentOf } from '@/features/student/utils/courseCompletion'
 import { buildMyPath, stepAfter, type MyPathStep } from '@/features/student/utils/myPath'
 import { useApi } from '@/shared/composables/useApi'
@@ -12,7 +13,8 @@ type StudentPathItem = components['schemas']['StudentPathItem']
 /**
  * What the lesson screen should show. `locked` waits on an earlier step;
  * `language-locked` has no version in the student's language and was opened
- * without choosing one it has. `no-media` is a step with nothing to show: a
+ * without choosing one it has. `opens-later` is a lesson opened for review
+ * from a course or path the student hasn't finished, or hasn't reached. `no-media` is a step with nothing to show: a
  * video step with no video to play, or an article with no text (older
  * content).
  */
@@ -22,6 +24,7 @@ export type LessonNodeState =
   | 'not-found'
   | 'locked'
   | 'language-locked'
+  | 'opens-later'
   | 'no-media'
   | 'ready'
 
@@ -122,32 +125,17 @@ export function useLessonNode(
         return
       }
 
-      const params = { params: { path: { content_node_id: id } }, signal }
-      const [nodeResult, cuesResult, challengesResult] = await Promise.all([
-        coreApi.GET('/content-nodes/{content_node_id}', params),
-        coreApi.GET('/content-nodes/{content_node_id}/expanded-content', params),
-        coreApi.GET('/content-nodes/{content_node_id}/challenges', params),
-      ])
+      const content = await loadLessonContent(coreApi, id, signal)
       if (myEpoch !== loadEpoch) return
-      if (
-        nodeResult.error ||
-        !nodeResult.data ||
-        challengesResult.error ||
-        !challengesResult.data
-      ) {
+      if (!content) {
         state.value = 'error'
         return
       }
 
-      node.value = nodeResult.data
-      cues.value = cuesResult.data?.items ?? []
-      hasChallenge.value = challengesResult.data.length > 0
-
-      const hasContent =
-        nodeResult.data.content_type === 'video'
-          ? Boolean(nodeResult.data.media_url)
-          : (nodeResult.data.rich_content?.content.length ?? 0) > 0
-      state.value = hasContent ? 'ready' : 'no-media'
+      node.value = content.node
+      cues.value = content.cues
+      hasChallenge.value = content.hasChallenge
+      state.value = content.hasMedia ? 'ready' : 'no-media'
     } catch {
       // A superseded call's own requests were aborted above — nothing to do,
       // the newer call already owns state. Any other failure (network down)
