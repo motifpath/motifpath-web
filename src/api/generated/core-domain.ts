@@ -231,8 +231,9 @@ export interface paths {
          *     rules-based recommendation engine, plus an optional, purely informational
          *     time threshold.
          *
-         *     A subject is mandatory — exactly one of subject_skill_id/subject_concept_id,
-         *     referencing one of the parent content node's linked skill_ids/concept_ids.
+         *     A subject is mandatory — at least one of subject_skill_id/subject_concept_id
+         *     (both may be set), each referencing one of the parent content node's linked
+         *     skill_ids/concept_ids.
          *     Without it, right/wrong outcomes on exercises are analytically meaningless
          *     and gap detection cannot function. Remediation targets are configured per
          *     exercise, not on the challenge — see Exercise.remediation_targets.
@@ -2134,6 +2135,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/students/me/student-paths/{student_path_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one of the authenticated student's paths with progress
+         * @description Returns one StudentPath the caller holds, a standalone path or a
+         *     part of a course enrollment, current or not, active, archived or
+         *     finished, with the progress state of each item. Item statuses
+         *     follow the same rules as GET /students/me/path. Used to open the
+         *     lessons of a finished course or standalone path for review.
+         *
+         *     Read-only: it never changes the caller's current course or path,
+         *     any enrollment, or any item's status, and course_completed is
+         *     always false.
+         */
+        get: operations["getMyStudentPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/students/me/course-enrollments": {
         parameters: {
             query?: never;
@@ -2191,6 +2220,39 @@ export interface paths {
          *     allowed and clears their current pointer entirely.
          */
         post: operations["abandonCourseEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/course-enrollments/{course_enrollment_id}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the parts of one of the authenticated student's course enrollments
+         * @description Returns the StudentPath of every part the caller has reached in
+         *     this enrollment, in the order of the course version the enrollment
+         *     is pinned to — the version the student enrolled in, or the one they
+         *     last updated to — each with the progress state of its items and
+         *     that version's course_checkpoint_position. Parts the pinned version
+         *     no longer has, and copies archived by an update, are left out. For
+         *     a completed enrollment that is every part of the pinned version,
+         *     never a newer one. Item statuses follow the same rules as
+         *     GET /students/me/path. Used to open the lessons of a finished
+         *     course for review.
+         *
+         *     Read-only: it never changes the caller's current course or path,
+         *     the enrollment, or any item's status, and course_completed is
+         *     always false on every part.
+         */
+        get: operations["listMyCourseEnrollmentParts"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4865,14 +4927,16 @@ export interface components {
             section_label?: string;
         };
         /**
-         * @description The student's current learning path with per-item progress state.
-         *     Returned by GET /students/me/path and used by the SPA to render
-         *     the main learning screen.
+         * @description A student's learning path with per-item progress state. Returned
+         *     for the current path by GET /students/me/path, which the SPA uses
+         *     to render the main learning screen, and for any path the student
+         *     holds by GET /students/me/student-paths/{student_path_id} and
+         *     GET /students/me/course-enrollments/{course_enrollment_id}/parts.
          */
         StudentPathView: {
             /**
              * Format: uuid
-             * @description The current StudentPath's ID.
+             * @description The StudentPath's ID.
              */
             student_path_id: string;
             /**
@@ -4880,11 +4944,11 @@ export interface components {
              * @description The learning path this StudentPath was copied from.
              */
             source_template_id: string;
-            /** @description Title of the current StudentPath. */
+            /** @description Title of the StudentPath. */
             title: string;
             /**
              * Format: uuid
-             * @description The CourseEnrollment this is a checkpoint of, or null when the caller's current path is a standalone path. Set together with course_checkpoint_position.
+             * @description The CourseEnrollment this is a checkpoint of, or null when the path is a standalone path. Set together with course_checkpoint_position.
              */
             course_enrollment_id?: string | null;
             /** @description 1-based position of this checkpoint within its course, or null for a standalone path. Set together with course_enrollment_id. */
@@ -5593,14 +5657,14 @@ export interface components {
             caption?: string;
         };
         /**
-         * @description Payload for creating a challenge within a content node. Exactly one
-         *     of subject_skill_id or subject_concept_id must be set.
+         * @description Payload for creating a challenge within a content node. At least one
+         *     of subject_skill_id or subject_concept_id must be set; both may be set.
          */
         CreateChallengeRequest: {
             /**
              * Format: uuid
              * @description The skill-kind KnowledgeNode this challenge assesses. Must be one of the parent
-             *     content node's linked skill_ids. Exactly one of
+             *     content node's linked skill_ids. At least one of
              *     subject_skill_id/subject_concept_id must be set — the subject is
              *     the minimum required for gap detection, a challenge without one
              *     produces analytically meaningless outcomes.
@@ -5609,7 +5673,7 @@ export interface components {
             /**
              * Format: uuid
              * @description The concept-kind KnowledgeNode this challenge assesses. Must be one of the parent
-             *     content node's linked concept_ids. Exactly one of
+             *     content node's linked concept_ids. At least one of
              *     subject_skill_id/subject_concept_id must be set.
              */
             subject_concept_id?: string;
@@ -5666,12 +5730,12 @@ export interface components {
             content_node_id: string;
             /**
              * Format: uuid
-             * @description The skill-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+             * @description The skill-kind KnowledgeNode this challenge assesses. At least one of subject_skill_id/subject_concept_id is set; both may be.
              */
             subject_skill_id?: string;
             /**
              * Format: uuid
-             * @description The concept-kind KnowledgeNode this challenge assesses. Exactly one of subject_skill_id/subject_concept_id is set.
+             * @description The concept-kind KnowledgeNode this challenge assesses. At least one of subject_skill_id/subject_concept_id is set; both may be.
              */
             subject_concept_id?: string;
             /** @description Minimum score percentage required to pass. */
@@ -5703,8 +5767,8 @@ export interface components {
          *     configuration. Linked exercises are not part of this payload — they
          *     are changed via POST/DELETE
          *     /challenges/{challenge_id}/exercises/{exercise_id}, not by resending
-         *     them here. Exactly one of subject_skill_id or subject_concept_id
-         *     must be set.
+         *     them here. At least one of subject_skill_id or subject_concept_id
+         *     must be set; both may be set.
          */
         UpdateChallengeRequest: {
             /**
@@ -12605,6 +12669,60 @@ export interface operations {
             };
         };
     };
+    getMyStudentPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the StudentPath to read. */
+                student_path_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The StudentPath with per-item progress state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPathView"];
+                };
+            };
+            /** @description student_path_id is not a valid UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The caller holds no StudentPath with this ID. Another
+             *     student's path is reported the same way, so its existence is
+             *     not revealed.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     listMyCourseEnrollments: {
         parameters: {
             query?: never;
@@ -12752,6 +12870,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    listMyCourseEnrollmentParts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the enrollment whose parts to list. */
+                course_enrollment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The enrollment's parts, in course order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StudentPathView"][];
+                };
+            };
+            /** @description course_enrollment_id is not a valid UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /**
+             * @description The caller has no enrollment with this ID, in any status.
+             *     Another student's enrollment is reported the same way, so its
+             *     existence is not revealed.
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
                 };
             };
         };
