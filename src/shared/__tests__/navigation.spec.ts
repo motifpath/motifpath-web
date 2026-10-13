@@ -38,6 +38,8 @@ describe('destinationOf', () => {
     ['course-completed', 'learning'],
     ['learning-course', 'learning'],
     ['learning-path', 'learning'],
+    ['review-lesson', 'learning'],
+    ['review-practice', 'learning'],
     ['course-catalog', 'discover'],
     ['course-detail', 'discover'],
     ['path-catalog', 'discover'],

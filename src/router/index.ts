@@ -133,6 +133,21 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    // A reviewed lesson's challenge, in the Practice Shell like any other, kept under the lesson.
+    path: '/courses/mine/review/:studentPathId/lessons/:nodeId/practice',
+    component: () => import('@/shared/components/PracticeLayout.vue'),
+    meta: { requiresAuth: true },
+    beforeEnter: () => ensureStudentLocaleLoaded(),
+    children: [
+      {
+        path: '',
+        name: 'review-practice',
+        props: true,
+        component: () => import('@/features/student/views/PracticeView.vue'),
+      },
+    ],
+  },
+  {
     path: '/progress',
     component: () => import('@/shared/components/AuthenticatedLayout.vue'),
     meta: { requiresAuth: true },
@@ -180,6 +195,14 @@ const routes: RouteRecordRaw[] = [
         name: 'learning-path',
         meta: { requiresAuth: true },
         component: () => import('@/features/student/views/PathDetailView.vue'),
+      },
+      {
+        // A lesson of a finished course or path, opened from its detail to review it: the lesson
+        // screen pushed onto Learning, reading that course or path instead of My path.
+        path: 'mine/review/:studentPathId/lessons/:nodeId',
+        name: 'review-lesson',
+        meta: { requiresAuth: true, wideContent: true, hidesBottomBar: true, pushed: true, fillsScreen: true },
+        component: () => import('@/features/student/views/NodeView.vue'),
       },
       {
         path: 'mine/:enrollmentId/completed',
