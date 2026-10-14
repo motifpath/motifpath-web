@@ -1,6 +1,6 @@
 import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, toValue, type MaybeRefOrGetter } from 'vue'
 
 import type { ReviewEntry } from '@/features/student/composables/usePracticeSession'
 import { makeDiagramRef } from '@/shared/testUtils/diagram'
@@ -64,7 +64,11 @@ vi.mock('@/features/student/composables/usePracticeSession', () => ({
 }))
 
 const titles = { pathTitle: ref<string | null>('Blues Basics'), lessonTitle: ref<string | null>('Inversions of C major') }
-vi.mock('@/features/student/composables/useLessonTitles', () => ({ useLessonTitles: () => titles }))
+type TitlesFor = (nodeId: MaybeRefOrGetter<string>, studentPathId?: MaybeRefOrGetter<string | undefined>) => typeof titles
+const useLessonTitles = vi.fn<TitlesFor>(() => titles)
+vi.mock('@/features/student/composables/useLessonTitles', () => ({
+  useLessonTitles: (...args: Parameters<TitlesFor>) => useLessonTitles(...args),
+}))
 
 const router = {
   push: vi.fn(),
@@ -421,6 +425,14 @@ describe('PracticeView', () => {
       mountReview()
 
       expect(usePracticeSession).toHaveBeenCalledWith(expect.anything(), { review: true })
+    })
+
+    it("names the reviewed course or path to the teacher, not the student's current path", () => {
+      inProgress()
+      mountReview()
+
+      const [, studentPathId] = useLessonTitles.mock.lastCall ?? []
+      expect(toValue(studentPathId)).toBe('part-1')
     })
 
     it('opens the reviewed lesson with × when the run was opened from elsewhere', async () => {
