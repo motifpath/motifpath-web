@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { gradeGeneratedChoice, rightAnswerOf } from '@/shared/utils/generatedChoice'
-import type { GeneratedQuestion, GeneratedWay } from '@/shared/utils/generatedChoice'
+import { isGeneratedWay } from '@/shared/utils/generatedChoice'
+import type { GeneratedQuestion } from '@/shared/utils/generatedChoice'
 import golden from '@/api/generated/golden/practice-graders/generated_choice.v1.json'
 
 const catalog: Record<string, { bars: string[] }> = golden.reference.progressions
@@ -31,21 +32,31 @@ describe('gradeGeneratedChoice against the generated_choice.v1 golden cases', ()
 
   function questionOf(itemKey: string, way: string, musicKey: string | undefined): GeneratedQuestion | null {
     const [kind = '', first = '', second = ''] = itemKey.split(':')
-    if (KEYED_BY_THE_ITEM.includes(kind)) return { way: way as GeneratedWay, key: first, numeral: second }
+    if (!isGeneratedWay(way)) return null
+    if (KEYED_BY_THE_ITEM.includes(kind)) return { way, key: first, numeral: second }
     if (!musicKey) return null
-    if (kind === 'heard_chord') return { way: way as GeneratedWay, key: musicKey, numeral: first }
-    return catalog[first] ? { way: way as GeneratedWay, key: musicKey, progression: first } : null
+    if (kind === 'heard_chord') return { way, key: musicKey, numeral: first }
+    return catalog[first] ? { way, key: musicKey, progression: first } : null
   }
 
-  const cases = golden.cases.flatMap(({ name, item_key, response, expected }) => {
+  interface Case {
+    name: string
+    question: GeneratedQuestion
+    answer: { options: string[]; choice: string }
+    correct: boolean | null
+    revealed: string | undefined
+  }
+
+  const cases = golden.cases.flatMap(({ name, item_key, response, expected }): Case[] => {
     if (response.response_type !== 'generated_choice' || !('way' in response) || !response.options || response.choice === undefined) return []
     const question = questionOf(item_key, response.way, 'music_key' in response ? response.music_key : undefined)
     if (!question) return []
     const answer = { options: response.options, choice: response.choice }
     if ('evidence' in expected && expected.evidence) {
-      return [{ name, question, answer, correct: expected.evidence.correct as boolean | null, answerKey: expected.evidence.answer_key as { answer?: string } }]
+      const correct: boolean | null = expected.evidence.correct
+      return [{ name, question, answer, correct, revealed: expected.evidence.answer_key.answer }]
     }
-    if ('reason' in expected && expected.reason === 'invalid_choices') return [{ name, question, answer, correct: null, answerKey: {} }]
+    if ('reason' in expected && expected.reason === 'invalid_choices') return [{ name, question, answer, correct: null, revealed: undefined }]
     return []
   })
 
@@ -60,7 +71,7 @@ describe('gradeGeneratedChoice against the generated_choice.v1 golden cases', ()
   })
 
   // A wrong pick reveals the right answer: the one the server's answer key names.
-  it.each(cases.filter((c) => c.answerKey.answer !== undefined))('reveals the answer key’s answer: $name', ({ question, answerKey }) => {
-    expect(rightAnswerOf(question, catalog)).toBe(answerKey.answer)
+  it.each(cases.filter((c) => c.revealed !== undefined))('reveals the answer key’s answer: $name', ({ question, revealed }) => {
+    expect(rightAnswerOf(question, catalog)).toBe(revealed)
   })
 })

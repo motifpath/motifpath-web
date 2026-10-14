@@ -5,7 +5,7 @@
  * no tap within it sounds another note; the take is right only when every bar is hit; taps after the
  * last bar aren't graded.
  */
-import type { CellPlace } from '@/shared/utils/fretboardCell'
+import type { components } from '@/api/generated/event-ingestion'
 import { SHARP_NAMES, chordOf, chordSymbol, pitchClassOf, seventhOf, thirdOf } from '@/shared/utils/harmony'
 import { frettedPitch } from '@/shared/utils/pitch'
 
@@ -14,14 +14,12 @@ export interface GuideToneTake {
   tuning: string[]
   bars: string[]
   key: string
-  tone: '3' | '7'
+  tone: components['schemas']['TimedTapsResponse']['tone']
   tempoBpm: number
 }
 
 /** One tap of the take, milliseconds after the first bar's downbeat. */
-export interface TimedTap extends CellPlace {
-  at_ms: number
-}
+export type TimedTap = components['schemas']['TimedTap']
 
 /** One bar as graded: its chord, the asked tone's note (spelled with sharps), and whether it was hit. */
 export interface GradedBar {

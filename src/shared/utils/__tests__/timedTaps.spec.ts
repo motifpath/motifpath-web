@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { gradeTimedTaps } from '@/shared/utils/timedTaps'
+import type { GradedTake, GuideToneTake, TimedTap } from '@/shared/utils/timedTaps'
 import golden from '@/api/generated/golden/practice-graders/timed_taps.v1.json'
 
 const instruments: Record<string, { tuning: string[] }> = golden.reference.instruments
@@ -10,15 +11,23 @@ const progressions: Record<string, { bars: string[] }> = golden.reference.progre
 // agreement with what's recorded. A tap off the instrument is the only rejection a client can
 // meet: the others are about the item or the response's shape.
 describe('gradeTimedTaps against the timed_taps.v1 golden cases', () => {
-  const cases = golden.cases.flatMap(({ name, item_key, response, expected }) => {
-    if (response.response_type !== 'timed_taps' || !('taps' in response)) return []
+  interface Case {
+    name: string
+    take: GuideToneTake
+    taps: TimedTap[]
+    want: GradedTake | null
+  }
+
+  const cases = golden.cases.flatMap(({ name, item_key, response, expected }): Case[] => {
+    if (response.response_type !== 'timed_taps' || !response.taps || !response.music_key || !response.tempo_bpm) return []
     const [, layout = '', progression = ''] = item_key.split(':')
     const tuning = instruments[layout]?.tuning
     const bars = progressions[progression]?.bars
     if (!tuning || !bars) return []
-    const take = { tuning, bars, key: response.music_key, tone: response.tone as '3' | '7', tempoBpm: response.tempo_bpm }
+    const tone = response.tone === '7' ? '7' : '3'
+    const take: GuideToneTake = { tuning, bars, key: response.music_key, tone, tempoBpm: response.tempo_bpm }
     if ('evidence' in expected && expected.evidence) {
-      const { correct, latency_ms, answer_key } = expected.evidence as { correct: boolean; latency_ms: number; answer_key: { bars: unknown[] } }
+      const { correct, latency_ms, answer_key } = expected.evidence
       return [{ name, take, taps: response.taps, want: { correct, latencyMs: latency_ms, bars: answer_key.bars } }]
     }
     if ('reason' in expected && expected.reason === 'invalid_cell') return [{ name, take, taps: response.taps, want: null }]

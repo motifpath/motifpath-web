@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { gradeMultiTap, placesOfNote } from '@/shared/utils/multiTap'
+import type { NoteWindow } from '@/shared/utils/multiTap'
+import type { CellPlace } from '@/shared/utils/fretboardCell'
 import golden from '@/api/generated/golden/practice-graders/multi_tap.v1.json'
 
 const instruments: Record<string, { tuning: string[] }> = golden.reference.instruments
@@ -9,15 +11,23 @@ const instruments: Record<string, { tuning: string[] }> = golden.reference.instr
 // agreement with what's recorded. A tap outside the window or off the instrument is the only
 // rejection a client can meet.
 describe('gradeMultiTap against the multi_tap.v1 golden cases', () => {
-  const cases = golden.cases.flatMap(({ name, item_key, response, expected }) => {
-    if (response.response_type !== 'multi_tap' || !('cells' in response)) return []
+  interface Case {
+    name: string
+    window: NoteWindow
+    cells: CellPlace[]
+    correct: boolean | null
+    places: CellPlace[] | null
+  }
+
+  const cases = golden.cases.flatMap(({ name, item_key, response, expected }): Case[] => {
+    if (response.response_type !== 'multi_tap' || !('cells' in response) || !response.fret_window) return []
     const [, layout = '', note = ''] = item_key.split(':')
     const tuning = instruments[layout]?.tuning
     if (!tuning) return []
     const window = { tuning, note, fromFret: response.fret_window.from_fret }
     if ('evidence' in expected && expected.evidence) {
-      const { correct, answer_key } = expected.evidence as { correct: boolean; answer_key: { cells: { string: number; fret: number }[] } }
-      return [{ name, window, cells: response.cells, correct: correct as boolean | null, places: answer_key.cells }]
+      const correct: boolean | null = expected.evidence.correct
+      return [{ name, window, cells: response.cells, correct, places: expected.evidence.answer_key.cells }]
     }
     if ('reason' in expected && expected.reason === 'invalid_cell') return [{ name, window, cells: response.cells, correct: null, places: null }]
     return []

@@ -5,6 +5,7 @@
  * right answer comes from the key, the numeral or the progression; every option must be a possible
  * answer, none twice, and the right answer and the pick must be among them.
  */
+import type { components } from '@/api/generated/event-ingestion'
 import {
   KEY_NUMERALS,
   NUMERAL_FUNCTION,
@@ -16,15 +17,23 @@ import {
   pitchClassOf,
 } from '@/shared/utils/harmony'
 
-export type GeneratedWay =
-  | 'numeral_to_chord'
-  | 'chord_to_numeral'
-  | 'chord_to_function'
-  | 'function_to_chord'
-  | 'chart_to_numbers'
-  | 'numbers_to_chart'
-  | 'cadence_then_chord'
-  | 'progression_by_number'
+export type GeneratedWay = components['schemas']['GeneratedChoiceWay']
+
+const WAYS: GeneratedWay[] = [
+  'numeral_to_chord',
+  'chord_to_numeral',
+  'chord_to_function',
+  'function_to_chord',
+  'chart_to_numbers',
+  'numbers_to_chart',
+  'cadence_then_chord',
+  'progression_by_number',
+]
+
+/** Whether a value read from elsewhere is a way a generated question is asked. */
+export function isGeneratedWay(value: string): value is GeneratedWay {
+  return WAYS.some((way) => way === value)
+}
 
 /** What a question asks: its way, its key, and its numeral or progression (by catalog key). */
 export interface GeneratedQuestion {
@@ -38,10 +47,7 @@ export interface GeneratedQuestion {
 export type ProgressionCatalog = Record<string, { bars: string[] }>
 
 /** What the student answered: the options as shown and the one picked. */
-export interface GeneratedAnswer {
-  options: string[]
-  choice: string
-}
+export type GeneratedAnswer = Pick<components['schemas']['GeneratedChoiceResponse'], 'options' | 'choice'>
 
 /** How one way reads its options, and which value is right; null when the question is unknown. */
 interface AnswerSpace {
@@ -119,11 +125,16 @@ export function rightAnswerOf(question: GeneratedQuestion, catalog: ProgressionC
 export function gradeGeneratedChoice(question: GeneratedQuestion, catalog: ProgressionCatalog, answer: GeneratedAnswer): boolean | null {
   const space = answerSpaceOf(question, catalog)
   if (!space) return null
-  const values = answer.options.map(space.identify)
-  if (values.some((v) => v === null) || new Set(values).size !== values.length || !values.includes(space.right)) return null
+  const values: string[] = []
+  for (const option of answer.options) {
+    const value = space.identify(option)
+    if (value === null) return null
+    values.push(value)
+  }
+  if (new Set(values).size !== values.length || !values.includes(space.right)) return null
   const picked = answer.options.indexOf(answer.choice)
   if (picked < 0) return null
-  if (question.way === 'function_to_chord' && !oneChordWithTheFunction(question, values as string[])) return null
+  if (question.way === 'function_to_chord' && !oneChordWithTheFunction(question, values)) return null
   return values[picked] === space.right
 }
 
