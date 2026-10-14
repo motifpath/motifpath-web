@@ -50,4 +50,10 @@ describe('MetricTile', () => {
 
     expect(wrapper.find('a').exists()).toBe(false)
   })
+
+  it('shows a value that is already worded, such as a share or a count out of a total', () => {
+    const wrapper = mount(MetricTile, { props: { label: '3+ sessions this week', value: '3 of 7' } })
+
+    expect(wrapper.get('[data-test="metric-value"]').text()).toBe('3 of 7')
+  })
 })

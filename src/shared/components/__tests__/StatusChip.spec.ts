@@ -30,4 +30,10 @@ describe('StatusChip', () => {
 
     expect(success.classes()).toEqual(expect.arrayContaining(['bg-success-muted', 'text-success']))
   })
+
+  it('paints a danger chip in the danger colours', () => {
+    const danger = mount(StatusChip, { props: { label: 'None yet', tone: 'danger' } })
+
+    expect(danger.classes()).toEqual(expect.arrayContaining(['bg-danger-muted', 'text-danger']))
+  })
 })
