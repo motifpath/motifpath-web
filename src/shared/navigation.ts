@@ -1,4 +1,4 @@
-import { Compass, Dumbbell, FileText, Grid3x3, Guitar, House, Library, Music, Network, Route } from 'lucide-vue-next'
+import { ChartColumn, Compass, Dumbbell, FileText, Grid3x3, Guitar, House, Library, Music, Network, Route } from 'lucide-vue-next'
 import type { FunctionalComponent } from 'vue'
 
 export type DestinationId = 'home' | 'practice' | 'myPath' | 'learning' | 'discover'
@@ -59,6 +59,7 @@ export type NavLabelKey =
   | 'nav.diagrams'
   | 'nav.knowledgeMap'
   | 'nav.songCharts'
+  | 'nav.engagement'
 
 export interface NavSection {
   /** Route name the section links to. */
@@ -81,4 +82,5 @@ export const TEACHER_SECTIONS: NavSection[] = [
 export const ADMIN_SECTIONS: NavSection[] = [
   { name: 'admin-knowledge-map', labelKey: 'nav.knowledgeMap', icon: Network },
   { name: 'admin-song-charts', labelKey: 'nav.songCharts', icon: Music },
+  { name: 'admin-alpha', labelKey: 'nav.engagement', icon: ChartColumn },
 ]

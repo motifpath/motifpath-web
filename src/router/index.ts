@@ -14,6 +14,8 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     /** Route additionally requires the signed-in identity's role to be one of these. */
     requiresRole?: Role[]
+    /** Where a role refused by `requiresRole` lands instead of home, such as a teacher sent to Teach. */
+    redirectWhenDenied?: Partial<Record<NonNullable<Role>, string>>
     /** Route wants a wider content column than the app's usual reading width. */
     wideContent?: boolean
     /** Route takes a phone's full height: the bottom navigation bar steps aside (the rail and sidebar stay). */
@@ -460,6 +462,28 @@ const routes: RouteRecordRaw[] = [
     props: true,
     beforeEnter: () => ensureAdminLocaleLoaded(),
     component: () => import('@/features/admin/views/SongChartPreviewView.vue'),
+  },
+  {
+    path: '/admin/alpha',
+    name: 'admin-alpha',
+    meta: { requiresAuth: true, requiresRole: ['admin'], redirectWhenDenied: { teacher: 'teach' } },
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/AlphaOverviewView.vue'),
+  },
+  {
+    path: '/admin/alpha/students/:studentId',
+    name: 'admin-alpha-student',
+    meta: { requiresAuth: true, requiresRole: ['admin'], redirectWhenDenied: { teacher: 'teach' } },
+    props: true,
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/AlphaStudentView.vue'),
+  },
+  {
+    path: '/admin/alpha/events',
+    name: 'admin-alpha-events',
+    meta: { requiresAuth: true, requiresRole: ['admin'], redirectWhenDenied: { teacher: 'teach' } },
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/AlphaEventsView.vue'),
   },
   {
     path: '/:pathMatch(.*)*',

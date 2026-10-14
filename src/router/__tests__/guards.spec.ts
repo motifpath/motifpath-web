@@ -207,6 +207,44 @@ describe('createAuthGuard', () => {
     expect(result).toEqual({ name: 'home' })
   })
 
+  it('sends a teacher away to the page the route names for their role', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+      getRole: () => 'teacher',
+    })
+
+    const result = await guard(
+      route({
+        meta: { requiresAuth: true, requiresRole: ['admin'], redirectWhenDenied: { teacher: 'teach' } },
+        name: 'admin-alpha',
+        fullPath: '/admin/alpha',
+      }),
+    )
+
+    expect(result).toEqual({ name: 'teach' })
+  })
+
+  it('sends a role the route names no page for to home', async () => {
+    const guard = createAuthGuard({
+      isReady: () => Promise.resolve(),
+      isSignedIn: () => true,
+      getRegistrationState: () => 'registered',
+      getRole: () => 'student',
+    })
+
+    const result = await guard(
+      route({
+        meta: { requiresAuth: true, requiresRole: ['admin'], redirectWhenDenied: { teacher: 'teach' } },
+        name: 'admin-alpha',
+        fullPath: '/admin/alpha',
+      }),
+    )
+
+    expect(result).toEqual({ name: 'home' })
+  })
+
   it('lets a registered teacher through a route requiring teacher/admin', async () => {
     const guard = createAuthGuard({
       isReady: () => Promise.resolve(),
