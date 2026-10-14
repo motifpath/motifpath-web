@@ -6,9 +6,11 @@ interface LoadMoreButtonProps {
   total: number
   loading?: boolean
   failed?: boolean
+  /** The button's words when the page names how many it loads, e.g. "Load 12 more". */
+  label?: string
 }
 
-withDefaults(defineProps<LoadMoreButtonProps>(), { loading: false, failed: false })
+withDefaults(defineProps<LoadMoreButtonProps>(), { loading: false, failed: false, label: undefined })
 
 const emit = defineEmits<{ load: [] }>()
 
@@ -26,7 +28,7 @@ const { t } = useTypedT()
       class="rounded-md border border-border bg-surface-raised px-4 py-2 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-50"
       @click="emit('load')"
     >
-      {{ t('loadMore.button') }}
+      {{ label ?? t('loadMore.button') }}
     </button>
   </div>
 </template>
