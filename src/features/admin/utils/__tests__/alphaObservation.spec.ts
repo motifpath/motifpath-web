@@ -12,8 +12,10 @@ import {
   lastActive,
   matchesStudentSearch,
   passesFilter,
+  runningWeekStart,
   shiftWeek,
   weekChip,
+  weekEndOf,
   weekRange,
 } from '@/features/admin/utils/alphaObservation'
 
@@ -248,5 +250,26 @@ describe('São Paulo dates', () => {
 
   it('names when an event was received to the second', () => {
     expect(alphaReceivedAt('2026-10-14T10:51:12Z', 'en')).toBe('14 Oct · 07:51:12')
+  })
+})
+
+describe('runningWeekStart', () => {
+  it('is the Monday of the week now falls in, São Paulo time', () => {
+    expect(runningWeekStart(new Date('2026-10-14T15:00:00Z'))).toBe('2026-10-12')
+  })
+
+  it('still counts late Sunday night in São Paulo as the week ending', () => {
+    // 01:30 UTC on Monday is 22:30 on Sunday in São Paulo.
+    expect(runningWeekStart(new Date('2026-10-19T01:30:00Z'))).toBe('2026-10-12')
+  })
+
+  it('starts the new week on Monday', () => {
+    expect(runningWeekStart(new Date('2026-10-19T03:00:00Z'))).toBe('2026-10-19')
+  })
+})
+
+describe('weekEndOf', () => {
+  it('is the Sunday of the week a Monday starts', () => {
+    expect(weekEndOf('2026-09-28')).toBe('2026-10-04')
   })
 })

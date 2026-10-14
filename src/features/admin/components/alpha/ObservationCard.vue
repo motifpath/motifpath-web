@@ -22,7 +22,6 @@ const path = computed(() => props.student.first_path)
 <template>
   <RouterLink
     :to="to"
-    :aria-label="t('engagement.student.open', { name: student.display_name })"
     class="flex flex-col gap-2 rounded-lg border border-border bg-surface-raised p-4 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
   >
     <span class="flex items-center gap-2">

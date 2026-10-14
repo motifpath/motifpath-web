@@ -33,6 +33,18 @@ export function shiftWeek(weekStart: string, weeks: number): string {
   return new Date(dateAtUtcMidnight(weekStart) + weeks * 7 * DAY_MS).toISOString().slice(0, 10)
 }
 
+/** The Monday of the week `now` falls in, in São Paulo, as a `YYYY-MM-DD` date. */
+export function runningWeekStart(now: Date): string {
+  const today = dateAtUtcMidnight(alphaDate(now))
+  const daysSinceMonday = (new Date(today).getUTCDay() + 6) % 7
+  return new Date(today - daysSinceMonday * DAY_MS).toISOString().slice(0, 10)
+}
+
+/** The Sunday that ends the week the given Monday starts. */
+export function weekEndOf(weekStart: string): string {
+  return new Date(dateAtUtcMidnight(weekStart) + 6 * DAY_MS).toISOString().slice(0, 10)
+}
+
 /** "12–18 Oct", or "28 Sep – 4 Oct" when the week runs into the next month. */
 export function weekRange(week: Pick<AlphaWeekRange, 'week_start' | 'week_end'>, locale: string): string {
   const monthOf = new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' })

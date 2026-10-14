@@ -29,7 +29,6 @@ const nodes = computed(() =>
 <template>
   <RouterLink
     :to="to"
-    :aria-label="t('engagement.student.open', { name: student.display_name })"
     class="grid grid-cols-[200px_130px_150px_1fr_84px_20px] items-center gap-4 rounded-lg bg-surface-raised px-4 py-3 hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
   >
     <span class="flex min-w-0 flex-col gap-0.5">

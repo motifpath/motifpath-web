@@ -268,8 +268,7 @@
       "weeksAtTarget": "{count} de {total} semanas com 3+",
       "noWeeksYet": "Nenhuma semana concluída ainda",
       "firstPathNodes": "{completed} de {total} nós · {percent}%",
-      "firstPathCard": "Primeiro caminho · {title} · {completed} de {total} · {percent}%",
-      "open": "Abrir {name}"
+      "firstPathCard": "Primeiro caminho · {title} · {completed} de {total} · {percent}%"
     },
     "lastActive": {
       "none": "Sem atividade",
@@ -375,6 +374,7 @@
     "empty": "Nenhum aluno está no alfa ainda. Um aluno entra quando recebe um caminho.",
     "loadFailed": "Não foi possível carregar o alfa.",
     "studentLoadFailed": "Não foi possível carregar este aluno.",
-    "eventsLoadFailed": "Não foi possível carregar os eventos."
+    "eventsLoadFailed": "Não foi possível carregar os eventos.",
+    "backLabel": "Voltar para Engajamento"
   }
 }

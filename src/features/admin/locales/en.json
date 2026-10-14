@@ -268,8 +268,7 @@
       "weeksAtTarget": "{count} of {total} weeks at 3+",
       "noWeeksYet": "No finished week yet",
       "firstPathNodes": "{completed} of {total} nodes · {percent}%",
-      "firstPathCard": "First path · {title} · {completed} of {total} · {percent}%",
-      "open": "Open {name}"
+      "firstPathCard": "First path · {title} · {completed} of {total} · {percent}%"
     },
     "lastActive": {
       "none": "No activity",
@@ -375,6 +374,7 @@
     "empty": "No student is in the alpha yet. A student joins once they are given a path.",
     "loadFailed": "Couldn't load the alpha.",
     "studentLoadFailed": "Couldn't load this student.",
-    "eventsLoadFailed": "Couldn't load the events."
+    "eventsLoadFailed": "Couldn't load the events.",
+    "backLabel": "Back to Engagement"
   }
 }
