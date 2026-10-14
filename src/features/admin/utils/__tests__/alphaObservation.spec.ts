@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import type { components } from '@/api/generated/core-domain'
 import type { components as eventComponents } from '@/api/generated/event-ingestion'
 import {
+  alphaDay,
+  alphaDayTime,
+  alphaReceivedAt,
   eventDetails,
   eventTypesOf,
   filterCounts,
@@ -226,5 +229,24 @@ describe('eventDetails', () => {
       { key: 'contentType', params: { type: 'video' } },
       { key: 'duration', params: { minutes: 6, seconds: 40 } },
     ])
+  })
+})
+
+describe('São Paulo dates', () => {
+  it('names a day by its date and short month', () => {
+    expect(alphaDay('2026-10-14T10:40:00Z', 'en')).toBe('14 Oct')
+    expect(alphaDay('2026-10-14T10:40:00Z', 'pt-BR')).toBe('14 out.')
+  })
+
+  it('reads the day in São Paulo, not in UTC', () => {
+    expect(alphaDay('2026-10-14T01:00:00Z', 'en')).toBe('13 Oct')
+  })
+
+  it('names a session start by weekday, date and time', () => {
+    expect(alphaDayTime('2026-10-14T10:40:00Z', 'en')).toBe('Wed 14 Oct · 07:40')
+  })
+
+  it('names when an event was received to the second', () => {
+    expect(alphaReceivedAt('2026-10-14T10:51:12Z', 'en')).toBe('14 Oct · 07:51:12')
   })
 })

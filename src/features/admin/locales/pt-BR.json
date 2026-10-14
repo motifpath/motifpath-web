@@ -217,5 +217,164 @@
     "notInCatalog": "“{symbol}” em {section}, linha {line}, não está no catálogo de acordes",
     "publishAgain": "Publicar de novo",
     "withdraw": "Retirar…"
+  },
+  "engagement": {
+    "title": "Engajamento",
+    "intro": "A métrica de sucesso do alfa para seus {count} alunos: 3 ou mais sessões de prática concluídas por semana e mais de 70% do primeiro caminho concluído. A semana vai de segunda a domingo, no horário de São Paulo; uma sessão conta quando é concluída.",
+    "stillRunning": "Esta semana ainda está em andamento.",
+    "week": {
+      "thisWeek": "Esta semana · {range}",
+      "lastWeek": "Semana passada · {range}",
+      "previous": "Semana anterior",
+      "next": "Próxima semana"
+    },
+    "tiles": {
+      "atTargetThisWeek": "3+ sessões nesta semana",
+      "atTargetThatWeek": "3+ sessões naquela semana",
+      "atTargetPreviousWeek": "Semana anterior: {count} de {total}",
+      "everyWeek": "3+ em todas as semanas até agora",
+      "everyWeekCaption": "Desde que cada um entrou",
+      "firstPathOver": "Primeiro caminho acima de 70%",
+      "firstPathOverCaption": "Meta: mais de 70%",
+      "median": "Mediana do primeiro caminho",
+      "medianCaption": "Dos nós do caminho concluídos",
+      "countOf": "{count} de {total}",
+      "percent": "{percent}%"
+    },
+    "filters": {
+      "all": "Todos · {count}",
+      "belowTarget": "Abaixo de 3 nesta semana · {count}",
+      "quiet": "Sem atividade há 7+ dias · {count}"
+    },
+    "search": "Buscar alunos",
+    "count": "{count} aluno · menos sessões nesta semana primeiro | {count} alunos · menos sessões nesta semana primeiro",
+    "noMatches": "Nenhum aluno encontrado.",
+    "columns": {
+      "student": "Aluno",
+      "thisWeek": "Esta semana",
+      "weeklySessions": "Sessões por semana",
+      "firstPath": "Primeiro caminho",
+      "lastActive": "Última atividade"
+    },
+    "chip": {
+      "none": "Nenhuma ainda",
+      "toGo": "Faltam {count}",
+      "onTarget": "Na meta"
+    },
+    "student": {
+      "joined": "Entrou em {date}",
+      "sessions": "{count} sessão | {count} sessões",
+      "sessionsThisWeek": "{count} sessão nesta semana | {count} sessões nesta semana",
+      "weeksAtTarget": "{count} de {total} semanas com 3+",
+      "noWeeksYet": "Nenhuma semana concluída ainda",
+      "firstPathNodes": "{completed} de {total} nós · {percent}%",
+      "firstPathCard": "Primeiro caminho · {title} · {completed} de {total} · {percent}%",
+      "open": "Abrir {name}"
+    },
+    "lastActive": {
+      "none": "Sem atividade",
+      "today": "Hoje",
+      "todayAt": "hoje às {time}",
+      "yesterday": "Ontem",
+      "daysAgo": "há {count} dia | há {count} dias"
+    },
+    "studentScreen": {
+      "subtitle": "Entrou em {joined} · primeiro caminho: {path} · última atividade {lastActive}",
+      "seeEvents": "Ver eventos",
+      "sessionsTile": "Sessões nesta semana",
+      "sessionsThatWeekTile": "Sessões naquela semana",
+      "sessionsCaption": "{chip} · meta 3+",
+      "weeksTile": "Semanas com 3+",
+      "weeksCaption": "Cada semana concluída desde que entrou",
+      "firstPathTile": "Primeiro caminho",
+      "firstPathCaption": "{completed} de {total} nós · meta mais de 70%",
+      "summaryWeek": "nesta semana",
+      "summaryWeeks": "semanas com 3+",
+      "summaryPath": "primeiro caminho",
+      "tabs": {
+        "sessions": "Sessões",
+        "firstPath": "Primeiro caminho",
+        "events": "Eventos"
+      },
+      "sessionsTitle": "Sessões",
+      "onlyFinishedCount": "Só sessões concluídas contam para 3+.",
+      "onlyFinishedCountLong": "Só sessões concluídas contam para 3+. As encerradas antes e as abandonadas aparecem para você ver por que uma semana ficou abaixo.",
+      "weekGroup": "{label} · {count} concluídas",
+      "noSessions": "Nenhuma sessão naquela semana.",
+      "earlierWeeks": "Semanas anteriores · {range}",
+      "firstPathTitle": "Primeiro caminho",
+      "firstPathAssigned": "{title} · atribuído em {date}",
+      "firstPathProgress": "{completed} de {total} nós · {percent}% · meta mais de 70%",
+      "nodeStarted": "Começou em {date}",
+      "nodeStatus": {
+        "completed": "Concluído",
+        "in_progress": "Em andamento",
+        "not_started": "Não começado"
+      }
+    },
+    "session": {
+      "planned": "{minutes} min planejados",
+      "took": "levou {minutes} min",
+      "leftAfter": "saiu após {minutes} min",
+      "silentAfter": "parou após {minutes} min",
+      "items": "{count} item respondido | {count} itens respondidos",
+      "state": {
+        "finished": "Concluída",
+        "ended_early": "Encerrada antes",
+        "abandoned": "Abandonada",
+        "in_progress": "Em andamento"
+      }
+    },
+    "events": {
+      "title": "Eventos",
+      "intro": "Cada evento de acompanhamento como foi recebido, do mais recente ao mais antigo. Nada aqui pode ser alterado.",
+      "studentLabel": "Aluno",
+      "typeLabel": "Tipo",
+      "allStudents": "Todos os alunos",
+      "allTypes": "Todos",
+      "groups": {
+        "practice_sessions": "Sessões de prática",
+        "answers": "Respostas",
+        "lessons": "Lições",
+        "exercises": "Exercícios",
+        "song_charts": "Cifras"
+      },
+      "count": "{count} evento · mostrando os {shown} mais recentes | {count} eventos · mostrando os {shown} mais recentes",
+      "countFor": "{count} evento de {name} · mostrando os {shown} mais recentes | {count} eventos de {name} · mostrando os {shown} mais recentes",
+      "none": "Nenhum evento encontrado.",
+      "loadMore": "Carregar mais 12",
+      "columns": {
+        "received": "Recebido",
+        "student": "Aluno",
+        "event": "Evento",
+        "details": "Detalhes"
+      },
+      "unknownStudent": "Aluno desconhecido",
+      "detail": {
+        "session": "sessão {id}…",
+        "minutesPlanned": "{minutes} min planejados",
+        "leftEarly": "saiu antes",
+        "notLeftEarly": "não saiu antes",
+        "itemsAnswered": "{count} item respondido | {count} itens respondidos",
+        "responseType": "{type}",
+        "seconds": "{seconds} s",
+        "medianTap": "mediana {ms} ms",
+        "taps": "{count} toque | {count} toques",
+        "node": "nó {id}…",
+        "contentType": "{type}",
+        "duration": "assistiu {minutes} min {seconds} s",
+        "exercise": "exercício {id}…",
+        "source": "{source}",
+        "elapsed": "{seconds} s decorridos",
+        "outcome": "{outcome}",
+        "score": "nota {score}",
+        "songChart": "cifra {id}… · revisão {revision}",
+        "chordSource": "pela {source}"
+      }
+    },
+    "empty": "Nenhum aluno está no alfa ainda. Um aluno entra quando recebe um caminho.",
+    "loadFailed": "Não foi possível carregar o alfa.",
+    "studentLoadFailed": "Não foi possível carregar este aluno.",
+    "eventsLoadFailed": "Não foi possível carregar os eventos."
   }
 }

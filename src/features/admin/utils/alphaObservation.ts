@@ -61,6 +61,24 @@ export function matchesStudentSearch(name: string, query: string): boolean {
   return wanted === '' || foldForSearch(name).includes(wanted)
 }
 
+/** "14 Oct": a day in São Paulo, by its date and short month. */
+export function alphaDay(iso: string, locale: string): string {
+  const parts = alphaParts(iso, locale, { day: 'numeric', month: 'short' })
+  return `${parts.day} ${parts.month}`
+}
+
+/** "Tue 14 Oct · 07:40": when a session started, in São Paulo. */
+export function alphaDayTime(iso: string, locale: string): string {
+  const parts = alphaParts(iso, locale, { weekday: 'short', day: 'numeric', month: 'short' })
+  return `${parts.weekday} ${parts.day} ${parts.month} · ${alphaTime(new Date(iso))}`
+}
+
+/** "14 Oct · 07:51:12": when an event was received, in São Paulo, to the second. */
+export function alphaReceivedAt(iso: string, locale: string): string {
+  const seconds = new Intl.DateTimeFormat('en-GB', { timeZone: ALPHA_TIME_ZONE, second: '2-digit' }).format(new Date(iso))
+  return `${alphaDay(iso, locale)} · ${alphaTime(new Date(iso))}:${seconds.padStart(2, '0')}`
+}
+
 export type StudentFilter = 'all' | 'belowTarget' | 'quiet'
 
 export function passesFilter(student: AlphaStudent, filter: StudentFilter): boolean {
@@ -93,9 +111,30 @@ export function eventTypesOf(group: EventTypeGroup): EventType[] {
   return EVENT_TYPES_BY_GROUP[group]
 }
 
+export type EventDetailKey =
+  | 'session'
+  | 'minutesPlanned'
+  | 'leftEarly'
+  | 'notLeftEarly'
+  | 'itemsAnswered'
+  | 'responseType'
+  | 'seconds'
+  | 'medianTap'
+  | 'taps'
+  | 'node'
+  | 'contentType'
+  | 'duration'
+  | 'exercise'
+  | 'source'
+  | 'elapsed'
+  | 'outcome'
+  | 'score'
+  | 'songChart'
+  | 'chordSource'
+
 /** One piece of an event's details line; the screen turns `key` into words. */
 export interface EventDetail {
-  key: string
+  key: EventDetailKey
   params: Record<string, string | number>
 }
 
@@ -164,7 +203,7 @@ function songChartDetails(event: SongChartEvent): EventDetail[] {
   return parts
 }
 
-function detail(key: string, params: Record<string, string | number> = {}): EventDetail {
+function detail(key: EventDetailKey, params: Record<string, string | number> = {}): EventDetail {
   return { key, params }
 }
 
@@ -185,6 +224,11 @@ function alphaDate(at: Date): string {
 
 function alphaTime(at: Date): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone: ALPHA_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at)
+}
+
+function alphaParts(iso: string, locale: string, options: Intl.DateTimeFormatOptions): Partial<Record<Intl.DateTimeFormatPartTypes, string>> {
+  const parts = new Intl.DateTimeFormat(locale, { ...options, timeZone: ALPHA_TIME_ZONE }).formatToParts(new Date(iso))
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]))
 }
 
 function foldForSearch(text: string): string {

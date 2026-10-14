@@ -217,5 +217,164 @@
     "notInCatalog": "“{symbol}” in {section}, line {line}, isn’t in the chord catalog",
     "publishAgain": "Publish again",
     "withdraw": "Withdraw…"
+  },
+  "engagement": {
+    "title": "Engagement",
+    "intro": "The alpha's success metric for its {count} students: 3 or more finished practice sessions a week, and more than 70% of the first path completed. A week runs Monday to Sunday, São Paulo time; a session counts once it is finished.",
+    "stillRunning": "This week is still running.",
+    "week": {
+      "thisWeek": "This week · {range}",
+      "lastWeek": "Last week · {range}",
+      "previous": "Previous week",
+      "next": "Next week"
+    },
+    "tiles": {
+      "atTargetThisWeek": "3+ sessions this week",
+      "atTargetThatWeek": "3+ sessions that week",
+      "atTargetPreviousWeek": "Week before: {count} of {total}",
+      "everyWeek": "3+ every week so far",
+      "everyWeekCaption": "Since each one joined",
+      "firstPathOver": "First path over 70%",
+      "firstPathOverCaption": "Target: more than 70%",
+      "median": "Median first path",
+      "medianCaption": "Of the path's nodes completed",
+      "countOf": "{count} of {total}",
+      "percent": "{percent}%"
+    },
+    "filters": {
+      "all": "All · {count}",
+      "belowTarget": "Below 3 this week · {count}",
+      "quiet": "Quiet 7+ days · {count}"
+    },
+    "search": "Search students",
+    "count": "{count} student · fewest sessions this week first | {count} students · fewest sessions this week first",
+    "noMatches": "No student matches.",
+    "columns": {
+      "student": "Student",
+      "thisWeek": "This week",
+      "weeklySessions": "Weekly sessions",
+      "firstPath": "First path",
+      "lastActive": "Last active"
+    },
+    "chip": {
+      "none": "None yet",
+      "toGo": "{count} to go",
+      "onTarget": "On target"
+    },
+    "student": {
+      "joined": "Joined {date}",
+      "sessions": "{count} session | {count} sessions",
+      "sessionsThisWeek": "{count} session this week | {count} sessions this week",
+      "weeksAtTarget": "{count} of {total} weeks at 3+",
+      "noWeeksYet": "No finished week yet",
+      "firstPathNodes": "{completed} of {total} nodes · {percent}%",
+      "firstPathCard": "First path · {title} · {completed} of {total} · {percent}%",
+      "open": "Open {name}"
+    },
+    "lastActive": {
+      "none": "No activity",
+      "today": "Today",
+      "todayAt": "today at {time}",
+      "yesterday": "Yesterday",
+      "daysAgo": "{count} day ago | {count} days ago"
+    },
+    "studentScreen": {
+      "subtitle": "Joined {joined} · first path: {path} · last active {lastActive}",
+      "seeEvents": "See events",
+      "sessionsTile": "Sessions this week",
+      "sessionsThatWeekTile": "Sessions that week",
+      "sessionsCaption": "{chip} · target 3+",
+      "weeksTile": "Weeks at 3+",
+      "weeksCaption": "Every finished week since joining",
+      "firstPathTile": "First path",
+      "firstPathCaption": "{completed} of {total} nodes · target more than 70%",
+      "summaryWeek": "this week",
+      "summaryWeeks": "weeks at 3+",
+      "summaryPath": "first path",
+      "tabs": {
+        "sessions": "Sessions",
+        "firstPath": "First path",
+        "events": "Events"
+      },
+      "sessionsTitle": "Sessions",
+      "onlyFinishedCount": "Only finished sessions count toward 3+.",
+      "onlyFinishedCountLong": "Only finished sessions count toward 3+. Ended early and abandoned ones are listed so you can see why a week fell short.",
+      "weekGroup": "{label} · {count} finished",
+      "noSessions": "No session that week.",
+      "earlierWeeks": "Earlier weeks · {range}",
+      "firstPathTitle": "First path",
+      "firstPathAssigned": "{title} · assigned {date}",
+      "firstPathProgress": "{completed} of {total} nodes · {percent}% · target more than 70%",
+      "nodeStarted": "Started {date}",
+      "nodeStatus": {
+        "completed": "Completed",
+        "in_progress": "In progress",
+        "not_started": "Not started"
+      }
+    },
+    "session": {
+      "planned": "{minutes} min planned",
+      "took": "took {minutes} min",
+      "leftAfter": "left after {minutes} min",
+      "silentAfter": "silent after {minutes} min",
+      "items": "{count} item answered | {count} items answered",
+      "state": {
+        "finished": "Finished",
+        "ended_early": "Ended early",
+        "abandoned": "Abandoned",
+        "in_progress": "In progress"
+      }
+    },
+    "events": {
+      "title": "Events",
+      "intro": "Every tracking event as it was received, newest first. Nothing here can be changed.",
+      "studentLabel": "Student",
+      "typeLabel": "Type",
+      "allStudents": "All students",
+      "allTypes": "All",
+      "groups": {
+        "practice_sessions": "Practice sessions",
+        "answers": "Answers",
+        "lessons": "Lessons",
+        "exercises": "Exercises",
+        "song_charts": "Song charts"
+      },
+      "count": "{count} event · showing the latest {shown} | {count} events · showing the latest {shown}",
+      "countFor": "{count} event for {name} · showing the latest {shown} | {count} events for {name} · showing the latest {shown}",
+      "none": "No event matches.",
+      "loadMore": "Load 12 more",
+      "columns": {
+        "received": "Received",
+        "student": "Student",
+        "event": "Event",
+        "details": "Details"
+      },
+      "unknownStudent": "Unknown student",
+      "detail": {
+        "session": "session {id}…",
+        "minutesPlanned": "{minutes} min planned",
+        "leftEarly": "left early",
+        "notLeftEarly": "not left early",
+        "itemsAnswered": "{count} item answered | {count} items answered",
+        "responseType": "{type}",
+        "seconds": "{seconds} s",
+        "medianTap": "median {ms} ms",
+        "taps": "{count} tap | {count} taps",
+        "node": "node {id}…",
+        "contentType": "{type}",
+        "duration": "watched {minutes} min {seconds} s",
+        "exercise": "exercise {id}…",
+        "source": "{source}",
+        "elapsed": "{seconds} s in",
+        "outcome": "{outcome}",
+        "score": "score {score}",
+        "songChart": "chart {id}… · revision {revision}",
+        "chordSource": "from the {source}"
+      }
+    },
+    "empty": "No student is in the alpha yet. A student joins once they are given a path.",
+    "loadFailed": "Couldn't load the alpha.",
+    "studentLoadFailed": "Couldn't load this student.",
+    "eventsLoadFailed": "Couldn't load the events."
   }
 }
