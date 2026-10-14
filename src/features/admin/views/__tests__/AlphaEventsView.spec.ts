@@ -129,4 +129,41 @@ describe('AlphaEventsView', () => {
 
     expect(wrapper.get('[data-test="breadcrumb"]').attributes('href')).toBe('/admin/alpha')
   })
+
+  it('lays events out in columns only where the columns fit', async () => {
+    const wide = await mountEvents()
+    expect(wide.find('[data-test="event-columns"]').exists()).toBe(true)
+    expect(wide.findAll('[data-test="event-row"]')[0]!.attributes('data-layout')).toBe('columns')
+
+    mockViewport(900)
+    const narrow = await mountEvents()
+    expect(narrow.find('[data-test="event-columns"]').exists()).toBe(false)
+    expect(narrow.findAll('[data-test="event-row"]')[0]!.attributes('data-layout')).toBe('stacked')
+  })
+
+  it("names someone outside the alpha by the start of their id, so they can still be told apart", async () => {
+    eventGET.mockResolvedValue({
+      data: {
+        items: [makeLoggedEvent({ event: { ...makeLoggedEvent().event, student_id: '1a2b3c4d-0000-4000-8000-000000000009' } })],
+        total: 1,
+        limit: 12,
+        offset: 0,
+      },
+    })
+
+    const wrapper = await mountEvents()
+
+    expect(wrapper.get('[data-test="event-student"]').text()).toBe('User 1a2b3c4d…')
+  })
+
+  it("says so when the students can't be loaded, and loads them again on retry", async () => {
+    coreGET.mockResolvedValueOnce({ error: {}, response: new Response(null, { status: 500 }) })
+
+    const wrapper = await mountEvents()
+
+    expect(wrapper.get('[data-test="students-error"]').text()).toContain("Couldn't load the students.")
+    await wrapper.get('[data-test="students-error"] [data-test="retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('[data-test^="student-chip-"]')).toHaveLength(8)
+  })
 })

@@ -10,6 +10,7 @@ import EventLog from '@/features/admin/components/alpha/EventLog.vue'
 import { useAlphaObservation } from '@/features/admin/composables/useAlphaObservation'
 import { EVENT_TYPE_GROUPS, type EventTypeGroup } from '@/features/admin/utils/alphaObservation'
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
 import PageBackBar from '@/shared/components/PageBackBar.vue'
 import TeachShell from '@/shared/components/TeachShell.vue'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
@@ -20,7 +21,7 @@ const route = useRoute()
 const { sizeClass } = useSizeClass()
 
 // The students' names come from the running week's observation, which lists everyone in the alpha.
-const { observation } = useAlphaObservation(ref(undefined))
+const { observation, error: studentsFailed, retry: retryStudents } = useAlphaObservation(ref(undefined))
 const students = computed(() => observation.value?.students ?? [])
 const names = computed(() => Object.fromEntries(students.value.map((s) => [s.student_id, s.display_name])))
 
@@ -46,6 +47,9 @@ const typeGroup = ref<EventTypeGroup | null>(null)
       <h1 class="text-[28px] font-bold leading-[34px] text-ink">{{ t('engagement.events.title') }}</h1>
       <p class="text-sm text-ink-muted">{{ t('engagement.events.intro') }}</p>
 
+      <div v-if="studentsFailed" data-test="students-error">
+        <LoadFailed :message="t('engagement.studentsLoadFailed')" @retry="retryStudents" />
+      </div>
       <div class="flex flex-wrap items-center gap-x-2" role="group" :aria-label="t('engagement.events.studentLabel')">
         <span class="text-xs font-semibold uppercase tracking-wider text-ink-muted">{{ t('engagement.events.studentLabel') }}</span>
         <ChoiceChip data-test="student-chip-all" :label="t('engagement.events.allStudents')" :selected="studentId === null" @toggle="studentId = null" />

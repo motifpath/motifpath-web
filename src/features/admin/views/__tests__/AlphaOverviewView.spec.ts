@@ -143,9 +143,14 @@ describe('AlphaOverviewView', () => {
     expect(link.attributes('href')).toBe('/admin/alpha/students/s-camila?week=2026-10-05')
   })
 
-  it('shows a row per student on a wide screen and a card per student on a phone', async () => {
+  it('shows a row per student only where the columns fit, and a card per student otherwise', async () => {
     const wide = await mountOverview()
     expect(wide.wrapper.findAll('[data-test="observation-row"]')).toHaveLength(7)
+
+    mockViewport(900)
+    const narrowWide = await mountOverview()
+    expect(narrowWide.wrapper.findAll('[data-test="observation-card"]')).toHaveLength(7)
+    expect(narrowWide.wrapper.find('[data-test="observation-row"]').exists()).toBe(false)
 
     mockViewport(390)
     const narrow = await mountOverview()

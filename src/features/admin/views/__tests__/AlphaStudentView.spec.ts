@@ -145,6 +145,16 @@ describe('AlphaStudentView', () => {
     expect(wrapper.get('[data-test="breadcrumb"]').attributes('href')).toBe('/admin/alpha?week=2026-10-05')
   })
 
+  it('uses the phone layout on a tablet, in its narrow column', async () => {
+    mockViewport(700)
+
+    const { wrapper } = await mountStudent()
+
+    expect(wrapper.findAll('[data-test="summary-value"]')).toHaveLength(3)
+    expect(wrapper.findAll('[role="radio"]').map((tab) => tab.text())).toEqual(['Sessions', 'First path', 'Events'])
+    expect(wrapper.find('[data-test="metric-value"]').exists()).toBe(false)
+  })
+
   describe('on a phone', () => {
     beforeEach(() => mockViewport(390))
 

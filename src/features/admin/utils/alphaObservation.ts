@@ -220,7 +220,7 @@ function detail(key: EventDetailKey, params: Record<string, string | number> = {
 }
 
 /** The first block of a UUID: enough to tell events apart on one screen. */
-function shortId(id: string): string {
+export function shortId(id: string): string {
   return id.split('-')[0] ?? id
 }
 

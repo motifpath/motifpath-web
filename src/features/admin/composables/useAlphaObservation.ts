@@ -1,4 +1,4 @@
-import { ref, shallowRef, watch, type Ref } from 'vue'
+import { computed, ref, shallowRef, watch, type Ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { components as eventComponents } from '@/api/generated/event-ingestion'
@@ -52,7 +52,20 @@ export function useLoggedEvents(studentId: Ref<string | null>, typeGroup: Ref<Ev
   )
   watch([studentId, typeGroup], () => void list.reload())
 
-  return { ...list, events: list.items }
+  // Paging is by offset over a log that keeps growing at the top, so each event that arrives
+  // between two loads pushes one already-shown event into the next page.
+  const events = computed(() => uniqueEvents(list.items.value))
+
+  return { ...list, events }
+}
+
+function uniqueEvents(logged: LoggedEvent[]): LoggedEvent[] {
+  const seen = new Set<string>()
+  return logged.filter((entry) => {
+    if (seen.has(entry.event.event_id)) return false
+    seen.add(entry.event.event_id)
+    return true
+  })
 }
 
 function weekQuery(week: string | undefined): { week?: string } {

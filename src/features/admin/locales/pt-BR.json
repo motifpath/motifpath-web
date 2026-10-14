@@ -348,7 +348,6 @@
         "event": "Evento",
         "details": "Detalhes"
       },
-      "unknownStudent": "Aluno desconhecido",
       "detail": {
         "session": "sessão {id}…",
         "minutesPlanned": "{minutes} min planejados",
@@ -369,12 +368,14 @@
         "score": "nota {score}",
         "songChart": "cifra {id}… · revisão {revision}",
         "chordSource": "pela {source}"
-      }
+      },
+      "otherUser": "Usuário {id}…"
     },
     "empty": "Nenhum aluno está no alfa ainda. Um aluno entra quando recebe um caminho.",
     "loadFailed": "Não foi possível carregar o alfa.",
     "studentLoadFailed": "Não foi possível carregar este aluno.",
     "eventsLoadFailed": "Não foi possível carregar os eventos.",
-    "backLabel": "Voltar para Engajamento"
+    "backLabel": "Voltar para Engajamento",
+    "studentsLoadFailed": "Não foi possível carregar os alunos."
   }
 }

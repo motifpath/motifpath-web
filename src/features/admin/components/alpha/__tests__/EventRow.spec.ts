@@ -6,7 +6,7 @@ import { makeLoggedEvent } from '@/shared/testUtils/alphaObservation'
 
 describe('EventRow', () => {
   it('shows when it was received, whose it is, its exact type and its details', () => {
-    const wrapper = mount(EventRow, { props: { logged: makeLoggedEvent(), studentName: 'Camila Duarte' } })
+    const wrapper = mount(EventRow, { props: { logged: makeLoggedEvent(), studentName: 'Camila Duarte', layout: 'columns' } })
 
     expect(wrapper.get('[data-test="event-received"]').text()).toBe('14 Oct · 07:51:12')
     expect(wrapper.get('[data-test="event-student"]').text()).toBe('Camila Duarte')

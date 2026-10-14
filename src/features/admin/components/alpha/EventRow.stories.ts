@@ -7,13 +7,14 @@ import EventRow from './EventRow.vue'
 const meta = {
   title: 'Engagement/EventRow',
   component: EventRow,
-  args: { logged: makeLoggedEvent(), studentName: 'Camila Duarte' },
+  args: { logged: makeLoggedEvent(), studentName: 'Camila Duarte', layout: 'columns' },
+  globals: { viewport: { value: 'expanded' } },
 } satisfies Meta<typeof EventRow>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
 export const SessionEnded: Story = {}
-export const Compact: Story = { globals: { viewport: { value: 'compact' } } }
-export const LongPortuguese: Story = { globals: { locale: 'pt-BR' } }
+export const Stacked: Story = { args: { layout: 'stacked' }, globals: { viewport: { value: 'compact' } } }
+export const LongPortuguese: Story = { args: { layout: 'stacked' }, globals: { locale: 'pt-BR', viewport: { value: 'compact' } } }
 export const Dark: Story = { globals: { theme: 'dark' } }

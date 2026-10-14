@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * One student of the alpha for one week: the same measures as the overview, the practice sessions
- * behind them in every state, and the first path node by node. On a phone the three parts are
- * tabs. Read-only.
+ * behind them in every state, and the first path node by node. On a phone or a tablet the three
+ * parts are tabs. Read-only.
  */
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -102,8 +102,8 @@ function showEarlierWeeks() {
   void router.push({ name: 'admin-alpha-student', params: { studentId: props.studentId }, query: { week: shiftWeek(observation.value.week.week_start, -2) } })
 }
 
-const showSessions = computed(() => sizeClass.value !== 'compact' || tab.value === 'sessions')
-const showFirstPath = computed(() => sizeClass.value !== 'compact' || tab.value === 'firstPath')
+const showSessions = computed(() => sizeClass.value === 'expanded' || tab.value === 'sessions')
+const showFirstPath = computed(() => sizeClass.value === 'expanded' || tab.value === 'firstPath')
 </script>
 
 <template>
@@ -130,7 +130,7 @@ const showFirstPath = computed(() => sizeClass.value !== 'compact' || tab.value 
         <div class="flex flex-wrap items-center gap-3">
           <h1 class="flex-1 text-[28px] font-bold leading-[34px] text-ink">{{ student.display_name }}</h1>
           <RouterLink
-            v-if="sizeClass !== 'compact'"
+            v-if="sizeClass === 'expanded'"
             data-test="see-events"
             :to="eventsRoute"
             class="flex h-12 items-center rounded-full border border-accent px-6 text-base font-semibold text-accent-text hover:bg-accent-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -141,7 +141,7 @@ const showFirstPath = computed(() => sizeClass.value !== 'compact' || tab.value 
         <p class="text-sm text-ink-muted">{{ subtitle }}</p>
 
         <WeekSummary
-          v-if="sizeClass === 'compact'"
+          v-if="sizeClass !== 'expanded'"
           :sessions="student.finished_sessions_in_week"
           :weeks-at-target="student.weeks_at_target_count"
           :weeks-so-far="student.weeks_so_far_count"
@@ -151,14 +151,14 @@ const showFirstPath = computed(() => sizeClass.value !== 'compact' || tab.value 
           <MetricTile v-for="tile in tiles" :key="tile.label" :label="tile.label" :value="tile.value" :caption="tile.caption" />
         </div>
 
-        <SegmentedControl v-if="sizeClass === 'compact'" v-model="tab" :label="student.display_name" :options="tabOptions" test-id-prefix="student-tab" />
+        <SegmentedControl v-if="sizeClass !== 'expanded'" v-model="tab" :label="student.display_name" :options="tabOptions" test-id-prefix="student-tab" />
 
         <div class="flex flex-col gap-4" :class="{ 'lg:grid lg:grid-cols-[1fr_320px] lg:items-start': sizeClass === 'expanded' }">
           <section v-if="showSessions" class="flex flex-col overflow-hidden rounded-lg border border-border bg-surface-raised">
             <header class="flex flex-col gap-1 px-4 pb-2 pt-4">
-              <h2 v-if="sizeClass !== 'compact'" class="text-xl font-semibold text-ink">{{ t('engagement.studentScreen.sessionsTitle') }}</h2>
+              <h2 v-if="sizeClass === 'expanded'" class="text-xl font-semibold text-ink">{{ t('engagement.studentScreen.sessionsTitle') }}</h2>
               <p class="text-xs text-ink-muted">
-                {{ t(sizeClass === 'compact' ? 'engagement.studentScreen.onlyFinishedCount' : 'engagement.studentScreen.onlyFinishedCountLong') }}
+                {{ t(sizeClass !== 'expanded' ? 'engagement.studentScreen.onlyFinishedCount' : 'engagement.studentScreen.onlyFinishedCountLong') }}
               </p>
             </header>
             <template v-for="sessionWeek in observation.session_weeks" :key="sessionWeek.week.week_start">
@@ -180,7 +180,7 @@ const showFirstPath = computed(() => sizeClass.value !== 'compact' || tab.value 
 
           <section v-if="showFirstPath" class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4">
             <div class="flex flex-col gap-1.5">
-              <h2 v-if="sizeClass !== 'compact'" class="text-xl font-semibold text-ink">{{ t('engagement.studentScreen.firstPathTitle') }}</h2>
+              <h2 v-if="sizeClass === 'expanded'" class="text-xl font-semibold text-ink">{{ t('engagement.studentScreen.firstPathTitle') }}</h2>
               <p class="text-xs text-ink-muted">{{ t('engagement.studentScreen.firstPathAssigned', { title: path.title, date: alphaDay(path.given_at, locale) }) }}</p>
               <FirstPathBar :percent="path.completed_percent" :label="pathProgress" />
               <p class="text-xs text-ink">{{ pathProgress }}</p>
@@ -192,7 +192,7 @@ const showFirstPath = computed(() => sizeClass.value !== 'compact' || tab.value 
             </ol>
           </section>
 
-          <EventLog v-if="sizeClass === 'compact' && tab === 'events'" :student-id="studentId" :type-group="null" :names="{ [studentId]: student.display_name }" />
+          <EventLog v-if="sizeClass !== 'expanded' && tab === 'events'" :student-id="studentId" :type-group="null" :names="{ [studentId]: student.display_name }" />
         </div>
       </template>
     </main>

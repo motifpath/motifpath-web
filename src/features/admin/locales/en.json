@@ -348,7 +348,6 @@
         "event": "Event",
         "details": "Details"
       },
-      "unknownStudent": "Unknown student",
       "detail": {
         "session": "session {id}…",
         "minutesPlanned": "{minutes} min planned",
@@ -369,12 +368,14 @@
         "score": "score {score}",
         "songChart": "chart {id}… · revision {revision}",
         "chordSource": "from the {source}"
-      }
+      },
+      "otherUser": "User {id}…"
     },
     "empty": "No student is in the alpha yet. A student joins once they are given a path.",
     "loadFailed": "Couldn't load the alpha.",
     "studentLoadFailed": "Couldn't load this student.",
     "eventsLoadFailed": "Couldn't load the events.",
-    "backLabel": "Back to Engagement"
+    "backLabel": "Back to Engagement",
+    "studentsLoadFailed": "Couldn't load the students."
   }
 }

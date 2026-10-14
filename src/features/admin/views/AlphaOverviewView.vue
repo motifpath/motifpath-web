@@ -11,6 +11,7 @@ import ObservationCard from '@/features/admin/components/alpha/ObservationCard.v
 import ObservationRow from '@/features/admin/components/alpha/ObservationRow.vue'
 import WeekStepper from '@/features/admin/components/alpha/WeekStepper.vue'
 import { useAlphaObservation } from '@/features/admin/composables/useAlphaObservation'
+import { useFitsColumns } from '@/features/admin/composables/useFitsColumns'
 import { useWeekLabel } from '@/features/admin/composables/useWeekLabel'
 import { filterCounts, matchesStudentSearch, passesFilter, shiftWeek, type StudentFilter } from '@/features/admin/utils/alphaObservation'
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
@@ -28,6 +29,7 @@ const route = useRoute()
 const router = useRouter()
 const { sizeClass } = useSizeClass()
 const weekLabel = useWeekLabel()
+const fitsColumns = useFitsColumns()
 
 const week = computed(() => (typeof route.query.week === 'string' ? route.query.week : undefined))
 const { observation, isLoading, error, retry } = useAlphaObservation(week)
@@ -125,7 +127,7 @@ function studentRoute(studentId: string) {
           <p class="text-xs font-medium text-ink-muted">{{ t('engagement.count', { count: shown.length }) }}</p>
 
           <p v-if="shown.length === 0" data-test="no-matches" class="text-sm text-ink-muted">{{ t('engagement.noMatches') }}</p>
-          <template v-else-if="sizeClass === 'expanded'">
+          <template v-else-if="fitsColumns">
             <div class="grid grid-cols-[200px_130px_150px_1fr_84px_20px] gap-4 px-4 text-xs font-semibold uppercase tracking-wider text-ink-muted" aria-hidden="true">
               <span>{{ t('engagement.columns.student') }}</span>
               <span>{{ t('engagement.columns.thisWeek') }}</span>

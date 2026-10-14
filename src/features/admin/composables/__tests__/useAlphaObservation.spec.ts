@@ -88,8 +88,9 @@ describe('useAlphaStudentObservation', () => {
 })
 
 describe('useLoggedEvents', () => {
-  function page(count: number, total: number) {
-    return ok({ items: Array.from({ length: count }, (_, i) => ({ received_at: `t-${i}` })), total, limit: 12, offset: 0 })
+  function page(count: number, total: number, from = 0) {
+    const items = Array.from({ length: count }, (_, i) => ({ received_at: `t-${from + i}`, event: { event_id: `e-${from + i}` } }))
+    return ok({ items, total, limit: 12, offset: from })
   }
 
   it('loads the newest 12 events of every student and type', async () => {
@@ -121,7 +122,7 @@ describe('useLoggedEvents', () => {
   })
 
   it('adds the next 12 below the ones shown', async () => {
-    eventGET.mockReturnValueOnce(page(12, 20)).mockReturnValueOnce(page(8, 20))
+    eventGET.mockReturnValueOnce(page(12, 20)).mockReturnValueOnce(page(8, 20, 12))
     const { events, isLoading, loadMore } = useLoggedEvents(ref(null), ref(null))
     await vi.waitFor(() => expect(isLoading.value).toBe(false))
 
@@ -129,5 +130,20 @@ describe('useLoggedEvents', () => {
 
     expect(eventGET).toHaveBeenLastCalledWith('/admin/events', { params: { query: { limit: 12, offset: 12 } } })
     expect(events.value).toHaveLength(20)
+  })
+
+  it('shows an event once when newer events shifted the next page', async () => {
+    const event = (n: number) => ({ received_at: `t-${n}`, event: { event_id: `e-${n}` } })
+    eventGET
+      .mockReturnValueOnce(ok({ items: Array.from({ length: 12 }, (_, i) => event(100 - i)), total: 40, limit: 12, offset: 0 }))
+      .mockReturnValueOnce(ok({ items: Array.from({ length: 12 }, (_, i) => event(89 - i)), total: 41, limit: 12, offset: 12 }))
+    const { events, isLoading, loadMore } = useLoggedEvents(ref(null), ref(null))
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    await loadMore()
+
+    const ids = events.value.map((e) => e.event.event_id)
+    expect(ids).toHaveLength(23)
+    expect(new Set(ids).size).toBe(23)
   })
 })
