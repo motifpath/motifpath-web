@@ -35,8 +35,12 @@ const reviewing = computed(() => props.studentPathId !== undefined)
 // route change that reuses this component (same route record, new :nodeId)
 // still reloads instead of showing the previous node's session.
 const session = usePracticeSession(() => props.nodeId, { review: reviewing.value })
-// The lesson's title names every exercise's header and the result.
-const titles = useLessonTitles(() => props.nodeId)
+// The lesson's title names every exercise's header and the result. In review, the teacher message
+// names the finished course or path instead of My path.
+const titles = useLessonTitles(
+  () => props.nodeId,
+  () => props.studentPathId,
+)
 
 const { t } = useTypedT()
 const router = useRouter()

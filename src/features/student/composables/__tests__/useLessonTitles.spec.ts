@@ -2,6 +2,7 @@ import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
+import { makeEnrollment } from '@/features/student/testing/learning'
 import { makeStudentPathItem, makeStudentPathView } from '@/features/student/testing/studentPathItem'
 
 const get = vi.fn()
@@ -14,6 +15,8 @@ import { useLessonTitles } from '@/features/student/composables/useLessonTitles'
 
 const PATH = '/students/me/path'
 const NODE = '/content-nodes/{content_node_id}'
+const HELD_PATH = '/students/me/student-paths/{student_path_id}'
+const ENROLLMENTS = '/students/me/course-enrollments'
 
 type Result = { data?: unknown; error?: unknown }
 
@@ -92,5 +95,61 @@ describe('useLessonTitles', () => {
     await flushPromises()
 
     expect(lessonTitle.value).toBe('Box shape')
+  })
+
+  describe('in review of a finished course or path', () => {
+    const finishedPart = makeStudentPathView([makeStudentPathItem(1, undefined, 'completed')], {
+      student_path_id: 'part-1',
+      title: 'Part 1: First chords',
+      course_enrollment_id: 'e-1',
+    })
+    const finishedStandalone = makeStudentPathView([makeStudentPathItem(1, undefined, 'completed')], {
+      student_path_id: 'sp-1',
+      title: 'Open chords',
+    })
+    const reviewing = {
+      ...healthy,
+      [ENROLLMENTS]: ok([makeEnrollment({ course_enrollment_id: 'e-0', course_title: 'Another course' }), makeEnrollment({ status: 'completed' })]),
+    }
+
+    it("names the finished course a reviewed part belongs to, not the student's current path", async () => {
+      respondWith({ ...reviewing, [HELD_PATH]: ok(finishedPart) })
+
+      const { pathTitle, lessonTitle } = useLessonTitles('node-1', 'part-1')
+      await flushPromises()
+
+      expect(pathTitle.value).toBe('Guitar foundations')
+      expect(lessonTitle.value).toBe('Shuffle in E')
+      expect(get).not.toHaveBeenCalledWith(PATH, expect.anything())
+      expect(get).toHaveBeenCalledWith(HELD_PATH, expect.objectContaining({ params: { path: { student_path_id: 'part-1' } } }))
+    })
+
+    it('names a reviewed standalone path by its own title', async () => {
+      respondWith({ ...reviewing, [HELD_PATH]: ok(finishedStandalone) })
+
+      const { pathTitle } = useLessonTitles('node-1', 'sp-1')
+      await flushPromises()
+
+      expect(pathTitle.value).toBe('Open chords')
+    })
+
+    it("knows no path title when the course's name can't be read, never falling back to the current path", async () => {
+      respondWith({ ...healthy, [HELD_PATH]: ok(finishedPart) })
+
+      const { pathTitle } = useLessonTitles('node-1', 'part-1')
+      await flushPromises()
+
+      expect(pathTitle.value).toBeNull()
+    })
+
+    it("knows no path title when the reviewed path can't be read", async () => {
+      respondWith(reviewing)
+
+      const { pathTitle, lessonTitle } = useLessonTitles('node-1', 'part-1')
+      await flushPromises()
+
+      expect(pathTitle.value).toBeNull()
+      expect(lessonTitle.value).toBe('Shuffle in E')
+    })
   })
 })
