@@ -105,6 +105,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the event log
+         * @description Returns tracking events exactly as they were received, newest first,
+         *     with when each was received. Changes nothing. Ordered by received_at,
+         *     then by event_id, both descending, so events received at the same
+         *     instant keep a stable order across pages.
+         *
+         *     Authorization: the caller must hold the admin role. The service establishes this by
+         *     calling the Core Domain Service with the caller's own bearer token and reading the role
+         *     on the profile it returns — a role claim in the JWT itself is not trusted. A caller
+         *     whose role is not admin, or who has no registered profile, is refused with 403. If the
+         *     role cannot be established because the Core Domain Service is unreachable, the request
+         *     is refused with 503.
+         */
+        get: operations["listLoggedEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -243,6 +273,26 @@ export interface components {
              *     stored on the entry for audit purposes.
              */
             reason?: string;
+        };
+        /** @description A tracking event as it was received, with when it was received. */
+        LoggedEvent: {
+            /**
+             * Format: date-time
+             * @description When the service received and stored the event.
+             */
+            received_at: string;
+            event: components["schemas"]["TrackingEvent"];
+        };
+        /** @description One page of the event log. */
+        LoggedEventPage: {
+            /** @description The page's events, newest received first. */
+            items: components["schemas"]["LoggedEvent"][];
+            /** @description All events matching the request's filters. */
+            total: number;
+            /** @description The page size used. */
+            limit: number;
+            /** @description The number of matching events skipped before this page. */
+            offset: number;
         };
         /**
          * @description Response body for liveness and readiness probes. Shared by every MotifPath
@@ -501,6 +551,34 @@ export interface components {
          *       family, or finding one of its degrees. One diagram is one item: the same shape in
          *       another key has other positions, so it is another item.
          *
+         *     - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+         *       head: picking the chord for the numeral, or the numeral for the chord.
+         *     - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+         *       the function of its chord, or its chord for the function.
+         *     - chart_progression:<progression key> — a progression of the progression catalog read
+         *       as a chart: picking the progression for four chords, or its chart for the progression.
+         *       The key is picked each time it is asked, so one item covers every key.
+         *     - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+         *       picked each time.
+         *     - heard_progression:<progression key> — a progression recognised by ear. The key is
+         *       picked each time.
+         *     - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+         *     - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+         *       layout, cleanly, untimed.
+         *     - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+         *       chords' roots on a bass layout.
+         *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+         *       of a progression in time with its playback. The key, the tone and the tempo are picked
+         *       each time.
+         *     - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+         *       fret window. The window is picked each time.
+         *
+         *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+         *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+         *     same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+         *     (major); <note> is spelled with sharps; <progression key> is a key of the progression
+         *     catalog.
+         *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
          * @example fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3
@@ -627,9 +705,11 @@ export interface components {
             audio_ms?: number;
         };
         /**
-         * @description The student's own rating of a take they played: a play-along at a tempo, or chord
-         *     changes counted over a minute. A play-along rating carries tempo_bpm and no
-         *     changes_per_minute; a chord-change rating carries changes_per_minute and no tempo_bpm.
+         * @description The student's own rating of a take they played: a play-along at a tempo, chord changes
+         *     counted over a minute, or one chord played cleanly. A play-along rating carries tempo_bpm
+         *     and no changes_per_minute; a chord-change or root-change rating carries changes_per_minute
+         *     and no tempo_bpm; a single chord voicing or a chord's root and fifth (play clean) carries
+         *     neither.
          */
         SelfRatingResponse: {
             /**
@@ -645,7 +725,10 @@ export interface components {
             rating: "struggled" | "almost" | "clean";
             /** @description The tempo of the take, in beats per minute. Present for a play-along. */
             tempo_bpm?: number;
-            /** @description The number of chord changes made in one minute. Present for a chord change. */
+            /**
+             * @description The number of chord changes made in one minute. Present for a chord change and a root
+             *     change.
+             */
             changes_per_minute?: number;
         };
         /**
@@ -693,6 +776,145 @@ export interface components {
             latency_ms: number;
         };
         /**
+         * @description How a generated question was asked, which fixes what its options are and which one is
+         *     right. numeral_to_chord = a key and a numeral are named, pick its chord; chord_to_numeral
+         *     = a key and a chord are named, pick its numeral; chord_to_function = a key and a chord
+         *     are named, pick its function; function_to_chord = a key and a function are named, pick the
+         *     one chord with it; chart_to_numbers = a chart is shown, pick its progression;
+         *     numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
+         *     a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
+         *     progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+         *     chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
+         *     progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
+         *     heard progression progression_by_number.
+         * @enum {string}
+         */
+        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number";
+        /**
+         * @description The major key a question was asked in, when its item doesn't fix one: a chart
+         *     progression, a heard chord, a heard progression or a guide tone. Absent for every other
+         *     item.
+         * @enum {string}
+         */
+        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B";
+        /**
+         * @description Answer to a generated question asked among options the server planned: a numeral, a
+         *     chord, a function or a progression, recognised in the head or by ear. The response sends
+         *     back the way it was asked, the key it was asked in when the item doesn't fix one, and the
+         *     options exactly as shown, so the grade can be checked from the evidence alone. The options
+         *     must be different, include the right answer and the one picked, and each be a possible
+         *     answer to the question (for a numeral question, only chords of the asked key); otherwise
+         *     the answer is rejected.
+         */
+        GeneratedChoiceResponse: {
+            /**
+             * @description Discriminator. The student picked one of the options a generated question offered. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "generated_choice";
+            way: components["schemas"]["GeneratedChoiceWay"];
+            music_key?: components["schemas"]["MusicKey"];
+            /**
+             * @description The options as shown, in the order shown. What an option is depends on the way: a
+             *     chord symbol (a root, then m, dim or nothing: G, Em, F#dim) for numeral_to_chord and
+             *     function_to_chord; a numeral (I ii iii IV V vi viio) for chord_to_numeral and
+             *     cadence_then_chord; tonic, subdominant or dominant for chord_to_function; a progression
+             *     key for chart_to_numbers and progression_by_number; a chart, the progression's chord
+             *     symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart. A
+             *     chord's root may be spelled either way (F# or Gb).
+             */
+            options: string[];
+            /** @description The option the student picked, spelled as shown. */
+            choice: string;
+            /**
+             * @description Milliseconds from the moment the question was shown to the answer; for a question
+             *     asked by ear, from the moment its sound started.
+             */
+            latency_ms: number;
+            /**
+             * @description Milliseconds of sound the question plays once before it can be answered (the cadence
+             *     and the chord, or the progression), at the tempo it was played. It is taken off the
+             *     latency before the answer is judged against the drill's fluent time. Present for
+             *     questions asked by ear only.
+             */
+            audio_ms?: number;
+        };
+        /** @description One tap on the fretboard, and when it was made. */
+        TimedTap: {
+            /** @description Milliseconds from the downbeat of the progression's first bar to the tap. */
+            at_ms: number;
+            /** @description The string tapped, 1 being the highest-pitched. */
+            string: number;
+            /** @description The fret tapped; 0 is the open string. */
+            fret: number;
+        };
+        /**
+         * @description A take of tapping a chord tone of each chord of a progression in time with its playback,
+         *     on the fretboard of the item's layout. The progression is played in the key and at the
+         *     tempo sent, four beats to a bar, one chord per bar. Each tap is kept with the time it
+         *     was made, so every bar can be graded.
+         */
+        TimedTapsResponse: {
+            /**
+             * @description Discriminator. The student tapped along with a progression's playback. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "timed_taps";
+            music_key: components["schemas"]["MusicKey"];
+            /**
+             * @description The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
+             *     major seventh of I and IV, the minor seventh of every other chord).
+             * @enum {string}
+             */
+            tone: "3" | "7";
+            /** @description The tempo the progression played at, in beats per minute. */
+            tempo_bpm: number;
+            /** @description Every tap of the take, in the order made. A take with no taps sends an empty list. */
+            taps: components["schemas"]["TimedTap"][];
+        };
+        /**
+         * @description The frets a fretboard drill is asked within, so its board is drawn at full tap size without
+         *     scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
+         *     from_fret of 0 covers the open string and frets 1 to 5; any other from_fret covers it and the
+         *     next four frets, such as 3 to 7. Only the window's places can be tapped, and the question
+         *     names it. Every cell of the same drill and layout in a plan carries the same window, and the
+         *     cell's fret is always inside it.
+         * @example {
+         *       "from_fret": 3
+         *     }
+         */
+        FretWindow: {
+            /**
+             * @description The window's lowest fret; 0 means it starts at the open string and ends at fret 5.
+             *     Otherwise it ends at from_fret + 4, at most fret 11. Never 1, since a window at the nut
+             *     always includes the open string.
+             * @enum {integer}
+             */
+            from_fret: 0 | 2 | 3 | 4 | 5 | 6 | 7;
+        };
+        /**
+         * @description Answer to a note asked within a fret window: the student taps every place of the note in
+         *     the window, then says they are done. It is right only when the places tapped are exactly
+         *     the note's places in the window.
+         */
+        MultiTapResponse: {
+            /**
+             * @description Discriminator. The student tapped every place of the note they found. (enum property replaced by openapi-typescript)
+             * @enum {string}
+             */
+            response_type: "multi_tap";
+            fret_window: components["schemas"]["FretWindow"];
+            /** @description The places tapped, in the order tapped. A tap taken back is not sent. */
+            cells: {
+                /** @description The string tapped, 1 being the highest-pitched. */
+                string: number;
+                /** @description The fret tapped; 0 is the open string. */
+                fret: number;
+            }[];
+            /** @description Milliseconds from the moment the note was asked to saying done. */
+            latency_ms: number;
+        };
+        /**
          * @description Sent instead of an answer when an item couldn't be answered: its sound or image failed to
          *     load and the student skipped it, or it can't be shown on this device. It fits every item
          *     kind. It is never graded and yields no evidence, so it changes no accuracy, response time,
@@ -719,7 +941,7 @@ export interface components {
          *     it only to show instant feedback, with the same rules. Exactly one shape applies,
          *     discriminated by response_type.
          */
-        PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"] | components["schemas"]["NameTheShapeResponse"] | components["schemas"]["FindTheDegreeResponse"] | components["schemas"]["NotAnsweredResponse"];
+        PracticeResponse: components["schemas"]["NameTheNoteResponse"] | components["schemas"]["FindTheNoteResponse"] | components["schemas"]["OptionChoiceResponse"] | components["schemas"]["SelfRatingResponse"] | components["schemas"]["NameTheShapeResponse"] | components["schemas"]["FindTheDegreeResponse"] | components["schemas"]["GeneratedChoiceResponse"] | components["schemas"]["TimedTapsResponse"] | components["schemas"]["MultiTapResponse"] | components["schemas"]["NotAnsweredResponse"];
         PracticeItemAnsweredEvent: components["schemas"]["TrackingEventBase"] & ({
             /** @enum {string} */
             event_type: "practice.item_answered";
@@ -891,6 +1113,8 @@ export type SchemaNotFoundError = components['schemas']['NotFoundError'];
 export type SchemaServiceUnavailableError = components['schemas']['ServiceUnavailableError'];
 export type SchemaPublishOutboxEntry = components['schemas']['PublishOutboxEntry'];
 export type SchemaResolvePublishOutboxEntryRequest = components['schemas']['ResolvePublishOutboxEntryRequest'];
+export type SchemaLoggedEvent = components['schemas']['LoggedEvent'];
+export type SchemaLoggedEventPage = components['schemas']['LoggedEventPage'];
 export type SchemaHealthStatus = components['schemas']['HealthStatus'];
 export type SchemaTrackingEventBase = components['schemas']['TrackingEventBase'];
 export type SchemaContentContext = components['schemas']['ContentContext'];
@@ -912,6 +1136,13 @@ export type SchemaSelfRatingResponse = components['schemas']['SelfRatingResponse
 export type SchemaNameTheShapeResponse = components['schemas']['NameTheShapeResponse'];
 export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
 export type SchemaFindTheDegreeResponse = components['schemas']['FindTheDegreeResponse'];
+export type SchemaGeneratedChoiceWay = components['schemas']['GeneratedChoiceWay'];
+export type SchemaMusicKey = components['schemas']['MusicKey'];
+export type SchemaGeneratedChoiceResponse = components['schemas']['GeneratedChoiceResponse'];
+export type SchemaTimedTap = components['schemas']['TimedTap'];
+export type SchemaTimedTapsResponse = components['schemas']['TimedTapsResponse'];
+export type SchemaFretWindow = components['schemas']['FretWindow'];
+export type SchemaMultiTapResponse = components['schemas']['MultiTapResponse'];
 export type SchemaNotAnsweredResponse = components['schemas']['NotAnsweredResponse'];
 export type SchemaPracticeResponse = components['schemas']['PracticeResponse'];
 export type SchemaPracticeItemAnsweredEvent = components['schemas']['PracticeItemAnsweredEvent'];
@@ -1107,6 +1338,82 @@ export interface operations {
             /**
              * @description The caller's role could not be established because the Core Domain Service
              *     was unreachable. The entry was left unchanged; retry once it recovers.
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceUnavailableError"];
+                };
+            };
+        };
+    };
+    listLoggedEvents: {
+        parameters: {
+            query?: {
+                /** @description Only this student's events. All students' when absent. */
+                student_id?: string;
+                /**
+                 * @description Only events of one group of types. All types when absent.
+                 *     practice_sessions — practice.session_started, practice.session_ended.
+                 *     answers — practice.item_answered, practice.tap_check_completed.
+                 *     lessons — lesson.started, lesson.resumed, lesson.completed.
+                 *     exercises — exercise.started, exercise.progress, exercise.ended.
+                 *     song_charts — song_chart.opened, song_chart.chord_viewed,
+                 *     song_chart.completed.
+                 */
+                type_group?: "practice_sessions" | "answers" | "lessons" | "exercises" | "song_charts";
+                /** @description Maximum number of events to return in this page. */
+                limit?: number;
+                /** @description Number of matching events to skip before this page. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of matching events. An offset past the end returns an empty page. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoggedEventPage"];
+                };
+            };
+            /** @description A parameter is malformed or out of range, or type_group is not a known group. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The caller's role is not admin, or the caller has no registered profile. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description The caller's role could not be established because the Core Domain Service is
+             *     unreachable.
              */
             503: {
                 headers: {

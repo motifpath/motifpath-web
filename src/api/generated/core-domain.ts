@@ -1759,6 +1759,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/alpha-observation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Observe the alpha for one week
+         * @description Measures the alpha against its success metric for one week: how many
+         *     students practised 3 or more times, how many have done so every week so
+         *     far, and how far each student has got through their first path. Changes
+         *     nothing. Only admins may observe the alpha.
+         *
+         *     The alpha is every user with the student role who has been given at
+         *     least one path. A week runs Monday 00:00 to Sunday 24:00 in São Paulo
+         *     time (America/Sao_Paulo). A practice session belongs to the week its
+         *     start falls in and counts only once it is finished; sessions ended
+         *     early, abandoned or still in progress never count. A student is at the
+         *     target in a week with 3 or more counted sessions.
+         *
+         *     Students are ordered by fewest counted sessions in the week, then by
+         *     display name, then by student_id.
+         */
+        get: operations["getAlphaObservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/alpha-observation/students/{student_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Observe one student of the alpha
+         * @description One student's measures for a week, as getAlphaObservation reports them,
+         *     with the practice sessions behind them and their first path node by
+         *     node. Sessions of every state are listed, so a week below the target
+         *     can be explained. Changes nothing. Only admins may observe the alpha.
+         */
+        get: operations["getAlphaStudentObservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/courses": {
         parameters: {
             query?: never;
@@ -2408,9 +2464,51 @@ export interface paths {
          *     application ending. Any instrument may be named, not only the ones the student is
          *     enrolled for.
          *
+         *     A session is focused: it practises at most three subjects (knowledge nodes), named in
+         *     focus_nodes, main first. For Today's mix the composer picks them: a teacher's
+         *     suggestion, then the nodes with the most due and weak time, then the nodes of new
+         *     items, then stretch; due items of other nodes come in a review block of at most a
+         *     fifth of the focus time or 5 items. With focus_node_id, the student chose the subject:
+         *     only items of that node and its part_of subtree are picked, there is no warm-up, and
+         *     the application ending is a play-along of the subtree, or none. Any node with
+         *     material for the session can be chosen; requirements never gate it.
+         *
+         *     For each subject, new and stretch items come from its current rung (the lowest rung
+         *     with material for the session whose items are not yet accurate) and the next one;
+         *     due, weak and review-ahead items are picked whatever their rung.
+         *
          *     Any authenticated user may practise.
          */
         post: operations["createPracticeSessionPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/practice-subjects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the subjects the authenticated student can choose to practise
+         * @description Every knowledge node with practice material for a session with the given instrument
+         *     in hand, or in the head, grouped by area, for the student to choose one. A node is
+         *     listed when it or a node part_of it has at least one item the session could pick: one
+         *     that suits the instrument and is played in hand, or, in the head, one recalled on the
+         *     screen for any of the student's instruments. Nodes on the student's paths are listed
+         *     with the rest, and requirements never hide a node.
+         *
+         *     Derived from the catalog and the student's evidence; reading it changes nothing.
+         *
+         *     Any authenticated user may read their own subjects.
+         */
+        get: operations["listPracticeSubjects"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4817,6 +4915,192 @@ export interface components {
             /** @description The items' content nodes that have never been published. Present only when missing includes unpublished_content. */
             unpublished_content_node_ids?: string[];
         };
+        /** @description A Monday-to-Sunday week in São Paulo time. */
+        AlphaWeekRange: {
+            /**
+             * Format: date
+             * @description The Monday the week starts on.
+             */
+            week_start: string;
+            /**
+             * Format: date
+             * @description The Sunday the week ends on.
+             */
+            week_end: string;
+            /** @description True when the week contains the current moment, so it is still running. */
+            running: boolean;
+        };
+        /** @description The alpha as a whole, measured for the requested week. */
+        AlphaCohortSummary: {
+            /** @description Number of students in the alpha. */
+            student_count: number;
+            /** @description Students with 3 or more counted sessions in the requested week. */
+            at_target_in_week: number;
+            /** @description Students with 3 or more counted sessions in the week before the requested one. */
+            at_target_in_previous_week: number;
+            /** @description Students at the target in every one of their weeks so far. A student with no week so far is not counted. */
+            at_target_every_week: number;
+            /** @description Students who have completed strictly more than 70% of their first path's nodes. */
+            first_path_over_target: number;
+            /** @description Median of the students' first-path completion, rounded down to a whole percent; with an even number of students, the mean of the two middle values. Null when the alpha has no students. */
+            median_first_path_percent: number | null;
+        };
+        /** @description One finished week of a student's, with its counted sessions. */
+        AlphaWeekCount: {
+            /**
+             * Format: date
+             * @description The Monday the week starts on.
+             */
+            week_start: string;
+            /** @description Practice sessions started in this week and finished. */
+            finished_sessions: number;
+        };
+        /**
+         * @description The student's first path — the earliest one they were given, kept even
+         *     if a later path replaced it — and how much of it they have completed.
+         */
+        AlphaFirstPath: {
+            /**
+             * Format: uuid
+             * @description The student's copy of the path.
+             */
+            student_path_id: string;
+            /** @description The path's title on the student's copy. */
+            title: string;
+            /**
+             * Format: date-time
+             * @description When the student was given this path.
+             */
+            given_at: string;
+            /** @description Nodes of this path the student has completed, here or in any other path. */
+            completed_nodes: number;
+            /** @description All nodes of this path. */
+            total_nodes: number;
+            /** @description completed_nodes over total_nodes, rounded down to a whole percent. */
+            completed_percent: number;
+            /** @description True when completed_nodes over total_nodes is strictly more than 70%, compared exactly rather than on the rounded percent. */
+            over_target: boolean;
+        };
+        /** @description One student of the alpha, measured for the requested week. */
+        AlphaStudent: {
+            /**
+             * Format: uuid
+             * @description The student's user_id.
+             */
+            student_id: string;
+            /** @description The student's display name. */
+            display_name: string;
+            /**
+             * Format: date-time
+             * @description When the student registered.
+             */
+            registered_at: string;
+            /** @description Practice sessions started in the requested week and finished. */
+            finished_sessions_in_week: number;
+            /** @description True when finished_sessions_in_week is 3 or more. */
+            at_target_in_week: boolean;
+            /** @description The student's most recent finished weeks, up to 8, oldest first. Weeks so far start at the week the first path was given and end before the running week. Empty when none has finished. */
+            weeks_so_far: components["schemas"]["AlphaWeekCount"][];
+            /** @description All of the student's weeks so far, including any not listed in weeks_so_far. */
+            weeks_so_far_count: number;
+            /** @description Weeks so far in which the student was at the target. */
+            weeks_at_target_count: number;
+            /** @description True when the student has at least one week so far and was at the target in all of them. */
+            at_target_every_week: boolean;
+            /**
+             * Format: date-time
+             * @description When the student's most recent event of any type occurred. Null when the student has no event at all.
+             */
+            last_active_at: string | null;
+            /** @description True when last_active_at is 7 days or more before now, or, for a student with no event at all, when the first path was given 7 days or more before now. */
+            quiet: boolean;
+            first_path: components["schemas"]["AlphaFirstPath"];
+        };
+        /** @description The alpha measured for one week. */
+        AlphaObservation: {
+            week: components["schemas"]["AlphaWeekRange"];
+            summary: components["schemas"]["AlphaCohortSummary"];
+            /** @description Every student in the alpha, ordered by fewest counted sessions in the week, then by display name, then by student_id. */
+            students: components["schemas"]["AlphaStudent"][];
+        };
+        /** @description One practice session of a student's, in any state. */
+        AlphaSession: {
+            /**
+             * Format: uuid
+             * @description The practice session's id.
+             */
+            practice_session_id: string;
+            /**
+             * Format: date-time
+             * @description When the session started.
+             */
+            started_at: string;
+            /** @description The minutes the student planned for the session. */
+            planned_minutes: number;
+            /**
+             * Format: date-time
+             * @description When the session ended — its end for a finished or ended-early session, its last event for an abandoned one. Null while in progress.
+             */
+            ended_at: string | null;
+            /**
+             * @description finished — ended without leaving early; the only state that counts.
+             *     ended_early — the student left before the end.
+             *     abandoned — no end arrived and the session has been silent for its
+             *     planned minutes plus 15.
+             *     in_progress — still within its planned minutes plus 15.
+             * @enum {string}
+             */
+            state: "finished" | "ended_early" | "abandoned" | "in_progress";
+            /** @description Items the student answered in the session. */
+            items_answered: number;
+        };
+        /** @description One week of a student's practice sessions. */
+        AlphaSessionWeek: {
+            week: components["schemas"]["AlphaWeekRange"];
+            /** @description The week's counted sessions. */
+            finished_sessions: number;
+            /** @description Every session started in the week, in any state, newest first. */
+            sessions: components["schemas"]["AlphaSession"][];
+        };
+        /** @description One node of the student's first path and where the student is with it. */
+        AlphaPathNode: {
+            /** @description 1-based position of the node in the path. */
+            position: number;
+            /**
+             * Format: uuid
+             * @description The content node at this position.
+             */
+            content_node_id: string;
+            /** @description Title of the content node. */
+            title: string;
+            /**
+             * @description completed — finished, here or in any other path.
+             *     in_progress — started but not finished.
+             *     not_started — not started yet; a node the student cannot open yet is
+             *     reported as not started too.
+             * @enum {string}
+             */
+            status: "completed" | "in_progress" | "not_started";
+            /**
+             * Format: date-time
+             * @description When the student first completed the node. Null unless completed.
+             */
+            completed_at: string | null;
+            /**
+             * Format: date-time
+             * @description When the student first started the node. Null when not started.
+             */
+            started_at: string | null;
+        };
+        /** @description One student of the alpha, measured for one week, with what lies behind the measures. */
+        AlphaStudentObservation: {
+            week: components["schemas"]["AlphaWeekRange"];
+            student: components["schemas"]["AlphaStudent"];
+            /** @description The requested week, then the week before it. */
+            session_weeks: components["schemas"]["AlphaSessionWeek"][];
+            /** @description Every node of the student's first path, in path order. */
+            first_path_nodes: components["schemas"]["AlphaPathNode"][];
+        };
         /**
          * @description A student's own copy of a learning path template's items. Created by
          *     copying a LearningPath at assign time; independently editable
@@ -6495,6 +6779,13 @@ export interface components {
             instrument_id?: string | null;
             /** @description How long the student wants to practise, in minutes. */
             minutes: number;
+            /**
+             * Format: uuid
+             * @description The knowledge node the student chose to practise. The session then holds only items
+             *     of that node and the nodes part_of it, at any depth. Null (or omitted) for Today's
+             *     mix, whose subjects the composer picks.
+             */
+            focus_node_id?: string | null;
         };
         /**
          * @description A composed practice session. Not stored: it exists only in this response and in the
@@ -6513,6 +6804,14 @@ export interface components {
             instrument_id: string | null;
             /** @description The time the session was composed for, in minutes. */
             minutes: number;
+            focus_source: components["schemas"]["PracticeFocusSource"];
+            /**
+             * @description The session's subjects, main first, shown to the student as what the session works
+             *     on. Every item practises one of them, except the warm-up and, in Today's mix, the
+             *     review block: due items of other nodes, at most a fifth of the focus time or 5 items.
+             *     One node, the chosen one, when focus_source is chosen.
+             */
+            focus_nodes: components["schemas"]["PracticeFocusNode"][];
             /** @description The items to practise, in order. */
             items: components["schemas"]["PracticeSessionItem"][];
             /**
@@ -6534,6 +6833,56 @@ export interface components {
              */
             tap_check_due: boolean;
         };
+        /** @description One subject of a practice session. */
+        PracticeFocusNode: {
+            /**
+             * Format: uuid
+             * @description The knowledge node practised.
+             */
+            node_id: string;
+            names: components["schemas"]["LocalizedNames"];
+        };
+        /** @description The subjects a student can choose to practise, for one instrument in hand or in the head. */
+        PracticeSubjectList: {
+            /**
+             * Format: uuid
+             * @description The instrument in hand, or null for a session in the head.
+             */
+            instrument_id: string | null;
+            /** @description One group per area with at least one subject, in catalog order. */
+            groups: components["schemas"]["PracticeSubjectGroup"][];
+        };
+        /** @description The subjects of one area. */
+        PracticeSubjectGroup: {
+            /**
+             * Format: uuid
+             * @description The area, a top-level knowledge node.
+             */
+            area_node_id: string;
+            names: components["schemas"]["LocalizedNames"];
+            /** @description The area's nodes with material, in catalog order. */
+            subjects: components["schemas"]["PracticeSubject"][];
+        };
+        /** @description One knowledge node the student can choose to practise, with where they stand on it. */
+        PracticeSubject: {
+            /**
+             * Format: uuid
+             * @description The knowledge node.
+             */
+            node_id: string;
+            names: components["schemas"]["LocalizedNames"];
+            /** @description True when the node is a skill of one of the student's paths. */
+            on_path: boolean;
+            /** @description Items of the node and its part_of subtree that the session could pick. */
+            item_count: number;
+            /**
+             * @description The highest level at least 80% of those items reach, for the instrument in hand; in
+             *     the head, the best of the student's instruments. Null for a wide node (one with
+             *     child nodes), shown through its children.
+             */
+            level: components["schemas"]["KnowledgeLevel"] | null;
+            current_rung: components["schemas"]["PracticeRung"];
+        };
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
          *     one of fretboard_cell, exercise, play_along and diagram_shape is present, matching
@@ -6543,6 +6892,7 @@ export interface components {
             item_key: components["schemas"]["PracticeItemKey"];
             kind: components["schemas"]["PracticeItemKind"];
             reason: components["schemas"]["PracticePickReason"];
+            rung: components["schemas"]["PracticeRung"];
             /**
              * Format: uuid
              * @description The knowledge node this pick serves, shown with its reason (for example the
@@ -7112,6 +7462,12 @@ export interface components {
             message: string;
         };
         /**
+         * @description Who chose a session's subjects. suggested = the composer picked them for Today's mix;
+         *     chosen = the student chose the one subject the session holds.
+         * @enum {string}
+         */
+        PracticeFocusSource: "suggested" | "chosen";
+        /**
          * @description Stable, readable identifier of a practice item: the smallest thing whose knowledge is
          *     tracked. Every answer, rating and review points at one. The prefix is the item kind:
          *
@@ -7126,6 +7482,34 @@ export interface components {
          *       family, or finding one of its degrees. One diagram is one item: the same shape in
          *       another key has other positions, so it is another item.
          *
+         *     - diatonic_chord:<key>:<numeral> — a numeral's chord in a major key, recalled in the
+         *       head: picking the chord for the numeral, or the numeral for the chord.
+         *     - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
+         *       the function of its chord, or its chord for the function.
+         *     - chart_progression:<progression key> — a progression of the progression catalog read
+         *       as a chart: picking the progression for four chords, or its chart for the progression.
+         *       The key is picked each time it is asked, so one item covers every key.
+         *     - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
+         *       picked each time.
+         *     - heard_progression:<progression key> — a progression recognised by ear. The key is
+         *       picked each time.
+         *     - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
+         *     - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
+         *       layout, cleanly, untimed.
+         *     - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
+         *       chords' roots on a bass layout.
+         *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
+         *       of a progression in time with its playback. The key, the tone and the tempo are picked
+         *       each time.
+         *     - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
+         *       fret window. The window is picked each time.
+         *
+         *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
+         *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
+         *     same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
+         *     (major); <note> is spelled with sharps; <progression key> is a key of the progression
+         *     catalog.
+         *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
          * @example fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3
@@ -7136,7 +7520,7 @@ export interface components {
          *     is added with its key scheme, grader and golden cases.
          * @enum {string}
          */
-        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape";
+        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "fretboard_note";
         /**
          * @description Why the session composer put an item in a session, shown to the student.
          *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
@@ -7152,6 +7536,16 @@ export interface components {
          * @enum {string}
          */
         PracticePickReason: "teacher_suggested" | "due" | "weak" | "new" | "warm_up" | "application" | "review_ahead" | "stretch";
+        /**
+         * @description The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+         *     note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+         *     play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+         *     while the music moves; use = play it in a piece of music. A drill template has one rung;
+         *     a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+         *     and a song chart item is use.
+         * @enum {string}
+         */
+        PracticeRung: "know" | "hear" | "play_clean" | "play_in_time" | "move" | "target" | "use";
         /**
          * @description How well a student knows an item, or a knowledge node, derived from the evidence.
          *     new = never practised; learning = practised, not yet accurate; accurate = at least 3
@@ -7204,6 +7598,8 @@ export interface components {
     };
     responses: never;
     parameters: {
+        /** @description The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected. */
+        AlphaWeek: string;
         /** @description Maximum number of items to return in this page (ADR-031). */
         Limit: number;
         /** @description Number of matching items to skip before this page (ADR-031). */
@@ -7304,6 +7700,16 @@ export type SchemaAssignLearningPathRequest = components['schemas']['AssignLearn
 export type SchemaEnrollInLearningPathRequest = components['schemas']['EnrollInLearningPathRequest'];
 export type SchemaCourseNotPublishableError = components['schemas']['CourseNotPublishableError'];
 export type SchemaLearningPathNotPublishableError = components['schemas']['LearningPathNotPublishableError'];
+export type SchemaAlphaWeekRange = components['schemas']['AlphaWeekRange'];
+export type SchemaAlphaCohortSummary = components['schemas']['AlphaCohortSummary'];
+export type SchemaAlphaWeekCount = components['schemas']['AlphaWeekCount'];
+export type SchemaAlphaFirstPath = components['schemas']['AlphaFirstPath'];
+export type SchemaAlphaStudent = components['schemas']['AlphaStudent'];
+export type SchemaAlphaObservation = components['schemas']['AlphaObservation'];
+export type SchemaAlphaSession = components['schemas']['AlphaSession'];
+export type SchemaAlphaSessionWeek = components['schemas']['AlphaSessionWeek'];
+export type SchemaAlphaPathNode = components['schemas']['AlphaPathNode'];
+export type SchemaAlphaStudentObservation = components['schemas']['AlphaStudentObservation'];
 export type SchemaStudentPath = components['schemas']['StudentPath'];
 export type SchemaStudentPathItem = components['schemas']['StudentPathItem'];
 export type SchemaStudentPathView = components['schemas']['StudentPathView'];
@@ -7351,6 +7757,10 @@ export type SchemaForbiddenError = components['schemas']['ForbiddenError'];
 export type SchemaRegisterUserRequest = components['schemas']['RegisterUserRequest'];
 export type SchemaCreatePracticeSessionPlanRequest = components['schemas']['CreatePracticeSessionPlanRequest'];
 export type SchemaPracticeSessionPlan = components['schemas']['PracticeSessionPlan'];
+export type SchemaPracticeFocusNode = components['schemas']['PracticeFocusNode'];
+export type SchemaPracticeSubjectList = components['schemas']['PracticeSubjectList'];
+export type SchemaPracticeSubjectGroup = components['schemas']['PracticeSubjectGroup'];
+export type SchemaPracticeSubject = components['schemas']['PracticeSubject'];
 export type SchemaPracticeSessionItem = components['schemas']['PracticeSessionItem'];
 export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
 export type SchemaFretboardMap = components['schemas']['FretboardMap'];
@@ -7379,14 +7789,17 @@ export type SchemaValidationError = components['schemas']['ValidationError'];
 export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError'];
 export type SchemaConflictError = components['schemas']['ConflictError'];
 export type SchemaNotFoundError = components['schemas']['NotFoundError'];
+export type SchemaPracticeFocusSource = components['schemas']['PracticeFocusSource'];
 export type SchemaPracticeItemKey = components['schemas']['PracticeItemKey'];
 export type SchemaPracticeItemKind = components['schemas']['PracticeItemKind'];
 export type SchemaPracticePickReason = components['schemas']['PracticePickReason'];
+export type SchemaPracticeRung = components['schemas']['PracticeRung'];
 export type SchemaKnowledgeLevel = components['schemas']['KnowledgeLevel'];
 export type SchemaFretboardDrill = components['schemas']['FretboardDrill'];
 export type SchemaFretWindow = components['schemas']['FretWindow'];
 export type SchemaDiagramShapeDrill = components['schemas']['DiagramShapeDrill'];
 export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
+export type ParameterAlphaWeek = components['parameters']['AlphaWeek'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
 export type ParameterSearchText = components['parameters']['SearchText'];
@@ -11972,6 +12385,118 @@ export interface operations {
             };
         };
     };
+    getAlphaObservation: {
+        parameters: {
+            query?: {
+                /** @description The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected. */
+                week?: components["parameters"]["AlphaWeek"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The alpha, measured for the week. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaObservation"];
+                };
+            };
+            /** @description The week is not a Monday, or it starts after the running week. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user is not an admin. Only admins may observe the alpha. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    getAlphaStudentObservation: {
+        parameters: {
+            query?: {
+                /** @description The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected. */
+                week?: components["parameters"]["AlphaWeek"];
+            };
+            header?: never;
+            path: {
+                /** @description The student's user_id. */
+                student_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The student, measured for the week. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlphaStudentObservation"];
+                };
+            };
+            /** @description The student_id is not a UUID, or the week is not a Monday or starts after the running week. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user is not an admin. Only admins may observe the alpha. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No student with this user_id is in the alpha. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     listCourses: {
         parameters: {
             query?: {
@@ -13211,7 +13736,10 @@ export interface operations {
                     "application/json": components["schemas"]["PracticeSessionPlan"];
                 };
             };
-            /** @description The request body failed schema validation, such as minutes outside 1–60. */
+            /**
+             * @description The request body failed schema validation, such as minutes outside 1–60 or a
+             *     focus_node_id that is not a uuid.
+             */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -13230,9 +13758,61 @@ export interface operations {
                 };
             };
             /**
-             * @description No instrument exists with the given instrument_id, or nothing connected to what
-             *     the student is learning can be practised with the instrument chosen.
+             * @description No instrument exists with the given instrument_id, no knowledge node exists with
+             *     the given focus_node_id, nothing connected to what the student is learning can be
+             *     practised with the instrument chosen, or the chosen node has nothing to practise
+             *     with it.
              */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    listPracticeSubjects: {
+        parameters: {
+            query?: {
+                /** @description The instrument in hand. Absent means a session in the head. */
+                instrument_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The subjects the student can choose, grouped by area. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeSubjectList"];
+                };
+            };
+            /** @description instrument_id is not a valid uuid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No instrument exists with the given instrument_id. */
             404: {
                 headers: {
                     [name: string]: unknown;
