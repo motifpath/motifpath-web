@@ -19,6 +19,7 @@ const DIAGRAM = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const playAlong: Item = {
   item_key: `play_along:${DIAGRAM}`,
   kind: 'play_along',
+  rung: 'play_in_time',
   reason: 'stretch',
   node_id: null,
   level: 'new',
@@ -29,6 +30,7 @@ const playAlong: Item = {
 const exercise: Item = {
   item_key: 'exercise:e1',
   kind: 'exercise',
+  rung: 'know',
   reason: 'weak',
   node_id: null,
   level: 'learning',
@@ -54,6 +56,7 @@ const exercise: Item = {
 const cell: Item = {
   item_key: 'fretboard_cell:6ea2d087-ab9c-59dc-9657-8546025414d2:5:3',
   kind: 'fretboard_cell',
+  rung: 'know',
   reason: 'new',
   node_id: null,
   level: 'new',
@@ -125,6 +128,7 @@ describe('usePlanItemNames', () => {
     const shape: Item = {
       item_key: `diagram_shape:${DIAGRAM}`,
       kind: 'diagram_shape',
+      rung: 'know',
       reason: 'new',
       node_id: null,
       level: 'new',

@@ -11,7 +11,7 @@ import SessionSummary from './SessionSummary.vue'
 type Item = components['schemas']['PracticeSessionItem']
 
 function item(itemKey: string, kind: Item['kind']): Item {
-  return { item_key: itemKey, kind, reason: 'new', node_id: null, level: 'new', estimated_seconds: 30 }
+  return { item_key: itemKey, kind, reason: 'new', rung: 'know', node_id: null, level: 'new', estimated_seconds: 30 }
 }
 
 const rows: SummaryRow[] = [

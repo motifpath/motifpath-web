@@ -31,6 +31,7 @@ function playAlong(diagramId: string, reason: Item['reason'], tempos: { start: n
   return {
     item_key: `play_along:${diagramId}`,
     kind: 'play_along',
+    rung: 'play_in_time',
     reason,
     node_id: null,
     level: 'learning',
@@ -48,6 +49,7 @@ function exerciseItem(exerciseId: string, reason: Item['reason'], fields: Partia
   return {
     item_key: `exercise:${exerciseId}`,
     kind: 'exercise',
+    rung: 'know',
     reason,
     node_id: null,
     level: 'new',
@@ -79,7 +81,7 @@ const WARM_UP = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const DUE = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
 function plan(items: Item[], instrumentId: string | null = GUITAR_ID, fields: Partial<Plan> = {}): Plan {
-  return { practice_session_id: SESSION_ID, instrument_id: instrumentId, minutes: 10, items, felt_questions: [], tap_check_due: false, ...fields }
+  return { practice_session_id: SESSION_ID, instrument_id: instrumentId, minutes: 10, focus_source: 'suggested', focus_nodes: [], items, felt_questions: [], tap_check_due: false, ...fields }
 }
 
 const twoItems = plan([
@@ -727,6 +729,7 @@ describe('usePracticeSessionRun', () => {
       return {
         item_key: `diagram_shape:${CAGED_A}`,
         kind: 'diagram_shape',
+        rung: 'know',
         reason: 'new',
         node_id: null,
         level: 'new',
@@ -846,6 +849,7 @@ describe('usePracticeSessionRun', () => {
       return {
         item_key: `fretboard_cell:${LAYOUT}:${string}:${fret}`,
         kind: 'fretboard_cell',
+        rung: 'know',
         reason: 'new',
         node_id: null,
         level: 'new',
