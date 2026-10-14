@@ -279,7 +279,11 @@
       "exercise": "Exercício",
       "playAlong": "Tocar junto",
       "fretboard": "Braço",
-      "chordChange": "Troca de acordes"
+      "chordChange": "Troca de acordes",
+      "harmony": "Harmonia",
+      "ear": "Percepção",
+      "chord": "Acorde",
+      "guideTones": "Notas-guia"
     }
   },
   "sessionSummary": {

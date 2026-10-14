@@ -16,6 +16,7 @@ function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_n
   return {
     item_key: `fretboard_cell:${LAYOUT}:${string}:${fret}`,
     kind: 'fretboard_cell',
+    rung: 'know',
     reason: 'new',
     node_id: null,
     level: 'new',

@@ -279,7 +279,11 @@
       "exercise": "Exercise",
       "playAlong": "Play-along",
       "fretboard": "Fretboard",
-      "chordChange": "Chord change"
+      "chordChange": "Chord change",
+      "harmony": "Harmony",
+      "ear": "Ear",
+      "chord": "Chord",
+      "guideTones": "Guide tones"
     }
   },
   "sessionSummary": {

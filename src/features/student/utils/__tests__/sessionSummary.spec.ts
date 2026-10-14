@@ -9,7 +9,7 @@ type Item = components['schemas']['PracticeSessionItem']
 const LAYOUT = '6ea2d087-ab9c-59dc-9657-8546025414d2'
 
 function item(itemKey: string, kind: Item['kind'], fields: Partial<Item> = {}): Item {
-  return { item_key: itemKey, kind, reason: 'new', node_id: null, level: 'new', estimated_seconds: 30, ...fields }
+  return { item_key: itemKey, kind, reason: 'new', rung: 'know', node_id: null, level: 'new', estimated_seconds: 30, ...fields }
 }
 
 function cell(fret: number, drill: 'name_the_note' | 'find_the_note' = 'name_the_note'): Item {

@@ -22,6 +22,16 @@ const KIND_KEYS = {
   fretboard_cell: 'sessionPlan.kinds.fretboard',
   diagram_shape: 'sessionPlan.kinds.fretboard',
   chord_change: 'sessionPlan.kinds.chordChange',
+  diatonic_chord: 'sessionPlan.kinds.harmony',
+  chord_function: 'sessionPlan.kinds.harmony',
+  chart_progression: 'sessionPlan.kinds.harmony',
+  heard_chord: 'sessionPlan.kinds.ear',
+  heard_progression: 'sessionPlan.kinds.ear',
+  chord_voicing: 'sessionPlan.kinds.chord',
+  root_fifth: 'sessionPlan.kinds.chord',
+  root_change: 'sessionPlan.kinds.chordChange',
+  guide_tone: 'sessionPlan.kinds.guideTones',
+  fretboard_note: 'sessionPlan.kinds.fretboard',
 } as const satisfies Record<Item['kind'], string>
 
 const { t } = useTypedT()

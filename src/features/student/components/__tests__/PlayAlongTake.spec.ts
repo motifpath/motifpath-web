@@ -68,6 +68,7 @@ function item(reason: Item['reason'] = 'due', best: number | null = 70): Item {
   return {
     item_key: `play_along:${DIAGRAM_ID}`,
     kind: 'play_along',
+    rung: 'play_in_time',
     reason,
     node_id: null,
     level: 'learning',

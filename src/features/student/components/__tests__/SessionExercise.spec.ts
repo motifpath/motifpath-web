@@ -15,6 +15,7 @@ function item(exerciseId: string, options: Exercise['options'], reason: Item['re
   return {
     item_key: `exercise:${exerciseId}`,
     kind: 'exercise',
+    rung: 'know',
     reason,
     node_id: null,
     level: 'learning',

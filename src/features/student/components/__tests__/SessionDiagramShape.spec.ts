@@ -51,6 +51,7 @@ function shapeItem(drill: 'name_the_shape' | 'find_the_degree'): Item {
   return {
     item_key: `diagram_shape:${CAGED_A}`,
     kind: 'diagram_shape',
+    rung: 'know',
     reason: 'new',
     node_id: null,
     level: 'new',

@@ -156,6 +156,7 @@ function playAlong(diagramId: string, reason: Item['reason'], start: number): It
   return {
     item_key: `play_along:${diagramId}`,
     kind: 'play_along',
+    rung: 'play_in_time',
     reason,
     node_id: null,
     level: 'learning',
@@ -171,6 +172,7 @@ function exerciseItem(exerciseId: string): Item {
   return {
     item_key: `exercise:${exerciseId}`,
     kind: 'exercise',
+    rung: 'know',
     reason: 'new',
     node_id: null,
     level: 'new',
@@ -198,13 +200,14 @@ function exerciseItem(exerciseId: string): Item {
 }
 
 function plan(items: Item[] = [playAlong(WARM_UP, 'warm_up', 80), playAlong(DUE, 'due', 60)], fields: Partial<Plan> = {}): Plan {
-  return { practice_session_id: SESSION_ID, instrument_id: GUITAR, minutes: 10, items, felt_questions: [], tap_check_due: false, ...fields }
+  return { practice_session_id: SESSION_ID, instrument_id: GUITAR, minutes: 10, focus_source: 'suggested', focus_nodes: [], items, felt_questions: [], tap_check_due: false, ...fields }
 }
 
 function cellItem(string: number, fret: number, drill: 'name_the_note' | 'find_the_note', layout = GUITAR): Item {
   return {
     item_key: `fretboard_cell:${layout}:${string}:${fret}`,
     kind: 'fretboard_cell',
+    rung: 'know',
     reason: 'new',
     node_id: null,
     level: 'new',
@@ -219,6 +222,7 @@ function shapeItem(layout = GUITAR): Item {
   return {
     item_key: `diagram_shape:${SHAPE}`,
     kind: 'diagram_shape',
+    rung: 'know',
     reason: 'new',
     node_id: null,
     level: 'new',
