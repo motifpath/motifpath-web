@@ -424,5 +424,18 @@
     "yours": "{label} · sua resposta",
     "right": "{label} · resposta certa",
     "folded": "{label} · {name}"
+  },
+  "drill": {
+    "countStepper": {
+      "more": "Mais um: {label}",
+      "fewer": "Menos um: {label}",
+      "valueText": "{count} {label}"
+    },
+    "changeTimer": {
+      "left": "restantes de {total}",
+      "ready": "começa após um compasso de contagem",
+      "withDetail": "{caption} · {detail}",
+      "elapsed": "Tempo passado"
+    }
   }
 }
