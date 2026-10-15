@@ -446,6 +446,9 @@
       "bars": "Bars",
       "givenBar": "Bar {position}, {label}",
       "askedBar": "Bar {position}, the chord asked"
+    },
+    "options": {
+      "chord": "Chord {key}"
     }
   }
 }
