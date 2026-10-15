@@ -14,6 +14,8 @@ import { beatsPerBar, pulse } from '@/shared/utils/sequence'
 import { useApi } from '@/shared/composables/useApi'
 import { fetchVoices } from '@/shared/composables/useListVoices'
 import { frettedPitch } from '@/shared/utils/pitch'
+import { speedFactor } from '@/shared/utils/tempoNoteValue'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -82,11 +84,13 @@ export function isPlayable(source: PlaybackSource): boolean {
  * played playback's. A new tempo applies from the next step. Positions a usage hides
  * still sound. Playing stops when the owning component goes away. With
  * `metronome`, a click sounds on every beat of the run, the first of each bar
- * accented, read when Play is pressed.
+ * accented, read when Play is pressed. At a `noteValue` the music as written
+ * plays that many times faster while the click stays on the beat; a change of
+ * it, like one of tempo, applies from the next step.
  */
 export function useDiagramPlayback(
   source: MaybeRefOrGetter<PlaybackSource | null>,
-  options: { metronome?: MaybeRefOrGetter<boolean> } = {},
+  options: { metronome?: MaybeRefOrGetter<boolean>; noteValue?: MaybeRefOrGetter<TempoNoteValue> } = {},
 ) {
   const { coreApi } = useApi()
 
@@ -101,6 +105,16 @@ export function useDiagramPlayback(
     () => sourceNow.value?.playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
   )
   const tempo = ref(effectiveTempo.value)
+  const factor = computed(() => speedFactor(toValue(options.noteValue) ?? 'quarters'))
+
+  /** How long a written whole note lasts at `bpm`, and how far apart the clicks fall in written notes. */
+  function timing(bpm: number) {
+    const beat = pulse(timeSignature.value)
+    return {
+      wholeSeconds: secondsPerWhole(bpm, timeSignature.value) / factor.value,
+      clickBeat: (beat.num / beat.den) * factor.value,
+    }
+  }
 
   const pitches = computed(() => (sourceNow.value ? positionPitches(sourceNow.value) : new Map<string | undefined, number | null>()))
   const pitchOf = (positionId: string) => pitches.value.get(positionId) ?? null
@@ -184,9 +198,9 @@ export function useDiagramPlayback(
       const [{ loadVoiceSampler }, voice] = await Promise.all([import('@/shared/audio/voiceSampler'), findVoice()])
       const sink = await loadVoiceSampler(audio, voice)
       if (current !== attempt) return
-      const beat = pulse(signature)
+      const { wholeSeconds, clickBeat } = timing(tempo.value)
       const metronome = toValue(options.metronome)
-        ? { sink: createClickSink(audio), beat: beat.num / beat.den, beatsPerBar: beatsPerBar(signature) }
+        ? { sink: createClickSink(audio), beat: clickBeat, beatsPerBar: beatsPerBar(signature) }
         : undefined
 
       const scheduled = playbackSteps(steps, pitchOf, {
@@ -195,7 +209,7 @@ export function useDiagramPlayback(
       })
       run = createPlaybackRun(scheduled, {
         sink,
-        wholeSeconds: secondsPerWhole(tempo.value, signature),
+        wholeSeconds,
         loop: playback?.loop ?? false,
         startAt: audio.currentTime + START_DELAY_SECONDS,
         metronome,
@@ -218,8 +232,10 @@ export function useDiagramPlayback(
     }
   }
 
-  watch(tempo, (bpm) => {
-    if (run && context) run.setWholeSeconds(secondsPerWhole(bpm, timeSignature.value), context.currentTime)
+  watch([tempo, factor], ([bpm]) => {
+    if (!run || !context) return
+    const { wholeSeconds, clickBeat } = timing(bpm)
+    run.setWholeSeconds(wholeSeconds, context.currentTime, clickBeat)
   })
 
   // Another diagram, or another way of playing it, starts over at its own tempo.

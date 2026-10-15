@@ -38,8 +38,11 @@ export interface PlaybackRun {
   update(now: number): void
   activePositionIds(at: number): string[]
   finished(at: number): boolean
-  /** Re-times every step that starts after `now`. */
-  setWholeSeconds(wholeSeconds: number, now: number): void
+  /**
+   * Re-times every step that starts after `now`, and with `clickBeat` spaces the metronome's
+   * clicks on that grid instead, as when the music plays at another note value over the same click.
+   */
+  setWholeSeconds(wholeSeconds: number, now: number, clickBeat?: number): void
   stop(): void
 }
 
@@ -57,7 +60,8 @@ export function createPlaybackRun(
   steps: PlaybackStep[],
   options: { sink: NoteSink; wholeSeconds: number; loop: boolean; startAt: number; metronome?: RunMetronome },
 ): PlaybackRun {
-  const { sink, loop, startAt, metronome } = options
+  const { sink, loop, startAt } = options
+  const metronome = options.metronome ? { ...options.metronome } : undefined
   let wholeSeconds = options.wholeSeconds
   let scheduled: ScheduledStep[] = []
   let stopped = false
@@ -107,8 +111,9 @@ export function createPlaybackRun(
     if (now >= latestPassStart()) schedule(last()!.pass + 1, 0, Math.max(last()!.end, now + RESUME_LEAD_SECONDS))
   }
 
-  function setWholeSeconds(next: number, now: number) {
+  function setWholeSeconds(next: number, now: number, clickBeat?: number) {
     wholeSeconds = next
+    if (metronome && clickBeat !== undefined) metronome.beat = clickBeat
     if (stopped) return
     const kept = scheduled.filter((step) => step.start <= now)
     for (const step of scheduled.filter((s) => s.start > now)) step.cancels.forEach((cancel) => cancel())

@@ -3,6 +3,7 @@ import type { MaybeRefOrGetter } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import { audibleTime, unlockAudioContext } from '@/shared/audio/audioContext'
+import { createClickSink } from '@/shared/audio/clickSink'
 import { claimPlayback, releasePlayback } from '@/shared/audio/exclusivePlayback'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
 import type { PlaybackRun } from '@/shared/audio/playbackRun'
@@ -12,6 +13,8 @@ import { secondsPerWhole } from '@/shared/audio/timeline'
 import { useApi } from '@/shared/composables/useApi'
 import type { PlaybackState } from '@/shared/composables/useDiagramPlayback'
 import { fetchVoices } from '@/shared/composables/useListVoices'
+import { speedFactor } from '@/shared/utils/tempoNoteValue'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -30,6 +33,8 @@ export interface ProgressionSource {
 export type ProgressionSoundStatus = 'loading' | 'ready' | 'missing'
 
 const FOUR_FOUR: TimeSignature = { beats: 4, beat_value: 4 }
+/** A quarter: the beat of a progression's 4/4 bars, as a fraction of a whole note. */
+const BEAT = 1 / 4
 /** The spread between the strings of a strum, as a pick crosses them. */
 const STRUM_SECONDS = 0.018
 /** How far ahead of the audio clock the first bar is placed, so it isn't already late. */
@@ -41,6 +46,10 @@ const START_DELAY_SECONDS = 0.1
  * It says which bar is sounding, so the bars can follow it. Replay is unlimited, and every Play
  * starts from the first bar. Only one thing plays at a time. It checks every voice it needs up
  * front, so a sound that can't be heard is known before the student answers.
+ *
+ * The student may change its tempo and its note value for this showing: in eighths the
+ * progression plays twice as fast, two chords a bar, while the metronome, when it's on, clicks
+ * the beat at the tempo.
  */
 export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSource | null>) {
   const { coreApi } = useApi()
@@ -52,6 +61,15 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
   const sourceNow = computed(() => toValue(source))
   /** The tempo it plays at: the progression's own, which the student may change for this showing. */
   const tempo = ref(sourceNow.value?.tempoBpm ?? 0)
+  const noteValue = ref<TempoNoteValue>('quarters')
+  /** Whether Play clicks the beat under the progression. */
+  const metronome = ref(false)
+
+  /** How long a written whole note lasts, and how far apart the clicks fall in written notes. */
+  function timing() {
+    const factor = speedFactor(noteValue.value)
+    return { wholeSeconds: secondsPerWhole(tempo.value, FOUR_FOUR) / factor, clickBeat: BEAT * factor }
+  }
 
   /** Each voice the progression plays in, the chords' first. */
   const voiceIds = computed(() => {
@@ -132,8 +150,12 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       const stepLists = [chordSteps(now.chords, now.chordInstrument.tuning ?? [], STRUM_SECONDS)]
       if (now.bass) stepLists.push(bassLineSteps(now.bass.roots, now.bass.instrument.tuning ?? []))
       const startAt = audio.currentTime + START_DELAY_SECONDS
-      const wholeSeconds = secondsPerWhole(tempo.value, FOUR_FOUR)
-      runs = stepLists.map((steps, i) => createPlaybackRun(steps, { sink: sinks[i]!, wholeSeconds, loop: false, startAt }))
+      const { wholeSeconds, clickBeat } = timing()
+      const click = metronome.value ? { sink: createClickSink(audio), beat: clickBeat, beatsPerBar: FOUR_FOUR.beats } : undefined
+      // The click goes with the chords only, so it sounds once whatever plays under them.
+      runs = stepLists.map((steps, i) =>
+        createPlaybackRun(steps, { sink: sinks[i]!, wholeSeconds, loop: false, startAt, metronome: i === 0 ? click : undefined }),
+      )
       state.value = 'playing'
       frame = requestAnimationFrame(tick)
     } catch {
@@ -143,10 +165,12 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     }
   }
 
-  // A new tempo applies from the next bar, to the chords and the bass line alike.
-  watch(tempo, (bpm) => {
+  // A new tempo or note value applies from the next bar, to the chords and the bass line alike.
+  watch([tempo, noteValue], () => {
     const audio = context
-    if (audio) runs.forEach((run) => run.setWholeSeconds(secondsPerWhole(bpm, FOUR_FOUR), audio.currentTime))
+    if (!audio) return
+    const { wholeSeconds, clickBeat } = timing()
+    runs.forEach((run) => run.setWholeSeconds(wholeSeconds, audio.currentTime, clickBeat))
   })
 
   function toggle() {
@@ -167,6 +191,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       voicesReady.value = null
       if (!sourceNow.value) return
       tempo.value = sourceNow.value.tempoBpm
+      noteValue.value = 'quarters'
       const asked = ++check
       const ok = await checkVoices()
       if (asked === check) voicesReady.value = ok
@@ -176,5 +201,5 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
 
   onScopeDispose(stop)
 
-  return { state, status, currentBar, tempo, toggle, stop }
+  return { state, status, currentBar, tempo, noteValue, metronome, toggle, stop }
 }

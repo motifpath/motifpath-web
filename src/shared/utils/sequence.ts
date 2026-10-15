@@ -61,6 +61,11 @@ function wholeBars(time: NoteValue, bar: NoteValue): number {
   return Math.floor((time.num * bar.den) / (time.den * bar.num))
 }
 
+/** `value` made `factor` times as long: a whole number of times, or a half, a third… of it. */
+export function scaleNoteValue(value: NoteValue, factor: number): NoteValue {
+  return factor >= 1 ? reduce(value.num * factor, value.den) : reduce(value.num, value.den * Math.round(1 / factor))
+}
+
 export function sameNoteValue(a: NoteValue, b: NoteValue): boolean {
   return !lessThan(a, b) && !lessThan(b, a)
 }

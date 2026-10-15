@@ -2,6 +2,7 @@ import { effectScope, nextTick, ref, watch } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { components } from '@/api/generated/core-domain'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 import { makeFrettedDiagram, makeFrettedInstrument, makePlayback, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
 
 type Diagram = components['schemas']['Diagram']
@@ -82,16 +83,23 @@ function frameAt(at: number) {
 }
 
 function setup(
-  options: { diagram?: Diagram; instrument?: Instrument; playback?: Playback | null; metronome?: boolean } = {},
+  options: {
+    diagram?: Diagram
+    instrument?: Instrument
+    playback?: Playback | null
+    metronome?: boolean
+    noteValue?: TempoNoteValue
+  } = {},
 ) {
   const source = ref({
     diagram: options.diagram ?? makeSequencedFrettedDiagram(),
     instrument: options.instrument ?? makeFrettedInstrument(),
     playback: options.playback === undefined ? AS_AUTHORED : options.playback,
   })
+  const noteValue = ref<TempoNoteValue>(options.noteValue ?? 'quarters')
   const scope = effectScope()
-  const player = scope.run(() => useDiagramPlayback(source, { metronome: options.metronome ?? false }))!
-  return { player, scope, source }
+  const player = scope.run(() => useDiagramPlayback(source, { metronome: options.metronome ?? false, noteValue }))!
+  return { player, scope, source, noteValue }
 }
 
 /** Presses Play and waits until the run is scheduled. */
@@ -198,6 +206,29 @@ describe('useDiagramPlayback — playing', () => {
 
     expect(audio.clicks[0]).toEqual({ time: start, level: 'downbeat' })
     expect(audio.clicks[1]).toEqual({ time: start + 1, level: 'beat' })
+  })
+
+  it('plays the music as written that many times faster at a note value, the click staying on the beat', async () => {
+    const { player } = setup({ metronome: true, noteValue: 'eighths' })
+    player.tempo.value = 30
+    await play(player)
+    const start = audio.played[0]!.time
+
+    // 30 BPM: a written eighth lasts a second, so in eighths half a second; the beat stays 2 s apart.
+    expect(audio.played.map((n) => +(n.time - start).toFixed(3)).slice(0, 3)).toEqual([0, 0.5, 1.5])
+    expect(audio.clicks.map((c) => +(c.time - start).toFixed(3)).slice(0, 2)).toEqual([0, 2])
+  })
+
+  it('a note value change while playing re-times the steps not yet started', async () => {
+    const { player, noteValue } = setup()
+    await play(player)
+    const start = audio.played[0]!.time
+
+    frameAt(start + 0.1)
+    noteValue.value = 'eighths'
+    await nextTick()
+    // The first eighth keeps its length; from the second on, an eighth lasts a sixth of a second.
+    expect(sounding().map((n) => +(n.time - start).toFixed(3))).toEqual([0, 0.333, 0.667, 0.685, 0.703])
   })
 
   it('plays without a metronome unless asked', async () => {
