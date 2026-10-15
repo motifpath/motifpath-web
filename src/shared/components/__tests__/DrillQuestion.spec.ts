@@ -138,6 +138,27 @@ describe('DrillQuestion', () => {
     expect(question.findAll('button[data-state="default"]')).toHaveLength(2)
   })
 
+  it('takes answers again once a retry of a sound that couldn’t be heard plays', async () => {
+    const question = mountQuestion({
+      way: 'progression_by_number',
+      instrument: 'guitar',
+      progression: {
+        source: { chords: (['G', 'D', 'Em', 'C'] as const).map((symbol) => drillVoicings[symbol].diagram), chordInstrument: drillGuitar, bass: null, tempoBpm: 72 },
+        bars: [null, null, null, null],
+        subtitle: 'Four chords',
+      },
+      options: text('I-V-vi-IV', 'I-vi-IV-V'),
+    })
+    const player = question.findComponent({ name: 'ProgressionPlayer' })
+    player.vm.$emit('missing', 'failed_to_load')
+    await question.vm.$nextTick()
+    expect(question.findAll('button[data-state="locked"]')).toHaveLength(2)
+
+    player.vm.$emit('playing', true)
+    await question.vm.$nextTick()
+    expect(question.findAll('button[data-state="default"]')).toHaveLength(2)
+  })
+
   it('holds its options and says the question can’t be shown when a box it must draw has no voicing', () => {
     const question = mountQuestion({ way: 'chord_to_numeral', instrument: 'guitar', chord: { symbol: 'Bm' }, options: text('ii', 'iii', 'V', 'vi') })
 

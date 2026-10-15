@@ -131,6 +131,12 @@ watch(
   { immediate: true },
 )
 
+function onPlaying(playing: boolean) {
+  // A sound that plays, on a retry, is heard after all: its options take an answer again.
+  if (playing) soundMissing.value = false
+  emit('playing', playing)
+}
+
 function onMissing(reason: MissingReason) {
   soundMissing.value = true
   emit('missing', reason)
@@ -158,7 +164,7 @@ function answer(value: string | null) {
           :source="view.progression.source"
           :bars="view.progression.bars"
           :subtitle="view.progression.subtitle"
-          @playing="emit('playing', $event)"
+          @playing="onPlaying"
           @missing="onMissing"
         />
       </div>
