@@ -440,6 +440,12 @@
     "chart": {
       "label": "Cifra",
       "bar": "Compasso {position}"
+    },
+    "player": {
+      "listen": "Ouvir",
+      "bars": "Compassos",
+      "givenBar": "Compasso {position}, {label}",
+      "askedBar": "Compasso {position}, o acorde perguntado"
     }
   }
 }

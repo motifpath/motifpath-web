@@ -440,6 +440,12 @@
     "chart": {
       "label": "Chart",
       "bar": "Bar {position}"
+    },
+    "player": {
+      "listen": "Listen",
+      "bars": "Bars",
+      "givenBar": "Bar {position}, {label}",
+      "askedBar": "Bar {position}, the chord asked"
     }
   }
 }
