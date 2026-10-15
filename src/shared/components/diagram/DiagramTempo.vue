@@ -2,7 +2,8 @@
 /**
  * The tempo a diagram plays at, for the student to slow it down or speed it up: a control named
  * with the tempo that opens a panel on demand with a slider and a numeric input. The tempo is never
- * saved. In the `rail` look the control is a metronome sized for a diagram's control rail; in the
+ * saved. Where its holder plays the diagram at a note value, the panel offers the suggested ones
+ * beside the tempo. In the `rail` look the control is a metronome sized for a diagram's control rail; in the
  * `chip` look it is a small pill showing the metronome and the tempo. The panel is drawn over the
  * page, anchored to the control, so a card that clips its content never cuts it off. It closes on
  * Escape, from its close control, on a press outside it and its control, and when focus leaves both.
@@ -10,16 +11,21 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import { Metronome, X } from 'lucide-vue-next'
 
+import NoteValuePicker from '@/shared/components/NoteValuePicker.vue'
 import { useAnchoredPopover } from '@/shared/composables/useAnchoredPopover'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { RAIL_CONTROL_CLASS, RAIL_ICON_SIZE } from '@/shared/utils/regionInfoLayout'
 import { MAX_TEMPO_BPM, MIN_TEMPO_BPM } from '@/shared/utils/sequence'
+import { SUGGESTED_NOTE_VALUES } from '@/shared/utils/tempoNoteValue'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 withDefaults(defineProps<{ look?: 'rail' | 'chip' }>(), { look: 'rail' })
 
 const tempo = defineModel<number>({ required: true })
 /** Whether the panel is open, for a holder to keep its own popovers out of its way. */
 const open = defineModel<boolean>('open', { default: false })
+/** The note value it plays at; none offers no note values. */
+const noteValue = defineModel<TempoNoteValue>('noteValue')
 
 const { t } = useTypedT()
 
@@ -143,6 +149,13 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
             class="h-11 w-20 rounded-md border border-border bg-surface px-2 text-sm tabular-nums text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             @input="onTempo"
             @blur="onTempoBlur"
+          />
+          <NoteValuePicker
+            v-if="noteValue !== undefined"
+            :model-value="noteValue"
+            :values="SUGGESTED_NOTE_VALUES"
+            :container="panel"
+            @update:model-value="noteValue = $event"
           />
         </div>
         <p class="mt-1 text-xs text-ink-subtle">{{ t('diagramPlayer.tempoHint') }}</p>

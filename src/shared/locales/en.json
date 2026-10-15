@@ -456,6 +456,9 @@
     "start": "Start",
     "stop": "Stop"
   },
+  "progressionTempo": {
+    "done": "Done"
+  },
   "teach": {
     "intro": "Build and look after what your students learn. Quick fixes work here; big edits are easier on a computer.",
     "admin": "Admin"

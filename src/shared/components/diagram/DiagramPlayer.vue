@@ -22,6 +22,7 @@ import { useAnchoredPopover } from '@/shared/composables/useAnchoredPopover'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { RAIL_CONTROL_CLASS, RAIL_ICON_SIZE } from '@/shared/utils/regionInfoLayout'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
@@ -37,11 +38,16 @@ const props = defineProps<{
 const emit = defineEmits<{ active: [positionIds: string[]] }>()
 
 const { t } = useTypedT()
-const { canPlay, state, activePositionIds, tempo, toggle, prefetch } = useDiagramPlayback(() => ({
-  diagram: props.diagram,
-  instrument: props.instrument,
-  playback: props.playback,
-}))
+/** The note value the student plays the diagram at for this showing; never saved. */
+const noteValue = ref<TempoNoteValue>('quarters')
+const { canPlay, state, activePositionIds, tempo, toggle, prefetch } = useDiagramPlayback(
+  () => ({
+    diagram: props.diagram,
+    instrument: props.instrument,
+    playback: props.playback,
+  }),
+  { noteValue: () => noteValue.value },
+)
 
 watch(activePositionIds, (ids) => emit('active', ids))
 
@@ -104,7 +110,7 @@ onBeforeUnmount(() => observer?.disconnect())
     <span data-test="diagram-player-status" role="status" class="sr-only">{{
       state === 'loading' ? t('diagramPlayer.loading') : ''
     }}</span>
-    <DiagramTempo v-model="tempo" v-model:open="tempoOpen" />
+    <DiagramTempo v-model="tempo" v-model:open="tempoOpen" v-model:note-value="noteValue" />
 
     <Teleport to="body">
       <!-- Never in the way: the markers, regions and answers under it stay usable. -->

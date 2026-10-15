@@ -18,8 +18,13 @@ const props = withDefaults(
     /** The values offered, slowest first. */
     values: readonly TempoNoteValue[]
     disabled?: boolean
+    /**
+     * Where the popover is drawn: over the page by default, or inside a panel that closes when
+     * pressed or focused outside, so choosing a note value doesn't close that panel.
+     */
+    container?: HTMLElement | null
   }>(),
-  { disabled: false },
+  { disabled: false, container: null },
 )
 
 const value = defineModel<TempoNoteValue>({ required: true })
@@ -80,7 +85,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
     <TempoNoteValueIcon :value="value" />
   </button>
 
-  <Teleport to="body">
+  <Teleport :to="container ?? 'body'" defer>
     <div
       v-if="open"
       ref="popover"

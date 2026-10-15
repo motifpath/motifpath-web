@@ -456,6 +456,9 @@
     "start": "Começar",
     "stop": "Parar"
   },
+  "progressionTempo": {
+    "done": "Pronto"
+  },
   "teach": {
     "intro": "Crie e cuide do que seus alunos aprendem. Ajustes rápidos funcionam aqui; edições grandes são mais fáceis no computador.",
     "admin": "Admin"
