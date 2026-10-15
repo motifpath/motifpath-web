@@ -436,6 +436,10 @@
       "ready": "começa após um compasso de contagem",
       "withDetail": "{caption} · {detail}",
       "elapsed": "Tempo passado"
+    },
+    "chart": {
+      "label": "Cifra",
+      "bar": "Compasso {position}"
     }
   }
 }

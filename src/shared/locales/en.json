@@ -436,6 +436,10 @@
       "ready": "starts after a bar of count-in",
       "withDetail": "{caption} · {detail}",
       "elapsed": "Time gone"
+    },
+    "chart": {
+      "label": "Chart",
+      "bar": "Bar {position}"
     }
   }
 }
