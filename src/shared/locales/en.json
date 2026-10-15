@@ -448,7 +448,8 @@
       "askedBar": "Bar {position}, the chord asked"
     },
     "options": {
-      "chord": "Chord {key}"
+      "chord": "Chord {key}",
+      "chart": "Chart {key}"
     },
     "question": {
       "chord": "The chord"

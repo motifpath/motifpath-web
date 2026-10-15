@@ -7,6 +7,16 @@ import type { DrillOptionKind } from '@/shared/utils/drillLayout'
 import { drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 
 const NUMERALS: DrillOption[] = ['ii', 'IV', 'V', 'vi'].map((numeral) => ({ value: numeral, label: numeral }))
+const chartOf = (...symbols: (keyof typeof drillVoicings)[]) => symbols.map((symbol) => ({ kind: 'box' as const, ...drillVoicings[symbol] }))
+const BOX_CHARTS: DrillOption[] = [
+  { value: 'G Em C D', label: 'G Em C D', chart: chartOf('G', 'Em', 'C', 'D') },
+  { value: 'G D Em C', label: 'G D Em C', chart: chartOf('G', 'D', 'Em', 'C') },
+]
+const BLUES = ['G7', 'G7', 'G7', 'G7', 'C7', 'C7', 'G7', 'G7', 'D7', 'C7', 'G7', 'D7']
+const SYMBOL_CHARTS: DrillOption[] = [
+  { value: BLUES.join(' '), label: BLUES.join(' '), chart: BLUES.map((symbol) => ({ kind: 'symbol' as const, symbol })) },
+  { value: 'quick', label: 'quick', chart: ['G7', 'C7', ...BLUES.slice(2)].map((symbol) => ({ kind: 'symbol' as const, symbol })) },
+]
 const CHORDS: DrillOption[] = (['C', 'Em', 'Am', 'D'] as const).map((symbol) => ({ value: symbol, label: symbol, chord: drillVoicings[symbol] }))
 
 type Props = { kind: DrillOptionKind; options: DrillOption[]; reveal: { right: string } | null; locked: boolean; choice: string | null }
@@ -98,5 +108,30 @@ describe('DrillOptionGrid', () => {
 
     expect(grid.findAll('svg')).toHaveLength(0)
     expect(options(grid).map((option) => option.find('[data-test="option-label"]').text())).toEqual(['C', 'Em', 'Am', 'D'])
+  })
+
+  describe('charts as options', () => {
+    it('draws each option as its chart of unnamed boxes, with its key', () => {
+      const grid = mountGrid({ kind: 'chart_boxes', options: BOX_CHARTS })
+
+      expect(options(grid)).toHaveLength(2)
+      expect(options(grid).map((option) => option.findAll('li').length)).toEqual([4, 4])
+      expect(options(grid).map((option) => option.get('[data-test="key-hint"]').text())).toEqual(['1', '2'])
+      expect(grid.text()).not.toContain('Em')
+    })
+
+    it('writes a 12-bar chart as chord symbols, every bar', () => {
+      const grid = mountGrid({ kind: 'chart_symbols', options: SYMBOL_CHARTS })
+
+      expect(options(grid).map((option) => option.findAll('li').length)).toEqual([12, 12])
+      expect(options(grid)[1]!.findAll('li')[1]!.text()).toBe('C7')
+    })
+
+    it('takes a tap on a chart as the answer, its chart sent back as the value', async () => {
+      const grid = mountGrid({ kind: 'chart_boxes', options: BOX_CHARTS })
+
+      await options(grid)[1]!.trigger('click')
+      expect(grid.emitted('update:choice')).toEqual([['G D Em C']])
+    })
   })
 })

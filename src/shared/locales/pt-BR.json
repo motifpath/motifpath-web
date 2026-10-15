@@ -448,7 +448,8 @@
       "askedBar": "Compasso {position}, o acorde perguntado"
     },
     "options": {
-      "chord": "Acorde {key}"
+      "chord": "Acorde {key}",
+      "chart": "Cifra {key}"
     },
     "question": {
       "chord": "O acorde"

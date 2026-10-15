@@ -2,14 +2,17 @@
 /**
  * The options of a generated drill question, in the order the plan gave them, each with its key
  * (1–9) so a keyboard or a pedal can answer. A tap is the answer. Options are text (numerals,
- * functions, progressions), chord symbols (bass reads cifra), or chord boxes, two a row, which
- * carry no name until the answer is in: the box is the question. Nothing sets the right option
+ * functions, progressions), chord symbols (bass reads cifra), chord boxes, two a row, which
+ * carry no name until the answer is in (the box is the question), or whole charts, one a row, of
+ * unnamed boxes or of chord symbols. Nothing sets the right option
  * apart before then. Once graded, the right option and a wrong pick are marked and the rest lock.
  */
 import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import type { ChartBarContent } from '@/shared/components/ChartBar.vue'
 import ChordBox from '@/shared/components/diagram/ChordBox.vue'
+import DrillChart from '@/shared/components/DrillChart.vue'
 import ImageOption from '@/shared/components/ImageOption.vue'
 import OptionTile from '@/shared/components/OptionTile.vue'
 import { useOptionKeys } from '@/shared/composables/useOptionKeys'
@@ -29,6 +32,8 @@ export interface DrillOption {
   label: string
   /** The voicing a chord-box option draws. */
   chord?: { voicing: ChordVoicing; diagram: Diagram }
+  /** The chart a chart option draws, one bar a chord. */
+  chart?: ChartBarContent[]
 }
 
 /** A chord box drawn to fill an option's 112 px picture. */
@@ -90,6 +95,18 @@ useOptionKeys({
           :scale="BOX_SCALE"
         />
       </ImageOption>
+    </template>
+    <template v-else-if="kind === 'chart_boxes' || kind === 'chart_symbols'">
+      <OptionTile
+        v-for="(option, i) in options"
+        :key="option.value"
+        :key-hint="i + 1"
+        :label="t('drill.options.chart', { key: i + 1 })"
+        :state="stateOf(option.value)"
+        @click="choose(option.value)"
+      >
+        <DrillChart v-if="option.chart" :bars="option.chart" :instrument="instrument" />
+      </OptionTile>
     </template>
     <template v-else>
       <OptionTile
