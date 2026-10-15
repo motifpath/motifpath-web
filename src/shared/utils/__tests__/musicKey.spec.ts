@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createI18n } from 'vue-i18n'
-
-import sharedEn from '@/shared/locales/en.json'
-import sharedPtBr from '@/shared/locales/pt-BR.json'
+import { i18n } from '@/i18n'
+import type { SupportedLocale } from '@/i18n'
 import { musicKeyMessage, numeralLabel } from '@/shared/utils/musicKey'
 
-const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: sharedEn, 'pt-BR': sharedPtBr } })
-const name = (locale: 'en' | 'pt-BR', key: string) => i18n.global.t(musicKeyMessage(key), {}, { locale })
+const name = (locale: SupportedLocale, key: string) => i18n.global.t(musicKeyMessage(key), {}, { locale })
 
 describe('musicKeyMessage', () => {
   it.each([

@@ -41,6 +41,8 @@ export interface DrillQuestionOption {
   label: string
   /** The chord an option stands for, drawn as a box on guitar. */
   chord?: DrillChord
+  /** The chart an option is, one chord a bar, for picking a chart. */
+  chart?: DrillChord[]
 }
 
 /** Everything a drill question shows, as its plan gives it. */
@@ -85,17 +87,24 @@ function boxOf(chord: DrillChord | undefined): { voicing: ChordVoicing; diagram:
   return chord?.voicing && chord.diagram ? { voicing: chord.voicing, diagram: chord.diagram } : null
 }
 
-const chartBars = computed<ChartBarContent[]>(() =>
-  (props.view.chart ?? []).flatMap((chord): ChartBarContent[] => {
-    if (layout.value?.stimulus === 'chart_symbols') return [{ kind: 'symbol', symbol: chord.symbol }]
+/** A chart's bars, as symbols or as boxes; a box with no voicing is left out, so it shows as missing. */
+function barsOf(chart: DrillChord[], symbols: boolean): ChartBarContent[] {
+  return chart.flatMap((chord): ChartBarContent[] => {
+    if (symbols) return [{ kind: 'symbol', symbol: chord.symbol }]
     const box = boxOf(chord)
     return box ? [{ kind: 'box', ...box }] : []
-  }),
-)
+  })
+}
+
+const chartBars = computed<ChartBarContent[]>(() => barsOf(props.view.chart ?? [], layout.value.stimulus === 'chart_symbols'))
 
 const options = computed<DrillOption[]>(() =>
   props.view.options.map((option) => {
-    const box = layout.value?.options === 'chord_box' ? boxOf(option.chord) : null
+    const kind = layout.value.options
+    if (kind === 'chart_boxes' || kind === 'chart_symbols') {
+      return { value: option.value, label: option.label, chart: barsOf(option.chart ?? [], kind === 'chart_symbols') }
+    }
+    const box = kind === 'chord_box' ? boxOf(option.chord) : null
     return box ? { value: option.value, label: option.label, chord: box } : { value: option.value, label: option.label }
   }),
 )
@@ -103,11 +112,11 @@ const options = computed<DrillOption[]>(() =>
 /** Whether everything the question must show can be shown. */
 const complete = computed(() => {
   const now = layout.value
-  if (!now) return false
   if (now.stimulus === 'chord_box' && !boxOf(props.view.chord)) return false
   if (now.stimulus === 'chord_symbol' && !props.view.chord) return false
   if ((now.stimulus === 'chart_boxes' || now.stimulus === 'chart_symbols') && chartBars.value.length !== (props.view.chart ?? []).length) return false
   if (now.stimulus === 'player' && !props.view.progression) return false
+  if (now.options === 'chart_boxes') return props.view.options.every((option, i) => (options.value[i]?.chart?.length ?? 0) === (option.chart?.length ?? -1))
   return now.options !== 'chord_box' || options.value.every((option) => option.chord)
 })
 
@@ -146,7 +155,7 @@ function answer(value: string | null) {
 </script>
 
 <template>
-  <div v-if="layout" class="flex w-full flex-col gap-4">
+  <div class="flex w-full flex-col gap-4">
     <p v-if="view.context" class="text-base text-ink">{{ view.context }}</p>
     <template v-if="complete">
       <div v-if="layout.stimulus === 'chord_box' && view.chord?.voicing && view.chord.diagram" data-test="drill-stimulus" class="flex justify-center">

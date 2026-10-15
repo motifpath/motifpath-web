@@ -159,6 +159,36 @@ describe('DrillQuestion', () => {
     expect(question.findAll('button[data-state="default"]')).toHaveLength(2)
   })
 
+  it('offers whole charts to pick for a progression: unnamed boxes on guitar', async () => {
+    const charts = [
+      ['G', 'Em', 'C', 'D'],
+      ['G', 'D', 'Em', 'C'],
+    ] as const
+    const question = mountQuestion({
+      way: 'numbers_to_chart',
+      instrument: 'guitar',
+      context: 'Key of G major',
+      options: charts.map((symbols) => ({ value: symbols.join(' '), label: symbols.join(' '), chart: symbols.map(chord) })),
+    })
+
+    expect(question.findAll('[data-test="drill-options"] li')).toHaveLength(8)
+    expect(question.findAll('svg')).toHaveLength(8)
+    const optionWords = question.get('[data-test="drill-options"]').text().split(/\s+/)
+    for (const symbol of ['G', 'Em', 'C', 'D']) expect(optionWords).not.toContain(symbol)
+    await question.findAll('[data-test="drill-options"] button')[1]!.trigger('click')
+    expect(question.emitted('answer')).toEqual([[{ way: 'numbers_to_chart', options: ['G Em C D', 'G D Em C'], choice: 'G D Em C' }]])
+  })
+
+  it('offers charts as cifra on bass', () => {
+    const question = mountQuestion({
+      way: 'numbers_to_chart',
+      instrument: 'bass',
+      options: [{ value: 'G Em C D', label: 'G Em C D', chart: (['G', 'Em', 'C', 'D'] as const).map((symbol) => ({ symbol })) }, { value: 'G D Em C', label: 'G D Em C', chart: (['G', 'D', 'Em', 'C'] as const).map((symbol) => ({ symbol })) }],
+    })
+
+    expect(question.findAll('[data-test="drill-options"] li').map((bar) => bar.text())).toEqual(['G', 'Em', 'C', 'D', 'G', 'D', 'Em', 'C'])
+  })
+
   it('holds its options and says the question can’t be shown when a box it must draw has no voicing', () => {
     const question = mountQuestion({ way: 'chord_to_numeral', instrument: 'guitar', chord: { symbol: 'Bm' }, options: text('ii', 'iii', 'V', 'vi') })
 
