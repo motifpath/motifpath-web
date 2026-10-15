@@ -16,9 +16,12 @@ export interface NoteSink {
   stopAll(): void
 }
 
+/** A bar's first beat, any other beat, or a click between beats; each sounds softer than the one before. */
+export type ClickLevel = 'downbeat' | 'beat' | 'between'
+
 export interface ClickSink {
-  /** Clicks at `time` (audio-clock seconds), louder on an accent; the returned function cancels it. */
-  click(at: { time: number; accent: boolean }): () => void
+  /** Clicks at `time` (audio-clock seconds), as loud as its level; the returned function cancels it. */
+  click(at: { time: number; level: ClickLevel }): () => void
   /** Silences every click, sounding or scheduled. */
   stopAll(): void
 }
@@ -71,7 +74,7 @@ export function createPlaybackRun(
     const cancels: (() => void)[] = []
     for (let n = Math.ceil(from / beat - EPSILON); n * beat < to - EPSILON; n++) {
       const at = time + (n * beat - from) * wholeSeconds
-      cancels.push(metronome.sink.click({ time: at, accent: n % beatsPerBar === 0 }))
+      cancels.push(metronome.sink.click({ time: at, level: n % beatsPerBar === 0 ? 'downbeat' : 'beat' }))
     }
     return cancels
   }

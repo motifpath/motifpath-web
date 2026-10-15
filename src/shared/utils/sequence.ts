@@ -66,7 +66,7 @@ export function sameNoteValue(a: NoteValue, b: NoteValue): boolean {
 }
 
 /** Meters of 6, 9, 12 or 15 beats of a quarter or shorter count in dotted beats. */
-function isCompound(signature: TimeSignature): boolean {
+export function isCompound(signature: TimeSignature): boolean {
   return [6, 9, 12, 15].includes(signature.beats) && signature.beat_value >= 4
 }
 

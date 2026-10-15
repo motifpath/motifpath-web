@@ -14,7 +14,7 @@ const audio = vi.hoisted(() => ({
   played: [] as { voiceId: string; midi: number; time: number; duration: number; cancelled: boolean }[],
   stopAll: vi.fn(),
   failLoad: false,
-  clicks: [] as { time: number; accent: boolean }[],
+  clicks: [] as { time: number; level: string }[],
 }))
 
 vi.mock('@/shared/audio/audioContext', () => ({
@@ -28,7 +28,7 @@ vi.mock('@/shared/audio/audioContext', () => ({
 
 vi.mock('@/shared/audio/clickSink', () => ({
   createClickSink: () => ({
-    click(at: { time: number; accent: boolean }) {
+    click(at: { time: number; level: string }) {
       audio.clicks.push(at)
       return () => {}
     },
@@ -196,8 +196,8 @@ describe('useDiagramPlayback — playing', () => {
     await play(player)
     const start = audio.played[0]!.time
 
-    expect(audio.clicks[0]).toEqual({ time: start, accent: true })
-    expect(audio.clicks[1]).toEqual({ time: start + 1, accent: false })
+    expect(audio.clicks[0]).toEqual({ time: start, level: 'downbeat' })
+    expect(audio.clicks[1]).toEqual({ time: start + 1, level: 'beat' })
   })
 
   it('plays without a metronome unless asked', async () => {
@@ -339,7 +339,7 @@ describe('useDiagramPlayback — which playback a use plays', () => {
     return {
       tempo: player.tempo.value,
       notes: audio.played.map((n) => [n.midi, +(n.time - start).toFixed(3)]),
-      accents: audio.clicks.filter((c) => c.accent).length,
+      accents: audio.clicks.filter((c) => c.level === 'downbeat').length,
     }
   }
 
@@ -372,7 +372,7 @@ describe('useDiagramPlayback — which playback a use plays', () => {
     await play(player)
     const start = audio.played[0]!.time
     // 3/4 at 120 BPM: a bar lasts a second and a half, so the second accent falls there.
-    expect(audio.clicks.filter((c) => c.accent).map((c) => +(c.time - start).toFixed(3)).slice(0, 2)).toEqual([0, 1.5])
+    expect(audio.clicks.filter((c) => c.level === 'downbeat').map((c) => +(c.time - start).toFixed(3)).slice(0, 2)).toEqual([0, 1.5])
   })
 
   it('offers no Play when the default it falls back to sounds nothing', () => {
