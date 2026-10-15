@@ -71,6 +71,17 @@ describe('useAlphaObservation', () => {
     expect(hasMore.value).toBe(false)
   })
 
+  it('shows a student once when one who practised between two pages moved into the next', async () => {
+    // a finished a session after the first page, so the order moved them after c.
+    coreGET.mockReturnValueOnce(page(['a', 'b'], 4)).mockReturnValueOnce(page(['c', 'a'], 4, 2))
+    const { students, isLoading, loadMore } = mount()
+    await vi.waitFor(() => expect(isLoading.value).toBe(false))
+
+    await loadMore()
+
+    expect(students.value.map((s) => s.student_id)).toEqual(['a', 'b', 'c'])
+  })
+
   it('asks the server for the filter and starts again from the first page', async () => {
     coreGET.mockReturnValue(page(['a'], 1))
     const { filter, isLoading } = mount()

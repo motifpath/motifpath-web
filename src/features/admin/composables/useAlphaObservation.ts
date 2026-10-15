@@ -90,7 +90,10 @@ export function useAlphaObservation(week: Ref<string | undefined>, filter: Ref<S
       loadMoreError.value = true
     } else {
       observation.value = result.data
-      students.value = [...students.value, ...result.data.students]
+      // The order follows this week's sessions, which change while students practise: a student who
+      // finished one since the last page can come back in this one. Each is shown once.
+      const shown = new Set(students.value.map((s) => s.student_id))
+      students.value = [...students.value, ...result.data.students.filter((s) => !shown.has(s.student_id))]
     }
     isLoadingMore.value = false
   }
