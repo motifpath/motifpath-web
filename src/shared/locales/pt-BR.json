@@ -424,5 +424,34 @@
     "yours": "{label} · sua resposta",
     "right": "{label} · resposta certa",
     "folded": "{label} · {name}"
+  },
+  "drill": {
+    "countStepper": {
+      "more": "Mais um: {label}",
+      "fewer": "Menos um: {label}",
+      "valueText": "{count} {label}"
+    },
+    "changeTimer": {
+      "left": "restantes de {total}",
+      "ready": "começa após um compasso de contagem",
+      "withDetail": "{caption} · {detail}",
+      "elapsed": "Tempo passado"
+    },
+    "chart": {
+      "label": "Cifra",
+      "bar": "Compasso {position}"
+    },
+    "player": {
+      "listen": "Ouvir",
+      "bars": "Compassos",
+      "givenBar": "Compasso {position}, {label}",
+      "askedBar": "Compasso {position}, o acorde perguntado"
+    },
+    "options": {
+      "chord": "Acorde {key}"
+    },
+    "question": {
+      "chord": "O acorde"
+    }
   }
 }
