@@ -57,8 +57,8 @@ vi.mock('@/shared/composables/useListInstruments', () => ({
 // The take itself is PlayAlongTake's: here it only reports what it was given and emits.
 const PlayAlongTakeStub = defineComponent({
   name: 'PlayAlongTake',
-  props: { item: { type: Object, required: true }, tempo: Number, takesLeft: Number, takesTotal: Number },
-  emits: ['rate', 'skip', 'tempo'],
+  props: { item: { type: Object, required: true }, tempo: Number, noteValue: String, takesLeft: Number, takesTotal: Number },
+  emits: ['rate', 'skip', 'tempo', 'noteValue'],
   setup(props) {
     return () => h('div', { 'data-test': 'take' }, `${props.tempo} BPM · ${props.takesLeft} of ${props.takesTotal} left`)
   },
@@ -128,7 +128,7 @@ const TodaysPlanStub = defineComponent({
 
 const NextUpCardStub = defineComponent({
   name: 'NextUpCard',
-  props: { doneLabel: String, fastestBpm: Number, nextLabel: String, nextReason: String },
+  props: { doneLabel: String, fastestBpm: Number, fastestNoteValue: String, nextLabel: String, nextReason: String },
   emits: ['continue'],
   setup(props) {
     return () => h('div', { 'data-test': 'next-up' }, `${props.doneLabel} up to ${props.fastestBpm} → ${props.nextLabel} (${props.nextReason})`)
@@ -809,7 +809,7 @@ describe('PracticeSessionView', () => {
     expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false, answered_count: 1 })])
     const summary = wrapper.getComponent(SessionSummaryStub)
     expect(summary.props('itemCount')).toBe(1)
-    expect(summary.props('rows')).toEqual([expect.objectContaining({ key: `play_along:${DUE}`, result: { kind: 'played', fastestBpm: 65, rating: 'clean' } })])
+    expect(summary.props('rows')).toEqual([expect.objectContaining({ key: `play_along:${DUE}`, result: { kind: 'played', fastestBpm: 65, fastestNoteValue: 'quarters', rating: 'clean' } })])
   })
 
   it('goes back to the choice for another session', async () => {
@@ -965,6 +965,16 @@ describe('PracticeSessionView', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-test="take"]').text()).toBe('95 BPM · 2 of 2 left')
+  })
+
+  it('plays the next take in the note value the student picks, at the same effective speed', async () => {
+    const wrapper = mountView()
+    await startSession(wrapper)
+
+    wrapper.getComponent(PlayAlongTakeStub).vm.$emit('noteValue', 'eighths')
+    await flushPromises()
+
+    expect(wrapper.getComponent(PlayAlongTakeStub).props()).toMatchObject({ tempo: 40, noteValue: 'eighths' })
   })
 
   describe('with exercises', () => {

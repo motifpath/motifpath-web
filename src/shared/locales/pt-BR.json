@@ -389,8 +389,8 @@
     "label": "Andamento",
     "metronome": "Metrônomo",
     "bpm": "{bpm} BPM",
-    "bestTick": "Melhor limpa {bpm} BPM",
-    "goalTick": "Meta {bpm} BPM",
+    "bestTick": "Melhor limpa {tempo}",
+    "goalTick": "Meta {tempo}",
     "typeTempo": "Digite um andamento em BPM"
   },
   "noteValue": {
@@ -412,6 +412,21 @@
     "quintuplets": "Quintinas · 5 notas por tempo",
     "sextuplets": "Sextinas · 6 notas por tempo",
     "thirty_seconds": "Fusas · 8 notas por tempo"
+  },
+  "tempoAsPlayed": {
+    "quarters": "{bpm} BPM",
+    "other": "{bpm} BPM em {value}",
+    "shortOther": "{bpm} em {value}"
+  },
+  "noteValueIn": {
+    "halves": "mínimas",
+    "quarters": "semínimas",
+    "eighths": "colcheias",
+    "triplets": "tercinas",
+    "sixteenths": "semicolcheias",
+    "quintuplets": "quintinas",
+    "sextuplets": "sextinas",
+    "thirty_seconds": "fusas"
   },
   "noteValuePicker": {
     "button": "Figura: {value}",

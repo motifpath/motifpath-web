@@ -389,8 +389,8 @@
     "label": "Tempo",
     "metronome": "Metronome",
     "bpm": "{bpm} BPM",
-    "bestTick": "Best clean {bpm} BPM",
-    "goalTick": "Goal {bpm} BPM",
+    "bestTick": "Best clean {tempo}",
+    "goalTick": "Goal {tempo}",
     "typeTempo": "Type a tempo in BPM"
   },
   "noteValue": {
@@ -412,6 +412,21 @@
     "quintuplets": "Quintuplets · 5 notes a beat",
     "sextuplets": "Sextuplets · 6 notes a beat",
     "thirty_seconds": "32nds · 8 notes a beat"
+  },
+  "tempoAsPlayed": {
+    "quarters": "{bpm} BPM",
+    "other": "{bpm} BPM in {value}",
+    "shortOther": "{bpm} in {value}"
+  },
+  "noteValueIn": {
+    "halves": "halves",
+    "quarters": "quarters",
+    "eighths": "eighths",
+    "triplets": "triplets",
+    "sixteenths": "sixteenths",
+    "quintuplets": "quintuplets",
+    "sextuplets": "sextuplets",
+    "thirty_seconds": "32nds"
   },
   "noteValuePicker": {
     "button": "Note value: {value}",

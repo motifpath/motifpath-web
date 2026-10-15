@@ -42,6 +42,13 @@ describe('TempoControl', () => {
     expect(wrapper.emitted('update:noteValue')).toEqual([['triplets']])
   })
 
+  it('names its marks in the note value it shows', () => {
+    const wrapper = mountControl({ goal: 50, best: 35, noteValue: 'eighths', noteValues: SUGGESTED_NOTE_VALUES })
+
+    expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 50 BPM in eighths')
+    expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 35 BPM in eighths')
+  })
+
   it('locks the note value with the tempo while a take plays', () => {
     const wrapper = mountControl({ noteValue: 'quarters', noteValues: SUGGESTED_NOTE_VALUES, disabled: true })
 

@@ -3,15 +3,28 @@ import { describe, expect, it } from 'vitest'
 
 import NextUpCard from '@/features/student/components/NextUpCard.vue'
 
-function mountCard() {
+function mountCard(props: Record<string, unknown> = {}) {
   return mount(NextUpCard, {
-    props: { doneLabel: 'A Major pentatonic — Box 4', fastestBpm: 300, nextLabel: 'Ab Major pentatonic — Box 1', nextReason: 'stretch' as const },
+    props: {
+      doneLabel: 'A Major pentatonic — Box 4',
+      fastestBpm: 300,
+      fastestNoteValue: 'quarters' as const,
+      nextLabel: 'Ab Major pentatonic — Box 1',
+      nextReason: 'stretch' as const,
+      ...props,
+    },
   })
 }
 
 describe('NextUpCard', () => {
   it('says what was just played and how fast', () => {
     expect(mountCard().get('[data-test="next-up-done"]').text()).toBe('You played A Major pentatonic — Box 4 up to 300 BPM.')
+  })
+
+  it('says the note value it was played at, when not quarters', () => {
+    expect(mountCard({ fastestBpm: 80, fastestNoteValue: 'eighths' }).get('[data-test="next-up-done"]').text()).toBe(
+      'You played A Major pentatonic — Box 4 up to 80 BPM in eighths.',
+    )
   })
 
   it('names what comes next and why it was picked', () => {

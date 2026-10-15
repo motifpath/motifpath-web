@@ -1,14 +1,16 @@
 import type { components } from '@/api/generated/core-domain'
 import type { ItemOutcome } from '@/features/student/composables/usePracticeSessionRun'
 import { planRowKeyOf, planRows } from '@/features/student/utils/planRows'
+import { speedOf } from '@/features/student/utils/tempoLadder'
 import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Item = components['schemas']['PracticeSessionItem']
 
 /** How a line of the summary went. */
 export type SummaryResult =
-  /** A play-along: the fastest tempo it was played at, and how that take went. */
-  | { kind: 'played'; fastestBpm: number; rating: TakeRating }
+  /** A play-along: the fastest tempo it was played at, by effective speed, as played, and how that take went. */
+  | { kind: 'played'; fastestBpm: number; fastestNoteValue: TempoNoteValue; rating: TakeRating }
   /** One item answered once. */
   | { kind: 'answered'; correct: boolean }
   /** A drill's fretboard cells or diagram shapes, answered many to a session. */
@@ -26,10 +28,10 @@ export interface SummaryRow {
 
 const RATING_ORDER: TakeRating[] = ['struggled', 'almost', 'clean']
 
-/** The fastest take, and at that tempo the best it went. */
+/** The fastest take at effective speed, and at that speed the best it went. */
 function fastestTake(takes: RatedTake[]): RatedTake {
   return takes.reduce((best, take) => {
-    if (take.bpm !== best.bpm) return take.bpm > best.bpm ? take : best
+    if (speedOf(take) !== speedOf(best)) return speedOf(take) > speedOf(best) ? take : best
     return RATING_ORDER.indexOf(take.rating) > RATING_ORDER.indexOf(best.rating) ? take : best
   })
 }
@@ -56,7 +58,8 @@ export function summaryRows(items: Item[], outcomes: ReadonlyMap<string, ItemOut
     const outcome = answered[0]
     if (outcome.kind === 'played') {
       const take = fastestTake(outcome.takes)
-      rows.push({ key: row.key, item: row.item, result: { kind: 'played', fastestBpm: take.bpm, rating: take.rating }, good: true })
+      const result = { kind: 'played' as const, fastestBpm: take.bpm, fastestNoteValue: take.noteValue ?? 'quarters', rating: take.rating }
+      rows.push({ key: row.key, item: row.item, result, good: true })
     } else {
       rows.push({ key: row.key, item: row.item, result: { kind: 'answered', correct: outcome.correct }, good: outcome.correct })
     }

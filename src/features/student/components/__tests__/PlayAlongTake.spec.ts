@@ -5,6 +5,7 @@ import type { MaybeRefOrGetter } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { PlaybackSource, PlaybackState } from '@/shared/composables/useDiagramPlayback'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Item = components['schemas']['PracticeSessionItem']
 
@@ -54,17 +55,19 @@ const playback = {
 }
 let playbackSource: () => PlaybackSource
 let metronomeOn: () => boolean
+let playedNoteValue: () => TempoNoteValue
 vi.mock('@/shared/composables/useDiagramPlayback', () => ({
-  useDiagramPlayback: (source: () => PlaybackSource, options: { metronome: () => boolean }) => {
+  useDiagramPlayback: (source: () => PlaybackSource, options: { metronome: () => boolean; noteValue: () => TempoNoteValue }) => {
     playbackSource = source
     metronomeOn = options.metronome
+    playedNoteValue = options.noteValue
     return { ...playback, canPlay: ref(true), prefetch: vi.fn() }
   },
 }))
 
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 
-function item(reason: Item['reason'] = 'due', best: number | null = 70): Item {
+function item(reason: Item['reason'] = 'due', best: number | null = 70, bestNoteValue: TempoNoteValue = 'quarters'): Item {
   return {
     item_key: `play_along:${DIAGRAM_ID}`,
     kind: 'play_along',
@@ -79,15 +82,16 @@ function item(reason: Item['reason'] = 'due', best: number | null = 70): Item {
       start_note_value: 'quarters',
       target_tempo_bpm: 100,
       best_clean_tempo_bpm: best,
-      best_clean_note_value: best === null ? null : 'quarters',
+      best_clean_note_value: best === null ? null : bestNoteValue,
     },
   }
 }
 
-function mountTake(props: Partial<{ item: Item; tempo: number; takesLeft: number; takesTotal: number }> = {}) {
+function mountTake(props: Partial<{ item: Item; tempo: number; noteValue: TempoNoteValue; takesLeft: number; takesTotal: number }> = {}) {
   return mount(PlayAlongTake, {
-    props: { item: item(), tempo: 70, takesLeft: 4, takesTotal: 4, ...props },
+    props: { item: item(), tempo: 70, noteValue: 'quarters', takesLeft: 4, takesTotal: 4, ...props },
     global: { stubs: { FrettedDiagramView: true } },
+    attachTo: document.body,
   })
 }
 
@@ -130,6 +134,59 @@ describe('PlayAlongTake', () => {
 
     expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 100 BPM')
     expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 70 BPM')
+  })
+
+  describe('note values', () => {
+    it('offers the four suggested note values beside the tempo, quarters chosen', async () => {
+      const wrapper = mountTake()
+
+      await wrapper.get('[data-test="note-value"]').trigger('click')
+
+      const choices = [...document.querySelectorAll('[data-test="note-value-choice"]')]
+      expect(choices.map((c) => c.getAttribute('aria-label'))).toEqual(['Quarters', 'Eighths', 'Triplets', 'Sixteenths'])
+      expect(choices[0]!.getAttribute('aria-checked')).toBe('true')
+      wrapper.unmount()
+    })
+
+    it('says the note value chosen for the next take', () => {
+      const wrapper = mountTake()
+
+      wrapper.findComponent({ name: 'TempoControl' }).vm.$emit('update:noteValue', 'eighths')
+
+      expect(wrapper.emitted('noteValue')).toEqual([['eighths']])
+    })
+
+    it('plays the take at its note value, its count-in still a bar of beats', () => {
+      mountTake({ tempo: 40, noteValue: 'eighths' })
+
+      expect(playedNoteValue()).toBe('eighths')
+      const steps = playbackSource().diagram.playbacks[0]!.steps
+      expect(steps.slice(0, 4).map((step) => step.value)).toEqual(Array(4).fill({ num: 1, den: 2 }))
+    })
+
+    it('marks the goal and the best clean tempo in the note value of the take, from the ladder’s slowest there', () => {
+      const wrapper = mountTake({ tempo: 40, noteValue: 'eighths' })
+
+      expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 50 BPM in eighths')
+      expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 35 BPM in eighths')
+      expect(wrapper.get('[data-test="tempo-slider"]').attributes('min')).toBe('30')
+    })
+
+    it('says the goal in the note value of the take', () => {
+      const wrapper = mountTake({ tempo: 40, noteValue: 'eighths' })
+
+      expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 1 of 4 · Goal 50 BPM in eighths · best clean 70')
+    })
+
+    it('says the best clean tempo as it was played', () => {
+      const wrapper = mountTake({ item: item('due', 80, 'eighths') })
+
+      expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 1 of 4 · Goal 100 BPM · best clean 80 in eighths')
+    })
+
+    it('shows the time signature the diagram sets, locked', () => {
+      expect(mountTake().get('[data-test="locked-time-signature"]').text()).toBe('4/4 · set by the diagram')
+    })
   })
 
   it('lets the board leave the text column on a wider screen', () => {

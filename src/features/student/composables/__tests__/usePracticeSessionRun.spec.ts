@@ -20,6 +20,7 @@ import { usePracticeSessionRun } from '@/features/student/composables/usePractic
 import type { ShapeBoard } from '@/features/student/composables/usePracticeSessionRun'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
 import type { components } from '@/api/generated/core-domain'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Plan = components['schemas']['PracticeSessionPlan']
 type Item = components['schemas']['PracticeSessionItem']
@@ -27,7 +28,11 @@ type Item = components['schemas']['PracticeSessionItem']
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
 const GUITAR_ID = '22222222-2222-4222-8222-222222222222'
 
-function playAlong(diagramId: string, reason: Item['reason'], tempos: { start: number; target: number }): Item {
+function playAlong(
+  diagramId: string,
+  reason: Item['reason'],
+  tempos: { start: number; target: number; noteValue?: TempoNoteValue },
+): Item {
   return {
     item_key: `play_along:${diagramId}`,
     kind: 'play_along',
@@ -39,7 +44,7 @@ function playAlong(diagramId: string, reason: Item['reason'], tempos: { start: n
     play_along: {
       diagram_id: diagramId,
       start_tempo_bpm: tempos.start,
-      start_note_value: 'quarters',
+      start_note_value: tempos.noteValue ?? 'quarters',
       target_tempo_bpm: tempos.target,
       best_clean_tempo_bpm: null,
       best_clean_note_value: null,
@@ -160,7 +165,7 @@ describe('usePracticeSessionRun', () => {
     run.rate('clean')
     run.rate('clean')
 
-    expect(run.handoff.value).toEqual({ done: twoItems.items[0], fastestBpm: 95, next: twoItems.items[1] })
+    expect(run.handoff.value).toEqual({ done: twoItems.items[0], fastestBpm: 95, fastestNoteValue: 'quarters', next: twoItems.items[1] })
     expect(run.current.value).toBeNull()
     expect(run.index.value).toBe(0)
   })
@@ -219,7 +224,7 @@ describe('usePracticeSessionRun', () => {
         event_type: 'practice.item_answered',
         practice_session_id: SESSION_ID,
         item_key: `play_along:${DUE}`,
-        response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60 },
+        response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60, note_value: 'quarters' },
       },
     ])
   })
@@ -381,6 +386,107 @@ describe('usePracticeSessionRun', () => {
     run.nextItem()
 
     expect(run.tempo.value).toBe(60)
+  })
+
+  describe('note values', () => {
+    const PENTATONIC = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+
+    /** A session of the play-along "pentatonic-run" with a target of 120 BPM, on its first take. */
+    function pentatonicRun(start: number, noteValue: TempoNoteValue = 'quarters') {
+      const run = usePracticeSessionRun(plan([playAlong(PENTATONIC, 'due', { start, target: 120, noteValue })]))
+      run.start()
+      return run
+    }
+
+    it('starts a play-along at its start tempo, in its start note value', () => {
+      const run = pentatonicRun(50, 'eighths')
+
+      expect(run.tempo.value).toBe(50)
+      expect(run.noteValue.value).toBe('eighths')
+    })
+
+    it('keeps the effective speed in another note value: 80 BPM is 40 in eighths', () => {
+      const run = pentatonicRun(80)
+
+      run.setNoteValue('eighths')
+
+      expect(run.tempo.value).toBe(40)
+      expect(run.noteValue.value).toBe('eighths')
+    })
+
+    it('rounds the tempo down to the 5 BPM grid in another note value: 155 BPM is 50 in triplets', () => {
+      const run = pentatonicRun(90)
+      run.setTempo(155)
+
+      run.setNoteValue('triplets')
+
+      expect(run.tempo.value).toBe(50)
+    })
+
+    it('sends a rated take with the note value it was played at', () => {
+      const run = pentatonicRun(120)
+      run.setNoteValue('eighths')
+
+      run.rate('clean')
+
+      expect(tracked('practice.item_answered')[0].response).toEqual({
+        response_type: 'self_rating',
+        rating: 'clean',
+        tempo_bpm: 60,
+        note_value: 'eighths',
+      })
+    })
+
+    it('steps the ladder within the note value of the takes', () => {
+      const run = pentatonicRun(50, 'eighths')
+
+      run.rate('clean')
+      run.rate('clean')
+
+      expect(run.tempo.value).toBe(55)
+      expect(run.noteValue.value).toBe('eighths')
+    })
+
+    it('compares the target at effective speed', () => {
+      const run = pentatonicRun(60, 'eighths')
+
+      run.rate('clean')
+      run.rate('clean')
+
+      expect(run.tempo.value).toBe(60)
+    })
+
+    it('keeps a tempo the student sets above the ladder floor in the note value', () => {
+      const run = pentatonicRun(50, 'eighths')
+
+      run.setTempo(10)
+
+      // The floor is 70 BPM in quarters: 35 in eighths.
+      expect(run.tempo.value).toBe(35)
+    })
+
+    it('starts the next item in its own note value, whatever was chosen before', () => {
+      const run = usePracticeSessionRun(
+        plan([playAlong(WARM_UP, 'due', { start: 80, target: 120 }), playAlong(DUE, 'due', { start: 30, target: 120, noteValue: 'triplets' })]),
+      )
+      run.start()
+      run.setNoteValue('sixteenths')
+
+      run.nextItem()
+
+      expect(run.noteValue.value).toBe('triplets')
+      expect(run.tempo.value).toBe(30)
+    })
+
+    it('keeps a warm-up in the note value of its last take', () => {
+      const run = usePracticeSessionRun(twoItems)
+      run.start()
+      run.setNoteValue('eighths')
+      run.rate('clean')
+
+      expect(run.noteValue.value).toBe('eighths')
+      expect(run.tempo.value).toBe(40)
+    })
   })
 
   it('says how far the session has come, item by item', () => {
@@ -674,7 +780,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         expect.objectContaining({
           item_key: `play_along:${APPLY}`,
-          response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 70 },
+          response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 70, note_value: 'quarters' },
         }),
       ])
     })
@@ -1137,8 +1243,8 @@ describe('usePracticeSessionRun', () => {
       expect(run.outcomes.value.get(`play_along:${WARM_UP}`)).toEqual({
         kind: 'played',
         takes: [
-          { bpm: 80, rating: 'clean' },
-          { bpm: 80, rating: 'almost' },
+          { bpm: 80, rating: 'clean', noteValue: 'quarters' },
+          { bpm: 80, rating: 'almost', noteValue: 'quarters' },
         ],
       })
     })

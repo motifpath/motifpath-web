@@ -11,6 +11,7 @@ import { computed, nextTick, ref } from 'vue'
 import { Metronome } from 'lucide-vue-next'
 
 import NoteValuePicker from '@/shared/components/NoteValuePicker.vue'
+import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { MAX_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
@@ -38,6 +39,10 @@ const props = defineProps<{
 const emit = defineEmits<{ tempo: [bpm: number]; 'update:metronome': [on: boolean]; 'update:noteValue': [value: TempoNoteValue] }>()
 
 const { t } = useTypedT()
+const { asPlayed } = useTempoAsPlayed()
+
+/** A mark's tempo in words, in the note value shown, if any. */
+const markTempo = (bpm: number) => asPlayed(bpm, props.noteValues?.length ? (props.noteValue ?? 'quarters') : 'quarters')
 
 /** The slider's tempo while it's being dragged. */
 const sliding = ref<number | null>(null)
@@ -63,8 +68,10 @@ function along(bpm: number): string {
 }
 
 const ticks = computed(() => [
-  ...(props.best === null ? [] : [{ kind: 'best', bpm: props.best, label: t('tempoControl.bestTick', { bpm: props.best }) }]),
-  ...(props.goal === null ? [] : [{ kind: 'goal', bpm: props.goal, label: props.goalLabel ?? t('tempoControl.goalTick', { bpm: props.goal }) }]),
+  ...(props.best === null ? [] : [{ kind: 'best', bpm: props.best, label: t('tempoControl.bestTick', { tempo: markTempo(props.best) }) }]),
+  ...(props.goal === null
+    ? []
+    : [{ kind: 'goal', bpm: props.goal, label: props.goalLabel ?? t('tempoControl.goalTick', { tempo: markTempo(props.goal) }) }]),
 ])
 
 /** The typed tempo while the student types one; null while the value only shows. */

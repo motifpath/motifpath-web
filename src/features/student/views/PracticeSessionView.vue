@@ -281,6 +281,7 @@ onBeforeUnmount(() => {
       v-else-if="run.handoff.value"
       :done-label="labelOf(run.handoff.value.done)"
       :fastest-bpm="run.handoff.value.fastestBpm"
+      :fastest-note-value="run.handoff.value.fastestNoteValue"
       :next-label="labelOf(run.handoff.value.next)"
       :next-reason="run.handoff.value.next.reason"
       @continue="run.continueToNext()"
@@ -326,14 +327,16 @@ onBeforeUnmount(() => {
         @skip="run.skip($event)"
       />
       <PlayAlongTake
-        v-else-if="current.kind === 'play_along' && current.play_along && run.tempo.value !== null"
+        v-else-if="current.kind === 'play_along' && current.play_along && run.tempo.value !== null && run.noteValue.value !== null"
         :item="current"
         :tempo="run.tempo.value"
+        :note-value="run.noteValue.value"
         :takes-left="run.takesLeft.value"
         :takes-total="run.takesTotal.value"
         @rate="run.rate($event)"
         @skip="run.skip($event)"
         @tempo="run.setTempo($event)"
+        @note-value="run.setNoteValue($event)"
       />
       <div v-else class="flex flex-col items-start gap-3">
         <p class="text-ink-muted">{{ t('practiceSessionView.unsupported') }}</p>
