@@ -42,7 +42,8 @@ const BOX_SCALE = 0.86
 const props = defineProps<{
   kind: DrillOptionKind
   options: DrillOption[]
-  instrument: Instrument
+  /** The instrument boxes are drawn for; none when chords are written as symbols. */
+  instrument?: Instrument | null
   /** The right option, once the answer is graded; null before. */
   reveal: { right: string } | null
   /** Whether the options take no answer, such as while the question's sound is missing. */
@@ -87,7 +88,7 @@ useOptionKeys({
         @click="choose(option.value)"
       >
         <ChordBox
-          v-if="option.chord"
+          v-if="option.chord && instrument"
           :voicing="option.chord.voicing"
           :diagram="option.chord.diagram"
           :instrument="instrument"

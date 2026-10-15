@@ -69,8 +69,8 @@ export interface DrillAnswer {
 
 const props = defineProps<{
   view: DrillQuestionView
-  /** The instrument chord boxes are drawn for. */
-  instrument: Instrument
+  /** The instrument chord boxes are drawn for; none is needed when chords are written as symbols. */
+  instrument?: Instrument | null
   /** The right option, once the answer is graded; null before. */
   reveal: { right: string } | null
 }>()
@@ -112,6 +112,8 @@ const options = computed<DrillOption[]>(() =>
 /** Whether everything the question must show can be shown. */
 const complete = computed(() => {
   const now = layout.value
+  const drawsBoxes = now.stimulus === 'chord_box' || now.stimulus === 'chart_boxes' || now.options === 'chord_box' || now.options === 'chart_boxes'
+  if (drawsBoxes && !props.instrument) return false
   if (now.stimulus === 'chord_box' && !boxOf(props.view.chord)) return false
   if (now.stimulus === 'chord_symbol' && !props.view.chord) return false
   if ((now.stimulus === 'chart_boxes' || now.stimulus === 'chart_symbols') && chartBars.value.length !== (props.view.chart ?? []).length) return false
@@ -158,7 +160,7 @@ function answer(value: string | null) {
   <div class="flex w-full flex-col gap-4">
     <p v-if="view.context" class="text-base text-ink">{{ view.context }}</p>
     <template v-if="complete">
-      <div v-if="layout.stimulus === 'chord_box' && view.chord?.voicing && view.chord.diagram" data-test="drill-stimulus" class="flex justify-center">
+      <div v-if="layout.stimulus === 'chord_box' && view.chord?.voicing && view.chord.diagram && instrument" data-test="drill-stimulus" class="flex justify-center">
         <ChordBox :voicing="view.chord.voicing" :diagram="view.chord.diagram" :instrument="instrument" :label="t('drill.question.chord')" />
       </div>
       <p v-else-if="layout.stimulus === 'chord_symbol'" data-test="drill-stimulus" class="text-center text-2xl font-bold text-ink">{{ view.chord?.symbol }}</p>

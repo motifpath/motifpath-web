@@ -189,6 +189,35 @@ describe('DrillQuestion', () => {
     expect(question.findAll('[data-test="drill-options"] li').map((bar) => bar.text())).toEqual(['G', 'Em', 'C', 'D', 'G', 'D', 'Em', 'C'])
   })
 
+  it('asks with chord symbols and no instrument at all, since no box is drawn', async () => {
+    const mounted = mount(DrillQuestion, {
+      props: {
+        view: { way: 'numeral_to_chord', instrument: 'bass', options: (['Em', 'D', 'C', 'Am'] as const).map((symbol) => ({ value: symbol, label: symbol, chord: { symbol } })) },
+        reveal: null,
+        choice: null,
+      },
+      attachTo: document.body,
+    })
+    wrapper = mounted
+
+    expect(mounted.findAll('[data-test="drill-options"] button').map((option) => option.text())).toEqual(['1Em', '2D', '3C', '4Am'])
+    expect(mounted.emitted('missing')).toBeUndefined()
+  })
+
+  it('holds its options when it must draw boxes but has no instrument to draw them on', () => {
+    const mounted = mount(DrillQuestion, {
+      props: {
+        view: { way: 'numeral_to_chord', instrument: 'guitar', options: (['C', 'Em', 'Am', 'D'] as const).map((symbol) => ({ value: symbol, label: symbol, chord: chord(symbol) })) },
+        reveal: null,
+        choice: null,
+      },
+      attachTo: document.body,
+    })
+    wrapper = mounted
+
+    expect(mounted.emitted('missing')).toEqual([['unavailable']])
+  })
+
   it('holds its options and says the question can’t be shown when a box it must draw has no voicing', () => {
     const question = mountQuestion({ way: 'chord_to_numeral', instrument: 'guitar', chord: { symbol: 'Bm' }, options: text('ii', 'iii', 'V', 'vi') })
 
