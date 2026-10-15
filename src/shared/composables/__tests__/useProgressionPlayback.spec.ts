@@ -1,4 +1,4 @@
-import { effectScope, ref } from 'vue'
+import { effectScope, nextTick, ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { drillBass, drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
@@ -133,6 +133,19 @@ describe('useProgressionPlayback', () => {
     await startPlaying(player)
     const strums = sounding('acoustic-guitar')
     expect(strums.some((note) => Math.abs(note.time - strums[0]!.time - 2) < 1e-9)).toBe(true)
+  })
+
+  it('a tempo change while playing re-times the bars not yet started, chords and bass line alike', async () => {
+    const { player } = setup({ bass: { instrument: drillBass, roots: ['C', 'F', 'G', 'C'] } })
+    await startPlaying(player)
+    const start = sounding('acoustic-guitar')[0]!.time
+
+    frameAt(start + 1)
+    player.tempo.value = 120
+    await nextTick()
+    // The first bar keeps its 4 s; the second then lasts 2 s, so the third starts 6 s in.
+    expect(sounding('electric-bass').map((note) => note.time - start)).toEqual([0, 4, 6, 8])
+    expect(sounding('acoustic-guitar').some((note) => Math.abs(note.time - start - 6) < 1e-9)).toBe(true)
   })
 
   it('takes a new progression at its own tempo', async () => {

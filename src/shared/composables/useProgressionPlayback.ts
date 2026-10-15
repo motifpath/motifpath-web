@@ -143,6 +143,12 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     }
   }
 
+  // A new tempo applies from the next bar, to the chords and the bass line alike.
+  watch(tempo, (bpm) => {
+    const audio = context
+    if (audio) runs.forEach((run) => run.setWholeSeconds(secondsPerWhole(bpm, FOUR_FOUR), audio.currentTime))
+  })
+
   function toggle() {
     if (state.value === 'playing' || state.value === 'loading') {
       stop()
