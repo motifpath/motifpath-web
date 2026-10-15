@@ -705,9 +705,20 @@ export interface components {
             audio_ms?: number;
         };
         /**
+         * @description The note value a play-along take was played at: a speed factor on the music as written,
+         *     with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+         *     triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+         *     A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+         *     minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+         *     compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+         * @enum {string}
+         */
+        NoteValue: "halves" | "quarters" | "eighths" | "triplets" | "sixteenths" | "quintuplets" | "sextuplets" | "thirty_seconds";
+        /**
          * @description The student's own rating of a take they played: a play-along at a tempo, chord changes
          *     counted over a minute, or one chord played cleanly. A play-along rating carries tempo_bpm
-         *     and no changes_per_minute; a chord-change or root-change rating carries changes_per_minute
+         *     and no changes_per_minute, and may carry the note_value it was played at (quarters when
+         *     absent); a chord-change or root-change rating carries changes_per_minute
          *     and no tempo_bpm; a single chord voicing or a chord's root and fifth (play clean) carries
          *     neither.
          */
@@ -723,8 +734,12 @@ export interface components {
              * @enum {string}
              */
             rating: "struggled" | "almost" | "clean";
-            /** @description The tempo of the take, in beats per minute. Present for a play-along. */
+            /**
+             * @description The tempo of the take, in beats per minute, as played: the click's tempo. Present for a
+             *     play-along.
+             */
             tempo_bpm?: number;
+            note_value?: components["schemas"]["NoteValue"];
             /**
              * @description The number of chord changes made in one minute. Present for a chord change and a root
              *     change.
@@ -791,9 +806,9 @@ export interface components {
          */
         GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number";
         /**
-         * @description The major key a question was asked in, when its item doesn't fix one: a chart
-         *     progression, a heard chord, a heard progression or a guide tone. Absent for every other
-         *     item.
+         * @description A major key. In a response, the key a question was asked in when its item doesn't fix one:
+         *     a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+         *     response to any other item. A planned question always names its key.
          * @enum {string}
          */
         MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B";
@@ -1132,6 +1147,7 @@ export type SchemaPracticeSessionStartedEvent = components['schemas']['PracticeS
 export type SchemaNameTheNoteResponse = components['schemas']['NameTheNoteResponse'];
 export type SchemaFindTheNoteResponse = components['schemas']['FindTheNoteResponse'];
 export type SchemaOptionChoiceResponse = components['schemas']['OptionChoiceResponse'];
+export type SchemaNoteValue = components['schemas']['NoteValue'];
 export type SchemaSelfRatingResponse = components['schemas']['SelfRatingResponse'];
 export type SchemaNameTheShapeResponse = components['schemas']['NameTheShapeResponse'];
 export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
