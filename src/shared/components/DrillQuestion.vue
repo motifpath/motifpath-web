@@ -79,10 +79,7 @@ const choice = defineModel<string | null>('choice', { required: true })
 
 const { t } = useTypedT()
 
-const layout = computed(() => {
-  const found = drillLayoutOf(props.view.way, props.view.instrument)
-  return found?.answer === 'choice' ? found : null
-})
+const layout = computed(() => drillLayoutOf(props.view.way, props.view.instrument))
 
 function boxOf(chord: DrillChord | undefined): { voicing: ChordVoicing; diagram: Diagram } | null {
   return chord?.voicing && chord.diagram ? { voicing: chord.voicing, diagram: chord.diagram } : null
