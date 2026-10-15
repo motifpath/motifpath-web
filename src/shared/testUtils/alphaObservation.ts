@@ -53,6 +53,10 @@ export function makeAlphaObservation(overrides: Partial<AlphaObservation> = {}):
       median_first_path_percent: 61,
     },
     students: [makeAlphaStudent()],
+    students_total: 1,
+    limit: 20,
+    offset: 0,
+    filter_counts: { all: 1, below_target: 1, quiet: 0 },
     ...overrides,
   }
 }
