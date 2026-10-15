@@ -161,7 +161,7 @@ function playAlong(diagramId: string, reason: Item['reason'], start: number): It
     node_id: null,
     level: 'learning',
     estimated_seconds: 60,
-    play_along: { diagram_id: diagramId, start_tempo_bpm: start, target_tempo_bpm: 100, best_clean_tempo_bpm: null },
+    play_along: { diagram_id: diagramId, start_tempo_bpm: start, start_note_value: 'quarters', target_tempo_bpm: 100, best_clean_tempo_bpm: null, best_clean_note_value: null },
   }
 }
 

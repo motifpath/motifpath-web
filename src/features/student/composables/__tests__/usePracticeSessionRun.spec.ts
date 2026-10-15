@@ -39,8 +39,10 @@ function playAlong(diagramId: string, reason: Item['reason'], tempos: { start: n
     play_along: {
       diagram_id: diagramId,
       start_tempo_bpm: tempos.start,
+      start_note_value: 'quarters',
       target_tempo_bpm: tempos.target,
       best_clean_tempo_bpm: null,
+      best_clean_note_value: null,
     },
   }
 }

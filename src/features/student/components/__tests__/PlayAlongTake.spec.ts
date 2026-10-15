@@ -73,7 +73,7 @@ function item(reason: Item['reason'] = 'due', best: number | null = 70): Item {
     node_id: null,
     level: 'learning',
     estimated_seconds: 60,
-    play_along: { diagram_id: DIAGRAM_ID, start_tempo_bpm: 70, target_tempo_bpm: 100, best_clean_tempo_bpm: best },
+    play_along: { diagram_id: DIAGRAM_ID, start_tempo_bpm: 70, start_note_value: 'quarters', target_tempo_bpm: 100, best_clean_tempo_bpm: best, best_clean_note_value: best === null ? null : 'quarters' },
   }
 }
 
