@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
  * One number with its label and an optional caption, such as a change against the week before.
+ * The value may come already worded, such as "3 of 7" or "56%".
  * Only a gain is coloured; anything else stays neutral, so a quieter week never reads as alarm.
  * Given a destination, the whole tile is the link.
  */
@@ -9,7 +10,7 @@ import type { RouteLocationRaw } from 'vue-router'
 withDefaults(
   defineProps<{
     label: string
-    value: number
+    value: number | string
     caption?: string
     captionTone?: 'positive' | 'neutral'
     to?: RouteLocationRaw

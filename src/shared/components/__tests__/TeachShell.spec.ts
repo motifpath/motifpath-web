@@ -81,7 +81,7 @@ describe('TeachShell', () => {
     it('adds an Admin group for an admin, and marks the section the page is in', () => {
       const wrapper = mountShell()
 
-      expect(sidebarLinks(wrapper).map((l: VueWrapper) => l.text())).toEqual(['Courses', 'Paths', 'Lessons', 'Exercises', 'Diagrams', 'Knowledge map', 'Song charts'])
+      expect(sidebarLinks(wrapper).map((l: VueWrapper) => l.text())).toEqual(['Courses', 'Paths', 'Lessons', 'Exercises', 'Diagrams', 'Knowledge map', 'Song charts', 'Engagement'])
       expect(wrapper.get('[data-test="teach-admin-label"]').text()).toBe('Admin')
       const current = sidebarLinks(wrapper).find((l: VueWrapper) => l.attributes('aria-current') === 'page')
       expect(current?.text()).toBe('Song charts')

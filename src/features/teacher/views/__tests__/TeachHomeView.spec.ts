@@ -40,7 +40,8 @@ describe('TeachHomeView', () => {
     const wrapper = mountHome('admin')
 
     expect(wrapper.get('[data-test="teach-home-admin"]').text()).toBe('Admin')
-    expect(rows(wrapper).map((r) => r.text()).slice(5)).toEqual(['Knowledge map', 'Song charts'])
+    expect(rows(wrapper).map((r) => r.text()).slice(5)).toEqual(['Knowledge map', 'Song charts', 'Engagement'])
     expect(rows(wrapper)[6]!.props('to')).toEqual({ name: 'admin-song-charts' })
+    expect(rows(wrapper)[7]!.props('to')).toEqual({ name: 'admin-alpha' })
   })
 })

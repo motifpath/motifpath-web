@@ -63,8 +63,9 @@ export function createAuthGuard(auth: AuthChecker) {
       return routeWithRedirect(bridgeRoute, to.fullPath)
     }
 
-    if (to.meta.requiresRole && !to.meta.requiresRole.includes(auth.getRole?.() ?? null)) {
-      return { name: 'home' }
+    const role = to.meta.requiresRole ? (auth.getRole?.() ?? null) : null
+    if (to.meta.requiresRole && !to.meta.requiresRole.includes(role)) {
+      return { name: (role && to.meta.redirectWhenDenied?.[role]) || 'home' }
     }
 
     return true

@@ -37,4 +37,10 @@ describe('LoadMoreButton', () => {
     expect(wrapper.find('[data-test="load-more-error"]').exists()).toBe(true)
     expect(wrapper.get('[data-test="load-more"]').attributes('disabled')).toBeUndefined()
   })
+
+  it('says how many it loads next when the page names it', () => {
+    const wrapper = mount(LoadMoreButton, { props: { loaded: 12, total: 46, label: 'Load 12 more' } })
+
+    expect(wrapper.get('[data-test="load-more"]').text()).toBe('Load 12 more')
+  })
 })

@@ -560,6 +560,43 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('home')
   })
 
+  it.each([
+    ['/admin/alpha', 'admin-alpha'],
+    ['/admin/alpha/students/student-1', 'admin-alpha-student'],
+    ['/admin/alpha/events', 'admin-alpha-events'],
+  ])('lets a registered admin reach %s', async (path, name) => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('admin')
+
+    await router.push(path)
+
+    expect(router.currentRoute.value.name).toBe(name)
+  })
+
+  it.each(['/admin/alpha', '/admin/alpha/students/student-1', '/admin/alpha/events'])(
+    'turns a teacher who opens %s directly back to Teach home',
+    async (path) => {
+      updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+      updateRegistrationBridge('registered')
+      updateRoleBridge('teacher')
+
+      await router.push(path)
+
+      expect(router.currentRoute.value.name).toBe('teach')
+    },
+  )
+
+  it('sends a student who opens the engagement section to home', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+    updateRoleBridge('student')
+
+    await router.push('/admin/alpha')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
   it.each(['student', 'teacher', 'admin'] as const)('lets a registered %s read a song chart from its link', async (role) => {
     updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
     updateRegistrationBridge('registered')
