@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
  * Engagement: the alpha measured against its success metric for one week, then one row (or card)
- * per student. Read-only: nothing here changes anything. The week lives in the address, so a
- * student opened from here, and the way back, keep it.
+ * per student, 20 at a time. The chips and the name search are applied by the server, which also
+ * counts every chip over the whole alpha. Read-only: nothing here changes anything. The week lives
+ * in the address, so a student opened from here, and the way back, keep it.
  */
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -13,10 +14,11 @@ import WeekStepper from '@/features/admin/components/alpha/WeekStepper.vue'
 import { useAlphaObservation } from '@/features/admin/composables/useAlphaObservation'
 import { useFitsColumns } from '@/features/admin/composables/useFitsColumns'
 import { useWeekLabel } from '@/features/admin/composables/useWeekLabel'
-import { filterCounts, matchesStudentSearch, passesFilter, shiftWeek, type StudentFilter } from '@/features/admin/utils/alphaObservation'
+import { shiftWeek, type StudentFilter } from '@/features/admin/utils/alphaObservation'
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
 import MetricTile from '@/shared/components/MetricTile.vue'
 import SearchField from '@/shared/components/SearchField.vue'
 import StateBlock from '@/shared/components/StateBlock.vue'
@@ -32,19 +34,20 @@ const weekLabel = useWeekLabel()
 const fitsColumns = useFitsColumns()
 
 const week = computed(() => (typeof route.query.week === 'string' ? route.query.week : undefined))
-const { observation, isLoading, error, retry } = useAlphaObservation(week)
-
-const now = new Date()
 const filter = ref<StudentFilter>('all')
 const search = ref('')
+const { observation, students, isLoading, isLoadingMore, error, loadMoreError, retry, loadMore } = useAlphaObservation(week, filter, search)
+
+const now = new Date()
 
 const FILTERS: StudentFilter[] = ['all', 'belowTarget', 'quiet']
 
-const students = computed(() => observation.value?.students ?? [])
-const counts = computed(() => filterCounts(students.value))
-const shown = computed(() =>
-  students.value.filter((s) => passesFilter(s, filter.value) && matchesStudentSearch(s.display_name, search.value)),
-)
+const counts = computed<Record<StudentFilter, number>>(() => {
+  const c = observation.value?.filter_counts
+  return { all: c?.all ?? 0, belowTarget: c?.below_target ?? 0, quiet: c?.quiet ?? 0 }
+})
+const total = computed(() => observation.value?.students_total ?? 0)
+const alphaIsEmpty = computed(() => observation.value !== null && counts.value.all === 0)
 
 const tiles = computed(() => {
   if (!observation.value) return []
@@ -104,7 +107,7 @@ function studentRoute(studentId: string) {
         </p>
         <p v-else-if="observation.week.running" class="text-sm text-ink-muted">{{ t('engagement.stillRunning') }}</p>
 
-        <StateBlock v-if="students.length === 0" data-test="empty" kind="empty" :title="t('engagement.title')" :message="t('engagement.empty')" />
+        <StateBlock v-if="alphaIsEmpty" data-test="empty" kind="empty" :title="t('engagement.title')" :message="t('engagement.empty')" />
         <template v-else>
           <div class="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
             <MetricTile v-for="tile in tiles" :key="tile.label" :label="tile.label" :value="tile.value" :caption="tile.caption" />
@@ -124,9 +127,9 @@ function studentRoute(studentId: string) {
             <SearchField v-model="search" data-test="student-search" class="flex-1" :placeholder="t('engagement.search')" />
           </div>
 
-          <p class="text-xs font-medium text-ink-muted">{{ t('engagement.count', { count: shown.length }) }}</p>
+          <p class="text-xs font-medium text-ink-muted">{{ t('engagement.count', { count: total }) }}</p>
 
-          <p v-if="shown.length === 0" data-test="no-matches" class="text-sm text-ink-muted">{{ t('engagement.noMatches') }}</p>
+          <p v-if="students.length === 0" data-test="no-matches" class="text-sm text-ink-muted">{{ t('engagement.noMatches') }}</p>
           <template v-else-if="fitsColumns">
             <div class="grid grid-cols-[200px_130px_150px_1fr_84px_20px] gap-4 px-4 text-xs font-semibold uppercase tracking-wider text-ink-muted" aria-hidden="true">
               <span>{{ t('engagement.columns.student') }}</span>
@@ -137,16 +140,24 @@ function studentRoute(studentId: string) {
               <span />
             </div>
             <ul class="flex flex-col gap-2">
-              <li v-for="student in shown" :key="student.student_id" data-test="observation-student" :data-name="student.display_name">
+              <li v-for="student in students" :key="student.student_id" data-test="observation-student" :data-name="student.display_name">
                 <ObservationRow data-test="observation-row" :student="student" :now="now" :to="studentRoute(student.student_id)" />
               </li>
             </ul>
           </template>
           <ul v-else class="flex flex-col gap-3">
-            <li v-for="student in shown" :key="student.student_id" data-test="observation-student" :data-name="student.display_name">
+            <li v-for="student in students" :key="student.student_id" data-test="observation-student" :data-name="student.display_name">
               <ObservationCard data-test="observation-card" :student="student" :now="now" :to="studentRoute(student.student_id)" />
             </li>
           </ul>
+          <LoadMoreButton
+            :loaded="students.length"
+            :total="total"
+            :loading="isLoadingMore"
+            :failed="loadMoreError"
+            :label="t('engagement.loadMore')"
+            @load="loadMore"
+          />
         </template>
       </template>
     </main>

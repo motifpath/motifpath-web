@@ -39,9 +39,13 @@ const earlierWeeks = makeAlphaStudentObservation({
 })
 
 function serve() {
-  coreGET.mockImplementation((_path: string, init: { params: { query: { week?: string } } }) =>
-    Promise.resolve({ data: init.params.query.week === '2026-09-28' ? earlierWeeks : runningWeek, response: new Response(null, { status: 200 }) }),
-  )
+  coreGET.mockImplementation((path: string, init: { params: { query: { week?: string } } }) => {
+    if (path === '/admin/alpha-observation/students') {
+      const items = [{ user_id: CAMILA, display_name: 'Camila Duarte' }]
+      return Promise.resolve({ data: { items, total: 1, limit: 100, offset: 0 }, response: new Response(null, { status: 200 }) })
+    }
+    return Promise.resolve({ data: init.params.query.week === '2026-09-28' ? earlierWeeks : runningWeek, response: new Response(null, { status: 200 }) })
+  })
   eventGET.mockResolvedValue({ data: { items: [makeLoggedEvent()], total: 1, limit: 12, offset: 0 } })
 }
 

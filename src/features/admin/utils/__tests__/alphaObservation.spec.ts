@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import type { components } from '@/api/generated/core-domain'
 import type { components as eventComponents } from '@/api/generated/event-ingestion'
 import {
   alphaDay,
@@ -8,10 +7,7 @@ import {
   alphaReceivedAt,
   eventDetails,
   eventTypesOf,
-  filterCounts,
   lastActive,
-  matchesStudentSearch,
-  passesFilter,
   runningWeekStart,
   shiftWeek,
   weekChip,
@@ -19,34 +15,7 @@ import {
   weekRange,
 } from '@/features/admin/utils/alphaObservation'
 
-type AlphaStudent = components['schemas']['AlphaStudent']
 type TrackingEvent = eventComponents['schemas']['TrackingEvent']
-
-function student(overrides: Partial<AlphaStudent>): AlphaStudent {
-  return {
-    student_id: 's-1',
-    display_name: 'Camila Duarte',
-    registered_at: '2026-09-21T12:00:00Z',
-    finished_sessions_in_week: 2,
-    at_target_in_week: false,
-    weeks_so_far: [],
-    weeks_so_far_count: 0,
-    weeks_at_target_count: 0,
-    at_target_every_week: false,
-    last_active_at: null,
-    quiet: false,
-    first_path: {
-      student_path_id: 'p-1',
-      title: 'Guitar foundations',
-      given_at: '2026-09-21T12:00:00Z',
-      completed_nodes: 11,
-      total_nodes: 18,
-      completed_percent: 61,
-      over_target: false,
-    },
-    ...overrides,
-  }
-}
 
 describe('weekChip', () => {
   it.each([
@@ -108,37 +77,7 @@ describe('lastActive', () => {
   })
 })
 
-describe('matchesStudentSearch', () => {
-  it('matches part of a name, ignoring case and accents', () => {
-    expect(matchesStudentSearch('Beatriz Rocha', 'rocha')).toBe(true)
-    expect(matchesStudentSearch('Beatriz Rocha', 'ROC')).toBe(true)
-    expect(matchesStudentSearch('João Araújo', 'joao araujo')).toBe(true)
-    expect(matchesStudentSearch('Camila Duarte', 'rocha')).toBe(false)
-  })
 
-  it('matches everyone on an empty or blank query', () => {
-    expect(matchesStudentSearch('Camila Duarte', '')).toBe(true)
-    expect(matchesStudentSearch('Camila Duarte', '   ')).toBe(true)
-  })
-})
-
-describe('filters', () => {
-  const students = [
-    student({ student_id: 'a', finished_sessions_in_week: 0, quiet: true }),
-    student({ student_id: 'b', finished_sessions_in_week: 2 }),
-    student({ student_id: 'c', finished_sessions_in_week: 3, at_target_in_week: true }),
-  ]
-
-  it('counts each filter over every student', () => {
-    expect(filterCounts(students)).toEqual({ all: 3, belowTarget: 2, quiet: 1 })
-  })
-
-  it('keeps the students a filter names', () => {
-    expect(students.filter((s) => passesFilter(s, 'all')).map((s) => s.student_id)).toEqual(['a', 'b', 'c'])
-    expect(students.filter((s) => passesFilter(s, 'belowTarget')).map((s) => s.student_id)).toEqual(['a', 'b'])
-    expect(students.filter((s) => passesFilter(s, 'quiet')).map((s) => s.student_id)).toEqual(['a'])
-  })
-})
 
 describe('eventTypesOf', () => {
   it('lists the exact event types behind each group', () => {

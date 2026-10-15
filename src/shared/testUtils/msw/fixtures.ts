@@ -206,3 +206,10 @@ export const publishedCourse: Schemas['CourseDetail'] = {
   checkpoint_count: 4,
   lesson_count: 44,
 }
+
+/** Students of the alpha, as the Engagement student search finds them. */
+export const alphaStudents: Schemas['UserRef'][] = [
+  { user_id: '00000000-0000-4000-8000-0000000000c1', display_name: 'Camila Duarte' },
+  { user_id: '00000000-0000-4000-8000-0000000000c2', display_name: 'Camila Rocha' },
+  { user_id: '00000000-0000-4000-8000-0000000000c3', display_name: 'Beatriz Rocha' },
+]

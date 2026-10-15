@@ -1,12 +1,11 @@
 /**
  * The rules the engagement screens apply on top of what the alpha observation API returns: how far a
- * student is from the weekly target, how weeks and last activity read, which students a filter or
- * a search keeps, and how a raw tracking event is summed up in one line.
+ * student is from the weekly target, how weeks and last activity read, and how a raw tracking
+ * event is summed up in one line.
  */
 import type { components } from '@/api/generated/core-domain'
 import type { components as eventComponents, operations } from '@/api/generated/event-ingestion'
 
-type AlphaStudent = components['schemas']['AlphaStudent']
 type AlphaWeekRange = components['schemas']['AlphaWeekRange']
 type TrackingEvent = eventComponents['schemas']['TrackingEvent']
 type EventType = TrackingEvent['event_type']
@@ -67,12 +66,6 @@ export function lastActive(lastActiveAt: string | null, now: Date): LastActive {
   return { kind: 'daysAgo', days }
 }
 
-/** A name matches when it contains the query, ignoring case and accents; a blank query matches all. */
-export function matchesStudentSearch(name: string, query: string): boolean {
-  const wanted = foldForSearch(query.trim())
-  return wanted === '' || foldForSearch(name).includes(wanted)
-}
-
 /** "14 Oct": a day in São Paulo, by its date and short month. */
 export function alphaDay(iso: string, locale: string): string {
   const parts = alphaParts(iso, locale, { day: 'numeric', month: 'short' })
@@ -91,22 +84,8 @@ export function alphaReceivedAt(iso: string, locale: string): string {
   return `${alphaDay(iso, locale)} · ${alphaTime(new Date(iso))}:${seconds.padStart(2, '0')}`
 }
 
+/** Which students the overview keeps: every one, those below 3 this week, or the quiet ones. */
 export type StudentFilter = 'all' | 'belowTarget' | 'quiet'
-
-export function passesFilter(student: AlphaStudent, filter: StudentFilter): boolean {
-  if (filter === 'belowTarget') return !student.at_target_in_week
-  if (filter === 'quiet') return student.quiet
-  return true
-}
-
-/** Each filter's count over every student, so the chips keep their numbers whichever one is picked. */
-export function filterCounts(students: AlphaStudent[]): Record<StudentFilter, number> {
-  return {
-    all: students.length,
-    belowTarget: students.filter((s) => passesFilter(s, 'belowTarget')).length,
-    quiet: students.filter((s) => passesFilter(s, 'quiet')).length,
-  }
-}
 
 const EVENT_TYPES_BY_GROUP: Record<EventTypeGroup, EventType[]> = {
   practice_sessions: ['practice.session_started', 'practice.session_ended'],
@@ -243,6 +222,3 @@ function alphaParts(iso: string, locale: string, options: Intl.DateTimeFormatOpt
   return Object.fromEntries(parts.map((part) => [part.type, part.value]))
 }
 
-function foldForSearch(text: string): string {
-  return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
-}
