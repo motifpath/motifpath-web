@@ -2,8 +2,20 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import TempoControl from '@/shared/components/TempoControl.vue'
+import { SUGGESTED_NOTE_VALUES } from '@/shared/utils/tempoNoteValue'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
-type Props = { tempo: number; slowest: number; goal: number | null; goalLabel: string; best: number | null; metronome: boolean; disabled: boolean }
+type Props = {
+  tempo: number
+  slowest: number
+  goal: number | null
+  goalLabel: string
+  best: number | null
+  metronome: boolean
+  disabled: boolean
+  noteValue: TempoNoteValue
+  noteValues: readonly TempoNoteValue[]
+}
 
 function mountControl(props: Partial<Props> = {}) {
   return mount(TempoControl, {
@@ -12,6 +24,30 @@ function mountControl(props: Partial<Props> = {}) {
 }
 
 describe('TempoControl', () => {
+  it('shows no note value unless the surface offers some', () => {
+    expect(mountControl().find('[data-test="note-value"]').exists()).toBe(false)
+  })
+
+  it('shows the note value beside the tempo when the surface offers note values', () => {
+    const wrapper = mountControl({ noteValue: 'eighths', noteValues: SUGGESTED_NOTE_VALUES })
+
+    expect(wrapper.get('[data-test="note-value"]').attributes('aria-label')).toBe('Note value: Eighths')
+  })
+
+  it('says the note value chosen', async () => {
+    const wrapper = mountControl({ noteValue: 'quarters', noteValues: SUGGESTED_NOTE_VALUES })
+
+    wrapper.findComponent({ name: 'NoteValuePicker' }).vm.$emit('update:modelValue', 'triplets')
+
+    expect(wrapper.emitted('update:noteValue')).toEqual([['triplets']])
+  })
+
+  it('locks the note value with the tempo while a take plays', () => {
+    const wrapper = mountControl({ noteValue: 'quarters', noteValues: SUGGESTED_NOTE_VALUES, disabled: true })
+
+    expect(wrapper.get('[data-test="note-value"]').attributes('disabled')).toBeDefined()
+  })
+
   it('is headed Tempo and shows the tempo it sets', () => {
     const wrapper = mountControl()
 

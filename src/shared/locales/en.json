@@ -393,6 +393,35 @@
     "goalTick": "Goal {bpm} BPM",
     "typeTempo": "Type a tempo in BPM"
   },
+  "noteValue": {
+    "halves": "Halves",
+    "quarters": "Quarters",
+    "eighths": "Eighths",
+    "triplets": "Triplets",
+    "sixteenths": "Sixteenths",
+    "quintuplets": "Quintuplets",
+    "sextuplets": "Sextuplets",
+    "thirty_seconds": "32nds"
+  },
+  "noteValueHint": {
+    "halves": "Halves · 1 note every 2 beats",
+    "quarters": "Quarters · the beat only",
+    "eighths": "Eighths · 2 notes a beat",
+    "triplets": "Triplets · 3 notes a beat",
+    "sixteenths": "Sixteenths · 4 notes a beat",
+    "quintuplets": "Quintuplets · 5 notes a beat",
+    "sextuplets": "Sextuplets · 6 notes a beat",
+    "thirty_seconds": "32nds · 8 notes a beat"
+  },
+  "noteValuePicker": {
+    "button": "Note value: {value}",
+    "suggested": "Notes",
+    "all": "Note value"
+  },
+  "lockedTimeSignature": {
+    "diagram": "{signature} · set by the diagram",
+    "progression": "{signature} · one chord a bar"
+  },
   "teach": {
     "intro": "Build and look after what your students learn. Quick fixes work here; big edits are easier on a computer.",
     "admin": "Admin"

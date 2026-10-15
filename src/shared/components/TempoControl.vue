@@ -4,13 +4,16 @@
  * offered to the fastest playable as the main control, with the best clean tempo and the goal
  * marked on it when there are any, and the value, which the student taps to type an exact tempo.
  * A tempo is chosen once the slider is released or the typing is done, so one gesture is one
- * choice.
+ * choice. Where the surface offers note values, the one the music plays at shows as an icon
+ * after the tempo, its choices one tap away.
  */
 import { computed, nextTick, ref } from 'vue'
 import { Metronome } from 'lucide-vue-next'
 
+import NoteValuePicker from '@/shared/components/NoteValuePicker.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { MAX_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 const props = defineProps<{
   tempo: number
@@ -26,9 +29,13 @@ const props = defineProps<{
   metronome: boolean
   /** While a take plays, nothing here changes. */
   disabled: boolean
+  /** The note value the music plays at; shown only with `noteValues`. */
+  noteValue?: TempoNoteValue
+  /** The note values this surface offers; none shows no note value. */
+  noteValues?: readonly TempoNoteValue[]
 }>()
 
-const emit = defineEmits<{ tempo: [bpm: number]; 'update:metronome': [on: boolean] }>()
+const emit = defineEmits<{ tempo: [bpm: number]; 'update:metronome': [on: boolean]; 'update:noteValue': [value: TempoNoteValue] }>()
 
 const { t } = useTypedT()
 
@@ -168,5 +175,13 @@ function onFieldKeydown(event: KeyboardEvent) {
     >
       <span class="text-lg font-semibold">{{ shownTempo }}</span>{{ ' ' }}<span class="text-xs text-ink-muted">BPM</span>
     </button>
+
+    <NoteValuePicker
+      v-if="noteValues && noteValues.length > 0"
+      :model-value="noteValue ?? 'quarters'"
+      :values="noteValues"
+      :disabled="disabled"
+      @update:model-value="emit('update:noteValue', $event)"
+    />
   </div>
 </template>
