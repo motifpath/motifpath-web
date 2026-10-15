@@ -6,7 +6,7 @@
 import { computed, toRef } from 'vue'
 
 import EventRow from '@/features/admin/components/alpha/EventRow.vue'
-import { useLoggedEvents } from '@/features/admin/composables/useAlphaObservation'
+import { useAlphaStudentNames, useLoggedEvents } from '@/features/admin/composables/useAlphaObservation'
 import { useFitsColumns } from '@/features/admin/composables/useFitsColumns'
 import { shortId, type EventTypeGroup } from '@/features/admin/utils/alphaObservation'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
@@ -17,8 +17,6 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 const props = defineProps<{
   studentId: string | null
   typeGroup: EventTypeGroup | null
-  /** Display names by student id, to say whose each event is. */
-  names: Record<string, string>
 }>()
 
 const { t } = useTypedT()
@@ -28,8 +26,13 @@ const { events, total, isLoading, isLoadingMore, error, loadMoreError, reload, l
   toRef(props, 'typeGroup'),
 )
 
+// Only the student filtered by and the students on the page are named, as they appear.
+const { names, error: namesFailed, retry: retryNames } = useAlphaStudentNames(
+  computed(() => [...(props.studentId ? [props.studentId] : []), ...events.value.map((logged) => logged.event.student_id)]),
+)
+
 // Teachers who also learn, and students without a path, send events too but aren't in the alpha.
-const nameOf = (studentId: string) => props.names[studentId] ?? t('engagement.events.otherUser', { id: shortId(studentId) })
+const nameOf = (studentId: string) => names.value[studentId] ?? t('engagement.events.otherUser', { id: shortId(studentId) })
 
 const countLabel = computed(() =>
   props.studentId
@@ -40,6 +43,9 @@ const countLabel = computed(() =>
 
 <template>
   <div class="flex flex-col gap-3">
+    <div v-if="namesFailed" data-test="names-error">
+      <LoadFailed :message="t('engagement.studentsLoadFailed')" @retry="retryNames" />
+    </div>
     <LoadingSkeleton v-if="isLoading" data-test="events-loading" />
     <div v-else-if="error" data-test="events-error">
       <LoadFailed :message="t('engagement.eventsLoadFailed')" @retry="reload" />

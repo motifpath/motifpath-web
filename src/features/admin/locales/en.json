@@ -376,6 +376,13 @@
     "studentLoadFailed": "Couldn't load this student.",
     "eventsLoadFailed": "Couldn't load the events.",
     "backLabel": "Back to Engagement",
-    "studentsLoadFailed": "Couldn't load the students."
+    "studentsLoadFailed": "Couldn't load the students.",
+    "studentSearch": {
+      "label": "Student",
+      "placeholder": "Search students",
+      "loading": "Searching…",
+      "failed": "Couldn't search the students."
+    },
+    "loadMore": "Load 20 more"
   }
 }

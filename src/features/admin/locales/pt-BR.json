@@ -376,6 +376,13 @@
     "studentLoadFailed": "Não foi possível carregar este aluno.",
     "eventsLoadFailed": "Não foi possível carregar os eventos.",
     "backLabel": "Voltar para Engajamento",
-    "studentsLoadFailed": "Não foi possível carregar os alunos."
+    "studentsLoadFailed": "Não foi possível carregar os alunos.",
+    "studentSearch": {
+      "label": "Aluno",
+      "placeholder": "Buscar alunos",
+      "loading": "Buscando…",
+      "failed": "Não foi possível buscar os alunos."
+    },
+    "loadMore": "Carregar mais 20"
   }
 }

@@ -192,7 +192,7 @@ const showFirstPath = computed(() => sizeClass.value === 'expanded' || tab.value
             </ol>
           </section>
 
-          <EventLog v-if="sizeClass !== 'expanded' && tab === 'events'" :student-id="studentId" :type-group="null" :names="{ [studentId]: student.display_name }" />
+          <EventLog v-if="sizeClass !== 'expanded' && tab === 'events'" :student-id="studentId" :type-group="null" />
         </div>
       </template>
     </main>

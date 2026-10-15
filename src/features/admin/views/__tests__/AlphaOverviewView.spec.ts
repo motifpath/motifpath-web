@@ -41,10 +41,39 @@ const lastWeek = makeAlphaObservation({
   week: { week_start: '2026-10-05', week_end: '2026-10-11', running: false },
 })
 
-function serve() {
-  GET.mockImplementation((_path: string, init: { params: { query: { week?: string } } }) =>
-    Promise.resolve({ data: init.params.query.week === '2026-10-05' ? lastWeek : runningWeek, response: new Response(null, { status: 200 }) }),
-  )
+interface OverviewQuery {
+  week?: string
+  q?: string
+  filter?: 'below_target' | 'quiet'
+  limit: number
+  offset: number
+}
+
+/** Answers like the server: q and filter narrow the students, a page at a time; the counts stay whole. */
+function serve(cohort = students) {
+  GET.mockImplementation((_path: string, init: { params: { query: OverviewQuery } }) => {
+    const { week, q, filter, limit, offset } = init.params.query
+    const base = week === '2026-10-05' ? lastWeek : runningWeek
+    const kept = cohort.filter(
+      (s) =>
+        (!q || s.display_name.toLowerCase().includes(q.toLowerCase())) &&
+        (filter !== 'below_target' || !s.at_target_in_week) &&
+        (filter !== 'quiet' || s.quiet),
+    )
+    const data = {
+      ...base,
+      students: kept.slice(offset, offset + limit),
+      students_total: kept.length,
+      limit,
+      offset,
+      filter_counts: {
+        all: cohort.length,
+        below_target: cohort.filter((s) => !s.at_target_in_week).length,
+        quiet: cohort.filter((s) => s.quiet).length,
+      },
+    }
+    return Promise.resolve({ data, response: new Response(null, { status: 200 }) })
+  })
 }
 
 async function mountOverview(path = '/admin/alpha') {
@@ -81,7 +110,7 @@ describe('AlphaOverviewView', () => {
   it('opens on the running week, which cannot be stepped past', async () => {
     const { wrapper } = await mountOverview()
 
-    expect(GET).toHaveBeenCalledWith('/admin/alpha-observation', { params: { query: {} } })
+    expect(GET).toHaveBeenCalledWith('/admin/alpha-observation', { params: { query: { limit: 20, offset: 0 } } })
     expect(wrapper.get('h1').text()).toBe('Engagement')
     expect(wrapper.get('[data-test="week-label"]').text()).toBe('This week · 12–18 Oct')
     expect(wrapper.text()).toContain('This week is still running.')
@@ -95,7 +124,7 @@ describe('AlphaOverviewView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.query).toEqual({ week: '2026-10-05' })
-    expect(GET).toHaveBeenLastCalledWith('/admin/alpha-observation', { params: { query: { week: '2026-10-05' } } })
+    expect(GET).toHaveBeenLastCalledWith('/admin/alpha-observation', { params: { query: { week: '2026-10-05', limit: 20, offset: 0 } } })
     expect(wrapper.get('[data-test="week-label"]').text()).toBe('Last week · 5–11 Oct')
     expect(wrapper.text()).not.toContain('still running')
     expect(wrapper.get('[aria-label="Next week"]').attributes('disabled')).toBeUndefined()
@@ -121,7 +150,9 @@ describe('AlphaOverviewView', () => {
     const { wrapper } = await mountOverview()
 
     await wrapper.get('[data-test="filter-belowTarget"]').trigger('click')
+    await flushPromises()
 
+    expect(GET).toHaveBeenLastCalledWith('/admin/alpha-observation', { params: { query: { filter: 'below_target', limit: 20, offset: 0 } } })
     expect(names(wrapper)).toEqual(['Lucas Pereira', 'Beatriz Rocha', 'Rafael Nunes', 'Camila Duarte'])
     const chips = wrapper.findAll('[data-test^="filter-"]').map((c) => c.text())
     expect(chips).toEqual(['All · 7', 'Below 3 this week · 4', 'Quiet 7+ days · 1'])
@@ -131,8 +162,27 @@ describe('AlphaOverviewView', () => {
     const { wrapper } = await mountOverview()
 
     await wrapper.get('[data-test="student-search"] input').setValue('rocha')
+    await vi.advanceTimersByTimeAsync(300)
+    await flushPromises()
 
     expect(names(wrapper)).toEqual(['Beatriz Rocha'])
+  })
+
+  it('lists 20 students at a time, with "Load 20 more" for the next 20', async () => {
+    const many = Array.from({ length: 45 }, (_, i) => makeAlphaStudent({ student_id: `s-${i}`, display_name: `Student ${String(i).padStart(2, '0')}` }))
+    serve(many)
+    const { wrapper } = await mountOverview()
+
+    expect(names(wrapper)).toHaveLength(20)
+    expect(wrapper.text()).toContain('45 students · fewest sessions this week first')
+    const loadMore = wrapper.get('[data-test="load-more"]')
+    expect(loadMore.text()).toBe('Load 20 more')
+
+    await loadMore.trigger('click')
+    await flushPromises()
+
+    expect(GET).toHaveBeenLastCalledWith('/admin/alpha-observation', { params: { query: { limit: 20, offset: 20 } } })
+    expect(names(wrapper)).toHaveLength(40)
   })
 
   it('opens a student for the same week', async () => {
@@ -159,7 +209,7 @@ describe('AlphaOverviewView', () => {
   })
 
   it('says when no student is in the alpha yet, in place of the tiles and the list', async () => {
-    GET.mockResolvedValue({ data: makeAlphaObservation({ students: [], summary: { ...runningWeek.summary, student_count: 0 } }) })
+    serve([])
 
     const { wrapper } = await mountOverview()
 
