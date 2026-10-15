@@ -310,6 +310,62 @@ describe('PracticeSessionView', () => {
     )
   })
 
+  describe('tools', () => {
+    /** Opens Tools from the setup's header and chooses the Metronome. */
+    async function openMetronome(wrapper: ReturnType<typeof mountView>) {
+      await wrapper.get('[data-test="tools"]').trigger('click')
+      await wrapper.get('[data-test="tool-metronome"]').trigger('click')
+      await flushPromises()
+    }
+
+    it('offers Tools in the header of the setup', () => {
+      expect(mountView().get('[data-test="shell-options"] [data-test="tools"]').attributes('aria-label')).toBe('Tools')
+    })
+
+    it('opens the Metronome as a page inside the shell', async () => {
+      const wrapper = mountView()
+
+      await openMetronome(wrapper)
+
+      expect(wrapper.get('[data-test="shell-title"]').text()).toBe('Metronome')
+      expect(wrapper.get('[data-test="shell-exit"]').attributes('aria-label')).toBe('Back to practice')
+      expect(wrapper.find('[data-test="metronome-tool"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="practice-setup"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="tools"]').exists()).toBe(false)
+    })
+
+    it('goes back to the setup as the student left it, without leaving practice', async () => {
+      const wrapper = mountView()
+      await wrapper.get('[data-test="minutes-20"]').setValue(true)
+      await openMetronome(wrapper)
+
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+      expect(wrapper.find('[data-test="metronome-tool"]').exists()).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('[data-test="minutes-20"]').element.checked).toBe(true)
+      expect(router.back).not.toHaveBeenCalled()
+      expect(router.push).not.toHaveBeenCalled()
+    })
+
+    it('offers no Tools once a session is composed or running', async () => {
+      const wrapper = mountView()
+      await composeSession(wrapper)
+      expect(wrapper.find('[data-test="tools"]').exists()).toBe(false)
+
+      wrapper.getComponent(TodaysPlanStub).vm.$emit('start')
+      await flushPromises()
+      expect(wrapper.find('[data-test="tools"]').exists()).toBe(false)
+    })
+
+    it('sends nothing from the Metronome', async () => {
+      const wrapper = mountView()
+      await openMetronome(wrapper)
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+      expect(track).not.toHaveBeenCalled()
+    })
+  })
+
   describe('today’s plan', () => {
     it('shows today’s plan once the session is composed, before anything is sent', async () => {
       const wrapper = mountView()

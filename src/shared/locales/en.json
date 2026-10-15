@@ -422,6 +422,25 @@
     "diagram": "{signature} · set by the diagram",
     "progression": "{signature} · one chord a bar"
   },
+  "tools": {
+    "label": "Tools",
+    "metronome": "Metronome",
+    "back": "Back to practice"
+  },
+  "timeSignaturePicker": {
+    "button": "Time signature: {signature}",
+    "heading": "Time signature",
+    "beats": "Beats",
+    "beatNote": "Beat note",
+    "fewerBeats": "One beat fewer",
+    "moreBeats": "One beat more",
+    "shorterBeatNote": "A shorter beat note",
+    "longerBeatNote": "A longer beat note"
+  },
+  "metronomeTool": {
+    "start": "Start",
+    "stop": "Stop"
+  },
   "teach": {
     "intro": "Build and look after what your students learn. Quick fixes work here; big edits are easier on a computer.",
     "admin": "Admin"

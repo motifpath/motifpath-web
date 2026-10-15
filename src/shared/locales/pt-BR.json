@@ -422,6 +422,25 @@
     "diagram": "{signature} · definido pelo diagrama",
     "progression": "{signature} · um acorde por compasso"
   },
+  "tools": {
+    "label": "Ferramentas",
+    "metronome": "Metrônomo",
+    "back": "Voltar para praticar"
+  },
+  "timeSignaturePicker": {
+    "button": "Fórmula de compasso: {signature}",
+    "heading": "Fórmula de compasso",
+    "beats": "Tempos",
+    "beatNote": "Figura do tempo",
+    "fewerBeats": "Um tempo a menos",
+    "moreBeats": "Um tempo a mais",
+    "shorterBeatNote": "Uma figura mais curta",
+    "longerBeatNote": "Uma figura mais longa"
+  },
+  "metronomeTool": {
+    "start": "Começar",
+    "stop": "Parar"
+  },
   "teach": {
     "intro": "Crie e cuide do que seus alunos aprendem. Ajustes rápidos funcionam aqui; edições grandes são mais fáceis no computador.",
     "admin": "Admin"
