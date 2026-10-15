@@ -2,6 +2,7 @@ import { computed, ref, toValue, watch } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import type { GeneratedChoiceGrading } from '@/features/student/composables/usePracticeSessionRun'
 import type { DrillChord, DrillQuestionOption, DrillQuestionView } from '@/shared/components/DrillQuestion.vue'
 import { useApi } from '@/shared/composables/useApi'
 import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
@@ -17,12 +18,6 @@ type Diagram = components['schemas']['Diagram']
 type Instrument = components['schemas']['Instrument']
 
 export type GeneratedQuestionStatus = 'loading' | 'ready' | 'unavailable'
-
-/** What grading an answer needs: the question as the grader reads it, and the catalog for charts. */
-export interface GeneratedGrading {
-  question: GeneratedQuestion
-  catalog: ProgressionCatalog
-}
 
 /** A box loaded for a chord: the voicing's diagram, which carries its fingering. */
 interface LoadedBox {
@@ -150,7 +145,7 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
   })
 
   /** The question as the grader reads it: its numeral or progression comes from the item it asks. */
-  const grading = computed<GeneratedGrading>(() => {
+  const grading = computed<GeneratedChoiceGrading>(() => {
     const [, first, second] = toValue(item).item_key.split(':')
     const q = question.value
     const asked: GeneratedQuestion = isChart.value
