@@ -3,26 +3,25 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import DrillOptionGrid from '@/shared/components/DrillOptionGrid.vue'
 import type { DrillOption } from '@/shared/components/DrillOptionGrid.vue'
+import type { DrillOptionKind } from '@/shared/utils/drillLayout'
 import { drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 
 const NUMERALS: DrillOption[] = ['ii', 'IV', 'V', 'vi'].map((numeral) => ({ value: numeral, label: numeral }))
 const CHORDS: DrillOption[] = (['C', 'Em', 'Am', 'D'] as const).map((symbol) => ({ value: symbol, label: symbol, chord: drillVoicings[symbol] }))
 
-type Props = { kind: 'text' | 'chord_box' | 'chord_symbol'; options: DrillOption[]; reveal: { right: string } | null; locked: boolean; choice: string | null }
+type Props = { kind: DrillOptionKind; options: DrillOption[]; reveal: { right: string } | null; locked: boolean; choice: string | null }
+
+const DEFAULTS: Props = { kind: 'text', options: NUMERALS, reveal: null, locked: false, choice: null }
 
 let wrapper: ReturnType<typeof mountGrid> | null = null
 
 function mountGrid(props: Partial<Props> = {}) {
   const mounted = mount(DrillOptionGrid, {
     props: {
-      kind: 'text',
-      options: NUMERALS,
-      instrument: drillGuitar,
-      reveal: null,
-      locked: false,
-      choice: null,
-      'onUpdate:choice': (value: string | null) => mounted.setProps({ choice: value }),
+      ...DEFAULTS,
       ...props,
+      instrument: drillGuitar,
+      'onUpdate:choice': (value: string | null) => mounted.setProps({ choice: value }),
     },
     attachTo: document.body,
   })
