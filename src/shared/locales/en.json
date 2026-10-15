@@ -449,6 +449,9 @@
     },
     "options": {
       "chord": "Chord {key}"
+    },
+    "question": {
+      "chord": "The chord"
     }
   }
 }

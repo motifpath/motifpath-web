@@ -449,6 +449,9 @@
     },
     "options": {
       "chord": "Acorde {key}"
+    },
+    "question": {
+      "chord": "O acorde"
     }
   }
 }
