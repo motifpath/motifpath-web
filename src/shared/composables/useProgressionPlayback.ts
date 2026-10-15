@@ -50,6 +50,8 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
   const voicesReady = ref<boolean | null>(null)
 
   const sourceNow = computed(() => toValue(source))
+  /** The tempo it plays at: the progression's own, which the student may change for this showing. */
+  const tempo = ref(sourceNow.value?.tempoBpm ?? 0)
 
   /** Each voice the progression plays in, the chords' first. */
   const voiceIds = computed(() => {
@@ -130,7 +132,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       const stepLists = [chordSteps(now.chords, now.chordInstrument.tuning ?? [], STRUM_SECONDS)]
       if (now.bass) stepLists.push(bassLineSteps(now.bass.roots, now.bass.instrument.tuning ?? []))
       const startAt = audio.currentTime + START_DELAY_SECONDS
-      const wholeSeconds = secondsPerWhole(now.tempoBpm, FOUR_FOUR)
+      const wholeSeconds = secondsPerWhole(tempo.value, FOUR_FOUR)
       runs = stepLists.map((steps, i) => createPlaybackRun(steps, { sink: sinks[i]!, wholeSeconds, loop: false, startAt }))
       state.value = 'playing'
       frame = requestAnimationFrame(tick)
@@ -158,6 +160,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       state.value = 'idle'
       voicesReady.value = null
       if (!sourceNow.value) return
+      tempo.value = sourceNow.value.tempoBpm
       const asked = ++check
       const ok = await checkVoices()
       if (asked === check) voicesReady.value = ok
@@ -167,5 +170,5 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
 
   onScopeDispose(stop)
 
-  return { state, status, currentBar, toggle, stop }
+  return { state, status, currentBar, tempo, toggle, stop }
 }

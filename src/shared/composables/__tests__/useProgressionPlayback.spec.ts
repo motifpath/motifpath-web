@@ -125,6 +125,24 @@ describe('useProgressionPlayback', () => {
     expect(line[0]!.time).toBeCloseTo(sounding('acoustic-guitar')[0]!.time)
   })
 
+  it('plays at the tempo the student picks, starting from the progression’s own', async () => {
+    const { player } = setup()
+    expect(player.tempo.value).toBe(60)
+
+    player.tempo.value = 120
+    await startPlaying(player)
+    const strums = sounding('acoustic-guitar')
+    expect(strums.some((note) => Math.abs(note.time - strums[0]!.time - 2) < 1e-9)).toBe(true)
+  })
+
+  it('takes a new progression at its own tempo', async () => {
+    const { player, source } = setup()
+    player.tempo.value = 120
+
+    source.value = { ...source.value, tempoBpm: 80 }
+    await vi.waitFor(() => expect(player.tempo.value).toBe(80))
+  })
+
   it('says which bar is sounding, and none once the progression has played', async () => {
     const { player } = setup()
     await startPlaying(player)
