@@ -454,5 +454,19 @@
     "question": {
       "chord": "The chord"
     }
+  },
+  "musicKeys": {
+    "C": "C",
+    "Db": "D♭",
+    "D": "D",
+    "Eb": "E♭",
+    "E": "E",
+    "F": "F",
+    "Fsharp": "F♯",
+    "G": "G",
+    "Ab": "A♭",
+    "A": "A",
+    "Bb": "B♭",
+    "B": "B"
   }
 }
