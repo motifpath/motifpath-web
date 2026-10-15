@@ -4,8 +4,10 @@ import type { MaybeRefOrGetter } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 import { audibleTime, unlockAudioContext } from '@/shared/audio/audioContext'
 import { createClickSink } from '@/shared/audio/clickSink'
+import { claimPlayback, releasePlayback, stopAnyPlayback } from '@/shared/audio/exclusivePlayback'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
 import type { PlaybackRun } from '@/shared/audio/playbackRun'
+import { clearPrefetchedSamples as clearPrefetched, fetchVoiceSamples } from '@/shared/audio/samplePrefetch'
 import { playbackSteps, secondsPerWhole } from '@/shared/audio/timeline'
 import { resolvePlayback } from '@/shared/utils/diagramPlayback'
 import { beatsPerBar, pulse } from '@/shared/utils/sequence'
@@ -33,39 +35,18 @@ const STRUM_SECONDS = 0.018
 /** How far ahead of the audio clock the first note is placed, so it isn't already late. */
 const START_DELAY_SECONDS = 0.1
 
-// Only one diagram plays at a time: starting one stops whichever was playing.
-let stopPlaying: (() => void) | null = null
-
-// Recordings never change at their URL, so one fetch a page puts each in the HTTP cache. A failed
-// fetch is forgotten, so the next check fetches it again.
-const prefetched = new Map<string, Promise<boolean>>()
-
 function sameIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, i) => id === b[i])
 }
 
 /** Forgets which recordings were prefetched. For tests. */
 export function clearPrefetchedSamples() {
-  prefetched.clear()
+  clearPrefetched()
 }
 
-/** Stops whichever diagram is playing, such as when a clip starts sounding instead. */
+/** Stops whatever is playing, such as when a clip starts sounding instead. */
 export function stopDiagramPlayback() {
-  stopPlaying?.()
-}
-
-function fetchSample(url: string): Promise<boolean> {
-  const known = prefetched.get(url)
-  if (known) return known
-  const pending = fetch(url)
-    .then((response) => response.ok)
-    .catch(() => false)
-    .then((ok) => {
-      if (!ok) prefetched.delete(url)
-      return ok
-    })
-  prefetched.set(url, pending)
-  return pending
+  stopAnyPlayback()
 }
 
 /** Each position's sounding pitch; null where the tuning doesn't give one. */
@@ -145,9 +126,7 @@ export function useDiagramPlayback(
    */
   async function checkVoice(): Promise<boolean> {
     try {
-      const voice = await findVoice()
-      const fetched = await Promise.all(voice.samples.map((sample) => fetchSample(sample.url)))
-      return fetched.every(Boolean)
+      return await fetchVoiceSamples(await findVoice())
     } catch {
       return false
     }
@@ -172,7 +151,7 @@ export function useDiagramPlayback(
     run = null
     activePositionIds.value = []
     if (state.value !== 'error') state.value = 'idle'
-    if (stopPlaying === stop) stopPlaying = null
+    releasePlayback(stop)
   }
 
   function tick() {
@@ -191,8 +170,7 @@ export function useDiagramPlayback(
   }
 
   async function play() {
-    stopPlaying?.()
-    stopPlaying = stop
+    claimPlayback(stop)
     const current = ++attempt
     // Created and resumed inside the click, before anything is awaited, or iOS keeps it silent.
     const audio = unlockAudioContext()
