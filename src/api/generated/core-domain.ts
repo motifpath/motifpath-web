@@ -1781,9 +1781,38 @@ export interface paths {
          *     target in a week with 3 or more counted sessions.
          *
          *     Students are ordered by fewest counted sessions in the week, then by
-         *     display name, then by student_id.
+         *     display name, then by student_id, and returned a page at a time. q
+         *     and filter narrow the page; summary and filter_counts
+         *     always describe the whole alpha for the week, whatever is asked for.
          */
         get: operations["getAlphaObservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/alpha-observation/students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Find students of the alpha by name or by id
+         * @description Names the students of the alpha, without measuring them: for a picker
+         *     that searches the alpha by name, and for naming the students behind a
+         *     page of events. Changes nothing. Only admins may list them.
+         *
+         *     Ordered by display_name, alphabetically as a person reads names —
+         *     ignoring case and accents — then by user_id, and returned a page at a
+         *     time. q and student_id may be combined; a student must match
+         *     both. A student_id outside the alpha is left out, not refused.
+         */
+        get: operations["listAlphaStudents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2467,8 +2496,11 @@ export interface paths {
          *     A session is focused: it practises at most three subjects (knowledge nodes), named in
          *     focus_nodes, main first. For Today's mix the composer picks them: a teacher's
          *     suggestion, then the nodes with the most due and weak time, then the nodes of new
-         *     items, then stretch; due items of other nodes come in a review block of at most a
-         *     fifth of the focus time or 5 items. With focus_node_id, the student chose the subject:
+         *     items, then the nodes with items coming due within the week, then stretch; only their
+         *     items fill the session, so it may end short. Due items of other nodes come in a review
+         *     block of at most a fifth of the focus time or 5 items, filled first from the due share
+         *     and placed right after the warm-up. The application ending plays one of the subjects,
+         *     or there is none. With focus_node_id, the student chose the subject:
          *     only items of that node and its part_of subtree are picked, there is no warm-up, and
          *     the application ending is a play-along of the subtree, or none. Any node with
          *     material for the session can be chosen; requirements never gate it.
@@ -5020,8 +5052,28 @@ export interface components {
         AlphaObservation: {
             week: components["schemas"]["AlphaWeekRange"];
             summary: components["schemas"]["AlphaCohortSummary"];
-            /** @description Every student in the alpha, ordered by fewest counted sessions in the week, then by display name, then by student_id. */
+            /** @description This page of the students matching q and filter, ordered by fewest counted sessions in the week, then by display name, then by student_id. */
             students: components["schemas"]["AlphaStudent"][];
+            /** @description All students matching q and filter, across every page. */
+            students_total: number;
+            /** @description The page size that was applied. */
+            limit: number;
+            /** @description The number of matching students skipped before this page. */
+            offset: number;
+            filter_counts: components["schemas"]["AlphaFilterCounts"];
+        };
+        /** @description How many students of the whole alpha each filter keeps for the week, whatever q and filter the request carries, so a filter's count never changes when another is picked. */
+        AlphaFilterCounts: {
+            /** @description Every student in the alpha. */
+            all: number;
+            /** @description Students with fewer than 3 counted sessions in the week. */
+            below_target: number;
+            /** @description Quiet students. */
+            quiet: number;
+        };
+        PagedAlphaStudentRefs: components["schemas"]["PageMeta"] & {
+            /** @description This page of matching students, by display name then user_id. */
+            items: components["schemas"]["UserRef"][];
         };
         /** @description One practice session of a student's, in any state. */
         AlphaSession: {
@@ -6808,7 +6860,8 @@ export interface components {
             /**
              * @description The session's subjects, main first, shown to the student as what the session works
              *     on. Every item practises one of them, except the warm-up and, in Today's mix, the
-             *     review block: due items of other nodes, at most a fifth of the focus time or 5 items.
+             *     review block: due items of other nodes, at most a fifth of the focus time or 5 items,
+             *     right after the warm-up.
              *     One node, the chosen one, when focus_source is chosen.
              */
             focus_nodes: components["schemas"]["PracticeFocusNode"][];
@@ -7706,6 +7759,8 @@ export type SchemaAlphaWeekCount = components['schemas']['AlphaWeekCount'];
 export type SchemaAlphaFirstPath = components['schemas']['AlphaFirstPath'];
 export type SchemaAlphaStudent = components['schemas']['AlphaStudent'];
 export type SchemaAlphaObservation = components['schemas']['AlphaObservation'];
+export type SchemaAlphaFilterCounts = components['schemas']['AlphaFilterCounts'];
+export type SchemaPagedAlphaStudentRefs = components['schemas']['PagedAlphaStudentRefs'];
 export type SchemaAlphaSession = components['schemas']['AlphaSession'];
 export type SchemaAlphaSessionWeek = components['schemas']['AlphaSessionWeek'];
 export type SchemaAlphaPathNode = components['schemas']['AlphaPathNode'];
@@ -12390,6 +12445,18 @@ export interface operations {
             query?: {
                 /** @description The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected. */
                 week?: components["parameters"]["AlphaWeek"];
+                /** @description Only students whose display_name contains this text, ignoring case and accents ("joao" matches "João"). */
+                q?: string;
+                /**
+                 * @description Only some of the students. Every student when absent.
+                 *     below_target — fewer than 3 counted sessions in the week.
+                 *     quiet — quiet as AlphaStudent.quiet defines it.
+                 */
+                filter?: "below_target" | "quiet";
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
             };
             header?: never;
             path?: never;
@@ -12406,7 +12473,7 @@ export interface operations {
                     "application/json": components["schemas"]["AlphaObservation"];
                 };
             };
-            /** @description The week is not a Monday, or it starts after the running week. */
+            /** @description The week is not a Monday or starts after the running week, or q, filter, limit or offset is out of range. */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -12425,6 +12492,62 @@ export interface operations {
                 };
             };
             /** @description The authenticated user is not an admin. Only admins may observe the alpha. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+        };
+    };
+    listAlphaStudents: {
+        parameters: {
+            query?: {
+                /** @description Only students whose display_name contains this text, ignoring case and accents ("joao" matches "João"). */
+                q?: string;
+                /** @description Only these students. Repeat the parameter for several. */
+                student_id?: string[];
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of matching students, possibly empty. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedAlphaStudentRefs"];
+                };
+            };
+            /** @description q, a student_id, limit or offset is malformed or out of range. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description The authenticated user is not an admin. Only admins may list the alpha's students. */
             403: {
                 headers: {
                     [name: string]: unknown;
