@@ -945,6 +945,31 @@ export interface paths {
         patch: operations["updateDiagram"];
         trace?: never;
     };
+    "/progressions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the progression catalog
+         * @description Returns every progression of the progression catalog, ordered by key: its key, its
+         *     numerals one bar each (in a major key, I7 IV7 V7 being dominant sevenths), the
+         *     progressions a learner mistakes it for, and its names. A client reads it to show and
+         *     grade the progression drills' questions the same way the server does, such as a chart
+         *     picked for a progression. The catalog is reference data, the same for every user and
+         *     language, so a client may keep it for the session. Any authenticated user may list it.
+         */
+        get: operations["listProgressions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chords": {
         parameters: {
             query?: never;
@@ -6937,6 +6962,28 @@ export interface components {
             current_rung: components["schemas"]["PracticeRung"];
         };
         /**
+         * @description A common chord progression of the progression catalog, by number: one numeral per bar of
+         *     a major key, asked in whatever key a drill picks.
+         */
+        Progression: {
+            /**
+             * Format: uuid
+             * @description The progression's fixed identifier.
+             */
+            progression_id: string;
+            /** @description The progression's key in the catalog, such as I-V-vi-IV, as item keys and answers name it. */
+            key: string;
+            /**
+             * @description One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
+             *     four-bar progression has four, a 12-bar form twelve.
+             */
+            bars: string[];
+            /** @description The keys of the progressions a learner mistakes it for; each lists it back. */
+            confusable: string[];
+            /** @description The progression's name in each language, such as "I–V–vi–IV (pop)". */
+            names: components["schemas"]["LocalizedNames"];
+        };
+        /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
          *     one of fretboard_cell, exercise, play_along, diagram_shape and generated_choice is
          *     present, matching kind: generated_choice for a diatonic chord, a chord function or a
@@ -7957,6 +8004,7 @@ export type SchemaPracticeFocusNode = components['schemas']['PracticeFocusNode']
 export type SchemaPracticeSubjectList = components['schemas']['PracticeSubjectList'];
 export type SchemaPracticeSubjectGroup = components['schemas']['PracticeSubjectGroup'];
 export type SchemaPracticeSubject = components['schemas']['PracticeSubject'];
+export type SchemaProgression = components['schemas']['Progression'];
 export type SchemaPracticeSessionItem = components['schemas']['PracticeSessionItem'];
 export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
 export type SchemaFretboardMap = components['schemas']['FretboardMap'];
@@ -10776,6 +10824,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    listProgressions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every progression of the catalog. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Progression"][];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
                 };
             };
         };

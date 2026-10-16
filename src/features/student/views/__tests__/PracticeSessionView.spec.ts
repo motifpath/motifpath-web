@@ -94,6 +94,15 @@ const SessionDiagramShapeStub = defineComponent({
   },
 })
 
+const SessionGeneratedChoiceStub = defineComponent({
+  name: 'SessionGeneratedChoice',
+  props: { item: { type: Object, required: true }, answer: { type: Object, default: null }, instrumentName: { type: String, default: undefined } },
+  emits: ['answer', 'next', 'skip'],
+  setup(props) {
+    return () => h('div', { 'data-test': 'harmony' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
+  },
+})
+
 const TapCheckStub = defineComponent({
   name: 'TapCheck',
   props: { tuning: { type: Array, required: true } },
@@ -246,6 +255,30 @@ function shapeItem(layout = GUITAR): Item {
   }
 }
 
+function harmonyItem(): Item {
+  return {
+    item_key: 'diatonic_chord:G:vi',
+    kind: 'diatonic_chord',
+    rung: 'know',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 8,
+    generated_choice: {
+      way: 'numeral_to_chord',
+      music_key: 'G',
+      numeral: 'vi',
+      chord: null,
+      function: null,
+      progression: null,
+      chart: [],
+      drawn_as: 'chord_symbols',
+      options: ['Em', 'D', 'F#dim', 'C'].map((value) => ({ value, name: null, chart: [] })),
+      voicings: [],
+    },
+  }
+}
+
 const SHAPE_BOARD = { stringCount: 6, positions: [{ string: 5, fret: 3, interval: 'R' }] }
 
 function mountView() {
@@ -257,6 +290,7 @@ function mountView() {
         SessionExercise: SessionExerciseStub,
         SessionFretboardCell: SessionFretboardCellStub,
         SessionDiagramShape: SessionDiagramShapeStub,
+        SessionGeneratedChoice: SessionGeneratedChoiceStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
@@ -516,6 +550,43 @@ describe('PracticeSessionView', () => {
       await startSession(wrapper, plan([shapeItem(GUITAR), cellItem(4, 2, 'name_the_note', BASS)], { tap_check_due: true }))
 
       expect(wrapper.getComponent(TapCheckStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+    })
+  })
+
+  describe('with harmony questions', () => {
+    it('shows a harmony question, and records its answer graded as the record grades it', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([harmonyItem(), shapeItem()]))
+      const question = () => wrapper.getComponent(SessionGeneratedChoiceStub)
+
+      expect(question().props('item')).toMatchObject({ item_key: 'diatonic_chord:G:vi' })
+
+      question().vm.$emit(
+        'answer',
+        { way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'Em' },
+        { question: { way: 'numeral_to_chord', key: 'G', numeral: 'vi' }, catalog: {} },
+      )
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: expect.objectContaining({ response_type: 'generated_choice', choice: 'Em' }) }),
+      ])
+      expect(wrapper.get('[data-test="harmony"]').text()).toBe('answered right')
+
+      question().vm.$emit('next')
+      await flushPromises()
+      expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
+    })
+
+    it('sends a harmony question that can’t be shown as not answered and moves on', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([harmonyItem(), shapeItem()]))
+
+      wrapper.getComponent(SessionGeneratedChoiceStub).vm.$emit('skip', 'unavailable')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: { response_type: 'not_answered', reason: 'unavailable' } })])
+      expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
     })
   })
 

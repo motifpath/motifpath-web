@@ -25,6 +25,7 @@ import SessionSummary from '@/features/student/components/SessionSummary.vue'
 import type { SetupProblem } from '@/features/student/components/PracticeSetup.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
+import SessionGeneratedChoice from '@/features/student/components/SessionGeneratedChoice.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
 import SessionFretboardCell from '@/features/student/components/SessionFretboardCell.vue'
 import TapCheck from '@/features/student/components/TapCheck.vue'
@@ -323,6 +324,15 @@ onBeforeUnmount(() => {
         :answer="run.shapeAnswer.value"
         :instrument-name="currentInstrumentName"
         @answer="(answer, board) => run!.answerShape(answer, board)"
+        @next="run.nextItem()"
+        @skip="run.skip($event)"
+      />
+      <SessionGeneratedChoice
+        v-else-if="current.generated_choice"
+        :item="current"
+        :answer="run.generatedAnswer.value"
+        :instrument-name="currentInstrumentName"
+        @answer="(answer, grading) => run!.answerGenerated(answer, grading)"
         @next="run.nextItem()"
         @skip="run.skip($event)"
       />

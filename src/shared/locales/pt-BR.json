@@ -514,10 +514,25 @@
       "askedBar": "Compasso {position}, o acorde perguntado"
     },
     "options": {
-      "chord": "Acorde {key}"
+      "chord": "Acorde {key}",
+      "chart": "Cifra {key}"
     },
     "question": {
       "chord": "O acorde"
     }
+  },
+  "musicKeys": {
+    "C": "Dó",
+    "Db": "Ré♭",
+    "D": "Ré",
+    "Eb": "Mi♭",
+    "E": "Mi",
+    "F": "Fá",
+    "Fsharp": "Fá♯",
+    "G": "Sol",
+    "Ab": "Lá♭",
+    "A": "Lá",
+    "Bb": "Si♭",
+    "B": "Si"
   }
 }

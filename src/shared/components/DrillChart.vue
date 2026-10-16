@@ -11,7 +11,8 @@ type Instrument = components['schemas']['Instrument']
 
 defineProps<{
   bars: ChartBarContent[]
-  instrument: Instrument
+  /** The instrument boxes are drawn for; none when chords are written as symbols. */
+  instrument?: Instrument | null
 }>()
 
 const { t } = useTypedT()

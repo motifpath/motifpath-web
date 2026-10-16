@@ -51,11 +51,57 @@ export const NumeralToChordAnswered: Story = { args: { choice: 'C', reveal: { ri
 /** "In G, which numeral is this chord?" The box is never named. */
 export const ChordToNumeral: Story = { args: { view: { way: 'chord_to_numeral', instrument: 'guitar', chord: chord('Bm'), options: textOptions('ii', 'iii', 'IV', 'vi') } } }
 
-/** "In D, A7 is…" Naming the chord is fine: its function is asked. */
-export const ChordToFunction: Story = { args: { view: { way: 'chord_to_function', instrument: 'guitar', chord: chord('A7'), options: FUNCTIONS } } }
+/** "In G, what does D do?" The key's triad, never a seventh, which would give the dominant away. */
+export const ChordToFunction: Story = { args: { view: { way: 'chord_to_function', instrument: 'guitar', chord: chord('D'), options: FUNCTIONS } } }
 
-/** "In D, which chord pulls home?" Unnamed boxes, like picking the chord for a numeral. */
-export const FunctionToChord: Story = { args: { view: { way: 'function_to_chord', instrument: 'guitar', options: chordOptions('D', 'G', 'A7', 'Em') } } }
+/** "In G, which chord pulls home?" Unnamed boxes; only one of them is dominant. */
+export const FunctionToChord: Story = {
+  args: { view: { way: 'function_to_chord', instrument: 'guitar', context: 'All four are chords of G major.', options: chordOptions('D', 'C', 'Em', 'G') } },
+}
+
+const BLUES = ['G7', 'G7', 'G7', 'G7', 'C7', 'C7', 'G7', 'G7', 'D7', 'C7', 'G7', 'D7']
+const QUICK_CHANGE = ['G7', 'C7', ...BLUES.slice(2)]
+const symbolChart = (symbols: string[]): DrillChord[] => symbols.map((symbol) => ({ symbol }))
+const chartOption = (chart: DrillChord[]): DrillQuestionOption => ({ value: chart.map((bar) => bar.symbol).join(' '), label: chart.map((bar) => bar.symbol).join(' '), chart })
+
+/** Pick the chart: "Which chart is I – V – vi – IV?" in G, one row of unnamed boxes per option. */
+export const NumbersToChart: Story = {
+  args: {
+    view: {
+      way: 'numbers_to_chart',
+      instrument: 'guitar',
+      context: 'Key of G major',
+      options: [
+        chartOption((['G', 'Em', 'C', 'D'] as const).map(chord)),
+        chartOption((['G', 'D', 'Em', 'C'] as const).map(chord)),
+        chartOption((['Em', 'C', 'G', 'D'] as const).map(chord)),
+        chartOption((['G', 'Em', 'Am', 'D'] as const).map(chord)),
+      ],
+    },
+  },
+}
+
+/** Read a 12-bar chart: chord symbols on every instrument, three lines of four. */
+export const TwelveBarChartToNumbers: Story = {
+  args: {
+    instrument: null,
+    view: {
+      way: 'chart_to_numbers',
+      instrument: 'bass',
+      context: 'Key of G major',
+      chart: symbolChart(BLUES),
+      options: [
+        { value: '12-bar-blues-quick-change', label: '12-bar blues, quick change' },
+        { value: '12-bar-blues', label: '12-bar blues, slow change' },
+      ],
+    },
+  },
+}
+
+/** Pick a 12-bar chart: two charts that differ only in bar 2. */
+export const TwelveBarNumbersToChart: Story = {
+  args: { instrument: null, view: { way: 'numbers_to_chart', instrument: 'bass', context: 'Key of G major', options: [chartOption(symbolChart(BLUES)), chartOption(symbolChart(QUICK_CHANGE))] } },
+}
 
 /** Read the chart: four unnamed boxes in a key, pick the progression. */
 export const ChartToNumbers: Story = {
@@ -123,9 +169,32 @@ export const BassChordToNumeral: Story = {
   args: { instrument: drillBass, view: { way: 'chord_to_numeral', instrument: 'bass', chord: { symbol: 'Bm' }, options: textOptions('ii', 'iii', 'V', 'vi') } },
 }
 
+/** Bass, numeral to chord: "In G, which chord is vi?", chord symbols to pick from. */
+export const BassNumeralToChord: Story = {
+  args: { instrument: null, view: { way: 'numeral_to_chord', instrument: 'bass', context: 'All four are chords of G major.', options: textOptions('C', 'Em', 'Am', 'D').map((option) => ({ ...option, chord: { symbol: option.value } })) } },
+}
+
+/** Bass, chord to function: the chord's symbol, then the three functions. */
+export const BassChordToFunction: Story = {
+  args: { instrument: null, view: { way: 'chord_to_function', instrument: 'bass', chord: { symbol: 'D' }, options: FUNCTIONS } },
+}
+
+/** Bass, pick the chart: charts of chord symbols. */
+export const BassNumbersToChart: Story = {
+  args: {
+    instrument: null,
+    view: {
+      way: 'numbers_to_chart',
+      instrument: 'bass',
+      context: 'Key of G major',
+      options: [symbolChart(['G', 'Em', 'C', 'D']), symbolChart(['G', 'D', 'Em', 'C']), symbolChart(['Em', 'C', 'G', 'D']), symbolChart(['G', 'Em', 'Am', 'D'])].map(chartOption),
+    },
+  },
+}
+
 /** Bass, function to chord: chord symbols to pick from. */
 export const BassFunctionToChord: Story = {
-  args: { instrument: drillBass, view: { way: 'function_to_chord', instrument: 'bass', options: textOptions('D', 'G', 'A7', 'Em') } },
+  args: { instrument: drillBass, view: { way: 'function_to_chord', instrument: 'bass', options: textOptions('D', 'C', 'Em', 'G') } },
 }
 
 /** Bass, read the chart: four chord symbols in a key. */
@@ -167,8 +236,8 @@ export const LongPortuguese: Story = {
     view: {
       way: 'chord_to_function',
       instrument: 'guitar',
-      chord: chord('A7'),
-      context: 'Em Ré maior, pense no papel que este acorde cumpre na progressão.',
+      chord: chord('D'),
+      context: 'Em Sol maior, pense no papel que este acorde cumpre na progressão.',
       options: [
         { value: 'tonic', label: 'Tônica — repouso, a sensação de ter chegado em casa' },
         { value: 'subdominant', label: 'Subdominante — se afasta da tônica' },

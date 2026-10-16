@@ -958,6 +958,102 @@ describe('usePracticeSessionRun', () => {
     })
   })
 
+  describe('harmony questions', () => {
+    const BLANK = { numeral: null, chord: null, function: null, progression: null, chart: [], drawn_as: 'chord_symbols' as const, voicings: [] }
+    const opts = (...values: string[]) => values.map((value) => ({ value, name: null, chart: [] }))
+
+    const numeral: Item = {
+      item_key: 'diatonic_chord:G:vi',
+      kind: 'diatonic_chord',
+      rung: 'know',
+      reason: 'new',
+      node_id: null,
+      level: 'new',
+      estimated_seconds: 8,
+      generated_choice: { ...BLANK, way: 'numeral_to_chord', music_key: 'G', numeral: 'vi', options: opts('Em', 'D', 'F#dim', 'C') },
+    }
+    const chart: Item = {
+      item_key: 'chart_progression:I-V-vi-IV',
+      kind: 'chart_progression',
+      rung: 'know',
+      reason: 'due',
+      node_id: null,
+      level: 'learning',
+      estimated_seconds: 12,
+      generated_choice: { ...BLANK, way: 'chart_to_numbers', music_key: 'C', chart: ['C', 'G', 'Am', 'F'], options: opts('I-V-vi-IV', 'I-vi-IV-V') },
+    }
+    const CATALOG = { 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] }, 'I-vi-IV-V': { bars: ['I', 'vi', 'IV', 'V'] } }
+    const numeralGrading = { question: { way: 'numeral_to_chord' as const, key: 'G', numeral: 'vi' }, catalog: {} }
+    const chartGrading = { question: { way: 'chart_to_numbers' as const, key: 'C', progression: 'I-V-vi-IV' }, catalog: CATALOG }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-10-15T10:00:00Z'))
+    })
+    afterEach(() => vi.useRealTimers())
+
+    it('sends the chord picked with the way it was asked and the options as shown, timed from when it was shown', () => {
+      const run = usePracticeSessionRun(plan([numeral, chart], null))
+      run.start()
+      vi.advanceTimersByTime(3100)
+      run.answerGenerated({ way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'D' }, numeralGrading)
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: 'diatonic_chord:G:vi',
+          response: { response_type: 'generated_choice', way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'D', latency_ms: 3100 },
+        },
+      ])
+      expect(run.generatedAnswer.value).toEqual({ choice: 'D', right: 'Em', correct: false })
+      expect(run.progress.value).toEqual([1, 0])
+    })
+
+    it('sends the key a chart was asked in, which its item does not fix', () => {
+      const run = usePracticeSessionRun(plan([chart], null))
+      run.start()
+      run.answerGenerated({ way: 'chart_to_numbers', options: ['I-V-vi-IV', 'I-vi-IV-V'], choice: 'I-V-vi-IV' }, chartGrading)
+
+      expect(tracked('practice.item_answered')[0].response).toEqual({
+        response_type: 'generated_choice',
+        way: 'chart_to_numbers',
+        music_key: 'C',
+        options: ['I-V-vi-IV', 'I-vi-IV-V'],
+        choice: 'I-V-vi-IV',
+        latency_ms: 0,
+      })
+      expect(run.generatedAnswer.value?.correct).toBe(true)
+    })
+
+    it('takes only the first answer, and none asked another way or among options the grader rejects', () => {
+      const run = usePracticeSessionRun(plan([numeral], null))
+      run.start()
+      run.answerGenerated({ way: 'chord_to_numeral', options: ['vi', 'V', 'IV', 'ii'], choice: 'vi' }, numeralGrading)
+      run.answerGenerated({ way: 'numeral_to_chord', options: ['Em', 'Em7', 'D', 'C'], choice: 'Em' }, numeralGrading)
+      expect(run.generatedAnswer.value).toBeNull()
+
+      run.answerGenerated({ way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'Em' }, numeralGrading)
+      run.answerGenerated({ way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'D' }, numeralGrading)
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.generatedAnswer.value).toEqual({ choice: 'Em', right: 'Em', correct: true })
+    })
+
+    it('asks how each harmony way practised felt, and forgets the answer on the next item', () => {
+      const run = usePracticeSessionRun(plan([numeral, chart], null, { felt_questions: ['chart_progression:chart_to_numbers', 'diatonic_chord:numeral_to_chord'] }))
+      run.start()
+      run.answerGenerated({ way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'Em' }, numeralGrading)
+      run.nextItem()
+      expect(run.generatedAnswer.value).toBeNull()
+      run.answerGenerated({ way: 'chart_to_numbers', options: ['I-V-vi-IV', 'I-vi-IV-V'], choice: 'I-vi-IV-V' }, chartGrading)
+      run.nextItem()
+
+      expect(run.feltQuestions.value).toEqual(['chart_progression:chart_to_numbers', 'diatonic_chord:numeral_to_chord'])
+      expect(run.outcomes.value.get('chart_progression:I-V-vi-IV')).toEqual({ kind: 'answered', correct: false })
+    })
+  })
+
   describe('fretboard cells', () => {
     const LAYOUT = '6ea2d087-ab9c-59dc-9657-8546025414d2'
     const STANDARD = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']

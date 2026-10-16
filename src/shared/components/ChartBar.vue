@@ -21,7 +21,8 @@ defineProps<{
   bar: ChartBarContent
   /** The bar's place in the chart, from 1. */
   position: number
-  instrument: Instrument
+  /** The instrument boxes are drawn for; none when chords are written as symbols. */
+  instrument?: Instrument | null
 }>()
 
 const { t } = useTypedT()
@@ -30,13 +31,13 @@ const { t } = useTypedT()
 <template>
   <div class="flex min-h-[56px] items-center border-l-2 border-ink-subtle" :class="bar.kind === 'box' ? 'pl-1' : 'pl-3'">
     <ChordBox
-      v-if="bar.kind === 'box'"
+      v-if="bar.kind === 'box' && instrument"
       :voicing="bar.voicing"
       :diagram="bar.diagram"
       :instrument="instrument"
       :label="t('drill.chart.bar', { position })"
       :scale="BOX_SCALE"
     />
-    <span v-else class="text-lg font-semibold text-ink">{{ bar.symbol }}</span>
+    <span v-else-if="bar.kind === 'symbol'" class="text-lg font-semibold text-ink">{{ bar.symbol }}</span>
   </div>
 </template>

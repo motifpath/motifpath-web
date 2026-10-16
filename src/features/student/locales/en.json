@@ -267,7 +267,13 @@
       "nameTheNote": "Name the note",
       "findTheNote": "Find the note",
       "nameTheShape": "Name the shape",
-      "findTheDegree": "Find the degree"
+      "findTheDegree": "Find the degree",
+      "numeralToChord": "Chords by number",
+      "chordToNumeral": "Numbers of chords",
+      "chordToFunction": "What chords do",
+      "functionToChord": "Chords by what they do",
+      "chartToNumbers": "Reading charts",
+      "numbersToChart": "Picking charts"
     },
     "nextUp": {
       "played": "You played {name} up to {tempo}.",
@@ -397,7 +403,13 @@
       "audioSelection": "Choosing a sound",
       "nameTheShape": "Naming shapes",
       "findTheDegree": "Finding degrees in shapes",
-      "other": "This drill"
+      "other": "This drill",
+      "numeralToChord": "Finding chords by number",
+      "chordToNumeral": "Naming the number of a chord",
+      "chordToFunction": "Naming what a chord does",
+      "functionToChord": "Finding a chord by what it does",
+      "chartToNumbers": "Reading charts by number",
+      "numbersToChart": "Picking the chart of a progression"
     }
   },
   "practiceHomeView": {
@@ -632,5 +644,21 @@
       "paths": "Show {shown} path | Show {shown} paths"
     },
     "showUnknown": "Show results"
+  },
+  "sessionGeneratedChoice": {
+    "numeralToChord": "In {key}, which chord is {numeral}?",
+    "chordToNumeral": "In {key}, which numeral is this chord?",
+    "chordToFunction": "In {key}, what does {chord} do?",
+    "functionToChord": "In {key}, which chord {function}?",
+    "functions": {
+      "tonic": "is at rest",
+      "subdominant": "moves away",
+      "dominant": "pulls home"
+    },
+    "chartToNumbers": "Which progression is this chart?",
+    "numbersToChart": "Which chart is {progression}?",
+    "chordsOfKey": "All four are chords of {key} major.",
+    "keyOf": "Key of {key} major",
+    "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you."
   }
 }

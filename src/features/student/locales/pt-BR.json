@@ -267,7 +267,13 @@
       "nameTheNote": "Diga a nota",
       "findTheNote": "Encontre a nota",
       "nameTheShape": "Diga a forma",
-      "findTheDegree": "Encontre o grau"
+      "findTheDegree": "Encontre o grau",
+      "numeralToChord": "Acordes pelo grau",
+      "chordToNumeral": "Graus dos acordes",
+      "chordToFunction": "Função dos acordes",
+      "functionToChord": "Acordes pela função",
+      "chartToNumbers": "Lendo cifras",
+      "numbersToChart": "Escolhendo cifras"
     },
     "nextUp": {
       "played": "Você tocou {name} até {tempo}.",
@@ -397,7 +403,13 @@
       "audioSelection": "Escolher um som",
       "nameTheShape": "Dizer as formas",
       "findTheDegree": "Encontrar graus nas formas",
-      "other": "Este exercício"
+      "other": "Este exercício",
+      "numeralToChord": "Achar acordes pelo grau",
+      "chordToNumeral": "Dizer o grau de um acorde",
+      "chordToFunction": "Dizer a função de um acorde",
+      "functionToChord": "Achar um acorde pela função",
+      "chartToNumbers": "Ler cifras pelos graus",
+      "numbersToChart": "Escolher a cifra de uma progressão"
     }
   },
   "practiceHomeView": {
@@ -632,5 +644,21 @@
       "paths": "Mostrar {shown} trilha | Mostrar {shown} trilhas"
     },
     "showUnknown": "Mostrar resultados"
+  },
+  "sessionGeneratedChoice": {
+    "numeralToChord": "Em {key}, qual acorde é o {numeral}?",
+    "chordToNumeral": "Em {key}, que grau é este acorde?",
+    "chordToFunction": "Em {key}, o que o {chord} faz?",
+    "functionToChord": "Em {key}, qual acorde {function}?",
+    "functions": {
+      "tonic": "repousa",
+      "subdominant": "se afasta",
+      "dominant": "puxa para casa"
+    },
+    "chartToNumbers": "Que progressão é esta cifra?",
+    "numbersToChart": "Qual cifra é {progression}?",
+    "chordsOfKey": "Os quatro são acordes de {key} maior.",
+    "keyOf": "Tom de {key} maior",
+    "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."
   }
 }
