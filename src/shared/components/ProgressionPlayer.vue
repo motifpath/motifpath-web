@@ -4,8 +4,9 @@
  * a tempo chip that opens its tempo, note value and click, and a bar for each chord that follows
  * the playing. The bars the question gives
  * show their numerals; the bar asked shows "?". Replay is unlimited and is never an answer. It
- * says when the sound starts and stops, so an answer can be timed from the sound, and when the
- * sound can't be heard, so the holder can hold the options and offer another try.
+ * says when the sound starts and stops, so an answer can be timed from the sound, how long each
+ * play lasts at the tempo it plays at, and when the sound can't be heard, so the holder can hold
+ * the options and offer another try.
  */
 import { LoaderCircle, Play, Square } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, watch } from 'vue'
@@ -28,13 +29,16 @@ const props = defineProps<{
   subtitle: string
 }>()
 
-const emit = defineEmits<{ playing: [playing: boolean]; missing: [reason: MissingReason] }>()
+const emit = defineEmits<{ playing: [playing: boolean]; sounded: [audioMs: number]; missing: [reason: MissingReason] }>()
 
 const { t } = useTypedT()
-const { state, status, currentBar, tempo, noteValue, metronome, toggle } = useProgressionPlayback(() => props.source)
+const { state, status, currentBar, tempo, noteValue, metronome, lengthMs, toggle } = useProgressionPlayback(() => props.source)
 
 const sounding = computed(() => state.value === 'playing')
-watch(sounding, (now) => emit('playing', now))
+watch(sounding, (now) => {
+  if (now) emit('sounded', lengthMs.value)
+  emit('playing', now)
+})
 // Going away silences the sound, which a holder timing answers must hear about.
 onBeforeUnmount(() => {
   if (sounding.value) emit('playing', false)

@@ -73,6 +73,9 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     return { wholeSeconds: secondsPerWhole(tempo.value, FOUR_FOUR) / factor, clickBeat: BEAT * factor }
   }
 
+  /** How long one play lasts at the tempo and note value it plays at now: a whole note a bar. */
+  const lengthMs = computed(() => Math.round((sourceNow.value?.chords.length ?? 0) * timing().wholeSeconds * 1000))
+
   /** Each voice the progression plays in, the chords' first. */
   const voiceIds = computed(() => {
     const now = sourceNow.value
@@ -208,5 +211,5 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
 
   onScopeDispose(stop)
 
-  return { state, status, currentBar, tempo, noteValue, metronome, toggle, stop }
+  return { state, status, currentBar, tempo, noteValue, metronome, lengthMs, toggle, stop }
 }

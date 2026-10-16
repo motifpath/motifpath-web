@@ -139,6 +139,17 @@ describe('useProgressionPlayback', () => {
     expect(line[0]!.time).toBeCloseTo(sounding('acoustic-guitar')[0]!.time)
   })
 
+  it('says how long one play lasts, at the tempo and note value it plays at', () => {
+    const { player } = setup()
+    // Four bars of 4/4 at 60 BPM.
+    expect(player.lengthMs.value).toBe(16_000)
+
+    player.tempo.value = 120
+    expect(player.lengthMs.value).toBe(8_000)
+    player.noteValue.value = 'eighths'
+    expect(player.lengthMs.value).toBe(4_000)
+  })
+
   it('plays at the tempo the student picks, starting from the progression’s own', async () => {
     const { player } = setup()
     expect(player.tempo.value).toBe(60)
