@@ -179,11 +179,15 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     })
   }
 
-  /** The note value the next take of a play-along plays at: the student's choice, else its last take's, else the plan's. */
+  /**
+   * The note value the next take of a play-along plays at: the student's choice, else its last
+   * take's, else the plan's, and quarters for a plan that says none, as one composed before note
+   * values existed doesn't.
+   */
   const noteValue = computed<TempoNoteValue | null>(() => {
     const playAlong = current.value?.play_along
     if (!playAlong) return null
-    return chosenNoteValue.value ?? takes.value.at(-1)?.noteValue ?? playAlong.start_note_value
+    return chosenNoteValue.value ?? takes.value.at(-1)?.noteValue ?? playAlong.start_note_value ?? 'quarters'
   })
 
   const tempo = computed(() => {

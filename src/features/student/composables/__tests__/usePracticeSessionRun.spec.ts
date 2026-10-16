@@ -405,6 +405,16 @@ describe('usePracticeSessionRun', () => {
       expect(run.noteValue.value).toBe('eighths')
     })
 
+    it('plays in quarters when the plan says no note value, as one from before note values does', () => {
+      const older = playAlong(PENTATONIC, 'due', { start: 90, target: 120 })
+      Reflect.deleteProperty(older.play_along!, 'start_note_value')
+      const run = usePracticeSessionRun(plan([older]))
+      run.start()
+
+      expect(run.noteValue.value).toBe('quarters')
+      expect(run.tempo.value).toBe(90)
+    })
+
     it('keeps the effective speed in another note value: 80 BPM is 40 in eighths', () => {
       const run = pentatonicRun(80)
 
