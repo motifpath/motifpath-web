@@ -55,6 +55,14 @@ describe('createPlaybackRun', () => {
     expect(run.activePositionIds(13)).toEqual([])
   })
 
+  it('says when the step sounding at a time ends, and nothing before or after the run', () => {
+    const run = createPlaybackRun(STEPS, { sink: fakeSink().sink, wholeSeconds: 4, loop: false, startAt: 10 })
+    expect(run.stepEndAt(9.9)).toBeNull()
+    expect(run.stepEndAt(10)).toBe(11)
+    expect(run.stepEndAt(11.5)).toBe(12)
+    expect(run.stepEndAt(13)).toBeNull()
+  })
+
   it('finishes when the last step ends, unless it loops', () => {
     const once = createPlaybackRun(STEPS, { sink: fakeSink().sink, wholeSeconds: 4, loop: false, startAt: 10 })
     expect(once.finished(12.9)).toBe(false)

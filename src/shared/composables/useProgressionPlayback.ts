@@ -37,6 +37,8 @@ const FOUR_FOUR: TimeSignature = { beats: 4, beat_value: 4 }
 const BEAT = 1 / 4
 /** The spread between the strings of a strum, as a pick crosses them. */
 const STRUM_SECONDS = 0.018
+/** Just before a bar's end, so the beats of the bass that start within the bar are kept as they are. */
+const BAR_END_SLACK_SECONDS = 1e-6
 /** How far ahead of the audio clock the first bar is placed, so it isn't already late. */
 const START_DELAY_SECONDS = 0.1
 
@@ -165,12 +167,17 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     }
   }
 
-  // A new tempo or note value applies from the next bar, to the chords and the bass line alike.
+  // A new tempo or note value applies from the next bar, to the chords and the bass line alike:
+  // the bass keeps the beats left in the sounding bar, so it never runs ahead of the chords.
   watch([tempo, noteValue], () => {
     const audio = context
-    if (!audio) return
+    const [chords, ...under] = runs
+    if (!audio || !chords) return
     const { wholeSeconds, clickBeat } = timing()
-    runs.forEach((run) => run.setWholeSeconds(wholeSeconds, audio.currentTime, clickBeat))
+    const now = audio.currentTime
+    const barEnd = chords.stepEndAt(now)
+    chords.setWholeSeconds(wholeSeconds, now, clickBeat)
+    under.forEach((run) => run.setWholeSeconds(wholeSeconds, barEnd === null ? now : barEnd - BAR_END_SLACK_SECONDS))
   })
 
   function toggle() {
