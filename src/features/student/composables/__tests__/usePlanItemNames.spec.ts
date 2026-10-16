@@ -187,5 +187,8 @@ describe('usePlanItemNames', () => {
     expect(labelOf(harmony('chord_function', 'function_to_chord'))).toBe('Chords by what they do')
     expect(labelOf(harmony('chart_progression', 'chart_to_numbers'))).toBe('Reading charts')
     expect(labelOf(harmony('chart_progression', 'numbers_to_chart'))).toBe('Picking charts')
+    expect(labelOf(harmony('heard_chord', 'cadence_then_chord'))).toBe('Chords by ear')
+    expect(labelOf(harmony('heard_chord', 'see_then_name'))).toBe('Numbers of chords')
+    expect(labelOf(harmony('heard_progression', 'progression_by_number'))).toBe('Progressions by ear')
   })
 })

@@ -273,7 +273,9 @@
       "chordToFunction": "What chords do",
       "functionToChord": "Chords by what they do",
       "chartToNumbers": "Reading charts",
-      "numbersToChart": "Picking charts"
+      "numbersToChart": "Picking charts",
+      "cadenceThenChord": "Chords by ear",
+      "progressionByNumber": "Progressions by ear"
     },
     "nextUp": {
       "played": "You played {name} up to {tempo}.",
@@ -409,7 +411,9 @@
       "chordToFunction": "Naming what a chord does",
       "functionToChord": "Finding a chord by what it does",
       "chartToNumbers": "Reading charts by number",
-      "numbersToChart": "Picking the chart of a progression"
+      "numbersToChart": "Picking the chart of a progression",
+      "cadenceThenChord": "Naming the number of a chord you hear",
+      "progressionByNumber": "Naming a progression you hear"
     }
   },
   "practiceHomeView": {
