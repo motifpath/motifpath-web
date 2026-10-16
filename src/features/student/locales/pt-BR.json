@@ -657,6 +657,13 @@
     },
     "chartToNumbers": "Que progressão é esta cifra?",
     "numbersToChart": "Qual cifra é {progression}?",
+    "cadenceThenChord": "Qual acorde você ouve?",
+    "progressionByNumber": "Qual progressão você ouve?",
+    "heard": {
+      "cadence": "Uma cadência define o tom, depois o acorde",
+      "tonic": "A tônica define o tom, depois o acorde",
+      "progression": "Quatro acordes, num tom que não é dito"
+    },
     "chordsOfKey": "Os quatro são acordes de {key} maior.",
     "keyOf": "Tom de {key} maior",
     "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."
