@@ -5,6 +5,11 @@
  * by itself, or the student stops it, the student rates it in the action bar, and the parent
  * decides the next take's tempo (the tempo ladder). A diagram that can't be played here can only
  * be skipped, as not answered.
+ *
+ * A take plays at a note value, one of the four suggested, shown beside the tempo: the music
+ * plays that many times faster over the same click. The bar is the diagram's, shown locked.
+ * Tempos read as played, and the goal and best clean marks sit where they fall in the take's
+ * note value, at the same effective speed.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Info } from 'lucide-vue-next'
@@ -12,7 +17,7 @@ import { Info } from 'lucide-vue-next'
 import type { components } from '@/api/generated/core-domain'
 import type { NotAnsweredReason } from '@/features/student/composables/usePracticeSessionRun'
 import { withCountIn } from '@/features/student/utils/countIn'
-import { ladderFloor } from '@/features/student/utils/tempoLadder'
+import { ladderFloorIn } from '@/features/student/utils/tempoLadder'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import PlayAlongInfo from '@/features/student/components/PlayAlongInfo.vue'
@@ -21,6 +26,7 @@ import TempoControl from '@/shared/components/TempoControl.vue'
 import AppButton from '@/shared/components/AppButton.vue'
 import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import InlineNotice from '@/shared/components/InlineNotice.vue'
+import LockedTimeSignature from '@/shared/components/LockedTimeSignature.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
@@ -28,7 +34,11 @@ import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
 import { useEmbeddedDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
+import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { resolvePlayback } from '@/shared/utils/diagramPlayback'
+import { SUGGESTED_NOTE_VALUES, effectiveSpeed, speedFactor } from '@/shared/utils/tempoNoteValue'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Item = components['schemas']['PracticeSessionItem']
 type PlayAlong = NonNullable<Item['play_along']>
@@ -36,17 +46,24 @@ type PlayAlong = NonNullable<Item['play_along']>
 const props = defineProps<{
   /** A play_along item. */
   item: Item
-  /** The tempo the next take plays at. */
+  /** The tempo the next take plays at, in `noteValue`. */
   tempo: number
+  noteValue: TempoNoteValue
   takesLeft: number
   /** The item's takes in all, played and still to play. */
   takesTotal: number
 }>()
 
-const emit = defineEmits<{ rate: [rating: TakeRating]; skip: [reason: NotAnsweredReason]; tempo: [bpm: number] }>()
+const emit = defineEmits<{
+  rate: [rating: TakeRating]
+  skip: [reason: NotAnsweredReason]
+  tempo: [bpm: number]
+  noteValue: [value: TempoNoteValue]
+}>()
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
+const { asPlayed, shortAsPlayed } = useTempoAsPlayed()
 
 const playAlong = computed<PlayAlong>(() => props.item.play_along!)
 const warmUp = computed(() => props.item.reason === 'warm_up')
@@ -56,7 +73,10 @@ const loaded = useEmbeddedDiagram(() => ({
   ref: { diagram_id: playAlong.value.diagram_id, layers: { intervals: true } },
 }))
 
-const take = computed(() => (loaded.diagram.value ? withCountIn(loaded.diagram.value) : null))
+const take = computed(() => (loaded.diagram.value ? withCountIn(loaded.diagram.value, props.noteValue) : null))
+
+/** The bar the take is played in: its diagram's, which the student can't change here. */
+const timeSignature = computed(() => (loaded.diagram.value ? resolvePlayback(loaded.diagram.value, null)?.time_signature : undefined))
 
 /** Whether a take clicks the beat, the count-in included. */
 const metronome = ref(true)
@@ -68,7 +88,7 @@ const player = useDiagramPlayback(
     instrument: loaded.instrument.value!,
     playback: { tempo_bpm: props.tempo, voice_id: null, direction: 'as_authored', loop: false },
   }),
-  { metronome: () => metronome.value },
+  { metronome: () => metronome.value, noteValue: () => props.noteValue },
 )
 
 const phase = ref<'ready' | 'playing' | 'rating'>('ready')
@@ -145,7 +165,23 @@ function chooseTempo(bpm: number) {
   emit('tempo', bpm)
 }
 
-const slowestTempo = computed(() => ladderFloor(playAlong.value.target_tempo_bpm))
+function chooseNoteValue(value: TempoNoteValue) {
+  rated = false
+  message.value = null
+  emit('noteValue', value)
+}
+
+const slowestTempo = computed(() => ladderFloorIn(playAlong.value.target_tempo_bpm, props.noteValue))
+
+/** A tempo in quarters as played in the take's note value, in whole BPM, for the slider's marks. */
+function inTakeValue(quarterBpm: number): number {
+  return Math.floor(quarterBpm / speedFactor(props.noteValue))
+}
+const goalMark = computed(() => inTakeValue(playAlong.value.target_tempo_bpm))
+const bestMark = computed(() => {
+  const { best_clean_tempo_bpm: bpm, best_clean_note_value: value } = playAlong.value
+  return bpm === null ? null : inTakeValue(effectiveSpeed(bpm, value ?? 'quarters'))
+})
 
 /** What the ladder did with the last rating, said when the next take's tempo changes. */
 const message = ref<string | null>(null)
@@ -154,8 +190,8 @@ watch(
   (next, previous) => {
     if (!rated) return
     rated = false
-    if (next > previous) message.value = t('playAlongTake.up', { bpm: next })
-    else if (next < previous) message.value = t('playAlongTake.down', { bpm: next })
+    if (next > previous) message.value = t('playAlongTake.up', { tempo: asPlayed(next, props.noteValue) })
+    else if (next < previous) message.value = t('playAlongTake.down', { tempo: asPlayed(next, props.noteValue) })
   },
 )
 // A new item starts with nothing said about the previous one's ladder.
@@ -176,8 +212,9 @@ const takesPlayed = computed(() => props.takesTotal - props.takesLeft)
 const meta = computed(() => {
   const take = t('playAlongTake.takeOf', { current: Math.min(takesPlayed.value + 1, props.takesTotal), total: props.takesTotal })
   if (warmUp.value) return take
-  const best = playAlong.value.best_clean_tempo_bpm ?? t('playAlongTake.noBest')
-  return `${take} · ${t('playAlongTake.goal', { target: playAlong.value.target_tempo_bpm, best })}`
+  const { best_clean_tempo_bpm: bestBpm, best_clean_note_value: bestValue } = playAlong.value
+  const best = bestBpm === null ? t('playAlongTake.noBest') : shortAsPlayed(bestBpm, bestValue ?? 'quarters')
+  return `${take} · ${t('playAlongTake.goal', { goal: asPlayed(goalMark.value, props.noteValue), best })}`
 })
 </script>
 
@@ -239,13 +276,17 @@ const meta = computed(() => {
         <TempoControl
           :tempo="tempo"
           :slowest="slowestTempo"
-          :goal="playAlong.target_tempo_bpm"
-          :best="playAlong.best_clean_tempo_bpm ?? null"
+          :goal="goalMark"
+          :best="bestMark"
           :metronome="metronome"
           :disabled="phase !== 'ready'"
+          :note-value="noteValue"
+          :note-values="SUGGESTED_NOTE_VALUES"
           @update:metronome="metronome = $event"
+          @update:note-value="chooseNoteValue"
           @tempo="chooseTempo"
         />
+        <LockedTimeSignature v-if="timeSignature" :signature="timeSignature" set-by="diagram" />
       </div>
 
       <template v-if="phase === 'ready'">
@@ -271,7 +312,7 @@ const meta = computed(() => {
         </PracticeActionBar>
       </template>
 
-      <SelfRating v-else :bpm="tempo" @rate="rate" @restart="restartTake" />
+      <SelfRating v-else :bpm="tempo" :note-value="noteValue" @rate="rate" @restart="restartTake" />
     </template>
   </div>
 </template>

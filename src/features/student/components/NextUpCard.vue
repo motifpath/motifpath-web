@@ -8,13 +8,16 @@ import type { components } from '@/api/generated/core-domain'
 import { pickReasonKeys } from '@/features/student/utils/pickReason'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Reason = components['schemas']['PracticeSessionItem']['reason']
 
 defineProps<{
   doneLabel: string
   fastestBpm: number
+  fastestNoteValue: TempoNoteValue
   nextLabel: string
   nextReason: Reason
 }>()
@@ -22,11 +25,12 @@ defineProps<{
 const emit = defineEmits<{ continue: [] }>()
 
 const { t } = useTypedT()
+const { asPlayed } = useTempoAsPlayed()
 </script>
 
 <template>
   <section class="flex flex-col gap-5" data-test="next-up" aria-live="polite">
-    <p data-test="next-up-done" class="text-ink-muted">{{ t('sessionPlan.nextUp.played', { name: doneLabel, bpm: fastestBpm }) }}</p>
+    <p data-test="next-up-done" class="text-ink-muted">{{ t('sessionPlan.nextUp.played', { name: doneLabel, tempo: asPlayed(fastestBpm, fastestNoteValue) }) }}</p>
 
     <div class="flex flex-col gap-1 rounded-lg border border-border bg-surface-raised p-4">
       <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">{{ t('sessionPlan.nextUp.next') }}</span>

@@ -2,9 +2,11 @@
 /**
  * The top of the Practice Shell: the way out, and during a run where the student is in it. Each
  * item has a segment of the progress bar, filled as far as it went; a play-along's fills take by
- * take. No other navigation.
+ * take. No other navigation. Across from the way out sits whatever options the screen offers.
+ * A page pushed inside the shell, such as a tool, is headed by its name, with an arrow back
+ * instead of ×.
  */
-import { X } from 'lucide-vue-next'
+import { ArrowLeft, X } from 'lucide-vue-next'
 
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -15,6 +17,8 @@ defineProps<{
   position?: { current: number; total: number }
   /** How full each item's segment is, from 0 to 1, during a run. */
   progress?: number[]
+  /** The name of a page pushed inside the shell; its way out is then an arrow back. */
+  title?: string
 }>()
 
 const emit = defineEmits<{ exit: [] }>()
@@ -32,8 +36,10 @@ const { t } = useTypedT()
         :aria-label="exitLabel"
         @click="emit('exit')"
       >
-        <X :size="24" aria-hidden="true" />
+        <ArrowLeft v-if="title" :size="24" aria-hidden="true" />
+        <X v-else :size="24" aria-hidden="true" />
       </button>
+      <h1 v-if="title" data-test="shell-title" class="ml-1 truncate text-lg font-semibold text-ink">{{ title }}</h1>
       <span
         v-if="position"
         data-test="shell-position"
@@ -41,6 +47,9 @@ const { t } = useTypedT()
       >
         {{ position.current }} / {{ position.total }}
       </span>
+      <div v-if="$slots.options" data-test="shell-options" class="-mr-3 ml-auto flex items-center">
+        <slot name="options" />
+      </div>
     </div>
     <div
       v-if="progress && position"

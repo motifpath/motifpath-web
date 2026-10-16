@@ -389,9 +389,75 @@
     "label": "Tempo",
     "metronome": "Metronome",
     "bpm": "{bpm} BPM",
-    "bestTick": "Best clean {bpm} BPM",
-    "goalTick": "Goal {bpm} BPM",
+    "bestTick": "Best clean {tempo}",
+    "goalTick": "Goal {tempo}",
     "typeTempo": "Type a tempo in BPM"
+  },
+  "noteValue": {
+    "halves": "Halves",
+    "quarters": "Quarters",
+    "eighths": "Eighths",
+    "triplets": "Triplets",
+    "sixteenths": "Sixteenths",
+    "quintuplets": "Quintuplets",
+    "sextuplets": "Sextuplets",
+    "thirty_seconds": "32nds"
+  },
+  "noteValueHint": {
+    "halves": "Halves · 1 note every 2 beats",
+    "quarters": "Quarters · the beat only",
+    "eighths": "Eighths · 2 notes a beat",
+    "triplets": "Triplets · 3 notes a beat",
+    "sixteenths": "Sixteenths · 4 notes a beat",
+    "quintuplets": "Quintuplets · 5 notes a beat",
+    "sextuplets": "Sextuplets · 6 notes a beat",
+    "thirty_seconds": "32nds · 8 notes a beat"
+  },
+  "tempoAsPlayed": {
+    "quarters": "{bpm} BPM",
+    "other": "{bpm} BPM in {value}",
+    "shortOther": "{bpm} in {value}"
+  },
+  "noteValueIn": {
+    "halves": "halves",
+    "quarters": "quarters",
+    "eighths": "eighths",
+    "triplets": "triplets",
+    "sixteenths": "sixteenths",
+    "quintuplets": "quintuplets",
+    "sextuplets": "sextuplets",
+    "thirty_seconds": "32nds"
+  },
+  "noteValuePicker": {
+    "button": "Note value: {value}",
+    "suggested": "Notes",
+    "all": "Note value"
+  },
+  "lockedTimeSignature": {
+    "diagram": "{signature} · set by the diagram",
+    "progression": "{signature} · one chord a bar"
+  },
+  "tools": {
+    "label": "Tools",
+    "metronome": "Metronome",
+    "back": "Back to practice"
+  },
+  "timeSignaturePicker": {
+    "button": "Time signature: {signature}",
+    "heading": "Time signature",
+    "beats": "Beats",
+    "beatNote": "Beat note",
+    "fewerBeats": "One beat fewer",
+    "moreBeats": "One beat more",
+    "shorterBeatNote": "A shorter beat note",
+    "longerBeatNote": "A longer beat note"
+  },
+  "metronomeTool": {
+    "start": "Start",
+    "stop": "Stop"
+  },
+  "progressionTempo": {
+    "done": "Done"
   },
   "teach": {
     "intro": "Build and look after what your students learn. Quick fixes work here; big edits are easier on a computer.",

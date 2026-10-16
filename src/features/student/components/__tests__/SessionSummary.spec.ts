@@ -37,7 +37,7 @@ function item(itemKey: string, kind: Item['kind']): Item {
 }
 
 const rows: SummaryRow[] = [
-  { key: 'play_along:triads', item: item('play_along:triads', 'play_along'), result: { kind: 'played', fastestBpm: 76, rating: 'clean' }, good: true },
+  { key: 'play_along:triads', item: item('play_along:triads', 'play_along'), result: { kind: 'played', fastestBpm: 76, fastestNoteValue: 'quarters', rating: 'clean' }, good: true },
   { key: 'exercise:third', item: item('exercise:third', 'exercise'), result: { kind: 'answered', correct: true }, good: true },
   { key: 'fretboard_cell:name_the_note', item: item('fretboard_cell:x', 'fretboard_cell'), result: { kind: 'counted', right: 6, answered: 8 }, good: true },
   { key: 'exercise:quality', item: item('exercise:quality', 'exercise'), result: { kind: 'answered', correct: false }, good: false },
@@ -69,6 +69,17 @@ describe('SessionSummary', () => {
 
     expect(wrapper.get('h1').text()).toBe('Session done')
     expect(wrapper.get('[data-test="summary-meta"]').text()).toBe('11 min · Guitar · 9 items')
+  })
+
+  it('says the note value a play-along was played at, when not quarters', () => {
+    const eighths: SummaryRow = {
+      key: 'play_along:triads',
+      item: item('play_along:triads', 'play_along'),
+      result: { kind: 'played', fastestBpm: 60, fastestNoteValue: 'eighths', rating: 'almost' },
+      good: true,
+    }
+
+    expect(mountSummary({ rows: [eighths] }).get('[data-test="summary-row-result"]').text()).toBe('up to 60 BPM in eighths · Almost')
   })
 
   it('lists each item with how it went', () => {

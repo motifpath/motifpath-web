@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import SelfRating from '@/features/student/components/SelfRating.vue'
 
-function mountRating() {
-  return mount(SelfRating, { props: { bpm: 72 }, attachTo: document.body })
+function mountRating(props: Record<string, unknown> = {}) {
+  return mount(SelfRating, { props: { bpm: 72, noteValue: 'quarters', ...props }, attachTo: document.body })
 }
 
 function press(key: string) {
@@ -21,6 +21,10 @@ describe('SelfRating', () => {
 
     const bar = wrapper.get('[data-test="action-bar"]')
     expect(bar.get('[data-test="rate-prompt"]').text()).toBe('How was that take at 72 BPM?')
+  })
+
+  it('names the note value of the take, when not quarters', () => {
+    expect(mountRating({ bpm: 60, noteValue: 'triplets' }).get('[data-test="rate-prompt"]').text()).toBe('How was that take at 60 BPM in triplets?')
   })
 
   it('offers Struggled, Almost and Clean, each saying what it means', () => {

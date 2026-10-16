@@ -276,7 +276,7 @@
       "numbersToChart": "Escolhendo cifras"
     },
     "nextUp": {
-      "played": "Você tocou {name} até {bpm} BPM.",
+      "played": "Você tocou {name} até {tempo}.",
       "next": "A seguir",
       "continue": "Continuar"
     },
@@ -296,7 +296,7 @@
     "minutes": "{minutes} min · {instrument}",
     "withItems": "{ran} · {count} item | {ran} · {count} itens",
     "whatYouPractised": "O que você praticou",
-    "played": "até {bpm} BPM · {rating}",
+    "played": "até {tempo} · {rating}",
     "counted": "{right} de {answered} certas",
     "right": "Certo",
     "notQuite": "Não foi dessa vez",
@@ -304,14 +304,14 @@
     "done": "Concluir"
   },
   "playAlongTake": {
-    "goal": "Meta {target} BPM · melhor limpa {best}",
+    "goal": "Meta {goal} · melhor limpa {best}",
     "noBest": "nenhuma ainda",
     "warmUpHint": "Aquecimento: toque relaxado. Não conta para o seu progresso.",
     "start": "Começar execução",
     "countInHint": "Um compasso de contagem, depois toque junto.",
     "playing": "Toque junto. A execução termina sozinha. Andamento errado? Recomeçar volta ao andamento sem avaliar.",
     "stopEarly": "Parar antes",
-    "ratePrompt": "Como foi essa execução a {bpm} BPM?",
+    "ratePrompt": "Como foi essa execução a {tempo}?",
     "ratings": {
       "struggled": "Difícil",
       "almost": "Quase",
@@ -322,8 +322,8 @@
       "almost": "Passei com deslizes",
       "clean": "Sem deslizes"
     },
-    "up": "Limpa duas vezes: subindo para {bpm} BPM.",
-    "down": "Vamos firmar a {bpm} BPM.",
+    "up": "Limpa duas vezes: subindo para {tempo}.",
+    "down": "Vamos firmar a {tempo}.",
     "loadError": "O som não carregou. Verifique sua conexão e tente de novo.",
     "unavailable": "Este diagrama não pode ser tocado aqui.",
     "skip": "Pular",

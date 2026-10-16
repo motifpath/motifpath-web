@@ -30,6 +30,17 @@ describe('withCountIn', () => {
     expect(defaultSteps(take).slice(0, 2)).toEqual([rest(3, 8), rest(3, 8)])
   })
 
+  it('keeps a bar of beats at a note value, its rests as many times longer as the music plays faster', () => {
+    const { diagram: take, beats } = withCountIn(diagram(4, 4), 'eighths')
+
+    expect(beats).toBe(4)
+    expect(defaultSteps(take).slice(0, 4)).toEqual([rest(1, 2), rest(1, 2), rest(1, 2), rest(1, 2)])
+  })
+
+  it('keeps a bar of beats in halves, its rests half as long as written', () => {
+    expect(defaultSteps(withCountIn(diagram(3, 4), 'halves').diagram).slice(0, 3)).toEqual([rest(1, 8), rest(1, 8), rest(1, 8)])
+  })
+
   it('counts an odd meter in its written beats', () => {
     expect(withCountIn(diagram(7, 8)).beats).toBe(7)
   })

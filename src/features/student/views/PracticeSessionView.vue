@@ -10,7 +10,9 @@
  * the page, ends as left early.
  *
  * All of it runs in the Practice Shell: × ends a running session, and otherwise leaves for where
- * the student came from. The screen stays on while the session runs.
+ * the student came from. The screen stays on while the session runs. On the setup, and only
+ * there, the shell's header offers Tools, which open as a page inside the shell; its arrow, or
+ * the device's Back, returns to the setup as it was.
  */
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -36,8 +38,11 @@ import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeShell from '@/shared/components/PracticeShell.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import MetronomeTool from '@/shared/components/MetronomeTool.vue'
+import ToolsMenu from '@/shared/components/ToolsMenu.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
+import { usePracticeTool } from '@/shared/composables/usePracticeTool'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useWakeLock } from '@/shared/composables/useWakeLock'
 
@@ -98,6 +103,11 @@ async function startSession() {
 }
 
 const { labelOf } = usePlanItemNames(() => run.value?.plan.items ?? [])
+
+const practiceTool = usePracticeTool()
+const openTool = computed(() => practiceTool.tool.value)
+/** Tools are for the setup: never once a session is being composed, shown or run. */
+const offersTools = computed(() => !run.value && !isComposing.value && openTool.value === null)
 
 const started = computed(() => run.value?.started.value ?? false)
 const finished = computed(() => run.value?.finished.value ?? false)
@@ -178,9 +188,15 @@ function leave() {
 }
 
 function exit() {
-  if (running.value) run.value!.end()
+  if (openTool.value) practiceTool.close()
+  else if (running.value) run.value!.end()
   else leave()
 }
+
+const exitLabel = computed(() => {
+  if (openTool.value) return t('tools.back')
+  return running.value ? t('practiceSessionView.endSession') : t('practiceSessionView.close')
+})
 
 // Sent with keepalive so the request outlives the page. A phone that discards a background
 // tab fires nothing; that session counts as abandoned once its events stop.
@@ -196,12 +212,19 @@ onBeforeUnmount(() => {
 
 <template>
   <PracticeShell
-    :exit-label="running ? t('practiceSessionView.endSession') : t('practiceSessionView.close')"
+    :exit-label="exitLabel"
     :position="position"
     :progress="running ? run!.progress.value : undefined"
+    :title="openTool === 'metronome' ? t('tools.metronome') : undefined"
     @exit="exit"
   >
-    <section v-if="isComposing" class="flex flex-col gap-4" data-test="plan-composing">
+    <template v-if="offersTools" #options>
+      <ToolsMenu @open="practiceTool.open" />
+    </template>
+
+    <MetronomeTool v-if="openTool === 'metronome'" />
+
+    <section v-else-if="isComposing" class="flex flex-col gap-4" data-test="plan-composing">
       <header class="flex items-baseline justify-between gap-2">
         <h1 class="text-xl font-semibold">{{ t('sessionPlan.title') }}</h1>
         <span class="shrink-0 text-sm text-ink-muted">{{ t('sessionPlan.meta', { minutes, instrument: instrumentLabel(instrumentId) }) }}</span>
@@ -259,6 +282,7 @@ onBeforeUnmount(() => {
       v-else-if="run.handoff.value"
       :done-label="labelOf(run.handoff.value.done)"
       :fastest-bpm="run.handoff.value.fastestBpm"
+      :fastest-note-value="run.handoff.value.fastestNoteValue"
       :next-label="labelOf(run.handoff.value.next)"
       :next-reason="run.handoff.value.next.reason"
       @continue="run.continueToNext()"
@@ -313,14 +337,16 @@ onBeforeUnmount(() => {
         @skip="run.skip($event)"
       />
       <PlayAlongTake
-        v-else-if="current.kind === 'play_along' && current.play_along && run.tempo.value !== null"
+        v-else-if="current.kind === 'play_along' && current.play_along && run.tempo.value !== null && run.noteValue.value !== null"
         :item="current"
         :tempo="run.tempo.value"
+        :note-value="run.noteValue.value"
         :takes-left="run.takesLeft.value"
         :takes-total="run.takesTotal.value"
         @rate="run.rate($event)"
         @skip="run.skip($event)"
         @tempo="run.setTempo($event)"
+        @note-value="run.setNoteValue($event)"
       />
       <div v-else class="flex flex-col items-start gap-3">
         <p class="text-ink-muted">{{ t('practiceSessionView.unsupported') }}</p>

@@ -11,6 +11,7 @@ vi.mock('@/shared/composables/useProgressionPlayback', () => ({
 import BarCell from '@/shared/components/BarCell.vue'
 import ProgressionPlayer from '@/shared/components/ProgressionPlayer.vue'
 import type { ProgressionSource } from '@/shared/composables/useProgressionPlayback'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 import { drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 
 const { C, F, G, Am } = drillVoicings
@@ -24,6 +25,8 @@ function fakePlayback() {
     status: computed(() => (state.value === 'error' ? 'missing' : voices.value)),
     currentBar: ref<number | null>(null),
     tempo: ref(72),
+    noteValue: ref<TempoNoteValue>('quarters'),
+    metronome: ref(false),
     toggle: vi.fn(),
     stop: vi.fn(),
   }
@@ -108,6 +111,18 @@ describe('ProgressionPlayer', () => {
 
   it('shows the tempo it plays at, which the student can change', () => {
     expect(mountPlayer().text()).toContain('72')
+  })
+
+  it('plays at the tempo, note value and click its Tempo sheet sets', async () => {
+    const wrapper = mountPlayer()
+
+    const tempo = wrapper.findComponent({ name: 'ProgressionTempo' })
+    tempo.vm.$emit('update:tempo', 90)
+    tempo.vm.$emit('update:noteValue', 'eighths')
+    tempo.vm.$emit('update:metronome', true)
+    await wrapper.vm.$nextTick()
+
+    expect([fake.tempo.value, fake.noteValue.value, fake.metronome.value]).toEqual([90, 'eighths', true])
   })
 })
 

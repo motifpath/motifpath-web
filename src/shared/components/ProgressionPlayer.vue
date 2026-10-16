@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * A cadence or progression a drill plays before its question: Play, "Listen" with what it plays,
- * a tempo chip, and a bar for each chord that follows the playing. The bars the question gives
+ * a tempo chip that opens its tempo, note value and click, and a bar for each chord that follows
+ * the playing. The bars the question gives
  * show their numerals; the bar asked shows "?". Replay is unlimited and is never an answer. It
  * says when the sound starts and stops, so an answer can be timed from the sound, and when the
  * sound can't be heard, so the holder can hold the options and offer another try.
@@ -12,7 +13,7 @@ import { computed, onBeforeUnmount, watch } from 'vue'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
 import BarCell from '@/shared/components/BarCell.vue'
 import type { BarPhase } from '@/shared/components/BarCell.vue'
-import DiagramTempo from '@/shared/components/diagram/DiagramTempo.vue'
+import ProgressionTempo from '@/shared/components/ProgressionTempo.vue'
 import { useProgressionPlayback } from '@/shared/composables/useProgressionPlayback'
 import type { ProgressionSource } from '@/shared/composables/useProgressionPlayback'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -30,7 +31,7 @@ const props = defineProps<{
 const emit = defineEmits<{ playing: [playing: boolean]; missing: [reason: MissingReason] }>()
 
 const { t } = useTypedT()
-const { state, status, currentBar, tempo, toggle } = useProgressionPlayback(() => props.source)
+const { state, status, currentBar, tempo, noteValue, metronome, toggle } = useProgressionPlayback(() => props.source)
 
 const sounding = computed(() => state.value === 'playing')
 watch(sounding, (now) => emit('playing', now))
@@ -70,7 +71,7 @@ function phaseOf(bar: number): BarPhase {
         <p class="text-base font-semibold text-ink">{{ t('drill.player.listen') }}</p>
         <p class="text-xs font-medium text-ink-muted">{{ subtitle }}</p>
       </div>
-      <DiagramTempo v-model="tempo" look="chip" />
+      <ProgressionTempo v-model:tempo="tempo" v-model:note-value="noteValue" v-model:metronome="metronome" />
     </div>
     <ol :aria-label="t('drill.player.bars')" class="flex w-full gap-1.5">
       <BarCell v-for="(label, i) in bars" :key="i" :label="label" :position="i + 1" :phase="phaseOf(i)" />

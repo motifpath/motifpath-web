@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 
 import TempoControl from './TempoControl.vue'
+import { ALL_NOTE_VALUES, SUGGESTED_NOTE_VALUES } from '@/shared/utils/tempoNoteValue'
 
 const meta = {
   title: 'Practice/TempoControl',
@@ -22,3 +23,11 @@ export const MetronomeOff: Story = { args: { metronome: false } }
 
 /** While a take plays, nothing changes. */
 export const Playing: Story = { args: { disabled: true } }
+
+/** A play-along or a drill: the note value beside the tempo, the four suggested ones on demand. */
+export const WithNoteValue: Story = { args: { noteValue: 'eighths', noteValues: SUGGESTED_NOTE_VALUES } }
+
+/** The Metronome tool: no ladder, every note value. */
+export const Tool: Story = {
+  args: { tempo: 80, slowest: 20, goal: null, best: null, metronome: false, noteValue: 'quarters', noteValues: ALL_NOTE_VALUES },
+}
