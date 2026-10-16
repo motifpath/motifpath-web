@@ -2,19 +2,32 @@ import { ref, toValue, watch } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import type { MessageKey } from '@/i18n'
 import { useApi } from '@/shared/composables/useApi'
 import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type Item = components['schemas']['PracticeSessionItem']
+type GeneratedWay = NonNullable<Item['generated_choice']>['way']
+
+/** How a harmony question is called, by the way it is asked: its answer is never named. */
+const HARMONY_LABELS: Partial<Record<GeneratedWay, MessageKey>> = {
+  numeral_to_chord: 'sessionPlan.drills.numeralToChord',
+  chord_to_numeral: 'sessionPlan.drills.chordToNumeral',
+  chord_to_function: 'sessionPlan.drills.chordToFunction',
+  function_to_chord: 'sessionPlan.drills.functionToChord',
+  chart_to_numbers: 'sessionPlan.drills.chartToNumbers',
+  numbers_to_chart: 'sessionPlan.drills.numbersToChart',
+}
 type LocalizedNames = components['schemas']['LocalizedNames']
 
 /**
  * What each item of a session plan is called, so the student always knows what they're
  * practising: an exercise by its title, a play-along by its diagram's name once the diagram has
  * loaded. A fretboard cell has no name of its own; its drill says what it is. Nor has a diagram
- * shape: its diagram's name would give away the shape to name.
+ * shape: its diagram's name would give away the shape to name. A harmony question is called by
+ * the way it is asked, which never names its answer.
  */
 export function usePlanItemNames(items: MaybeRefOrGetter<Item[]>) {
   const { coreApi } = useApi()
@@ -52,6 +65,7 @@ export function usePlanItemNames(items: MaybeRefOrGetter<Item[]>) {
     if (item.diagram_shape) {
       return item.diagram_shape.drill === 'name_the_shape' ? t('sessionPlan.drills.nameTheShape') : t('sessionPlan.drills.findTheDegree')
     }
+    if (item.generated_choice) return t(HARMONY_LABELS[item.generated_choice.way] ?? 'sessionPlan.playAlong')
     return t('sessionPlan.playAlong')
   }
 

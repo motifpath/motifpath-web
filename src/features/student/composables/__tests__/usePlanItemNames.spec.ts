@@ -159,4 +159,26 @@ describe('usePlanItemNames', () => {
     expect(labelOf(exercise)).toBe('Name the interval')
     expect(labelOf(playAlong)).toBe('A Major pentatonic — Box 4')
   })
+
+  it('calls a harmony question by the way it is asked, never by its answer', () => {
+    const harmony = (kind: Item['kind'], way: NonNullable<Item['generated_choice']>['way']): Item => ({
+      item_key: `${kind}:G:vi`,
+      kind,
+      rung: 'know',
+      reason: 'new',
+      node_id: null,
+      level: 'new',
+      estimated_seconds: 8,
+      generated_choice: { way, music_key: 'G', numeral: null, chord: null, function: null, progression: null, chart: [], drawn_as: 'chord_symbols', options: [], voicings: [] },
+    })
+    const { nameOf, labelOf } = setUp([])
+
+    expect(nameOf(harmony('diatonic_chord', 'numeral_to_chord'))).toBeNull()
+    expect(labelOf(harmony('diatonic_chord', 'numeral_to_chord'))).toBe('Chords by number')
+    expect(labelOf(harmony('diatonic_chord', 'chord_to_numeral'))).toBe('Numbers of chords')
+    expect(labelOf(harmony('chord_function', 'chord_to_function'))).toBe('What chords do')
+    expect(labelOf(harmony('chord_function', 'function_to_chord'))).toBe('Chords by what they do')
+    expect(labelOf(harmony('chart_progression', 'chart_to_numbers'))).toBe('Reading charts')
+    expect(labelOf(harmony('chart_progression', 'numbers_to_chart'))).toBe('Picking charts')
+  })
 })

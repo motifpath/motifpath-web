@@ -267,7 +267,13 @@
       "nameTheNote": "Diga a nota",
       "findTheNote": "Encontre a nota",
       "nameTheShape": "Diga a forma",
-      "findTheDegree": "Encontre o grau"
+      "findTheDegree": "Encontre o grau",
+      "numeralToChord": "Acordes pelo grau",
+      "chordToNumeral": "Graus dos acordes",
+      "chordToFunction": "Função dos acordes",
+      "functionToChord": "Acordes pela função",
+      "chartToNumbers": "Lendo cifras",
+      "numbersToChart": "Escolhendo cifras"
     },
     "nextUp": {
       "played": "Você tocou {name} até {bpm} BPM.",
@@ -397,7 +403,13 @@
       "audioSelection": "Escolher um som",
       "nameTheShape": "Dizer as formas",
       "findTheDegree": "Encontrar graus nas formas",
-      "other": "Este exercício"
+      "other": "Este exercício",
+      "numeralToChord": "Achar acordes pelo grau",
+      "chordToNumeral": "Dizer o grau de um acorde",
+      "chordToFunction": "Dizer a função de um acorde",
+      "functionToChord": "Achar um acorde pela função",
+      "chartToNumbers": "Ler cifras pelos graus",
+      "numbersToChart": "Escolher a cifra de uma progressão"
     }
   },
   "practiceHomeView": {

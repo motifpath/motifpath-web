@@ -11,6 +11,12 @@ const feltDrillKeys: Record<string, MessageKey> = {
   'exercise:image_recognition': 'feltQuestions.drills.imageRecognition',
   'exercise:image_choice': 'feltQuestions.drills.imageChoice',
   'exercise:audio_selection': 'feltQuestions.drills.audioSelection',
+  'diatonic_chord:numeral_to_chord': 'feltQuestions.drills.numeralToChord',
+  'diatonic_chord:chord_to_numeral': 'feltQuestions.drills.chordToNumeral',
+  'chord_function:chord_to_function': 'feltQuestions.drills.chordToFunction',
+  'chord_function:function_to_chord': 'feltQuestions.drills.functionToChord',
+  'chart_progression:chart_to_numbers': 'feltQuestions.drills.chartToNumbers',
+  'chart_progression:numbers_to_chart': 'feltQuestions.drills.numbersToChart',
 }
 
 /** The label of a drill template asked about; a plain one for a drill not named yet. */

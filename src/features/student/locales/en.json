@@ -267,7 +267,13 @@
       "nameTheNote": "Name the note",
       "findTheNote": "Find the note",
       "nameTheShape": "Name the shape",
-      "findTheDegree": "Find the degree"
+      "findTheDegree": "Find the degree",
+      "numeralToChord": "Chords by number",
+      "chordToNumeral": "Numbers of chords",
+      "chordToFunction": "What chords do",
+      "functionToChord": "Chords by what they do",
+      "chartToNumbers": "Reading charts",
+      "numbersToChart": "Picking charts"
     },
     "nextUp": {
       "played": "You played {name} up to {bpm} BPM.",
@@ -397,7 +403,13 @@
       "audioSelection": "Choosing a sound",
       "nameTheShape": "Naming shapes",
       "findTheDegree": "Finding degrees in shapes",
-      "other": "This drill"
+      "other": "This drill",
+      "numeralToChord": "Finding chords by number",
+      "chordToNumeral": "Naming the number of a chord",
+      "chordToFunction": "Naming what a chord does",
+      "functionToChord": "Finding a chord by what it does",
+      "chartToNumbers": "Reading charts by number",
+      "numbersToChart": "Picking the chart of a progression"
     }
   },
   "practiceHomeView": {
