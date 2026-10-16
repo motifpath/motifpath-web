@@ -4,7 +4,9 @@
  * than those between beats; in halves it clicks every other beat, counted from each bar's start.
  * A compound bar (6/8, 12/8) accents each group of three beats. Beats are scheduled a little
  * ahead on the audio clock, so a busy main thread doesn't make them drift; a change of settings
- * applies from the next beat not yet scheduled, without stopping.
+ * applies from the next beat not yet scheduled, without stopping. After a long gap between
+ * wake-ups (a background tab pauses its timers) the beats it missed are skipped, so it carries on
+ * on its grid rather than sounding them all at once.
  */
 import type { components } from '@/api/generated/core-domain'
 import type { ClickLevel, ClickSink } from './playbackRun'
@@ -68,9 +70,20 @@ export function createMetronome({ now, sink }: { now: () => number; sink: ClickS
     }
   }
 
+  /** Moves the next beat past `now()` along the beat grid, as if the beats in between had sounded. */
+  function skipMissedBeats(current: MetronomeSettings) {
+    const behind = now() - nextBeatAt
+    if (behind <= 0) return
+    const seconds = 60 / current.bpm
+    const missed = Math.ceil(behind / seconds)
+    nextBeatAt += missed * seconds
+    beatInBar = (beatInBar + missed) % current.beats
+  }
+
   function schedule() {
     const current = settings
     if (!current) return
+    skipMissedBeats(current)
     while (nextBeatAt < now() + AHEAD_SECONDS) {
       const seconds = 60 / current.bpm
       // A bar made shorter while it plays starts again from its downbeat.

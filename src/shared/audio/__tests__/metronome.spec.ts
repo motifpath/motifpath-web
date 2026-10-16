@@ -16,16 +16,24 @@ function setup() {
     stopAll: vi.fn(),
   }
   const metronome = createMetronome({ now: () => time, sink })
+  /** Moves the clock and the timers on together, a scheduler wake-up at a time, as in a foreground tab. */
   function advance(seconds: number) {
-    time += seconds
-    vi.advanceTimersByTime(seconds * 1000)
+    const stepMs = 25
+    for (let elapsed = 0; elapsed < seconds * 1000; elapsed += stepMs) {
+      time += stepMs / 1000
+      vi.advanceTimersByTime(stepMs)
+    }
   }
   /** The clicks so far, timed from the first one. */
   function heard(count: number) {
     const first = clicks[0]!.time
     return clicks.slice(0, count).map((c) => [+(c.time - first).toFixed(3), c.level])
   }
-  return { metronome, clicks, sink, advance, heard, now: () => time }
+  /** Moves the clock on without the scheduler waking, as a background tab's throttled timers do. */
+  function advanceClockOnly(seconds: number) {
+    time += seconds
+  }
+  return { metronome, clicks, sink, advance, advanceClockOnly, heard, now: () => time }
 }
 
 const FOUR_FOUR: MetronomeSettings = { bpm: 120, beats: 4, beatValue: 4, noteValue: 'quarters' }
@@ -146,6 +154,25 @@ describe('createMetronome', () => {
 
     const downbeats = clicks.filter((c) => c.level === 'downbeat').map((c) => c.time - clicks[0]!.time)
     expect(downbeats.slice(0, 3)).toEqual([0, 3, 6])
+  })
+
+  it('after a long gap between wake-ups, skips the beats it missed and stays on its grid, rather than sounding them at once', () => {
+    const { metronome, clicks, advance, advanceClockOnly, now } = setup()
+    metronome.start(FOUR_FOUR)
+    const first = clicks[0]!.time
+
+    // A background tab: the clock runs on while the scheduler doesn't wake, then it wakes again.
+    advanceClockOnly(5.2)
+    const wokeAt = now()
+    const before = clicks.length
+    advance(1)
+
+    const resumed = clicks.slice(before)
+    expect(resumed.length).toBeGreaterThan(0)
+    expect(resumed.every((c) => c.time >= wokeAt)).toBe(true)
+    expect(resumed.every((c) => Math.abs(((c.time - first) / 0.5) % 1) < 1e-6 || Math.abs(((c.time - first) / 0.5) % 1) > 1 - 1e-6)).toBe(true)
+    // 5.5 s after the first beat at 120 BPM is beat 3 of bar 3, a beat rather than a downbeat.
+    expect(resumed[0]!.level).toBe('beat')
   })
 
   it('says which beat of the bar is sounding', () => {
