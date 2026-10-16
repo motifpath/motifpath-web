@@ -60,6 +60,11 @@ describe('gradeGeneratedChoice against the generated_choice.v1 golden cases', ()
     return []
   })
 
+  it('knows every way the golden cases ask', () => {
+    const ways = golden.cases.flatMap(({ response }) => ('way' in response && typeof response.way === 'string' ? [response.way] : []))
+    expect(ways.filter((way) => !isGeneratedWay(way))).toEqual([])
+  })
+
   it('has cases to run, right, wrong and refused', () => {
     expect(cases.some((c) => c.correct === true)).toBe(true)
     expect(cases.some((c) => c.correct === false)).toBe(true)

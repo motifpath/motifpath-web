@@ -12,6 +12,7 @@ describe('drillLayoutOf', () => {
     ['numbers_to_chart', 'none', 'chart_boxes'],
     ['cadence_then_chord', 'player', 'text'],
     ['progression_by_number', 'player', 'text'],
+    ['see_then_name', 'chord_box', 'text'],
   ] as const)('on guitar, asks %s over %s with %s options', (way, stimulus, options) => {
     expect(drillLayoutOf(way, 'guitar')).toEqual({ answer: 'choice', stimulus, options })
   })
@@ -25,6 +26,7 @@ describe('drillLayoutOf', () => {
     ['numbers_to_chart', 'none', 'chart_symbols'],
     ['cadence_then_chord', 'player', 'text'],
     ['progression_by_number', 'player', 'text'],
+    ['see_then_name', 'chord_symbol', 'text'],
   ] as const)('on bass, asks %s over %s with %s options, reading chord symbols instead of boxes', (way, stimulus, options) => {
     expect(drillLayoutOf(way, 'bass')).toEqual({ answer: 'choice', stimulus, options })
   })

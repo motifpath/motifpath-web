@@ -33,6 +33,7 @@ const GUITAR: Record<GeneratedWay, DrillLayout> = {
   numbers_to_chart: choice('none', 'chart_boxes'),
   cadence_then_chord: choice('player', 'text'),
   progression_by_number: choice('player', 'text'),
+  see_then_name: choice('chord_box', 'text'),
 }
 
 const BASS: Record<GeneratedWay, DrillLayout> = {
@@ -44,6 +45,7 @@ const BASS: Record<GeneratedWay, DrillLayout> = {
   numbers_to_chart: choice('none', 'chart_symbols'),
   cadence_then_chord: choice('player', 'text'),
   progression_by_number: choice('player', 'text'),
+  see_then_name: choice('chord_symbol', 'text'),
 }
 
 /** The layout of a way read as an instrument reads chords: guitar draws boxes, bass writes symbols. */
