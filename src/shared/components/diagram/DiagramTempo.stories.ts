@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
+import { expect, within } from 'storybook/test'
 import { ref } from 'vue'
 
 import DiagramTempo from './DiagramTempo.vue'
@@ -30,3 +31,25 @@ type Story = StoryObj<typeof meta>
 
 export const Rail: Story = {}
 export const Chip: Story = { args: { look: 'chip' } }
+
+/** A lesson's player: the panel offers the four suggested note values beside the tempo. */
+export const WithNoteValues: Story = {
+  render: (args) => ({
+    components: { DiagramTempo },
+    setup() {
+      const tempo = ref(args.modelValue)
+      const noteValue = ref('quarters')
+      return { args, tempo, noteValue }
+    },
+    template: '<div class="p-2"><DiagramTempo v-model="tempo" v-model:note-value="noteValue" :look="args.look" /></div>',
+  }),
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: /tempo|andamento/i }))
+    const body = within(document.body)
+    await userEvent.click(await body.findByRole('button', { name: /note value|figura/i }))
+    await userEvent.click(await body.findByRole('radio', { name: /^eighths|^colcheias/i }))
+    // Choosing a note value in its popover keeps the tempo panel open.
+    await expect(document.querySelector('[data-test="diagram-tempo-panel"]')).not.toBeNull()
+    await expect(body.getByRole('button', { name: /eighths|colcheias/i })).toBeInTheDocument()
+  },
+}

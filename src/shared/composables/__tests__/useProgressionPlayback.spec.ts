@@ -8,6 +8,17 @@ const audio = vi.hoisted(() => ({
   now: 0,
   played: [] as { voiceId: string; midi: number; time: number; duration: number; cancelled: boolean }[],
   failLoad: false,
+  clicks: [] as { time: number; level: string }[],
+}))
+
+vi.mock('@/shared/audio/clickSink', () => ({
+  createClickSink: () => ({
+    click(at: { time: number; level: string }) {
+      audio.clicks.push(at)
+      return () => {}
+    },
+    stopAll: () => {},
+  }),
 }))
 
 vi.mock('@/shared/audio/audioContext', () => ({
@@ -86,6 +97,7 @@ beforeEach(() => {
   audio.now = 100
   audio.played = []
   audio.failLoad = false
+  audio.clicks = []
   frames = []
   vi.stubGlobal('requestAnimationFrame', (frame: FrameRequestCallback) => frames.push(frame))
   vi.stubGlobal('cancelAnimationFrame', () => {
@@ -148,12 +160,56 @@ describe('useProgressionPlayback', () => {
     expect(sounding('acoustic-guitar').some((note) => Math.abs(note.time - start - 6) < 1e-9)).toBe(true)
   })
 
-  it('takes a new progression at its own tempo', async () => {
+  it('plays two chords a bar in eighths, chords and bass line alike', async () => {
+    const { player } = setup({ chords: [C, Am].map((chord) => chord.diagram), bass: { instrument: drillBass, roots: ['C', 'A'] } })
+    expect(player.noteValue.value).toBe('quarters')
+
+    player.noteValue.value = 'eighths'
+    await startPlaying(player)
+
+    const line = sounding('electric-bass')
+    expect(line[1]!.time - line[0]!.time).toBeCloseTo(2)
+  })
+
+  it('a note value change while playing re-times the bars not yet started', async () => {
+    const { player } = setup({ bass: { instrument: drillBass, roots: ['C', 'F', 'G', 'C'] } })
+    await startPlaying(player)
+    const start = sounding('acoustic-guitar')[0]!.time
+
+    frameAt(start + 1)
+    player.noteValue.value = 'eighths'
+    await nextTick()
+    expect(sounding('electric-bass').map((note) => note.time - start)).toEqual([0, 4, 6, 8])
+  })
+
+  it('clicks the beat only when its metronome is on, the click staying on the beat in eighths', async () => {
+    const { player } = setup({ chords: [C, Am].map((chord) => chord.diagram) })
+    await startPlaying(player)
+    expect(audio.clicks).toEqual([])
+    player.toggle()
+
+    player.metronome.value = true
+    player.noteValue.value = 'eighths'
+    await startPlaying(player)
+
+    // 60 BPM: a click every second over two bars of two seconds each.
+    const first = audio.clicks[0]!.time
+    expect(audio.clicks.map((c) => [c.time - first, c.level])).toEqual([
+      [0, 'downbeat'],
+      [1, 'beat'],
+      [2, 'beat'],
+      [3, 'beat'],
+    ])
+  })
+
+  it('takes a new progression at its own tempo, in quarters', async () => {
     const { player, source } = setup()
     player.tempo.value = 120
+    player.noteValue.value = 'triplets'
 
     source.value = { ...source.value, tempoBpm: 80 }
     await vi.waitFor(() => expect(player.tempo.value).toBe(80))
+    expect(player.noteValue.value).toBe('quarters')
   })
 
   it('says which bar is sounding, and none once the progression has played', async () => {

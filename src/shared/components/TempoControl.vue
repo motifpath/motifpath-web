@@ -4,13 +4,17 @@
  * offered to the fastest playable as the main control, with the best clean tempo and the goal
  * marked on it when there are any, and the value, which the student taps to type an exact tempo.
  * A tempo is chosen once the slider is released or the typing is done, so one gesture is one
- * choice.
+ * choice. Where the surface offers note values, the one the music plays at shows as an icon
+ * after the tempo, its choices one tap away.
  */
 import { computed, nextTick, ref } from 'vue'
 import { Metronome } from 'lucide-vue-next'
 
+import NoteValuePicker from '@/shared/components/NoteValuePicker.vue'
+import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { MAX_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 const props = defineProps<{
   tempo: number
@@ -26,11 +30,19 @@ const props = defineProps<{
   metronome: boolean
   /** While a take plays, nothing here changes. */
   disabled: boolean
+  /** The note value the music plays at; shown only with `noteValues`. */
+  noteValue?: TempoNoteValue
+  /** The note values this surface offers; none shows no note value. */
+  noteValues?: readonly TempoNoteValue[]
 }>()
 
-const emit = defineEmits<{ tempo: [bpm: number]; 'update:metronome': [on: boolean] }>()
+const emit = defineEmits<{ tempo: [bpm: number]; 'update:metronome': [on: boolean]; 'update:noteValue': [value: TempoNoteValue] }>()
 
 const { t } = useTypedT()
+const { asPlayed } = useTempoAsPlayed()
+
+/** A mark's tempo in words, in the note value shown, if any. */
+const markTempo = (bpm: number) => asPlayed(bpm, props.noteValues?.length ? (props.noteValue ?? 'quarters') : 'quarters')
 
 /** The slider's tempo while it's being dragged. */
 const sliding = ref<number | null>(null)
@@ -56,8 +68,10 @@ function along(bpm: number): string {
 }
 
 const ticks = computed(() => [
-  ...(props.best === null ? [] : [{ kind: 'best', bpm: props.best, label: t('tempoControl.bestTick', { bpm: props.best }) }]),
-  ...(props.goal === null ? [] : [{ kind: 'goal', bpm: props.goal, label: props.goalLabel ?? t('tempoControl.goalTick', { bpm: props.goal }) }]),
+  ...(props.best === null ? [] : [{ kind: 'best', bpm: props.best, label: t('tempoControl.bestTick', { tempo: markTempo(props.best) }) }]),
+  ...(props.goal === null
+    ? []
+    : [{ kind: 'goal', bpm: props.goal, label: props.goalLabel ?? t('tempoControl.goalTick', { tempo: markTempo(props.goal) }) }]),
 ])
 
 /** The typed tempo while the student types one; null while the value only shows. */
@@ -168,5 +182,13 @@ function onFieldKeydown(event: KeyboardEvent) {
     >
       <span class="text-lg font-semibold">{{ shownTempo }}</span>{{ ' ' }}<span class="text-xs text-ink-muted">BPM</span>
     </button>
+
+    <NoteValuePicker
+      v-if="noteValues && noteValues.length > 0"
+      :model-value="noteValue ?? 'quarters'"
+      :values="noteValues"
+      :disabled="disabled"
+      @update:model-value="emit('update:noteValue', $event)"
+    />
   </div>
 </template>

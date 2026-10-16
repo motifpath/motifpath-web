@@ -270,7 +270,7 @@
       "findTheDegree": "Find the degree"
     },
     "nextUp": {
-      "played": "You played {name} up to {bpm} BPM.",
+      "played": "You played {name} up to {tempo}.",
       "next": "Next",
       "continue": "Continue"
     },
@@ -290,7 +290,7 @@
     "minutes": "{minutes} min · {instrument}",
     "withItems": "{ran} · {count} item | {ran} · {count} items",
     "whatYouPractised": "What you practised",
-    "played": "up to {bpm} BPM · {rating}",
+    "played": "up to {tempo} · {rating}",
     "counted": "{right} of {answered} right",
     "right": "Right",
     "notQuite": "Not quite",
@@ -298,14 +298,14 @@
     "done": "Done"
   },
   "playAlongTake": {
-    "goal": "Goal {target} BPM · best clean {best}",
+    "goal": "Goal {goal} · best clean {best}",
     "noBest": "none yet",
     "warmUpHint": "Warm-up: play it relaxed. It doesn't count toward your progress.",
     "start": "Start take",
     "countInHint": "A bar of count-in, then play along.",
     "playing": "Play along. The take ends by itself. Wrong tempo? Restart goes back to the tempo without rating.",
     "stopEarly": "Stop early",
-    "ratePrompt": "How was that take at {bpm} BPM?",
+    "ratePrompt": "How was that take at {tempo}?",
     "ratings": {
       "struggled": "Struggled",
       "almost": "Almost",
@@ -316,8 +316,8 @@
       "almost": "Got through with slips",
       "clean": "No slips"
     },
-    "up": "Clean twice: up to {bpm} BPM.",
-    "down": "Let's settle it at {bpm} BPM.",
+    "up": "Clean twice: up to {tempo}.",
+    "down": "Let's settle it at {tempo}.",
     "loadError": "The sound didn't load. Check your connection and try again.",
     "unavailable": "This diagram can't be played here.",
     "skip": "Skip",

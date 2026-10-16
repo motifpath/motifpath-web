@@ -162,10 +162,13 @@ onUnmounted(() => window.removeEventListener('scroll', minimizeOnScroll, SCROLL_
 // ── The metronome ───────────────────────────────────────────────────────────
 
 const { tempo, target, setTempo } = useSongTempo(props.chart.song_chart_id, props.chart.tempo_bpm)
-const metronome = useMetronome(
-  () => tempo.value,
-  () => props.chart.time_signature?.beats ?? 4,
-)
+// A chart has no timing to play faster, so its metronome clicks the beat only, in the chart's bar.
+const metronome = useMetronome(() => ({
+  bpm: tempo.value,
+  beats: props.chart.time_signature?.beats ?? 4,
+  beatValue: props.chart.time_signature?.beat_value ?? 4,
+  noteValue: 'quarters',
+}))
 const SLOWEST_BPM = 40
 
 /** Where the student is against the song's tempo: "Song tempo 72 BPM" and "you're at 56". */

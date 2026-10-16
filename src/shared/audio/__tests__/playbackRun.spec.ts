@@ -155,11 +155,11 @@ describe('createPlaybackRun', () => {
   describe('with a metronome', () => {
     /** Records the clicks the run schedules, and which were cancelled. */
     function fakeClicks() {
-      const clicks: { time: number; accent: boolean; cancelled: boolean }[] = []
+      const clicks: { time: number; level: string; cancelled: boolean }[] = []
       let stoppedAll = false
       return {
         sink: {
-          click(at: { time: number; accent: boolean }) {
+          click(at: { time: number; level: string }) {
             const entry = { ...at, cancelled: false }
             clicks.push(entry)
             return () => {
@@ -170,7 +170,7 @@ describe('createPlaybackRun', () => {
             stoppedAll = true
           },
         },
-        live: () => clicks.filter((c) => !c.cancelled).map((c) => [c.time, c.accent]),
+        live: () => clicks.filter((c) => !c.cancelled).map((c) => [c.time, c.level === 'downbeat']),
         stoppedAll: () => stoppedAll,
       }
     }

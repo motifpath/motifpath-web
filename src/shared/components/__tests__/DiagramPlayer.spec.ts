@@ -17,9 +17,14 @@ const player = vi.hoisted(() => ({
   },
 }))
 
+const playedAt = vi.hoisted(() => ({ noteValue: null as null | (() => string) }))
+
 vi.mock('@/shared/composables/useDiagramPlayback', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  useDiagramPlayback: () => player.current,
+  useDiagramPlayback: (_source: unknown, options: { noteValue?: () => string } = {}) => {
+    playedAt.noteValue = options.noteValue ?? null
+    return player.current
+  },
 }))
 
 import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
@@ -263,6 +268,28 @@ describe('DiagramPlayer', () => {
     expect(card.contains(alert)).toBe(false)
     expect(alert.classList).toContain('fixed')
     card.remove()
+  })
+
+  it('offers the four suggested note values in the tempo panel, quarters chosen', async () => {
+    const wrapper = mountPlayer({ attachTo: document.body })
+    const panel = await openTempo(wrapper)
+
+    expect(panel.get('[data-test="note-value"]').attributes('aria-label')).toBe('Note value: Quarters')
+    expect(playedAt.noteValue?.()).toBe('quarters')
+  })
+
+  it('plays at the note value chosen, keeping the tempo panel open', async () => {
+    const wrapper = mountPlayer({ attachTo: document.body })
+    const panel = await openTempo(wrapper)
+    await panel.get('[data-test="note-value"]').trigger('click')
+
+    const eighths = document.querySelectorAll<HTMLElement>('[data-test="note-value-choice"]')[1]!
+    eighths.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    eighths.click()
+    await nextTick()
+
+    expect(playedAt.noteValue?.()).toBe('eighths')
+    expect(tempoPanel()).not.toBeNull()
   })
 
   it('keeps the tempo panel open while its own controls are pressed', async () => {

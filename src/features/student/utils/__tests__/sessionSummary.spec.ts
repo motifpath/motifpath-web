@@ -39,8 +39,26 @@ describe('summaryRows', () => {
     ])
 
     expect(summaryRows([triads], outcomes)).toEqual([
-      { key: 'play_along:triads', item: triads, result: { kind: 'played', fastestBpm: 76, rating: 'clean' }, good: true },
+      { key: 'play_along:triads', item: triads, result: { kind: 'played', fastestBpm: 76, fastestNoteValue: 'quarters', rating: 'clean' }, good: true },
     ])
+  })
+
+  it('finds the fastest take at effective speed and keeps it as played', () => {
+    const triads = item('play_along:triads', 'play_along')
+    const outcomes = new Map<string, ItemOutcome>([
+      [
+        'play_along:triads',
+        {
+          kind: 'played',
+          takes: [
+            { bpm: 100, rating: 'clean', noteValue: 'quarters' },
+            { bpm: 60, rating: 'almost', noteValue: 'eighths' },
+          ],
+        },
+      ],
+    ])
+
+    expect(summaryRows([triads], outcomes)[0]!.result).toEqual({ kind: 'played', fastestBpm: 60, fastestNoteValue: 'eighths', rating: 'almost' })
   })
 
   it('says whether an exercise was right', () => {

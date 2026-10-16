@@ -24,7 +24,14 @@ const playAlong: Item = {
   node_id: null,
   level: 'new',
   estimated_seconds: 60,
-  play_along: { diagram_id: DIAGRAM, start_tempo_bpm: 60, target_tempo_bpm: 100, best_clean_tempo_bpm: null },
+  play_along: {
+    diagram_id: DIAGRAM,
+    start_tempo_bpm: 60,
+    start_note_value: 'quarters',
+    target_tempo_bpm: 100,
+    best_clean_tempo_bpm: null,
+    best_clean_note_value: null,
+  },
 }
 
 const exercise: Item = {

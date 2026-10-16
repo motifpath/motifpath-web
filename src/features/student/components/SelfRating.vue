@@ -8,16 +8,20 @@ import { RotateCcw } from 'lucide-vue-next'
 
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
+import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 defineProps<{
-  /** The tempo the take was played at. */
+  /** The tempo the take was played at, in its note value. */
   bpm: number
+  noteValue: TempoNoteValue
 }>()
 
 const emit = defineEmits<{ rate: [rating: TakeRating]; restart: [] }>()
 
 const { t } = useTypedT()
+const { asPlayed } = useTempoAsPlayed()
 
 const ratings = [
   {
@@ -64,7 +68,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
     <PracticeActionBar>
       <div class="flex w-full flex-col gap-3">
-        <p data-test="rate-prompt" class="font-medium">{{ t('playAlongTake.ratePrompt', { bpm }) }}</p>
+        <p data-test="rate-prompt" class="font-medium">{{ t('playAlongTake.ratePrompt', { tempo: asPlayed(bpm, noteValue) }) }}</p>
         <div class="grid grid-cols-3 gap-2">
           <button
             v-for="(option, index) in ratings"

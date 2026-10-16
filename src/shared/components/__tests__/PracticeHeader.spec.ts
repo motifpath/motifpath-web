@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 
 import PracticeHeader from '@/shared/components/PracticeHeader.vue'
 
-function mountHeader(props: Record<string, unknown> = {}) {
-  return mount(PracticeHeader, { props: { exitLabel: 'End session', ...props } })
+function mountHeader(props: Record<string, unknown> = {}, slots: Record<string, string> = {}) {
+  return mount(PracticeHeader, { props: { exitLabel: 'End session', ...props }, slots })
 }
 
 describe('PracticeHeader', () => {
@@ -43,5 +43,26 @@ describe('PracticeHeader', () => {
     const wrapper = mountHeader()
 
     expect(wrapper.get('[data-test="shell-exit"]').classes()).toEqual(expect.arrayContaining(['h-12', 'w-12']))
+  })
+
+  it('holds the options a screen offers, across from ×', () => {
+    const wrapper = mountHeader({}, { options: '<button data-test="tools">Tools</button>' })
+
+    expect(wrapper.get('[data-test="shell-options"] [data-test="tools"]').text()).toBe('Tools')
+  })
+
+  it('leaves the options slot empty when a screen offers none', () => {
+    expect(mountHeader().find('[data-test="shell-options"]').exists()).toBe(false)
+  })
+
+  it('heads a page pushed inside the shell with its name and an arrow back instead of ×', async () => {
+    const wrapper = mountHeader({ exitLabel: 'Back to practice', title: 'Metronome' })
+
+    expect(wrapper.get('h1').text()).toBe('Metronome')
+    const back = wrapper.get('[data-test="shell-exit"]')
+    expect(back.attributes('aria-label')).toBe('Back to practice')
+    expect(back.find('.lucide-arrow-left').exists()).toBe(true)
+    await back.trigger('click')
+    expect(wrapper.emitted('exit')).toHaveLength(1)
   })
 })

@@ -2,22 +2,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
-const engine = { start: vi.fn(), setTempo: vi.fn(), stop: vi.fn(), running: vi.fn(() => false) }
+import type { MetronomeSettings } from '@/shared/audio/metronome'
+
+const engine = {
+  start: vi.fn(),
+  update: vi.fn(),
+  stop: vi.fn(),
+  running: vi.fn(() => false),
+  beatAt: vi.fn((): number | null => null),
+}
 vi.mock('@/shared/audio/metronome', () => ({ createMetronome: () => engine }))
-vi.mock('@/shared/audio/audioContext', () => ({ unlockAudioContext: () => ({ currentTime: 0 }) }))
+vi.mock('@/shared/audio/audioContext', () => ({
+  unlockAudioContext: () => ({ currentTime: 0 }),
+  audibleTime: () => 0,
+}))
 vi.mock('@/shared/audio/clickSink', () => ({ createClickSink: () => ({ click: vi.fn(), stopAll: vi.fn() }) }))
 
 import { useMetronome } from '@/shared/composables/useMetronome'
 
-const bpm = ref(72)
-const beatsPerBar = ref(3)
+const settings = ref<MetronomeSettings>({ bpm: 72, beats: 3, beatValue: 4, noteValue: 'quarters' })
 
 function mountWith() {
   let api!: ReturnType<typeof useMetronome>
   const wrapper = mount(
     defineComponent({
       setup() {
-        api = useMetronome(() => bpm.value, () => beatsPerBar.value)
+        api = useMetronome(() => settings.value)
         return () => null
       },
     }),
@@ -26,30 +36,46 @@ function mountWith() {
 }
 
 beforeEach(() => {
-  bpm.value = 72
+  vi.useFakeTimers()
+  settings.value = { bpm: 72, beats: 3, beatValue: 4, noteValue: 'quarters' }
   Object.values(engine).forEach((fn) => fn.mockClear())
+  engine.beatAt.mockReturnValue(null)
 })
-afterEach(() => vi.clearAllMocks())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.clearAllMocks()
+})
 
 describe('useMetronome', () => {
-  it('is off until turned on, then clicks at the tempo and meter', () => {
+  it('is off until turned on, then clicks at its settings', () => {
     const { api } = mountWith()
     expect(api.on.value).toBe(false)
 
     api.toggle()
 
     expect(api.on.value).toBe(true)
-    expect(engine.start).toHaveBeenCalledWith({ bpm: 72, beatsPerBar: 3 })
+    expect(engine.start).toHaveBeenCalledWith({ bpm: 72, beats: 3, beatValue: 4, noteValue: 'quarters' })
   })
 
-  it('follows a tempo change while it clicks', async () => {
+  it('follows a change of tempo, bar or note value while it clicks', async () => {
     const { api } = mountWith()
     api.toggle()
 
-    bpm.value = 56
+    settings.value = { bpm: 56, beats: 7, beatValue: 8, noteValue: 'eighths' }
     await nextTick()
 
-    expect(engine.setTempo).toHaveBeenCalledWith(56)
+    expect(engine.update).toHaveBeenLastCalledWith({ bpm: 56, beats: 7, beatValue: 8, noteValue: 'eighths' })
+  })
+
+  it('says which beat of the bar is sounding while it clicks', async () => {
+    const { api } = mountWith()
+    expect(api.beat.value).toBeNull()
+
+    api.toggle()
+    engine.beatAt.mockReturnValue(2)
+    await vi.advanceTimersByTimeAsync(50)
+
+    expect(api.beat.value).toBe(2)
   })
 
   it('stops when turned off, and when the screen goes', () => {
@@ -58,6 +84,7 @@ describe('useMetronome', () => {
     api.toggle()
     expect(engine.stop).toHaveBeenCalledTimes(1)
     expect(api.on.value).toBe(false)
+    expect(api.beat.value).toBeNull()
 
     api.toggle()
     wrapper.unmount()

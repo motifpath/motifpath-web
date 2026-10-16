@@ -18,7 +18,7 @@ const text = (...values: string[]) => values.map((value) => ({ value, label: val
 
 function fakePlayback() {
   const state = ref<'idle' | 'loading' | 'playing' | 'error'>('idle')
-  return { state, status: computed(() => 'ready'), currentBar: ref<number | null>(null), tempo: ref(72), toggle: vi.fn(), stop: vi.fn() }
+  return { state, status: computed(() => 'ready'), currentBar: ref<number | null>(null), tempo: ref(72), noteValue: ref('quarters'), metronome: ref(false), toggle: vi.fn(), stop: vi.fn() }
 }
 
 let fake: ReturnType<typeof fakePlayback>

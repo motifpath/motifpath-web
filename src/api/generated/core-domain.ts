@@ -6938,8 +6938,9 @@ export interface components {
         };
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
-         *     one of fretboard_cell, exercise, play_along and diagram_shape is present, matching
-         *     kind.
+         *     one of fretboard_cell, exercise, play_along, diagram_shape and generated_choice is
+         *     present, matching kind: generated_choice for a diatonic chord, a chord function or a
+         *     chart progression.
          */
         PracticeSessionItem: {
             item_key: components["schemas"]["PracticeItemKey"];
@@ -6988,17 +6989,27 @@ export interface components {
                  */
                 diagram_id: string;
                 /**
-                 * @description The tempo to play this take at. For a warm-up, about 80% of the student's
-                 *     best clean tempo; otherwise the tempo ladder's current step.
+                 * @description The tempo to play this take at, in start_note_value. For a warm-up, about 80%
+                 *     of the student's best clean tempo; otherwise the tempo ladder's current step.
                  */
                 start_tempo_bpm: number;
-                /** @description The tempo the item aims for, the tempo of the diagram's default playback. */
+                start_note_value: components["schemas"]["practice_NoteValue"];
+                /**
+                 * @description The tempo the item aims for, the tempo of the diagram's default playback, in
+                 *     quarters (as written).
+                 */
                 target_tempo_bpm: number;
                 /**
-                 * @description The student's best clean tempo since their latest teacher review. Null when
-                 *     they have no clean take yet.
+                 * @description The student's best clean tempo since their latest teacher review, as played,
+                 *     in best_clean_note_value: the clean take with the fastest effective speed. Null
+                 *     when they have no clean take yet.
                  */
                 best_clean_tempo_bpm: number | null;
+                /**
+                 * @description The note value the best clean take was played at. Null when there is no clean
+                 *     take yet.
+                 */
+                best_clean_note_value: components["schemas"]["practice_NoteValue"] | null;
             };
             /**
              * @description Present when kind is diagram_shape. The client loads the diagram to draw it, with
@@ -7044,6 +7055,7 @@ export interface components {
                  */
                 asked_interval: components["schemas"]["ShapeInterval"] | null;
             };
+            generated_choice?: components["schemas"]["GeneratedChoiceQuestion"];
         };
         /** @description The home for one instrument, derived from the student's evidence. */
         PracticeSummary: {
@@ -7251,7 +7263,8 @@ export interface components {
             names: components["schemas"]["LocalizedNames"];
             /**
              * @description What improved. accuracy and fluency are ratios from 0 to 1 over the skill's
-             *     practised items; best_clean_tempo_bpm is a tempo.
+             *     practised items; best_clean_tempo_bpm is a tempo at effective speed, in
+             *     quarter-note beats per minute (80 BPM in eighths is 160).
              * @enum {string}
              */
             measure: "accuracy" | "fluency" | "best_clean_tempo_bpm";
@@ -7635,6 +7648,16 @@ export interface components {
             from_fret: 0 | 2 | 3 | 4 | 5 | 6 | 7;
         };
         /**
+         * @description The note value a play-along take was played at: a speed factor on the music as written,
+         *     with the click staying on the beat. halves = x0.5, quarters = x1 (as written), eighths = x2,
+         *     triplets = x3, sixteenths = x4, quintuplets = x5, sextuplets = x6, thirty_seconds = x8.
+         *     A take's effective speed is its tempo_bpm times the factor, in quarter-note beats per
+         *     minute: 80 BPM in eighths is as fast as 160 BPM in quarters. Tempos of the same item are
+         *     compared at effective speed. Absent means quarters. Present only with a tempo_bpm.
+         * @enum {string}
+         */
+        practice_NoteValue: "halves" | "quarters" | "eighths" | "triplets" | "sixteenths" | "quintuplets" | "sextuplets" | "thirty_seconds";
+        /**
          * @description How a diagram shape is asked. name_the_shape = the shape is shown without its name and the
          *     student picks it among its family's members; find_the_degree = the shape is shown with its
          *     root marked and its other positions unlabelled, and the student taps the asked degree.
@@ -7648,6 +7671,124 @@ export interface components {
          * @enum {string}
          */
         ShapeInterval: "R" | "b2" | "2" | "#2" | "b3" | "3" | "4" | "#4" | "b5" | "5" | "#5" | "b6" | "6" | "bb7" | "b7" | "7" | "b9" | "9" | "#9" | "11" | "#11" | "b13" | "13";
+        /**
+         * @description How a generated question was asked, which fixes what its options are and which one is
+         *     right. numeral_to_chord = a key and a numeral are named, pick its chord; chord_to_numeral
+         *     = a key and a chord are named, pick its numeral; chord_to_function = a key and a chord
+         *     are named, pick its function; function_to_chord = a key and a function are named, pick the
+         *     one chord with it; chart_to_numbers = a chart is shown, pick its progression;
+         *     numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
+         *     a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
+         *     progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+         *     chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
+         *     progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
+         *     heard progression progression_by_number.
+         * @enum {string}
+         */
+        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number";
+        /**
+         * @description A major key. In a response, the key a question was asked in when its item doesn't fix one:
+         *     a chart progression, a heard chord, a heard progression or a guide tone; absent in a
+         *     response to any other item. A planned question always names its key.
+         * @enum {string}
+         */
+        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B";
+        /**
+         * @description A scale degree's chord in a major key, as a roman numeral: upper case for a major triad,
+         *     lower case for a minor one, and viio for the diminished triad on the seventh degree (vii°).
+         * @enum {string}
+         */
+        ChordNumeral: "I" | "ii" | "iii" | "IV" | "V" | "vi" | "viio";
+        /**
+         * @description A chord's harmonic function in a major key. tonic = I, iii and vi (at rest); subdominant =
+         *     ii and IV (moving away); dominant = V and viio (pulling home).
+         * @enum {string}
+         */
+        ChordFunction: "tonic" | "subdominant" | "dominant";
+        /**
+         * @description How the question draws its chords, in the stimulus and in the options. chord_boxes = a
+         *     chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
+         *     four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
+         *     chart is laid out in three lines of four bars. A session in the head reads chords the way
+         *     of the student's fretboard layout: guitar or bass, taking turns from one session in the
+         *     head to the next for a student who plays both, and chord symbols for a student who plays
+         *     neither. Every generated harmony question of a session reads them the same way.
+         * @enum {string}
+         */
+        GeneratedChordDrawing: "chord_boxes" | "chord_symbols";
+        /**
+         * @description A generated question asked among options, as the composer planned it: the way it is asked,
+         *     the key, what the question gives, and the options in the order they are shown. Exactly the
+         *     parts the way needs are present; the others are null or empty. Nothing in it marks the
+         *     answer, and the prompt never names it: the client shows the options as given and sends
+         *     back the way, the options as shown and the pick, with music_key when the item is a chart
+         *     progression.
+         */
+        GeneratedChoiceQuestion: {
+            way: components["schemas"]["GeneratedChoiceWay"];
+            music_key: components["schemas"]["MusicKey"];
+            /** @description The numeral asked about, for numeral_to_chord. Null for every other way. */
+            numeral: components["schemas"]["ChordNumeral"] | null;
+            /**
+             * @description The chord the question gives, as a chord symbol spelled as the chord catalog spells
+             *     roots (Bm, F#, Bdim), for chord_to_numeral and chord_to_function. Always one of the key's
+             *     triads. Null for every other way.
+             */
+            chord: string | null;
+            /** @description The function asked for, for function_to_chord. Null for every other way. */
+            function: components["schemas"]["ChordFunction"] | null;
+            /** @description The progression asked for, for numbers_to_chart. Null for every other way. */
+            progression: {
+                /** @description The progression's key in the progression catalog, such as I-V-vi-IV. */
+                key: string;
+                /** @description The progression's name in the student's language, such as "I–V–vi–IV (pop)". */
+                name: string;
+            } | null;
+            /**
+             * @description The chart the question shows, one chord symbol per bar (four or twelve), for
+             *     chart_to_numbers. Empty for every other way.
+             */
+            chart: string[];
+            drawn_as: components["schemas"]["GeneratedChordDrawing"];
+            /**
+             * @description The options in the order to show them, already shuffled. Different from one another,
+             *     each a possible answer to the way, the right one among them (four, or two for a 12-bar
+             *     progression). Which are offered follows the drill catalog's harmony rules.
+             */
+            options: {
+                /**
+                 * @description The option as the response sends it back: a chord symbol, a numeral, a function, a
+                 *     progression key, or a chart (its chord symbols one per bar, separated by single
+                 *     spaces), by way.
+                 */
+                value: string;
+                /**
+                 * @description The option's name in the student's language where its value is a key: a function
+                 *     ("Dominant — pulls home") or a progression ("I – V – vi – IV"). Null for a chord, a
+                 *     numeral or a chart, which are shown as they are.
+                 */
+                name: string | null;
+                /**
+                 * @description For numbers_to_chart, the option's chart, one chord symbol per bar, drawn as
+                 *     drawn_as says. Empty for every other way.
+                 */
+                chart: string[];
+            }[];
+            /**
+             * @description When drawn_as is chord_boxes, the box of every chord the question draws, one per chord
+             *     symbol: the chord's open voicing if the catalog has one, else its lowest-difficulty
+             *     voicing. Empty when drawn_as is chord_symbols.
+             */
+            voicings: {
+                /** @description The chord symbol, as it appears in chord, chart or the options. */
+                chord: string;
+                /**
+                 * Format: uuid
+                 * @description The chord catalog voicing's diagram the client draws as the chord's box.
+                 */
+                diagram_id: string;
+            }[];
+        };
     };
     responses: never;
     parameters: {
@@ -7852,8 +7993,15 @@ export type SchemaPracticeRung = components['schemas']['PracticeRung'];
 export type SchemaKnowledgeLevel = components['schemas']['KnowledgeLevel'];
 export type SchemaFretboardDrill = components['schemas']['FretboardDrill'];
 export type SchemaFretWindow = components['schemas']['FretWindow'];
+export type SchemaPracticeNoteValue = components['schemas']['practice_NoteValue'];
 export type SchemaDiagramShapeDrill = components['schemas']['DiagramShapeDrill'];
 export type SchemaShapeInterval = components['schemas']['ShapeInterval'];
+export type SchemaGeneratedChoiceWay = components['schemas']['GeneratedChoiceWay'];
+export type SchemaMusicKey = components['schemas']['MusicKey'];
+export type SchemaChordNumeral = components['schemas']['ChordNumeral'];
+export type SchemaChordFunction = components['schemas']['ChordFunction'];
+export type SchemaGeneratedChordDrawing = components['schemas']['GeneratedChordDrawing'];
+export type SchemaGeneratedChoiceQuestion = components['schemas']['GeneratedChoiceQuestion'];
 export type ParameterAlphaWeek = components['parameters']['AlphaWeek'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];

@@ -20,6 +20,7 @@ import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import MetricTile from '@/shared/components/MetricTile.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type Item = components['schemas']['PracticeSessionItem']
@@ -38,6 +39,7 @@ const props = defineProps<{
 const emit = defineEmits<{ done: []; practiseAgain: [] }>()
 
 const { t } = useTypedT()
+const { asPlayed } = useTempoAsPlayed()
 
 const { item: overview, isLoading: weekLoading, error: weekError, retry: retryWeek } = usePracticeOverview()
 const week = computed(() => (overview.value ? thisWeek(overview.value) : null))
@@ -49,7 +51,9 @@ const meta = computed(() => {
 })
 
 function resultText(result: SummaryResult): string {
-  if (result.kind === 'played') return t('sessionSummary.played', { bpm: result.fastestBpm, rating: t(`playAlongTake.ratings.${result.rating}`) })
+  if (result.kind === 'played') {
+    return t('sessionSummary.played', { tempo: asPlayed(result.fastestBpm, result.fastestNoteValue), rating: t(`playAlongTake.ratings.${result.rating}`) })
+  }
   if (result.kind === 'counted') return t('sessionSummary.counted', { right: result.right, answered: result.answered })
   return result.correct ? t('sessionSummary.right') : t('sessionSummary.notQuite')
 }

@@ -1,25 +1,26 @@
 /**
  * A metronome's click, synthesized rather than sampled: a short blip whose
- * level falls away fast, higher on an accent. Nothing to load, so it can sound
- * from the first beat of a count-in.
+ * level falls away fast, higher on a downbeat and softer between beats. Nothing
+ * to load, so it can sound from the first beat of a count-in.
  */
-import type { ClickSink } from './playbackRun'
+import type { ClickLevel, ClickSink } from './playbackRun'
 
-const ACCENT_HZ = 1760
+const DOWNBEAT_HZ = 1760
 const BEAT_HZ = 1320
 const CLICK_SECONDS = 0.035
-const LEVEL = 0.35
+/** How loud each kind of click starts. */
+const LEVELS: Record<ClickLevel, number> = { downbeat: 0.35, beat: 0.21, between: 0.1 }
 /** The quietest a click's level ramps to; an exponential ramp can't reach zero. */
 const SILENT = 0.0001
 
 export function createClickSink(context: AudioContext): ClickSink {
   const live = new Set<() => void>()
 
-  function click({ time, accent }: { time: number; accent: boolean }) {
+  function click({ time, level }: { time: number; level: ClickLevel }) {
     const oscillator = context.createOscillator()
     const gain = context.createGain()
-    oscillator.frequency.value = accent ? ACCENT_HZ : BEAT_HZ
-    gain.gain.setValueAtTime(accent ? LEVEL : LEVEL * 0.6, time)
+    oscillator.frequency.value = level === 'downbeat' ? DOWNBEAT_HZ : BEAT_HZ
+    gain.gain.setValueAtTime(LEVELS[level], time)
     gain.gain.exponentialRampToValueAtTime(SILENT, time + CLICK_SECONDS)
     oscillator.connect(gain).connect(context.destination)
     oscillator.start(time)

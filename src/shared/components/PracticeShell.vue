@@ -20,6 +20,8 @@ defineProps<{
   position?: { current: number; total: number }
   /** How full each item's segment is, from 0 to 1, during a run. */
   progress?: number[]
+  /** The name of a page pushed inside the shell, such as a tool; its way out is then an arrow back. */
+  title?: string
 }>()
 
 const emit = defineEmits<{ exit: [] }>()
@@ -48,7 +50,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 <template>
   <div ref="root" data-test="practice-shell" class="mx-auto flex w-full max-w-[35rem] flex-1 flex-col px-5">
-    <PracticeHeader :exit-label="exitLabel" :position="position" :progress="progress" @exit="emit('exit')" />
+    <PracticeHeader :exit-label="exitLabel" :position="position" :progress="progress" :title="title" @exit="emit('exit')">
+      <template v-if="$slots.options" #options>
+        <slot name="options" />
+      </template>
+    </PracticeHeader>
 
     <!-- Room under the content for the fixed action bar. -->
     <div class="flex flex-1 flex-col gap-4 pb-32">
