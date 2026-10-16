@@ -164,6 +164,30 @@ export const ProgressionByNumber: Story = {
   },
 }
 
+/** Hear the chord, fluent on it: all seven numerals, in scale order. */
+export const CadenceThenChordFluent: Story = {
+  args: {
+    view: {
+      way: 'cadence_then_chord',
+      instrument: 'guitar',
+      progression: {
+        source: { chords: playing('G', 'Em'), chordInstrument: drillGuitar, bass: null, tempoBpm: 110 },
+        bars: ['I', null],
+        subtitle: 'The tonic sets the key, then the chord',
+      },
+      options: textOptions('I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'),
+    },
+  },
+}
+
+/** Hear the chord, answered wrong: the pick and the right numeral are marked. */
+export const CadenceThenChordAnswered: Story = {
+  args: { ...CadenceThenChord.args, choice: 'IV', reveal: { right: 'vi' } },
+}
+
+/** A heard chord asked by sight: the box in a key, pick its numeral, as chord to numeral asks. */
+export const SeeThenName: Story = { args: { view: { way: 'see_then_name', instrument: 'guitar', chord: chord('Em'), options: textOptions('iii', 'IV', 'vi', 'vii°') } } }
+
 /** Bass, chord to numeral: the chord symbol and the key. */
 export const BassChordToNumeral: Story = {
   args: { instrument: drillBass, view: { way: 'chord_to_numeral', instrument: 'bass', chord: { symbol: 'Bm' }, options: textOptions('ii', 'iii', 'V', 'vi') } },
@@ -228,6 +252,26 @@ export const BassCadenceThenChord: Story = {
   },
 }
 
+/** Bass, hear the progression: four chords with their roots under them. */
+export const BassProgressionByNumber: Story = {
+  args: {
+    instrument: drillBass,
+    view: {
+      way: 'progression_by_number',
+      instrument: 'bass',
+      progression: {
+        source: { chords: playing('G', 'D', 'Em', 'C'), chordInstrument: drillGuitar, bass: { instrument: drillBass, roots: ['G', 'D', 'E', 'C'] }, tempoBpm: 70 },
+        bars: [null, null, null, null],
+        subtitle: 'Four chords, in a key you aren’t told',
+      },
+      options: progressionOptions('I-V-vi-IV', 'I-vi-IV-V', 'vi-IV-I-V', 'I-IV-vi-V'),
+    },
+  },
+}
+
+/** Bass, a heard chord asked by sight: its symbol in a key. */
+export const BassSeeThenName: Story = { args: { instrument: drillBass, view: { way: 'see_then_name', instrument: 'bass', chord: { symbol: 'Em' }, options: textOptions('iii', 'IV', 'vi', 'vii°') } } }
+
 /** A box the question must draw came without its voicing: nothing is named, nothing takes an answer. */
 export const Unavailable: Story = { args: { view: { way: 'chord_to_numeral', instrument: 'guitar', chord: { symbol: 'Bm' }, options: textOptions('ii', 'iii', 'IV', 'vi') } } }
 
@@ -242,6 +286,26 @@ export const LongPortuguese: Story = {
         { value: 'tonic', label: 'Tônica — repouso, a sensação de ter chegado em casa' },
         { value: 'subdominant', label: 'Subdominante — se afasta da tônica' },
         { value: 'dominant', label: 'Dominante — puxa de volta para casa' },
+      ],
+    },
+  },
+}
+
+export const HeardLongPortuguese: Story = {
+  args: {
+    view: {
+      way: 'progression_by_number',
+      instrument: 'guitar',
+      progression: {
+        source: { chords: playing('G', 'D', 'Em', 'C'), chordInstrument: drillGuitar, bass: null, tempoBpm: 70 },
+        bars: [null, null, null, null],
+        subtitle: 'Quatro acordes, num tom que não é dito',
+      },
+      options: [
+        { value: 'I-V-vi-IV', label: 'I–V–vi–IV (pop, a progressão de mil canções)' },
+        { value: 'I-vi-IV-V', label: 'I–vi–IV–V (doo-wop dos anos cinquenta)' },
+        { value: 'vi-IV-I-V', label: 'vi–IV–I–V (a mesma, começando no relativo menor)' },
+        { value: 'I-IV-vi-V', label: 'I–IV–vi–V' },
       ],
     },
   },
