@@ -7,6 +7,8 @@ export interface PlanRow {
   key: string
   /** The item, or the first cell of the drill. */
   item: Item
+  /** Where in the plan the items of the line are, in order. */
+  positions: number[]
   /** How many cells of the drill the session asks; absent for any other item. */
   cellCount?: number
   /** How many shapes of the drill the session asks; absent for any other item. */
@@ -20,34 +22,33 @@ function drillTemplateOf(item: Item): string | null {
   return null
 }
 
-/** The key of the plan line an item is listed on. */
-export function planRowKeyOf(item: Item): string {
-  return drillTemplateOf(item) ?? item.item_key
-}
-
 /**
  * The lines of today's plan, in session order. Fretboard cells and diagram shapes come many to a
  * session and look alike, so each drill's cells, and each drill's shapes, are one line, where its
- * first one is.
+ * first one is. An item asked again later in the session is a line each time, keyed apart.
  */
 export function planRows(items: Item[]): PlanRow[] {
   const rows: PlanRow[] = []
   const drillRows = new Map<string, PlanRow>()
-  for (const item of items) {
+  const timesListed = new Map<string, number>()
+  items.forEach((item, position) => {
     const template = drillTemplateOf(item)
     if (!template) {
-      rows.push({ key: item.item_key, item })
-      continue
+      const times = (timesListed.get(item.item_key) ?? 0) + 1
+      timesListed.set(item.item_key, times)
+      rows.push({ key: times === 1 ? item.item_key : `${item.item_key}@${times}`, item, positions: [position] })
+      return
     }
     const count = item.fretboard_cell ? 'cellCount' : 'shapeCount'
     const row = drillRows.get(template)
     if (row) {
       row[count] = (row[count] ?? 0) + 1
-      continue
+      row.positions.push(position)
+      return
     }
-    const first: PlanRow = { key: template, item, [count]: 1 }
+    const first: PlanRow = { key: template, item, positions: [position], [count]: 1 }
     drillRows.set(template, first)
     rows.push(first)
-  }
+  })
   return rows
 }

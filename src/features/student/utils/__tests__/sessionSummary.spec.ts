@@ -24,9 +24,9 @@ const wrong: ItemOutcome = { kind: 'answered', correct: false }
 describe('summaryRows', () => {
   it('gives a play-along its fastest tempo and how that take went', () => {
     const triads = item('play_along:triads', 'play_along')
-    const outcomes = new Map<string, ItemOutcome>([
+    const outcomes = new Map<number, ItemOutcome>([
       [
-        'play_along:triads',
+        0,
         {
           kind: 'played',
           takes: [
@@ -45,9 +45,9 @@ describe('summaryRows', () => {
 
   it('finds the fastest take at effective speed and keeps it as played', () => {
     const triads = item('play_along:triads', 'play_along')
-    const outcomes = new Map<string, ItemOutcome>([
+    const outcomes = new Map<number, ItemOutcome>([
       [
-        'play_along:triads',
+        0,
         {
           kind: 'played',
           takes: [
@@ -65,8 +65,8 @@ describe('summaryRows', () => {
     const third = item('exercise:third', 'exercise')
     const quality = item('exercise:quality', 'exercise')
     const outcomes = new Map([
-      ['exercise:third', right],
-      ['exercise:quality', wrong],
+      [0, right],
+      [1, wrong],
     ])
 
     expect(summaryRows([third, quality], outcomes).map((row) => [row.result, row.good])).toEqual([
@@ -77,11 +77,11 @@ describe('summaryRows', () => {
 
   it('counts a drill’s fretboard cells together, as the plan lists them', () => {
     const cells = [cell(1), cell(3), cell(5), cell(7, 'find_the_note')]
-    const outcomes = new Map<string, ItemOutcome>([
-      [cells[0].item_key, right],
-      [cells[1].item_key, wrong],
-      [cells[2].item_key, right],
-      [cells[3].item_key, wrong],
+    const outcomes = new Map<number, ItemOutcome>([
+      [0, right],
+      [1, wrong],
+      [2, right],
+      [3, wrong],
     ])
 
     const rows = summaryRows(cells, outcomes)
@@ -95,11 +95,28 @@ describe('summaryRows', () => {
   it('leaves out what the student never got to answer, and a drill row counts only its answered cells', () => {
     const exercise = item('exercise:third', 'exercise')
     const cells = [cell(1), cell(3)]
-    const outcomes = new Map<string, ItemOutcome>([[cells[0].item_key, right]])
+    const outcomes = new Map<number, ItemOutcome>([[1, right]])
 
     const rows = summaryRows([exercise, ...cells], outcomes)
 
     expect(rows.map((row) => [row.key, row.result])).toEqual([['fretboard_cell:name_the_note', { kind: 'counted', right: 1, answered: 1 }]])
+  })
+
+  it('lists an item asked again later on a line of its own each time, with its own result', () => {
+    const heard = item('heard_chord:vi', 'heard_chord')
+    const between = [item('exercise:a', 'exercise'), item('exercise:b', 'exercise'), item('exercise:c', 'exercise')]
+    const outcomes = new Map<number, ItemOutcome>([
+      [0, wrong],
+      [4, right],
+    ])
+
+    const rows = summaryRows([heard, ...between, heard], outcomes)
+
+    expect(rows.map((row) => row.result)).toEqual([
+      { kind: 'answered', correct: false },
+      { kind: 'answered', correct: true },
+    ])
+    expect(new Set(rows.map((row) => row.key)).size).toBe(2)
   })
 
   it('has nothing to list when nothing was answered or rated', () => {
