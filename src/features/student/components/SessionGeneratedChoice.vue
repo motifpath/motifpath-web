@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /**
  * One harmony question of a practice session: a numeral's chord, a chord's numeral or function, a
- * function's chord, or a progression read as a chart, asked the way its plan says and read as the
- * plan reads chords: unnamed boxes on guitar, chord symbols on bass. Nothing sets the right option
- * apart before the answer. The parent records and grades the answer; feedback shows in place, a
- * wrong pick revealing the right one. A question that can't be shown here is skipped, never
- * counted against the student.
+ * function's chord, a progression read as a chart, or a chord or progression heard, asked the way
+ * its plan says and read as the plan reads chords: unnamed boxes on guitar, chord symbols on bass.
+ * Nothing sets the right option apart before the answer. It says when a heard question's sound
+ * starts and stops, so the answer can be timed from it. The parent records and grades the answer;
+ * feedback shows in place, a wrong pick revealing the right one. A question that can't be shown
+ * here is skipped, never counted against the student.
  */
 import { CircleCheck, CircleX } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
@@ -31,7 +32,7 @@ import { useTypedT } from '@/shared/composables/useTypedT'
 type Item = components['schemas']['PracticeSessionItem']
 
 const props = defineProps<{
-  /** A diatonic chord, chord function or chart progression item. */
+  /** A diatonic chord, chord function, chart progression, heard chord or heard progression item. */
   item: Item
   /** The answer given, graded, once committed. */
   answer: GradedGeneratedAnswer | null
@@ -39,7 +40,12 @@ const props = defineProps<{
   instrumentName?: string
 }>()
 
-const emit = defineEmits<{ answer: [answer: GeneratedChoiceAnswer, grading: GeneratedChoiceGrading]; next: []; skip: [reason: NotAnsweredReason] }>()
+const emit = defineEmits<{
+  answer: [answer: GeneratedChoiceAnswer, grading: GeneratedChoiceGrading]
+  next: []
+  skip: [reason: NotAnsweredReason]
+  playing: [playing: boolean]
+}>()
 
 const { t } = useTypedT()
 
@@ -93,7 +99,15 @@ const { next } = useAdvanceAfterAnswer(
 
     <template v-else>
       <p data-test="question-prompt" class="text-lg font-semibold">{{ prompt }}</p>
-      <DrillQuestion v-model:choice="choice" :view="view" :instrument="instrument" :reveal="reveal" @answer="onAnswer" @missing="cantShow = true" />
+      <DrillQuestion
+        v-model:choice="choice"
+        :view="view"
+        :instrument="instrument"
+        :reveal="reveal"
+        @answer="onAnswer"
+        @playing="emit('playing', $event)"
+        @missing="cantShow = true"
+      />
     </template>
 
     <PracticeActionBar v-if="answer">

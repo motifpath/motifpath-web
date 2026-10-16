@@ -97,7 +97,7 @@ const SessionDiagramShapeStub = defineComponent({
 const SessionGeneratedChoiceStub = defineComponent({
   name: 'SessionGeneratedChoice',
   props: { item: { type: Object, required: true }, answer: { type: Object, default: null }, instrumentName: { type: String, default: undefined } },
-  emits: ['answer', 'next', 'skip'],
+  emits: ['answer', 'next', 'skip', 'playing'],
   setup(props) {
     return () => h('div', { 'data-test': 'harmony' }, props.answer ? `answered ${props.answer.correct ? 'right' : 'wrong'}` : 'unanswered')
   },
@@ -576,6 +576,43 @@ describe('PracticeSessionView', () => {
       question().vm.$emit('next')
       await flushPromises()
       expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
+    })
+
+    it('times a heard question’s answer from when its sound started', async () => {
+      const heard: Item = {
+        ...harmonyItem(),
+        item_key: 'heard_chord:vi',
+        kind: 'heard_chord',
+        rung: 'hear',
+        generated_choice: {
+          ...harmonyItem().generated_choice!,
+          way: 'cadence_then_chord',
+          numeral: null,
+          options: ['ii', 'IV', 'V', 'vi'].map((value) => ({ value, name: null, chart: [] })),
+          playback: { tempo_bpm: 70, bass_line: false, bass_instrument_id: null, bars: [{ chord: 'G', numeral: 'I' }, { chord: 'Em', numeral: null }] },
+        },
+      }
+      const wrapper = mountView()
+      await startSession(wrapper, plan([heard, shapeItem()]))
+      const clock = vi.spyOn(Date, 'now')
+      const question = wrapper.getComponent(SessionGeneratedChoiceStub)
+
+      clock.mockReturnValue(50_000)
+      question.vm.$emit('playing', true)
+      clock.mockReturnValue(53_000)
+      question.vm.$emit('playing', false)
+      clock.mockReturnValue(54_200)
+      question.vm.$emit(
+        'answer',
+        { way: 'cadence_then_chord', options: ['ii', 'IV', 'V', 'vi'], choice: 'vi', audioMs: 3000 },
+        { question: { way: 'cadence_then_chord', key: 'G', numeral: 'vi' }, catalog: {} },
+      )
+      await flushPromises()
+      clock.mockRestore()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: expect.objectContaining({ latency_ms: 4200, audio_ms: 3000, music_key: 'G' }) }),
+      ])
     })
 
     it('sends a harmony question that can’t be shown as not answered and moves on', async () => {

@@ -84,6 +84,16 @@ describe('SessionGeneratedChoice', () => {
     ])
   })
 
+  it('says when the sound of its question starts and stops, so its answer can be timed from it', async () => {
+    const question = mountQuestion(bassNumeral)
+
+    const drill = question.findComponent({ name: 'DrillQuestion' })
+    drill.vm.$emit('playing', true)
+    drill.vm.$emit('playing', false)
+
+    expect(question.emitted('playing')).toEqual([[true], [false]])
+  })
+
   it('once answered wrong, marks the right option beside the pick, and moves on when asked', async () => {
     const question = mountQuestion(bassNumeral, { choice: 'D', right: 'Em', correct: false })
 
