@@ -37,6 +37,8 @@ export interface PlaybackRun {
   /** Schedules the next pass of a loop once the current one has started. Call it as time passes. */
   update(now: number): void
   activePositionIds(at: number): string[]
+  /** When the step sounding at a time ends; null when none is. */
+  stepEndAt(at: number): number | null
   finished(at: number): boolean
   /**
    * Re-times every step that starts after `now`, and with `clickBeat` spaces the metronome's
@@ -141,6 +143,10 @@ export function createPlaybackRun(
     activePositionIds(at) {
       if (stopped) return []
       return scheduled.filter((step) => step.start <= at && at < step.end).flatMap((step) => step.positionIds)
+    },
+    stepEndAt(at) {
+      if (stopped) return null
+      return scheduled.find((step) => step.start <= at && at < step.end)?.end ?? null
     },
     finished(at) {
       return stopped || (!loop && at >= last()!.end)

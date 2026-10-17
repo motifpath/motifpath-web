@@ -1040,6 +1040,102 @@ describe('usePracticeSessionRun', () => {
       expect(run.generatedAnswer.value).toEqual({ choice: 'Em', right: 'Em', correct: true })
     })
 
+    describe('asked by ear', () => {
+      const playback = {
+        tempo_bpm: 70,
+        bass_line: false,
+        bass_instrument_id: null,
+        bars: [
+          { chord: 'G', numeral: 'I' as const },
+          { chord: 'Em', numeral: null },
+        ],
+      }
+      const heard: Item = {
+        item_key: 'heard_chord:vi',
+        kind: 'heard_chord',
+        rung: 'hear',
+        reason: 'new',
+        node_id: null,
+        level: 'accurate',
+        estimated_seconds: 20,
+        generated_choice: { ...BLANK, way: 'cadence_then_chord', music_key: 'G', playback, options: opts('ii', 'IV', 'V', 'vi') },
+      }
+      const heardGrading = { question: { way: 'cadence_then_chord' as const, key: 'G', numeral: 'vi' }, catalog: {} }
+      const answer = { way: 'cadence_then_chord' as const, options: ['ii', 'IV', 'V', 'vi'], choice: 'vi', audioMs: 6000 }
+
+      it('times the answer from when its sound first started, and sends how long it played and the key it was asked in', () => {
+        const run = usePracticeSessionRun(plan([heard], null))
+        run.start()
+        vi.advanceTimersByTime(2000)
+        run.clipPlaying(true)
+        vi.advanceTimersByTime(6000)
+        run.clipPlaying(false)
+        vi.advanceTimersByTime(1000)
+        // A replay is still listening: the time runs on from the first play.
+        run.clipPlaying(true)
+        vi.advanceTimersByTime(500)
+        run.answerGenerated(answer, heardGrading)
+
+        expect(tracked('practice.item_answered')[0].response).toEqual({
+          response_type: 'generated_choice',
+          way: 'cadence_then_chord',
+          music_key: 'G',
+          options: ['ii', 'IV', 'V', 'vi'],
+          choice: 'vi',
+          latency_ms: 7500,
+          audio_ms: 6000,
+        })
+        expect(run.generatedAnswer.value).toEqual({ choice: 'vi', right: 'vi', correct: true })
+      })
+
+      it('times the next heard question from its own sound', () => {
+        const run = usePracticeSessionRun(plan([heard, { ...heard, item_key: 'heard_chord:IV' }], null))
+        run.start()
+        run.clipPlaying(true)
+        run.clipPlaying(false)
+        run.answerGenerated(answer, heardGrading)
+        run.nextItem()
+        vi.advanceTimersByTime(3000)
+        run.clipPlaying(true)
+        vi.advanceTimersByTime(1200)
+        run.answerGenerated({ ...answer, choice: 'IV' }, { ...heardGrading, question: { ...heardGrading.question, numeral: 'IV' } })
+
+        expect(tracked('practice.item_answered')[1].response.latency_ms).toBe(1200)
+      })
+
+      it('sends the key of a heard chord asked by sight', () => {
+        const seen: Item = { ...heard, generated_choice: { ...BLANK, way: 'see_then_name', music_key: 'G', chord: 'Em', options: opts('vi', 'IV', 'iii', 'ii') } }
+        const run = usePracticeSessionRun(plan([seen], null))
+        run.start()
+        vi.advanceTimersByTime(1500)
+        run.answerGenerated({ way: 'see_then_name', options: ['vi', 'IV', 'iii', 'ii'], choice: 'vi' }, { question: { way: 'see_then_name', key: 'G', numeral: 'vi' }, catalog: {} })
+
+        expect(tracked('practice.item_answered')[0].response).toEqual({
+          response_type: 'generated_choice',
+          way: 'see_then_name',
+          music_key: 'G',
+          options: ['vi', 'IV', 'iii', 'ii'],
+          choice: 'vi',
+          latency_ms: 1500,
+        })
+      })
+
+      it('counts an item asked again later as answered each time, each with its own result', () => {
+        const run = usePracticeSessionRun(plan([heard, numeral, heard], null))
+        run.start()
+        run.answerGenerated({ ...answer, choice: 'IV' }, heardGrading)
+        run.nextItem()
+        run.answerGenerated({ way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'Em' }, numeralGrading)
+        run.nextItem()
+        expect(run.generatedAnswer.value).toBeNull()
+        run.answerGenerated(answer, heardGrading)
+
+        expect(run.answeredCount.value).toBe(3)
+        expect(run.outcomes.value.get(0)).toEqual({ kind: 'answered', correct: false })
+        expect(run.outcomes.value.get(2)).toEqual({ kind: 'answered', correct: true })
+      })
+    })
+
     it('asks how each harmony way practised felt, and forgets the answer on the next item', () => {
       const run = usePracticeSessionRun(plan([numeral, chart], null, { felt_questions: ['chart_progression:chart_to_numbers', 'diatonic_chord:numeral_to_chord'] }))
       run.start()
@@ -1050,7 +1146,7 @@ describe('usePracticeSessionRun', () => {
       run.nextItem()
 
       expect(run.feltQuestions.value).toEqual(['chart_progression:chart_to_numbers', 'diatonic_chord:numeral_to_chord'])
-      expect(run.outcomes.value.get('chart_progression:I-V-vi-IV')).toEqual({ kind: 'answered', correct: false })
+      expect(run.outcomes.value.get(1)).toEqual({ kind: 'answered', correct: false })
     })
   })
 
@@ -1335,8 +1431,8 @@ describe('usePracticeSessionRun', () => {
       run.nextItem()
       run.answer(['wrong'])
 
-      expect(run.outcomes.value.get('exercise:e1')).toEqual({ kind: 'answered', correct: true })
-      expect(run.outcomes.value.get('exercise:e2')).toEqual({ kind: 'answered', correct: false })
+      expect(run.outcomes.value.get(0)).toEqual({ kind: 'answered', correct: true })
+      expect(run.outcomes.value.get(1)).toEqual({ kind: 'answered', correct: false })
     })
 
     it('keeps a play-along’s rated takes, a warm-up’s too', () => {
@@ -1346,7 +1442,7 @@ describe('usePracticeSessionRun', () => {
       run.rate('clean')
       run.rate('almost')
 
-      expect(run.outcomes.value.get(`play_along:${WARM_UP}`)).toEqual({
+      expect(run.outcomes.value.get(0)).toEqual({
         kind: 'played',
         takes: [
           { bpm: 80, rating: 'clean', noteValue: 'quarters' },

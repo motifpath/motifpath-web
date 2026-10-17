@@ -17,6 +17,9 @@ const feltDrillKeys: Record<string, MessageKey> = {
   'chord_function:function_to_chord': 'feltQuestions.drills.functionToChord',
   'chart_progression:chart_to_numbers': 'feltQuestions.drills.chartToNumbers',
   'chart_progression:numbers_to_chart': 'feltQuestions.drills.numbersToChart',
+  'heard_chord:cadence_then_chord': 'feltQuestions.drills.cadenceThenChord',
+  'heard_chord:see_then_name': 'feltQuestions.drills.chordToNumeral',
+  'heard_progression:progression_by_number': 'feltQuestions.drills.progressionByNumber',
 }
 
 /** The label of a drill template asked about; a plain one for a drill not named yet. */

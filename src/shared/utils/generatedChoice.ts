@@ -1,7 +1,7 @@
 /**
  * Generated questions asked among options the server planned: a numeral's chord or a chord's
  * numeral in a key, a chord's function, a progression read as a chart, a chord or a progression
- * heard. Grades exactly as the server does, so instant feedback never contradicts the record: the
+ * heard, a heard chord's numeral named by sight. Grades exactly as the server does, so instant feedback never contradicts the record: the
  * right answer comes from the key, the numeral or the progression; every option must be a possible
  * answer, none twice, and the right answer and the pick must be among them.
  */
@@ -28,6 +28,7 @@ const WAYS: GeneratedWay[] = [
   'numbers_to_chart',
   'cadence_then_chord',
   'progression_by_number',
+  'see_then_name',
 ]
 
 /** Whether a value read from elsewhere is a way a generated question is asked. */
@@ -83,6 +84,7 @@ function answerSpaceOf(question: GeneratedQuestion, catalog: ProgressionCatalog)
     }
     case 'chord_to_numeral':
     case 'cadence_then_chord':
+    case 'see_then_name':
       return KEY_NUMERALS.includes(numeral) ? { identify: (o) => (KEY_NUMERALS.includes(o) ? o : null), right: numeral } : null
     case 'chord_to_function': {
       const fn = NUMERAL_FUNCTION[numeral]

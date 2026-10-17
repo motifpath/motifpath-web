@@ -91,6 +91,8 @@ async function startPlaying(player: ReturnType<typeof setup>['player']) {
   await vi.waitFor(() => expect(player.state.value).toBe('playing'))
 }
 
+/** The bass beats of four bars at 60 BPM when the tempo doubles one second in: from the second bar. */
+const RETIMED_BEATS = [0, 1, 2, 3, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5]
 const sounding = (voiceId: string) => audio.played.filter((note) => !note.cancelled && note.voiceId === voiceId)
 
 beforeEach(() => {
@@ -127,14 +129,25 @@ describe('useProgressionPlayback', () => {
     expect(sounding('electric-bass')).toEqual([])
   })
 
-  it('on bass, plays a line of the chords’ roots in the bass’s own voice, under the same bars', async () => {
+  it('on bass, plays a line of the chords’ roots in the bass’s own voice, on every beat of the same bars', async () => {
     const { player } = setup({ chords: [C, Am].map((chord) => chord.diagram), bass: { instrument: drillBass, roots: ['C', 'A'] } })
     await startPlaying(player)
 
     const line = sounding('electric-bass')
-    expect(line.map((note) => note.midi)).toEqual([36, 33])
-    expect(line[1]!.time - line[0]!.time).toBeCloseTo(4)
+    expect(line.map((note) => note.midi)).toEqual([36, 36, 36, 36, 33, 33, 33, 33])
+    expect(line.map((note) => note.time - line[0]!.time)).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
     expect(line[0]!.time).toBeCloseTo(sounding('acoustic-guitar')[0]!.time)
+  })
+
+  it('says how long one play lasts, at the tempo and note value it plays at', () => {
+    const { player } = setup()
+    // Four bars of 4/4 at 60 BPM.
+    expect(player.lengthMs.value).toBe(16_000)
+
+    player.tempo.value = 120
+    expect(player.lengthMs.value).toBe(8_000)
+    player.noteValue.value = 'eighths'
+    expect(player.lengthMs.value).toBe(4_000)
   })
 
   it('plays at the tempo the student picks, starting from the progression’s own', async () => {
@@ -155,8 +168,8 @@ describe('useProgressionPlayback', () => {
     frameAt(start + 1)
     player.tempo.value = 120
     await nextTick()
-    // The first bar keeps its 4 s; the second then lasts 2 s, so the third starts 6 s in.
-    expect(sounding('electric-bass').map((note) => note.time - start)).toEqual([0, 4, 6, 8])
+    // The first bar keeps its 4 s, bass beats included; the second then lasts 2 s, so the third starts 6 s in.
+    expect(sounding('electric-bass').map((note) => note.time - start)).toEqual(RETIMED_BEATS)
     expect(sounding('acoustic-guitar').some((note) => Math.abs(note.time - start - 6) < 1e-9)).toBe(true)
   })
 
@@ -168,7 +181,7 @@ describe('useProgressionPlayback', () => {
     await startPlaying(player)
 
     const line = sounding('electric-bass')
-    expect(line[1]!.time - line[0]!.time).toBeCloseTo(2)
+    expect(line[4]!.time - line[0]!.time).toBeCloseTo(2)
   })
 
   it('a note value change while playing re-times the bars not yet started', async () => {
@@ -179,7 +192,7 @@ describe('useProgressionPlayback', () => {
     frameAt(start + 1)
     player.noteValue.value = 'eighths'
     await nextTick()
-    expect(sounding('electric-bass').map((note) => note.time - start)).toEqual([0, 4, 6, 8])
+    expect(sounding('electric-bass').map((note) => note.time - start)).toEqual(RETIMED_BEATS)
   })
 
   it('clicks the beat only when its metronome is on, the click staying on the beat in eighths', async () => {

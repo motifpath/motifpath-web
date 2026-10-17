@@ -65,6 +65,8 @@ export interface DrillAnswer {
   way: GeneratedWay
   options: string[]
   choice: string
+  /** How long the question's sound played the first time, for a question asked by ear. */
+  audioMs?: number
 }
 
 const props = defineProps<{
@@ -123,13 +125,19 @@ const complete = computed(() => {
 })
 
 const soundMissing = ref(false)
+/** How long the sound played the first time; null until it has played. */
+const firstPlayMs = ref<number | null>(null)
 // A new question has its own sound, heard or not.
 watch(
   () => props.view,
   () => {
     soundMissing.value = false
+    firstPlayMs.value = null
   },
 )
+
+/** A question asked by ear holds its options until its sound first plays: listening comes first. */
+const awaitingSound = computed(() => layout.value.stimulus === 'player' && firstPlayMs.value === null)
 
 watch(
   complete,
@@ -145,6 +153,10 @@ function onPlaying(playing: boolean) {
   emit('playing', playing)
 }
 
+function onSounded(audioMs: number) {
+  firstPlayMs.value ??= audioMs
+}
+
 function onMissing(reason: MissingReason) {
   soundMissing.value = true
   emit('missing', reason)
@@ -152,7 +164,9 @@ function onMissing(reason: MissingReason) {
 
 function answer(value: string | null) {
   choice.value = value
-  if (value !== null) emit('answer', { way: props.view.way, options: props.view.options.map((option) => option.value), choice: value })
+  if (value === null) return
+  const audio = layout.value.stimulus === 'player' && firstPlayMs.value !== null ? { audioMs: firstPlayMs.value } : {}
+  emit('answer', { way: props.view.way, options: props.view.options.map((option) => option.value), choice: value, ...audio })
 }
 </script>
 
@@ -173,6 +187,7 @@ function answer(value: string | null) {
           :bars="view.progression.bars"
           :subtitle="view.progression.subtitle"
           @playing="onPlaying"
+          @sounded="onSounded"
           @missing="onMissing"
         />
       </div>
@@ -182,7 +197,7 @@ function answer(value: string | null) {
       :options="options"
       :instrument="instrument"
       :reveal="reveal"
-      :locked="!complete || soundMissing"
+      :locked="!complete || soundMissing || awaitingSound"
       :choice="choice"
       @update:choice="answer"
     />

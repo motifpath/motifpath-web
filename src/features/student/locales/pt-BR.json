@@ -273,7 +273,9 @@
       "chordToFunction": "Função dos acordes",
       "functionToChord": "Acordes pela função",
       "chartToNumbers": "Lendo cifras",
-      "numbersToChart": "Escolhendo cifras"
+      "numbersToChart": "Escolhendo cifras",
+      "cadenceThenChord": "Acordes de ouvido",
+      "progressionByNumber": "Progressões de ouvido"
     },
     "nextUp": {
       "played": "Você tocou {name} até {tempo}.",
@@ -409,7 +411,9 @@
       "chordToFunction": "Dizer a função de um acorde",
       "functionToChord": "Achar um acorde pela função",
       "chartToNumbers": "Ler cifras pelos graus",
-      "numbersToChart": "Escolher a cifra de uma progressão"
+      "numbersToChart": "Escolher a cifra de uma progressão",
+      "cadenceThenChord": "Dizer o grau de um acorde que você ouve",
+      "progressionByNumber": "Dizer a progressão que você ouve"
     }
   },
   "practiceHomeView": {
@@ -657,6 +661,13 @@
     },
     "chartToNumbers": "Que progressão é esta cifra?",
     "numbersToChart": "Qual cifra é {progression}?",
+    "cadenceThenChord": "Qual acorde você ouve?",
+    "progressionByNumber": "Qual progressão você ouve?",
+    "heard": {
+      "cadence": "Uma cadência define o tom, depois o acorde",
+      "tonic": "A tônica define o tom, depois o acorde",
+      "progression": "Quatro acordes, num tom que não é dito"
+    },
     "chordsOfKey": "Os quatro são acordes de {key} maior.",
     "keyOf": "Tom de {key} maior",
     "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."

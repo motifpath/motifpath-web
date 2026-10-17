@@ -798,13 +798,14 @@ export interface components {
          *     one chord with it; chart_to_numbers = a chart is shown, pick its progression;
          *     numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
          *     a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
-         *     progression plays, pick it. A diatonic chord is asked numeral_to_chord or
+         *     progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
+         *     numeral. A diatonic chord is asked numeral_to_chord or
          *     chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
-         *     progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord; a
-         *     heard progression progression_by_number.
+         *     progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
+         *     see_then_name; a heard progression progression_by_number.
          * @enum {string}
          */
-        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number";
+        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name";
         /**
          * @description A major key. In a response, the key a question was asked in when its item doesn't fix one:
          *     a chart progression, a heard chord, a heard progression or a guide tone; absent in a
@@ -832,8 +833,8 @@ export interface components {
             /**
              * @description The options as shown, in the order shown. What an option is depends on the way: a
              *     chord symbol (a root, then m, dim or nothing: G, Em, F#dim) for numeral_to_chord and
-             *     function_to_chord; a numeral (I ii iii IV V vi viio) for chord_to_numeral and
-             *     cadence_then_chord; tonic, subdominant or dominant for chord_to_function; a progression
+             *     function_to_chord; a numeral (I ii iii IV V vi viio) for chord_to_numeral,
+             *     cadence_then_chord and see_then_name; tonic, subdominant or dominant for chord_to_function; a progression
              *     key for chart_to_numbers and progression_by_number; a chart, the progression's chord
              *     symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart. A
              *     chord's root may be spelled either way (F# or Gb).
@@ -847,8 +848,9 @@ export interface components {
              */
             latency_ms: number;
             /**
-             * @description Milliseconds of sound the question plays once before it can be answered (the cadence
-             *     and the chord, or the progression), at the tempo it was played. It is taken off the
+             * @description Milliseconds of sound the question plays once before it can be answered (the cadence,
+             *     or the tonic chord alone, then the chord; or the progression), at the tempo and note
+             *     value it was played at. It is taken off the
              *     latency before the answer is judged against the drill's fluent time. Present for
              *     questions asked by ear only.
              */

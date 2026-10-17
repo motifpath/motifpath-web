@@ -18,7 +18,7 @@ const text = (...values: string[]) => values.map((value) => ({ value, label: val
 
 function fakePlayback() {
   const state = ref<'idle' | 'loading' | 'playing' | 'error'>('idle')
-  return { state, status: computed(() => 'ready'), currentBar: ref<number | null>(null), tempo: ref(72), noteValue: ref('quarters'), metronome: ref(false), toggle: vi.fn(), stop: vi.fn() }
+  return { state, status: computed(() => 'ready'), currentBar: ref<number | null>(null), tempo: ref(72), noteValue: ref('quarters'), metronome: ref(false), lengthMs: ref(16_667), toggle: vi.fn(), stop: vi.fn() }
 }
 
 let fake: ReturnType<typeof fakePlayback>
@@ -118,6 +118,54 @@ describe('DrillQuestion', () => {
     expect(question.emitted('playing')).toEqual([[true]])
   })
 
+  describe('a hear drill', () => {
+    const cadence: DrillQuestionView = {
+      way: 'cadence_then_chord',
+      instrument: 'guitar',
+      progression: {
+        source: { chords: (['C', 'F', 'G', 'C', 'Am'] as const).map((symbol) => drillVoicings[symbol].diagram), chordInstrument: drillGuitar, bass: null, tempoBpm: 72 },
+        bars: ['I', 'IV', 'V', 'I', null],
+        subtitle: 'A cadence sets the key, then the chord',
+      },
+      options: text('ii', 'IV', 'V', 'vi'),
+    }
+
+    it('holds its options until its sound first plays: listening comes before answering', async () => {
+      const question = mountQuestion(cadence)
+      expect(question.findAll('button[data-state="locked"]')).toHaveLength(4)
+
+      fake.state.value = 'playing'
+      await question.vm.$nextTick()
+      fake.state.value = 'idle'
+      await question.vm.$nextTick()
+      expect(question.findAll('button[data-state="default"]')).toHaveLength(4)
+    })
+
+    it('holds the options of the next question until its own sound plays', async () => {
+      const question = mountQuestion(cadence)
+      fake.state.value = 'playing'
+      await question.vm.$nextTick()
+      fake.state.value = 'idle'
+
+      await question.setProps({ view: { ...cadence, options: text('ii', 'iii', 'IV', 'vi') } })
+      expect(question.findAll('button[data-state="locked"]')).toHaveLength(4)
+    })
+
+    it('sends with its answer how long its sound played the first time', async () => {
+      const question = mountQuestion(cadence)
+      fake.state.value = 'playing'
+      await question.vm.$nextTick()
+      fake.state.value = 'idle'
+      fake.lengthMs.value = 9_000
+      await question.vm.$nextTick()
+      fake.state.value = 'playing'
+      await question.vm.$nextTick()
+
+      await question.findAll('button[data-state="default"]')[3]!.trigger('click')
+      expect(question.emitted('answer')).toEqual([[{ way: 'cadence_then_chord', options: ['ii', 'IV', 'V', 'vi'], choice: 'vi', audioMs: 16_667 }]])
+    })
+  })
+
   it('takes answers again on the next question after a sound that couldn’t be heard', async () => {
     const hear: DrillQuestionView = {
       way: 'progression_by_number',
@@ -135,6 +183,9 @@ describe('DrillQuestion', () => {
     expect(question.findAll('button[data-state="locked"]')).toHaveLength(2)
 
     await question.setProps({ view: { ...hear, options: text('vi-IV-I-V', 'I-IV-vi-V') } })
+    question.findComponent({ name: 'ProgressionPlayer' }).vm.$emit('sounded', 8_000)
+    question.findComponent({ name: 'ProgressionPlayer' }).vm.$emit('playing', true)
+    await question.vm.$nextTick()
     expect(question.findAll('button[data-state="default"]')).toHaveLength(2)
   })
 
@@ -154,6 +205,7 @@ describe('DrillQuestion', () => {
     await question.vm.$nextTick()
     expect(question.findAll('button[data-state="locked"]')).toHaveLength(2)
 
+    player.vm.$emit('sounded', 8_000)
     player.vm.$emit('playing', true)
     await question.vm.$nextTick()
     expect(question.findAll('button[data-state="default"]')).toHaveLength(2)

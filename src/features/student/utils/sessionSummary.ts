@@ -1,6 +1,6 @@
 import type { components } from '@/api/generated/core-domain'
 import type { ItemOutcome } from '@/features/student/composables/usePracticeSessionRun'
-import { planRowKeyOf, planRows } from '@/features/student/utils/planRows'
+import { planRows } from '@/features/student/utils/planRows'
 import { speedOf } from '@/features/student/utils/tempoLadder'
 import type { RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
@@ -37,17 +37,15 @@ function fastestTake(takes: RatedTake[]): RatedTake {
 }
 
 /**
- * The lines of a session's summary, in the plan's order and grouped as the plan groups them. Only
- * what the student answered or played is listed: an item never reached, or skipped, has no result.
+ * The lines of a session's summary, in the plan's order and grouped as the plan groups them, from
+ * what became of each item by its place in the plan. Only what the student answered or played is
+ * listed: an item never reached, or skipped, has no result.
  */
-export function summaryRows(items: Item[], outcomes: ReadonlyMap<string, ItemOutcome>): SummaryRow[] {
+export function summaryRows(items: Item[], outcomes: ReadonlyMap<number, ItemOutcome>): SummaryRow[] {
   const rows: SummaryRow[] = []
   for (const row of planRows(items)) {
     const grouped = row.cellCount !== undefined || row.shapeCount !== undefined
-    const answered = items
-      .filter((item) => planRowKeyOf(item) === row.key)
-      .map((item) => outcomes.get(item.item_key))
-      .filter((outcome) => outcome !== undefined)
+    const answered = row.positions.map((position) => outcomes.get(position)).filter((outcome) => outcome !== undefined)
     if (answered.length === 0) continue
 
     if (grouped) {

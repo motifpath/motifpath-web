@@ -19,6 +19,9 @@ const HARMONY_LABELS: Partial<Record<GeneratedWay, MessageKey>> = {
   function_to_chord: 'sessionPlan.drills.functionToChord',
   chart_to_numbers: 'sessionPlan.drills.chartToNumbers',
   numbers_to_chart: 'sessionPlan.drills.numbersToChart',
+  cadence_then_chord: 'sessionPlan.drills.cadenceThenChord',
+  see_then_name: 'sessionPlan.drills.chordToNumeral',
+  progression_by_number: 'sessionPlan.drills.progressionByNumber',
 }
 type LocalizedNames = components['schemas']['LocalizedNames']
 

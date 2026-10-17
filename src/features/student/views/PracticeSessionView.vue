@@ -333,6 +333,7 @@ onBeforeUnmount(() => {
         :answer="run.generatedAnswer.value"
         :instrument-name="currentInstrumentName"
         @answer="(answer, grading) => run!.answerGenerated(answer, grading)"
+        @playing="run.clipPlaying($event)"
         @next="run.nextItem()"
         @skip="run.skip($event)"
       />

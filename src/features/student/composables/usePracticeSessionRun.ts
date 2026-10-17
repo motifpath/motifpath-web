@@ -57,12 +57,19 @@ export interface GradedGeneratedAnswer {
   correct: boolean
 }
 
-/** A harmony question's answer as the question sends it: the way, the options as shown, the pick. */
+/**
+ * A harmony question's answer as the question sends it: the way, the options as shown, the pick,
+ * and for a question asked by ear how long its sound played the first time.
+ */
 export interface GeneratedChoiceAnswer {
   way: GeneratedQuestion['way']
   options: string[]
   choice: string
+  audioMs?: number
 }
+
+/** The kinds whose question is asked in a key its item doesn't fix, so the answer names it. */
+const KEYED_BY_THE_QUESTION: Item['kind'][] = ['chart_progression', 'heard_chord', 'heard_progression']
 
 /** What grading a harmony answer needs: the question as the grader reads it, and the catalog for charts. */
 export interface GeneratedChoiceGrading {
@@ -158,11 +165,12 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const chosenNoteValue = ref<TempoNoteValue | null>(null)
   const started = ref(false)
   const finished = ref(false)
-  const answeredItems = ref(new Set<string>())
+  /** The places in the plan of the items answered, so an item asked again later counts again. */
+  const answeredItems = ref(new Set<number>())
   /** How many items the student answered or rated a take of; a warm-up never counts. */
   const answeredCount = computed(() => answeredItems.value.size)
-  /** What became of each item the student answered or played, by item key, for the summary. */
-  const outcomes = ref(new Map<string, ItemOutcome>())
+  /** What became of each item the student answered or played, by its place in the plan, for the summary. */
+  const outcomes = ref(new Map<number, ItemOutcome>())
   let startedAt = 0
   /** How long the session ran, in whole minutes, at least one. */
   const elapsedMinutes = ref(0)
@@ -191,8 +199,9 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const generatedAnswer = ref<GradedGeneratedAnswer | null>(null)
   /** When the item on was shown, which an exercise's latency counts from. */
   let shownAt = 0
-  /** Whether a clip of the item on is sounding, and when the last one ended. */
+  /** Whether a clip of the item on is sounding, when its first one started, and when the last one ended. */
   let clipSounding = false
+  let firstClipStartedAt: number | null = null
   let lastClipEndedAt: number | null = null
 
   // Measured up front, so each length is known by the time its exercise is answered.
@@ -311,6 +320,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     generatedAnswer.value = null
     shownAt = Date.now()
     clipSounding = false
+    firstClipStartedAt = null
     lastClipEndedAt = null
     index.value++
     if (index.value < plan.items.length) return
@@ -318,13 +328,14 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     else finish(false)
   }
 
-  function recordOutcome(item: Item, outcome: ItemOutcome) {
-    outcomes.value = new Map(outcomes.value).set(item.item_key, outcome)
+  /** Keeps what became of the item on, at its place in the plan. */
+  function recordOutcome(outcome: ItemOutcome) {
+    outcomes.value = new Map(outcomes.value).set(index.value, outcome)
   }
 
   /** Counts the item on as answered, and its drill as practised. */
   function markAnswered(item: Item) {
-    answeredItems.value = new Set(answeredItems.value).add(item.item_key)
+    answeredItems.value = new Set(answeredItems.value).add(index.value)
     const template = drillTemplateOf(item)
     if (template) practisedTemplates.value = new Set(practisedTemplates.value).add(template)
   }
@@ -372,7 +383,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       })
     }
     takes.value = [...takes.value, { bpm, rating, noteValue: played }]
-    recordOutcome(item, { kind: 'played', takes: takes.value })
+    recordOutcome({ kind: 'played', takes: takes.value })
     chosenTempo.value = null
     chosenNoteValue.value = null
     if (takesLeft.value > 0) return
@@ -391,6 +402,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
   /** Notes a clip of the item on starting or stopping, which a choice among sounds is timed from. */
   function clipPlaying(playing: boolean) {
+    if (playing) firstClipStartedAt ??= Date.now()
     if (clipSounding && !playing) lastClipEndedAt = Date.now()
     clipSounding = playing
   }
@@ -412,7 +424,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     exerciseAnswer.value = { optionIds, correct: isExactMatch(exercise.options, optionIds) }
     markAnswered(item)
-    recordOutcome(item, { kind: 'answered', correct: exerciseAnswer.value.correct })
+    recordOutcome({ kind: 'answered', correct: exerciseAnswer.value.correct })
     const amongSounds = exercise.exercise_type === 'audio_selection'
     const audio = amongSounds ? undefined : audioMs.get(exercise.exercise_id)
     void track({
@@ -439,7 +451,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     cellAnswer.value = { answer, correct }
     markAnswered(item)
-    recordOutcome(item, { kind: 'answered', correct })
+    recordOutcome({ kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
       practice_session_id: plan.practice_session_id,
@@ -463,7 +475,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     shapeAnswer.value = { answer, correct }
     markAnswered(item)
-    recordOutcome(item, { kind: 'answered', correct })
+    recordOutcome({ kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
       practice_session_id: plan.practice_session_id,
@@ -474,8 +486,9 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
   /**
    * Answers the harmony question on, asked the way its plan says, graded as the record grades it;
-   * only the first answer counts, and none the grader would reject. A chart question also sends
-   * the key it was asked in, which its item doesn't fix.
+   * only the first answer counts, and none the grader would reject. A chart question or a heard one
+   * also sends the key it was asked in, which its item doesn't fix. A question asked by ear is
+   * timed from when its sound first started, and sends how long that sound played.
    */
   function answerGenerated(answer: GeneratedChoiceAnswer, grading: GeneratedChoiceGrading) {
     const item = current.value
@@ -487,7 +500,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     generatedAnswer.value = { choice: answer.choice, right, correct }
     markAnswered(item)
-    recordOutcome(item, { kind: 'answered', correct })
+    recordOutcome({ kind: 'answered', correct })
+    const heard = planned.playback ? answer.audioMs : undefined
     void track({
       event_type: 'practice.item_answered',
       practice_session_id: plan.practice_session_id,
@@ -495,10 +509,11 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       response: {
         response_type: 'generated_choice',
         way: answer.way,
-        ...(item.kind === 'chart_progression' ? { music_key: planned.music_key } : {}),
+        ...(KEYED_BY_THE_QUESTION.includes(item.kind) ? { music_key: planned.music_key } : {}),
         options: answer.options,
         choice: answer.choice,
-        latency_ms: Date.now() - shownAt,
+        latency_ms: Date.now() - (planned.playback ? (firstClipStartedAt ?? shownAt) : shownAt),
+        ...(heard !== undefined ? { audio_ms: heard } : {}),
       },
     })
   }

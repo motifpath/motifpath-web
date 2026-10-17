@@ -1,6 +1,6 @@
 /**
  * What a cadence or progression played in a drill sounds like: one chord a bar, each strummed
- * once and held for the bar, and on bass a line of the chords' roots under them. Each instrument
+ * once and held for the bar, and on bass a line of the chords' roots under them, one on each beat. Each instrument
  * plays in its own voice, so the chords and the bass line are two lists of steps run side by side
  * on the same clock. Every step stands for its whole bar and is lit as that bar, so a run can say
  * which bar is sounding.
@@ -14,6 +14,9 @@ type Diagram = components['schemas']['Diagram']
 
 /** A whole note: one chord fills a bar of 4/4. */
 const BAR = 1
+/** A quarter: the bass plays its root on each of the bar's four beats. */
+const BEATS_PER_BAR = 4
+const BEAT = BAR / BEATS_PER_BAR
 
 function barId(bar: number): string {
   return `bar-${bar}`
@@ -41,18 +44,19 @@ export function chordSteps(voicings: Diagram[], tuning: string[], strumSeconds: 
 }
 
 /**
- * Each bar's root held for the bar, at its lowest place on the bass: the open lowest string or
- * the first one above it. A root that can't be read rests, so the bars stay in time.
+ * Each bar's root on every beat of the bar, at its lowest place on the bass: the open lowest
+ * string or the first one above it. A root that can't be read rests, so the bars stay in time.
  */
 export function bassLineSteps(roots: string[], bassTuning: string[]): PlaybackStep[] {
   const lowest = parsePitch(bassTuning[0] ?? '')
-  return roots.map((root, bar) => {
+  return roots.flatMap((root, bar) => {
     const pitchClass = pitchClassOf(root)
     const midi = lowest === null || pitchClass === null ? null : lowest + ((pitchClass - lowest + 120) % 12)
-    return {
-      value: BAR,
+    const beat: PlaybackStep = {
+      value: BEAT,
       positionIds: [barId(bar)],
       notes: midi === null ? [] : [{ positionId: barId(bar), midi, offset: 0 }],
     }
+    return Array.from({ length: BEATS_PER_BAR }, () => beat)
   })
 }

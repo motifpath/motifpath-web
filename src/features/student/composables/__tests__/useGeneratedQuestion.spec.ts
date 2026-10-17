@@ -11,7 +11,7 @@ import { useGeneratedQuestion } from '@/features/student/composables/useGenerate
 import { i18n } from '@/i18n'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 import { clearProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
-import { drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
+import { drillBass, drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 import type { DrillChordSymbol } from '@/shared/testUtils/drill'
 import type { components } from '@/api/generated/core-domain'
 
@@ -30,9 +30,9 @@ const PROGRESSIONS = [
 ]
 
 /** Serves the drill voicings' diagrams (each carrying its voicing), the guitar and the progressions. */
-function serve(options: { failing?: string[]; progressions?: boolean } = {}) {
+function serve(options: { failing?: string[]; progressions?: boolean; bass?: boolean } = {}) {
   GET.mockImplementation((path: string, init?: { params?: { path?: { diagram_id?: string } } }) => {
-    if (path === '/instruments') return ok([{ ...drillGuitar, instrument_id: drillVoicings.C.diagram.instrument_id }])
+    if (path === '/instruments') return ok([{ ...drillGuitar, instrument_id: drillVoicings.C.diagram.instrument_id }, ...(options.bass === false ? [] : [drillBass])])
     if (path === '/progressions') return options.progressions === false ? fail() : ok(PROGRESSIONS)
     const id = init?.params?.path?.diagram_id
     const found = Object.values(drillVoicings).find(({ diagram }) => diagram.diagram_id === id)
@@ -243,6 +243,116 @@ describe('useGeneratedQuestion', () => {
         ['G', 'D', 'Em', 'C'],
         ['G', 'Em', 'C', 'D'],
       ])
+    })
+  })
+
+  describe('a heard chord', () => {
+    type Playback = NonNullable<Question['playback']>
+    type Bar = Playback['bars'][number]
+    const playback = (bars: Bar[], bass = false): Playback => ({
+      tempo_bpm: 70,
+      bass_line: bass,
+      bass_instrument_id: bass ? drillBass.instrument_id : null,
+      bars,
+    })
+    const CADENCE: Bar[] = [
+      { chord: 'G', numeral: 'I' },
+      { chord: 'C', numeral: 'IV' },
+      { chord: 'D', numeral: 'V' },
+      { chord: 'G', numeral: 'I' },
+      { chord: 'Em', numeral: null },
+    ]
+    const heard = (bars: Bar[], options: { bass?: boolean } = {}) =>
+      item('heard_chord:vi', {
+        way: 'cadence_then_chord',
+        drawn_as: options.bass ? 'chord_symbols' : 'chord_boxes',
+        playback: playback(bars, options.bass),
+        voicings: boxes('G', 'C', 'D', 'Em'),
+        options: chordOptions('ii', 'IV', 'V', 'vi'),
+      })
+
+    it('plays the cadence, then the chord, in the voicings it lists, and asks which chord was heard', async () => {
+      const question = setUp(heard(CADENCE))
+      await flushPromises()
+
+      expect(question.status.value).toBe('ready')
+      expect(question.prompt.value).toBe('Which chord do you hear?')
+      const progression = question.view.value!.progression!
+      expect(progression.bars).toEqual(['I', 'IV', 'V', 'I', null])
+      expect(progression.subtitle).toBe('A cadence sets the key, then the chord')
+      expect(progression.source.chords.map((diagram) => diagram.diagram_id)).toEqual((['G', 'C', 'D', 'G', 'Em'] as const).map(boxId))
+      expect(progression.source.chordInstrument.instrument_id).toBe(drillVoicings.C.diagram.instrument_id)
+      expect(progression.source.bass).toBeNull()
+      expect(progression.source.tempoBpm).toBe(70)
+      expect(question.view.value!.options.map((option) => option.label)).toEqual(['ii', 'IV', 'V', 'vi'])
+      expect(question.grading.value).toEqual({ question: { way: 'cadence_then_chord', key: 'G', numeral: 'vi' }, catalog: {} })
+    })
+
+    it('says only the tonic sets the key once the student is accurate on it', async () => {
+      const question = setUp(heard([CADENCE[0]!, CADENCE[4]!]))
+      await flushPromises()
+
+      expect(question.view.value!.progression!.bars).toEqual(['I', null])
+      expect(question.view.value!.progression!.subtitle).toBe('The tonic sets the key, then the chord')
+    })
+
+    it('on bass, plays the chords’ roots under them on the bass the plan names', async () => {
+      const question = setUp(heard(CADENCE, { bass: true }))
+      await flushPromises()
+
+      expect(question.view.value!.instrument).toBe('bass')
+      expect(question.view.value!.progression!.source.bass).toEqual({ instrument: drillBass, roots: ['G', 'C', 'D', 'G', 'E'] })
+    })
+
+    it('is unavailable when the bass it plays on can’t be found, so it is skipped and never counted wrong', async () => {
+      serve({ bass: false })
+      const question = setUp(heard(CADENCE, { bass: true }))
+      await flushPromises()
+
+      expect(question.status.value).toBe('unavailable')
+    })
+
+    it('is unavailable when a chord it plays can’t be loaded', async () => {
+      serve({ failing: [boxId('Em')] })
+      const question = setUp(heard(CADENCE))
+      await flushPromises()
+
+      expect(question.status.value).toBe('unavailable')
+    })
+
+    it('asked by sight, shows the chord and asks its numeral in the key, as a numeral question does', () => {
+      const question = setUp(item('heard_chord:vi', { way: 'see_then_name', chord: 'Em', options: chordOptions('vi', 'IV', 'viio', 'iii') }))
+
+      expect(question.prompt.value).toBe('In G, which numeral is this chord?')
+      expect(question.view.value!.chord?.symbol).toBe('Em')
+      expect(question.view.value!.options.map((option) => option.label)).toEqual(['vi', 'IV', 'vii°', 'iii'])
+      expect(question.grading.value.question).toEqual({ way: 'see_then_name', key: 'G', numeral: 'vi' })
+    })
+  })
+
+  it('plays a heard progression with every bar hidden, offers the progressions by name, with the catalog to grade it', async () => {
+    const question = setUp(
+      item('heard_progression:I-V-vi-IV', {
+        way: 'progression_by_number',
+        drawn_as: 'chord_boxes',
+        playback: { tempo_bpm: 90, bass_line: false, bass_instrument_id: null, bars: (['G', 'D', 'Em', 'C'] as const).map((chord) => ({ chord, numeral: null })) },
+        voicings: boxes('G', 'D', 'Em', 'C'),
+        options: [
+          { value: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)', chart: [] },
+          { value: 'I-vi-IV-V', name: 'I–vi–IV–V (doo-wop)', chart: [] },
+        ],
+      }),
+    )
+    await flushPromises()
+
+    expect(question.status.value).toBe('ready')
+    expect(question.prompt.value).toBe('Which progression do you hear?')
+    expect(question.view.value!.progression!.bars).toEqual([null, null, null, null])
+    expect(question.view.value!.progression!.subtitle).toBe('Four chords, in a key you aren’t told')
+    expect(question.view.value!.options.map((option) => option.label)).toEqual(['I–V–vi–IV (pop)', 'I–vi–IV–V (doo-wop)'])
+    expect(question.grading.value).toEqual({
+      question: { way: 'progression_by_number', key: 'G', progression: 'I-V-vi-IV' },
+      catalog: { 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] }, 'I-vi-IV-V': { bars: ['I', 'vi', 'IV', 'V'] } },
     })
   })
 

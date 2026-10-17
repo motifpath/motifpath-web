@@ -26,23 +26,27 @@ describe('chordSteps', () => {
 })
 
 describe('bassLineSteps', () => {
-  it('plays each chord’s root, held for its bar, as low as the bass goes', () => {
+  it('plays each chord’s root on every beat of its bar, as low as the bass goes', () => {
     const steps = bassLineSteps(['C', 'G', 'E', 'F#'], BASS)
 
-    expect(steps.map((step) => step.notes.map((note) => note.midi))).toEqual([[36], [31], [28], [30]])
-    expect(steps.every((step) => step.value === 1)).toBe(true)
-    expect(steps.map((step) => step.positionIds)).toEqual([['bar-0'], ['bar-1'], ['bar-2'], ['bar-3']])
+    expect(steps.map((step) => step.notes.map((note) => note.midi))).toEqual(
+      [[36], [31], [28], [30]].flatMap((root) => [root, root, root, root]),
+    )
+    expect(steps.every((step) => step.value === 1 / 4)).toBe(true)
+    expect(steps.map((step) => step.positionIds)).toEqual(
+      ['bar-0', 'bar-1', 'bar-2', 'bar-3'].flatMap((bar) => [[bar], [bar], [bar], [bar]]),
+    )
   })
 
   it('reads a root in either spelling', () => {
-    expect(bassLineSteps(['Bb', 'A#'], BASS).map((step) => step.notes[0]!.midi)).toEqual([34, 34])
+    expect(bassLineSteps(['Bb', 'A#'], BASS).map((step) => step.notes[0]!.midi)).toEqual([34, 34, 34, 34, 34, 34, 34, 34])
   })
 
   it('rests through a bar whose root it can’t read, keeping the bars in time', () => {
-    const [bar] = bassLineSteps(['?'], BASS)
+    const beats = bassLineSteps(['?'], BASS)
 
-    expect(bar!.notes).toEqual([])
-    expect(bar!.positionIds).toEqual(['bar-0'])
+    expect(beats).toHaveLength(4)
+    expect(beats.every((beat) => beat.notes.length === 0 && beat.positionIds[0] === 'bar-0')).toBe(true)
   })
 })
 

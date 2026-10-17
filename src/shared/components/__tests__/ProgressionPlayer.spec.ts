@@ -27,6 +27,7 @@ function fakePlayback() {
     tempo: ref(72),
     noteValue: ref<TempoNoteValue>('quarters'),
     metronome: ref(false),
+    lengthMs: ref(13_333),
     toggle: vi.fn(),
     stop: vi.fn(),
   }
@@ -99,6 +100,19 @@ describe('ProgressionPlayer', () => {
     fake.state.value = 'idle'
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('playing')).toEqual([[true], [false]])
+  })
+
+  it('says, as each play starts, how long it lasts at the tempo it plays at', async () => {
+    const wrapper = mountPlayer()
+
+    fake.state.value = 'playing'
+    await wrapper.vm.$nextTick()
+    fake.state.value = 'idle'
+    fake.lengthMs.value = 10_000
+    await wrapper.vm.$nextTick()
+    fake.state.value = 'playing'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('sounded')).toEqual([[13_333], [10_000]])
   })
 
   it('says when its sound can’t be heard, so the options can wait for another try', async () => {
