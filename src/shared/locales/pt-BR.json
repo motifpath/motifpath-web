@@ -289,7 +289,13 @@
   "drillFretboard": {
     "label": "Braço do instrumento",
     "cell": "Corda {string}, casa {fret}",
-    "openCell": "Corda {string}, solta"
+    "openCell": "Corda {string}, solta",
+    "root": "Fundamental",
+    "fifth": "Quinta",
+    "rootOf": "Fundamental de {chord}",
+    "fifthOf": "Quinta de {chord}",
+    "markedPlace": "{role}, corda {string}, casa {fret}",
+    "markedOpen": "{role}, corda {string}, solta"
   },
   "songChart": {
     "key": "Tom {key}",

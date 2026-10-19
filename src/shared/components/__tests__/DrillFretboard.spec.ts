@@ -19,6 +19,58 @@ describe('DrillFretboard', () => {
     expect(wrapper.findAll('[data-test="diagram-string"]')).toHaveLength(6)
   })
 
+  it('marks the places to play, a root as R in the darker colour, each named by what it is and where', () => {
+    const bass = ['E1', 'A1', 'D2', 'G2']
+    const wrapper = mount(DrillFretboard, {
+      props: {
+        tuning: bass,
+        maxFret: 5,
+        label: 'Bass',
+        places: [
+          { string: 4, fret: 3, role: 'root' },
+          { string: 3, fret: 5, role: 'fifth' },
+        ],
+      },
+    })
+
+    const marked = wrapper.findAll('[data-test="marked-place"]')
+    expect(marked.map((place) => [place.attributes('data-string'), place.attributes('data-fret'), place.attributes('data-role')])).toEqual([
+      ['4', '3', 'root'],
+      ['3', '5', 'fifth'],
+    ])
+    expect(marked.map((place) => place.attributes('aria-label'))).toEqual(['Root, string 4, fret 3', 'Fifth, string 3, fret 5'])
+    expect(marked[0]!.text()).toBe('R')
+    expect(marked[0]!.get('circle').classes()).toContain('fill-ink')
+    expect(marked[1]!.get('circle').classes()).toContain('fill-accent')
+  })
+
+  it('names an open place as open', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: { tuning: ['E1', 'A1', 'D2', 'G2'], maxFret: 5, label: 'Bass', places: [{ string: 3, fret: 0, role: 'root' }] },
+    })
+
+    expect(wrapper.get('[data-test="marked-place"]').attributes('aria-label')).toBe('Root, string 3, open')
+  })
+
+  it('names a marked root by its chord, when the board marks more than one chord', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: {
+        tuning: ['E1', 'A1', 'D2', 'G2'],
+        maxFret: 5,
+        label: 'Bass',
+        places: [
+          { string: 3, fret: 0, role: 'root', chord: 'Am' },
+          { string: 3, fret: 3, role: 'root', chord: 'C' },
+        ],
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="marked-place"]').map((place) => place.attributes('aria-label'))).toEqual([
+      'Root of Am, string 3, open',
+      'Root of C, string 3, fret 3',
+    ])
+  })
+
   it('takes taps only on the strings asked, at every fret from the open string', async () => {
     const wrapper = mount(DrillFretboard, { props: { tuning: STANDARD, maxFret: 3, tapStrings: [6], label: 'Fretboard' } })
 

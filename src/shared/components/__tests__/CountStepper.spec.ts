@@ -4,11 +4,12 @@ import { describe, expect, it } from 'vitest'
 import CountStepper from '@/shared/components/CountStepper.vue'
 
 /** Mounts the stepper bound to a count, as a parent's v-model would hold it. */
-function mountWithModel(modelValue = 18) {
+function mountWithModel(modelValue = 18, max?: number) {
   const wrapper = mount(CountStepper, {
     props: {
       modelValue,
       label: 'clean changes',
+      ...(max === undefined ? {} : { max }),
       'onUpdate:modelValue': (value: number) => wrapper.setProps({ modelValue: value }),
     },
   })
@@ -60,5 +61,24 @@ describe('CountStepper', () => {
 
     expect(wrapper.get('[data-test="count-more"]').attributes('aria-label')).toBe('One more: clean changes')
     expect(wrapper.get('[data-test="count-fewer"]').attributes('aria-label')).toBe('One fewer: clean changes')
+  })
+
+  it('never counts past its most, by button or by key', async () => {
+    const wrapper = mountWithModel(39, 40)
+
+    await wrapper.get('[data-test="count-more"]').trigger('click')
+    expect(wrapper.get('[role="spinbutton"]').text()).toBe('40')
+    expect(wrapper.get('[role="spinbutton"]').attributes('aria-valuemax')).toBe('40')
+    expect(wrapper.get('[data-test="count-more"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[role="spinbutton"]').trigger('keydown', { key: 'ArrowUp' })
+    expect(wrapper.get('[role="spinbutton"]').text()).toBe('40')
+  })
+
+  it('has no most unless given one', () => {
+    const wrapper = mountWithModel(18)
+
+    expect(wrapper.get('[role="spinbutton"]').attributes('aria-valuemax')).toBeUndefined()
+    expect(wrapper.get('[data-test="count-more"]').attributes('disabled')).toBeUndefined()
   })
 })

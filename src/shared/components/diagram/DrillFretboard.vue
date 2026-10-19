@@ -5,7 +5,9 @@
  * marks. It always fits its container, so a timed answer never waits on scrolling. A drill asked in
  * a fret window takes taps only there, each place at least a touch target wide, the open string's
  * too: the whole neck is drawn when it fits at that size, the rest dimmed; otherwise only the window.
- * Each cell that takes a tap is named by where it is, never by its note.
+ * Each cell that takes a tap is named by where it is, never by its note. Places to play, such as a
+ * chord's root and fifth, are marked and named by what they are and where: a root as R, in the
+ * darker colour.
  */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
@@ -21,6 +23,13 @@ import type { FretWindowRange } from '@/shared/utils/fretWindow'
 
 export interface CellMark extends CellPlace {
   mark: AnswerMarkKind
+}
+
+/** A place marked for the student to play, by what it is in the chord. */
+export interface MarkedPlace extends CellPlace {
+  role: 'root' | 'fifth'
+  /** The chord it belongs to, named when a board marks more than one. */
+  chord?: string
 }
 
 const props = withDefaults(
@@ -42,8 +51,10 @@ const props = withDefaults(
     /** Takes no more taps, once an answer is in. */
     locked?: boolean
     marks?: CellMark[]
+    /** Places to play, marked. */
+    places?: MarkedPlace[]
   }>(),
-  { fretWindow: null, lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [] },
+  { fretWindow: null, lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [], places: () => [] },
 )
 
 const emit = defineEmits<{ tap: [place: CellPlace] }>()
@@ -131,6 +142,14 @@ function cellLabel(place: CellPlace): string {
   return place.fret === 0 ? t('drillFretboard.openCell', { string: place.string }) : t('drillFretboard.cell', { string: place.string, fret: place.fret })
 }
 
+function placeLabel(place: MarkedPlace): string {
+  const role = place.chord
+    ? t(place.role === 'root' ? 'drillFretboard.rootOf' : 'drillFretboard.fifthOf', { chord: place.chord })
+    : t(place.role === 'root' ? 'drillFretboard.root' : 'drillFretboard.fifth')
+  const where = { role, string: place.string, fret: place.fret }
+  return place.fret === 0 ? t('drillFretboard.markedOpen', where) : t('drillFretboard.markedPlace', where)
+}
+
 function tap(place: CellPlace) {
   if (!props.locked) emit('tap', place)
 }
@@ -178,6 +197,34 @@ function tap(place: CellPlace) {
         class="fill-accent stroke-surface"
         stroke-width="2"
       />
+
+      <g
+        v-for="place in places"
+        :key="`place-${place.string}:${place.fret}`"
+        data-test="marked-place"
+        :data-string="place.string"
+        :data-fret="place.fret"
+        :data-role="place.role"
+        role="img"
+        :aria-label="placeLabel(place)"
+      >
+        <circle
+          :cx="cx(place.fret)"
+          :cy="cy(place.string)"
+          :r="MARKER_RADIUS"
+          :class="place.role === 'root' ? 'fill-ink' : 'fill-accent'"
+          class="stroke-surface"
+          stroke-width="2"
+        />
+        <text
+          v-if="place.role === 'root'"
+          :x="cx(place.fret)"
+          :y="cy(place.string) + 4"
+          text-anchor="middle"
+          aria-hidden="true"
+          class="fill-surface text-[11px] font-bold"
+        >R</text>
+      </g>
 
       <g v-for="mark in marks" :key="`${mark.string}:${mark.fret}`" data-test="cell-mark" :data-string="mark.string" :data-fret="mark.fret">
         <AnswerMark :mark="mark.mark" :cx="cx(mark.fret)" :cy="cy(mark.string)" :ring-radius="MARKER_RADIUS + 2" :badge-offset="BADGE_OFFSET" />

@@ -19,3 +19,6 @@ export const FastTake: Story = { args: { bpm: 180 } }
 
 /** A take in eighths: the prompt says the note value it was played at. */
 export const InEighths: Story = { args: { bpm: 60, noteValue: 'eighths' } }
+
+/** After a single chord: asked by its name, with no take to restart. */
+export const AfterAChord: Story = { args: { bpm: undefined, chord: 'D' } }
