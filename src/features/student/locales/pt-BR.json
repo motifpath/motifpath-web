@@ -258,6 +258,12 @@
     "findWhereToStart": "Encontrar por onde começar"
   },
   "sessionPlan": {
+    "chords": {
+      "voicing": "Toque {chord} limpo",
+      "change": "{from} e {to}, ida e volta",
+      "rootFifth": "Toque a fundamental e a quinta de {chord}",
+      "rootChange": "Fundamentais de {from} e {to}, ida e volta"
+    },
     "title": "O plano de hoje",
     "start": "Vamos lá",
     "playAlong": "Tocar junto",
@@ -300,6 +306,7 @@
     "whatYouPractised": "O que você praticou",
     "played": "até {tempo} · {rating}",
     "counted": "{right} de {answered} certas",
+    "changes": "{count} trocas limpas a {tempo} BPM · {rating}",
     "right": "Certo",
     "notQuite": "Não foi dessa vez",
     "nothingAnswered": "Nada respondido ou avaliado desta vez. Toda sessão conta.",

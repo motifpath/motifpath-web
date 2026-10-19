@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
+import { changeMinuteRating } from '@/features/student/utils/changeMinute'
 import { ladderFloorIn, nextTempo, speedOf } from '@/features/student/utils/tempoLadder'
 import type { PlayedTempo, RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import { useApi } from '@/shared/composables/useApi'
@@ -95,8 +96,15 @@ function drillTemplateOf(item: Item): string | null {
   return null
 }
 
-/** What became of an item the student got to: answered, right or not, or played take by take. */
-export type ItemOutcome = { kind: 'answered'; correct: boolean } | { kind: 'played'; takes: RatedTake[] }
+/**
+ * What became of an item the student got to: answered, right or not, played take by take, a chord
+ * rated, or a minute of changes counted.
+ */
+export type ItemOutcome =
+  | { kind: 'answered'; correct: boolean }
+  | { kind: 'played'; takes: RatedTake[] }
+  | { kind: 'rated'; rating: TakeRating }
+  | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
 
 /** A play-along just finished, handing over to the next item. */
 export interface Handoff {
@@ -140,6 +148,10 @@ export interface PracticeSessionRunOptions {
  * family it is, or tapping the degree asked on it, graded against the positions
  * of its diagram, once that's loaded. A harmony question is answered once among the options its
  * plan gives, graded and sent with the way it was asked and the options as shown.
+ *
+ * A single chord, or a chord's root and fifth on bass, is rated once and moves on. A minute of
+ * changes between two chords (or two roots) is saved once with the tempo it was played at and the
+ * clean changes counted, never more than the minute's beats; its rating follows from the two.
  *
  * After a play-along's last take, when another item follows, the run hands
  * over: it says what was played and how fast, and what's next, and moves on
@@ -393,6 +405,43 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     else nextItem()
   }
 
+  /** Records the student's rating of a single chord, or of a root and fifth, and moves on. */
+  function rateChord(rating: TakeRating) {
+    const item = current.value
+    if (!active() || !item || (!item.chord_voicing && !item.root_fifth)) return
+
+    markAnswered(item)
+    recordOutcome({ kind: 'rated', rating })
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { response_type: 'self_rating', rating },
+    })
+    nextItem()
+  }
+
+  /**
+   * Records a minute of chord or root changes, one change on every beat: the tempo it was played
+   * at and the clean changes counted, rated by their share of the beats, and moves on.
+   */
+  function saveChangeMinute(tempoBpm: number, cleanChanges: number) {
+    const item = current.value
+    if (!active() || !item || (!item.chord_change && !item.root_change)) return
+    if (cleanChanges < 0 || cleanChanges > tempoBpm) return
+
+    const rating = changeMinuteRating(cleanChanges, tempoBpm)
+    markAnswered(item)
+    recordOutcome({ kind: 'changes', tempoBpm, cleanChanges, rating })
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { response_type: 'self_rating', rating, tempo_bpm: tempoBpm, changes_per_minute: cleanChanges },
+    })
+    nextItem()
+  }
+
   /** Moves on from a play-along's handoff to the next item. */
   function continueToNext() {
     if (!handoff.value) return
@@ -572,6 +621,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     setTempo,
     setNoteValue,
     rate,
+    rateChord,
+    saveChangeMinute,
     answer,
     clipPlaying,
     skip,

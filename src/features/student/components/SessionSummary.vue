@@ -54,6 +54,10 @@ function resultText(result: SummaryResult): string {
   if (result.kind === 'played') {
     return t('sessionSummary.played', { tempo: asPlayed(result.fastestBpm, result.fastestNoteValue), rating: t(`playAlongTake.ratings.${result.rating}`) })
   }
+  if (result.kind === 'rated') return t(`playAlongTake.ratings.${result.rating}`)
+  if (result.kind === 'changes') {
+    return t('sessionSummary.changes', { count: result.cleanChanges, tempo: result.tempoBpm, rating: t(`playAlongTake.ratings.${result.rating}`) })
+  }
   if (result.kind === 'counted') return t('sessionSummary.counted', { right: result.right, answered: result.answered })
   return result.correct ? t('sessionSummary.right') : t('sessionSummary.notQuite')
 }

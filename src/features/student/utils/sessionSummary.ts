@@ -11,6 +11,10 @@ type Item = components['schemas']['PracticeSessionItem']
 export type SummaryResult =
   /** A play-along: the fastest tempo it was played at, by effective speed, as played, and how that take went. */
   | { kind: 'played'; fastestBpm: number; fastestNoteValue: TempoNoteValue; rating: TakeRating }
+  /** A single chord, or a root and fifth, as the student rated it. */
+  | { kind: 'rated'; rating: TakeRating }
+  /** A minute of changes: the clean changes counted at the tempo played, and the rating they give. */
+  | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
   /** One item answered once. */
   | { kind: 'answered'; correct: boolean }
   /** A drill's fretboard cells or diagram shapes, answered many to a session. */
@@ -22,7 +26,7 @@ export interface SummaryRow {
   /** The item, or the first cell or shape of the drill, which names the line. */
   item: Item
   result: SummaryResult
-  /** Whether the line reads as gone well: played, right, or at least half right. */
+  /** Whether the line reads as gone well: played or rated, right, or at least half right. */
   good: boolean
 }
 
@@ -58,6 +62,8 @@ export function summaryRows(items: Item[], outcomes: ReadonlyMap<number, ItemOut
       const take = fastestTake(outcome.takes)
       const result = { kind: 'played' as const, fastestBpm: take.bpm, fastestNoteValue: take.noteValue ?? 'quarters', rating: take.rating }
       rows.push({ key: row.key, item: row.item, result, good: true })
+    } else if (outcome.kind === 'rated' || outcome.kind === 'changes') {
+      rows.push({ key: row.key, item: row.item, result: outcome, good: true })
     } else {
       rows.push({ key: row.key, item: row.item, result: { kind: 'answered', correct: outcome.correct }, good: outcome.correct })
     }

@@ -82,6 +82,21 @@ describe('SessionSummary', () => {
     expect(mountSummary({ rows: [eighths] }).get('[data-test="summary-row-result"]').text()).toBe('up to 60 BPM in eighths · Almost')
   })
 
+  it('says how a chord was rated, and a minute of changes by its clean changes and tempo', () => {
+    const chordRows: SummaryRow[] = [
+      { key: 'chord_voicing:am', item: item('chord_voicing:am', 'chord_voicing'), result: { kind: 'rated', rating: 'clean' }, good: true },
+      {
+        key: 'chord_change:am:c',
+        item: item('chord_change:am:c', 'chord_change'),
+        result: { kind: 'changes', tempoBpm: 60, cleanChanges: 42, rating: 'almost' },
+        good: true,
+      },
+    ]
+
+    const results = mountSummary({ rows: chordRows }).findAll('[data-test="summary-row-result"]')
+    expect(results.map((result) => result.text())).toEqual(['Clean', '42 clean changes at 60 BPM · Almost'])
+  })
+
   it('lists each item with how it went', () => {
     const wrapper = mountSummary()
 

@@ -96,6 +96,73 @@ const twoItems = plan([
   playAlong(DUE, 'due', { start: 60, target: 100 }),
 ])
 
+const AM = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+const C_OPEN = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+const BASS_ID = '33333333-3333-4333-8333-333333333333'
+
+function minute(fields: Partial<NonNullable<Item['chord_change']>['minute']> = {}): NonNullable<Item['chord_change']>['minute'] {
+  return { start_tempo_bpm: 45, target_changes_per_minute: 60, best_clean_changes_per_minute: null, last_changes_per_minute: null, ...fields }
+}
+
+function chordVoicingItem(diagramId: string, symbol: string): Item {
+  return {
+    item_key: `chord_voicing:${diagramId}`,
+    kind: 'chord_voicing',
+    rung: 'play_clean',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 20,
+    chord_voicing: { diagram_id: diagramId, chord_symbol: symbol },
+  }
+}
+
+function chordChangeItem(fields: Partial<NonNullable<Item['chord_change']>['minute']> = {}): Item {
+  return {
+    item_key: `chord_change:${AM}:${C_OPEN}`,
+    kind: 'chord_change',
+    rung: 'play_in_time',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 90,
+    chord_change: { from_diagram_id: AM, to_diagram_id: C_OPEN, from_chord_symbol: 'Am', to_chord_symbol: 'C', minute: minute(fields) },
+  }
+}
+
+function rootFifthItem(): Item {
+  return {
+    item_key: `root_fifth:${BASS_ID}:Am`,
+    kind: 'root_fifth',
+    rung: 'play_clean',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 20,
+    root_fifth: { layout_instrument_id: BASS_ID, chord_symbol: 'Am', root: { string: 3, fret: 0 }, fifth: { string: 2, fret: 2 } },
+  }
+}
+
+function rootChangeItem(): Item {
+  return {
+    item_key: `root_change:${BASS_ID}:Am:C`,
+    kind: 'root_change',
+    rung: 'play_in_time',
+    reason: 'new',
+    node_id: null,
+    level: 'new',
+    estimated_seconds: 90,
+    root_change: {
+      layout_instrument_id: BASS_ID,
+      from_chord_symbol: 'Am',
+      to_chord_symbol: 'C',
+      from_root: { string: 3, fret: 0 },
+      to_root: { string: 3, fret: 3 },
+      minute: minute(),
+    },
+  }
+}
+
 function tracked(eventType: string) {
   return track.mock.calls.map(([event]) => event).filter((event) => event.event_type === eventType)
 }
@@ -1413,6 +1480,113 @@ describe('usePracticeSessionRun', () => {
         expect(run.askingFelt.value).toBe(false)
         expect(tracked('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true, felt_ratings: [] })])
       })
+    })
+  })
+
+  describe('chords played in hand', () => {
+    it('sends a single chord’s rating with no tempo and no count, then moves on', () => {
+      const run = usePracticeSessionRun(plan([chordVoicingItem(AM, 'Am'), exerciseItem('e1', 'due')]))
+      run.start()
+
+      run.rateChord('almost')
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: `chord_voicing:${AM}`,
+          response: { response_type: 'self_rating', rating: 'almost' },
+        },
+      ])
+      expect(run.index.value).toBe(1)
+      expect(run.answeredCount.value).toBe(1)
+    })
+
+    it('sends a root and fifth on bass the same way', () => {
+      const run = usePracticeSessionRun(plan([rootFifthItem()], BASS_ID))
+      run.start()
+
+      run.rateChord('clean')
+
+      expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'self_rating', rating: 'clean' })
+    })
+
+    it('rates only a single chord or a root and fifth this way', () => {
+      const run = usePracticeSessionRun(plan([chordChangeItem()]))
+      run.start()
+
+      run.rateChord('clean')
+
+      expect(tracked('practice.item_answered')).toEqual([])
+      expect(run.index.value).toBe(0)
+    })
+
+    it('sends a minute of changes with the tempo played, the count and the rating they give', () => {
+      const run = usePracticeSessionRun(plan([chordChangeItem(), exerciseItem('e1', 'due')]))
+      run.start()
+
+      run.saveChangeMinute(60, 42)
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: `chord_change:${AM}:${C_OPEN}`,
+          response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60, changes_per_minute: 42 },
+        },
+      ])
+      expect(run.index.value).toBe(1)
+    })
+
+    it('sends the tempo the student played at, not the plan’s', () => {
+      const run = usePracticeSessionRun(plan([chordChangeItem({ start_tempo_bpm: 45 })]))
+      run.start()
+
+      run.saveChangeMinute(50, 48)
+
+      expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'self_rating', rating: 'clean', tempo_bpm: 50, changes_per_minute: 48 })
+    })
+
+    it('sends a minute of root changes on bass the same way', () => {
+      const run = usePracticeSessionRun(plan([rootChangeItem()], BASS_ID))
+      run.start()
+
+      run.saveChangeMinute(30, 30)
+
+      expect(tracked('practice.item_answered')[0]).toMatchObject({
+        item_key: `root_change:${BASS_ID}:Am:C`,
+        response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 30, changes_per_minute: 30 },
+      })
+    })
+
+    it('never sends more clean changes than the minute had beats', () => {
+      const run = usePracticeSessionRun(plan([chordChangeItem()]))
+      run.start()
+
+      run.saveChangeMinute(40, 41)
+
+      expect(tracked('practice.item_answered')).toEqual([])
+      expect(run.index.value).toBe(0)
+    })
+
+    it('saves a minute only for a chord change or a root change', () => {
+      const run = usePracticeSessionRun(plan([chordVoicingItem(AM, 'Am')]))
+      run.start()
+
+      run.saveChangeMinute(40, 20)
+
+      expect(tracked('practice.item_answered')).toEqual([])
+    })
+
+    it('keeps how a chord went and how many clean changes a minute had, for the summary', () => {
+      const run = usePracticeSessionRun(plan([chordVoicingItem(AM, 'Am'), chordChangeItem()]))
+      run.start()
+
+      run.rateChord('clean')
+      run.saveChangeMinute(60, 42)
+
+      expect(run.outcomes.value.get(0)).toEqual({ kind: 'rated', rating: 'clean' })
+      expect(run.outcomes.value.get(1)).toEqual({ kind: 'changes', tempoBpm: 60, cleanChanges: 42, rating: 'almost' })
     })
   })
 

@@ -119,6 +119,20 @@ describe('summaryRows', () => {
     expect(new Set(rows.map((row) => row.key)).size).toBe(2)
   })
 
+  it('gives a chord how the student rated it, and a minute of changes its count and tempo', () => {
+    const am = item('chord_voicing:am', 'chord_voicing')
+    const change = item('chord_change:am:c', 'chord_change')
+    const outcomes = new Map<number, ItemOutcome>([
+      [0, { kind: 'rated', rating: 'almost' }],
+      [1, { kind: 'changes', tempoBpm: 60, cleanChanges: 42, rating: 'almost' }],
+    ])
+
+    expect(summaryRows([am, change], outcomes)).toEqual([
+      { key: 'chord_voicing:am', item: am, result: { kind: 'rated', rating: 'almost' }, good: true },
+      { key: 'chord_change:am:c', item: change, result: { kind: 'changes', tempoBpm: 60, cleanChanges: 42, rating: 'almost' }, good: true },
+    ])
+  })
+
   it('has nothing to list when nothing was answered or rated', () => {
     expect(summaryRows([item('exercise:third', 'exercise')], new Map())).toEqual([])
   })

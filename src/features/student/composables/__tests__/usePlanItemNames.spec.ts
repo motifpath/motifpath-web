@@ -191,4 +191,36 @@ describe('usePlanItemNames', () => {
     expect(labelOf(harmony('heard_chord', 'see_then_name'))).toBe('Numbers of chords')
     expect(labelOf(harmony('heard_progression', 'progression_by_number'))).toBe('Progressions by ear')
   })
+
+  it('names a chord item by the chords it plays: they are named, since playing them is the skill', () => {
+    const base = { rung: 'play_clean', reason: 'new', node_id: null, level: 'new', estimated_seconds: 20 } as const
+    const minute = { start_tempo_bpm: 40, target_changes_per_minute: 60, best_clean_changes_per_minute: null, last_changes_per_minute: null }
+    const voicing: Item = { ...base, item_key: 'chord_voicing:d', kind: 'chord_voicing', chord_voicing: { diagram_id: 'd', chord_symbol: 'D' } }
+    const change: Item = {
+      ...base,
+      item_key: 'chord_change:am:c',
+      kind: 'chord_change',
+      rung: 'play_in_time',
+      chord_change: { from_diagram_id: 'am', to_diagram_id: 'c', from_chord_symbol: 'Am', to_chord_symbol: 'C', minute },
+    }
+    const rootFifth: Item = {
+      ...base,
+      item_key: 'root_fifth:bass:G',
+      kind: 'root_fifth',
+      root_fifth: { layout_instrument_id: 'bass', chord_symbol: 'G', root: { string: 4, fret: 3 }, fifth: { string: 3, fret: 5 } },
+    }
+    const rootChange: Item = {
+      ...base,
+      item_key: 'root_change:bass:Am:C',
+      kind: 'root_change',
+      rung: 'play_in_time',
+      root_change: { layout_instrument_id: 'bass', from_chord_symbol: 'Am', to_chord_symbol: 'C', from_root: { string: 3, fret: 0 }, to_root: { string: 3, fret: 3 }, minute },
+    }
+    const { nameOf, labelOf } = setUp([voicing, change, rootFifth, rootChange])
+
+    expect(nameOf(voicing)).toBe('Play D clean')
+    expect(labelOf(change)).toBe('Am and C, back and forth')
+    expect(labelOf(rootFifth)).toBe('Play the root and fifth of G')
+    expect(labelOf(rootChange)).toBe('Am and C roots, back and forth')
+  })
 })

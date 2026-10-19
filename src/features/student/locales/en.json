@@ -258,6 +258,12 @@
     "findWhereToStart": "Find where to start"
   },
   "sessionPlan": {
+    "chords": {
+      "voicing": "Play {chord} clean",
+      "change": "{from} and {to}, back and forth",
+      "rootFifth": "Play the root and fifth of {chord}",
+      "rootChange": "{from} and {to} roots, back and forth"
+    },
     "title": "Today's plan",
     "start": "Let's go",
     "playAlong": "Play-along",
@@ -300,6 +306,7 @@
     "whatYouPractised": "What you practised",
     "played": "up to {tempo} · {rating}",
     "counted": "{right} of {answered} right",
+    "changes": "{count} clean changes at {tempo} BPM · {rating}",
     "right": "Right",
     "notQuite": "Not quite",
     "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
