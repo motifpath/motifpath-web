@@ -6985,9 +6985,10 @@ export interface components {
         };
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
-         *     one of fretboard_cell, exercise, play_along, diagram_shape and generated_choice is
-         *     present, matching kind: generated_choice for a diatonic chord, a chord function or a
-         *     chart progression.
+         *     one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
+         *     chord_voicing, chord_change, root_fifth and root_change is present, matching kind:
+         *     generated_choice for a diatonic chord, a chord function, a chart progression, a heard
+         *     chord or a heard progression.
          */
         PracticeSessionItem: {
             item_key: components["schemas"]["PracticeItemKey"];
@@ -7103,6 +7104,10 @@ export interface components {
                 asked_interval: components["schemas"]["ShapeInterval"] | null;
             };
             generated_choice?: components["schemas"]["GeneratedChoiceQuestion"];
+            chord_voicing?: components["schemas"]["PlannedChordVoicing"];
+            chord_change?: components["schemas"]["PlannedChordChange"];
+            root_fifth?: components["schemas"]["PlannedRootFifth"];
+            root_change?: components["schemas"]["PlannedRootChange"];
         };
         /** @description The home for one instrument, derived from the student's evidence. */
         PracticeSummary: {
@@ -7889,6 +7894,105 @@ export interface components {
              */
             playback?: components["schemas"]["GeneratedChoicePlayback"] | null;
         };
+        /**
+         * @description A single chord to fret, strum once and rate (kind chord_voicing). The chord is named:
+         *     playing it is the skill. The take is rated by the student and has no measure.
+         */
+        PlannedChordVoicing: {
+            /**
+             * Format: uuid
+             * @description The chord catalog voicing diagram to play, drawn as its chord box.
+             */
+            diagram_id: string;
+            /** @description The chord's symbol, such as Am, shown with the box. */
+            chord_symbol: string;
+        };
+        /**
+         * @description The tempo ladder and the student's record for a minute of changes between two chords (or
+         *     two roots), one change on every beat, so a tempo is also the number of changes the minute
+         *     asks for. The take sends the tempo played and the clean changes counted.
+         */
+        ChangeMinute: {
+            /**
+             * @description The tempo to start the minute at, from the ladder: the tempo of the item's last minute,
+             *     5 higher after two clean minutes in a row and 5 lower after a struggled one, never below
+             *     20; 40 when the item was never played. The student may set another before starting.
+             */
+            start_tempo_bpm: number;
+            /** @description The clean changes a minute that count as fully fluent, the same for every pair. */
+            target_changes_per_minute: number;
+            /**
+             * @description The most clean changes the student counted in a clean minute since their latest teacher
+             *     review. Null when they have no clean minute yet.
+             */
+            best_clean_changes_per_minute: number | null;
+            /**
+             * @description The clean changes counted in the item's last minute, where the count starts. Null when
+             *     the item was never played.
+             */
+            last_changes_per_minute: number | null;
+        };
+        /**
+         * @description A minute of changes between two chords, back and forth (kind chord_change). Both chords are
+         *     named and drawn as their chord boxes.
+         */
+        PlannedChordChange: {
+            /**
+             * Format: uuid
+             * @description The first chord's voicing diagram, the first of the item key.
+             */
+            from_diagram_id: string;
+            /**
+             * Format: uuid
+             * @description The second chord's voicing diagram.
+             */
+            to_diagram_id: string;
+            /** @description The first chord's symbol. */
+            from_chord_symbol: string;
+            /** @description The second chord's symbol. */
+            to_chord_symbol: string;
+            minute: components["schemas"]["ChangeMinute"];
+        };
+        /** @description One place on a fretboard layout. */
+        FretPlace: {
+            /** @description The string, 1 being the highest-pitched. */
+            string: number;
+            /** @description The fret; 0 is the open string. */
+            fret: number;
+        };
+        /**
+         * @description A chord's root and fifth to play on a bass layout and rate (kind root_fifth). Both places
+         *     are marked: playing them is the skill. The take is rated by the student and has no measure.
+         */
+        PlannedRootFifth: {
+            /**
+             * Format: uuid
+             * @description The instrument whose fretboard layout and tuning the places belong to.
+             */
+            layout_instrument_id: string;
+            /** @description The chord's symbol, such as Am. */
+            chord_symbol: string;
+            root: components["schemas"]["FretPlace"];
+            fifth: components["schemas"]["FretPlace"];
+        };
+        /**
+         * @description A minute of changes between two chords' roots on a bass layout (kind root_change). Both
+         *     roots are marked.
+         */
+        PlannedRootChange: {
+            /**
+             * Format: uuid
+             * @description The instrument whose fretboard layout and tuning the places belong to.
+             */
+            layout_instrument_id: string;
+            /** @description The first chord's symbol, the first of the item key. */
+            from_chord_symbol: string;
+            /** @description The second chord's symbol. */
+            to_chord_symbol: string;
+            from_root: components["schemas"]["FretPlace"];
+            to_root: components["schemas"]["FretPlace"];
+            minute: components["schemas"]["ChangeMinute"];
+        };
     };
     responses: never;
     parameters: {
@@ -8104,6 +8208,12 @@ export type SchemaChordFunction = components['schemas']['ChordFunction'];
 export type SchemaGeneratedChordDrawing = components['schemas']['GeneratedChordDrawing'];
 export type SchemaGeneratedChoicePlayback = components['schemas']['GeneratedChoicePlayback'];
 export type SchemaGeneratedChoiceQuestion = components['schemas']['GeneratedChoiceQuestion'];
+export type SchemaPlannedChordVoicing = components['schemas']['PlannedChordVoicing'];
+export type SchemaChangeMinute = components['schemas']['ChangeMinute'];
+export type SchemaPlannedChordChange = components['schemas']['PlannedChordChange'];
+export type SchemaFretPlace = components['schemas']['FretPlace'];
+export type SchemaPlannedRootFifth = components['schemas']['PlannedRootFifth'];
+export type SchemaPlannedRootChange = components['schemas']['PlannedRootChange'];
 export type ParameterAlphaWeek = components['parameters']['AlphaWeek'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
