@@ -257,6 +257,28 @@
     "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument.",
     "findWhereToStart": "Find where to start"
   },
+  "sessionChord": {
+    "voicingHint": "Fret it, strum once and let it ring.",
+    "rootFifthHint": "Root, then fifth, each note ringing its full length.",
+    "bassBoard": "Bass board with the places to play for {chord}",
+    "bassChangeBoard": "Bass board with the roots of {from} and {to}",
+    "unavailable": "This chord can’t be shown right now. Skip it — it won’t count against you.",
+    "skip": "Skip",
+    "everyBeat": "Change on every beat",
+    "everyBeatDetail": "change on every beat",
+    "best": "best {count} clean changes",
+    "noBest": "no clean minute yet",
+    "goal": "Goal {count} changes a minute",
+    "readyHint": "Set the tempo first: the metronome ticks while you try it. Start the minute gives a bar of count-in.",
+    "start": "Start the minute",
+    "runningHint": "Nothing to tap while the minute runs. Keep changing on every beat.",
+    "countIn": "Count-in",
+    "timeUp": "Time is up. Count only the changes where every string rang.",
+    "timeUpBass": "Time is up. Count only the changes where the root rang clean.",
+    "cleanChanges": "clean changes",
+    "cleanChangesBest": "clean changes · best {count}",
+    "save": "Save {count} change | Save {count} changes"
+  },
   "sessionPlan": {
     "chords": {
       "voicing": "Play {chord} clean",
@@ -321,6 +343,7 @@
     "playing": "Play along. The take ends by itself. Wrong tempo? Restart goes back to the tempo without rating.",
     "stopEarly": "Stop early",
     "ratePrompt": "How was that take at {tempo}?",
+    "chordPrompt": "How did {chord} sound?",
     "ratings": {
       "struggled": "Struggled",
       "almost": "Almost",

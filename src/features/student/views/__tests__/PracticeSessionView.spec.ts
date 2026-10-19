@@ -103,6 +103,24 @@ const SessionGeneratedChoiceStub = defineComponent({
   },
 })
 
+const SessionChordVoicingStub = defineComponent({
+  name: 'SessionChordVoicing',
+  props: { item: { type: Object, required: true }, tuning: { type: Array, default: undefined }, instrumentName: { type: String, default: undefined } },
+  emits: ['rate', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'chord' })
+  },
+})
+
+const SessionChordChangeStub = defineComponent({
+  name: 'SessionChordChange',
+  props: { item: { type: Object, required: true }, tuning: { type: Array, default: undefined }, instrumentName: { type: String, default: undefined } },
+  emits: ['save', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'chord-change' })
+  },
+})
+
 const TapCheckStub = defineComponent({
   name: 'TapCheck',
   props: { tuning: { type: Array, required: true } },
@@ -279,6 +297,48 @@ function harmonyItem(): Item {
   }
 }
 
+const AM_BOX = 'a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1'
+const C_BOX = 'c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1'
+const chordMinute = { start_tempo_bpm: 45, target_changes_per_minute: 60, best_clean_changes_per_minute: 16, last_changes_per_minute: 18 }
+const chordBase = { reason: 'new', node_id: null, level: 'new' } as const
+
+function chordVoicingItem(): Item {
+  return { ...chordBase, item_key: `chord_voicing:${AM_BOX}`, kind: 'chord_voicing', rung: 'play_clean', estimated_seconds: 20, chord_voicing: { diagram_id: AM_BOX, chord_symbol: 'Am' } }
+}
+
+function chordChangeItem(): Item {
+  return {
+    ...chordBase,
+    item_key: `chord_change:${AM_BOX}:${C_BOX}`,
+    kind: 'chord_change',
+    rung: 'play_in_time',
+    estimated_seconds: 90,
+    chord_change: { from_diagram_id: AM_BOX, to_diagram_id: C_BOX, from_chord_symbol: 'Am', to_chord_symbol: 'C', minute: chordMinute },
+  }
+}
+
+function rootFifthItem(): Item {
+  return {
+    ...chordBase,
+    item_key: `root_fifth:${BASS}:G`,
+    kind: 'root_fifth',
+    rung: 'play_clean',
+    estimated_seconds: 20,
+    root_fifth: { layout_instrument_id: BASS, chord_symbol: 'G', root: { string: 4, fret: 3 }, fifth: { string: 3, fret: 5 } },
+  }
+}
+
+function rootChangeItem(): Item {
+  return {
+    ...chordBase,
+    item_key: `root_change:${BASS}:Am:C`,
+    kind: 'root_change',
+    rung: 'play_in_time',
+    estimated_seconds: 90,
+    root_change: { layout_instrument_id: BASS, from_chord_symbol: 'Am', to_chord_symbol: 'C', from_root: { string: 3, fret: 0 }, to_root: { string: 3, fret: 3 }, minute: chordMinute },
+  }
+}
+
 const SHAPE_BOARD = { stringCount: 6, positions: [{ string: 5, fret: 3, interval: 'R' }] }
 
 function mountView() {
@@ -291,6 +351,8 @@ function mountView() {
         SessionFretboardCell: SessionFretboardCellStub,
         SessionDiagramShape: SessionDiagramShapeStub,
         SessionGeneratedChoice: SessionGeneratedChoiceStub,
+        SessionChordVoicing: SessionChordVoicingStub,
+        SessionChordChange: SessionChordChangeStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
@@ -550,6 +612,68 @@ describe('PracticeSessionView', () => {
       await startSession(wrapper, plan([shapeItem(GUITAR), cellItem(4, 2, 'name_the_note', BASS)], { tap_check_due: true }))
 
       expect(wrapper.getComponent(TapCheckStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+    })
+  })
+
+  describe('with chords played in hand', () => {
+    it('shows a single chord, and records its rating with no tempo and no count', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([chordVoicingItem(), shapeItem()]))
+
+      expect(wrapper.getComponent(SessionChordVoicingStub).props('item')).toMatchObject({ item_key: `chord_voicing:${AM_BOX}` })
+      wrapper.getComponent(SessionChordVoicingStub).vm.$emit('rate', 'almost')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ item_key: `chord_voicing:${AM_BOX}`, response: { response_type: 'self_rating', rating: 'almost' } }),
+      ])
+      expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
+    })
+
+    it('records a minute of changes with the tempo played, the count and the rating they give', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([chordChangeItem(), shapeItem()]))
+
+      wrapper.getComponent(SessionChordChangeStub).vm.$emit('save', 50, 48)
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 50, changes_per_minute: 48 } }),
+      ])
+      expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
+    })
+
+    it('draws a bass item on its layout’s board', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([rootFifthItem(), rootChangeItem()], { instrument_id: BASS }))
+
+      expect(wrapper.getComponent(SessionChordVoicingStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+      wrapper.getComponent(SessionChordVoicingStub).vm.$emit('rate', 'clean')
+      await flushPromises()
+
+      expect(wrapper.getComponent(SessionChordChangeStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+    })
+
+    it('sends a chord that can’t be shown as not answered and moves on', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([chordChangeItem(), shapeItem()]))
+
+      wrapper.getComponent(SessionChordChangeStub).vm.$emit('skip', 'unavailable')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([expect.objectContaining({ response: { response_type: 'not_answered', reason: 'unavailable' } })])
+      expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
+    })
+
+    it('sends no answer for a minute of changes when the student leaves the session during it', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([chordChangeItem(), shapeItem()]))
+
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([])
+      expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true })])
     })
   })
 

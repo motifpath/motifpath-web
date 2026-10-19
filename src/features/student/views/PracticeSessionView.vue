@@ -3,8 +3,8 @@
  * A practice session, with an instrument in hand or in the head. The student says which
  * instrument they're holding, or none, and how long they have; core composes the session, and
  * today's plan shows what it holds before the student starts it. A tap check comes first when the
- * plan asks for one. Then each exercise, fretboard cell and diagram shape is answered and each play-along played
- * take by take, with a card naming what's next after it, ending with one that applies what was
+ * plan asks for one. Then each exercise, fretboard cell and diagram shape is answered, each play-along played
+ * take by take, with a card naming what's next after it, each chord rated and each minute of changes counted, ending with one that applies what was
  * practised, until the plan runs out or the student ends it. After the last item, the student is asked how the
  * drills they practised felt. A session left mid-way, by navigating away or closing or reloading
  * the page, ends as left early.
@@ -24,6 +24,8 @@ import PracticeSetup from '@/features/student/components/PracticeSetup.vue'
 import SessionSummary from '@/features/student/components/SessionSummary.vue'
 import type { SetupProblem } from '@/features/student/components/PracticeSetup.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
+import SessionChordChange from '@/features/student/components/SessionChordChange.vue'
+import SessionChordVoicing from '@/features/student/components/SessionChordVoicing.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
 import SessionGeneratedChoice from '@/features/student/components/SessionGeneratedChoice.vue'
 import SessionExercise from '@/features/student/components/SessionExercise.vue'
@@ -118,10 +120,21 @@ const currentCellTuning = computed(() => {
   return cell ? tuningOf(cell.layout_instrument_id) : undefined
 })
 
-/** The instrument whose fretboard a cell or a shape is on. */
+/** The instrument whose fretboard a cell, a shape or a bass chord item is on. */
 function fretboardOf(item: Item): string | undefined {
-  return item.fretboard_cell?.layout_instrument_id ?? item.diagram_shape?.layout_instrument_id
+  return (
+    item.fretboard_cell?.layout_instrument_id ??
+    item.diagram_shape?.layout_instrument_id ??
+    item.root_fifth?.layout_instrument_id ??
+    item.root_change?.layout_instrument_id
+  )
 }
+
+/** The tuning a bass chord item's board is drawn with; none for a chord on guitar, drawn as its box. */
+const currentBassTuning = computed(() => {
+  const layout = current.value?.root_fifth?.layout_instrument_id ?? current.value?.root_change?.layout_instrument_id
+  return layout ? tuningOf(layout) : undefined
+})
 
 /** In a session mixing instruments, each fretboard question names its own; otherwise none does. */
 const currentInstrumentName = computed(() => {
@@ -348,6 +361,24 @@ onBeforeUnmount(() => {
         @skip="run.skip($event)"
         @tempo="run.setTempo($event)"
         @note-value="run.setNoteValue($event)"
+      />
+      <SessionChordVoicing
+        v-else-if="current.chord_voicing || current.root_fifth"
+        :key="run.index.value"
+        :item="current"
+        :tuning="currentBassTuning"
+        :instrument-name="currentInstrumentName"
+        @rate="run.rateChord($event)"
+        @skip="run.skip($event)"
+      />
+      <SessionChordChange
+        v-else-if="current.chord_change || current.root_change"
+        :key="run.index.value"
+        :item="current"
+        :tuning="currentBassTuning"
+        :instrument-name="currentInstrumentName"
+        @save="(tempo, changes) => run!.saveChangeMinute(tempo, changes)"
+        @skip="run.skip($event)"
       />
       <div v-else class="flex flex-col items-start gap-3">
         <p class="text-ink-muted">{{ t('practiceSessionView.unsupported') }}</p>
