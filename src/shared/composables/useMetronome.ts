@@ -7,7 +7,7 @@ import type { Metronome, MetronomeSettings } from '@/shared/audio/metronome'
 
 /**
  * A metronome a student turns on and off, clicking at its settings (tempo, bar and note value)
- * and following a change of any of them while it clicks. It says which beat of the bar is
+ * and following a change of any of them while it clicks. Starting it again begins a new bar. It says which beat of the bar is
  * sounding, as heard, so a bar of dots can follow it. Turn it on from a tap, which is when the
  * browser lets audio start. It stops when its screen goes.
  */
@@ -27,6 +27,7 @@ export function useMetronome(settings: () => MetronomeSettings) {
   }
 
   function start() {
+    cancelAnimationFrame(frame)
     if (!metronome) {
       audio = unlockAudioContext()
       const context = audio
@@ -56,5 +57,5 @@ export function useMetronome(settings: () => MetronomeSettings) {
     if (on.value) stop()
   })
 
-  return { on, beat, toggle, stop }
+  return { on, beat, start, toggle, stop }
 }

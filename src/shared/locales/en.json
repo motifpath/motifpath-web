@@ -289,7 +289,13 @@
   "drillFretboard": {
     "label": "Fretboard",
     "cell": "String {string}, fret {fret}",
-    "openCell": "String {string}, open"
+    "openCell": "String {string}, open",
+    "root": "Root",
+    "fifth": "Fifth",
+    "rootOf": "Root of {chord}",
+    "fifthOf": "Fifth of {chord}",
+    "markedPlace": "{role}, string {string}, fret {fret}",
+    "markedOpen": "{role}, string {string}, open"
   },
   "songChart": {
     "key": "Key {key}",

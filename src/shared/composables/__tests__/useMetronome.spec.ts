@@ -57,6 +57,16 @@ describe('useMetronome', () => {
     expect(engine.start).toHaveBeenCalledWith({ bpm: 72, beats: 3, beatValue: 4, noteValue: 'quarters' })
   })
 
+  it('starts on demand, from the first beat of a bar even when it was already clicking', () => {
+    const { api } = mountWith()
+    api.toggle()
+
+    api.start()
+
+    expect(api.on.value).toBe(true)
+    expect(engine.start).toHaveBeenCalledTimes(2)
+  })
+
   it('follows a change of tempo, bar or note value while it clicks', async () => {
     const { api } = mountWith()
     api.toggle()

@@ -91,4 +91,13 @@ describe('SelfRating', () => {
     expect(wrapper.get('[data-test="rate-struggled"]').attributes('aria-keyshortcuts')).toBe('1')
     expect(wrapper.get('[data-test="rate-clean"]').attributes('aria-keyshortcuts')).toBe('3')
   })
+
+  it('asks how a chord sounded, with no take to restart', async () => {
+    const wrapper = mount(SelfRating, { props: { chord: 'D' }, attachTo: document.body })
+
+    expect(wrapper.get('[data-test="rate-prompt"]').text()).toBe('How did D sound?')
+    expect(wrapper.find('[data-test="restart-take"]').exists()).toBe(false)
+    await wrapper.get('[data-test="rate-clean"]').trigger('click')
+    expect(wrapper.emitted('rate')).toEqual([['clean']])
+  })
 })
