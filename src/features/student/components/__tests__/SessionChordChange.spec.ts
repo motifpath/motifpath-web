@@ -177,18 +177,49 @@ describe('SessionChordChange', () => {
       expect(wrapper.get('[data-test="timer-time"]').text()).toBe('0:42')
     })
 
-    it('leaves nothing to use while it runs: leaving the session is the only way out', async () => {
+    it('leaves nothing to use while it runs but Restart: leaving the session is the other way out', async () => {
       const wrapper = await mountItem(chordChange())
 
       await wrapper.get('[data-test="start-minute"]').trigger('click')
       await vi.advanceTimersByTimeAsync(10_000)
 
-      for (const button of wrapper.findAll('button')) {
+      for (const button of wrapper.findAll('button').filter((b) => b.attributes('data-test') !== 'restart-minute')) {
         const off = button.attributes('disabled') !== undefined || button.attributes('aria-disabled') === 'true'
         expect(off, button.html()).toBe(true)
       }
+      expect(wrapper.get('[data-test="restart-minute"]').attributes('disabled')).toBeUndefined()
       expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeDefined()
       expect(wrapper.find('[data-test="start-minute"]').exists()).toBe(false)
+    })
+
+    it('can be restarted during the count-in too', async () => {
+      const wrapper = await mountItem(chordChange())
+
+      await wrapper.get('[data-test="start-minute"]').trigger('click')
+      await wrapper.get('[data-test="restart-minute"]').trigger('click')
+
+      expect(wrapper.find('[data-test="count-in"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="start-minute"]').exists()).toBe(true)
+    })
+
+    it('restarting throws the minute away: ready again at the tempo set, nothing sent', async () => {
+      const wrapper = await mountItem(chordChange({ start_tempo_bpm: 45 }))
+
+      await setTempo(wrapper, 50)
+      await wrapper.get('[data-test="start-minute"]').trigger('click')
+      await vi.advanceTimersByTimeAsync(20_000)
+      stopMetronome.mockClear()
+      await wrapper.get('[data-test="restart-minute"]').trigger('click')
+
+      expect(stopMetronome).toHaveBeenCalled()
+      expect(wrapper.get('[data-test="timer-time"]').text()).toBe('1:00')
+      expect(wrapper.get('[data-test="tempo-value"]').text()).toContain('50')
+      expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('[data-test="start-minute"]').exists()).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(120_000)
+      expect(wrapper.find('[role="spinbutton"]').exists()).toBe(false)
+      expect(wrapper.emitted('save')).toBeUndefined()
     })
 
     it('stops the metronome when the minute is up, and asks for the count', async () => {

@@ -271,6 +271,7 @@
     "goal": "Meta: {count} trocas por minuto",
     "readyHint": "Ajuste o andamento primeiro: o metrônomo toca enquanto você testa. Começar o minuto dá um compasso de contagem.",
     "start": "Começar o minuto",
+    "restart": "Recomeçar",
     "runningHint": "Nada para tocar na tela enquanto o minuto corre. Continue trocando a cada tempo.",
     "countIn": "Contagem",
     "timeUp": "Acabou o tempo. Conte só as trocas em que todas as cordas soaram.",

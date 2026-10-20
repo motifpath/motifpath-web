@@ -271,6 +271,7 @@
     "goal": "Goal {count} changes a minute",
     "readyHint": "Set the tempo first: the metronome ticks while you try it. Start the minute gives a bar of count-in.",
     "start": "Start the minute",
+    "restart": "Restart",
     "runningHint": "Nothing to tap while the minute runs. Keep changing on every beat.",
     "countIn": "Count-in",
     "timeUp": "Time is up. Count only the changes where every string rang.",

@@ -5,8 +5,9 @@
  *
  * Ready: the tempo starts at the plan's, and the student may set another, the metronome ticking
  * while they try it. Starting the minute gives a bar of count-in, then 60 seconds with the
- * metronome ticking and nothing to tap, both hands being on the instrument: only leaving the
- * session ends it early, and then nothing is sent. When the minute is up the metronome stops and
+ * metronome ticking and nothing to tap, both hands being on the instrument, but Restart: it throws
+ * the minute away and is ready again at the same tempo. Leaving the session also ends it early;
+ * either way nothing is sent. When the minute is up the metronome stops and
  * the student counts the changes that rang clean, from the item's last count (never more than the
  * minute had beats); saving sends the tempo played and the count. A chord that can't be drawn
  * here can only be skipped, as not answered.
@@ -18,6 +19,7 @@ import type { NotAnsweredReason } from '@/features/student/composables/usePracti
 import { useChordBoxes } from '@/features/student/composables/useChordBoxes'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import { boardFretsFor } from '@/features/student/utils/chordPlaces'
+import AppButton from '@/shared/components/AppButton.vue'
 import ChangeTimer from '@/shared/components/ChangeTimer.vue'
 import CountStepper from '@/shared/components/CountStepper.vue'
 import ChordBox from '@/shared/components/diagram/ChordBox.vue'
@@ -129,6 +131,15 @@ function startMinute() {
   timer = setInterval(tick, TICK_MS)
 }
 
+/** Throws the minute away, count-in included, and is ready again at the tempo set. */
+function restartMinute() {
+  stopTimer()
+  metronome.stop()
+  countIn.value = 0
+  remainingMs.value = MINUTE_MS
+  phase.value = 'ready'
+}
+
 function timeUp() {
   stopTimer()
   metronome.stop()
@@ -231,7 +242,14 @@ const countLabel = computed(() =>
             </PrimaryButton>
           </PracticeActionBar>
         </template>
-        <p v-else data-test="running-hint" class="text-sm text-ink-muted">{{ t('sessionChord.runningHint') }}</p>
+        <template v-else>
+          <p data-test="running-hint" class="text-sm text-ink-muted">{{ t('sessionChord.runningHint') }}</p>
+          <PracticeActionBar>
+            <AppButton data-test="restart-minute" variant="secondary" class="h-12 w-full" @click="restartMinute">
+              {{ t('sessionChord.restart') }}
+            </AppButton>
+          </PracticeActionBar>
+        </template>
       </template>
     </template>
   </div>
