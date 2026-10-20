@@ -22,9 +22,17 @@ First-time machine setup is handled from `motifpath-specs` — see its
 ## Branching Model
 
 ```
-main  (protected — production releases only)
-dev   (protected — integration branch, target for all feature PRs)
+feat/…  →  dev  →  stage  →  main
+                    │         │
+                 staging   production
 ```
+
+- `dev`: feature integration; nothing is deployed.
+- `stage`: release candidate; every push deploys to `https://staging.motifpath.com`.
+- `main`: production; deployed by hand (see [Deploying](#deploying)).
+
+Promote `dev` → `stage` → `main` with **merge commits**, never squash: production
+only deploys a commit that is on `main`, and a squash creates a different one.
 
 Branch naming — task code is mandatory:
 
@@ -199,6 +207,32 @@ npm run test:coverage # run with coverage report
 
 Every library component has a Storybook story beside it, built against a mock API.
 The rules are in [STORYBOOK.md](STORYBOOK.md).
+
+## Deploying
+
+`.github/workflows/deploy.yml` builds the SPA for one environment and syncs it to
+that environment's S3 bucket behind CloudFront. Hashed `assets/` are cached for a
+year; `index.html` and the other entry files are always revalidated, and the CDN is
+invalidated after each deploy.
+
+- **Staging** deploys on every push to `stage`.
+- **Production**: Actions → Deploy → Run workflow, with `environment: production`
+  and the full SHA of a commit on `main` (normally the one staging just ran).
+
+Each GitHub environment (`staging`: branches `stage`, `main`; `production`: branch
+`main`, with required reviewers) needs:
+
+| Kind | Name | Value |
+|---|---|---|
+| secret | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | motifpath-infra `environments/<env>` outputs `web_deploy_access_key_id` / `web_deploy_secret_access_key` |
+| variable | `SPA_BUCKET` / `SPA_DISTRIBUTION_ID` | outputs `spa_bucket_name` / `spa_distribution_id` |
+| variable | `VITE_CORE_API_URL` | `https://api.staging.motifpath.com` / `https://api.motifpath.com` |
+| variable | `VITE_EVENTS_API_URL` | `https://events.staging.motifpath.com` / `https://events.motifpath.com` |
+| variable | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk development (`pk_test_…`) / production (`pk_live_…`) instance |
+| variable | `VITE_CONCIERGE_WHATSAPP_NUMBER` | optional; empty hides the button |
+
+The publishable key is public by design (it ships in the bundle), so it is a variable,
+not a secret.
 
 ## Related Repositories
 
