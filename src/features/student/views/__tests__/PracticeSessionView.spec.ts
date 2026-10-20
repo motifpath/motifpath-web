@@ -1166,11 +1166,22 @@ describe('PracticeSessionView', () => {
     const mixChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-mix"] input')
     const chooseChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-choose"] input')
 
-    /** Chooses I'll choose, which opens the picker, and picks a subject from the student's path. */
-    async function chooseProgressions(wrapper: ReturnType<typeof mountView>) {
+    const chosenPlan = () => plan(undefined, { focus_source: 'chosen', focus_nodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }] })
+
+    /** Chooses I'll choose, which opens the picker, and picks a subject from the student's path, which composes the session. */
+    async function chooseProgressions(wrapper: ReturnType<typeof mountView>, composed: { data?: Plan; error?: unknown; response: { status: number } } = { data: chosenPlan(), response: { status: 200 } }) {
+      POST.mockResolvedValueOnce(composed)
       await chooseChoice(wrapper).setValue()
       await wrapper.get('[data-test="path-subject"]').trigger('click')
       await flushPromises()
+    }
+
+    /** Opens the setup with a subject already chosen, as a link naming it does. */
+    async function mountWithSubject(focus = PROGRESSIONS) {
+      route.query = { focus }
+      const wrapper = mountView()
+      await flushPromises()
+      return wrapper
     }
 
     it("offers both Today's mix, chosen, and I'll choose, even when the mix can be composed", () => {
@@ -1214,12 +1225,32 @@ describe('PracticeSessionView', () => {
       expect(router.push).not.toHaveBeenCalled()
     })
 
-    it('shows the subject picked on the setup with its level, and says the session is only this', async () => {
+    it('goes straight to today’s plan for the subject picked, composed on it', async () => {
       const wrapper = mountView()
 
       await chooseProgressions(wrapper)
 
       expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="practice-setup"]').exists()).toBe(false)
+      expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10, focus_node_id: PROGRESSIONS } })
+      expect(wrapper.getComponent(TodaysPlanStub).props()).toMatchObject({
+        focusSource: 'chosen',
+        focusNodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }],
+      })
+    })
+
+    it('composes with the instrument and minutes already chosen on the setup', async () => {
+      const wrapper = mountView()
+      await wrapper.get('[data-test="minutes-20"]').setValue()
+
+      await chooseProgressions(wrapper)
+
+      expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 20, focus_node_id: PROGRESSIONS } })
+    })
+
+    it('shows the subject chosen on the setup with its level, and says the session is only this', async () => {
+      const wrapper = await mountWithSubject()
+
       expect(chooseChoice(wrapper).element.checked).toBe(true)
       const chosen = wrapper.get('[data-test="chosen-subject"]')
       expect(chosen.text()).toContain('Common progressions')
@@ -1228,22 +1259,16 @@ describe('PracticeSessionView', () => {
       expect(wrapper.get('[data-primary-action]').text()).toBe('Start practising')
     })
 
-    it('composes a session on the subject picked', async () => {
-      const wrapper = mountView()
-      await chooseProgressions(wrapper)
+    it('starts a session on the subject chosen from the setup', async () => {
+      const wrapper = await mountWithSubject()
 
-      await composeSession(wrapper, plan(undefined, { focus_source: 'chosen', focus_nodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }] }))
+      await composeSession(wrapper, chosenPlan())
 
       expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10, focus_node_id: PROGRESSIONS } })
-      expect(wrapper.getComponent(TodaysPlanStub).props()).toMatchObject({
-        focusSource: 'chosen',
-        focusNodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }],
-      })
     })
 
-    it('opens the picker again from the subject picked, to change it', async () => {
-      const wrapper = mountView()
-      await chooseProgressions(wrapper)
+    it('opens the picker again from the subject chosen, to change it', async () => {
+      const wrapper = await mountWithSubject()
 
       await wrapper.get('[data-test="chosen-subject"]').trigger('click')
 
@@ -1251,8 +1276,7 @@ describe('PracticeSessionView', () => {
     })
 
     it('goes back to Today’s mix without the subject', async () => {
-      const wrapper = mountView()
-      await chooseProgressions(wrapper)
+      const wrapper = await mountWithSubject()
 
       await mixChoice(wrapper).setValue()
       await composeSession(wrapper)
@@ -1284,8 +1308,7 @@ describe('PracticeSessionView', () => {
 
     it('lets go of a subject the instrument chosen has nothing for', async () => {
       subjectsFor = (id) => (id === BASS ? subjectList([intervals]) : subjectList())
-      const wrapper = mountView()
-      await chooseProgressions(wrapper)
+      const wrapper = await mountWithSubject()
 
       await wrapper.findAll('[data-test="instrument-tile"]')[1].get('input').setValue()
       await flushPromises()
@@ -1294,14 +1317,12 @@ describe('PracticeSessionView', () => {
       expect(wrapper.get('[data-primary-action]').text()).toBe('Choose what to practise')
     })
 
-    it('says when the subject has nothing to practise this way, and choosing another is the primary action', async () => {
+    it('stays on the setup when the subject picked has nothing to practise this way, and choosing another is the primary action', async () => {
       const wrapper = mountView()
-      await chooseProgressions(wrapper)
-      POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
 
-      await wrapper.get('[data-test="start-session"]').trigger('click')
-      await flushPromises()
+      await chooseProgressions(wrapper, { error: { message: 'not found' }, response: { status: 404 } })
 
+      expect(wrapper.get('[data-test="chosen-subject"]').text()).toContain('Common progressions')
       expect(wrapper.get('[data-test="inline-notice"]').text()).toBe("There's nothing of Common progressions to practise this way. Choose another skill or concept.")
       await wrapper.get('[data-primary-action]').trigger('click')
       expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(true)

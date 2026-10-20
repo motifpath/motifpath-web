@@ -122,11 +122,16 @@ function openPicker() {
 watch(whatToPractise, (choice) => {
   if (choice === 'choose' && subject.value === null) openPicker()
 })
+/**
+ * Picking is the student's last choice, so the session is composed on it at once and today's plan
+ * shows; the setup comes back only when the subject has nothing to practise this way.
+ */
 function pick(picked: Subject) {
   askedFocus = null
   subject.value = picked
   whatToPractise.value = 'choose'
   pickerOpen.value = false
+  void startSession()
 }
 
 const { status: firstRunStatus } = useFirstRun()
