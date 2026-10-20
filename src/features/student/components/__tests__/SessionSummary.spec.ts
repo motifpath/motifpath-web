@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import type { SubjectResult, SubjectScore } from '@/features/student/utils/focusPlan'
 import type { SummaryRow } from '@/features/student/utils/sessionSummary'
 
 type Overview = components['schemas']['PracticeOverview']
@@ -143,6 +144,63 @@ describe('SessionSummary', () => {
     expect(wrapper.text()).toContain('Nothing answered or rated this time. Every session still counts.')
     expect(wrapper.find('[data-test="summary-row"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="summary-meta"]').text()).toBe('2 min · Guitar')
+  })
+
+  describe('by subject', () => {
+    const chords = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords' } }
+    const notes = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings' } }
+    const subjects: SubjectResult[] = [
+      { node: chords, right: 9, answered: 10, rungs: ['know', 'hear'] },
+      { node: notes, right: 7, answered: 8, rungs: ['know'] },
+    ]
+
+    function mountBySubject(props: Partial<{ chosen: boolean; review: SubjectScore | null; subjects: SubjectResult[] }> = {}) {
+      return mount(SessionSummary, {
+        props: { rows, minutes: 16, instrumentName: 'Guitar', itemCount: 31, labelOf: (planItem: Item) => labels[planItem.item_key], subjects, review: { right: 4, answered: 5 }, ...props },
+      })
+    }
+
+    it('gives one result per subject: its score and the rungs practised', () => {
+      const wrapper = mountBySubject()
+
+      expect(
+        wrapper.findAll('[data-test="subject-result"]').map((result) => [
+          result.get('[data-test="subject-result-name"]').text(),
+          result.get('[data-test="subject-result-score"]').text(),
+          result.get('[data-test="subject-result-rungs"]').text(),
+        ]),
+      ).toEqual([
+        ['Diatonic chords', '9 of 10 right', 'Know it · Hear it'],
+        ['Find notes on the root strings', '7 of 8 right', 'Know it'],
+      ])
+    })
+
+    it("sums up Today's mix's review block in one line, and keeps each item behind Every item", async () => {
+      const wrapper = mountBySubject()
+
+      expect(wrapper.get('[data-test="review-result"]').text()).toBe('Quick review of other subjects: 4 of 5 right')
+      expect(wrapper.find('[data-test="summary-row"]').exists()).toBe(false)
+      const every = wrapper.get('[data-test="every-item"]')
+      expect(every.text()).toBe('Every item (31)')
+      expect(every.attributes('aria-expanded')).toBe('false')
+
+      await every.trigger('click')
+
+      expect(every.attributes('aria-expanded')).toBe('true')
+      expect(wrapper.findAll('[data-test="summary-row"]')).toHaveLength(4)
+    })
+
+    it('says nothing of a review block nothing was answered of', () => {
+      expect(mountBySubject({ review: null }).find('[data-test="review-result"]').exists()).toBe(false)
+    })
+
+    it('keeps a chosen session’s items listed under its one subject, with no review line', () => {
+      const wrapper = mountBySubject({ chosen: true, subjects: [subjects[0]], review: null })
+
+      expect(wrapper.findAll('[data-test="subject-result"]')).toHaveLength(1)
+      expect(wrapper.find('[data-test="every-item"]').exists()).toBe(false)
+      expect(wrapper.findAll('[data-test="summary-row"]')).toHaveLength(4)
+    })
   })
 
   it('makes Done the primary action, and Practise again a quieter one', async () => {

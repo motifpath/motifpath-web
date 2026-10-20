@@ -53,3 +53,27 @@ export const NothingAnswered: Story = { args: { rows: [], itemCount: 0, minutes:
 
 /** This week's numbers didn't load: the results still show. */
 export const WeekFailed: Story = { parameters: { msw: { handlers: { practiceOverview: failing('practiceOverview') } } } }
+
+const chords = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' } }
+const notes = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' } }
+const progressions = { node_id: 'aaaaaaaa-0000-4000-8000-000000000003', names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' } }
+
+/** Today's mix: one result per subject, the quick review in one line, the items behind Every item. */
+export const TodaysMixBySubject: Story = {
+  args: {
+    itemCount: 31,
+    minutes: 16,
+    subjects: [
+      { node: chords, right: 9, answered: 10, rungs: ['know', 'hear'] },
+      { node: notes, right: 7, answered: 8, rungs: ['know'] },
+      { node: progressions, right: 2, answered: 4, rungs: ['hear'] },
+    ],
+    review: { right: 4, answered: 5 },
+  },
+}
+export const TodaysMixDarkPortuguese: Story = { ...TodaysMixBySubject, globals: { theme: 'dark', locale: 'pt-BR' } }
+
+/** A session the student chose: its one subject, then its items listed. */
+export const Chosen: Story = {
+  args: { chosen: true, subjects: [{ node: { ...progressions, names: { en: 'Common progressions' } }, right: 7, answered: 9, rungs: ['hear'] }] },
+}

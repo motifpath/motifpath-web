@@ -20,11 +20,12 @@ export function useComposePracticeSession() {
   const { coreApi } = useApi()
   const isComposing = ref(false)
 
-  async function compose(instrumentId: string | null, minutes: number): Promise<ComposeOutcome> {
+  /** With focusNodeId, the session holds only the subject the student chose. */
+  async function compose(instrumentId: string | null, minutes: number, focusNodeId?: string): Promise<ComposeOutcome> {
     isComposing.value = true
     try {
       const { data, error, response } = await coreApi.POST('/students/me/practice-sessions', {
-        body: { instrument_id: instrumentId, minutes },
+        body: focusNodeId ? { instrument_id: instrumentId, minutes, focus_node_id: focusNodeId } : { instrument_id: instrumentId, minutes },
       })
       if (data) return { kind: 'composed', plan: data }
       return error && response.status === 404 ? { kind: 'nothing_to_practise' } : { kind: 'failed' }
