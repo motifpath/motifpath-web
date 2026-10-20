@@ -228,7 +228,7 @@ Each GitHub environment (`staging`: branches `stage`, `main`; `production`: bran
 | variable | `SPA_BUCKET` / `SPA_DISTRIBUTION_ID` | outputs `spa_bucket_name` / `spa_distribution_id` |
 | variable | `VITE_CORE_API_URL` | `https://api.staging.motifpath.com` / `https://api.motifpath.com` |
 | variable | `VITE_EVENTS_API_URL` | `https://events.staging.motifpath.com` / `https://events.motifpath.com` |
-| variable | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk development (`pk_test_…`) / production (`pk_live_…`) instance |
+| variable | `VITE_CLERK_PUBLISHABLE_KEY` | The whole Publishable key of the Clerk development (`pk_test_…`) / production (`pk_live_…`) instance; the deploy refuses one that does not decode to a Clerk host |
 | variable | `VITE_CONCIERGE_WHATSAPP_NUMBER` | optional; empty hides the button |
 
 The publishable key is public by design (it ships in the bundle), so it is a variable,
