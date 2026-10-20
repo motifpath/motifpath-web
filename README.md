@@ -216,18 +216,28 @@ year; `index.html` and the other entry files are always revalidated, and the CDN
 invalidated after each deploy.
 
 - **Staging** deploys on every push to `stage`.
-- **Production**: Actions → Deploy → Run workflow on `main`, with
-  `environment: production` and `commit` left blank to deploy the head of `main`:
+- **Production** deploys a **release**: tag the `stage → main` merge commit on `main`
+  with the next version and push the tag. Untagged builds are intermediate ones
+  (release candidates on `stage`).
 
   ```bash
-  gh workflow run deploy.yml -R motifpath/motifpath-web --ref main -f environment=production
+  git fetch origin main && git tag -a v0.2.0 origin/main -m "v0.2.0" && git push origin v0.2.0
   ```
 
-  The head of `main` after a `stage → main` merge builds the same code staging ran. To
-  redeploy an older release (a rollback), pass its SHA as `commit`; it must be on `main`.
+  The tag builds and publishes that commit (after the `production` environment's
+  approval, if it has reviewers), then publishes a GitHub Release with notes since the
+  previous tag. A tag that is not on `main` is refused. Versions are this repository's
+  own; motifpath-core numbers its releases separately.
+- **Rollback or redeploy**: Actions → Deploy → Run workflow on `main`, with
+  `environment: production` and `release` set to an earlier tag. In an emergency
+  `release` also takes a full commit SHA on `main`; that deploy publishes no release.
 
-Each GitHub environment (`staging`: branches `stage`, `main`; `production`: branch
-`main`, with required reviewers) needs:
+  ```bash
+  gh workflow run deploy.yml -R motifpath/motifpath-web --ref main -f environment=production -f release=v0.1.0
+  ```
+
+Each GitHub environment (`staging`: branches `stage`, `main`; `production`: **Selected
+branches and tags** with branch `main` and tag pattern `v*`, with required reviewers) needs:
 
 | Kind | Name | Value |
 |---|---|---|

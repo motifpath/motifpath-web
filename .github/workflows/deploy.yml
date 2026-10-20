@@ -5,12 +5,18 @@ name: Deploy
 # API URLs and the Clerk key are compiled into it, so what is promoted from
 # staging to production is the commit, not the build.
 #
-# Staging deploys on every push to `stage`. Production is started by hand
-# with a commit that is already on `main`; left blank, the commit is the head
-# of the branch the run is started on (run it on `main`).
+# - Staging deploys on every push to `stage`.
+# - Production deploys a release: pushing a `vX.Y.Z` tag on `main` builds and
+#   publishes the tagged commit (after the `production` environment's
+#   approval, if it has reviewers), then publishes a GitHub Release with notes
+#   since the previous one.
+# - Run by hand, `release` takes a tag (redeploy or roll back to it) or, in an
+#   emergency, a full commit SHA. Blank deploys the head of `stage` to
+#   staging; production always needs one.
 on:
   push:
     branches: [stage]
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       environment:
@@ -18,8 +24,8 @@ on:
         type: choice
         options: [staging, production]
         required: true
-      commit:
-        description: Full commit SHA to build and deploy (blank = head of the branch this runs on)
+      release:
+        description: Release tag (vX.Y.Z) or full commit SHA; blank = head of stage (staging only)
         type: string
         required: false
 
@@ -27,19 +33,21 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-${{ inputs.environment || 'staging' }}
+  group: deploy-${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
   cancel-in-progress: false
 
 env:
   AWS_REGION: us-east-2
-  DEPLOY_ENV: ${{ inputs.environment || 'staging' }}
-  COMMIT: ${{ inputs.commit || github.sha }}
+  DEPLOY_ENV: ${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
+  RELEASE: ${{ inputs.release || (github.ref_type == 'tag' && github.ref_name) || '' }}
 
 jobs:
   deploy:
-    name: Deploy ${{ inputs.environment || 'staging' }}
+    name: Deploy ${{ inputs.release || (github.ref_type == 'tag' && github.ref_name) || '' }} to ${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'staging' }}
+    environment: ${{ inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging' }}
+    outputs:
+      release: ${{ steps.choose.outputs.release }}
     steps:
       - name: Validate inputs and configuration
         env:
@@ -51,7 +59,9 @@ jobs:
           CLERK_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
         run: |
           [[ "$DEPLOY_ENV" =~ ^(staging|production)$ ]] || { echo "::error::unknown environment '$DEPLOY_ENV'"; exit 1; }
-          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-char SHA"; exit 1; }
+          [[ -z "$RELEASE" || "$RELEASE" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ || "$RELEASE" =~ ^[0-9a-f]{40}$ ]] \
+            || { echo "::error::release must be a tag like v1.2.3 or a full 40-char commit SHA, got '$RELEASE'"; exit 1; }
+          [[ "$DEPLOY_ENV" == staging || -n "$RELEASE" ]] || { echo "::error::production deploys a release: give a vX.Y.Z tag (or, in an emergency, a commit SHA)"; exit 1; }
           missing=()
           [[ -n "$KEY_ID" ]] || missing+=(secret:AWS_ACCESS_KEY_ID)
           for v in BUCKET DISTRIBUTION CORE_API EVENTS_API CLERK_KEY; do [[ -n "${!v}" ]] || missing+=("var:$v"); done
@@ -71,14 +81,39 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.COMMIT }}
           fetch-depth: 0
+
+      # COMMIT is what gets built: the tagged commit for a release.
+      - name: Choose the commit
+        id: choose
+        env:
+          PUSHED: ${{ github.event_name == 'push' && github.ref_type == 'branch' && github.sha || '' }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --tags origin
+          git fetch --quiet origin main stage 2>/dev/null || git fetch --quiet origin main
+          tag=
+          if [[ "$RELEASE" =~ ^v ]]; then
+            tag=$RELEASE
+            commit=$(git rev-parse --verify --quiet "refs/tags/$tag^{commit}") \
+              || { echo "::error::no tag $tag in this repository"; exit 1; }
+          elif [[ -n "$RELEASE" ]]; then
+            commit=$RELEASE
+          elif [[ -n "$PUSHED" ]]; then
+            commit=$PUSHED
+          else
+            commit=$(git rev-parse origin/stage)
+          fi
+          git checkout --quiet --detach "$commit"
+          echo "COMMIT=$commit" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "release=$tag" >> "$GITHUB_OUTPUT"
+          echo "Deploying ${tag:+$tag → }\`$commit\` — $(git log -1 --format=%s "$commit")"
 
       # Production only runs what has been promoted to main. Staging runs
       # release candidates from stage, or a hotfix already on main.
       - name: Check the commit is on a release branch
         run: |
-          git fetch --quiet origin main stage 2>/dev/null || git fetch --quiet origin main
           on() { git rev-parse --verify --quiet "origin/$1" >/dev/null && git merge-base --is-ancestor "$COMMIT" "origin/$1"; }
           if [[ "$DEPLOY_ENV" == production ]]; then
             on main || { echo "::error::$COMMIT is not on main; promote stage to main with a merge commit first"; exit 1; }
@@ -128,4 +163,25 @@ jobs:
           id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" \
             --paths '/*' --query Invalidation.Id --output text)
           aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION" --id "$id"
-          echo "### Deployed \`$COMMIT\` to $DEPLOY_ENV" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Deployed ${RELEASE_TAG:+$RELEASE_TAG (}\`$COMMIT\`${RELEASE_TAG:+)} to $DEPLOY_ENV" >> "$GITHUB_STEP_SUMMARY"
+
+  # Published only once production serves the release, so the Releases page
+  # lists what production actually ran.
+  publish-release:
+    name: Publish GitHub Release ${{ needs.deploy.outputs.release }}
+    needs: deploy
+    if: needs.deploy.outputs.release != '' && (inputs.environment || (github.ref_type == 'tag' && 'production') || 'staging') == 'production'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create the release, unless it already exists (a redeploy)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.deploy.outputs.release }}
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+          else
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$TAG"
+          fi
