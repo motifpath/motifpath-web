@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import { expect, within } from 'storybook/test'
+import { expect, waitFor, within } from 'storybook/test'
 import { createApp, defineComponent, h } from 'vue'
 import { createRouter, createWebHistory, RouterView } from 'vue-router'
 
@@ -31,6 +31,10 @@ export const Open: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: /tools|ferramentas/i }))
     await expect(within(document.body).getByRole('button', { name: /metronome|metrônomo/i })).toBeInTheDocument()
+    // Closed again before the next story: an open menu holds a history entry, and the step back
+    // off it would otherwise land in whichever story runs next.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(window.history.state?.overlay).toBeUndefined())
   },
 }
 
