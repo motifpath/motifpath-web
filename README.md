@@ -216,8 +216,15 @@ year; `index.html` and the other entry files are always revalidated, and the CDN
 invalidated after each deploy.
 
 - **Staging** deploys on every push to `stage`.
-- **Production**: Actions → Deploy → Run workflow, with `environment: production`
-  and the full SHA of a commit on `main` (normally the one staging just ran).
+- **Production**: Actions → Deploy → Run workflow on `main`, with
+  `environment: production` and `commit` left blank to deploy the head of `main`:
+
+  ```bash
+  gh workflow run deploy.yml -R motifpath/motifpath-web --ref main -f environment=production
+  ```
+
+  The head of `main` after a `stage → main` merge builds the same code staging ran. To
+  redeploy an older release (a rollback), pass its SHA as `commit`; it must be on `main`.
 
 Each GitHub environment (`staging`: branches `stage`, `main`; `production`: branch
 `main`, with required reviewers) needs:
