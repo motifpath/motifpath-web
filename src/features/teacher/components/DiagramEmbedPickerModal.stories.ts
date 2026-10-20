@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import { http, HttpResponse } from 'msw'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 
 import { makeFrettedDiagram } from '@/shared/testUtils/diagram'
 import { endpoints, respondWith } from '@/shared/testUtils/msw/handlers'
@@ -118,8 +118,15 @@ export const ChordSettings: Story = {
   play: async (context) => {
     await Chords.play!(context)
     const body = within(context.canvasElement.ownerDocument.body)
-    await userEvent.click((await body.findByText('Am · Open', {}, { timeout: LOADED })).closest('button')!)
-    await expect(await body.findByRole('radio', { name: /box|caixa/i }, { timeout: LOADED })).toBeChecked()
+    // Each typed letter looks the chord up, so the results can render again after the row is
+    // found; a click on the row it replaced does nothing. Click the current row until it opens.
+    await waitFor(
+      async () => {
+        if (!body.queryByRole('radio', { name: /box|caixa/i })) await userEvent.click(body.getByText('Am · Open').closest('button')!)
+        await expect(body.getByRole('radio', { name: /box|caixa/i })).toBeChecked()
+      },
+      { timeout: LOADED },
+    )
     await expect(body.getByRole('button', { name: /insert|inserir/i })).toBeVisible()
   },
 }

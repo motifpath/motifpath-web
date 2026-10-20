@@ -56,6 +56,18 @@ jobs:
           for v in BUCKET DISTRIBUTION CORE_API EVENTS_API CLERK_KEY; do [[ -n "${!v}" ]] || missing+=("var:$v"); done
           [[ ${#missing[@]} -eq 0 ]] || { echo "::error::GitHub environment '$DEPLOY_ENV' is missing ${missing[*]}; see README → Deploying"; exit 1; }
 
+          # Clerk loads its own scripts from the host encoded in the key (base64 of
+          # "<host>$"), so a placeholder or truncated key builds fine and only fails in
+          # the browser. Staging uses the development instance, production the live one.
+          prefix=pk_test_
+          [[ "$DEPLOY_ENV" == production ]] && prefix=pk_live_
+          [[ "$CLERK_KEY" == "$prefix"* ]] || { echo "::error::VITE_CLERK_PUBLISHABLE_KEY must start with $prefix for $DEPLOY_ENV"; exit 1; }
+          encoded=${CLERK_KEY#"$prefix"}
+          while (( ${#encoded} % 4 )); do encoded+='='; done
+          decoded=$(printf '%s' "$encoded" | base64 -d 2>/dev/null) || decoded=
+          [[ "$decoded" =~ ^[a-z0-9-]+(\.[a-z0-9-]+)+\$$ ]] || { echo "::error::VITE_CLERK_PUBLISHABLE_KEY does not decode to a Clerk host; copy the whole Publishable key from the Clerk dashboard"; exit 1; }
+          echo "Clerk frontend API: ${decoded%\$}"
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.COMMIT }}

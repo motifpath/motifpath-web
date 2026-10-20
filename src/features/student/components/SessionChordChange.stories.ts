@@ -37,7 +37,7 @@ export const Unavailable: Story = { parameters: { msw: { handlers: { diagram: fa
 
 /**
  * The minute in a real browser: a bar of count-in at the tempo, then the timer runs with every
- * control locked. Played fast so the count-in takes a second.
+ * control locked but Restart, which makes it ready again. Played fast so the count-in takes a second.
  */
 export const TheMinuteRuns: Story = {
   args: { item: chordChangeItem('Am', 'C', changeMinute({ start_tempo_bpm: 240 })) },
@@ -45,11 +45,18 @@ export const TheMinuteRuns: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: /start the minute|começar o minuto/i }))
     await expect(canvas.getByText('4')).toBeVisible()
 
-    await waitFor(() => expect(canvas.getByRole('timer')).toHaveTextContent('0:59'), { timeout: 4_000 })
-    for (const button of canvas.getAllByRole('button')) {
+    // Any time under the minute: under load the second shown may be a few past 0:59 already.
+    await waitFor(() => expect(canvas.getByRole('timer')).toHaveTextContent(/^0:[0-5]\d$/), { timeout: 4_000 })
+    const restart = canvas.getByRole('button', { name: /restart|recomeçar/i })
+    for (const button of canvas.getAllByRole('button').filter((b) => b !== restart)) {
       const off = button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true'
       await expect(off).toBe(true)
     }
     await expect(canvas.getByRole('slider')).toBeDisabled()
+
+    await userEvent.click(restart)
+    await expect(canvas.getByRole('timer')).toHaveTextContent('1:00')
+    await expect(canvas.getByRole('slider')).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: /start the minute|começar o minuto/i })).toBeVisible()
   },
 }

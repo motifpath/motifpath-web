@@ -18,7 +18,7 @@
     "test": "vitest run --project=unit",
     "test:watch": "vitest --project=unit",
     "test:coverage": "vitest run --project=unit --coverage",
-    "test:storybook": "vitest run --project=storybook",
+    "test:storybook": "vitest run --project=storybook && vitest run --project=storybook-history --no-file-parallelism",
     "generate:api": "node scripts/generate-api.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
