@@ -6,7 +6,8 @@ name: Deploy
 # staging to production is the commit, not the build.
 #
 # Staging deploys on every push to `stage`. Production is started by hand
-# with a commit that is already on `main`.
+# with a commit that is already on `main`; left blank, the commit is the head
+# of the branch the run is started on (run it on `main`).
 on:
   push:
     branches: [stage]
@@ -18,9 +19,9 @@ on:
         options: [staging, production]
         required: true
       commit:
-        description: Full commit SHA to build and deploy
+        description: Full commit SHA to build and deploy (blank = head of the branch this runs on)
         type: string
-        required: true
+        required: false
 
 permissions:
   contents: read
