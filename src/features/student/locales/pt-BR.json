@@ -233,8 +233,6 @@
     "starting": "Montando sua sessão…",
     "instrumentsError": "Não conseguimos carregar os instrumentos. Verifique sua conexão e tente de novo.",
     "planError": "Não conseguimos montar sua sessão. Suas escolhas foram mantidas — tente de novo.",
-    "nothingToPlay": "Ainda não há nada para tocar neste instrumento. Você pode praticar na cabeça.",
-    "practiseInTheHead": "Praticar na cabeça",
     "endSession": "Encerrar sessão",
     "unsupported": "Este tipo de prática ainda não está disponível aqui.",
     "skip": "Pular",
@@ -254,8 +252,20 @@
     "applyIt": "Aplique",
     "close": "Fechar",
     "inMyHead": "Na cabeça",
-    "nothingInTheHead": "Ainda não há nada para praticar na cabeça. Escolha um instrumento.",
-    "findWhereToStart": "Encontrar por onde começar"
+    "findWhereToStart": "Encontrar por onde começar",
+    "whatToPractise": "O que praticar",
+    "todaysMix": "Mix do dia",
+    "illChoose": "Eu escolho",
+    "mixHint": "Uma mistura do que está para revisar, do que precisa de trabalho e do que vem a seguir na sua trilha.",
+    "chosenHint": "Só isto, o quanto couber em {minutes} min. As revisões pendentes vêm primeiro.",
+    "pickSubject": "Escolha uma habilidade ou um conceito",
+    "tapToChange": "Toque para trocar",
+    "levelTapToChange": "{level} · toque para trocar",
+    "chooseWhatToPractise": "Escolher o que praticar",
+    "nothingToMix": "Ainda não há sugestões para este instrumento. Escolha uma habilidade ou um conceito para praticar nele.",
+    "nothingToMixInTheHead": "Ainda não há sugestões para praticar na cabeça. Escolha uma habilidade ou um conceito que dá para praticar sem o instrumento.",
+    "nothingStarted": "Ainda não há sugestões: você não começou nenhum curso ou trilha. Você ainda pode escolher uma habilidade ou um conceito para praticar.",
+    "subjectUnavailable": "Não há nada de {subject} para praticar assim. Escolha outra habilidade ou outro conceito."
   },
   "sessionChord": {
     "voicingHint": "Monte o acorde, toque uma vez e deixe soar.",
@@ -321,6 +331,19 @@
       "ear": "Percepção",
       "chord": "Acorde",
       "guideTones": "Notas-guia"
+    },
+    "today": "Hoje",
+    "youChoseThis": "Você escolheu",
+    "review": "Revisão rápida · outros assuntos",
+    "yourSubjects": "Seus assuntos",
+    "rungs": {
+      "know": "Saber",
+      "hear": "Ouvir",
+      "play_clean": "Tocar limpo",
+      "play_in_time": "Tocar no tempo",
+      "move": "Mudar de tom",
+      "target": "Mirar",
+      "use": "Usar"
     }
   },
   "sessionSummary": {
@@ -333,7 +356,9 @@
     "right": "Certo",
     "notQuite": "Não foi dessa vez",
     "nothingAnswered": "Nada respondido ou avaliado desta vez. Toda sessão conta.",
-    "done": "Concluir"
+    "done": "Concluir",
+    "review": "Revisão rápida de outros assuntos: {right} de {answered} certas",
+    "everyItem": "Todos os itens ({count})"
   },
   "playAlongTake": {
     "goal": "Meta {goal} · melhor limpa {best}",
@@ -702,5 +727,18 @@
     "chordsOfKey": "Os quatro são acordes de {key} maior.",
     "keyOf": "Tom de {key} maior",
     "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."
+  },
+  "subjectPicker": {
+    "title": "O que praticar",
+    "question": "O que você quer melhorar?",
+    "search": "Buscar habilidades e conceitos",
+    "fromYourPath": "Da sua trilha",
+    "moreToExplore": "Mais para explorar",
+    "back": "O que praticar",
+    "onYourPath": "{level} · na sua trilha",
+    "onYourPathOnly": "Na sua trilha",
+    "noMatch": "Nada corresponde a “{text}”.",
+    "noSubjects": "Ainda não há nada para praticar assim. Tente outro instrumento, ou na cabeça.",
+    "error": "Não conseguimos carregar o que você pode praticar. Verifique sua conexão e tente de novo."
   }
 }
