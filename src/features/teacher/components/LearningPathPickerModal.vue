@@ -1,0 +1,143 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+
+import type { components } from '@/api/generated/core-domain'
+import {
+  type LearningPathSort,
+  useLearningPathLibrary,
+} from '@/features/teacher/composables/useLearningPathLibrary'
+import CourseFilters from '@/shared/components/CourseFilters.vue'
+import LoadMoreButton from '@/shared/components/LoadMoreButton.vue'
+import ModalCloseButton from '@/shared/components/ModalCloseButton.vue'
+import ModalOverlay from '@/shared/components/ModalOverlay.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
+import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
+import { useTypedT } from '@/shared/composables/useTypedT'
+import { formatDate } from '@/shared/utils/formatDate'
+import { useCurrentUserStore } from '@/stores/currentUser'
+
+type LearningPath = components['schemas']['LearningPath']
+
+defineProps<{ open: boolean }>()
+const emit = defineEmits<{ select: [path: LearningPath]; close: [] }>()
+
+const SORTS: LearningPathSort[] = ['title', 'updated']
+
+const { t, locale } = useTypedT()
+const { instrumentsLabel } = useInstrumentNames()
+
+const {
+  paths,
+  total,
+  sort,
+  filters,
+  searchText,
+  hasActiveFilters,
+  clearFilters,
+  isLoading,
+  isLoadingMore,
+  error,
+  loadMoreError,
+  retry,
+  loadMore,
+} = useLearningPathLibrary()
+
+// A teacher's library is only their own paths, so only an admin gets a
+// creator filter.
+const currentUser = useCurrentUserStore()
+const isAdmin = computed(() => currentUser.profile?.role === 'admin')
+</script>
+
+<template>
+  <ModalOverlay
+    :open="open"
+    panel-class="flex max-h-[85vh] w-[min(720px,calc(100vw-32px))] flex-col gap-4 overflow-y-auto rounded-xl bg-surface-raised p-5 shadow-level2"
+    @close="emit('close')"
+  >
+    <div class="flex items-center justify-between">
+      <span class="text-base font-bold">{{ t('learningPathPickerModal.title') }}</span>
+      <ModalCloseButton @close="emit('close')" />
+    </div>
+
+    <CourseFilters
+      v-model:search-text="searchText"
+      v-model:levels="filters.levels"
+      v-model:skill-ids="filters.skillIds"
+      v-model:concept-ids="filters.conceptIds"
+      v-model:teacher="filters.teacher"
+      v-model:instrument-id="filters.instrumentId"
+      instrument-filter
+      :teacher-scope="isAdmin ? 'path-library' : null"
+      :search-placeholder="t('learningPathPickerModal.searchPlaceholder')"
+      :has-active-filters="hasActiveFilters"
+      @clear="clearFilters"
+    >
+      <div
+        class="ml-auto flex items-center gap-1"
+        role="group"
+        :aria-label="t('learningPathPickerModal.sortLabel')"
+      >
+        <span class="text-xs font-semibold uppercase tracking-wide text-ink-subtle">
+          {{ t('learningPathPickerModal.sortLabel') }}
+        </span>
+        <button
+          v-for="option in SORTS"
+          :key="option"
+          type="button"
+          :data-test="`path-sort-${option}`"
+          :aria-pressed="sort === option ? 'true' : 'false'"
+          class="rounded-full px-3 py-1 text-sm font-semibold"
+          :class="sort === option ? 'bg-accent-muted text-accent-text' : 'text-ink-muted'"
+          @click="sort = option"
+        >
+          {{ t(`learningPathPickerModal.sort.${option}`) }}
+        </button>
+      </div>
+    </CourseFilters>
+
+    <LoadingSkeleton v-if="isLoading" />
+
+    <div v-else-if="error" data-test="path-picker-error">
+      <LoadFailed :message="t('learningPathPickerModal.errorMessage')" @retry="retry" />
+    </div>
+
+    <p v-else-if="paths.length === 0" data-test="path-picker-empty" class="text-sm text-ink-subtle">
+      {{ t('learningPathPickerModal.emptyMessage') }}
+    </p>
+
+    <template v-else>
+      <ul class="flex flex-col gap-2">
+        <li v-for="path in paths" :key="path.learning_path_id">
+          <button
+            type="button"
+            data-test="path-picker-row"
+            class="flex w-full items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2.5 text-left hover:border-accent"
+            @click="emit('select', path)"
+          >
+            <ThumbnailImage :url="path.thumbnail_url" />
+            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span class="truncate text-sm font-semibold text-ink">{{ path.title }}</span>
+              <span class="text-xs text-ink-subtle">
+                {{ path.teacher.display_name }} ·
+                {{ path.level ? t(`levels.${path.level}`) : t('learningPathPickerModal.noLevel') }} ·
+                {{ instrumentsLabel(path.instrument_ids) }}
+              </span>
+              <span class="text-xs text-ink-subtle">
+                {{ t('learningPathPickerModal.updated', { date: formatDate(path.updated_at, locale) }) }}
+              </span>
+            </div>
+          </button>
+        </li>
+      </ul>
+      <LoadMoreButton
+        :loaded="paths.length"
+        :total="total"
+        :loading="isLoadingMore"
+        :failed="loadMoreError"
+        @load="loadMore"
+      />
+    </template>
+  </ModalOverlay>
+</template>

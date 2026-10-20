@@ -1,0 +1,1677 @@
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { createPinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
+import type * as VueRouter from 'vue-router'
+
+const POST = vi.fn()
+const GET = vi.fn()
+const PATCH = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { POST, GET, PATCH }, eventApi: {} }),
+}))
+
+// Defaults to create mode (no :id param) -- the edit-mode describe block
+// below sets route.params.id before mounting.
+const route = reactive<{ params: { id?: string } }>({ params: {} })
+const router = { replace: vi.fn() }
+type LeaveGuard = () => boolean | Promise<boolean>
+let leaveGuard: LeaveGuard | null = null
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return {
+    ...actual,
+    useRoute: () => route,
+    useRouter: () => router,
+    onBeforeRouteLeave: (guard: LeaveGuard) => {
+      leaveGuard = guard
+    },
+  }
+})
+
+const currentUser = reactive({
+  profile: { user_id: 'u-teacher', role: 'teacher' as 'student' | 'teacher' | 'admin' },
+})
+vi.mock('@/stores/currentUser', () => ({
+  useCurrentUserStore: () => currentUser,
+}))
+
+vi.mock('@/features/auth/composables/useAuth', () => ({
+  useAuth: () => ({
+    isLoaded: { value: true },
+    isSignedIn: { value: true },
+    getToken: async () => 'jwt',
+    signOut: vi.fn(async () => {}),
+    displayInitial: { value: 'G' },
+  }),
+}))
+
+const sizeListeners: { query: string; onChange: (event: { matches: boolean }) => void }[] = []
+let windowWidth = 1280
+
+function widthMatches(query: string): boolean {
+  const min = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0)
+  const max = Number(/max-width:\s*(\d+)px/.exec(query)?.[1] ?? Infinity)
+  return windowWidth >= min && windowWidth <= max
+}
+
+/** Makes the window `width` px wide, as far as the size-class queries ask. */
+function screenWidth(width: number): void {
+  windowWidth = width
+  sizeListeners.length = 0
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    get matches() {
+      return widthMatches(query)
+    },
+    media: query,
+    addEventListener: (_type: string, onChange: (event: { matches: boolean }) => void) => sizeListeners.push({ query, onChange }),
+    removeEventListener: vi.fn(),
+  }))
+}
+
+/** Resizes the window the size-class queries are watching. */
+function resizeWindow(width: number): void {
+  windowWidth = width
+  sizeListeners.forEach(({ query, onChange }) => onChange({ matches: widthMatches(query) }))
+}
+
+const guitar = {
+  instrument_id: 'i-1',
+  names: { en: '6-string guitar', pt_BR: 'Violão de 6 cordas' },
+  languages: ['en', 'pt_BR'],
+  family: 'fretted' as const,
+  string_count: 6,
+  tuning: ['E', 'A', 'D', 'G', 'B', 'E'],
+}
+const piano = { instrument_id: 'i-2', names: { en: 'Piano', pt_BR: 'Piano' }, languages: ['en', 'pt_BR'], family: 'keyboard' as const }
+const bass = {
+  instrument_id: 'i-3',
+  names: { en: '4-string bass', pt_BR: 'Contrabaixo de 4 cordas' },
+  languages: ['en', 'pt_BR'],
+  family: 'fretted' as const,
+  string_count: 4,
+  tuning: ['E', 'A', 'D', 'G'],
+}
+
+function mountView() {
+  return mount(DiagramAuthoringView, {
+    global: {
+      plugins: [createPinia()],
+      stubs: { RouterLink: RouterLinkStub },
+    },
+  })
+}
+
+function blockers(wrapper: ReturnType<typeof mountView>) {
+  return wrapper.findAll('[data-test="save-blocker"]').map((item) => item.text())
+}
+
+/** Taps Save and says what it lists as missing (nothing, and a save, when nothing is). */
+async function blockersAfterSave(wrapper: ReturnType<typeof mountView>) {
+  wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+  await flushPromises()
+  return blockers(wrapper)
+}
+
+import { i18n } from '@/i18n'
+import { COLOR_PALETTE } from '@/shared/utils/colorPalette'
+import FrettedDiagramEditor from '@/features/teacher/components/FrettedDiagramEditor.vue'
+import DiagramPlayer from '@/shared/components/diagram/DiagramPlayer.vue'
+import DiagramRegionsEditor from '@/features/teacher/components/DiagramRegionsEditor.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
+import DiagramAuthoringView from '@/features/teacher/views/DiagramAuthoringView.vue'
+import type { components } from '@/api/generated/core-domain'
+import { useToast } from '@/shared/composables/useToast'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
+
+type Diagram = components['schemas']['Diagram']
+
+async function selectClassification(wrapper: ReturnType<typeof mountView>) {
+  const [conceptPicker, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+  await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
+  await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
+}
+
+/** Opens the general marker color palette (from its toolbar icon button) if it is not already open. */
+async function openColorMenu(wrapper: ReturnType<typeof mountView>) {
+  if (!wrapper.find('[data-test="color-palette"]').exists()) {
+    await wrapper.get('[data-test="diagram-color-trigger"]').trigger('click')
+  }
+}
+
+describe('DiagramAuthoringView', () => {
+  beforeEach(() => {
+    POST.mockReset()
+    GET.mockReset()
+    PATCH.mockReset()
+    currentUser.profile.role = 'teacher'
+    currentUser.profile.user_id = 'u-teacher'
+    route.params = {}
+    router.replace.mockReset()
+    // The full editor: the heavy parts are read-only on a phone, which has its own tests.
+    screenWidth(1280)
+    useToast().clear()
+    // Instruments + skill/concept list fetches all land on the same mocked
+    // GET -- default every call to an empty list, individual tests layer a
+    // mockResolvedValueOnce ahead of this for the one they care about.
+    GET.mockResolvedValue({ data: [], error: undefined, response: { status: 200 } })
+  })
+
+  it('shows a permission-denied state for a student instead of the form', () => {
+    currentUser.profile.role = 'student'
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
+  })
+
+  it('names the section and a new diagram in the app bar', () => {
+    const wrapper = mountView()
+
+    expect(wrapper.get('[data-test="editor-app-bar-section"]').text()).toBe('Diagrams')
+    expect(wrapper.get('[data-test="editor-app-bar-title"]').text()).toBe('New diagram')
+  })
+
+  it('only lists fretted instruments in the instrument picker', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar, piano], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    const options = wrapper.findAll('[data-test="instrument-option"]')
+    expect(options).toHaveLength(1)
+    expect(options[0]!.text()).toContain('6-string guitar')
+  })
+
+  it("names each instrument in the viewer's language", async () => {
+    i18n.global.locale.value = 'pt-BR'
+    try {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(wrapper.get('[data-test="instrument-option"]').text()).toBe('Violão de 6 cordas')
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
+  })
+
+  it('locks the instrument picker once a position has been placed, even in create mode', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar, bass], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    const options = wrapper.findAll('[data-test="instrument-option"]')
+    await options[0]!.trigger('click')
+    expect(options[0]!.attributes('disabled')).toBeUndefined()
+
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+
+    expect(options[0]!.attributes('disabled')).toBeDefined()
+    expect(options[1]!.attributes('disabled')).toBeDefined()
+  })
+
+  it('lists what a save still needs until a name, a complete position and the classification are set', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(await blockersAfterSave(wrapper)).toEqual([
+      'Name it in every language',
+      'Place at least one position',
+      'Add a skill',
+      'Add a concept',
+    ])
+
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic — Position 1')
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await selectClassification(wrapper)
+    // The placed position has no interval/note name yet — nothing computes them until a root
+    // note is chosen, and the server rejects an incomplete position outright.
+    expect(blockers(wrapper)).toEqual(['Set the interval and note of every position'])
+
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
+    expect(POST).not.toHaveBeenCalled()
+  })
+
+  it('names the skills and concepts in the editing language, and asks the team for missing ones', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve({
+        data:
+          path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+            ? [knowledgeNode('s-1', { names: { en: 'Bends', pt_BR: 'Puxadas' } })]
+            : [],
+        error: undefined,
+        response: { status: 200 },
+      }),
+    )
+    i18n.global.locale.value = 'pt-BR'
+    try {
+      const wrapper = mountView()
+      await flushPromises()
+
+      const [, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+      expect(skillPicker!.props('nodes').map((node) => node.name)).toEqual(['Puxadas'])
+      expect(skillPicker!.props('missingHint')).toBe(true)
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
+  })
+
+  it('says the skills failed to load, and offers a retry', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve(
+        path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+          ? { data: undefined, error: { message: 'boom' }, response: { status: 500 } }
+          : { data: [], error: undefined, response: { status: 200 } },
+      ),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+
+    const [, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+    expect(skillPicker!.props('loadFailed')).toBe(true)
+    GET.mockClear()
+    skillPicker!.vm.$emit('retry')
+
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+  })
+
+  it('asks for the concepts before the skills', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('label'))).toEqual([
+      'Concept',
+      'Skill',
+    ])
+  })
+
+  describe('compatible instruments', () => {
+    const electric = {
+      instrument_id: 'i-4',
+      names: { en: 'Electric guitar', pt_BR: 'Guitarra elétrica' },
+      languages: ['en', 'pt_BR'],
+      family: 'fretted' as const,
+      string_count: 6,
+      tuning: ['E', 'A', 'D', 'G', 'B', 'E'],
+    }
+
+    async function mountWithLayout() {
+      GET.mockResolvedValueOnce({ data: [guitar, bass, electric], error: undefined, response: { status: 200 } })
+      POST.mockResolvedValueOnce({ data: { diagram_id: 'd-new', instrument_id: 'i-1', instrument_ids: ['i-1'], names: { en: 'Shape' }, positions: [], classification: { skills: [], concepts: [] }, created_at: '2026-10-02T00:00:00Z' }, error: undefined, response: { status: 201 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.findAll('[data-test="instrument-option"]')[0]!.trigger('click')
+      return wrapper
+    }
+
+    async function save(wrapper: ReturnType<typeof mountView>) {
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Shape')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+    }
+
+    it('offers only instruments that share the layout geometry, with the layout itself always selected', async () => {
+      const wrapper = await mountWithLayout()
+
+      expect(wrapper.find('[data-test="compatible-instrument-i-1"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('[data-test="compatible-instrument-i-4"]').attributes('aria-pressed')).toBe('false')
+      expect(wrapper.find('[data-test="compatible-instrument-i-3"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="compatible-instrument-i-1"]').trigger('click')
+      expect(wrapper.get('[data-test="compatible-instrument-i-1"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('saves the chosen compatible instruments after the layout instrument', async () => {
+      const wrapper = await mountWithLayout()
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      await save(wrapper)
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ instrument_ids: ['i-1', 'i-4'] }) }),
+      )
+    })
+
+    it('drops a compatible instrument that is toggled off again', async () => {
+      const wrapper = await mountWithLayout()
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      await save(wrapper)
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ instrument_ids: ['i-1'] }) }),
+      )
+    })
+
+    it("lists only the classification nodes that suit the diagram's instruments", async () => {
+      const wrapper = await mountWithLayout()
+      const pickers = () => wrapper.findAllComponents(SkillConceptTreePicker)
+
+      expect(pickers().map((picker) => picker.props('instrumentIds'))).toEqual([['i-1'], ['i-1']])
+
+      await wrapper.get('[data-test="compatible-instrument-i-4"]').trigger('click')
+
+      expect(pickers().map((picker) => picker.props('instrumentIds'))).toEqual([
+        ['i-1', 'i-4'],
+        ['i-1', 'i-4'],
+      ])
+    })
+
+    it('labels the compatible instruments in the editing language', async () => {
+      i18n.global.locale.value = 'pt-BR'
+      try {
+        const wrapper = await mountWithLayout()
+
+        expect(wrapper.get('[data-test="compatible-instruments-label"]').text()).toBe('Instrumentos compatíveis')
+      } finally {
+        i18n.global.locale.value = 'en'
+      }
+    })
+  })
+
+  it('creates a diagram once, from the positions placed on the editor', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    POST.mockResolvedValueOnce({
+      data: {
+        diagram_id: 'd-new',
+        instrument_id: 'i-1',
+        names: { en: 'Minor Pentatonic — Position 1' },
+        positions: [{ position_id: 'p-1', interval: 'R', note_name: 'G', string: 1, fret: 3 }],
+        classification: { skills: [], concepts: [] },
+        created_at: '2026-09-22T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic — Position 1')
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await selectClassification(wrapper)
+    // String 1 is the high E string; fret 3 sounds G — picking G as root makes it the R.
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+    expect(POST).toHaveBeenCalledWith(
+      '/diagrams',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          instrument_ids: ['i-1'],
+          names: { en: 'Minor Pentatonic — Position 1' },
+          positions: [expect.objectContaining({ interval: 'R', note_name: 'G', string: 1, fret: 3 })],
+        }),
+      }),
+    )
+  })
+
+  it('records a playback by clicking placed markers, rings the selected step, and saves it as the default', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    POST.mockResolvedValueOnce({ data: undefined, error: { message: 'stop here' }, response: { status: 400 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Two notes')
+    const editor = () => wrapper.findComponent(FrettedDiagramEditor)
+    await editor().vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await editor().vm.$emit('toggle-cell', { string: 2, fret: 5 })
+    await selectClassification(wrapper)
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    const [first, second] = editor().props('positions').map((p) => p.id)
+
+    await wrapper.get('[data-test="sequence-record"]').trigger('click')
+    expect(editor().props('recording')).toBe(true)
+    await wrapper.get('[data-test="sequence-value-4"]').trigger('click')
+    await editor().vm.$emit('pick-position', second)
+    await editor().vm.$emit('pick-position', first)
+    expect(editor().props('sequenceHighlightIds')).toEqual([first])
+
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+    expect(POST).toHaveBeenCalledWith(
+      '/diagrams',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          playbacks: [
+            expect.objectContaining({
+              names: { en: 'Playback 1' },
+              tempo_bpm: 90,
+              steps: [
+                { position_ids: [second], value: { num: 1, den: 4 }, strum: 'none' },
+                { position_ids: [first], value: { num: 1, den: 4 }, strum: 'none' },
+              ],
+            }),
+          ],
+          default_playback_id: expect.any(String),
+        }),
+      }),
+    )
+  })
+
+  it('plays the unsaved playback being edited from the Playback panel, ringing the markers being heard', async () => {
+    const tunedGuitar = { ...guitar, tuning: ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'], default_voice_id: 'acoustic-guitar' }
+    GET.mockResolvedValueOnce({ data: [tunedGuitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    const editor = () => wrapper.findComponent(FrettedDiagramEditor)
+    await editor().vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await editor().vm.$emit('toggle-cell', { string: 2, fret: 5 })
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    expect(wrapper.find('[data-test="diagram-play"]').exists()).toBe(false)
+
+    const [first, second] = editor().props('positions').map((p) => p.id)
+    await wrapper.get('[data-test="sequence-record"]').trigger('click')
+    await editor().vm.$emit('pick-position', first)
+    await editor().vm.$emit('pick-position', second)
+    expect(wrapper.get('[data-test="sequence-editor"]').find('[data-test="diagram-play"]').exists()).toBe(true)
+
+    await wrapper.findComponent(DiagramPlayer).vm.$emit('active', [first])
+    expect(editor().props('sequenceHighlightIds')).toEqual([first])
+    await wrapper.findComponent(DiagramPlayer).vm.$emit('active', [])
+    expect(editor().props('sequenceHighlightIds')).toEqual([second])
+
+    await wrapper.get('[data-test="playback-add"]').trigger('click')
+    await editor().vm.$emit('pick-position', second)
+    const player = wrapper.findComponent(DiagramPlayer)
+    const added = player.props('diagram').playbacks[1]
+    expect(added.steps).toEqual([{ position_ids: [second], value: { num: 1, den: 8 }, strum: 'none' }])
+    expect(player.props('playback')).toMatchObject({ playback_id: added.playback_id })
+  })
+
+  it("saves the general color chosen from the palette and a position's own color", async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    POST.mockResolvedValueOnce({
+      data: {
+        diagram_id: 'd-new',
+        instrument_id: 'i-1',
+        names: { en: 'Colored' },
+        root_note: null,
+        label_display: 'interval',
+        color: '#3B82F6',
+        positions: [],
+        classification: { skills: [], concepts: [] },
+        created_at: '2026-09-23T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Colored')
+    const editor = wrapper.findComponent(FrettedDiagramEditor)
+    await editor.vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    await selectClassification(wrapper)
+
+    await openColorMenu(wrapper)
+    await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
+    const positionId = wrapper.findComponent(FrettedDiagramEditor).props('positions')[0]!.id
+    await editor.vm.$emit('set-color', positionId, COLOR_PALETTE[0].hex)
+
+    expect(wrapper.findComponent(FrettedDiagramEditor).props('color')).toBe(COLOR_PALETTE[5].hex)
+
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+    expect(POST).toHaveBeenCalledWith(
+      '/diagrams',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          color: COLOR_PALETTE[5].hex,
+          positions: [expect.objectContaining({ color: COLOR_PALETTE[0].hex })],
+        }),
+      }),
+    )
+  })
+
+  it('offers only the fixed palette for the general color, with a way back to the default', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    expect(wrapper.find('[data-test="color-palette"]').exists()).toBe(false)
+    await openColorMenu(wrapper)
+
+    const palette = wrapper.get('[data-test="color-palette"]')
+    expect(palette.findAll('[data-test^="color-swatch-"]')).toHaveLength(COLOR_PALETTE.length)
+    expect(palette.find('[data-test="color-palette-clear"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('input[type="color"]').exists()).toBe(false)
+  })
+
+  it('lets the general color be cleared while unsaved, and locks that once a color has been saved', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    POST.mockResolvedValueOnce({
+      data: {
+        diagram_id: 'd-new',
+        instrument_id: 'i-1',
+        names: { en: 'Colored' },
+        root_note: 'G',
+        label_display: 'interval',
+        color: '#3B82F6',
+        positions: [],
+        classification: { skills: [], concepts: [] },
+        created_at: '2026-09-23T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.get('input[data-test="diagram-name"]').setValue('Colored')
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+    await wrapper.get('[data-test="root-note-select"]').setValue('G')
+    await selectClassification(wrapper)
+    await openColorMenu(wrapper)
+    await wrapper.get(`[data-test="color-swatch-${COLOR_PALETTE[5].key}"]`).trigger('click')
+
+    const clearSelector = '[data-test="color-palette-clear"]'
+    await openColorMenu(wrapper)
+    expect(wrapper.get(clearSelector).attributes('disabled')).toBeUndefined()
+    await wrapper.get(clearSelector).trigger('keydown', { key: 'Escape' })
+
+    await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+    await new Promise((r) => setTimeout(r, 0))
+
+    await openColorMenu(wrapper)
+    expect(wrapper.get(clearSelector).attributes('disabled')).toBeDefined()
+  })
+
+  it('opens the full-size preview modal from the "view full preview" button', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="open-preview-modal"]').trigger('click')
+
+    expect(wrapper.find('[data-test="modal-overlay"]').exists()).toBe(true)
+  })
+
+  it('offers the full preview from the fretboard toolbar instead of a small side preview', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    const button = () => wrapper.get('[data-test="open-preview-modal"]')
+    // Next to "Overlay diagram…", and disabled until there's something to preview.
+    expect(button().element.parentElement).toBe(wrapper.get('[data-test="add-overlay"]').element.parentElement)
+    expect(button().attributes('disabled')).toBeDefined()
+
+    await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+
+    expect(button().attributes('disabled')).toBeUndefined()
+    expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).exists()).toBe(false)
+  })
+
+  it('floats the fretboard toolbar with the fretboard', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    const floating = wrapper.get('[data-test="fretboard-sticky"]')
+    for (const tool of ['add-overlay', 'open-preview-modal', 'diagram-color-indicator', 'label-mode-interval', 'label-mode-note', 'label-mode-hidden']) {
+      expect(floating.find(`[data-test="${tool}"]`).exists(), tool).toBe(true)
+    }
+  })
+
+  it('keeps the regions editor under the floating fretboard, like the position list', async () => {
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await new Promise((r) => setTimeout(r, 0))
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    expect(wrapper.getComponent(FrettedDiagramEditor).findComponent(DiagramRegionsEditor).exists()).toBe(true)
+  })
+
+  describe('in edit mode', () => {
+    beforeEach(() => {
+      route.params = { id: 'd-1' }
+    })
+
+    it('loads the diagram, locks the instrument picker, and patches on save', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          diagram_id: 'd-1',
+          instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          names: { en: 'C Major Scale' },
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
+          classification: {
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
+          },
+          created_at: '2026-09-22T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      PATCH.mockResolvedValueOnce({
+        data: {
+          diagram_id: 'd-1',
+          instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          names: { en: 'C Major Scale (updated)' },
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
+          classification: {
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
+          },
+          created_at: '2026-09-22T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('C Major Scale')
+      expect(wrapper.find('[data-test="instrument-option"]').attributes('disabled')).toBeDefined()
+
+      await wrapper.get('input[data-test="diagram-name"]').setValue('C Major Scale (updated)')
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+      expect(PATCH).toHaveBeenCalledWith(
+        '/diagrams/{diagram_id}',
+        expect.objectContaining({
+          params: { path: { diagram_id: 'd-1' } },
+          body: expect.objectContaining({ names: { en: 'C Major Scale (updated)' } }),
+        }),
+      )
+    })
+
+    it('restores the saved root note, label display, and each position\'s shape when reopened for editing', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          diagram_id: 'd-1',
+          instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          names: { en: 'C Major Scale' },
+          root_note: 'C',
+          label_display: 'note',
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'star', string: 2, fret: 1 }],
+          classification: {
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
+          },
+          created_at: '2026-09-22T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(wrapper.get<HTMLSelectElement>('select[data-test="root-note-select"]').element.value).toBe('C')
+      expect(wrapper.get('[data-test="label-mode-note"]').classes()).toContain('bg-accent')
+      const shapeOptions = wrapper.findComponent(FrettedDiagramEditor).findAll('[data-test="position-shape-option"]')
+      expect(shapeOptions[2]?.attributes('aria-pressed')).toBe('true') // star is the third option
+    })
+
+    it("restores the saved general color and each position's own color when reopened for editing", async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          diagram_id: 'd-1',
+          instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          names: { en: 'C Major Scale' },
+          root_note: 'C',
+          label_display: 'interval',
+          color: '#3B82F6',
+          positions: [
+            { position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', color: '#EF4444', string: 2, fret: 1 },
+            { position_id: 'p-2', interval: '3', note_name: 'E', shape: 'dot', string: 2, fret: 5 },
+          ],
+          classification: {
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
+          },
+          created_at: '2026-09-22T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      const blue = COLOR_PALETTE.find((c) => c.hex === '#3B82F6')!
+      expect(wrapper.get('[data-test="diagram-color-indicator"]').attributes('data-color')).toBe('#3B82F6')
+      await openColorMenu(wrapper)
+      expect(wrapper.get(`[data-test="color-swatch-${blue.key}"]`).attributes('aria-pressed')).toBe('true')
+      const editor = wrapper.findComponent(FrettedDiagramEditor)
+      expect(editor.props('color')).toBe('#3B82F6')
+      expect(editor.props('positions').map((p: { color: string | null }) => p.color)).toEqual(['#EF4444', null])
+      await wrapper.get('[data-test="open-preview-modal"]').trigger('click')
+      expect(wrapper.findComponent({ name: 'FrettedDiagramView' }).props('diagram').color).toBe('#3B82F6')
+    })
+
+    it('does not offer to clear a saved general color, since the API cannot unset it', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          diagram_id: 'd-1',
+          instrument_id: 'i-1',
+          kind: 'custom',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          names: { en: 'C Major Scale' },
+          root_note: 'C',
+          label_display: 'interval',
+          color: '#3B82F6',
+          positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', shape: 'dot', string: 2, fret: 1 }],
+          classification: {
+            skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+            concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
+          },
+          created_at: '2026-09-22T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+
+      await openColorMenu(wrapper)
+      expect(wrapper.get('[data-test="color-palette-clear"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="color-palette-hint"]').exists()).toBe(true)
+    })
+  })
+
+  describe('ownership and Save as', () => {
+    const scale = {
+      diagram_id: 'd-1',
+      instrument_id: 'i-1',
+      names: { en: 'C Major Scale' },
+      root_note: 'C',
+      label_display: 'interval',
+      color: null,
+      positions: [{ position_id: 'p-1', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
+      classification: {
+        skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
+      },
+      created_at: '2026-09-22T00:00:00Z',
+    }
+
+    async function openDiagram(owner: Pick<Diagram, 'kind' | 'created_by'> & Partial<Pick<Diagram, 'purpose'>>) {
+      route.params = { id: 'd-1' }
+      GET.mockResolvedValueOnce({ data: { ...scale, ...owner }, error: undefined, response: { status: 200 } })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      return wrapper
+    }
+
+    const appBarShowsSave = (wrapper: ReturnType<typeof mountView>) =>
+      wrapper.findComponent({ name: 'EditorAppBar' }).props('canSave')
+
+    it('opens with nothing to save, and asks before leaving once edited', async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+      expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
+      expect(await leaveGuard!()).toBe(true)
+
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Renamed')
+      const leaving = leaveGuard!()
+      await flushPromises()
+      expect(wrapper.text()).toContain('Leave without saving?')
+      await wrapper.get('[data-test="confirm-dialog-cancel"]').trigger('click')
+
+      expect(await leaving).toBe(false)
+    })
+
+    it('lets a teacher save over their own diagram, and offers Save as but not Save as template', async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+
+      expect(appBarShowsSave(wrapper)).toBe(true)
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="save-as-template"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+    })
+
+    it('puts every way of saving in the top bar', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+
+      const appBar = wrapper.findComponent({ name: 'EditorAppBar' })
+      expect(appBar.find('[data-test="editor-app-bar-saved"]').exists()).toBe(true)
+      expect(appBar.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(appBar.find('[data-test="save-as-template"]').exists()).toBe(true)
+    })
+
+    it('only lets a teacher save a basic template as a copy, and says why', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
+
+      expect(appBarShowsSave(wrapper)).toBe(false)
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('template')
+    })
+
+    it("only lets a teacher save another teacher's diagram as a copy, and says why", async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-other', display_name: 'Carol Dias' } })
+
+      expect(appBarShowsSave(wrapper)).toBe(false)
+      expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('another teacher')
+    })
+
+    it('lets an admin save over a template and also offers Save as template', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-someone', display_name: 'Carol Dias' } })
+
+      expect(appBarShowsSave(wrapper)).toBe(true)
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="save-as-template"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+    })
+
+    it('saves a copy of a template as a new custom diagram, then keeps editing the copy', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
+      POST.mockResolvedValueOnce({
+        data: {
+          ...scale,
+          diagram_id: 'd-copy',
+          names: { en: 'My C Major' },
+          kind: 'custom',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
+        },
+        error: undefined,
+        response: { status: 201 },
+      })
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      expect((wrapper.get('[data-test="save-as-name-en"]').element as HTMLInputElement).value).toBe('C Major Scale (copy)')
+      await wrapper.get('[data-test="save-as-name-en"]').setValue('My C Major')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            names: { en: 'My C Major' },
+            kind: 'custom',
+            positions: [expect.objectContaining({ position_id: expect.not.stringMatching(/^p-1$/) })],
+          }),
+        }),
+      )
+      expect(router.replace).toHaveBeenCalledWith({ name: 'teacher-diagram-edit', params: { id: 'd-copy' } })
+      expect(wrapper.find('[data-test="save-as-name-en"]').exists()).toBe(false)
+      expect(appBarShowsSave(wrapper)).toBe(true)
+      expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('My C Major')
+    })
+
+    it('updates the copy, not the source, on the next save, using the positions the server assigned', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
+      POST.mockResolvedValueOnce({
+        data: {
+          ...scale,
+          diagram_id: 'd-copy',
+          names: { en: 'My C Major' },
+          kind: 'custom',
+          created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          positions: [{ position_id: 'p-new', interval: 'R', note_name: 'C', string: 2, fret: 1 }],
+        },
+        error: undefined,
+        response: { status: 201 },
+      })
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      PATCH.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-copy', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
+        error: undefined,
+        response: { status: 200 },
+      })
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+      expect(PATCH).toHaveBeenCalledWith(
+        '/diagrams/{diagram_id}',
+        expect.objectContaining({
+          params: { path: { diagram_id: 'd-copy' } },
+          body: expect.objectContaining({ positions: [expect.objectContaining({ position_id: 'p-new' })] }),
+        }),
+      )
+    })
+
+    it('keeps a playback an exercise plays, saying which exercise plays it', async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+      PATCH.mockResolvedValueOnce({
+        data: undefined,
+        error: { message: 'a playback an exercise plays can\'t be removed: playback "Strum" is the sound of "Major or minor?"' },
+        response: { status: 409 },
+      })
+
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+      await new Promise((r) => setTimeout(r, 0))
+
+      const errors = useToast().toasts.value.filter((toast) => toast.kind === 'error').map((toast) => toast.message)
+      expect(errors).toEqual(['A playback an exercise plays can\'t be removed: playback "Strum" is the sound of "Major or minor?"'])
+    })
+
+    it('lets an admin save a copy as a new basic template', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-tpl', names: { en: 'C Major Template', pt_BR: 'Modelo de Dó maior' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
+        error: undefined,
+        response: { status: 201 },
+      })
+
+      await wrapper.get('[data-test="save-as-template"]').trigger('click')
+      expect(wrapper.text()).toContain('Save as template')
+      await wrapper.get('[data-test="save-as-name-en"]').setValue('C Major Template')
+      await wrapper.get('[data-test="save-as-name-pt_BR"]').setValue('Modelo de Dó maior')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ names: { en: 'C Major Template', pt_BR: 'Modelo de Dó maior' }, kind: 'basic' }) }),
+      )
+    })
+
+    it('keeps the dialog open and reports the error when the copy cannot be saved', async () => {
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
+      POST.mockResolvedValueOnce({ data: undefined, error: { message: 'Could not save' }, response: { status: 500 } })
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(wrapper.find('[data-test="save-as-name-en"]').exists()).toBe(true)
+      expect(router.replace).not.toHaveBeenCalled()
+      expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
+    })
+
+    describe('a chord voicing diagram', () => {
+      const chordVoicing = {
+        kind: 'basic' as const,
+        purpose: 'chord_voicing' as const,
+        created_by: { user_id: 'u-catalog', display_name: 'Chord catalog' },
+      }
+
+      function signInAsAdmin() {
+        currentUser.profile.role = 'admin'
+        currentUser.profile.user_id = 'u-admin'
+      }
+
+      it('opens read-only for an admin, says it comes from the chord catalog, and offers Save as', async () => {
+        signInAsAdmin()
+        const wrapper = await openDiagram(chordVoicing)
+
+        expect(appBarShowsSave(wrapper)).toBe(false)
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('chord catalog')
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('Save as')
+        expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      })
+
+      it('opens read-only for a teacher, and says it comes from the chord catalog', async () => {
+        const wrapper = await openDiagram(chordVoicing)
+
+        expect(appBarShowsSave(wrapper)).toBe(false)
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('chord catalog')
+        expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
+      })
+
+      it("opens a teacher's copy editable", async () => {
+        const wrapper = await openDiagram(chordVoicing)
+        POST.mockResolvedValueOnce({
+          data: {
+            ...scale,
+            diagram_id: 'd-copy',
+            names: { en: 'My A minor' },
+            kind: 'custom',
+            purpose: 'general',
+            created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+          },
+          error: undefined,
+          response: { status: 201 },
+        })
+
+        await wrapper.get('[data-test="save-as"]').trigger('click')
+        await wrapper.get('[data-test="save-as-name-en"]').setValue('My A minor')
+        await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('My A minor')
+        expect(appBarShowsSave(wrapper)).toBe(true)
+        expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+      })
+
+      it("opens an admin's template editable", async () => {
+        signInAsAdmin()
+        const wrapper = await openDiagram(chordVoicing)
+        POST.mockResolvedValueOnce({
+          data: {
+            ...scale,
+            diagram_id: 'd-tpl',
+            names: { en: 'A minor (open)', pt_BR: 'Lá menor (aberto)' },
+            kind: 'basic',
+            purpose: 'general',
+            created_by: { user_id: 'u-admin', display_name: 'Marina Alves' },
+          },
+          error: undefined,
+          response: { status: 201 },
+        })
+
+        await wrapper.get('[data-test="save-as-template"]').trigger('click')
+        await wrapper.get('[data-test="save-as-name-en"]').setValue('A minor (open)')
+        await wrapper.get('[data-test="save-as-name-pt_BR"]').setValue('Lá menor (aberto)')
+        await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('A minor (open)')
+        expect(appBarShowsSave(wrapper)).toBe(true)
+        expect(wrapper.find('[data-test="read-only-notice"]').exists()).toBe(false)
+      })
+
+      it('stays read-only when the copy fails to save', async () => {
+        const wrapper = await openDiagram(chordVoicing)
+        POST.mockResolvedValueOnce({ data: undefined, error: { message: 'Could not save' }, response: { status: 500 } })
+
+        await wrapper.get('[data-test="save-as"]').trigger('click')
+        await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+        await new Promise((r) => setTimeout(r, 0))
+
+        expect(useToast().toasts.value.some((toast) => toast.kind === 'error')).toBe(true)
+        expect(appBarShowsSave(wrapper)).toBe(false)
+        expect(wrapper.get('[data-test="read-only-notice"]').text()).toContain('chord catalog')
+      })
+    })
+
+    it("names the diagram one language at a time, from each language's tab", async () => {
+      const wrapper = await openDiagram({ kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } })
+      expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('C Major Scale')
+      expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="add-language"]').trigger('click')
+      await wrapper.get('[data-test="add-language-option-pt_BR"]').trigger('click')
+      // Adding a language opens its tab, with an empty name to fill in.
+      expect(wrapper.get('[data-test="language-tab-pt_BR"]').attributes('aria-selected')).toBe('true')
+      expect(wrapper.get<HTMLInputElement>('input[data-test="diagram-name"]').element.value).toBe('')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Escala de Dó maior')
+
+      PATCH.mockResolvedValueOnce({ data: { ...scale, kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } }, error: undefined, response: { status: 200 } })
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+      expect(PATCH).toHaveBeenCalledWith(
+        '/diagrams/{diagram_id}',
+        expect.objectContaining({ body: expect.objectContaining({ names: { en: 'C Major Scale', pt_BR: 'Escala de Dó maior' } }) }),
+      )
+    })
+
+    it('shows a template in every language, and does not save over it until each one is named', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      const wrapper = await openDiagram({ kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } })
+
+      expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test^="remove-language-"]').exists()).toBe(false)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Name it in every language'])
+      expect(PATCH).not.toHaveBeenCalled()
+      expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(true)
+
+      await wrapper.get('[data-test="language-tab-pt_BR"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Escala de Dó maior')
+
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="names-missing-hint"]').exists()).toBe(false)
+    })
+
+    it('does not offer Save as, or a teacher Save as template, for a diagram that has never been saved', () => {
+      const wrapper = mountView()
+
+      expect(wrapper.find('[data-test="save-as"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="save-as-template"]').exists()).toBe(false)
+    })
+
+    it('lets an admin save a new diagram straight away as a template, under its own name', async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-tpl', names: { en: 'G Major Template', pt_BR: 'Modelo de Sol maior' }, kind: 'basic', created_by: { user_id: 'u-admin', display_name: 'Marina Alves' } },
+        error: undefined,
+        response: { status: 201 },
+      })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('G Major Template')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+
+      const appBar = wrapper.findComponent({ name: 'EditorAppBar' })
+      expect(appBar.find('[data-test="save-as"]').exists()).toBe(false)
+      await appBar.get('[data-test="save-as-template"]').trigger('click')
+      expect((wrapper.get('[data-test="save-as-name-en"]').element as HTMLInputElement).value).toBe('G Major Template')
+      await wrapper.get('[data-test="save-as-name-pt_BR"]').setValue('Modelo de Sol maior')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({ body: expect.objectContaining({ names: { en: 'G Major Template', pt_BR: 'Modelo de Sol maior' }, kind: 'basic' }) }),
+      )
+      expect(router.replace).toHaveBeenCalledWith({ name: 'teacher-diagram-edit', params: { id: 'd-tpl' } })
+      expect(appBarShowsSave(wrapper)).toBe(true)
+    })
+
+    it("won't save as a template while a label, note or region caption is missing a language every template needs", async () => {
+      currentUser.profile.role = 'admin'
+      currentUser.profile.user_id = 'u-admin'
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('G Major')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      const templateButton = () => wrapper.findComponent({ name: 'EditorAppBar' }).get('[data-test="save-as-template"]')
+      expect(templateButton().attributes('disabled')).toBeUndefined()
+
+      await wrapper.get('[data-test="position-note"]').setValue('Start here')
+
+      expect(templateButton().attributes('disabled')).toBeDefined()
+      expect(templateButton().attributes('title')).toBeTruthy()
+    })
+
+    it('sends a new diagram as a custom diagram', async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-new', kind: 'custom', created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' } },
+        error: undefined,
+        response: { status: 201 },
+      })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('New one')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+      expect(POST).toHaveBeenCalledWith('/diagrams', expect.objectContaining({ body: expect.objectContaining({ kind: 'custom' }) }))
+    })
+  })
+
+  describe('overlays', () => {
+    const scale = {
+      diagram_id: 'd-1',
+      instrument_id: 'i-1',
+      names: { en: 'C Major Scale' },
+      kind: 'custom' as const,
+      created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+      root_note: 'C',
+      label_display: 'interval' as const,
+      color: null,
+      positions: [{ position_id: 'p-1', interval: 'R' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1 }],
+      regions: [],
+      classification: {
+        skills: [knowledgeNode('s-1', { names: { en: 'Scales' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'Major' } })],
+      },
+      created_at: '2026-09-22T00:00:00Z',
+    }
+    const pentatonic = {
+      ...scale,
+      diagram_id: 'd-penta',
+      names: { en: 'A Minor Pentatonic' },
+      kind: 'basic' as const,
+      root_note: 'A',
+      color: '#22C55E',
+      positions: [
+        { position_id: 'o-1', interval: 'R' as const, note_name: 'A', shape: 'dot' as const, string: 3, fret: 2 },
+        { position_id: 'o-2', interval: 'b3' as const, note_name: 'C', shape: 'dot' as const, string: 2, fret: 1 },
+      ],
+      classification: { skills: [knowledgeNode('s-2', { names: { en: 'Pentatonics' } })], concepts: [] },
+    }
+    const flush = () => new Promise((r) => setTimeout(r, 0))
+
+    async function openOwnDiagram() {
+      route.params = { id: 'd-1' }
+      GET.mockResolvedValueOnce({ data: scale, error: undefined, response: { status: 200 } })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flush()
+      return wrapper
+    }
+
+    // The overlay picker lists the library; it also loads instruments (for its
+    // thumbnails) and the library's creators.
+    function serveOverlayLibrary() {
+      GET.mockImplementation((path: string) => {
+        const data =
+          path === '/diagrams'
+            ? { items: [scale, pentatonic], total: 2, limit: 20, offset: 0 }
+            : path === '/instruments'
+              ? [guitar]
+              : []
+        return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+      })
+    }
+
+    async function overlayPentatonic(wrapper: ReturnType<typeof mountView>) {
+      serveOverlayLibrary()
+      await wrapper.get('[data-test="add-overlay"]').trigger('click')
+      await flush()
+      const option = wrapper
+        .findAll('[data-test="diagram-option"]')
+        .find((row) => row.text().includes('A Minor Pentatonic'))
+      await option!.trigger('click')
+    }
+
+    async function merge(wrapper: ReturnType<typeof mountView>, regionPerLayer = true) {
+      if (!regionPerLayer) await wrapper.get('[data-test="merge-region-per-layer"]').setValue(false)
+      await wrapper.get('[data-test="merge-overlays"]').trigger('click')
+    }
+
+    const appBar = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'EditorAppBar' })
+    const editor = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent(FrettedDiagramEditor)
+    const modal = (wrapper: ReturnType<typeof mountView>) => wrapper.findComponent({ name: 'OverlayDiagramsModal' })
+
+    it('overlays a diagram of the same instrument in a modal with the full merged preview, leaving the editor as it is', async () => {
+      const wrapper = await openOwnDiagram()
+
+      await overlayPentatonic(wrapper)
+
+      expect(GET).toHaveBeenCalledWith('/diagrams', {
+        params: { query: expect.objectContaining({ instrument_id: 'i-1' }) },
+      })
+      expect(modal(wrapper).findAll('[data-test="overlay-item"]').map((item) => item.text())).toEqual(['A Minor Pentatonic'])
+      const preview = modal(wrapper).getComponent({ name: 'FrettedDiagramView' }).props('diagram')
+      expect(preview.positions.map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
+      expect(editor(wrapper).props('positions')).toHaveLength(1)
+    })
+
+    it('previews a highlighted region per diagram, named after it, unless the author turns that off', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+      const previewRegions = () =>
+        modal(wrapper)
+          .getComponent({ name: 'FrettedDiagramView' })
+          .props('diagram')
+          .regions.map((r: { description: { en: string } }) => r.description.en)
+
+      expect(previewRegions()).toEqual(['C Major Scale', 'A Minor Pentatonic'])
+
+      await wrapper.get('[data-test="merge-region-per-layer"]').setValue(false)
+      expect(previewRegions()).toEqual([])
+    })
+
+    it("offers only diagrams that aren't the one being edited", async () => {
+      const wrapper = await openOwnDiagram()
+      serveOverlayLibrary()
+
+      await wrapper.get('[data-test="add-overlay"]').trigger('click')
+      await flush()
+
+      expect(wrapper.findAll('[data-test="diagram-option-name"]').map((n) => n.text())).toEqual(['A Minor Pentatonic'])
+    })
+
+    it('discards the overlays, leaving the diagram and its saving untouched', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+
+      await wrapper.get('[data-test="discard-overlays"]').trigger('click')
+
+      expect(modal(wrapper).exists()).toBe(false)
+      expect(editor(wrapper).props('positions')).toHaveLength(1)
+      expect(appBar(wrapper).props('canSave')).toBe(true)
+      expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(false)
+    })
+
+    it('starts afresh the next time, with nothing overlaid', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+      await wrapper.get('[data-test="discard-overlays"]').trigger('click')
+
+      // serveOverlayLibrary() still answers by path; a one-off mock here would
+      // go to whichever request came first, instruments included.
+      await wrapper.get('[data-test="add-overlay"]').trigger('click')
+      await flush()
+
+      expect(modal(wrapper).find('[data-test="overlay-item"]').exists()).toBe(false)
+      expect(modal(wrapper).find('[data-test="diagram-option"]').exists()).toBe(true)
+    })
+
+    it('merges the layers into editable positions, with a region per layer, and then saves only as a new diagram', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+
+      await merge(wrapper)
+
+      expect(modal(wrapper).exists()).toBe(false)
+      expect(editor(wrapper).props('positions').map((p: { interval: string }) => p.interval)).toEqual(['R', 'b3'])
+      expect(editor(wrapper).props('regions')).toHaveLength(2)
+      expect(appBar(wrapper).props('canSave')).toBe(false)
+      expect(wrapper.get('[data-test="save-as"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(true)
+    })
+
+    it('merges without regions when the author declines them', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+
+      await merge(wrapper, false)
+
+      expect(editor(wrapper).props('regions')).toEqual([])
+    })
+
+    it('saves the merged diagram as a new one, leaving the source untouched, then lets it be saved in place', async () => {
+      const wrapper = await openOwnDiagram()
+      await overlayPentatonic(wrapper)
+      await merge(wrapper, false)
+      POST.mockResolvedValueOnce({
+        data: { ...scale, diagram_id: 'd-merged', names: { en: 'C Major + Pentatonic' } },
+        error: undefined,
+        response: { status: 201 },
+      })
+
+      await wrapper.get('[data-test="save-as"]').trigger('click')
+      expect(wrapper.get<HTMLInputElement>('[data-test="save-as-name-en"]').element.value).toBe('C Major Scale')
+      await wrapper.get('[data-test="save-as-name-en"]').setValue('C Major + Pentatonic')
+      await wrapper.get('[data-test="save-as-form"]').trigger('submit')
+      await flush()
+
+      expect(PATCH).not.toHaveBeenCalled()
+      expect(POST).toHaveBeenCalledWith(
+        '/diagrams',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            positions: [
+              expect.objectContaining({ string: 3, fret: 2, interval: 'R', color: '#22C55E' }),
+              expect.objectContaining({ string: 2, fret: 1, interval: 'b3', color: '#22C55E' }),
+            ],
+            classification: { skill_ids: ['s-1', 's-2'], concept_ids: ['c-1'] },
+          }),
+        }),
+      )
+      expect(appBar(wrapper).props('canSave')).toBe(true)
+      expect(wrapper.find('[data-test="merged-notice"]').exists()).toBe(false)
+    })
+
+    it('lets a new, unsaved diagram be merged and then created with the plain Save', async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flush()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Mine')
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await editor(wrapper).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await overlayPentatonic(wrapper)
+
+      await merge(wrapper, false)
+
+      expect(appBar(wrapper).props('canSave')).toBe(true)
+      expect(appBar(wrapper).props('saveState')).toBe('unsaved')
+      expect(editor(wrapper).props('positions')).toHaveLength(3)
+    })
+
+    it("can't merge while a position of this diagram still has no interval", async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flush()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await editor(wrapper).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await overlayPentatonic(wrapper)
+
+      expect(wrapper.get('[data-test="merge-overlays"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-test="merge-needs-root"]').exists()).toBe(true)
+    })
+  })
+
+  describe('editing language', () => {
+    async function mountNew() {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await new Promise((r) => setTimeout(r, 0))
+      return wrapper
+    }
+
+    async function addPortuguese(wrapper: ReturnType<typeof mountView>) {
+      await wrapper.get('[data-test="add-language"]').trigger('click')
+      await wrapper.get('[data-test="add-language-option-pt_BR"]').trigger('click')
+    }
+
+    it("starts a new diagram in the author's UI language only", async () => {
+      const wrapper = await mountNew()
+
+      expect(wrapper.findAll('[role="tab"]').map((tab) => tab.attributes('data-test'))).toEqual(['language-tab-en'])
+    })
+
+    it("shows the whole editor in the active tab's language, but keeps the top bar in the UI language", async () => {
+      const wrapper = await mountNew()
+      await addPortuguese(wrapper)
+
+      const body = wrapper.get('[data-test="authoring-body"]')
+      expect(body.text()).toContain('Instrumento')
+      expect(wrapper.get('[data-test="instrument-option"]').text()).toBe('Violão de 6 cordas')
+      expect(wrapper.get('input[data-test="diagram-name"]').attributes('placeholder')).toBe('Nome do diagrama')
+      expect(wrapper.get('[data-test="editor-app-bar-title"]').text()).toBe('New diagram')
+      expect(i18n.global.locale.value).toBe('en')
+
+      await wrapper.get('[data-test="language-tab-en"]').trigger('click')
+      expect(body.text()).toContain('Instrument')
+      expect(wrapper.get('[data-test="instrument-option"]').text()).toBe('6-string guitar')
+    })
+
+    it('does not save until every language of the diagram is named, and saves again once one is removed', async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+
+      await addPortuguese(wrapper)
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Name it in every language'])
+      expect(POST).not.toHaveBeenCalled()
+
+      await wrapper.get('[data-test="remove-language-pt_BR"]').trigger('click')
+      await wrapper.get('[data-test="remove-language-confirm"]').trigger('click')
+      expect(wrapper.find('[data-test="language-tab-pt_BR"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="language-tab-en"]').attributes('aria-selected')).toBe('true')
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
+    })
+
+    it("edits marker labels, notes and region captions in each tab's language, and saves them only once every language has them", async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await wrapper.get('[data-test="position-custom-label"]').setValue('Av')
+      await wrapper.get('[data-test="position-note"]').setValue('Start here')
+      await wrapper.get('[data-test="region-add"]').trigger('click')
+      await wrapper.get('[data-test="region-description"]').setValue('Box 1')
+
+      await addPortuguese(wrapper)
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Pentatônica menor')
+      expect(wrapper.get<HTMLInputElement>('[data-test="position-note"]').element.value).toBe('')
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(true)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Fill in its text in every language'])
+      expect(POST).not.toHaveBeenCalled()
+
+      await wrapper.get('[data-test="position-custom-label"]').setValue('Ev')
+      await wrapper.get('[data-test="position-note"]').setValue('Comece aqui')
+      await wrapper.get('[data-test="region-description"]').setValue('Caixa 1')
+      expect(wrapper.find('[data-test="language-tab-missing-pt_BR"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
+      expect(wrapper.findAll('[data-test="editor-region"]').length).toBeGreaterThan(0)
+
+      POST.mockResolvedValueOnce({ data: undefined, error: { message: 'stop here' }, response: { status: 400 } })
+      await wrapper.findComponent({ name: 'EditorAppBar' }).vm.$emit('save')
+
+      const body = POST.mock.calls.at(-1)?.[1]?.body
+      expect(body.positions[0]).toMatchObject({ custom_label: { en: 'Av', pt_BR: 'Ev' }, note: { en: 'Start here', pt_BR: 'Comece aqui' } })
+      expect(body.regions).toEqual([
+        expect.objectContaining({ fret_start: 3, fret_end: 3, description: { en: 'Box 1', pt_BR: 'Caixa 1' } }),
+      ])
+    })
+
+    it('shows an added region on the authoring fretboard', async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await wrapper.get('[data-test="region-add"]').trigger('click')
+      await wrapper.get('[data-test="region-description"]').setValue('Box 1')
+
+      const editor = wrapper.findComponent(FrettedDiagramEditor)
+      expect(editor.findAll('[data-test="editor-region"]')).toHaveLength(1)
+      expect(editor.findAll('[data-test="region-outline"]')).toHaveLength(1)
+    })
+
+    it('does not save while a region runs backwards', async () => {
+      const wrapper = await mountNew()
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+      await wrapper.get('input[data-test="diagram-name"]').setValue('Minor Pentatonic')
+      await wrapper.findComponent(FrettedDiagramEditor).vm.$emit('toggle-cell', { string: 1, fret: 3 })
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="root-note-select"]').setValue('G')
+      await wrapper.get('[data-test="region-add"]').trigger('click')
+      await wrapper.get('[data-test="region-description"]').setValue('Box 1')
+
+      await wrapper.get('[data-test="region-fret-start"]').setValue('9')
+
+      expect(wrapper.find('[data-test="region-invalid"]').exists()).toBe(true)
+      expect(await blockersAfterSave(wrapper)).toEqual(['Fix the frets or strings of a region'])
+      expect(POST).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('on a phone', () => {
+    const minorPentatonic = {
+      diagram_id: 'd-1',
+      instrument_id: 'i-1',
+      kind: 'custom',
+      created_by: { user_id: 'u-teacher', display_name: 'Bob Ferreira' },
+      names: { en: 'A minor pentatonic — box 1' },
+      label_display: 'interval',
+      positions: [
+        { position_id: 'p-1', interval: 'R', note_name: 'A', string: 6, fret: 5 },
+        { position_id: 'p-2', interval: 'b3', note_name: 'C', string: 6, fret: 8 },
+      ],
+      classification: { skills: [knowledgeNode('s-1')], concepts: [knowledgeNode('c-1', { kind: 'concept' })] },
+      created_at: '2026-09-22T00:00:00Z',
+    }
+
+    async function openMinorPentatonic() {
+      route.params = { id: 'd-1' }
+      GET.mockResolvedValueOnce({ data: minorPentatonic, error: undefined, response: { status: 200 } })
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+      return wrapper
+    }
+
+    beforeEach(() => screenWidth(390))
+
+    it('shows the board as students see it, with the larger-screen note under it', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      expect(wrapper.findComponent(FrettedDiagramEditor).exists()).toBe(false)
+      const board = wrapper.getComponent({ name: 'FrettedDiagramView' })
+      expect(board.props('diagram').positions).toHaveLength(2)
+      const notice = wrapper.get('[data-test="larger-screen-notice"]')
+      expect(notice.text()).toBe('Placing and moving positions is best done on a larger screen. The rest of this diagram can be changed here.')
+      expect(notice.find('svg.lucide-monitor').exists()).toBe(true)
+    })
+
+    it('keeps the marker labels editable, and the preview follows them', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      await wrapper.get('[data-test="label-mode-note"]').trigger('click')
+
+      expect(wrapper.getComponent({ name: 'FrettedDiagramView' }).props('labelMode')).toBe('note')
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(true)
+    })
+
+    it('keeps the typed regions editable, and leaves out what places positions', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      expect(wrapper.findComponent(DiagramRegionsEditor).exists()).toBe(true)
+      expect(wrapper.find('[data-test="add-overlay"]').exists()).toBe(false)
+      expect(wrapper.findComponent({ name: 'DiagramSequenceEditor' }).exists()).toBe(false)
+    })
+
+    it('shows a new diagram on an empty board, with the note', async () => {
+      GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+      const wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+      expect(wrapper.getComponent({ name: 'FrettedDiagramView' }).props('diagram').positions).toEqual([])
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+    })
+
+    it('unlocks placing positions as soon as the window is wider than a phone', async () => {
+      const wrapper = await openMinorPentatonic()
+
+      resizeWindow(768)
+      await flushPromises()
+
+      expect(wrapper.findComponent(FrettedDiagramEditor).exists()).toBe(true)
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(false)
+    })
+  })
+
+  it.each([
+    ['tablet', 768],
+    ['computer', 1280],
+  ])('places positions on a %s, with no larger-screen note', async (_device, width) => {
+    screenWidth(width)
+    GET.mockResolvedValueOnce({ data: [guitar], error: undefined, response: { status: 200 } })
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.get('[data-test="instrument-option"]').trigger('click')
+
+    expect(wrapper.findComponent(FrettedDiagramEditor).exists()).toBe(true)
+    expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(false)
+  })
+})
+

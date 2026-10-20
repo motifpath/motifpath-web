@@ -1,0 +1,597 @@
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { createPinia } from 'pinia'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
+import type * as VueRouter from 'vue-router'
+
+const GET = vi.fn()
+const POST = vi.fn()
+const PUT = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { GET, POST, PUT }, eventApi: {} }),
+}))
+
+type LeaveGuard = () => boolean | Promise<boolean>
+const route = reactive<{ params: { id?: string } }>({ params: {} })
+const router = { replace: vi.fn() }
+let leaveGuard: LeaveGuard | null = null
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return {
+    ...actual,
+    useRoute: () => route,
+    useRouter: () => router,
+    onBeforeRouteLeave: (guard: LeaveGuard) => {
+      leaveGuard = guard
+    },
+  }
+})
+
+const currentUser = reactive({
+  profile: { user_id: 'u-tomas', display_name: 'Tomás', role: 'teacher' as 'student' | 'teacher' | 'admin' },
+})
+vi.mock('@/stores/currentUser', () => ({ useCurrentUserStore: () => currentUser }))
+
+vi.mock('@/features/auth/composables/useAuth', () => ({
+  useAuth: () => ({
+    isLoaded: { value: true },
+    isSignedIn: { value: true },
+    getToken: async () => 'jwt',
+    signOut: vi.fn(async () => {}),
+    displayInitial: { value: 'T' },
+  }),
+}))
+
+import type { components } from '@/api/generated/core-domain'
+import CourseBuilderView from '@/features/teacher/views/CourseBuilderView.vue'
+import { useToast } from '@/shared/composables/useToast'
+
+type Course = components['schemas']['Course']
+
+const libraryPath = {
+  learning_path_id: 'lp-1',
+  title: 'Open chords',
+  teacher: { user_id: 'u-tomas', display_name: 'Tomás' },
+  level: 'beginner',
+  instrument_ids: [],
+  status: 'published',
+  items: [{ position: 1, content_node_id: 'n-1', title: 'E minor', content_type: 'video' }],
+  created_at: '2026-08-01T00:00:00Z',
+  updated_at: '2026-08-02T12:00:00Z',
+}
+
+function course(overrides: Partial<Course> = {}): Course {
+  return {
+    course_id: 'c-1',
+    title: 'Fingerstyle Foundations',
+    summary: 'Fingerpicking from the first pattern.',
+    level: 'beginner',
+    language: 'en',
+    status: 'draft',
+    created_by: { user_id: 'u-tomas', display_name: 'Tomás' },
+    created_at: '2026-09-01T00:00:00Z',
+    has_unpublished_changes: false,
+    instrument_ids: [],
+    checkpoints: [
+      { position: 1, learning_path_id: 'lp-1', effective_title: 'Open chords' },
+      { position: 2, learning_path_id: 'lp-2', title: 'Stage 2', effective_title: 'Stage 2' },
+    ],
+    ...overrides,
+  }
+}
+
+function ok(data: unknown) {
+  return { data, error: undefined, response: new Response(null, { status: 200 }) }
+}
+
+function failure(status: number) {
+  return { data: undefined, error: { message: 'boom' }, response: new Response(null, { status }) }
+}
+
+function routeGET(courseResult: unknown = ok(course()), draftPathIds: string[] = []) {
+  GET.mockImplementation((path: string, options?: { params?: { path?: { learning_path_id?: string } } }) => {
+    if (path === '/courses/{course_id}') return Promise.resolve(courseResult)
+    if (path === '/learning-paths/{learning_path_id}') {
+      const id = options?.params?.path?.learning_path_id
+      const title = id === 'lp-2' ? 'Travis picking' : 'Open chords'
+      const status = draftPathIds.includes(id ?? '') ? 'draft' : 'published'
+      return Promise.resolve(ok({ ...libraryPath, learning_path_id: id, title, status }))
+    }
+    if (path === '/learning-paths') return Promise.resolve(ok({ items: [libraryPath], total: 1, limit: 20, offset: 0 }))
+    if (path === '/courses/{course_id}/published') {
+      return Promise.resolve(ok({ ...course(), status: 'published', checkpoints: [{ position: 1, title: 'Open chords', items: [] }] }))
+    }
+    return Promise.resolve(ok([]))
+  })
+}
+
+function mockMatchMedia(): void {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}
+
+function mountView() {
+  return mount(CourseBuilderView, {
+    global: { plugins: [createPinia()], stubs: { RouterLink: RouterLinkStub } },
+    attachTo: document.body,
+  })
+}
+
+type Wrapper = ReturnType<typeof mountView>
+
+function saveButton(wrapper: Wrapper) {
+  return wrapper.get('[data-test="editor-app-bar-save"]')
+}
+
+function rowTitles(wrapper: Wrapper) {
+  return wrapper.findAll('[data-test="ordered-row-title"]').map((title) => title.text())
+}
+
+async function chooseFromRowMenu(wrapper: Wrapper, row: number, label: string) {
+  await wrapper.findAll('[data-test="ordered-row-menu"]')[row]!.trigger('click')
+  const item = [...document.querySelectorAll<HTMLButtonElement>('[data-test="ordered-row-menu-item"]')].find(
+    (candidate) => candidate.textContent?.trim() === label,
+  )
+  item!.click()
+  await flushPromises()
+}
+
+async function fillNewCourse(wrapper: Wrapper) {
+  await wrapper.get('[data-test="course-title"]').setValue('Fingerstyle Foundations')
+  await wrapper.get('[data-test="course-summary"]').setValue('Fingerpicking from the first pattern.')
+  await wrapper.get('[data-test="level-option-beginner"]').trigger('click')
+  await wrapper.get('[data-test="add-checkpoint"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('[data-test="path-picker-row"]').trigger('click')
+}
+
+describe('CourseBuilderView', () => {
+  let wrapper: Wrapper | null = null
+
+  beforeEach(() => {
+    GET.mockReset()
+    POST.mockReset()
+    PUT.mockReset()
+    router.replace.mockReset()
+    leaveGuard = null
+    route.params = {}
+    currentUser.profile.role = 'teacher'
+    useToast().clear()
+    mockMatchMedia()
+    routeGET()
+  })
+  afterEach(() => {
+    wrapper?.unmount()
+    document.body.innerHTML = ''
+  })
+
+  it('shows a permission notice to a student', () => {
+    currentUser.profile.role = 'student'
+    wrapper = mountView()
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
+  })
+
+  describe('a new course', () => {
+    it('Save with something missing saves nothing and lists what is missing', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(POST).not.toHaveBeenCalled()
+      expect(wrapper.get('[data-test="save-blockers"]').text()).toContain('Before you can save:')
+      expect(wrapper.findAll('[data-test="save-blocker"]').map((item) => item.text())).toEqual([
+        'Add a title',
+        'Add a summary',
+        'Choose a level',
+        'Add a checkpoint',
+      ])
+    })
+
+    it('the list goes once nothing is missing', async () => {
+      wrapper = mountView()
+      await flushPromises()
+      await saveButton(wrapper).trigger('click')
+
+      await fillNewCourse(wrapper)
+
+      expect(wrapper.find('[data-test="save-blockers"]').exists()).toBe(false)
+    })
+
+    it('every field the list names is there to jump to', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      for (const field of ['title', 'summary', 'level', 'checkpoints']) {
+        expect(wrapper.find(`[data-field="${field}"]`).exists()).toBe(true)
+      }
+    })
+
+    it('adds the picked path as a checkpoint', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      await fillNewCourse(wrapper)
+
+      expect(wrapper.find('[data-test="path-picker-row"]').exists()).toBe(false)
+      expect(rowTitles(wrapper)).toEqual(['1 · Open chords'])
+      expect(wrapper.get('[data-test="ordered-row-meta"]').text()).toBe('Path · 1 lesson · Published')
+    })
+
+    it('creates the course, moves to its edit URL, and updates the same course on the next save', async () => {
+      POST.mockResolvedValueOnce(ok(course({ course_id: 'c-new' })))
+      PUT.mockResolvedValueOnce(ok(course({ course_id: 'c-new' })))
+      wrapper = mountView()
+      await flushPromises()
+      await fillNewCourse(wrapper)
+
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(POST).toHaveBeenCalledWith('/courses', {
+        body: {
+          title: 'Fingerstyle Foundations',
+          summary: 'Fingerpicking from the first pattern.',
+          level: 'beginner',
+          language: 'en',
+          instrument_ids: [],
+          checkpoints: [{ learning_path_id: 'lp-1' }],
+        },
+      })
+      expect(router.replace).toHaveBeenCalledWith({ name: 'teacher-course-edit', params: { id: 'c-new' } })
+
+      await wrapper.get('[data-test="course-summary"]').setValue('Changed summary.')
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(POST).toHaveBeenCalledTimes(1)
+      expect(PUT).toHaveBeenCalledWith('/courses/{course_id}', expect.objectContaining({ params: { path: { course_id: 'c-new' } } }))
+    })
+
+    it('shows no status panel until the course is saved', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="status-panel"]').exists()).toBe(false)
+    })
+
+    it('keeps the form and reports the error when saving fails', async () => {
+      POST.mockResolvedValueOnce({ data: undefined, error: { message: 'title must not be blank' }, response: new Response(null, { status: 400 }) })
+      wrapper = mountView()
+      await flushPromises()
+      await fillNewCourse(wrapper)
+
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(router.replace).not.toHaveBeenCalled()
+      expect(wrapper.get<HTMLInputElement>('[data-test="course-title"]').element.value).toBe('Fingerstyle Foundations')
+      expect(useToast().toasts.value.map((toast) => toast.kind)).toEqual(['error'])
+    })
+  })
+
+  describe('an existing course', () => {
+    beforeEach(() => {
+      route.params = { id: 'c-1' }
+    })
+
+    it('loads the live draft, naming each checkpoint as learners see it and saying what blocks publishing', async () => {
+      routeGET(ok(course()), ['lp-2'])
+      wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get<HTMLInputElement>('[data-test="course-title"]').element.value).toBe('Fingerstyle Foundations')
+      expect(rowTitles(wrapper)).toEqual(['1 · Open chords', '2 · Stage 2'])
+      expect(wrapper.findAll('[data-test="ordered-row-meta"]').map((meta) => meta.text())).toEqual([
+        'Path · 1 lesson · Published',
+        'Path · 1 lesson · Draft — publish it first',
+      ])
+    })
+
+    it('opens with nothing to save', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="editor-app-bar-section"]').text()).toBe('Courses')
+      expect(wrapper.get('[data-test="editor-app-bar-title"]').text()).toBe('Fingerstyle Foundations')
+    })
+
+    it('an edit makes Save available', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="course-summary"]').setValue('A new summary.')
+
+      expect(saveButton(wrapper).text()).toBe('Save')
+    })
+
+    it("keeps each path's state after saving", async () => {
+      routeGET(ok(course()), ['lp-2'])
+      PUT.mockResolvedValueOnce(ok(course()))
+      wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="course-summary"]').setValue('A new summary.')
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findAll('[data-test="ordered-row-meta"]')[1]!.text()).toBe('Path · 1 lesson · Draft — publish it first')
+      expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
+    })
+
+    it('renames a checkpoint in this course', async () => {
+      PUT.mockResolvedValueOnce(ok(course()))
+      wrapper = mountView()
+      await flushPromises()
+
+      await chooseFromRowMenu(wrapper, 0, 'Rename in this course')
+      const input = document.querySelector<HTMLInputElement>('[data-test="text-entry-input"]')!
+      input.value = 'Stage 1'
+      input.dispatchEvent(new Event('input'))
+      document.querySelector<HTMLButtonElement>('[data-test="text-entry-confirm"]')!.click()
+      await flushPromises()
+
+      expect(rowTitles(wrapper)).toEqual(['1 · Stage 1', '2 · Stage 2'])
+    })
+
+    it('saves the whole form over the course', async () => {
+      PUT.mockResolvedValueOnce(ok(course()))
+      wrapper = mountView()
+      await flushPromises()
+
+      await chooseFromRowMenu(wrapper, 0, 'Move down')
+      await saveButton(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(PUT).toHaveBeenCalledWith('/courses/{course_id}', {
+        params: { path: { course_id: 'c-1' } },
+        body: expect.objectContaining({
+          checkpoints: [{ learning_path_id: 'lp-2', title: 'Stage 2' }, { learning_path_id: 'lp-1' }],
+        }),
+      })
+    })
+
+    it('says so when the course does not exist, with a way back to the list', async () => {
+      routeGET(failure(404))
+      wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="course-not-found"]').exists()).toBe(true)
+      const notFound = wrapper.get('[data-test="course-not-found"]').element
+      const notFoundLinks = wrapper.findAllComponents(RouterLinkStub).filter((link) => notFound.contains(link.element))
+      expect(notFoundLinks.map((link) => link.props('to'))).toEqual([{ name: 'teacher-courses' }])
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
+    })
+
+    it('offers a retry when the course fails to load', async () => {
+      routeGET(failure(500))
+      wrapper = mountView()
+      await flushPromises()
+      expect(wrapper.find('[data-test="load-error"]').exists()).toBe(true)
+
+      routeGET()
+      await wrapper.get('[data-test="retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="course-title"]').exists()).toBe(true)
+    })
+
+    it('tells a teacher that an admin publishes', async () => {
+      wrapper = mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="status-panel-message"]').text()).toContain('An admin publishes courses')
+      expect(wrapper.find('[data-test="status-panel-primary"]').exists()).toBe(false)
+    })
+
+    it('shows what learners see: the learner course page for the published version', async () => {
+      routeGET(ok(course({ status: 'published', latest_published_version: 1 })))
+      wrapper = mountView()
+      await flushPromises()
+
+      await wrapper.get('[data-test="see-what-learners-see"]').trigger('click')
+      await flushPromises()
+
+      expect(document.querySelector('[data-test="preview-bar"]')).not.toBeNull()
+      expect(document.querySelector('[data-test="course-detail-title"]')?.textContent).toBe('Fingerstyle Foundations')
+
+      document.querySelector<HTMLButtonElement>('[data-test="preview-close"]')!.click()
+      await flushPromises()
+      expect(document.querySelector('[data-test="preview-bar"]')).toBeNull()
+    })
+
+    describe('for an admin', () => {
+      beforeEach(() => {
+        currentUser.profile.role = 'admin'
+      })
+
+      it('saves, then publishes, and shows the new version', async () => {
+        PUT.mockResolvedValueOnce(ok(course({ has_unpublished_changes: true })))
+        POST.mockResolvedValueOnce(ok({ course_id: 'c-1', version_number: 1 }))
+        wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
+        await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+        await flushPromises()
+
+        expect(PUT).toHaveBeenCalled()
+        expect(POST).toHaveBeenCalledWith('/courses/{course_id}/publish', { params: { path: { course_id: 'c-1' } } })
+        expect(PUT.mock.invocationCallOrder[0]).toBeLessThan(POST.mock.invocationCallOrder[0]!)
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Published · v1')
+        expect(wrapper.get('[data-test="status-panel-message"]').text()).toBe('Learners get version 1.')
+        expect(useToast().toasts.value.map((toast) => toast.message)).toContain('Published as version 1')
+      })
+
+      it('names the draft learning paths when publishing is refused over them', async () => {
+        PUT.mockResolvedValueOnce(ok(course({ has_unpublished_changes: true })))
+        POST.mockResolvedValueOnce({
+          data: undefined,
+          error: { message: 'course is not publishable', draft_learning_path_ids: ['lp-1'] },
+          response: { status: 409 },
+        })
+        wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
+        await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+        await flushPromises()
+
+        const errors = useToast().toasts.value.filter((toast) => toast.kind === 'error')
+        expect(errors.map((toast) => toast.message)).toEqual([
+          'Publish these learning paths before the course: Open chords',
+        ])
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Draft')
+      })
+
+      it('does not publish when saving first fails', async () => {
+        PUT.mockResolvedValueOnce(failure(400))
+        wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
+        await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+        await flushPromises()
+
+        expect(POST).not.toHaveBeenCalled()
+      })
+
+      it('offers Publish only once there is something new to publish', async () => {
+        routeGET(ok(course({ status: 'published', latest_published_version: 2 })))
+        wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.find('[data-test="status-panel-primary"]').exists()).toBe(false)
+
+        await wrapper.get('[data-test="course-summary"]').setValue('A fresher summary.')
+        expect(wrapper.get('[data-test="status-panel-primary"]').text()).toBe('Publish changes')
+      })
+
+      it('lists the draft paths a publish still needs', async () => {
+        routeGET(ok(course({ has_unpublished_changes: true })), ['lp-2'])
+        wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.findAll('[data-test="status-panel-missing-item"]').map((item) => item.text())).toEqual([
+          'Publish the path “Travis picking”',
+        ])
+        expect(wrapper.get('[data-test="status-panel-primary"]').attributes('disabled')).toBeDefined()
+      })
+
+      it('retires a published course', async () => {
+        routeGET(ok(course({ status: 'published', latest_published_version: 2 })))
+        POST.mockResolvedValueOnce(ok(course({ status: 'retired', latest_published_version: 2 })))
+        wrapper = mountView()
+        await flushPromises()
+
+        await wrapper.get('[data-test="status-panel-secondary"]').trigger('click')
+        await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+        await flushPromises()
+
+        expect(POST).toHaveBeenCalledWith('/courses/{course_id}/retire', { params: { path: { course_id: 'c-1' } } })
+        expect(wrapper.get('[data-test="status-panel-status"]').text()).toBe('Retired')
+      })
+
+      it('asks to save before retiring, since retiring would lose unsaved changes', async () => {
+        routeGET(ok(course({ status: 'published', latest_published_version: 2 })))
+        wrapper = mountView()
+        await flushPromises()
+        expect(wrapper.find('[data-test="status-panel-secondary"]').exists()).toBe(true)
+
+        await wrapper.get('[data-test="course-summary"]').setValue('An unsaved summary.')
+
+        expect(wrapper.find('[data-test="status-panel-secondary"]').exists()).toBe(false)
+        expect(wrapper.text()).toContain('Save your changes before retiring the course.')
+      })
+
+      it('reactivates a retired course, which becomes editable again', async () => {
+        routeGET(ok(course({ status: 'retired', latest_published_version: 2 })))
+        POST.mockResolvedValueOnce(ok(course({ status: 'published', latest_published_version: 2 })))
+        wrapper = mountView()
+        await flushPromises()
+        expect(wrapper.find('[data-test="editor-app-bar-saved"]').exists()).toBe(false)
+
+        await wrapper.get('[data-test="status-panel-primary"]').trigger('click')
+        await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+        await flushPromises()
+
+        expect(POST).toHaveBeenCalledWith('/courses/{course_id}/reactivate', { params: { path: { course_id: 'c-1' } } })
+        expect(wrapper.find('[data-test="editor-app-bar-saved"]').exists()).toBe(true)
+        expect(wrapper.get('[data-test="course-title"]').attributes('disabled')).toBeUndefined()
+      })
+    })
+
+    describe('a retired course', () => {
+      beforeEach(() => routeGET(ok(course({ status: 'retired', latest_published_version: 2 }))))
+
+      it('opens read-only, saying it is retired', async () => {
+        wrapper = mountView()
+        await flushPromises()
+
+        expect(wrapper.get('[data-test="status-panel-message"]').text()).toContain("Retired — it can't be changed.")
+        expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="editor-app-bar-saved"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="course-title"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.get('[data-test="course-summary"]').attributes('disabled')).toBeDefined()
+        expect(wrapper.find('[data-test="add-checkpoint"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="ordered-row-menu"]').exists()).toBe(false)
+      })
+    })
+
+    describe('leaving with unsaved changes', () => {
+      it('leaves straight away when nothing changed', async () => {
+        wrapper = mountView()
+        await flushPromises()
+
+        expect(await leaveGuard!()).toBe(true)
+      })
+
+      it('asks first, and stays when told to', async () => {
+        wrapper = mountView()
+        await flushPromises()
+        await wrapper.get('[data-test="course-title"]').setValue('Changed')
+
+        const leaving = leaveGuard!()
+        await flushPromises()
+        expect(document.body.textContent).toContain('Leave without saving?')
+        expect(document.querySelector('[data-test="confirm-dialog-cancel"]')?.textContent?.trim()).toBe('Keep editing')
+        await wrapper.get('[data-test="confirm-dialog-cancel"]').trigger('click')
+
+        expect(await leaving).toBe(false)
+      })
+
+      it('leaves once confirmed', async () => {
+        wrapper = mountView()
+        await flushPromises()
+        await wrapper.get('[data-test="course-title"]').setValue('Changed')
+
+        const leaving = leaveGuard!()
+        await flushPromises()
+        await wrapper.get('[data-test="confirm-dialog-confirm"]').trigger('click')
+
+        expect(await leaving).toBe(true)
+      })
+
+      it('asks the browser to confirm closing the page', async () => {
+        wrapper = mountView()
+        await flushPromises()
+        await wrapper.get('[data-test="course-title"]').setValue('Changed')
+
+        const event = new Event('beforeunload', { cancelable: true })
+        window.dispatchEvent(event)
+
+        expect(event.defaultPrevented).toBe(true)
+      })
+    })
+  })
+})

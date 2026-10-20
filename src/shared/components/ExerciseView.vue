@@ -1,0 +1,541 @@
+<script setup lang="ts">
+import { Check, X } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { useTypedT } from '@/shared/composables/useTypedT'
+
+import type { AnswerMarkKind } from '@/shared/components/diagram/AnswerMark.vue'
+import EmbeddedDiagram from '@/shared/components/diagram/EmbeddedDiagram.vue'
+import AudioOption from '@/shared/components/AudioOption.vue'
+import DiagramAudioOption from '@/shared/components/DiagramAudioOption.vue'
+import Icon from '@/shared/components/Icon.vue'
+import ImageOption from '@/shared/components/ImageOption.vue'
+import ListenControl from '@/shared/components/ListenControl.vue'
+import OptionTile from '@/shared/components/OptionTile.vue'
+import ExercisePrompt from '@/shared/components/ExercisePrompt.vue'
+import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
+import RevealedSoundOption from '@/shared/components/RevealedSoundOption.vue'
+import WhatYouHeard from '@/shared/components/WhatYouHeard.vue'
+import { stopDiagramPlayback } from '@/shared/composables/useDiagramPlayback'
+import { useSizeClass } from '@/shared/composables/useSizeClass'
+import type { components } from '@/api/generated/core-domain'
+import type { components as EventComponents } from '@/api/generated/event-ingestion'
+import { optionState } from '@/shared/utils/optionState'
+import type { OptionState } from '@/shared/utils/optionState'
+import type { DiagramEmbed } from '@/shared/utils/diagramEmbed'
+
+type Option = components['schemas']['Option']
+type ExerciseType = components['schemas']['Exercise']['exercise_type']
+type PromptDocument = components['schemas']['PromptDocument']
+type DiagramRef = components['schemas']['DiagramRef']
+type DiagramStackRef = components['schemas']['DiagramStackRef']
+type MissingReason = EventComponents['schemas']['NotAnsweredResponse']['reason']
+
+const props = withDefaults(
+  defineProps<{
+    exerciseType: ExerciseType
+    prompt: PromptDocument
+    /**
+     * Never pass `is_correct` through to the template — this component
+     * renders every option in its neutral, ungraded state on purpose, the
+     * same way for an authoring preview and a real student attempt.
+     */
+    options: Option[]
+    /** The exercise's own stimulus, present when exerciseType is image_recognition. */
+    imageUrl?: string
+    /**
+     * A prebuilt diagram as the image_recognition stimulus, in place of
+     * imageUrl: its positions are the choices, each option naming its own
+     * through diagram_position_id. For audio_recognition, the diagram whose
+     * playback is the sound to hear, in place of audioUrl: never drawn before
+     * the answer is graded, and revealed afterwards.
+     */
+    diagramRef?: DiagramRef
+    /** Prebuilt diagrams stacked on one board as the image_recognition stimulus, in place of a
+     *  single diagram. */
+    diagramStackRef?: DiagramStackRef
+    /** Let a diagram stimulus leave the text column on a wider screen, inside the Practice Shell. */
+    breakout?: boolean
+    /**
+     * Inside the Practice Shell, on an Expanded screen, give a stimulus that is answered by tapping
+     * it (image regions, diagram markers) its own pane on the left, and the `header`, prompt and
+     * `footer` a 400 px pane on the right. Everywhere else the view stays one column.
+     */
+    panes?: boolean
+    /** The exercise's own stimulus, present when exerciseType is audio_recognition. */
+    audioUrl?: string
+    /**
+     * Whether this exercise legitimately has more than one correct option.
+     * The caller derives this from options[].is_correct — never inferred
+     * here, since this component must never learn which option(s) are
+     * correct, only how many. false (default): clicking a different option
+     * replaces the selection (radio). true: clicking toggles that option
+     * independently of the others (checkbox).
+     */
+    allowMultiple?: boolean
+    direction?: 'column' | 'row'
+    /**
+     * A graded answer, passed only once the caller has graded it: the right options are marked
+     * right and a wrong pick wrong, and the choice is locked. The view still never reads
+     * `is_correct` itself, so without this it stays neutral, for the authoring preview and a
+     * challenge alike.
+     */
+    reveal?: { correctOptionIds: string[] }
+    /**
+     * The stimulus is missing (it didn't load, or can't be shown here): the caller's
+     * `stimulus-notice` takes its place and the options lock, so a guess can't be taken for an
+     * answer. Clearing it loads the stimulus again.
+     */
+    stimulusMissing?: boolean
+    /** How many options to choose, said after the prompt when there are several right ones. */
+    chooseCount?: number
+  }>(),
+  { direction: 'column', allowMultiple: false, stimulusMissing: false, chooseCount: undefined, breakout: false, panes: false },
+)
+
+/**
+ * Uncontrolled when the caller doesn't bind it (the authoring preview never
+ * does, and still shows the click highlight from defineModel's own local
+ * fallback ref). A caller that does bind it — Practice, to restore an answer
+ * on Back — owns the value from then on.
+ */
+const selected = defineModel<string[]>('selectedOptionIds', { default: () => [] })
+
+const { t } = useTypedT()
+
+function isSelected(optionId: string): boolean {
+  return selected.value.includes(optionId)
+}
+
+function select(optionId: string): void {
+  if (props.reveal || props.stimulusMissing) return
+  if (isSelected(optionId)) {
+    selected.value = selected.value.filter((id) => id !== optionId)
+    return
+  }
+  selected.value = props.allowMultiple ? [...selected.value, optionId] : [optionId]
+}
+
+/** How a graded answer marks an option: right when it is a right one, wrong when picked but not right. */
+function markOf(optionId: string): AnswerMarkKind | undefined {
+  if (!props.reveal) return undefined
+  if (props.reveal.correctOptionIds.includes(optionId)) return 'right'
+  return isSelected(optionId) ? 'wrong' : undefined
+}
+
+/** An option's look: its mark once graded, locked when it can't be chosen, otherwise whether it's picked. */
+function stateOf(optionId: string): OptionState {
+  return optionState({ selected: isSelected(optionId), mark: markOf(optionId), settled: Boolean(props.reveal) || props.stimulusMissing })
+}
+
+const isImageRecognition = computed(() => props.exerciseType === 'image_recognition')
+
+const { sizeClass } = useSizeClass()
+// Two panes leave the shell's 560 px column, centred on it, as wide as the window allows (keeping
+// the shell's gutters).
+const usesPanes = computed(() => props.panes && isImageRecognition.value && sizeClass.value === 'expanded')
+const stimulusEmbed = computed<DiagramEmbed | null>(() => {
+  if (props.diagramRef) return { kind: 'single', ref: props.diagramRef }
+  return props.diagramStackRef ? { kind: 'stack', stack: props.diagramStackRef.stack } : null
+})
+
+// A diagram stimulus's choices are the fretboard cells its options stand for — every cell in
+// view, marked or not. Options from before cells existed stand for positions instead.
+const answerCells = computed(() =>
+  props.options.flatMap((option) =>
+    option.fret_cell ? [{ optionId: option.option_id, string: option.fret_cell.string, fret: option.fret_cell.fret }] : [],
+  ),
+)
+const optionIdByPositionId = computed(
+  () =>
+    new Map(
+      answerCells.value.length > 0
+        ? []
+        : props.options.flatMap((option) =>
+            option.diagram_position_id ? [[option.diagram_position_id, option.option_id] as const] : [],
+          ),
+    ),
+)
+const choicePositionIds = computed(() => [...optionIdByPositionId.value.keys()])
+const selectedPositionIds = computed(() =>
+  props.options.flatMap((option) =>
+    option.diagram_position_id && isSelected(option.option_id) ? [option.diagram_position_id] : [],
+  ),
+)
+
+/** A graded answer's marks on the diagram: its cells by option id, or its markers by position id. */
+const answerMarks = computed(() => marksBy(answerCells.value.map((cell) => [cell.optionId, cell.optionId] as const)))
+const positionMarks = computed(() => marksBy([...optionIdByPositionId.value].map(([positionId, optionId]) => [positionId, optionId] as const)))
+
+function marksBy(keyed: (readonly [string, string])[]): Record<string, AnswerMarkKind> {
+  const marks: Record<string, AnswerMarkKind> = {}
+  for (const [key, optionId] of keyed) {
+    const mark = markOf(optionId)
+    if (mark) marks[key] = mark
+  }
+  return marks
+}
+
+function selectPosition(positionId: string): void {
+  const optionId = optionIdByPositionId.value.get(positionId)
+  if (optionId) select(optionId)
+}
+const isTextResponse = computed(() => props.exerciseType === 'text_response')
+const isAudioRecognition = computed(() => props.exerciseType === 'audio_recognition')
+const isImageChoice = computed(() => props.exerciseType === 'image_choice')
+// A fretboard is too small to read at half a phone's width, so diagram options get a row each there.
+const hasDiagramChoices = computed(() => props.options.some((option) => option.diagram_ref))
+const isAudioSelection = computed(() => props.exerciseType === 'audio_selection')
+const isLandscape = computed(() => props.direction === 'row')
+
+// A single shared, hidden player — not one <audio> per option — so two clips can never overlap:
+// playing another option's clip always stops the one sounding first.
+const audioPlayerEl = ref<HTMLAudioElement | null>(null)
+// Which option's clip is sounding, and which option's diagram: one at a time, a clip starting
+// silences a diagram and a diagram starting silences a clip. Playing is not choosing: it never
+// touches the selection.
+const playingOptionId = ref<string | null>(null)
+const soundingDiagramOptionId = ref<string | null>(null)
+
+const emit = defineEmits<{
+  /** A clip started or stopped sounding, so a caller can time an answer from the last one heard. */
+  playing: [playing: boolean]
+  /** The stimulus didn't load, or can't be shown on this device. */
+  stimulusMissing: [reason: MissingReason]
+}>()
+
+// Said once when the first sound starts and once when the last one stops, whichever kind they are.
+watch(
+  () => playingOptionId.value !== null || soundingDiagramOptionId.value !== null,
+  (sounding) => emit('playing', sounding),
+  { flush: 'sync' },
+)
+
+/** A sound option's name: its label, else its place among the sounds. */
+function soundLabel(option: Option, index: number): string {
+  return option.label ?? t('exerciseView.soundNumber', { number: index + 1 })
+}
+
+/** Whose sound an option is once graded: the student's answer, the right one they missed, or neither. */
+function roleOf(optionId: string): 'yours' | 'right' | null {
+  if (isSelected(optionId)) return 'yours'
+  return props.reveal?.correctOptionIds.includes(optionId) ? 'right' : null
+}
+
+/** A diagram option started or stopped sounding; starting silences a clip. */
+function onDiagramOptionPlaying(optionId: string, playing: boolean): void {
+  if (playing) {
+    soundingDiagramOptionId.value = optionId
+    stopClip()
+  } else if (soundingDiagramOptionId.value === optionId) {
+    soundingDiagramOptionId.value = null
+  }
+}
+
+/** Silences every sound, such as when the answer is in or the next exercise arrives. */
+function stopSounds(): void {
+  stopClip()
+  if (soundingDiagramOptionId.value === null) return
+  stopDiagramPlayback()
+  soundingDiagramOptionId.value = null
+}
+
+function onDiagramStatus(status: string): void {
+  if (status === 'unavailable') emit('stimulusMissing', 'unavailable')
+}
+
+function markText(optionId: string): string {
+  return t(markOf(optionId) === 'right' ? 'exerciseView.markRight' : 'exerciseView.markWrong')
+}
+
+function stopClip(): void {
+  if (playingOptionId.value === null) return
+  audioPlayerEl.value?.pause()
+  playingOptionId.value = null
+}
+
+/** Plays an option's clip from the top, or stops it when it is the one sounding. */
+function togglePlay(option: Option): void {
+  const el = audioPlayerEl.value
+  if (!el) return
+  if (playingOptionId.value === option.option_id) {
+    stopClip()
+    return
+  }
+  if (!option.audio_url) return
+  el.pause()
+  el.src = option.audio_url
+  el.currentTime = 0
+  playingOptionId.value = option.option_id
+  if (soundingDiagramOptionId.value !== null) {
+    stopDiagramPlayback()
+    soundingDiagramOptionId.value = null
+  }
+  el.play().catch(() => {
+    if (playingOptionId.value === option.option_id) onClipStopped()
+  })
+}
+
+/**
+ * The clip stopped by itself: it ended, failed, or was paused from outside (another app taking
+ * the audio). A clip still counted as sounding would time the next answer as instant.
+ */
+function onClipStopped(): void {
+  playingOptionId.value = null
+}
+
+// The pause of a clip being replaced arrives after the new one has started; only a pause that
+// leaves the player silent means the clip stopped.
+function onPlayerPause(): void {
+  if (audioPlayerEl.value?.paused) onClipStopped()
+}
+
+// Once graded, the answer is in: whatever still sounds stops there.
+watch(
+  () => props.reveal,
+  (reveal) => {
+    if (reveal) stopSounds()
+  },
+)
+
+// This view is reused from one exercise to the next: a clip replayed while reviewing an answer
+// mustn't sound over the next one.
+watch(
+  () => props.options,
+  () => stopSounds(),
+)
+</script>
+
+<template>
+  <div
+    data-test="exercise-view-root"
+    :class="
+      usesPanes
+        ? 'relative left-1/2 grid w-[calc(100vw-2.5rem)] max-w-[77rem] -translate-x-1/2 grid-cols-[minmax(0,1fr)_25rem] items-start gap-8'
+        : ['flex w-full gap-3.5', isLandscape ? 'flex-row' : 'flex-col']
+    "
+  >
+    <template v-if="!usesPanes">
+      <slot name="header" />
+      <ExercisePrompt
+        :prompt="prompt"
+        :choose-count="chooseCount"
+        :class="isLandscape ? 'flex-[0_0_40%]' : 'flex-[0_0_auto]'"
+      />
+    </template>
+
+    <div
+      :data-test="usesPanes ? 'stimulus-pane' : undefined"
+      class="min-w-0"
+      :class="usesPanes ? '' : isLandscape ? 'flex-[1_1_60%]' : 'flex-[1_1_auto]'"
+    >
+      <div v-if="isImageRecognition && stimulusMissing" data-test="stimulus-missing">
+        <slot name="stimulus-notice" />
+      </div>
+
+      <component
+        :is="breakout && !usesPanes ? PracticeBreakout : 'div'"
+        v-else-if="isImageRecognition && stimulusEmbed"
+      >
+        <div
+          data-test="exercise-stimulus-diagram"
+          class="overflow-hidden rounded-[10px] border border-border bg-surface-sunken p-2"
+        >
+          <EmbeddedDiagram
+            :embed="stimulusEmbed"
+            :selectable-position-ids="choicePositionIds"
+            :selected-position-ids="selectedPositionIds"
+            :answer-cells="answerCells"
+            :selected-answer-ids="selected"
+            :multiple="allowMultiple"
+            :answer-marks="answerMarks"
+            :position-marks="positionMarks"
+            @select="selectPosition"
+            @select-answer="select"
+            @status="onDiagramStatus"
+          >
+            <template #unavailable>
+              <div data-test="no-stimulus-image" class="flex h-40 items-center justify-center text-xs text-ink-subtle">
+                {{ t('exerciseView.noStimulusImage') }}
+              </div>
+            </template>
+          </EmbeddedDiagram>
+        </div>
+      </component>
+
+      <div v-else-if="isImageRecognition" class="relative overflow-hidden rounded-[10px] border border-border bg-surface-sunken">
+        <img
+          v-if="imageUrl"
+          data-test="exercise-stimulus-image"
+          :src="imageUrl"
+          alt=""
+          class="block h-auto w-full"
+          draggable="false"
+          @error="emit('stimulusMissing', 'failed_to_load')"
+        />
+        <div
+          v-else
+          data-test="no-stimulus-image"
+          class="flex h-40 items-center justify-center text-xs text-ink-subtle"
+        >
+          {{ t('exerciseView.noStimulusImage') }}
+        </div>
+        <div
+          v-for="option in options"
+          :key="option.option_id"
+          data-test="exercise-region"
+          :data-selected="isSelected(option.option_id)"
+          :data-mark="markOf(option.option_id)"
+          class="absolute flex -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center"
+          :style="{
+            left: `${(option.region?.x ?? 0) * 100}%`,
+            top: `${(option.region?.y ?? 0) * 100}%`,
+            width: `${(option.region?.width ?? 0) * 100}%`,
+            height: `${(option.region?.height ?? 0) * 100}%`,
+          }"
+          @click="select(option.option_id)"
+        >
+          <span
+            v-if="markOf(option.option_id)"
+            data-test="answer-mark"
+            class="flex h-6 w-6 items-center justify-center rounded-full shadow-level2"
+            :class="markOf(option.option_id) === 'right' ? 'bg-success text-success-fg' : 'bg-danger text-danger-fg'"
+          >
+            <Check v-if="markOf(option.option_id) === 'right'" :size="16" aria-hidden="true" />
+            <X v-else :size="16" aria-hidden="true" />
+            <span class="sr-only">{{ markText(option.option_id) }}</span>
+          </span>
+          <span
+            v-else-if="isSelected(option.option_id)"
+            data-test="exercise-region-marker"
+            class="flex h-6 w-6 items-center justify-center rounded-full bg-surface-raised text-accent shadow-level2"
+          >
+            <Icon name="completed" :size="18" />
+          </span>
+        </div>
+      </div>
+
+      <template v-else-if="isTextResponse || isAudioRecognition">
+        <div v-if="isAudioRecognition && stimulusMissing" data-test="stimulus-missing" class="mb-2">
+          <slot name="stimulus-notice" />
+        </div>
+        <template v-else-if="isAudioRecognition && diagramRef">
+          <ListenControl
+            v-if="!reveal"
+            :sound="diagramRef"
+            class="mb-2"
+            @playing="emit('playing', $event)"
+            @missing="emit('stimulusMissing', $event)"
+          />
+        </template>
+        <audio
+          v-else-if="isAudioRecognition && audioUrl"
+          data-test="exercise-audio-play"
+          :src="audioUrl"
+          controls
+          class="mb-2 w-full"
+          @error="emit('stimulusMissing', 'failed_to_load')"
+        />
+        <div
+          v-else-if="isAudioRecognition"
+          data-test="no-stimulus-audio"
+          class="mb-2 rounded-md bg-surface-sunken px-[11px] py-[9px] text-xs text-ink-subtle"
+        >
+          {{ t('exerciseView.noStimulusAudio') }}
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <OptionTile
+            v-for="(option, i) in options"
+            :key="option.option_id"
+            data-test="exercise-option"
+            :data-selected="isSelected(option.option_id)"
+            :data-mark="markOf(option.option_id)"
+            :data-locked="stimulusMissing"
+            :key-hint="i + 1"
+            :label="option.label ?? ''"
+            :state="stateOf(option.option_id)"
+            @click="select(option.option_id)"
+          />
+        </div>
+        <WhatYouHeard v-if="isAudioRecognition && diagramRef && reveal" :sound="diagramRef" class="mt-4" />
+      </template>
+
+      <div
+        v-else-if="isImageChoice"
+        data-test="exercise-choice-grid"
+        class="grid gap-2"
+        :class="hasDiagramChoices ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2'"
+      >
+        <ImageOption
+          v-for="(option, i) in options"
+          :key="option.option_id"
+          data-test="exercise-option"
+          :data-selected="isSelected(option.option_id)"
+          :data-mark="markOf(option.option_id)"
+          :key-hint="i + 1"
+          :label="option.label"
+          :state="stateOf(option.option_id)"
+          @click="select(option.option_id)"
+        >
+          <span
+            data-test="exercise-option-media"
+            class="flex w-full items-center justify-center overflow-hidden"
+            :class="option.diagram_ref ? 'px-2 py-1' : 'h-32'"
+          >
+            <EmbeddedDiagram v-if="option.diagram_ref" :embed="{ kind: 'single', ref: option.diagram_ref }" inert compact class="w-full" />
+            <img v-else :src="option.image_url" alt="" draggable="false" class="max-h-full max-w-full object-contain" />
+          </span>
+        </ImageOption>
+      </div>
+
+      <div v-else-if="isAudioSelection" class="flex flex-col gap-2">
+        <div v-if="stimulusMissing" data-test="stimulus-missing">
+          <slot name="stimulus-notice" />
+        </div>
+        <template v-for="(option, i) in options" :key="option.option_id">
+          <RevealedSoundOption
+            v-if="option.diagram_ref && reveal"
+            data-test="exercise-option"
+            :data-mark="markOf(option.option_id)"
+            :label="soundLabel(option, i)"
+            :sound="option.diagram_ref"
+            :role="roleOf(option.option_id)"
+            :mark="markOf(option.option_id)"
+          />
+          <DiagramAudioOption
+            v-else-if="option.diagram_ref"
+            data-test="exercise-option"
+            :data-selected="isSelected(option.option_id)"
+            :data-locked="stimulusMissing"
+            :label="soundLabel(option, i)"
+            :sound="option.diagram_ref"
+            :state="stateOf(option.option_id)"
+            @select="select(option.option_id)"
+            @playing="onDiagramOptionPlaying(option.option_id, $event)"
+            @missing="emit('stimulusMissing', $event)"
+          />
+          <AudioOption
+            v-else
+            data-test="exercise-option"
+            :data-selected="isSelected(option.option_id)"
+            :data-mark="markOf(option.option_id)"
+            :label="soundLabel(option, i)"
+            :state="stateOf(option.option_id)"
+            :playing="playingOptionId === option.option_id"
+            @select="select(option.option_id)"
+            @play="togglePlay(option)"
+          />
+        </template>
+        <audio ref="audioPlayerEl" class="hidden" @ended="onClipStopped" @error="onClipStopped" @pause="onPlayerPause" />
+      </div>
+    </div>
+
+    <slot v-if="!usesPanes" name="footer" />
+
+    <div v-else data-test="interaction-pane" class="flex flex-col gap-4">
+      <slot name="header" />
+      <ExercisePrompt :prompt="prompt" :choose-count="chooseCount" />
+      <slot name="footer" />
+    </div>
+  </div>
+</template>

@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motifpath.io/specs/golden/practice-graders/schema.json",
+  "title": "Practice grader golden cases",
+  "description": "One file per grader version: the reference data the grader reads, and cases of item key + raw response -> expected result. Each case's item_key and response must also be valid against PracticeItemKey and PracticeResponse in openapi/components/schemas/practice.yaml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["grader", "description", "reference", "cases"],
+  "properties": {
+    "grader": {
+      "type": "string",
+      "pattern": "^[a-z][a-z_]*\\.v[1-9][0-9]*$",
+      "description": "The grader id these cases pin, as <name>.v<version>. Matches the file name."
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "reference": {
+      "type": "object",
+      "description": "The reference data the grader reads. Anything an item key points at that is missing here is unknown to the grader. Keys, numerals, chords and their tones are computed, so they need no reference.",
+      "additionalProperties": false,
+      "properties": {
+        "instruments": {
+          "type": "object",
+          "description": "Layout instruments by id.",
+          "propertyNames": { "format": "uuid" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "tuning"],
+            "properties": {
+              "name": { "type": "string" },
+              "tuning": {
+                "type": "array",
+                "minItems": 1,
+                "description": "Open-string pitch per string with its octave, lowest string first (the last entry is string 1).",
+                "items": { "type": "string", "pattern": "^[A-G]#?[0-9]$" }
+              }
+            }
+          }
+        },
+        "exercises": {
+          "type": "object",
+          "description": "Authored exercises by id: their options and which of them are correct.",
+          "propertyNames": { "format": "uuid" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "option_ids", "correct_option_ids"],
+            "properties": {
+              "name": { "type": "string" },
+              "option_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "format": "uuid" } },
+              "correct_option_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "format": "uuid" } }
+            }
+          }
+        },
+        "diagrams": {
+          "type": "object",
+          "description": "Diagrams that exist, by id. A diagram that is a drill shape also has its layout instrument, its family and member in the practice drill catalog, and its positions.",
+          "propertyNames": { "format": "uuid" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "layout_instrument_id": { "type": "string", "format": "uuid", "description": "The instrument whose fretboard layout the diagram is drawn on." },
+              "shape_family": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "The diagram's shape family; absent when the diagram is not a drill shape." },
+              "shape": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*$", "description": "The member of its family the diagram is." },
+              "positions": {
+                "type": "array",
+                "minItems": 1,
+                "description": "The diagram's positions, in its position order.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["string", "fret", "interval"],
+                  "properties": {
+                    "string": { "type": "integer", "minimum": 1 },
+                    "fret": { "type": "integer", "minimum": 0 },
+                    "interval": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "shape_families": {
+          "type": "object",
+          "description": "Diagram shape families by key, with their members in the order a name the shape question offers them.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["members"],
+            "properties": {
+              "members": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string" } }
+            }
+          }
+        },
+        "progressions": {
+          "type": "object",
+          "description": "Progressions of the progression catalog by key, with their numerals one bar each, in a major key.",
+          "propertyNames": { "pattern": "^[0-9A-Za-z][0-9A-Za-z-]*$" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["bars"],
+            "properties": {
+              "bars": { "type": "array", "minItems": 1, "items": { "enum": ["I", "ii", "iii", "IV", "V", "vi", "viio", "I7", "IV7", "V7"] } }
+            }
+          }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "item_key", "response", "expected"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "item_key": { "type": "string" },
+          "response": { "type": "object" },
+          "expected": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["result", "evidence"],
+                "properties": {
+                  "result": { "const": "graded" },
+                  "evidence": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["source", "correct", "latency_ms", "answer_key"],
+                        "properties": {
+                          "source": { "const": "auto_graded" },
+                          "correct": { "type": "boolean" },
+                          "latency_ms": { "type": "integer", "minimum": 0 },
+                          "audio_ms": { "type": "integer", "minimum": 0 },
+                          "answer_key": {
+                            "description": "What a right answer was, kept so a disputed answer can be checked without the reference data of the day: the asked cell and its note (spelled with sharps), with the choices when it was named among them; every option of the exercise as shown, each with whether it was correct; a named shape's family and member; or a found degree's interval and every position of the shape that is it; a generated question's way, its key when the item doesn't fix one, the right answer and the options offered; a guide-tone take's key, tone and every bar with its chord, the tone's note and whether it was hit; or a note found everywhere, its fret window and every place of the note in it.",
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["string", "fret", "note_name"],
+                                "properties": {
+                                  "string": { "type": "integer", "minimum": 1 },
+                                  "fret": { "type": "integer", "minimum": 0 },
+                                  "note_name": { "enum": ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] },
+                                  "choices": {
+                                    "type": "array",
+                                    "minItems": 2,
+                                    "uniqueItems": true,
+                                    "description": "The notes the student picked from, as shown, when the note was named among choices.",
+                                    "items": { "type": "string", "pattern": "^[A-G][#b]?$" }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["options"],
+                                "properties": {
+                                  "options": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "required": ["option_id", "is_correct"],
+                                      "properties": {
+                                        "option_id": { "type": "string" },
+                                        "is_correct": { "type": "boolean" }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["shape_family", "shape"],
+                                "properties": {
+                                  "shape_family": { "type": "string" },
+                                  "shape": { "type": "string" }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["interval", "cells"],
+                                "properties": {
+                                  "interval": { "type": "string" },
+                                  "cells": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "required": ["string", "fret"],
+                                      "properties": {
+                                        "string": { "type": "integer", "minimum": 1 },
+                                        "fret": { "type": "integer", "minimum": 0 }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["way", "answer", "offered"],
+                                "properties": {
+                                  "way": { "type": "string" },
+                                  "music_key": { "enum": ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"] },
+                                  "answer": { "type": "string" },
+                                  "offered": { "type": "array", "minItems": 2, "items": { "type": "string" } }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["music_key", "tone", "bars"],
+                                "properties": {
+                                  "music_key": { "enum": ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"] },
+                                  "tone": { "enum": ["3", "7"] },
+                                  "bars": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "required": ["chord", "note_name", "hit"],
+                                      "properties": {
+                                        "chord": { "type": "string" },
+                                        "note_name": { "enum": ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] },
+                                        "hit": { "type": "boolean" }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["note_name", "fret_window", "cells"],
+                                "properties": {
+                                  "note_name": { "enum": ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] },
+                                  "fret_window": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": ["from_fret"],
+                                    "properties": { "from_fret": { "type": "integer", "minimum": 0 } }
+                                  },
+                                  "cells": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "required": ["string", "fret"],
+                                      "properties": {
+                                        "string": { "type": "integer", "minimum": 1 },
+                                        "fret": { "type": "integer", "minimum": 0 }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["source", "rating"],
+                        "properties": {
+                          "source": { "const": "self_assessed" },
+                          "rating": { "enum": ["struggled", "almost", "clean"] },
+                          "tempo_bpm": { "type": "integer", "minimum": 1 },
+                          "note_value": { "enum": ["halves", "quarters", "eighths", "triplets", "sixteenths", "quintuplets", "sextuplets", "thirty_seconds"] },
+                          "changes_per_minute": { "type": "integer", "minimum": 0 }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["result", "reason"],
+                "properties": {
+                  "result": { "const": "rejected" },
+                  "reason": {
+                    "enum": [
+                      "response_does_not_fit_item",
+                      "unknown_reference",
+                      "invalid_cell",
+                      "unknown_option",
+                      "measure_missing",
+                      "degree_not_in_shape",
+                      "invalid_choices"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

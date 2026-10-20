@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest'
+import { mount } from '@vue/test-utils'
+
+import Icon from '@/shared/components/Icon.vue'
+
+describe('Icon', () => {
+  it.each([
+    ['completed', 'circle-check'],
+    ['current', 'circle-dot'],
+    ['locked', 'lock'],
+    ['todo', 'circle'],
+    ['menu', 'menu'],
+    ['chevron-right', 'chevron-right'],
+    ['sun', 'sun'],
+    ['moon', 'moon'],
+    ['play', 'play'],
+    ['pause', 'pause'],
+    ['volume', 'volume-2'],
+    ['volume-off', 'volume-x'],
+    ['fullscreen', 'maximize'],
+    ['grip', 'grip-vertical'],
+    ['reset', 'rotate-ccw'],
+  ] as const)('renders the %s role as the %s glyph', (name, iconClass) => {
+    const wrapper = mount(Icon, { props: { name } })
+
+    expect(wrapper.find(`svg.lucide-${iconClass}`).exists()).toBe(true)
+  })
+
+  it('is decorative and hidden from assistive tech when no label is given', () => {
+    const wrapper = mount(Icon, { props: { name: 'completed' } })
+
+    const svg = wrapper.get('svg')
+    expect(svg.attributes('aria-hidden')).toBe('true')
+    expect(svg.attributes('role')).toBeUndefined()
+    expect(svg.attributes('aria-label')).toBeUndefined()
+  })
+
+  it('exposes an accessible name and img role when a label is given', () => {
+    const wrapper = mount(Icon, { props: { name: 'locked', label: 'Locked' } })
+
+    const svg = wrapper.get('svg')
+    expect(svg.attributes('aria-hidden')).toBeUndefined()
+    expect(svg.attributes('role')).toBe('img')
+    expect(svg.attributes('aria-label')).toBe('Locked')
+  })
+
+  it('renders without a badge wrapper by default', () => {
+    const wrapper = mount(Icon, { props: { name: 'completed' } })
+
+    expect(wrapper.find('[data-test="icon-badge"]').exists()).toBe(false)
+  })
+
+  it.each([
+    ['completed', 'bg-success'],
+    ['current', 'bg-accent'],
+    ['locked', 'bg-surface-sunken'],
+    ['todo', 'bg-surface-sunken'],
+  ] as const)('wraps the %s role in a %s badge when badge is true', (name, bgClass) => {
+    const wrapper = mount(Icon, { props: { name, badge: true } })
+
+    const badge = wrapper.get('[data-test="icon-badge"]')
+    expect(badge.classes()).toContain(bgClass)
+    expect(badge.find('svg').exists()).toBe(true)
+  })
+})

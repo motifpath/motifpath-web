@@ -1,0 +1,461 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
+
+import PartRow from '@/features/student/components/PartRow.vue'
+import UpdateCopyDialog from '@/features/student/components/UpdateCopyDialog.vue'
+import { useEnrollInCourse } from '@/features/student/composables/useEnrollInCourse'
+import { useEnrollmentParts } from '@/features/student/composables/useEnrollmentParts'
+import {
+  LeaveFailedAfterSwitchError,
+  useLeaveLearningItem,
+} from '@/features/student/composables/useLeaveLearningItem'
+import { useMyCourseEnrollments } from '@/features/student/composables/useMyCourseEnrollments'
+import { useMyStandalonePaths } from '@/features/student/composables/useMyStandalonePaths'
+import { usePublishedCourse } from '@/features/student/composables/usePublishedCourse'
+import { currentTargetOf, useMakeCurrentWithUndo } from '@/features/student/composables/useMakeCurrentWithUndo'
+import { useStudentPath } from '@/features/student/composables/useStudentPath'
+import { discoverBackLink } from '@/features/student/utils/catalogReturn'
+import type { UpdateResult } from '@/features/student/composables/useUpdateLearningItem'
+import { buildCourseOutline, buildFinishedOutline, courseStanding } from '@/features/student/utils/courseOutline'
+import { buildLearning, type LearningItem, nextInProgress } from '@/features/student/utils/learning'
+import { whereToStartReturn } from '@/features/student/utils/whereToStartReturn'
+import AppButton from '@/shared/components/AppButton.vue'
+import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
+import InlineNotice from '@/shared/components/InlineNotice.vue'
+import LoadFailed from '@/shared/components/LoadFailed.vue'
+import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import PageBackBar from '@/shared/components/PageBackBar.vue'
+import ProgressMeter from '@/shared/components/ProgressMeter.vue'
+import StateBlock from '@/shared/components/StateBlock.vue'
+import StatusChip from '@/shared/components/StatusChip.vue'
+import StepRow from '@/shared/components/StepRow.vue'
+import ThumbnailImage from '@/shared/components/ThumbnailImage.vue'
+import { useInstrumentNames } from '@/shared/composables/useInstrumentNames'
+import { useToast } from '@/shared/composables/useToast'
+import { useTypedT } from '@/shared/composables/useTypedT'
+import { languageLabelKey } from '@/shared/utils/languageLabels'
+
+const route = useRoute()
+const router = useRouter()
+const { t } = useTypedT()
+const toast = useToast()
+const { instrumentsLabel } = useInstrumentNames()
+
+const courseId = String(route.params.courseId)
+const { course, isLoading: courseLoading, error: courseError, notFound, retry: retryCourse } = usePublishedCourse(courseId)
+const enrollmentState = useMyCourseEnrollments()
+// The standalone paths and the current path only decide what comes next after leaving and how far
+// the current part has got, so the page doesn't wait for them.
+const standaloneState = useMyStandalonePaths()
+const currentState = useStudentPath()
+const { enrollInCourse } = useEnrollInCourse()
+const { switchTo } = useMakeCurrentWithUndo((view) => (currentState.data.value = view))
+const { leave } = useLeaveLearningItem()
+
+const isLoading = computed(() => courseLoading.value || enrollmentState.isLoading.value)
+const hasError = computed(() => courseError.value || enrollmentState.error.value)
+
+function retry() {
+  if (courseError.value) void retryCourse()
+  if (enrollmentState.error.value) void enrollmentState.retry()
+}
+
+// ── The way back ──────────────────────────────────────────────────────────
+
+// Opened from Learning, the way back is there; from a new student's Where to start, there; otherwise
+// the catalog, at the course the student came from.
+const back = computed<{ title: string; label: string; to: RouteLocationRaw }>(() => {
+  if (route.name === 'learning-course') {
+    return { title: t('nav.learning'), label: t('courseDetailView.backToLearning'), to: { name: 'my-courses' } }
+  }
+  const whereToStart = whereToStartReturn(route.query)
+  if (whereToStart) {
+    return { title: t('firstRun.backToWhereToStart'), label: t('courseDetailView.backToWhereToStart'), to: whereToStart }
+  }
+  return {
+    title: t('nav.discover'),
+    label: t('courseDetailView.backToDiscover'),
+    to: discoverBackLink('courses', courseId),
+  }
+})
+
+// ── Where the student stands ──────────────────────────────────────────────
+
+const standing = computed(() => courseStanding(enrollmentState.enrollments.value, courseId))
+const enrollment = computed(() => (standing.value.kind === 'enrolled' ? standing.value.enrollment : null))
+
+// A finished course lists the parts the student took — never a newer version — and each lesson
+// opens for review. The parts load only once the course turns out to be finished.
+const finishedEnrollmentId = computed(() =>
+  standing.value.kind === 'finished' ? standing.value.enrollment.course_enrollment_id : null,
+)
+const partsState = useEnrollmentParts(() => finishedEnrollmentId.value)
+const finishedOutline = computed(() => buildFinishedOutline(partsState.parts.value))
+
+const outline = computed(() => {
+  if (standing.value.kind === 'finished') return finishedOutline.value.map(({ part }) => part)
+  return course.value ? buildCourseOutline(course.value, standing.value, currentState.data.value) : []
+})
+
+/** A finished part's lessons as rows that open each one for review. */
+function reviewRowsOf(position: number) {
+  const finishedPart = finishedOutline.value.find(({ part }) => part.position === position)
+  if (!finishedPart) return []
+  return finishedPart.lessons.map((lesson) => ({
+    ...lesson,
+    meta: t('pathView.meta.done', { kind: t(`pathView.kind.${lesson.kind}`) }),
+    to: { name: 'review-lesson', params: { studentPathId: finishedPart.studentPathId, nodeId: lesson.contentNodeId } },
+  }))
+}
+const activePosition = computed(() => enrollment.value?.active_checkpoint_position ?? 1)
+const partCount = computed(() => course.value?.checkpoint_count ?? outline.value.length)
+
+const chips = computed(() => {
+  if (!course.value) return []
+  const languageKey = languageLabelKey(course.value.language)
+  return [
+    t(`levels.${course.value.level}`),
+    languageKey ? t(languageKey) : course.value.language,
+    ...(course.value.instrument_ids.length ? [instrumentsLabel(course.value.instrument_ids)] : []),
+  ]
+})
+
+const outlineHeading = computed(() => {
+  const heading = t('courseDetailView.outline')
+  if (standing.value.kind !== 'none' && standing.value.kind !== 'left') return heading
+  const lessons = course.value?.lesson_count ?? outline.value.reduce((sum, part) => sum + part.lessonCount, 0)
+  return `${heading} · ${t('courseDetailView.parts', { count: partCount.value })} · ${t('partRow.lessons', { count: lessons })}`
+})
+
+// Which parts are unfolded; the current one opens unfolded.
+const unfolded = ref(new Set<number>())
+watch(
+  () => outline.value.find((part) => part.state === 'current')?.position,
+  (position) => {
+    if (position !== undefined) unfolded.value = new Set([...unfolded.value, position])
+  },
+  { immediate: true },
+)
+
+function toggle(position: number) {
+  const next = new Set(unfolded.value)
+  if (!next.delete(position)) next.add(position)
+  unfolded.value = next
+}
+
+// ── Starting and continuing ───────────────────────────────────────────────
+
+const starting = ref(false)
+
+/** The enrolment Start made, or the one the student turns out to hold already. */
+async function enrolHere(courseIdToStart: string) {
+  const result = await enrollInCourse(courseIdToStart)
+  if (result.outcome === 'enrolled') {
+    enrollmentState.enrollments.value = [...enrollmentState.enrollments.value, result.enrollment]
+    return result.enrollment
+  }
+  await enrollmentState.retry()
+  return enrollment.value
+}
+
+// Starting enrols, makes the course current (the server only does that when nothing is) and opens
+// My path, at once and with an Undo, since it is reversible. When the switch alone fails, the
+// course is in Learning but the student is still on what they had, so they're told both.
+async function start() {
+  if (!course.value || starting.value) return
+  const title = course.value.title
+  const previous = currentTargetOf(currentState.data.value)
+  const previousTitle = learning.value.inProgress.find((item) => item.state === 'current')?.title ?? null
+  starting.value = true
+  try {
+    const started = await enrolHere(course.value.course_id)
+    if (!started) return
+    try {
+      await switchTo({ courseEnrollmentId: started.course_enrollment_id }, title, previous)
+    } catch (e) {
+      toast.error(
+        previousTitle
+          ? t('courseDetailView.startedNotCurrent', { title, current: previousTitle })
+          : e instanceof Error ? e.message : String(e),
+      )
+      return
+    }
+    void router.push({ name: 'path' })
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : String(e))
+  } finally {
+    starting.value = false
+  }
+}
+
+const continuing = ref(false)
+
+// Continuing opens My path on this course, making it current first when it isn't. Switching is
+// reversible, so it happens at once with an Undo, as from a Learning row.
+async function continueCourse() {
+  const active = enrollment.value
+  if (!active || !course.value || continuing.value) return
+  if (currentState.data.value?.course_enrollment_id === active.course_enrollment_id) {
+    void router.push({ name: 'path' })
+    return
+  }
+
+  continuing.value = true
+  try {
+    await switchTo({ courseEnrollmentId: active.course_enrollment_id }, course.value.title, currentTargetOf(currentState.data.value))
+    void router.push({ name: 'path' })
+  } catch (e) {
+    toast.error(e instanceof Error ? e.message : String(e))
+  } finally {
+    continuing.value = false
+  }
+}
+
+// ── Leaving ───────────────────────────────────────────────────────────────
+
+const learning = computed(() =>
+  buildLearning(enrollmentState.enrollments.value, standaloneState.paths.value, currentState.data.value),
+)
+const learningItem = computed(() => {
+  const id = enrollment.value?.course_enrollment_id
+  return id ? (learning.value.inProgress.find((item) => item.key === `course:${id}`) ?? null) : null
+})
+const leaveNext = computed(() => (learningItem.value ? nextInProgress(learning.value, learningItem.value) : null))
+const confirmingLeave = ref(false)
+const leaveBusy = ref(false)
+
+const leaveMessage = computed(() => {
+  const message = t('learningView.leaveCourseMessage')
+  return learningItem.value?.state === 'current' && leaveNext.value
+    ? `${message} ${t('learningView.continueWith', { title: leaveNext.value.title })}`
+    : message
+})
+
+// ── Taking a newer version ────────────────────────────────────────────────
+
+const updating = ref<LearningItem | null>(null)
+
+function applyUpdated(result: UpdateResult) {
+  const updated = result.enrollment
+  updating.value = null
+  if (!updated) return
+  enrollmentState.enrollments.value = enrollmentState.enrollments.value.map((e) =>
+    e.course_enrollment_id === updated.course_enrollment_id ? updated : e,
+  )
+  toast.success(t('updateCopy.upToDate', { title: updated.course_title }))
+}
+
+async function confirmLeave() {
+  const item = learningItem.value
+  if (!item) return
+  const next = leaveNext.value
+  leaveBusy.value = true
+  try {
+    const result = await leave(item, next)
+    const left = result.enrollment
+    if (left) {
+      enrollmentState.enrollments.value = enrollmentState.enrollments.value.map((e) =>
+        e.course_enrollment_id === left.course_enrollment_id ? left : e,
+      )
+    }
+    if (result.current !== undefined) currentState.data.value = result.current
+  } catch (e) {
+    if (e instanceof LeaveFailedAfterSwitchError) {
+      currentState.data.value = e.current
+      toast.error(t('learningView.leaveFailedAfterSwitch', { now: next?.title ?? '', title: item.title }))
+    } else {
+      toast.error(e instanceof Error ? e.message : String(e))
+    }
+  } finally {
+    leaveBusy.value = false
+    confirmingLeave.value = false
+  }
+}
+</script>
+
+<template>
+  <section class="flex flex-col gap-4">
+    <LoadingSkeleton v-if="isLoading" data-test="loading" />
+
+    <template v-else-if="notFound">
+      <PageBackBar :title="back.title" :to="back.to" :back-label="back.label" />
+      <StateBlock
+        data-test="not-found"
+        kind="notFound"
+        :title="t('courseDetailView.notFoundHeading')"
+        :message="t('courseDetailView.notFoundMessage')"
+      >
+        <template #action>
+          <RouterLink :to="{ name: 'course-catalog' }" class="text-sm font-semibold text-accent-text underline">
+            {{ t('nav.findCourse') }}
+          </RouterLink>
+        </template>
+      </StateBlock>
+    </template>
+
+    <template v-else-if="hasError">
+      <PageBackBar :title="back.title" :to="back.to" :back-label="back.label" />
+      <LoadFailed data-test="error" :message="t('courseDetailView.errorMessage')" @retry="retry" />
+    </template>
+
+    <!-- One 560 px column on a phone and a tablet, in reading order. From a 1120 px window, where
+         both fit beside the sidebar, the outline takes a 600 px pane and the picture, progress and
+         actions a 320 px card that stays in view; the same elements, regrouped. -->
+    <div
+      v-else-if="course"
+      class="flex w-full max-w-[35rem] flex-col gap-4 min-[1120px]:grid min-[1120px]:max-w-[59rem] min-[1120px]:grid-cols-[minmax(0,37.5rem)_20rem] min-[1120px]:items-start min-[1120px]:gap-x-6"
+    >
+      <div class="contents min-[1120px]:flex min-[1120px]:flex-col min-[1120px]:gap-4">
+        <PageBackBar :title="back.title" :to="back.to" :back-label="back.label" />
+
+        <div class="order-2 flex flex-col gap-2">
+          <div class="flex flex-wrap gap-2">
+            <StatusChip
+              v-if="standing.kind === 'finished'"
+              data-test="finished-chip"
+              tone="success"
+              :label="t('courseDetailView.finished')"
+            />
+            <StatusChip v-for="(chip, index) in chips" :key="index" data-test="course-chip" :label="chip" />
+          </div>
+          <h1 data-test="course-detail-title" class="text-xl font-semibold text-ink">{{ course.title }}</h1>
+          <p v-if="course.created_by" data-test="course-detail-byline" class="text-xs">
+            <RouterLink
+              :to="{ name: 'course-catalog', query: { teacher: course.created_by.user_id } }"
+              class="font-semibold text-accent-text underline"
+            >
+              {{ t('courseCard.byline', { name: course.created_by.display_name }) }}
+            </RouterLink>
+          </p>
+          <p data-test="course-detail-summary" class="text-base text-ink-muted">{{ course.summary }}</p>
+        </div>
+
+        <div v-if="standing.kind === 'finished' && partsState.error.value" class="order-4 flex flex-col gap-2">
+          <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
+          <InlineNotice data-test="parts-error" :message="t('courseDetailView.partsLoadFailed')" />
+          <AppButton data-test="parts-retry" variant="secondary" block @click="partsState.retry()">
+            {{ t('buttons.tryAgain') }}
+          </AppButton>
+        </div>
+
+        <div v-else-if="standing.kind === 'finished' && partsState.isLoading.value" class="order-4 flex flex-col gap-2">
+          <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
+          <LoadingSkeleton data-test="parts-loading" shape="lines" />
+        </div>
+
+        <div v-else-if="outline.length" class="order-4 flex flex-col gap-2">
+          <h2 data-test="outline-heading" class="text-lg font-semibold text-ink">{{ outlineHeading }}</h2>
+          <ol class="flex flex-col gap-2">
+            <li v-for="part in outline" :key="part.position">
+              <PartRow :part="part" :expanded="unfolded.has(part.position)" @toggle="toggle(part.position)">
+                <template v-if="standing.kind === 'finished'" #lessons>
+                  <StepRow
+                    v-for="row in reviewRowsOf(part.position)"
+                    :key="row.contentNodeId"
+                    data-test="review-lesson"
+                    state="done"
+                    :position="row.position"
+                    :title="row.title"
+                    :meta="row.meta"
+                    :to="row.to"
+                  />
+                </template>
+                <button
+                  v-if="part.state === 'current'"
+                  type="button"
+                  data-test="open-in-path"
+                  class="w-fit text-sm font-semibold text-accent-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  @click="continueCourse"
+                >
+                  {{ t('courseDetailView.openInPath') }}
+                </button>
+              </PartRow>
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <div
+        class="contents min-[1120px]:sticky min-[1120px]:top-5 min-[1120px]:flex min-[1120px]:flex-col min-[1120px]:gap-3 min-[1120px]:rounded-lg min-[1120px]:border min-[1120px]:border-border min-[1120px]:bg-surface-raised min-[1120px]:p-4"
+      >
+        <ThumbnailImage class="order-1" :url="course.thumbnail_url" fit="contain" size-class="aspect-video w-full rounded-lg" />
+
+        <div class="order-3 flex flex-col gap-3">
+          <div v-if="enrollment" data-test="course-progress">
+            <ProgressMeter
+              :completed="activePosition - 1"
+              :total="partCount"
+              :label="t('learningCard.part', { position: activePosition, count: partCount })"
+              :summary="t('learningCard.partsSummary', { completed: activePosition - 1, count: partCount })"
+            />
+          </div>
+          <div v-else-if="standing.kind === 'finished'" data-test="course-progress">
+            <ProgressMeter
+              :completed="partCount"
+              :total="partCount"
+              tone="success"
+              :label="t('learningCard.parts', { completed: partCount, count: partCount })"
+              :summary="t('learningCard.partsSummary', { completed: partCount, count: partCount })"
+            />
+          </div>
+
+          <AppButton v-if="enrollment" data-test="continue" block :busy="continuing" @click="continueCourse">
+            {{ t('courseDetailView.continuePart', { position: activePosition }) }}
+          </AppButton>
+          <AppButton
+            v-else-if="standing.kind === 'finished'"
+            data-test="practise"
+            variant="secondary"
+            block
+            :to="{ name: 'practice-session' }"
+          >
+            {{ t('courseDetailView.practise') }}
+          </AppButton>
+          <template v-else>
+            <AppButton data-test="start" block :busy="starting" @click="start">
+              {{ t('courseDetailView.start') }}
+            </AppButton>
+            <p v-if="standing.kind === 'left'" data-test="left-before" class="text-xs text-ink-muted">
+              {{ t('courseDetailView.leftBefore') }}
+            </p>
+          </template>
+          <div
+            v-if="learningItem?.updateAvailable"
+            data-test="update-card"
+            class="flex flex-col items-start gap-2 rounded-lg bg-surface-sunken p-4"
+          >
+            <p class="text-sm font-semibold text-ink">{{ t('courseDetailView.newVersionHeading') }}</p>
+            <p class="text-sm text-ink-muted">{{ t('courseDetailView.newVersionMessage') }}</p>
+            <AppButton data-test="update-course" variant="secondary" block @click="updating = learningItem">
+              {{ t('updateCopy.updateCourse') }}
+            </AppButton>
+          </div>
+        </div>
+
+        <!-- Last on the page on a phone; in the side card beside the outline on a wide screen. -->
+        <button
+          v-if="enrollment"
+          type="button"
+          data-test="leave"
+          class="order-5 min-h-12 w-fit rounded-full px-3 text-sm font-semibold text-danger hover:bg-danger-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus min-[1120px]:w-full"
+          @click="confirmingLeave = true"
+        >
+          {{ t('courseDetailView.leave') }}
+        </button>
+      </div>
+    </div>
+
+    <ConfirmDialog
+      :open="confirmingLeave"
+      :title="t('learningView.leaveCourseTitle', { title: course?.title ?? '' })"
+      :message="leaveMessage"
+      :confirm-label="t('learningView.leaveCourseConfirm')"
+      :busy="leaveBusy"
+      @confirm="confirmLeave"
+      @cancel="confirmingLeave = false"
+    />
+
+    <UpdateCopyDialog :item="updating" @updated="applyUpdated" @cancel="updating = null" />
+  </section>
+</template>

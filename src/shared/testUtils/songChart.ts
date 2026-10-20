@@ -1,0 +1,188 @@
+import type { components } from '@/api/generated/core-domain'
+import { makeFrettedDiagram, makePlayback } from '@/shared/testUtils/diagram'
+
+type LearnerSongChart = components['schemas']['LearnerSongChart']
+type SongChart = components['schemas']['SongChart']
+type SongChartDraft = components['schemas']['SongChartDraft']
+type ChordDefinition = components['schemas']['ChordDefinition']
+type ChordVoicing = components['schemas']['ChordVoicing']
+type Diagram = components['schemas']['Diagram']
+type Anchor = components['schemas']['SongChartChordAnchor']['attrs']
+type LyricLine = components['schemas']['SongChartLyricLine']
+type Section = components['schemas']['SongChartSection']
+
+export function makeAnchor(anchorId: string, writtenSymbol: string, overrides: Partial<Anchor> = {}): Anchor {
+  return { anchorId, writtenSymbol, chordDefinitionId: null, chordVoicingId: null, ...overrides }
+}
+
+/** A lyric line from its runs: each run's text, with the anchor its chord sits on, if any. */
+export function makeLyricLine(...runs: Array<[string, Anchor | null]>): LyricLine {
+  return {
+    type: 'lyricLine',
+    content: runs.map(([text, anchor]) =>
+      anchor ? { type: 'text', text, marks: [{ type: 'chordAnchor', attrs: anchor }] } : { type: 'text', text },
+    ),
+  }
+}
+
+export function makeSection(lines: Section['content'], overrides: Partial<Section['attrs']> = {}): Section {
+  return { type: 'section', attrs: { kind: 'verse', label: null, ...overrides }, content: lines }
+}
+
+export function makeVoicing(id: string, chordId: string, overrides: Partial<ChordVoicing> = {}): ChordVoicing {
+  return {
+    chord_voicing_id: id,
+    chord_definition_id: chordId,
+    diagram_id: `diagram-${id}`,
+    instrument_id: 'instrument-guitar',
+    tuning_fingerprint: 'E2-A2-D3-G3-B3-E4',
+    fret_window: { lowest_fret: 0, highest_fret: 3 },
+    fingering: [],
+    muted_strings: [],
+    omitted_intervals: [],
+    difficulty: 'beginner',
+    technique_tags: ['open'],
+    shape_family: 'open',
+    is_movable: false,
+    recommended_rank: 1,
+    catalog_status: 'active',
+    provenance: { source: 'hand_authored', template_key: null },
+    ...overrides,
+  }
+}
+
+export function makeChord(id: string, symbol: string, voicings: ChordVoicing[], overrides: Partial<ChordDefinition> = {}): ChordDefinition {
+  return {
+    chord_definition_id: id,
+    canonical_symbol: symbol,
+    root: symbol.charAt(0),
+    root_pitch_class: 0,
+    quality: 'major',
+    formula: ['R', '3', '5'],
+    bass: null,
+    aliases: [],
+    voicings,
+    ...overrides,
+  }
+}
+
+/** A voicing's diagram, with an arpeggio and a strum playback. */
+export function makeVoicingDiagram(voicing: ChordVoicing): Diagram {
+  return makeFrettedDiagram({
+    diagram_id: voicing.diagram_id,
+    purpose: 'chord_voicing',
+    names: { en: `Voicing ${voicing.chord_voicing_id}` },
+    languages: ['en'],
+    playbacks: [
+      makePlayback({ playback_id: `${voicing.chord_voicing_id}-strum`, names: { en: 'Strum' } }),
+      makePlayback({ playback_id: `${voicing.chord_voicing_id}-arpeggio`, names: { en: 'Arpeggio' } }),
+    ],
+    default_playback_id: `${voicing.chord_voicing_id}-strum`,
+  })
+}
+
+export const gOpen = makeVoicing('g-open', 'chord-g')
+export const gEShape = makeVoicing('g-e-shape-3', 'chord-g', { recommended_rank: 2, shape_family: 'e_shape', fret_window: { lowest_fret: 3, highest_fret: 5 } })
+export const cOpen = makeVoicing('c-open', 'chord-c')
+export const cBarre = makeVoicing('c-a-shape-3', 'chord-c', { recommended_rank: 2, shape_family: 'a_shape', fret_window: { lowest_fret: 3, highest_fret: 5 } })
+export const chordG = makeChord('chord-g', 'G', [gOpen, gEShape], { root_pitch_class: 7 })
+export const chordC = makeChord('chord-c', 'C', [cOpen, cBarre])
+
+/**
+ * "Amazing Grace" at revision 2: "[G]Amazing grace, how [C]sweet the sound" in its first section, then a
+ * chorus. Override `body` for other lines.
+ */
+export function makeLearnerSongChart(overrides: Partial<LearnerSongChart> = {}): LearnerSongChart {
+  return {
+    song_chart_id: 'chart-amazing-grace',
+    revision_number: 2,
+    title: 'Amazing Grace',
+    artist: 'John Newton',
+    language: 'en',
+    concert_key: 'G',
+    capo_fret: 0,
+    tempo_bpm: null,
+    time_signature: null,
+    tuning_fingerprint: 'E2-A2-D3-G3-B3-E4',
+    body: {
+      type: 'doc',
+      content: [
+        makeSection([
+          makeLyricLine(
+            ['Amazing grace, how ', makeAnchor('a1', 'G', { chordDefinitionId: 'chord-g' })],
+            ['sweet the sound', makeAnchor('a2', 'C', { chordDefinitionId: 'chord-c' })],
+          ),
+        ]),
+        makeSection([makeLyricLine(["'Twas grace that taught", makeAnchor('a3', 'G', { chordDefinitionId: 'chord-g' })])], {
+          kind: 'chorus',
+          label: 'Chorus',
+        }),
+      ],
+    },
+    chords: [chordG, chordC],
+    diagrams: [gOpen, gEShape, cOpen, cBarre].map(makeVoicingDiagram),
+    ...overrides,
+  }
+}
+
+const ana = { user_id: 'u-ana', display_name: 'Ana' }
+
+/** A song chart as admins see it: a draft of "Amazing Grace", never published. */
+export function makeSongChart(
+  id: string,
+  draft: Partial<SongChartDraft> = {},
+  overrides: Partial<Omit<SongChart, 'draft'>> = {},
+): SongChart {
+  const learner = makeLearnerSongChart()
+  return {
+    song_chart_id: id,
+    status: 'draft',
+    draft: {
+      title: learner.title,
+      artist: learner.artist,
+      language: learner.language,
+      concert_key: learner.concert_key,
+      capo_fret: learner.capo_fret,
+      tempo_bpm: learner.tempo_bpm,
+      time_signature: learner.time_signature,
+      rights_confirmed: false,
+      body: learner.body,
+      rights_confirmation: null,
+      warnings: [],
+      updated_by: ana,
+      updated_at: '2026-10-07T12:00:00Z',
+      ...draft,
+    },
+    published_revision: null,
+    withdrawal: null,
+    created_by: ana,
+    created_at: '2026-10-07T12:00:00Z',
+    ...overrides,
+  }
+}
+
+/** A published revision summary, published by Ana. */
+export function makeRevisionSummary(revision: number, title = 'Amazing Grace') {
+  return { revision_number: revision, title, artist: 'John Newton', language: 'en', concert_key: 'G', published_by: ana, published_at: '2026-10-07T12:00:00Z' }
+}
+
+/** A published revision of "Amazing Grace", published and confirmed by Ana. */
+export function makeRevision(revision: number): components['schemas']['SongChartRevision'] {
+  const learner = makeLearnerSongChart()
+  return {
+    song_chart_id: learner.song_chart_id,
+    revision_number: revision,
+    title: learner.title,
+    artist: learner.artist,
+    language: learner.language,
+    concert_key: learner.concert_key,
+    capo_fret: learner.capo_fret,
+    tempo_bpm: learner.tempo_bpm,
+    time_signature: learner.time_signature,
+    tuning_fingerprint: learner.tuning_fingerprint,
+    body: learner.body,
+    rights_confirmation: { confirmed_by: ana, confirmed_at: '2026-10-07T12:00:00Z' },
+    published_by: ana,
+    published_at: '2026-10-07T12:00:00Z',
+  }
+}

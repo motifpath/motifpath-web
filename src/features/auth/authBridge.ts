@@ -1,0 +1,70 @@
+/**
+ * Bridges Clerk's session — which is only reachable from a component setup
+ * context — to code that runs outside it: the API transport (per-request token)
+ * and the router navigation guard (readiness + sign-in state).
+ *
+ * `App.vue` pushes the current state here via `updateAuthBridge` on every change.
+ */
+
+import type { CurrentUserState } from '@/stores/currentUser'
+
+type TokenGetter = () => Promise<string | null>
+
+/**
+ * Alias of the currentUser store's own state type. A type-only import is
+ * erased entirely at compile time, so this costs nothing at runtime (no
+ * Pinia, no store instantiation) — it just keeps the two from drifting
+ * apart as separate hand-maintained copies of the same union.
+ */
+export type RegistrationState = CurrentUserState
+
+/** Alias of the currentUser store profile's role, for the same reason as RegistrationState above. */
+export type Role = 'student' | 'teacher' | 'admin' | null
+
+let tokenGetter: TokenGetter = async () => null
+let signedIn = false
+let readyResolved = false
+let resolveReady!: () => void
+const readyPromise = new Promise<void>((resolve) => {
+  resolveReady = resolve
+})
+let registrationState: RegistrationState = 'idle'
+let role: Role = null
+
+export interface AuthBridgeState {
+  isLoaded: boolean
+  isSignedIn: boolean
+  getToken: TokenGetter
+}
+
+export function updateAuthBridge(state: AuthBridgeState): void {
+  tokenGetter = state.getToken
+  signedIn = state.isSignedIn
+  if (state.isLoaded && !readyResolved) {
+    readyResolved = true
+    resolveReady()
+  }
+}
+
+/** Pushes the currentUser store's latest registration state into the bridge. */
+export function updateRegistrationBridge(state: RegistrationState): void {
+  registrationState = state
+}
+
+/** Pushes the currentUser store's latest resolved role into the bridge. */
+export function updateRoleBridge(newRole: Role): void {
+  role = newRole
+}
+
+/** Current session JWT for outbound API requests, or `null` when signed out. */
+export function getAuthToken(): Promise<string | null> {
+  return tokenGetter()
+}
+
+/** Read-only view of auth and registration state for the router guard. */
+export const authChecker = {
+  isReady: (): Promise<void> => readyPromise,
+  isSignedIn: (): boolean => signedIn,
+  getRegistrationState: (): RegistrationState => registrationState,
+  getRole: (): Role => role,
+}

@@ -1,0 +1,21 @@
+{
+  "landing": {
+    "headline": "Practise a little every day. See your skills grow.",
+    "line": "Short sessions on your instrument, picked for what you need next — and lessons when you want to learn something new.",
+    "caption": "Free during the alpha. We use your Google name and email, nothing else.",
+    "unfinished": "Google sign-in didn't finish. Nothing was saved — try again when you're ready."
+  },
+  "bridge": {
+    "failed": "We couldn't set up your account. Your Google sign-in worked — try again in a moment.",
+    "tryAgain": "Try again"
+  },
+  "nameStep": {
+    "title": "What should we call you?",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "firstNameRequired": "Enter your first name.",
+    "lastNameRequired": "Enter your last name.",
+    "saveFailed": "We couldn't save your name. Try again.",
+    "continue": "Continue"
+  }
+}

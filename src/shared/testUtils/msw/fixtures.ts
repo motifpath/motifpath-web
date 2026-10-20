@@ -1,0 +1,215 @@
+import type { components } from '@/api/generated/core-domain'
+import { makeFrettedInstrument, makeSequencedFrettedDiagram } from '@/shared/testUtils/diagram'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
+
+type Schemas = components['schemas']
+
+/** What the mock API answers with by default: a small, plausible catalog in en and pt-BR. */
+
+export const instruments: Schemas['Instrument'][] = [
+  makeFrettedInstrument(),
+  makeFrettedInstrument({
+    instrument_id: 'instrument-bass',
+    names: { en: '4-string bass (standard tuning)', pt_BR: 'Baixo de 4 cordas (afinação padrão)' },
+    icon: 'electric_bass',
+    string_count: 4,
+    tuning: ['E1', 'A1', 'D2', 'G2'],
+    default_voice_id: 'electric-bass',
+  }),
+  {
+    instrument_id: 'instrument-piano',
+    names: { en: 'Piano', pt_BR: 'Piano' },
+    languages: ['en', 'pt_BR'],
+    family: 'keyboard',
+    icon: 'piano',
+    key_range: { lowest: 'A0', highest: 'C8' },
+    default_voice_id: 'piano',
+  },
+]
+
+export const creators: Schemas['UserRef'][] = [
+  { user_id: '00000000-0000-4000-8000-000000000002', display_name: 'Ana Souza' },
+  { user_id: '00000000-0000-4000-8000-000000000003', display_name: 'Bob Ferreira' },
+  { user_id: '00000000-0000-4000-8000-000000000004', display_name: 'Maria Aparecida dos Santos Oliveira' },
+]
+
+// The seeded voices, attributions as the reference data has them.
+export const voices: Schemas['Voice'][] = [
+  {
+    voice_id: 'acoustic-guitar',
+    names: { en: 'Acoustic guitar', pt_BR: 'Violão' },
+    languages: ['en', 'pt_BR'],
+    family: 'fretted',
+    samples: [],
+    attribution: 'Acoustic guitar samples from tonejs-instruments by Nicholaus Brosowsky, CC BY 3.0',
+  },
+  {
+    voice_id: 'piano',
+    names: { en: 'Piano', pt_BR: 'Piano' },
+    languages: ['en', 'pt_BR'],
+    family: 'keyboard',
+    samples: [],
+    attribution: 'Piano samples from tonejs-instruments by Nicholaus Brosowsky, CC BY 3.0',
+  },
+  {
+    voice_id: 'electric-bass',
+    names: { en: 'Electric bass', pt_BR: 'Contrabaixo elétrico' },
+    languages: ['en', 'pt_BR'],
+    family: 'fretted',
+    samples: [],
+    attribution: 'Electric bass samples from tonejs-instruments by Nicholaus Brosowsky, CC BY 3.0',
+  },
+]
+
+export const diagram: Schemas['Diagram'] = makeSequencedFrettedDiagram()
+
+export const skillNodes: Schemas['KnowledgeNode'][] = [
+  knowledgeNode('skill-technique', { names: { en: 'Technique', pt_BR: 'Técnica' } }),
+  knowledgeNode('skill-alternate-picking', {
+    names: { en: 'Alternate picking', pt_BR: 'Palhetada alternada' },
+    parent_id: 'skill-technique',
+    instrument_ids: ['instrument-guitar', 'instrument-bass'],
+  }),
+]
+
+export const conceptNodes: Schemas['KnowledgeNode'][] = [
+  knowledgeNode('concept-pentatonic', {
+    kind: 'concept',
+    names: { en: 'Pentatonic scale', pt_BR: 'Escala pentatônica' },
+  }),
+]
+
+const alternatePicking = { node_id: 'skill-alternate-picking', names: { en: 'Alternate picking', pt_BR: 'Palhetada alternada' } }
+
+// The week ending Saturday 2026-10-10: oldest first, today last.
+const lastWeek = ['2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10']
+const practised = [true, false, true, true, false, true, false]
+const learned = [true, true, false, true, true, true, false]
+
+export const practiceOverview: Schemas['PracticeOverview'] = {
+  practice_days_last_7: 4,
+  learning_days_last_7: 5,
+  minutes_practised_last_7: 95,
+  minutes_practised_previous_7: 60,
+  day_streak_current: 3,
+  day_streak_best: 9,
+  skills_up_last_7: 2,
+  songs_played_total: 3,
+  songs_played_last_7: 1,
+  last_7_days: lastWeek.map((date, i) => ({ date, practised: practised[i], learned: learned[i] })),
+  instruments: [
+    {
+      instrument_id: 'instrument-guitar',
+      practice_days_last_7: 4,
+      top_next_step: { kind: 'strengthen', ...alternatePicking, level: 'learning' },
+    },
+  ],
+}
+
+export const practiceSummary: Schemas['PracticeSummary'] = {
+  instrument_id: 'instrument-guitar',
+  student_instrument_ids: ['instrument-guitar'],
+  practice_days_last_7: 4,
+  last_7_days: lastWeek.map((date, i) => ({ date, practised: practised[i] })),
+  progress_this_week: [{ ...alternatePicking, measure: 'best_clean_tempo_bpm', before: 80, after: 92 }],
+  next_steps: [{ kind: 'strengthen', ...alternatePicking, level: 'learning' }],
+  next_steps_total: 1,
+  groups: [
+    {
+      area_node_id: 'skill-technique',
+      any_instrument: false,
+      names: { en: 'Technique', pt_BR: 'Técnica' },
+      nodes: [
+        {
+          ...alternatePicking,
+          level: 'learning',
+          fading: false,
+          coverage: { met_count: 3, item_count: 8 },
+          child_node_ids: [],
+          readiness: { met_count: 1, required_count: 2 },
+        },
+      ],
+    },
+  ],
+}
+
+const pathSteps = ['Holding the guitar', 'Tuning', 'Open E minor', 'Open A minor', 'Strumming down', 'Strumming up', 'Changing chords', 'Major triads', 'Inversions', 'Minor triads', 'Barre shapes', 'Power chords', 'Palm muting', 'Your first song']
+
+/** "Guitar fundamentals": 8 of its 14 steps done, the next being the video "Inversions". */
+export const studentPath: Schemas['StudentPathView'] = {
+  student_path_id: 'student-path-guitar',
+  source_template_id: 'path-guitar-fundamentals',
+  title: 'Guitar fundamentals',
+  current_position: 9,
+  course_completed: false,
+  items: pathSteps.map((title, index) => ({
+    position: index + 1,
+    content_node_id: `node-${index + 1}`,
+    content_node_version_id: `node-version-${index + 1}`,
+    title,
+    content_type: index % 3 === 2 ? 'article' : 'video',
+    status: index < 8 ? 'completed' : 'not_started',
+  })),
+}
+
+const fromZero: Schemas['PathCatalogEntry'] = {
+  learning_path_id: 'path-guitar-from-zero',
+  title: 'Guitar from zero',
+  summary: 'Your first chords and strums, a little every day.',
+  level: 'beginner',
+  language: 'en',
+  created_by: creators[0]!,
+  instrument_ids: ['instrument-guitar'],
+  lesson_count: 18,
+}
+
+const basics: Schemas['CourseCatalogEntry'] = {
+  course_id: 'course-guitar-basics',
+  title: 'Guitar basics',
+  summary: 'Chords, rhythm and your first songs.',
+  level: 'beginner',
+  language: 'en',
+  created_by: creators[0]!,
+  status: 'published',
+  published_at: '2026-09-01T00:00:00Z',
+  instrument_ids: ['instrument-guitar'],
+  checkpoint_count: 3,
+  lesson_count: 12,
+}
+
+/** Where a new student starts on guitar: a path, then a course, as the team chose them. */
+export const startingPoints: Schemas['StartingPoints'] = {
+  source: 'curated',
+  items: [
+    { kind: 'path', path: fromZero },
+    { kind: 'course', course: basics },
+  ],
+}
+
+/** "Guitar foundations" as published: 4 parts, 44 lessons. */
+export const publishedCourse: Schemas['CourseDetail'] = {
+  course_id: 'course-guitar-foundations',
+  title: 'Guitar foundations',
+  summary: 'Chords, strumming and your first songs, one part at a time.',
+  level: 'beginner',
+  language: 'en',
+  created_by: creators[0]!,
+  status: 'published',
+  published_at: '2026-09-01T00:00:00Z',
+  instrument_ids: ['instrument-guitar'],
+  checkpoints: [
+    { position: 1, title: 'Open chords', items: [] },
+    { position: 2, title: 'Major triads', items: [] },
+    { position: 3, title: 'Seventh chords', items: [] },
+    { position: 4, title: 'Accompany a song', items: [] },
+  ],
+  checkpoint_count: 4,
+  lesson_count: 44,
+}
+
+/** Students of the alpha, as the Engagement student search finds them. */
+export const alphaStudents: Schemas['UserRef'][] = [
+  { user_id: '00000000-0000-4000-8000-0000000000c1', display_name: 'Camila Duarte' },
+  { user_id: '00000000-0000-4000-8000-0000000000c2', display_name: 'Camila Rocha' },
+  { user_id: '00000000-0000-4000-8000-0000000000c3', display_name: 'Beatriz Rocha' },
+]

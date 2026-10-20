@@ -1,0 +1,845 @@
+import { describe, expect, it } from 'vitest'
+
+import { useExerciseForm } from '@/features/teacher/composables/useExerciseForm'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
+import type { components } from '@/api/generated/core-domain'
+
+type Exercise = components['schemas']['Exercise']
+type DiagramRef = components['schemas']['DiagramRef']
+
+function exercise(overrides: Partial<Exercise>): Exercise {
+  return {
+    exercise_id: 'e-1',
+    title: 't',
+    prompt: plainTextPrompt('p'),
+    exercise_type: 'image_recognition',
+    options: [],
+    skills: [],
+    concepts: [],
+    challenge_ids: [],
+    content_node_ids: [],
+    remediation_targets: [],
+    languages: [],
+    instrument_ids: [],
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+describe('useExerciseForm', () => {
+  it('starts with no correct option for any type', () => {
+    const form = useExerciseForm()
+
+    expect(form.hasCorrectOption.value).toBe(false)
+  })
+
+  it('assigns real UUIDs to new options — the API requires option_id to be a UUID', () => {
+    const form = useExerciseForm()
+    form.exerciseType.value = 'text_response'
+
+    form.addTextOption()
+
+    expect(form.textOptions.value[0]!.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    )
+  })
+
+  describe('text_response / audio_recognition options', () => {
+    it('adds, edits, toggles, and removes a text option', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'text_response'
+
+      form.addTextOption()
+      expect(form.textOptions.value).toHaveLength(1)
+
+      const id = form.textOptions.value[0]!.id
+      form.editTextOption(id, 'G major')
+      expect(form.textOptions.value[0]!.label).toBe('G major')
+
+      form.toggleTextOption(id)
+      expect(form.textOptions.value[0]!.correct).toBe(true)
+      expect(form.hasCorrectOption.value).toBe(true)
+
+      form.removeTextOption(id)
+      expect(form.textOptions.value).toHaveLength(0)
+    })
+
+    it('shares the same option list for audio_recognition', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+
+      form.addTextOption()
+      form.toggleTextOption(form.textOptions.value[0]!.id)
+
+      expect(form.hasCorrectOption.value).toBe(true)
+    })
+  })
+
+  describe('image_choice options', () => {
+    it('adds, sets image, toggles, and removes an image option', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_choice'
+
+      form.addImageOption()
+      const id = form.imageOptions.value[0]!.id
+      form.setImageOptionURL(id, 'https://cdn.example.com/a.png')
+      form.toggleImageOption(id)
+
+      expect(form.imageOptions.value[0]).toMatchObject({
+        imageUrl: 'https://cdn.example.com/a.png',
+        correct: true,
+      })
+      expect(form.hasCorrectOption.value).toBe(true)
+
+      form.removeImageOption(id)
+      expect(form.imageOptions.value).toHaveLength(0)
+    })
+  })
+
+  describe('audio_selection options', () => {
+    it('adds, sets audio, sets label, toggles, and removes an audio option', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_selection'
+
+      form.addAudioOption()
+      const id = form.audioOptions.value[0]!.id
+      form.setAudioOptionURL(id, 'https://cdn.example.com/a.mp3')
+      form.editAudioOptionLabel(id, 'Lick A')
+      form.toggleAudioOption(id)
+
+      expect(form.audioOptions.value[0]).toMatchObject({
+        audioUrl: 'https://cdn.example.com/a.mp3',
+        label: 'Lick A',
+        correct: true,
+      })
+      expect(form.hasCorrectOption.value).toBe(true)
+
+      form.removeAudioOption(id)
+      expect(form.audioOptions.value).toHaveLength(0)
+    })
+  })
+
+  describe('image_recognition regions', () => {
+    it('adds a region at a position, moves, resizes, toggles, and removes it', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+
+      form.addRegion(20, 30, 'circle')
+      const id = form.regions.value[0]!.id
+      expect(form.regions.value[0]).toMatchObject({ x: 20, y: 30, shape: 'circle' })
+      const initialWidth = form.regions.value[0]!.width
+
+      form.moveRegion(id, 40, 50)
+      expect(form.regions.value[0]).toMatchObject({ x: 40, y: 50 })
+
+      form.resizeRegion(id, 8, 0)
+      expect(form.regions.value[0]!.width).toBe(initialWidth + 8)
+      // a circle keeps width and height equal regardless of which delta is passed
+      expect(form.regions.value[0]!.height).toBe(form.regions.value[0]!.width)
+
+      form.toggleRegion(id)
+      expect(form.hasCorrectOption.value).toBe(true)
+
+      form.removeRegion(id)
+      expect(form.regions.value).toHaveLength(0)
+    })
+
+    it('resizes rectangle width and height independently', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.addRegion(50, 50, 'rectangle')
+      const id = form.regions.value[0]!.id
+      const before = { ...form.regions.value[0]! }
+
+      form.resizeRegion(id, 8, 0)
+      expect(form.regions.value[0]!.width).toBe(before.width + 8)
+      expect(form.regions.value[0]!.height).toBe(before.height)
+
+      form.resizeRegion(id, 0, 8)
+      expect(form.regions.value[0]!.height).toBe(before.height + 8)
+    })
+
+    it('clamps region size within sane bounds', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.addRegion(50, 50, 'circle')
+      const id = form.regions.value[0]!.id
+
+      for (let i = 0; i < 50; i++) form.resizeRegion(id, -8, -8)
+      expect(form.regions.value[0]!.width).toBeGreaterThanOrEqual(18)
+
+      for (let i = 0; i < 50; i++) form.resizeRegion(id, 8, 8)
+      expect(form.regions.value[0]!.width).toBeLessThanOrEqual(160)
+    })
+  })
+
+  describe('skill/concept ids', () => {
+    it('defaults to empty and can be set directly', () => {
+      const form = useExerciseForm()
+      expect(form.skillIds.value).toEqual([])
+      expect(form.conceptIds.value).toEqual([])
+
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
+
+      expect(form.skillIds.value).toEqual(['s-1'])
+      expect(form.conceptIds.value).toEqual(['c-1'])
+    })
+  })
+
+  describe('language codes', () => {
+    it('default to any language and travel on create and update', () => {
+      const form = useExerciseForm()
+      expect(form.languageCodes.value).toEqual(['any'])
+      expect(form.toCreateExerciseRequest().language_codes).toEqual(['any'])
+
+      form.languageCodes.value = ['pt_BR']
+
+      expect(form.toCreateExerciseRequest().language_codes).toEqual(['pt_BR'])
+      expect(form.toUpdateExerciseRequest().language_codes).toEqual(['pt_BR'])
+    })
+
+    it("load an existing exercise's languages, so saving an edit keeps them", () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', languages: [{ code: 'pt_BR', name: 'Portuguese' }] }))
+
+      expect(form.toUpdateExerciseRequest().language_codes).toEqual(['pt_BR'])
+    })
+
+    it('load an exercise stored without languages as any language, since the API rejects an empty set', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', languages: [] }))
+
+      expect(form.languageCodes.value).toEqual(['any'])
+    })
+  })
+
+  describe('instrument ids', () => {
+    it('default to every instrument (an empty list) and travel on create and update', () => {
+      const form = useExerciseForm()
+      expect(form.instrumentIds.value).toEqual([])
+      expect(form.toCreateExerciseRequest().instrument_ids).toEqual([])
+
+      form.instrumentIds.value = ['bass']
+
+      expect(form.toCreateExerciseRequest().instrument_ids).toEqual(['bass'])
+      expect(form.toUpdateExerciseRequest().instrument_ids).toEqual(['bass'])
+    })
+
+    it('load from an existing exercise', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise(exercise({ exercise_type: 'text_response', instrument_ids: ['guitar', 'bass'] }))
+
+      expect(form.instrumentIds.value).toEqual(['guitar', 'bass'])
+    })
+  })
+
+  describe('toCreateExerciseRequest', () => {
+    it('maps a text_response exercise', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Name the chord'
+      form.prompt.value = plainTextPrompt('Name this chord shape')
+      form.exerciseType.value = 'text_response'
+      form.addTextOption()
+      form.editTextOption(form.textOptions.value[0]!.id, 'G major')
+      form.toggleTextOption(form.textOptions.value[0]!.id)
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request).toEqual({
+        title: 'Name the chord',
+        prompt: plainTextPrompt('Name this chord shape'),
+        exercise_type: 'text_response',
+        skill_ids: ['s-1'],
+        concept_ids: ['c-1'],
+        options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
+        language_codes: ['any'],
+        instrument_ids: [],
+      })
+    })
+
+    it('maps an image_recognition exercise with image_url and regions, sizing width/height against the measured stimulus image', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Root position'
+      form.prompt.value = plainTextPrompt('Identify the root position')
+      form.exerciseType.value = 'image_recognition'
+      form.imageUrl.value = 'https://cdn.example.com/fretboard.png'
+      form.setStimulusImageSize(800, 240)
+      form.addRegion(20, 30, 'rectangle')
+      form.toggleRegion(form.regions.value[0]!.id)
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request.image_url).toBe('https://cdn.example.com/fretboard.png')
+      expect(request.options).toEqual([
+        {
+          option_id: form.regions.value[0]!.id,
+          is_correct: true,
+          region: {
+            x: form.regions.value[0]!.x / 100,
+            y: form.regions.value[0]!.y / 100,
+            width: form.regions.value[0]!.width / 800,
+            height: form.regions.value[0]!.height / 240,
+            shape: 'rectangle',
+          },
+        },
+      ])
+    })
+
+    it('falls back to a 0 fraction for region width/height when the stimulus image has not been measured yet', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Root position'
+      form.prompt.value = plainTextPrompt('Identify the root position')
+      form.exerciseType.value = 'image_recognition'
+      form.imageUrl.value = 'https://cdn.example.com/fretboard.png'
+      form.addRegion(20, 30, 'rectangle')
+      form.toggleRegion(form.regions.value[0]!.id)
+
+      const request = form.toCreateExerciseRequest()
+
+      const region = (request.options![0] as { region: { width: number; height: number } }).region
+      expect(region.width).toBe(0)
+      expect(region.height).toBe(0)
+    })
+
+    it('maps an image_choice exercise with per-option image_url', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Pick the diagram'
+      form.prompt.value = plainTextPrompt('Which is E minor?')
+      form.exerciseType.value = 'image_choice'
+      form.addImageOption()
+      form.setImageOptionURL(form.imageOptions.value[0]!.id, 'https://cdn.example.com/e-minor.png')
+      form.toggleImageOption(form.imageOptions.value[0]!.id)
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request.options).toEqual([
+        {
+          option_id: form.imageOptions.value[0]!.id,
+          is_correct: true,
+          image_url: 'https://cdn.example.com/e-minor.png',
+        },
+      ])
+    })
+
+    it('maps an audio_selection exercise with per-option audio_url and label', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Pick the lick'
+      form.prompt.value = plainTextPrompt('Which is a minor pentatonic lick?')
+      form.exerciseType.value = 'audio_selection'
+      form.addAudioOption()
+      form.setAudioOptionURL(form.audioOptions.value[0]!.id, 'https://cdn.example.com/lick.mp3')
+      form.editAudioOptionLabel(form.audioOptions.value[0]!.id, 'Lick A')
+      form.toggleAudioOption(form.audioOptions.value[0]!.id)
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request.options).toEqual([
+        {
+          option_id: form.audioOptions.value[0]!.id,
+          is_correct: true,
+          audio_url: 'https://cdn.example.com/lick.mp3',
+          label: 'Lick A',
+        },
+      ])
+    })
+
+    it('defaults skill_ids/concept_ids to empty arrays when none are set', () => {
+      const form = useExerciseForm()
+      form.title.value = 'title'
+      form.prompt.value = plainTextPrompt('prompt')
+      form.exerciseType.value = 'text_response'
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request.skill_ids).toEqual([])
+      expect(request.concept_ids).toEqual([])
+    })
+
+    it('falls back to an empty options array for an unrecognized exercise type, instead of undefined', () => {
+      const form = useExerciseForm()
+      form.title.value = 'title'
+      form.prompt.value = plainTextPrompt('prompt')
+      // Simulates a stale generated client seeing a type value the backend
+      // added but this build doesn't know about yet — never a real value
+      // the type picker itself can produce.
+      form.exerciseType.value = 'future_type' as never
+
+      const request = form.toCreateExerciseRequest()
+
+      expect(request.options).toEqual([])
+    })
+  })
+
+  describe('loadFromExercise', () => {
+    it('hydrates title, prompt, type, skill tags, and text_response options', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 'Name the chord',
+        prompt: plainTextPrompt('Name this chord shape'),
+        exercise_type: 'text_response',
+        skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+        concepts: [],
+        options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+        challenge_ids: [],
+        content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
+        instrument_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.title.value).toBe('Name the chord')
+      expect(form.prompt.value).toEqual(plainTextPrompt('Name this chord shape'))
+      expect(form.exerciseType.value).toBe('text_response')
+      expect(form.skillIds.value).toEqual(['s-1'])
+      expect(form.conceptIds.value).toEqual([])
+      expect(form.textOptions.value).toEqual([{ id: 'o-1', label: 'G major', correct: true }])
+    })
+
+    it('hydrates image_choice options', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 't',
+        prompt: plainTextPrompt('p'),
+        exercise_type: 'image_choice',
+        options: [{ option_id: 'o-1', is_correct: false, image_url: 'https://cdn.example.com/e-minor.png' }],
+        skills: [],
+        concepts: [],
+        challenge_ids: [],
+        content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
+        instrument_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.imageOptions.value).toEqual([
+        { id: 'o-1', imageUrl: 'https://cdn.example.com/e-minor.png', correct: false },
+      ])
+    })
+
+    it('hydrates audio_selection options, including label', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 't',
+        prompt: plainTextPrompt('p'),
+        exercise_type: 'audio_selection',
+        options: [
+          { option_id: 'o-1', is_correct: false, audio_url: 'https://cdn.example.com/lick.mp3', label: 'Lick A' },
+        ],
+        skills: [],
+        concepts: [],
+        challenge_ids: [],
+        content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
+        instrument_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.audioOptions.value).toEqual([
+        { id: 'o-1', audioUrl: 'https://cdn.example.com/lick.mp3', label: 'Lick A', correct: false },
+      ])
+    })
+
+    it('defers image_recognition regions until the stimulus image is measured, then converts fractions to pixels', () => {
+      const form = useExerciseForm()
+
+      form.loadFromExercise({
+        exercise_id: 'e-1',
+        title: 't',
+        prompt: plainTextPrompt('p'),
+        exercise_type: 'image_recognition',
+        image_url: 'https://cdn.example.com/fretboard.png',
+        options: [
+          {
+            option_id: 'o-1',
+            is_correct: true,
+            region: { x: 0.25, y: 0.5, width: 0.1, height: 0.2, shape: 'rectangle' },
+          },
+        ],
+        skills: [],
+        concepts: [],
+        challenge_ids: [],
+        content_node_ids: [],
+        remediation_targets: [],
+        languages: [],
+        instrument_ids: [],
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      })
+
+      expect(form.imageUrl.value).toBe('https://cdn.example.com/fretboard.png')
+      expect(form.regions.value).toEqual([])
+
+      form.setStimulusImageSize(800, 240)
+
+      expect(form.regions.value).toEqual([
+        { id: 'o-1', x: 25, y: 50, width: 80, height: 48, shape: 'rectangle', correct: true },
+      ])
+    })
+  })
+
+  describe('toUpdateExerciseRequest', () => {
+    it('maps form state to an UpdateExerciseRequest, without exercise_type', () => {
+      const form = useExerciseForm()
+      form.title.value = 'Name the chord'
+      form.prompt.value = plainTextPrompt('Name this chord shape')
+      form.exerciseType.value = 'text_response'
+      form.addTextOption()
+      form.editTextOption(form.textOptions.value[0]!.id, 'G major')
+      form.toggleTextOption(form.textOptions.value[0]!.id)
+      form.skillIds.value = ['s-1']
+      form.conceptIds.value = ['c-1']
+
+      const request = form.toUpdateExerciseRequest()
+
+      expect(request).toEqual({
+        title: 'Name the chord',
+        prompt: plainTextPrompt('Name this chord shape'),
+        skill_ids: ['s-1'],
+        concept_ids: ['c-1'],
+        options: [{ option_id: form.textOptions.value[0]!.id, is_correct: true, label: 'G major' }],
+        language_codes: ['any'],
+        instrument_ids: [],
+      })
+      expect(request).not.toHaveProperty('exercise_type')
+    })
+  })
+
+  describe('diagrams', () => {
+    const rootsOnly: DiagramRef = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_position_ids: ['p0'] }
+    const chord: DiagramRef = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
+
+    it('sends a diagram stimulus instead of an image and options, with its answers', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.imageUrl.value = 'https://cdn.example.com/old.png'
+      form.addRegion(10, 10, 'circle')
+
+      form.setStimulusDiagram(rootsOnly)
+
+      expect(form.hasCorrectOption.value).toBe(true)
+      const request = form.toCreateExerciseRequest()
+      expect(request.diagram_ref).toEqual(rootsOnly)
+      expect(request).not.toHaveProperty('image_url')
+      expect(request).not.toHaveProperty('options')
+      const update = form.toUpdateExerciseRequest()
+      expect(update.diagram_ref).toEqual(rootsOnly)
+      expect(update).not.toHaveProperty('options')
+    })
+
+    it('cannot save a diagram stimulus whose playback tempo is out of range', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      const playing = (tempo_bpm: number | null): DiagramRef => ({
+        ...rootsOnly,
+        playback: { tempo_bpm, voice_id: null, direction: 'as_authored', loop: false },
+      })
+
+      form.setStimulusDiagram(playing(500))
+      expect(form.hasValidStimulusPlayback.value).toBe(false)
+
+      form.setStimulusDiagram(playing(120))
+      expect(form.hasValidStimulusPlayback.value).toBe(true)
+      form.setStimulusDiagram(playing(null))
+      expect(form.hasValidStimulusPlayback.value).toBe(true)
+
+      // Only the stimulus being authored counts.
+      form.setStimulusDiagram(playing(500))
+      form.stimulusSource.value = 'image'
+      expect(form.hasValidStimulusPlayback.value).toBe(true)
+    })
+
+    it('has no correct answer for a diagram stimulus without correct intervals', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+
+      form.setStimulusDiagram({ ...rootsOnly, correct_position_ids: [] })
+
+      expect(form.hasCorrectOption.value).toBe(false)
+    })
+
+    it('has no correct answer while the diagram stimulus is still being picked', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.addRegion(10, 10, 'circle')
+      form.toggleRegion(form.regions.value[0]!.id)
+
+      form.stimulusSource.value = 'diagram'
+
+      expect(form.hasCorrectOption.value).toBe(false)
+    })
+
+    it('goes back to an image stimulus and its regions, keeping the picked diagram for a switch back', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_recognition'
+      form.imageUrl.value = 'https://cdn.example.com/a.png'
+      form.setStimulusDiagram(rootsOnly)
+
+      form.stimulusSource.value = 'image'
+
+      expect(form.stimulusDiagram.value).toEqual(rootsOnly)
+
+      const request = form.toCreateExerciseRequest()
+      expect(request).not.toHaveProperty('diagram_ref')
+      expect(request.image_url).toBe('https://cdn.example.com/a.png')
+      expect(request.options).toEqual([])
+    })
+
+    it('keeps a loaded exercise’s diagram stimulus when it is saved again', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(exercise({ diagram_ref: rootsOnly, options: [{ option_id: 'o-1', is_correct: true, diagram_position_id: 'p0' }] }))
+
+      expect(form.stimulusSource.value).toBe('diagram')
+      expect(form.stimulusDiagram.value).toEqual(rootsOnly)
+      expect(form.toUpdateExerciseRequest().diagram_ref).toEqual(rootsOnly)
+      expect(form.toUpdateExerciseRequest()).not.toHaveProperty('options')
+    })
+
+    it('loads an image stimulus as an image', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(exercise({ image_url: 'https://cdn.example.com/a.png' }))
+
+      expect(form.stimulusSource.value).toBe('image')
+    })
+
+    it('keeps a loaded stacked stimulus untouched unless a diagram replaces it', () => {
+      const stack = { stack: [rootsOnly, chord] }
+      const form = useExerciseForm()
+      form.loadFromExercise(exercise({ diagram_stack_ref: stack }))
+
+      expect(form.hasCorrectOption.value).toBe(true)
+      expect(form.toUpdateExerciseRequest().diagram_stack_ref).toEqual(stack)
+      expect(form.toUpdateExerciseRequest()).not.toHaveProperty('options')
+
+      form.setStimulusDiagram(rootsOnly)
+
+      expect(form.toUpdateExerciseRequest()).not.toHaveProperty('diagram_stack_ref')
+      expect(form.toUpdateExerciseRequest().diagram_ref).toEqual(rootsOnly)
+    })
+
+    it('lets an image_choice option be a diagram instead of an image, one or the other', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'image_choice'
+      form.addImageOption()
+      const id = form.imageOptions.value[0]!.id
+      form.setImageOptionURL(id, 'https://cdn.example.com/a.png')
+
+      form.setImageOptionDiagram(id, chord)
+
+      expect(form.toCreateExerciseRequest().options).toEqual([{ option_id: id, is_correct: false, diagram_ref: chord }])
+
+      form.setImageOptionURL(id, 'https://cdn.example.com/b.png')
+
+      expect(form.toCreateExerciseRequest().options).toEqual([{ option_id: id, is_correct: false, image_url: 'https://cdn.example.com/b.png' }])
+    })
+
+    it('hydrates image_choice options that are diagrams', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(
+        exercise({ exercise_type: 'image_choice', options: [{ option_id: 'o-1', is_correct: true, diagram_ref: chord }] }),
+      )
+
+      expect(form.imageOptions.value).toEqual([{ id: 'o-1', imageUrl: '', diagramRef: chord, correct: true }])
+      expect(form.toUpdateExerciseRequest().options).toEqual([{ option_id: 'o-1', is_correct: true, diagram_ref: chord }])
+    })
+  })
+})
+
+describe('useExerciseForm — what a save needs and what is unsaved', () => {
+  function classified(form: ReturnType<typeof useExerciseForm>) {
+    form.skillIds.value = ['s-1']
+    form.conceptIds.value = ['c-1']
+  }
+
+  it('a new exercise needs a correct option, a skill and a concept, in that order', () => {
+    expect(useExerciseForm().missing.value).toEqual(['options', 'skills', 'concepts'])
+  })
+
+  it('needs nothing once an option is correct and it is classified', () => {
+    const form = useExerciseForm()
+    form.addTextOption()
+    form.toggleTextOption(form.textOptions.value[0]!.id)
+    classified(form)
+
+    expect(form.missing.value).toEqual([])
+  })
+
+  it('names a stimulus playback tempo outside 20–300 BPM', () => {
+    const form = useExerciseForm()
+    form.exerciseType.value = 'image_recognition'
+    const tooSlow: DiagramRef = {
+      diagram_id: 'd-penta',
+      layers: { intervals: true, subset: null },
+      correct_position_ids: ['p0'],
+      playback: { tempo_bpm: 10, voice_id: null, direction: 'as_authored', loop: false },
+    }
+    form.setStimulusDiagram(tooSlow)
+    classified(form)
+
+    expect(form.missing.value).toEqual(['stimulus'])
+  })
+
+  it('has nothing unsaved when new, and something once edited', () => {
+    const form = useExerciseForm()
+    expect(form.isDirty.value).toBe(false)
+
+    form.title.value = 'Find the G'
+    expect(form.isDirty.value).toBe(true)
+  })
+
+  it('has nothing unsaved once loaded, or once marked saved', () => {
+    const form = useExerciseForm()
+    form.loadFromExercise(exercise({ exercise_type: 'text_response', title: 'Find the G' }))
+    expect(form.isDirty.value).toBe(false)
+
+    form.title.value = 'Find the G string'
+    form.markSaved()
+    expect(form.isDirty.value).toBe(false)
+  })
+
+  it('a loaded image’s regions placed once the image is measured are not an edit', () => {
+    const form = useExerciseForm()
+    form.loadFromExercise(
+      exercise({
+        image_url: 'https://cdn.test/neck.png',
+        options: [{ option_id: 'o-1', is_correct: true, region: { x: 0.5, y: 0.5, width: 0.1, height: 0.1, shape: 'circle' } }],
+      }),
+    )
+
+    form.setStimulusImageSize(400, 200)
+
+    expect(form.regions.value).toHaveLength(1)
+    expect(form.isDirty.value).toBe(false)
+  })
+})
+
+describe('useExerciseForm — sounds played from a diagram', () => {
+  const strum: DiagramRef = {
+    diagram_id: 'a-minor',
+    layers: { intervals: true },
+    playback: { playback_id: 'strum', direction: 'as_authored', loop: false },
+  }
+
+  describe('audio_recognition', () => {
+    it('saves the diagram as the sound, with no audio file', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.audioUrl.value = 'https://cdn.example.com/old.mp3'
+
+      form.setSoundDiagram(strum)
+
+      const request = form.toCreateExerciseRequest()
+      expect(request.diagram_ref).toEqual(strum)
+      expect(request).not.toHaveProperty('audio_url')
+      expect(form.audioUrl.value).toBe('')
+    })
+
+    it('saves an uploaded file once the diagram sound is removed', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.setSoundDiagram(strum)
+
+      form.setSoundDiagram(null)
+      form.audioUrl.value = 'https://cdn.example.com/fifth.mp3'
+
+      const request = form.toUpdateExerciseRequest()
+      expect(request.audio_url).toBe('https://cdn.example.com/fifth.mp3')
+      expect(request).not.toHaveProperty('diagram_ref')
+    })
+
+    it('loads a diagram sound back as the sound, not as a stimulus board', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(
+        exercise({ exercise_type: 'audio_recognition', diagram_ref: strum, options: [{ option_id: 'o1', is_correct: true, label: 'Minor' }] }),
+      )
+
+      expect(form.soundDiagram.value).toEqual(strum)
+      expect(form.hasDiagramStimulus.value).toBe(false)
+      expect(form.toUpdateExerciseRequest().diagram_ref).toEqual(strum)
+      expect(form.isDirty.value).toBe(false)
+    })
+
+    it('names the sound’s tempo when it is outside 20–300 BPM', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.setSoundDiagram({ ...strum, playback: { ...strum.playback!, tempo_bpm: 400 } })
+      form.addTextOption()
+      form.toggleTextOption(form.textOptions.value[0]!.id)
+      form.skillIds.value = ['s']
+      form.conceptIds.value = ['c']
+
+      expect(form.missing.value).toEqual(['stimulus'])
+    })
+
+    it('is unsaved once a diagram sound is set', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_recognition'
+      form.markSaved()
+      form.setSoundDiagram(strum)
+      expect(form.isDirty.value).toBe(true)
+    })
+  })
+
+  describe('audio_selection', () => {
+    it('gives a new option the neutral label it is handed', () => {
+      const form = useExerciseForm()
+      form.addAudioOption('Sound 3')
+      expect(form.audioOptions.value[0]!.label).toBe('Sound 3')
+    })
+
+    it('saves a diagram option’s sound as its diagram, and a file option’s as its file, mixed', () => {
+      const form = useExerciseForm()
+      form.exerciseType.value = 'audio_selection'
+      form.addAudioOption('Sound 1')
+      form.addAudioOption('Sound 2')
+      const [file, diagram] = form.audioOptions.value
+      form.setAudioOptionURL(file!.id, 'https://cdn.example.com/a.mp3')
+      form.setAudioOptionDiagram(diagram!.id, strum)
+
+      expect(form.toCreateExerciseRequest().options).toEqual([
+        { option_id: file!.id, is_correct: false, label: 'Sound 1', audio_url: 'https://cdn.example.com/a.mp3' },
+        { option_id: diagram!.id, is_correct: false, label: 'Sound 2', diagram_ref: strum },
+      ])
+    })
+
+    it('replaces an option’s file with a diagram, and a diagram with a file', () => {
+      const form = useExerciseForm()
+      form.addAudioOption('Sound 1')
+      const id = form.audioOptions.value[0]!.id
+      form.setAudioOptionURL(id, 'https://cdn.example.com/a.mp3')
+
+      form.setAudioOptionDiagram(id, strum)
+      expect(form.audioOptions.value[0]).toMatchObject({ audioUrl: '', diagramRef: strum })
+
+      form.setAudioOptionURL(id, 'https://cdn.example.com/b.mp3')
+      expect(form.audioOptions.value[0]!.diagramRef).toBeUndefined()
+    })
+
+    it('loads a diagram option back with its diagram', () => {
+      const form = useExerciseForm()
+      form.loadFromExercise(
+        exercise({ exercise_type: 'audio_selection', options: [{ option_id: 'o1', is_correct: true, label: 'Sound 1', diagram_ref: strum }] }),
+      )
+      expect(form.audioOptions.value[0]).toMatchObject({ id: 'o1', label: 'Sound 1', diagramRef: strum, audioUrl: '' })
+    })
+  })
+})

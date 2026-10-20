@@ -1,0 +1,1733 @@
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
+import { createPinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
+import type * as VueRouter from 'vue-router'
+
+const POST = vi.fn()
+const GET = vi.fn()
+const PUT = vi.fn()
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { POST, GET, PUT }, eventApi: {} }),
+}))
+
+// Defaults to create mode (no :id param) -- the edit-mode describe block
+// below sets route.params.id before mounting.
+type LeaveGuard = () => boolean | Promise<boolean>
+const route = reactive<{ params: { id?: string } }>({ params: {} })
+let leaveGuard: LeaveGuard | null = null
+vi.mock('vue-router', async () => {
+  const actual = await vi.importActual<typeof VueRouter>('vue-router')
+  return {
+    ...actual,
+    useRoute: () => route,
+    onBeforeRouteLeave: (guard: LeaveGuard) => {
+      leaveGuard = guard
+    },
+  }
+})
+
+const upload = vi.fn()
+vi.mock('@/features/teacher/composables/useMediaUpload', () => ({
+  useMediaUpload: () => ({ upload }),
+}))
+
+// Defaults to a teacher, matching this route's normal caller — individual
+// tests override .role for the permission-gating cases.
+const currentUser = reactive({ profile: { role: 'teacher' as 'student' | 'teacher' | 'admin' } })
+vi.mock('@/stores/currentUser', () => ({
+  useCurrentUserStore: () => currentUser,
+}))
+
+vi.mock('@/features/auth/composables/useAuth', () => ({
+  useAuth: () => ({
+    isLoaded: { value: true },
+    isSignedIn: { value: true },
+    getToken: async () => 'jwt',
+    signOut: vi.fn(async () => {}),
+    displayInitial: { value: 'G' },
+  }),
+}))
+
+const revokeObjectURL = vi.fn()
+vi.stubGlobal('URL', {
+  ...URL,
+  createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+  revokeObjectURL,
+})
+
+function mockMatchMedia(compact: boolean): void {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: compact,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+}
+
+/** Makes the window `width` px wide, as far as the size-class queries ask. */
+function screenWidth(width: number): void {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => {
+    const min = Number(/min-width:\s*(\d+)px/.exec(query)?.[1] ?? 0)
+    const max = Number(/max-width:\s*(\d+)px/.exec(query)?.[1] ?? Infinity)
+    return { matches: width >= min && width <= max, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }
+  })
+}
+
+/**
+ * A new exercise opens on the type chooser; unless told otherwise, this picks Text response there
+ * so a test starts in the editor, as an author would after choosing.
+ */
+async function mountView({ chooseType = true, stubs = {} }: { chooseType?: boolean; stubs?: Record<string, boolean> } = {}) {
+  const wrapper = mount(ExerciseAuthoringView, {
+    global: {
+      plugins: [createPinia()],
+      stubs: { RouterLink: RouterLinkStub, ...stubs },
+    },
+  })
+  const chooser = wrapper.find('[data-test="type-choice-text_response"]')
+  if (chooseType && chooser.exists()) await chooser.trigger('click')
+  return wrapper
+}
+
+type Wrapper = Awaited<ReturnType<typeof mountView>>
+
+function blockers(wrapper: Wrapper) {
+  return wrapper.findAll('[data-test="save-blocker"]').map((item) => item.text())
+}
+
+import MediaPickerModal from '@/features/teacher/components/MediaPickerModal.vue'
+import ExercisePreview from '@/features/teacher/components/ExercisePreview.vue'
+import DiagramStimulusEditor from '@/features/teacher/components/DiagramStimulusEditor.vue'
+import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
+import { makeFrettedDiagram, makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import ImageChoiceOptionsEditor from '@/features/teacher/components/ImageChoiceOptionsEditor.vue'
+import SoundPickerModal from '@/features/teacher/components/SoundPickerModal.vue'
+import SoundSource from '@/features/teacher/components/SoundSource.vue'
+import PromptEditor from '@/features/teacher/components/PromptEditor.vue'
+import SkillConceptTreePicker from '@/shared/components/SkillConceptTreePicker.vue'
+import ExerciseAuthoringView from '@/features/teacher/views/ExerciseAuthoringView.vue'
+import { useToast } from '@/shared/composables/useToast'
+import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
+import { knowledgeNode } from '@/shared/testUtils/knowledgeNode'
+
+// Picks a stimulus file where the type takes it: an image through the image-or-diagram modal, a
+// sound through its SoundSource.
+async function pickStimulus(wrapper: Wrapper, file: File) {
+  const media = wrapper.findComponent(MediaPickerModal)
+  if (media.exists() && media.props('open')) await media.vm.$emit('image', file)
+  else await wrapper.getComponent(SoundSource).vm.$emit('file', file)
+}
+
+async function fillMinimalTextResponse(wrapper: Wrapper) {
+  await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Name the chord')
+  expect(wrapper.findComponent(PromptEditor).props('songCharts')).toBe(false)
+  await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Name this chord shape'))
+  await wrapper.get('[data-test="add-option"]').trigger('click')
+  await wrapper.get('input[placeholder="Option text"]').setValue('G major')
+  await wrapper.get('[data-test="option-correct"]').trigger('click')
+  await selectClassification(wrapper)
+}
+
+// Classification (at least one skill and one concept) is required by the
+// API -- set it directly via the pickers' own update event rather than
+// depending on whatever fixture list each individual test's GET mock returns.
+async function selectClassification(wrapper: Wrapper) {
+  const [conceptPicker, skillPicker] = wrapper.findAllComponents(SkillConceptTreePicker)
+  await skillPicker!.vm.$emit('update:selected-ids', ['s-1'])
+  await conceptPicker!.vm.$emit('update:selected-ids', ['c-1'])
+}
+
+type KnowledgeQuery = { params?: { query?: { kind?: string } } }
+
+const instruments = [
+  { instrument_id: 'i-guitar', names: { en: 'Guitar' }, languages: ['en'] },
+  { instrument_id: 'i-bass', names: { en: 'Bass' }, languages: ['en'] },
+]
+
+function isSkillsRequest(path: string, init?: KnowledgeQuery): boolean {
+  return path === '/knowledge-nodes' && init?.params?.query?.kind === 'skill'
+}
+
+describe('ExerciseAuthoringView', () => {
+  beforeEach(() => {
+    POST.mockReset()
+    GET.mockReset()
+    PUT.mockReset()
+    upload.mockReset()
+    currentUser.profile.role = 'teacher'
+    route.params = {}
+    window.localStorage.clear()
+    document.documentElement.classList.remove('dark')
+    mockMatchMedia(false)
+    useToast().clear()
+    // The skill/concept tree pickers always fetch their lists on mount --
+    // default both to empty so tests that don't care about classification
+    // don't have to stub every GET call. Individual tests still layer a
+    // mockResolvedValueOnce ahead of this for whichever call they do care
+    // about (e.g. the exercise-load call in edit mode).
+    GET.mockResolvedValue({ data: [], error: undefined, response: { status: 200 } })
+  })
+
+  it('names the section and a new exercise in the app bar', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-test="editor-app-bar-section"]').text()).toBe('Exercises')
+    expect(wrapper.get('[data-test="editor-app-bar-title"]').text()).toBe('New exercise')
+  })
+
+  describe('choosing the type first', () => {
+    it('a new exercise asks what the student will do, with five types', async () => {
+      const wrapper = await mountView({ chooseType: false })
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.text()).toContain('What will the student do?')
+      expect(wrapper.findAll('[data-test="type-row-label"]').map((label) => label.text())).toEqual([
+        'Image recognition',
+        'Image choice',
+        'Text response',
+        'Audio recognition',
+        'Audio selection',
+      ])
+      expect(wrapper.findAll('[data-test="type-row-description"]')[0]!.text()).toBe('Taps the right place on an image or a diagram.')
+      expect(wrapper.text()).toContain("The type can't be changed after the first save.")
+      expect(wrapper.find('[data-test="authoring-body"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
+    })
+
+    it('choosing a type opens the editor for it', async () => {
+      const wrapper = await mountView({ chooseType: false })
+
+      await wrapper.get('[data-test="type-choice-image_choice"]').trigger('click')
+
+      expect(wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' }).exists()).toBe(true)
+    })
+
+    it('the type can change until the first save', async () => {
+      const wrapper = await mountView()
+      await wrapper.vm.$nextTick()
+
+      await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+
+      expect(wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' }).exists()).toBe(true)
+    })
+  })
+
+  it('starts on text_response with the validation banner showing (no correct option yet)', async () => {
+    const wrapper = await mountView()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'TextOptionsEditor' }).exists()).toBe(true)
+  })
+
+  it('puts the side column above the form on a phone', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.get('[data-test="editor-side"]').classes()).not.toContain('sticky')
+  })
+
+  it('keeps the side column beside the form on a wide screen', async () => {
+    mockMatchMedia(true)
+    const wrapper = await mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="editor-side"]').classes()).toContain('sticky')
+  })
+
+  it('shows a chevron-style image trigger with no thumbnail, updating its label once an image is picked', async () => {
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+    const trigger = wrapper.get('[data-test="choose-stimulus"]')
+    expect(trigger.text()).toContain('No image selected')
+    expect(trigger.text()).toContain('Choose an image or a diagram')
+    expect(trigger.find('img').exists()).toBe(false)
+
+    await trigger.trigger('click')
+    const file = new File(['data'], 'fret.png', { type: 'image/png' })
+    await pickStimulus(wrapper, file)
+
+    expect(wrapper.get('[data-test="choose-stimulus"]').text()).toContain('fret.png')
+  })
+
+  it('renders an icon on every exercise-type tab', async () => {
+    const wrapper = await mountView()
+    await wrapper.vm.$nextTick()
+
+    for (const type of ['image_recognition', 'text_response', 'audio_recognition', 'image_choice', 'audio_selection']) {
+      const tab = wrapper.get(`[data-test="type-tab-${type}"]`)
+      expect(tab.find('svg').exists()).toBe(true)
+    }
+  })
+
+  it('shows the form for a teacher', async () => {
+    currentUser.profile.role = 'teacher'
+    const wrapper = await mountView()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(false)
+    expect(wrapper.find('input[placeholder="Untitled exercise"]').exists()).toBe(true)
+  })
+
+  it('shows the form for an admin', async () => {
+    currentUser.profile.role = 'admin'
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(false)
+  })
+
+  it('shows a permission-denied state for a student instead of the form', async () => {
+    currentUser.profile.role = 'student'
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-test="permission-denied"]').exists()).toBe(true)
+    expect(wrapper.find('input[placeholder="Untitled exercise"]').exists()).toBe(false)
+  })
+
+  it('does not show the Save button for a student', async () => {
+    currentUser.profile.role = 'student'
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(false)
+  })
+
+  it('shows the reuse indicator as not-yet-available before saving', async () => {
+    const wrapper = await mountView()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-test="reuse-indicator"]').text()).toContain("Save the exercise to see where it's used")
+  })
+
+  it('shows all three usage contexts as empty right after creating a fresh exercise', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    const indicator = wrapper.get('[data-test="reuse-indicator"]')
+    expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('Not linked to any challenge yet')
+    expect(indicator.get('[data-test="usage-path-exercises"]').text()).toContain('Not linked to any path node yet')
+    expect(indicator.get('[data-test="usage-practice-sessions"]').text()).toContain('Eligible')
+  })
+
+  it('lists linked challenges and path exercises after saving', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: ['c-1', 'c-2'], content_node_ids: ['n-1'] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    const indicator = wrapper.get('[data-test="reuse-indicator"]')
+    expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('c-1')
+    expect(indicator.get('[data-test="usage-challenges"]').text()).toContain('c-2')
+    expect(indicator.get('[data-test="usage-path-exercises"]').text()).toContain('n-1')
+  })
+
+  it('shows practice-session eligibility once a skill is linked', async () => {
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
+      if (isSkillsRequest(path, init)) {
+        return Promise.resolve({
+          data: [knowledgeNode('s-1', { names: { en: 'alternate_picking' } })],
+          error: undefined,
+          response: { status: 200 },
+        })
+      }
+      return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+    })
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await flushPromises()
+    await fillMinimalTextResponse(wrapper)
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+    await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="usage-practice-sessions"]').text()).toContain('Eligible')
+  })
+
+  it('switches editors when the exercise type tab changes', async () => {
+    const wrapper = await mountView()
+
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).exists()).toBe(true)
+
+    await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+    expect(wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' }).exists()).toBe(true)
+
+    await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
+    expect(wrapper.findComponent({ name: 'TextOptionsEditor' }).exists()).toBe(true)
+    expect(wrapper.findComponent(SoundSource).props('sound')).toBeNull()
+
+    await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+    expect(wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' }).exists()).toBe(true)
+  })
+
+  it('previews a picked stimulus image locally without uploading it yet', async () => {
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    const file = new File(['data'], 'fret.png', { type: 'image/png' })
+    await pickStimulus(wrapper, file)
+
+    expect(upload).not.toHaveBeenCalled()
+    expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).props('imageUrl')).toBe('blob:fret.png')
+  })
+
+  it('loads the skill and concept trees for classification', async () => {
+    const wrapper = await mountView()
+    await flushPromises()
+
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'skill' } } })
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'concept' } } })
+    expect(wrapper.findComponent({ name: 'SkillConceptTreePicker' }).exists()).toBe(true)
+  })
+
+  it('selects a skill via the tree picker', async () => {
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
+      if (isSkillsRequest(path, init)) {
+        return Promise.resolve({
+          data: [knowledgeNode('s-1', { names: { en: 'technique' } })],
+          error: undefined,
+          response: { status: 200 },
+        })
+      }
+      return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+    })
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+    await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
+
+    expect(wrapper.text()).toContain('technique')
+  })
+
+  it('offers no way to create a skill, and asks the team for missing ones', async () => {
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+    expect(wrapper.find('[data-test="tree-create-name"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="tree-missing-hint"]').exists()).toBe(true)
+  })
+
+  it("sends an admin to the knowledge map for a missing skill", async () => {
+    currentUser.profile.role = 'admin'
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+    const link = wrapper.get('[data-test="tree-missing-hint"]').getComponent(RouterLinkStub)
+    expect(link.props('to')).toEqual({ name: 'admin-knowledge-map', query: { tree: 'skill', new: 'skill' } })
+  })
+
+  it('offers a skill added in the knowledge map in another tab once the author comes back', async () => {
+    const skill = (node_id: string, en: string) => ({
+      node_id,
+      kind: 'skill',
+      key: node_id,
+      names: { en, pt_BR: en },
+      descriptions: null,
+      languages: ['en', 'pt_BR'],
+      parent_id: null,
+      instrument_ids: [],
+    })
+    let skills = [skill('s-1', 'Bends')]
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) =>
+      Promise.resolve({ data: isSkillsRequest(path, init) ? [...skills] : [], error: undefined, response: { status: 200 } }),
+    )
+    const wrapper = await mountView()
+    await flushPromises()
+
+    skills = [...skills, skill('s-2', 'Pre-bends')]
+    window.dispatchEvent(new Event('focus'))
+    await flushPromises()
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+    expect(wrapper.text()).toContain('Pre-bends')
+    wrapper.unmount()
+  })
+
+  it("lists only the skills that suit the exercise's instruments, following the instrument picks", async () => {
+    GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
+      if (path === '/instruments') return Promise.resolve({ data: instruments, error: undefined, response: { status: 200 } })
+      return Promise.resolve({
+        data: isSkillsRequest(path, init)
+          ? [
+              knowledgeNode('s-all', { names: { en: 'reading-tab' } }),
+              knowledgeNode('s-bass', { names: { en: 'slap' }, instrument_ids: ['i-bass'] }),
+            ]
+          : [],
+        error: undefined,
+        response: { status: 200 },
+      })
+    })
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+    expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['reading-tab'])
+
+    await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+    expect(wrapper.findAll('[data-test="tree-node-row"]').map((row) => row.text())).toEqual(['reading-tab', 'slap'])
+  })
+
+  it('starts at any language and sends the languages picked', async () => {
+    POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] }, error: undefined, response: { status: 201 } })
+    const wrapper = await mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="language-any"]').attributes('aria-pressed')).toBe('true')
+
+    await fillMinimalTextResponse(wrapper)
+    await wrapper.get('[data-test="language-option-pt_BR"]').trigger('click')
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST.mock.calls[0]?.[1].body.language_codes).toEqual(['pt_BR'])
+  })
+
+  it('starts at every instrument and sends the instruments picked', async () => {
+    GET.mockImplementation((path: string) =>
+      Promise.resolve({ data: path === '/instruments' ? instruments : [], error: undefined, response: { status: 200 } }),
+    )
+    POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] }, error: undefined, response: { status: 201 } })
+    const wrapper = await mountView()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="instrument-every"]').attributes('aria-pressed')).toBe('true')
+
+    await fillMinimalTextResponse(wrapper)
+    await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST.mock.calls[0]?.[1].body.instrument_ids).toEqual(['i-bass'])
+  })
+
+  it('says the concepts failed to load, and offers a retry', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string } } }) =>
+      Promise.resolve(
+        path === '/knowledge-nodes' && init?.params?.query?.kind === 'concept'
+          ? { data: undefined, error: { message: 'boom' }, response: { status: 500 } }
+          : { data: [], error: undefined, response: { status: 200 } },
+      ),
+    )
+    const wrapper = await mountView()
+    await flushPromises()
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    GET.mockClear()
+
+    await wrapper.get('[data-test="tree-retry"]').trigger('click')
+
+    expect(GET).toHaveBeenCalledWith('/knowledge-nodes', { params: { query: { kind: 'concept' } } })
+  })
+
+  it('asks for the concepts before the skills', async () => {
+    const wrapper = await mountView()
+    await flushPromises()
+
+    expect(wrapper.findAllComponents(SkillConceptTreePicker).map((picker) => picker.props('label'))).toEqual([
+      'Concept',
+      'Skill',
+    ])
+  })
+
+  it('suggests the skills that apply the picked concepts', async () => {
+    GET.mockImplementation((path: string, init?: { params?: { query?: { kind?: string; type?: string } } }) => {
+      const query = init?.params?.query
+      const data =
+        path === '/knowledge-nodes'
+          ? query?.kind === 'skill'
+            ? [knowledgeNode('s-1', { names: { en: 'bends' } })]
+            : [knowledgeNode('c-1', { kind: 'concept', names: { en: 'pitch' } })]
+          : path === '/knowledge-edges' && query?.type === 'applies'
+            ? [{ edge_id: 'e-1', from_id: 's-1', to_id: 'c-1', type: 'applies', level: null }]
+            : []
+      return Promise.resolve({ data, error: undefined, response: { status: 200 } })
+    })
+    const wrapper = await mountView()
+    await flushPromises()
+
+    await wrapper.findAll('[data-test="tree-open-picker"]')[0].trigger('click')
+    await wrapper.get('[data-test="tree-node-checkbox"][value="c-1"]').setValue(true)
+    await wrapper.get('[data-test="tree-close"]').trigger('click')
+    await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
+
+    const suggestedOnly = wrapper.get('[data-test="tree-suggested-only"]')
+    expect(suggestedOnly.text()).toBe('Suggested (1)')
+    await suggestedOnly.trigger('click')
+    expect(wrapper.findAll('[data-test="tree-node-name"]').map((name) => name.text())).toEqual(['bends'])
+  })
+
+  it('Save with something missing saves nothing and lists what is missing', async () => {
+    const wrapper = await mountView()
+    await wrapper.vm.$nextTick()
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('title')
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST).not.toHaveBeenCalled()
+    expect(blockers(wrapper)).toEqual(['Mark at least one option correct', 'Add a skill', 'Add a concept'])
+    for (const field of ['options', 'skills', 'concepts']) {
+      expect(wrapper.find(`[data-field="${field}"]`).exists()).toBe(true)
+    }
+  })
+
+  it('creates the exercise on save with no pending media and shows a success message', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+    expect(POST).toHaveBeenCalledWith('/exercises', {
+      body: expect.objectContaining({
+        title: 'Name the chord',
+        exercise_type: 'text_response',
+        options: [expect.objectContaining({ is_correct: true, label: 'G major' })],
+      }),
+    })
+    // Passed through the real PromptEditor's Tiptap round trip (via its
+    // watcher syncing form.prompt.value back into the editor), so the
+    // request's prompt carries ProseMirror's normalized node attrs rather
+    // than the minimal shape plainTextPrompt builds — assert its text
+    // content instead of an exact document shape.
+    expect(JSON.stringify(POST.mock.calls[0]![1].body.prompt)).toContain('Name this chord shape')
+    expect(useToast().toasts.value).toContainEqual(
+      expect.objectContaining({ kind: 'success', message: 'Exercise created.' }),
+    )
+  })
+
+  it('updates instead of re-creating when Save is clicked again after a successful create', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    PUT.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 200 },
+    })
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-test="editor-app-bar-saved"]').text()).toBe('Saved ✓')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Name the chord again')
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST).toHaveBeenCalledTimes(1)
+    expect(PUT).toHaveBeenCalledWith('/exercises/{exercise_id}', {
+      params: { path: { exercise_id: 'e-1' } },
+      body: expect.objectContaining({ title: 'Name the chord again' }),
+    })
+    expect(useToast().toasts.value).toContainEqual(
+      expect.objectContaining({ kind: 'success', message: 'Exercise updated.' }),
+    )
+  })
+
+  it('uploads a pending stimulus image before saving, then sends the real URL', async () => {
+    // Regions are drawn on a larger screen.
+    screenWidth(1280)
+    upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Root position')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Identify the root position'))
+
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    const file = new File(['data'], 'fret.png', { type: 'image/png' })
+    await pickStimulus(wrapper, file)
+
+    await wrapper.get('img').trigger('load')
+    await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+    await wrapper.get('[data-test="region-toggle"]').trigger('click')
+    await selectClassification(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).toHaveBeenCalledWith(file, 'image')
+    expect(POST).toHaveBeenCalledWith(
+      '/exercises',
+      expect.objectContaining({ body: expect.objectContaining({ image_url: 'https://cdn.example.com/library/fret.png' }) }),
+    )
+  })
+
+  it('shows an error and does not save when the pending upload fails', async () => {
+    // Regions are drawn on a larger screen.
+    screenWidth(1280)
+    upload.mockRejectedValueOnce(new Error('Upload failed with status 500'))
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Root position')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Identify the root position'))
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await pickStimulus(wrapper, new File(['data'], 'fret.png', { type: 'image/png' }))
+    await wrapper.get('img').trigger('load')
+    await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+    await wrapper.get('[data-test="region-toggle"]').trigger('click')
+    await selectClassification(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(POST).not.toHaveBeenCalled()
+    expect(useToast().toasts.value).toContainEqual(
+      expect.objectContaining({ kind: 'error', message: 'Upload failed with status 500' }),
+    )
+  })
+
+  it('shows an error message when saving fails', async () => {
+    POST.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 400 } })
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(useToast().toasts.value).toContainEqual(expect.objectContaining({ kind: 'error', message: 'Boom' }))
+  })
+
+  it('shows Saved on the AppBar right after a successful save', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Saved')
+  })
+
+  it('opens the student preview full screen, wired to the real ExerciseView', async () => {
+    const wrapper = await mountView()
+    await wrapper.vm.$nextTick()
+
+    await wrapper.get('[data-test="open-preview"]').trigger('click')
+
+    expect(wrapper.find('[data-test="preview-layer"]').exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'ExerciseView' }).exists()).toBe(true)
+  })
+
+  it('uploads a stale stimulus file under the type it was picked for, not the type switched to afterward', async () => {
+    upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    const file = new File(['data'], 'fret.png', { type: 'image/png' })
+    await pickStimulus(wrapper, file)
+
+    // Switch away before saving -- the picked file must still upload as
+    // 'image', not whatever type happens to be selected at save time.
+    await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    await wrapper.get('input[placeholder="Option text"]').setValue('a')
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).toHaveBeenCalledWith(file, 'image')
+  })
+
+  it('does not upload a removed image-choice option file on save', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
+
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
+    const removedId = (editor.props('options') as { id: string }[])[0]!.id
+    await editor.vm.$emit('setFile', removedId, new File(['data'], 'a.png', { type: 'image/png' }))
+    await editor.vm.$emit('remove', removedId)
+
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('revokes the previous blob URL when a new stimulus image replaces it', async () => {
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await pickStimulus(wrapper, new File(['a'], 'first.png'))
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await pickStimulus(wrapper, new File(['b'], 'second.png'))
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:first.png')
+  })
+
+  it('clears the stale image blob when a stimulus is later picked for audio instead, so switching back does not resurrect it', async () => {
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await pickStimulus(wrapper, new File(['a'], 'fret.png'))
+
+    // Switch to audio and pick a stimulus there instead -- the image pick
+    // is now abandoned and should not resurface if we switch back.
+    await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
+    await pickStimulus(wrapper, new File(['b'], 'clip.mp3'))
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:fret.png')
+
+    // Switch back to image_recognition without re-picking: the abandoned
+    // blob must not resurface as if it were still a valid selection.
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+    expect(wrapper.get('[data-test="choose-stimulus"]').text()).toContain('No image selected')
+    expect(wrapper.findComponent({ name: 'ImageRegionEditor' }).props('imageUrl')).toBe('')
+  })
+
+  it('does not upload a pending image_choice option file when saving under a different exercise type', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
+    const id = (editor.props('options') as { id: string }[])[0]!.id
+    await editor.vm.$emit('setFile', id, new File(['data'], 'a.png'))
+
+    // Switch away to a type that actually gets saved -- the abandoned
+    // image_choice option's file must not be uploaded.
+    await wrapper.get('[data-test="type-tab-text_response"]').trigger('click')
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('uploads a pending audio_selection option file on save', async () => {
+    upload.mockResolvedValueOnce('https://cdn.example.com/library/a.mp3')
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' })
+    const id = (editor.props('options') as { id: string }[])[0]!.id
+    const file = new File(['data'], 'a.mp3', { type: 'audio/mpeg' })
+    await editor.vm.$emit('setFile', id, file)
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).toHaveBeenCalledWith(file, 'audio')
+  })
+
+  it('does not upload a pending audio_selection option file when saving under a different exercise type', async () => {
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'AudioSelectionOptionsEditor' })
+    const id = (editor.props('options') as { id: string }[])[0]!.id
+    await editor.vm.$emit('setFile', id, new File(['data'], 'a.mp3'))
+
+    // Switch away to a type that actually gets saved -- the abandoned
+    // audio_selection option's file must not be uploaded.
+    await wrapper.get('[data-test="type-tab-text_response"]').trigger('click')
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).not.toHaveBeenCalled()
+  })
+
+  it('revokes the stimulus blob URL once it is replaced by the real uploaded URL', async () => {
+    // Regions are drawn on a larger screen.
+    screenWidth(1280)
+    upload.mockResolvedValueOnce('https://cdn.example.com/library/fret.png')
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
+    await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+    await pickStimulus(wrapper, new File(['a'], 'fret.png'))
+    await wrapper.get('img').trigger('load')
+    await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+    await wrapper.get('[data-test="region-toggle"]').trigger('click')
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:fret.png')
+  })
+
+  it('locks the type once the new exercise is first saved', async () => {
+    POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-test="type-tab-image_choice"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="locked-type"]').text()).toBe('Text response')
+  })
+
+  it('asks before leaving with unsaved edits, and leaves at once without', async () => {
+    const wrapper = await mountView()
+    expect(await leaveGuard!()).toBe(true)
+
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Find the G')
+    const leaving = leaveGuard!()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Leave without saving?')
+    await wrapper.get('[data-test="confirm-dialog-cancel"]').trigger('click')
+
+    expect(await leaving).toBe(false)
+  })
+
+  it('shows an error and stops saving when the create-exercise call itself rejects (not just returns an error)', async () => {
+    POST.mockRejectedValueOnce(new Error('network down'))
+    const wrapper = await mountView()
+    await fillMinimalTextResponse(wrapper)
+
+    await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await flushPromises()
+
+    expect(useToast().toasts.value).toContainEqual(expect.objectContaining({ kind: 'error', message: 'network down' }))
+    expect(wrapper.get('[data-test="editor-app-bar-save"]').text()).not.toContain('Saving')
+  })
+
+  it('uploads multiple pending option images concurrently, not one after another', async () => {
+    let resolveFirst!: (url: string) => void
+    let resolveSecond!: (url: string) => void
+    upload.mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+    upload.mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)))
+    POST.mockResolvedValueOnce({
+      data: { exercise_id: 'e-1', challenge_ids: [] },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const wrapper = await mountView()
+    await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+    await wrapper.get('input[placeholder="Untitled exercise"]').setValue('t')
+    await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('p'))
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    await wrapper.get('[data-test="add-option"]').trigger('click')
+    const editor = wrapper.findComponent({ name: 'ImageChoiceOptionsEditor' })
+    const ids = (editor.props('options') as { id: string }[]).map((o) => o.id)
+    await editor.vm.$emit('setFile', ids[0], new File(['a'], 'a.png'))
+    await editor.vm.$emit('setFile', ids[1], new File(['b'], 'b.png'))
+    await wrapper.get('[data-test="option-correct"]').trigger('click')
+    await selectClassification(wrapper)
+
+    const savePromise = wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Both uploads should be in flight before either resolves.
+    expect(upload).toHaveBeenCalledTimes(2)
+
+    resolveFirst('https://cdn.example.com/a.png')
+    resolveSecond('https://cdn.example.com/b.png')
+    await savePromise
+    await flushPromises()
+
+    expect(POST).toHaveBeenCalled()
+  })
+
+  it('wraps the exercise type tabs inside the editor column at every size', async () => {
+    const wrapper = await mountView()
+    const tabs = wrapper.get('[data-test="type-tab-audio_selection"]').element.parentElement!
+    expect(tabs.classList).toContain('flex-wrap')
+    expect(tabs.classList).not.toContain('w-fit')
+  })
+
+  describe('a listening exercise’s sound', () => {
+    const strum = {
+      diagram_id: 'a-minor',
+      layers: { intervals: true },
+      playback: { playback_id: 'strum', direction: 'as_authored' as const, loop: false },
+    }
+
+    // The picker has its own spec; here only what it's given and what it hands back.
+    async function listening() {
+      const wrapper = await mountView({ stubs: { SoundPickerModal: true } })
+      await wrapper.get('[data-test="type-tab-audio_recognition"]').trigger('click')
+      return wrapper
+    }
+
+    async function fillAndSave(wrapper: Wrapper) {
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Major or minor?')
+      await wrapper.findComponent(PromptEditor).vm.$emit('update:modelValue', plainTextPrompt('Is this chord major or minor?'))
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      await wrapper.get('input[placeholder="Option text"]').setValue('Minor')
+      await wrapper.get('[data-test="option-correct"]').trigger('click')
+      await selectClassification(wrapper)
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+      return POST.mock.calls[0]![1].body
+    }
+
+    it('takes the sound from a diagram, and saves it naming the playback chosen', async () => {
+      const wrapper = await listening()
+
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      const picker = wrapper.getComponent(SoundPickerModal)
+      expect(picker.props()).toMatchObject({ open: true, initial: null })
+      await picker.vm.$emit('apply', strum)
+
+      expect(wrapper.getComponent(SoundSource).props('sound')).toEqual({ kind: 'diagram', ref: strum })
+      expect(wrapper.getComponent(SoundPickerModal).props('open')).toBe(false)
+      const body = await fillAndSave(wrapper)
+      expect(body.diagram_ref).toEqual(strum)
+      expect(body).not.toHaveProperty('audio_url')
+      expect(upload).not.toHaveBeenCalled()
+    })
+
+    it('reopens a diagram sound’s settings from Edit settings', async () => {
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      await wrapper.getComponent(SoundSource).vm.$emit('edit')
+
+      expect(wrapper.getComponent(SoundPickerModal).props()).toMatchObject({ open: true, initial: strum })
+    })
+
+    it('replaces a diagram sound with an uploaded file, uploaded on save', async () => {
+      upload.mockResolvedValueOnce('https://cdn.example.com/fifth.mp3')
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      const file = new File(['a'], 'fifth.mp3', { type: 'audio/mpeg' })
+      await pickStimulus(wrapper, file)
+
+      expect(wrapper.getComponent(SoundSource).props('sound')).toEqual({ kind: 'file', url: 'blob:fifth.mp3' })
+      const body = await fillAndSave(wrapper)
+      expect(upload).toHaveBeenCalledWith(file, 'audio')
+      expect(body.audio_url).toBe('https://cdn.example.com/fifth.mp3')
+      expect(body).not.toHaveProperty('diagram_ref')
+    })
+
+    it('drops a picked file, never uploading it, once a diagram sound replaces it', async () => {
+      const wrapper = await listening()
+      await pickStimulus(wrapper, new File(['a'], 'fifth.mp3'))
+
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:fifth.mp3')
+      await fillAndSave(wrapper)
+      expect(upload).not.toHaveBeenCalled()
+    })
+
+    it('removes the sound', async () => {
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      await wrapper.getComponent(SoundSource).vm.$emit('remove')
+
+      expect(wrapper.getComponent(SoundSource).props('sound')).toBeNull()
+    })
+
+    it('previews the diagram sound as students hear it', async () => {
+      const wrapper = await listening()
+      await wrapper.getComponent(SoundSource).vm.$emit('diagram')
+      await wrapper.getComponent(SoundPickerModal).vm.$emit('apply', strum)
+
+      await wrapper.get('[data-test="open-preview"]').trigger('click')
+
+      expect(wrapper.getComponent(ExercisePreview).props()).toMatchObject({ exerciseType: 'audio_recognition', diagramRef: strum })
+    })
+  })
+
+  describe('audio_selection sounds', () => {
+    const strum = {
+      diagram_id: 'a-minor',
+      layers: { intervals: true },
+      playback: { playback_id: 'strum', direction: 'as_authored' as const, loop: false },
+    }
+
+    async function selection() {
+      const wrapper = await mountView({ stubs: { SoundPickerModal: true } })
+      await wrapper.get('[data-test="type-tab-audio_selection"]').trigger('click')
+      return wrapper
+    }
+    const editor = (wrapper: Wrapper) => wrapper.getComponent({ name: 'AudioSelectionOptionsEditor' })
+    const optionIds = (wrapper: Wrapper) => (editor(wrapper).props('options') as { id: string }[]).map((o) => o.id)
+
+    it('labels new options neutrally, by their place', async () => {
+      const wrapper = await selection()
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+
+      expect((editor(wrapper).props('options') as { label: string }[]).map((o) => o.label)).toEqual(['Sound 1', 'Sound 2', 'Sound 3'])
+    })
+
+    it('saves an option played from a diagram, and drops its picked file unuploaded', async () => {
+      const wrapper = await selection()
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      const [id] = optionIds(wrapper)
+      await editor(wrapper).vm.$emit('setFile', id, new File(['a'], 'a.mp3'))
+      await editor(wrapper).vm.$emit('setPreview', id, 'blob:a.mp3')
+
+      await editor(wrapper).vm.$emit('setDiagram', id, strum)
+
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:a.mp3')
+      await wrapper.get('[data-test="option-correct"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Which one is minor?')
+      await selectClassification(wrapper)
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(upload).not.toHaveBeenCalled()
+      expect(POST.mock.calls[0]![1].body.options).toEqual([{ option_id: id, is_correct: true, label: 'Sound 1', diagram_ref: strum }])
+    })
+
+    it('clears an option’s sound, keeping the option', async () => {
+      const wrapper = await selection()
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      const [id] = optionIds(wrapper)
+      await editor(wrapper).vm.$emit('setDiagram', id, strum)
+
+      await editor(wrapper).vm.$emit('clearSound', id)
+
+      expect(editor(wrapper).props('options')).toEqual([expect.objectContaining({ id, audioUrl: '', diagramRef: undefined })])
+    })
+  })
+
+  describe('edit mode', () => {
+    beforeEach(() => {
+      route.params = { id: 'e-1' }
+    })
+
+    it('loads the exercise by id and pre-fills the form', async () => {
+      GET.mockImplementation((path: string, init?: KnowledgeQuery) => {
+        if (path === '/exercises/{exercise_id}') {
+          return Promise.resolve({
+            data: {
+              exercise_id: 'e-1',
+              title: 'Name the chord',
+              prompt: plainTextPrompt('Name this chord shape'),
+              exercise_type: 'text_response',
+              skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+              concepts: [],
+              options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+              challenge_ids: ['c-1'],
+              content_node_ids: [],
+              instrument_ids: [],
+              languages: [],
+              created_at: '2026-01-01T00:00:00Z',
+            },
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        if (isSkillsRequest(path, init)) {
+          return Promise.resolve({
+            data: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+
+      const wrapper = await mountView()
+      await flushPromises()
+
+      expect(GET).toHaveBeenCalledWith('/exercises/{exercise_id}', { params: { path: { exercise_id: 'e-1' } } })
+      expect(wrapper.get<HTMLInputElement>('input[placeholder="Untitled exercise"]').element.value).toBe(
+        'Name the chord',
+      )
+      expect(wrapper.findComponent(PromptEditor).props('modelValue')).toEqual(plainTextPrompt('Name this chord shape'))
+      expect(wrapper.get<HTMLInputElement>('input[placeholder="Option text"]').element.value).toBe('G major')
+      expect(wrapper.text()).toContain('theory')
+      expect(wrapper.get('[data-test="usage-challenges"]').text()).toContain('c-1')
+    })
+
+    it('shows the type locked, without the chooser or the tabs, once the exercise exists', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          exercise_id: 'e-1',
+          title: 't',
+          prompt: plainTextPrompt('p'),
+          exercise_type: 'text_response',
+          skills: [],
+              concepts: [],
+options: [],
+          challenge_ids: [],
+          content_node_ids: [],
+          instrument_ids: [],
+          languages: [],
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const wrapper = await mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="type-tab-image_recognition"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="locked-type"]').text()).toBe('Text response')
+      expect(wrapper.find('[data-test="type-chooser"]').exists()).toBe(false)
+    })
+
+    it('submits via PUT with the update request shape, and reports Exercise updated', async () => {
+      GET.mockResolvedValueOnce({
+        data: {
+          exercise_id: 'e-1',
+          title: 't',
+          prompt: plainTextPrompt('p'),
+          exercise_type: 'text_response',
+          skills: [],
+              concepts: [],
+options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+          challenge_ids: [],
+          content_node_ids: [],
+          instrument_ids: [],
+          languages: [],
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: undefined,
+        response: { status: 200 },
+      })
+      PUT.mockResolvedValueOnce({
+        data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const wrapper = await mountView()
+      await flushPromises()
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Updated title')
+      await selectClassification(wrapper)
+
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(PUT).toHaveBeenCalledWith('/exercises/{exercise_id}', {
+        params: { path: { exercise_id: 'e-1' } },
+        body: expect.objectContaining({
+          title: 'Updated title',
+          prompt: plainTextPrompt('p'),
+          options: [expect.objectContaining({ is_correct: true, label: 'G major' })],
+        }),
+      })
+      expect(PUT.mock.calls[0]![1].body).not.toHaveProperty('exercise_type')
+      expect(POST).not.toHaveBeenCalled()
+      expect(useToast().toasts.value).toContainEqual(
+        expect.objectContaining({ kind: 'success', message: 'Exercise updated.' }),
+      )
+    })
+
+    it("keeps the exercise's languages when saving an edit", async () => {
+      GET.mockImplementation((path: string) =>
+        Promise.resolve(
+          path === '/exercises/{exercise_id}'
+            ? {
+                data: {
+                  exercise_id: 'e-1',
+                  title: 't',
+                  prompt: plainTextPrompt('p'),
+                  exercise_type: 'text_response',
+                  skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+                  concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'roots' } })],
+                  options: [{ option_id: 'o-1', is_correct: true, label: 'G major' }],
+                  challenge_ids: [],
+                  content_node_ids: [],
+                  instrument_ids: [],
+                  languages: [{ code: 'pt_BR', name: 'Portuguese' }],
+                  created_at: '2026-01-01T00:00:00Z',
+                },
+                error: undefined,
+                response: { status: 200 },
+              }
+            : { data: [], error: undefined, response: { status: 200 } },
+        ),
+      )
+      PUT.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [], content_node_ids: [] }, error: undefined, response: { status: 200 } })
+      const wrapper = await mountView()
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="language-option-pt_BR"]').attributes('aria-pressed')).toBe('true')
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Edited')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(PUT.mock.calls[0]?.[1].body.language_codes).toEqual(['pt_BR'])
+    })
+
+    it('shows an error state with retry when loading the exercise fails', async () => {
+      let exerciseCallCount = 0
+      GET.mockImplementation((path: string) => {
+        if (path === '/exercises/{exercise_id}') {
+          exerciseCallCount += 1
+          if (exerciseCallCount === 1) {
+            return Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+          }
+          return Promise.resolve({
+            data: {
+              exercise_id: 'e-1',
+              title: 't',
+              prompt: plainTextPrompt('p'),
+              exercise_type: 'text_response',
+              skills: [],
+              concepts: [],
+              options: [],
+              challenge_ids: [],
+              content_node_ids: [],
+              instrument_ids: [],
+              languages: [],
+              created_at: '2026-01-01T00:00:00Z',
+            },
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+
+      const wrapper = await mountView()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="load-error"]').exists()).toBe(true)
+
+      await wrapper.get('[data-test="retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="load-error"]').exists()).toBe(false)
+      expect(wrapper.get<HTMLInputElement>('input[placeholder="Untitled exercise"]').element.value).toBe('t')
+    })
+  })
+
+  describe('diagrams', () => {
+    const penta = makeFrettedDiagram({ diagram_id: 'd-penta' })
+    const picked = { diagram_id: 'd-penta', layers: { label: 'custom' as const, intervals: true }, correct_position_ids: [] }
+    const rootsOnly = { diagram_id: 'd-penta', layers: { intervals: true, subset: null }, correct_position_ids: ['p0'] }
+    const chord = { diagram_id: 'd-e-major', layers: { intervals: true, subset: null } }
+
+    // The stimulus diagram and its instrument load by path; everything else (skill/concept
+    // trees) stays the empty default.
+    function serveDiagrams(exercise?: unknown) {
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') return Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
+        if (path === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument()], error: undefined, response: { status: 200 } })
+        if (path === '/exercises/{exercise_id}' && exercise) return Promise.resolve({ data: exercise, error: undefined, response: { status: 200 } })
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+    }
+
+    /** Mounts a new exercise past the type chooser, as Text response, with the pickers stubbed. */
+    async function mountWithStubbedPickers() {
+      const wrapper = mount(ExerciseAuthoringView, {
+        global: {
+          plugins: [createPinia()],
+          stubs: { RouterLink: RouterLinkStub, MediaPickerModal: true, DiagramEmbedPickerModal: true, EmbeddedDiagram: true },
+        },
+      })
+      const chooser = wrapper.find('[data-test="type-choice-text_response"]')
+      if (chooser.exists()) await chooser.trigger('click')
+      return wrapper
+    }
+
+    async function pickDiagramStimulus(wrapper: Wrapper, diagramRef: unknown = picked) {
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', diagramRef)
+      await flushPromises()
+    }
+
+    beforeEach(() => {
+      clearEmbeddedDiagramCache()
+      serveDiagrams()
+    })
+
+    it("fills in the picked diagram's instruments when none are chosen yet", async () => {
+      const wrapper = await mountWithStubbedPickers()
+      await flushPromises()
+
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.get('[data-test="instrument-option-instrument-guitar"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('keeps an existing exercise for every instrument when a diagram is picked, since that was chosen on purpose', async () => {
+      route.params = { id: 'e-1' }
+      serveDiagrams({
+        exercise_id: 'e-1',
+        title: 'Find the root',
+        prompt: plainTextPrompt('p'),
+        exercise_type: 'image_recognition',
+        skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'roots' } })],
+        options: [],
+        challenge_ids: [],
+        content_node_ids: [],
+        instrument_ids: [],
+        languages: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+      const wrapper = await mountWithStubbedPickers()
+      await flushPromises()
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', picked)
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="instrument-every"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('keeps the instruments already chosen when a diagram is picked', async () => {
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') return Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
+        if (path === '/instruments') {
+          return Promise.resolve({ data: [makeFrettedInstrument(), ...instruments], error: undefined, response: { status: 200 } })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      const wrapper = await mountWithStubbedPickers()
+      await flushPromises()
+      await wrapper.get('[data-test="instrument-option-i-bass"]').trigger('click')
+
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.get('[data-test="instrument-option-i-bass"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.get('[data-test="instrument-option-instrument-guitar"]').attributes('aria-pressed')).toBe('false')
+    })
+
+    it('picks a diagram as the stimulus, then edits it in the form in place of the image and its regions', async () => {
+      const wrapper = await mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      const media = wrapper.getComponent(MediaPickerModal)
+      expect(media.props()).toEqual(expect.objectContaining({ open: true, initialDiagram: null, chooseOnly: true }))
+
+      media.vm.$emit('diagram', picked)
+      await flushPromises()
+
+      expect(wrapper.getComponent(MediaPickerModal).props('open')).toBe(false)
+      const editor = wrapper.getComponent(DiagramStimulusEditor)
+      expect(editor.props()).toEqual(expect.objectContaining({ diagram: penta, diagramRef: expect.objectContaining({ diagram_id: 'd-penta' }) }))
+      expect(wrapper.find('[data-test="region-canvas"]').exists()).toBe(false)
+    })
+
+    it('asks for a correct position before saving, as for an image with no correct region', async () => {
+      const wrapper = await mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
+
+      wrapper.getComponent(DiagramStimulusEditor).vm.$emit('update:diagramRef', rootsOnly)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(false)
+    })
+
+    it('starts the editor afresh when the same diagram is picked again, agreeing with the form', async () => {
+      const wrapper = await mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+      await wrapper.get('[data-test="stimulus-diagram-editor"] [data-test="embed-picker-tool-correct"]').trigger('click')
+      wrapper.getComponent(DiagramStimulusEditor).findComponent({ name: 'FrettedDiagramView' }).vm.$emit('select', 'p0')
+      await flushPromises()
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(false)
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', picked)
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="no-correct-banner"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-no-correct"]').exists()).toBe(true)
+    })
+
+    it('saves a diagram stimulus with the answers set in the form, and no options', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = await mountWithStubbedPickers()
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Tap every root')
+      await pickDiagramStimulus(wrapper)
+      wrapper.getComponent(DiagramStimulusEditor).vm.$emit('update:diagramRef', rootsOnly)
+      await selectClassification(wrapper)
+
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      const body = POST.mock.calls[0]![1].body
+      expect(body.diagram_ref).toEqual(rootsOnly)
+      expect(body).not.toHaveProperty('options')
+      expect(body).not.toHaveProperty('image_url')
+    })
+
+    it('lists a stimulus playing at an out-of-range tempo, and saves once it is fixed', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = await mountWithStubbedPickers()
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Tap every root')
+      await pickDiagramStimulus(wrapper)
+      await selectClassification(wrapper)
+      const editor = wrapper.getComponent(DiagramStimulusEditor)
+      const playback = { voice_id: null, direction: 'as_authored' as const, loop: false }
+
+      editor.vm.$emit('update:diagramRef', { ...rootsOnly, playback: { ...playback, tempo_bpm: 500 } })
+      await flushPromises()
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      expect(blockers(wrapper)).toEqual(['Pick a tempo from 20 to 300 BPM'])
+      expect(POST).not.toHaveBeenCalled()
+
+      editor.vm.$emit('update:diagramRef', { ...rootsOnly, playback: { ...playback, tempo_bpm: 120 } })
+      await flushPromises()
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+      expect(POST.mock.calls[0]![1].body.diagram_ref.playback.tempo_bpm).toBe(120)
+    })
+
+    it('previews an unsaved diagram stimulus with every fretboard cell to tap', async () => {
+      const wrapper = await mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+      wrapper.getComponent(DiagramStimulusEditor).vm.$emit('update:diagramRef', rootsOnly)
+
+      await wrapper.get('[data-test="open-preview"]').trigger('click')
+
+      const preview = wrapper.getComponent(ExercisePreview)
+      expect(preview.props('diagramRef')).toEqual(rootsOnly)
+      const options = preview.props('options')
+      expect(options).toHaveLength(5 * 6)
+      expect(options.filter((o) => o.is_correct).map((o) => o.fret_cell)).toEqual([{ string: 6, fret: 5 }])
+    })
+
+    it('reopens a saved diagram exercise in the stimulus editor and keeps it when saved again', async () => {
+      route.params = { id: 'e-1' }
+      serveDiagrams({
+        exercise_id: 'e-1',
+        title: 'Tap every root',
+        prompt: plainTextPrompt('p'),
+        exercise_type: 'image_recognition',
+        diagram_ref: rootsOnly,
+        skills: [knowledgeNode('s-1', { names: { en: 'theory' } })],
+        concepts: [knowledgeNode('c-1', { kind: 'concept', names: { en: 'roots' } })],
+        options: [{ option_id: 'o-1', is_correct: true, diagram_position_id: 'p0', fret_cell: { string: 6, fret: 5 } }],
+        challenge_ids: [],
+        content_node_ids: [],
+        instrument_ids: [],
+        languages: [],
+        created_at: '2026-01-01T00:00:00Z',
+      })
+      PUT.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 200 } })
+      const wrapper = await mountWithStubbedPickers()
+      await flushPromises()
+
+      expect(wrapper.getComponent(DiagramStimulusEditor).props('diagramRef')).toEqual(expect.objectContaining({ correct_position_ids: ['p0'] }))
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      expect(wrapper.getComponent(MediaPickerModal).props('initialDiagram')).toEqual(expect.objectContaining({ diagram_id: 'd-penta' }))
+      await wrapper.getComponent(MediaPickerModal).vm.$emit('close')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      const body = PUT.mock.calls[0]![1].body
+      expect(body.diagram_ref).toEqual(expect.objectContaining({ diagram_id: 'd-penta', correct_position_ids: ['p0'] }))
+      expect(body).not.toHaveProperty('options')
+    })
+
+    it('offers to try again when the stimulus diagram fails to load, keeping it in the exercise', async () => {
+      let failing = true
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') {
+          return failing
+            ? Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+            : Promise.resolve({ data: penta, error: undefined, response: { status: 200 } })
+        }
+        if (path === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument()], error: undefined, response: { status: 200 } })
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      const wrapper = await mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.find('[data-test="stimulus-diagram-error"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-diagram-unavailable"]').exists()).toBe(false)
+
+      failing = false
+      await wrapper.get('[data-test="stimulus-diagram-error"] [data-test="retry"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(true)
+    })
+
+    it('says a diagram on an instrument students cannot see yet cannot be used', async () => {
+      GET.mockImplementation((path: string) => {
+        if (path === '/diagrams/{diagram_id}') {
+          return Promise.resolve({ data: { ...penta, instrument_id: 'instrument-piano' }, error: undefined, response: { status: 200 } })
+        }
+        if (path === '/instruments') {
+          return Promise.resolve({
+            data: [makeFrettedInstrument({ instrument_id: 'instrument-piano', family: 'keyboard' })],
+            error: undefined,
+            response: { status: 200 },
+          })
+        }
+        return Promise.resolve({ data: [], error: undefined, response: { status: 200 } })
+      })
+      const wrapper = await mountWithStubbedPickers()
+      await pickDiagramStimulus(wrapper)
+
+      expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(false)
+      expect(wrapper.find('[data-test="stimulus-diagram-unavailable"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="stimulus-diagram-error"]').exists()).toBe(false)
+    })
+
+    it('switches back to an image stimulus by picking an image', async () => {
+      const wrapper = await mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      wrapper.getComponent(MediaPickerModal).vm.$emit('diagram', rootsOnly)
+      await wrapper.vm.$nextTick()
+
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      await wrapper.getComponent(MediaPickerModal).vm.$emit('image', new File(['x'], 'fret.png', { type: 'image/png' }))
+
+      expect(wrapper.findComponent(DiagramStimulusEditor).exists()).toBe(false)
+      expect(wrapper.find('[data-test="region-canvas"]').exists()).toBe(true)
+    })
+
+    it('saves an image_choice option as a diagram, dropping a pending image upload for it', async () => {
+      POST.mockResolvedValueOnce({ data: { exercise_id: 'e-1', challenge_ids: [] }, error: undefined, response: { status: 201 } })
+      const wrapper = await mountWithStubbedPickers()
+      await wrapper.get('[data-test="type-tab-image_choice"]').trigger('click')
+      await wrapper.get('input[placeholder="Untitled exercise"]').setValue('Which is E major?')
+      await wrapper.get('[data-test="add-option"]').trigger('click')
+      const editor = wrapper.getComponent(ImageChoiceOptionsEditor)
+      const id = editor.props('options')[0]!.id
+      editor.vm.$emit('set-file', id, new File(['x'], 'a.png', { type: 'image/png' }))
+      editor.vm.$emit('set-preview', id, 'blob:a.png')
+
+      editor.vm.$emit('set-diagram', id, chord)
+      await wrapper.get('[data-test="option-correct"]').trigger('click')
+      await selectClassification(wrapper)
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+
+      expect(upload).not.toHaveBeenCalled()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:a.png')
+      expect(POST.mock.calls[0]![1].body.options).toEqual([{ option_id: id, is_correct: true, diagram_ref: chord }])
+    })
+  })
+
+  describe('image regions by screen size', () => {
+    async function openImageStimulus() {
+      const wrapper = await mountView()
+      await wrapper.get('[data-test="type-tab-image_recognition"]').trigger('click')
+      await wrapper.get('[data-test="choose-stimulus"]').trigger('click')
+      await pickStimulus(wrapper, new File(['data'], 'fret.png', { type: 'image/png' }))
+      await wrapper.get('img').trigger('load')
+      return wrapper
+    }
+
+    it('shows the image read-only on a phone, with nothing to mark until regions are drawn on a larger screen', async () => {
+      screenWidth(390)
+      const wrapper = await openImageStimulus()
+
+      await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="region-marker"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="no-regions"]').exists()).toBe(true)
+    })
+
+    it.each([
+      ['tablet', 768],
+      ['computer', 1280],
+    ])('draws regions on a %s, with no larger-screen note', async (_device, width) => {
+      screenWidth(width)
+      const wrapper = await openImageStimulus()
+
+      await wrapper.get('[data-test="region-canvas"]').trigger('click', { clientX: 0, clientY: 0 })
+
+      expect(wrapper.findAll('[data-test="region-marker"]')).toHaveLength(1)
+      expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(false)
+    })
+  })
+})
+

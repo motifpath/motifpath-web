@@ -1,0 +1,132 @@
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, ref } from 'vue'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
+
+import type { components } from '@/api/generated/core-domain'
+
+type LearnerSongChart = components['schemas']['LearnerSongChart']
+type Instrument = components['schemas']['Instrument']
+
+const state = {
+  chart: ref<LearnerSongChart | null>(null),
+  instrument: ref<Instrument | null>(null),
+  isLoading: ref(false),
+  error: ref(false),
+  notFound: ref(false),
+  retry: vi.fn(),
+}
+const chartOf = vi.fn((songChartId: string) => {
+  void songChartId
+  return state
+})
+vi.mock('@/shared/composables/usePublishedSongChart', () => ({
+  usePublishedSongChart: (songChartId: string) => chartOf(songChartId),
+}))
+
+import SongChartView from '@/features/student/views/SongChartView.vue'
+import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
+import { makeLearnerSongChart } from '@/shared/testUtils/songChart'
+
+// The reader draws its own bar with ×; the stub keeps only that and the title.
+const ReaderStub = defineComponent({
+  props: ['chart', 'instrument'],
+  emits: ['close'],
+  setup: (props, { emit }) => () =>
+    h('div', [h('button', { 'data-test': 'close-song-chart', onClick: () => emit('close') }), h('p', { 'data-test': 'reader' }, props.chart.title)]),
+})
+
+async function mountAt(path: string, from?: string) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'home', component: { template: '<div data-test="home" />' } },
+      { path: '/practice', name: 'practice', component: { template: '<div data-test="practice" />' } },
+      { path: '/songs/:songChartId', name: 'song-chart', component: SongChartView, props: true },
+    ],
+  })
+  if (from) await router.push(from)
+  await router.push(path)
+  const wrapper = mount(defineComponent({ render: () => h(RouterView) }), {
+    global: { plugins: [router], stubs: { SongChartReader: ReaderStub } },
+  })
+  await flushPromises()
+  return { wrapper, router }
+}
+
+beforeEach(() => {
+  state.chart.value = null
+  state.instrument.value = null
+  state.isLoading.value = false
+  state.error.value = false
+  state.notFound.value = false
+  state.retry.mockReset()
+  chartOf.mockClear()
+})
+
+describe('SongChartView', () => {
+  it('reads the chart the link names, with only a close control around it', async () => {
+    state.chart.value = makeLearnerSongChart()
+    state.instrument.value = makeFrettedInstrument()
+
+    const { wrapper } = await mountAt('/songs/chart-amazing-grace')
+
+    expect(chartOf).toHaveBeenCalledWith('chart-amazing-grace')
+    expect(wrapper.get('[data-test="reader"]').text()).toBe('Amazing Grace')
+    expect(wrapper.find('[data-test="close-song-chart"]').exists()).toBe(true)
+    expect(wrapper.find('nav').exists()).toBe(false)
+  })
+
+  it('shows the close control and placeholder lines while the chart loads', async () => {
+    state.isLoading.value = true
+
+    const { wrapper } = await mountAt('/songs/chart-amazing-grace')
+
+    expect(wrapper.find('[data-test="close-song-chart"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="song-chart-loading"]').exists()).toBe(true)
+  })
+
+  it("says a chart that can't be read isn't available, without saying why, and offers Go home", async () => {
+    state.error.value = true
+    state.notFound.value = true
+
+    const { wrapper, router } = await mountAt('/songs/withdrawn')
+
+    expect(wrapper.find('[data-test="song-chart-unavailable"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="reader"]').exists()).toBe(false)
+    await wrapper.get('[data-test="song-chart-go-home"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('offers a retry when the chart fails to load', async () => {
+    state.error.value = true
+
+    const { wrapper } = await mountAt('/songs/chart-amazing-grace')
+    await wrapper.get('[data-test="song-chart-error"] button').trigger('click')
+
+    expect(state.retry).toHaveBeenCalled()
+  })
+
+  it('closes back to where the student came from', async () => {
+    state.chart.value = makeLearnerSongChart()
+    const { wrapper, router } = await mountAt('/songs/chart-amazing-grace', '/practice')
+    const back = vi.spyOn(router, 'back').mockImplementation(() => {})
+    window.history.replaceState({ back: '/practice' }, '')
+
+    await wrapper.get('[data-test="close-song-chart"]').trigger('click')
+
+    expect(back).toHaveBeenCalledOnce()
+  })
+
+  it('closes to the home when the chart was opened directly', async () => {
+    state.chart.value = makeLearnerSongChart()
+    const { wrapper, router } = await mountAt('/songs/chart-amazing-grace')
+    window.history.replaceState({}, '')
+
+    await wrapper.get('[data-test="close-song-chart"]').trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+})

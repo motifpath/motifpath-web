@@ -1,0 +1,450 @@
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick, ref, toValue } from 'vue'
+import type { MaybeRefOrGetter } from 'vue'
+
+import type { components } from '@/api/generated/core-domain'
+import type { PlaybackSource, PlaybackState } from '@/shared/composables/useDiagramPlayback'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
+
+type Item = components['schemas']['PracticeSessionItem']
+
+const DIAGRAM_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+
+const diagram = {
+  diagram_id: DIAGRAM_ID,
+  names: { en: 'A minor pentatonic, box 1' },
+  classification: { skills: [], concepts: [] },
+  instrument_id: 'guitar',
+  playbacks: [
+    {
+      playback_id: 'pb-default',
+      names: { en: 'Ascending' },
+      time_signature: { beats: 4, beat_value: 4 },
+      tempo_bpm: 100,
+      steps: [{ position_ids: ['p1'], value: { num: 1, den: 4 }, strum: 'none' }],
+    },
+  ],
+  default_playback_id: 'pb-default',
+  positions: [],
+  regions: [],
+}
+const instrument = { instrument_id: 'guitar', family: 'fretted', tuning: [64, 59, 55, 50, 45, 40] }
+
+const embedded = {
+  status: ref<'loading' | 'ready' | 'unavailable'>('ready'),
+  diagram: ref<unknown>(diagram),
+  instrument: ref<unknown>(instrument),
+  diagramRef: ref<unknown>({ diagram_id: DIAGRAM_ID, layers: { intervals: true } }),
+  labelMode: ref('interval'),
+}
+const embeddedWith = vi.fn()
+vi.mock('@/shared/composables/useEmbeddedDiagram', () => ({
+  useEmbeddedDiagram: (source: unknown) => {
+    embeddedWith(toValue(source as MaybeRefOrGetter<unknown>))
+    return embedded
+  },
+}))
+
+const playback = {
+  state: ref<PlaybackState>('idle'),
+  activePositionIds: ref<string[]>([]),
+  tempo: ref(0),
+  toggle: vi.fn(),
+  stop: vi.fn(),
+}
+let playbackSource: () => PlaybackSource
+let metronomeOn: () => boolean
+let playedNoteValue: () => TempoNoteValue
+vi.mock('@/shared/composables/useDiagramPlayback', () => ({
+  useDiagramPlayback: (source: () => PlaybackSource, options: { metronome: () => boolean; noteValue: () => TempoNoteValue }) => {
+    playbackSource = source
+    metronomeOn = options.metronome
+    playedNoteValue = options.noteValue
+    return { ...playback, canPlay: ref(true), prefetch: vi.fn() }
+  },
+}))
+
+import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
+
+function item(reason: Item['reason'] = 'due', best: number | null = 70, bestNoteValue: TempoNoteValue = 'quarters'): Item {
+  return {
+    item_key: `play_along:${DIAGRAM_ID}`,
+    kind: 'play_along',
+    rung: 'play_in_time',
+    reason,
+    node_id: null,
+    level: 'learning',
+    estimated_seconds: 60,
+    play_along: {
+      diagram_id: DIAGRAM_ID,
+      start_tempo_bpm: 70,
+      start_note_value: 'quarters',
+      target_tempo_bpm: 100,
+      best_clean_tempo_bpm: best,
+      best_clean_note_value: best === null ? null : bestNoteValue,
+    },
+  }
+}
+
+function mountTake(props: Partial<{ item: Item; tempo: number; noteValue: TempoNoteValue; takesLeft: number; takesTotal: number }> = {}) {
+  return mount(PlayAlongTake, {
+    props: { item: item(), tempo: 70, noteValue: 'quarters', takesLeft: 4, takesTotal: 4, ...props },
+    global: { stubs: { FrettedDiagramView: true } },
+    attachTo: document.body,
+  })
+}
+
+async function playTakeToTheEnd() {
+  playback.state.value = 'loading'
+  await nextTick()
+  playback.state.value = 'playing'
+  await nextTick()
+  playback.state.value = 'idle'
+  await nextTick()
+}
+
+describe('PlayAlongTake', () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    embedded.status.value = 'ready'
+    playback.state.value = 'idle'
+    playback.toggle.mockReset()
+    playback.stop.mockReset()
+  })
+
+  it('loads the item’s diagram', () => {
+    mountTake()
+
+    expect(embeddedWith).toHaveBeenCalledWith({
+      kind: 'single',
+      ref: { diagram_id: DIAGRAM_ID, layers: { intervals: true } },
+    })
+  })
+
+  it('says which take this is, the goal and the best clean tempo, in one line', () => {
+    const wrapper = mountTake({ takesLeft: 3, takesTotal: 4 })
+
+    expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 2 of 4 · Goal 100 BPM · best clean 70')
+    expect(wrapper.get('[data-test="tempo-value"]').text()).toBe('70 BPM')
+  })
+
+  it('marks the goal and the best clean tempo on the tempo slider', () => {
+    const wrapper = mountTake()
+
+    expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 100 BPM')
+    expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 70 BPM')
+  })
+
+  describe('note values', () => {
+    it('offers the four suggested note values beside the tempo, quarters chosen', async () => {
+      const wrapper = mountTake()
+
+      await wrapper.get('[data-test="note-value"]').trigger('click')
+
+      const choices = [...document.querySelectorAll('[data-test="note-value-choice"]')]
+      expect(choices.map((c) => c.getAttribute('aria-label'))).toEqual(['Quarters', 'Eighths', 'Triplets', 'Sixteenths'])
+      expect(choices[0]!.getAttribute('aria-checked')).toBe('true')
+      wrapper.unmount()
+    })
+
+    it('says the note value chosen for the next take', () => {
+      const wrapper = mountTake()
+
+      wrapper.findComponent({ name: 'TempoControl' }).vm.$emit('update:noteValue', 'eighths')
+
+      expect(wrapper.emitted('noteValue')).toEqual([['eighths']])
+    })
+
+    it('plays the take at its note value, its count-in still a bar of beats', () => {
+      mountTake({ tempo: 40, noteValue: 'eighths' })
+
+      expect(playedNoteValue()).toBe('eighths')
+      const steps = playbackSource().diagram.playbacks[0]!.steps
+      expect(steps.slice(0, 4).map((step) => step.value)).toEqual(Array(4).fill({ num: 1, den: 2 }))
+    })
+
+    it('marks the goal and the best clean tempo in the note value of the take, from the ladder’s slowest there', () => {
+      const wrapper = mountTake({ tempo: 40, noteValue: 'eighths' })
+
+      expect(wrapper.get('[data-test="tempo-tick-goal"]').attributes('title')).toBe('Goal 50 BPM in eighths')
+      expect(wrapper.get('[data-test="tempo-tick-best"]').attributes('title')).toBe('Best clean 35 BPM in eighths')
+      expect(wrapper.get('[data-test="tempo-slider"]').attributes('min')).toBe('30')
+    })
+
+    it('says the goal in the note value of the take', () => {
+      const wrapper = mountTake({ tempo: 40, noteValue: 'eighths' })
+
+      expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 1 of 4 · Goal 50 BPM in eighths · best clean 70')
+    })
+
+    it('says the best clean tempo as it was played', () => {
+      const wrapper = mountTake({ item: item('due', 80, 'eighths') })
+
+      expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 1 of 4 · Goal 100 BPM · best clean 80 in eighths')
+    })
+
+    it('shows the time signature the diagram sets, locked', () => {
+      expect(mountTake().get('[data-test="locked-time-signature"]').text()).toBe('4/4 · set by the diagram')
+    })
+  })
+
+  it('lets the board leave the text column on a wider screen', () => {
+    const breakout = mountTake().get('[data-test="breakout"]')
+
+    expect(breakout.findComponent({ name: 'FrettedDiagramView' }).exists()).toBe(true)
+  })
+
+  it('is titled by its diagram’s name', () => {
+    expect(mountTake().get('[data-test="item-title"]').text()).toBe('A minor pentatonic, box 1')
+  })
+
+  it('says why the item was picked', () => {
+    expect(mountTake().get('[data-test="item-reason"]').text()).toBe('Due for review')
+  })
+
+  it('explains the item in place, and hides it again', async () => {
+    const wrapper = mountTake()
+    const info = wrapper.get('[data-test="item-info"]')
+    expect(wrapper.find('[data-test="play-along-info"]').exists()).toBe(false)
+    expect(info.attributes('aria-expanded')).toBe('false')
+
+    await info.trigger('click')
+    expect(wrapper.get('[data-test="play-along-info"]').text()).toContain('Why now')
+    expect(info.attributes('aria-expanded')).toBe('true')
+    expect(info.attributes('aria-controls')).toBe('play-along-info')
+
+    await info.trigger('click')
+    expect(wrapper.find('[data-test="play-along-info"]').exists()).toBe(false)
+  })
+
+  it('offers Start take as the action bar’s primary, so Enter or a pedal starts it', () => {
+    const start = mountTake().get('[data-test="action-bar"]').get('[data-test="start-take"]')
+
+    expect(start.text()).toBe('Start take')
+    expect(start.attributes()).toHaveProperty('data-primary-action')
+  })
+
+  it('offers Restart beside Stop early in the action bar while a take plays', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    const bar = wrapper.get('[data-test="action-bar"]')
+    expect(bar.get('[data-test="restart-take"]').text()).toBe('Restart')
+    expect(bar.get('[data-test="stop-early"]').text()).toBe('Stop early')
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Wrong tempo? Restart goes back to the tempo without rating.')
+  })
+
+  it('plays the default playback once, after a bar of count-in, at the take’s tempo', () => {
+    mountTake({ tempo: 85 })
+
+    const source = playbackSource()
+    const steps = source.diagram.playbacks[0]!.steps
+    expect(steps).toHaveLength(5)
+    expect(steps.slice(0, 4).every((step) => step.position_ids.length === 0)).toBe(true)
+    expect(source.playback).toEqual({ tempo_bpm: 85, voice_id: null, direction: 'as_authored', loop: false })
+  })
+
+  it('starts the take from the Start button', async () => {
+    const wrapper = mountTake()
+
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    expect(playback.toggle).toHaveBeenCalledOnce()
+  })
+
+  it('counts the bar in, beat by beat, once the sound starts', async () => {
+    vi.useFakeTimers()
+    const wrapper = mountTake({ tempo: 60 })
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    playback.state.value = 'loading'
+    await nextTick()
+    playback.state.value = 'playing'
+    await nextTick()
+
+    expect(wrapper.get('[data-test="count-in"]').text()).toBe('4')
+    vi.advanceTimersByTime(1000)
+    await nextTick()
+    expect(wrapper.get('[data-test="count-in"]').text()).toBe('3')
+    vi.advanceTimersByTime(3000)
+    await nextTick()
+    expect(wrapper.find('[data-test="count-in"]').exists()).toBe(false)
+  })
+
+  it('asks for a rating when the take ends by itself, and emits it', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    await playTakeToTheEnd()
+
+    expect(wrapper.get('[data-test="action-bar"]').text()).toContain('How was that take at 70 BPM?')
+    expect(wrapper.find('[data-test="stop-early"]').exists()).toBe(false)
+    await wrapper.get('[data-test="rate-clean"]').trigger('click')
+
+    expect(wrapper.emitted('rate')).toEqual([['clean']])
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
+  })
+
+  it('stops a take early and asks for its rating', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    playback.state.value = 'loading'
+    await nextTick()
+    playback.state.value = 'playing'
+    await nextTick()
+
+    await wrapper.get('[data-test="stop-early"]').trigger('click')
+
+    expect(playback.stop).toHaveBeenCalled()
+    expect(wrapper.find('[data-test="rate-struggled"]').exists()).toBe(true)
+  })
+
+  it('says when the next take goes up or down the ladder', async () => {
+    const wrapper = mountTake({ tempo: 70 })
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    await playTakeToTheEnd()
+    await wrapper.get('[data-test="rate-clean"]').trigger('click')
+    await wrapper.setProps({ tempo: 75 })
+
+    expect(wrapper.text()).toContain('Clean twice: up to 75 BPM.')
+
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    await playTakeToTheEnd()
+    await wrapper.get('[data-test="rate-struggled"]').trigger('click')
+    await wrapper.setProps({ tempo: 70 })
+    expect(wrapper.text()).toContain("Let's settle it at 70 BPM.")
+  })
+
+  it('offers the take again when the sound fails to load', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    playback.state.value = 'loading'
+    await nextTick()
+    playback.state.value = 'error'
+    await nextTick()
+
+    expect(wrapper.text()).toContain("The sound didn't load.")
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="rate-clean"]').exists()).toBe(false)
+  })
+
+  it('tells a warm-up apart, without the goal', () => {
+    const wrapper = mountTake({ item: item('warm_up') })
+
+    expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 1 of 4')
+    expect(wrapper.text()).toContain("Warm-up: play it relaxed. It doesn't count toward your progress.")
+    expect(wrapper.text()).not.toContain('Goal')
+  })
+
+  it('shows "none yet" before the first clean take', () => {
+    expect(mountTake({ item: item('new', null) }).text()).toContain('best clean none yet')
+  })
+
+  it('offers to skip an item whose diagram can’t be played, as not answered because it’s unavailable', async () => {
+    embedded.status.value = 'unavailable'
+    const wrapper = mountTake()
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="inline-notice"]').text()).toContain("This diagram can't be played here.")
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(false)
+    await wrapper.get('[data-test="action-bar"]').get('[data-test="skip-item"]').trigger('click')
+    expect(wrapper.emitted('skip')).toEqual([['unavailable']])
+  })
+
+  it('offers every tempo on a slider, from the ladder’s slowest to the fastest playable, in 5 BPM steps', () => {
+    const slider = mountTake({ tempo: 70 }).get<HTMLInputElement>('[data-test="tempo-slider"]')
+
+    expect(slider.attributes()).toMatchObject({ type: 'range', min: '60', max: '300', step: '5' })
+    expect(slider.element.value).toBe('70')
+    expect(slider.attributes('aria-label')).toBe('Tempo')
+  })
+
+  it('shows the tempo as it slides, and chooses it once released', async () => {
+    const wrapper = mountTake({ tempo: 70 })
+    const slider = wrapper.get<HTMLInputElement>('[data-test="tempo-slider"]')
+
+    // Dragging fires input; setValue would fire change too, as releasing does.
+    slider.element.value = '180'
+    await slider.trigger('input')
+    expect(wrapper.get('[data-test="tempo-value"]').text()).toBe('180 BPM')
+    expect(wrapper.emitted('tempo')).toBeUndefined()
+
+    await slider.trigger('change')
+    expect(wrapper.emitted('tempo')).toEqual([[180]])
+  })
+
+  it('changes no tempo while a take plays', async () => {
+    const wrapper = mountTake()
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('heads the tempo control with what it sets, and marks the slider’s ends', () => {
+    const control = mountTake({ tempo: 90 }).get('[data-test="tempo-control"]')
+
+    expect(control.get('[data-test="tempo-heading"]').text()).toBe('Tempo')
+    expect(control.get('[data-test="tempo-value"]').text()).toBe('90 BPM')
+    expect(control.get('[data-test="tempo-min"]').text()).toBe('60')
+    expect(control.get('[data-test="tempo-max"]').text()).toBe('300')
+  })
+
+  it('restarts a take while it plays, without a rating, back to choosing the tempo', async () => {
+    const wrapper = mountTake({ tempo: 180 })
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    await wrapper.get('[data-test="restart-take"]').trigger('click')
+
+    expect(playback.stop).toHaveBeenCalled()
+    expect(wrapper.find('[data-test="rate-struggled"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
+    expect(wrapper.emitted('rate')).toBeUndefined()
+  })
+
+  it('restarts a take stopped early instead of rating it', async () => {
+    const wrapper = mountTake({ tempo: 180 })
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+    await wrapper.get('[data-test="stop-early"]').trigger('click')
+
+    await wrapper.get('[data-test="restart-take"]').trigger('click')
+
+    expect(wrapper.find('[data-test="rate-struggled"]').exists()).toBe(false)
+    expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.emitted('rate')).toBeUndefined()
+  })
+
+  it('says nothing about the ladder when the student changed the tempo', async () => {
+    const wrapper = mountTake({ tempo: 70 })
+    await wrapper.get('[data-test="tempo-slider"]').setValue('75')
+    await wrapper.setProps({ tempo: 75 })
+
+    expect(wrapper.text()).not.toContain('Clean twice')
+  })
+
+  it('plays a take with the metronome, unless the student turns it off', async () => {
+    const wrapper = mountTake()
+    expect(metronomeOn()).toBe(true)
+
+    const toggle = wrapper.get('[data-test="metronome"]')
+    expect(toggle.attributes('aria-pressed')).toBe('true')
+
+    await toggle.trigger('click')
+
+    expect(metronomeOn()).toBe(false)
+    expect(toggle.attributes('aria-pressed')).toBe('false')
+  })
+
+  it('brings the board and its controls into view when a take starts', async () => {
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { value: scrollIntoView, configurable: true })
+    const wrapper = mountTake()
+
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    expect(scrollIntoView.mock.contexts[0]).toBe(wrapper.get('[data-test="take-stage"]').element)
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView')
+  })
+})
+

@@ -1,0 +1,705 @@
+{
+  "pathView": {
+    "heading": "Minha trilha",
+    "coursePart": "{course} · Parte {part} de {parts}",
+    "sectionCount": "{done} de {total}",
+    "kind": {
+      "video": "Vídeo",
+      "article": "Artigo"
+    },
+    "upNext": "A seguir · passo {position} de {total}",
+    "startLesson": "Começar lição",
+    "meta": {
+      "done": "{kind} · Concluído",
+      "current": "A seguir · {kind}",
+      "language": "Só em {language} por enquanto"
+    },
+    "locked": {
+      "title": "O passo {position} abre depois",
+      "message": "Conclua o passo {current}, “{title}”, e os passos seguintes abrem um a um.",
+      "action": "Ir para o passo {current}"
+    },
+    "language": {
+      "title": "Ainda não está em {ownLanguage}",
+      "message": {
+        "video": "Esta lição só está em {language} por enquanto. Assista em {language} — ao concluir, o próximo passo abre.",
+        "article": "Esta lição só está em {language} por enquanto. Leia em {language} — ao concluir, o próximo passo abre."
+      },
+      "action": {
+        "video": "Assistir em {language}",
+        "article": "Ler em {language}"
+      }
+    },
+    "complete": {
+      "title": "Você concluiu {title}",
+      "message": "{total} de {total} passos. O que você aprendeu volta na Prática para ficar com você.",
+      "findNext": "Encontrar sua próxima trilha",
+      "practise": "Praticar o que aprendeu"
+    },
+    "empty": {
+      "title": "Nenhuma trilha ainda",
+      "message": "Uma trilha é uma sequência curta de lições, em ordem. Escolha um curso ou uma trilha para começar.",
+      "action": "Explorar cursos e trilhas"
+    },
+    "errorMessage": "Não foi possível carregar sua trilha."
+  },
+  "nodeView": {
+    "heading": "Lição",
+    "backToMyPath": "Voltar para a trilha",
+    "stepMeta": "Passo {position} de {total} · {kind}",
+    "stepMetaDone": "Passo {position} de {total} · {kind} · Concluído",
+    "errorMessage": "Não foi possível carregar esta lição.",
+    "notFound": {
+      "title": "Esta lição não está na sua trilha",
+      "message": "Ela pode ter mudado de lugar ou sido substituída. Sua trilha mostra onde você está.",
+      "action": "Ir para a trilha"
+    },
+    "locked": {
+      "title": "Este passo abre depois",
+      "message": "Conclua antes o passo {position}, “{title}”. Os passos abrem um a um.",
+      "messageNoCurrent": "Conclua antes os passos anteriores. Os passos abrem um a um.",
+      "action": "Ir para o passo {position}",
+      "actionNoCurrent": "Ir para a trilha"
+    },
+    "noVideo": "Esta lição ainda não tem vídeo.",
+    "noText": "Esta lição ainda não tem texto.",
+    "playbackError": "O vídeo não carregou.",
+    "playerLoadError": "O player de vídeo não carregou. Recarregue a página para tentar de novo.",
+    "tryIt": {
+      "title": "Agora experimente",
+      "message": "Alguns exercícios curtos sobre o que você acabou de assistir. Eles concluem este passo.",
+      "messageArticle": "Alguns exercícios curtos sobre o que você acabou de ler. Eles concluem este passo."
+    },
+    "practiseThis": "Praticar isto",
+    "practiseAgain": "Praticar de novo",
+    "stepDone": "Passo concluído",
+    "savingProgress": "Salvando seu progresso…",
+    "articleEnd": {
+      "title": "Fim da lição.",
+      "markAsDone": "Marcar como concluído",
+      "marksDone": "Marca o passo {position} como concluído.",
+      "marksDoneAndOpens": "Marca o passo {position} como concluído e abre o passo {next}."
+    },
+    "review": {
+      "partMeta": "Parte {part} · Aula {lesson} de {total} · {kind} · Concluída",
+      "pathMeta": "Aula {lesson} de {total} · {kind} · Concluída",
+      "upNextPart": "A seguir · Parte {part} · Aula {lesson} de {total}",
+      "upNextPath": "A seguir · Aula {lesson} de {total}",
+      "backTo": "Voltar para {title}",
+      "lastLesson": "Essa foi a última aula de {title}.",
+      "goToLearning": "Ir para Aprender",
+      "opensLater": {
+        "title": "Esta aula abre depois",
+        "message": "Ela está num curso ou trilha que você ainda não concluiu. Você chega a ela pela Trilha.",
+        "action": "Ir para a Trilha"
+      }
+    }
+  },
+  "lessonPlayer": {
+    "play": "Reproduzir",
+    "seek": "Buscar no vídeo",
+    "mute": "Silenciar",
+    "fullscreen": "Tela cheia",
+    "resizeAside": "Redimensionar o painel de anotações",
+    "resetAsideWidth": "Redefinir o painel de anotações para o tamanho padrão"
+  },
+  "learningView": {
+    "heading": "Aprender",
+    "errorMessage": "Não conseguimos carregar seus cursos e trilhas.",
+    "emptyHeading": "Nada aqui ainda",
+    "emptyMessage": "Os cursos e trilhas que você começar aparecem aqui.",
+    "explore": "Explorar cursos e trilhas",
+    "nothingInProgress": "Nada em andamento",
+    "findNextCourse": "Encontrar o próximo curso",
+    "inProgress": "Em andamento",
+    "finished": "Concluídos",
+    "left": "Interrompidos",
+    "nowOn": "Agora em {title}",
+    "undo": "Desfazer",
+    "leaveCourseTitle": "Sair de {title}?",
+    "leaveCourseMessage": "Você perde o ponto onde parou. Recomeçar volta à parte 1. Sua prática e seus níveis de habilidade continuam.",
+    "leaveCourseConfirm": "Sair do curso",
+    "removePathTitle": "Remover {title}?",
+    "removePathMessage": "Você perde o ponto onde parou nela. Sua prática e seus níveis de habilidade continuam.",
+    "removePathConfirm": "Remover",
+    "continueWith": "Você continua com {title}.",
+    "leaveFailedAfterSwitch": "Agora você está em {now}, mas não saiu de {title}. Tente de novo."
+  },
+  "learningCard": {
+    "course": "Curso",
+    "path": "Trilha",
+    "part": "Parte {position} de {count}",
+    "finished": "Concluído",
+    "assignedBy": "Atribuída por {name}",
+    "current": "Atual",
+    "parts": "{completed} de {count} parte | {completed} de {count} partes",
+    "partsSummary": "{completed} de {count} parte concluída | {completed} de {count} partes concluídas",
+    "lessons": "{completed} de {count} aula | {completed} de {count} aulas",
+    "lessonsSummary": "{completed} de {count} aula concluída | {completed} de {count} aulas concluídas",
+    "startAgainCourse": "Recomeçar da parte 1",
+    "startAgainPath": "Recomeçar da primeira aula",
+    "more": "Mais opções para {title}",
+    "newVersion": "Nova versão disponível"
+  },
+  "partRow": {
+    "part": "Parte {position}",
+    "lessons": "{count} aula | {count} aulas",
+    "lessonsDone": "{completed} de {count} aula concluída | {completed} de {count} aulas concluídas",
+    "done": "Concluída",
+    "lessonDone": "Concluída",
+    "moreDone": "Mais {count} concluída | Mais {count} concluídas",
+    "more": "… mais {count}"
+  },
+  "learningMenu": {
+    "courseDetails": "Detalhes do curso",
+    "pathDetails": "Detalhes da trilha",
+    "leaveCourse": "Sair do curso",
+    "removePath": "Remover de Aprender",
+    "update": "Atualizar para a versão mais recente"
+  },
+  "updateCopy": {
+    "title": "Atualizar {title}?",
+    "courseMessage": "Você recebe as partes, aulas e imagem mais recentes. As aulas que você concluiu continuam concluídas. Se a aula em que você está foi removida, você continua na próxima que ainda não concluiu. Não é possível desfazer.",
+    "pathMessage": "Você recebe as aulas e a imagem mais recentes. As aulas que você concluiu continuam concluídas. Se a aula em que você está foi removida, você continua na próxima que ainda não concluiu. Não é possível desfazer.",
+    "updateCourse": "Atualizar curso",
+    "updatePath": "Atualizar trilha",
+    "notNow": "Agora não",
+    "tryAgain": "Tentar de novo",
+    "courseFailed": "Não foi possível atualizar o curso. Nada mudou. Verifique sua conexão e tente de novo.",
+    "pathFailed": "Não foi possível atualizar a trilha. Nada mudou. Verifique sua conexão e tente de novo.",
+    "upToDate": "Você já tem a versão mais recente de {title}"
+  },
+  "courseDetailView": {
+    "newVersionHeading": "Há uma versão mais recente",
+    "newVersionMessage": "Receba as partes, aulas e imagem mais recentes. As aulas que você concluiu continuam concluídas.",
+    "errorMessage": "Não foi possível carregar este curso.",
+    "notFoundHeading": "Este curso ainda não foi publicado",
+    "notFoundMessage": "Este curso não está disponível no catálogo.",
+    "backToLearning": "Voltar para Aprender",
+    "backToDiscover": "Voltar para Explorar",
+    "backToWhereToStart": "Voltar para Por onde começar",
+    "start": "Começar curso",
+    "continuePart": "Continuar parte {position}",
+    "leftBefore": "Você saiu deste curso antes. Recomeçar volta à parte 1.",
+    "finished": "Concluído",
+    "practise": "Praticar o que aprendeu",
+    "openInPath": "Abrir na Trilha",
+    "leave": "Sair deste curso",
+    "outline": "Conteúdo do curso",
+    "parts": "{count} parte | {count} partes",
+    "startedNotCurrent": "{title} está em Aprendendo, mas {current} continua sendo o atual.",
+    "partsLoadFailed": "As aulas não carregaram."
+  },
+  "courseCompletedView": {
+    "errorMessage": "Não foi possível carregar seu curso.",
+    "notFoundHeading": "Nada para comemorar aqui ainda",
+    "notFoundMessage": "Este não é um curso que você concluiu.",
+    "findNextCourse": "Encontrar o próximo curso",
+    "myCourses": "Meu aprendizado",
+    "finished": "Você concluiu {title}",
+    "keepsComingBack": "O que você aprendeu volta na Prática, para não se perder.",
+    "continueItem": "Continuar {title}"
+  },
+  "sendToTeacher": {
+    "button": "Enviar ao professor",
+    "hint": "Abre o WhatsApp. Sua mensagem vai para a equipe MotifPath.",
+    "greeting": "Olá!",
+    "greetingNamed": "Olá! Sou {name}.",
+    "pathLine": "Trilha: {title}",
+    "lessonLine": "Lição: {title}",
+    "referenceLine": "Ref: {reference}",
+    "prompt": "Minha dúvida ou gravação:"
+  },
+  "pathDetailView": {
+    "backToLearning": "Voltar para Aprender",
+    "newVersionHeading": "Há uma versão mais recente",
+    "newVersionMessage": "Receba as aulas e a imagem mais recentes. As aulas que você concluiu continuam concluídas.",
+    "errorMessage": "Não foi possível carregar esta trilha.",
+    "notFoundHeading": "Esta trilha ainda não foi publicada",
+    "notFoundMessage": "Esta trilha não está disponível no catálogo.",
+    "continue": "Continuar trilha",
+    "outlineHeading": "Estrutura da trilha",
+    "start": "Começar trilha",
+    "inLearning": "Aprendendo",
+    "reviewHeading": "Aulas"
+  },
+  "practiceSessionView": {
+    "title": "Praticar",
+    "intro": "Escolha o instrumento nas suas mãos, ou pratique na cabeça, e quanto tempo você tem.",
+    "instrumentLabel": "Instrumento em suas mãos",
+    "minutesLabel": "Quanto tempo",
+    "minutesOption": "{minutes} min",
+    "start": "Começar a praticar",
+    "starting": "Montando sua sessão…",
+    "instrumentsError": "Não conseguimos carregar os instrumentos. Verifique sua conexão e tente de novo.",
+    "planError": "Não conseguimos montar sua sessão. Suas escolhas foram mantidas — tente de novo.",
+    "nothingToPlay": "Ainda não há nada para tocar neste instrumento. Você pode praticar na cabeça.",
+    "practiseInTheHead": "Praticar na cabeça",
+    "endSession": "Encerrar sessão",
+    "unsupported": "Este tipo de prática ainda não está disponível aqui.",
+    "skip": "Pular",
+    "reasons": {
+      "teacher_suggested": "Sugerido pelo seu professor",
+      "due": "Hora de revisar",
+      "weak": "Ainda se firmando",
+      "new": "Novo",
+      "warm_up": "Aquecimento",
+      "application": "Aplicar na música",
+      "review_ahead": "Revisão antecipada",
+      "stretch": "Um passo além"
+    },
+    "doneTitle": "Sessão concluída",
+    "practiseAgain": "Praticar de novo",
+    "progressLabel": "Progresso da sessão",
+    "applyIt": "Aplique",
+    "close": "Fechar",
+    "inMyHead": "Na cabeça",
+    "nothingInTheHead": "Ainda não há nada para praticar na cabeça. Escolha um instrumento.",
+    "findWhereToStart": "Encontrar por onde começar"
+  },
+  "sessionChord": {
+    "voicingHint": "Monte o acorde, toque uma vez e deixe soar.",
+    "rootFifthHint": "Fundamental, depois quinta, cada nota soando até o fim.",
+    "bassBoard": "Braço do baixo com as notas a tocar de {chord}",
+    "bassChangeBoard": "Braço do baixo com as fundamentais de {from} e {to}",
+    "unavailable": "Este acorde não pode ser mostrado agora. Pule — não conta contra você.",
+    "skip": "Pular",
+    "everyBeat": "Troque a cada tempo",
+    "everyBeatDetail": "troque a cada tempo",
+    "best": "melhor: {count} trocas limpas",
+    "noBest": "nenhum minuto limpo ainda",
+    "goal": "Meta: {count} trocas por minuto",
+    "readyHint": "Ajuste o andamento primeiro: o metrônomo toca enquanto você testa. Começar o minuto dá um compasso de contagem.",
+    "start": "Começar o minuto",
+    "runningHint": "Nada para tocar na tela enquanto o minuto corre. Continue trocando a cada tempo.",
+    "countIn": "Contagem",
+    "timeUp": "Acabou o tempo. Conte só as trocas em que todas as cordas soaram.",
+    "timeUpBass": "Acabou o tempo. Conte só as trocas em que a fundamental soou limpa.",
+    "cleanChanges": "trocas limpas",
+    "cleanChangesBest": "trocas limpas · melhor {count}",
+    "save": "Salvar {count} troca | Salvar {count} trocas"
+  },
+  "sessionPlan": {
+    "chords": {
+      "voicing": "Toque {chord} limpo",
+      "change": "{from} e {to}, ida e volta",
+      "rootFifth": "Toque a fundamental e a quinta de {chord}",
+      "rootChange": "Fundamentais de {from} e {to}, ida e volta"
+    },
+    "title": "O plano de hoje",
+    "start": "Vamos lá",
+    "playAlong": "Tocar junto",
+    "cells": "{drill} · {count} nota | {drill} · {count} notas",
+    "shapes": "{drill} · {count} forma | {drill} · {count} formas",
+    "drills": {
+      "nameTheNote": "Diga a nota",
+      "findTheNote": "Encontre a nota",
+      "nameTheShape": "Diga a forma",
+      "findTheDegree": "Encontre o grau",
+      "numeralToChord": "Acordes pelo grau",
+      "chordToNumeral": "Graus dos acordes",
+      "chordToFunction": "Função dos acordes",
+      "functionToChord": "Acordes pela função",
+      "chartToNumbers": "Lendo cifras",
+      "numbersToChart": "Escolhendo cifras",
+      "cadenceThenChord": "Acordes de ouvido",
+      "progressionByNumber": "Progressões de ouvido"
+    },
+    "nextUp": {
+      "played": "Você tocou {name} até {tempo}.",
+      "next": "A seguir",
+      "continue": "Continuar"
+    },
+    "meta": "{minutes} min · {instrument}",
+    "kinds": {
+      "exercise": "Exercício",
+      "playAlong": "Tocar junto",
+      "fretboard": "Braço",
+      "chordChange": "Troca de acordes",
+      "harmony": "Harmonia",
+      "ear": "Percepção",
+      "chord": "Acorde",
+      "guideTones": "Notas-guia"
+    }
+  },
+  "sessionSummary": {
+    "minutes": "{minutes} min · {instrument}",
+    "withItems": "{ran} · {count} item | {ran} · {count} itens",
+    "whatYouPractised": "O que você praticou",
+    "played": "até {tempo} · {rating}",
+    "counted": "{right} de {answered} certas",
+    "changes": "{count} trocas limpas a {tempo} BPM · {rating}",
+    "right": "Certo",
+    "notQuite": "Não foi dessa vez",
+    "nothingAnswered": "Nada respondido ou avaliado desta vez. Toda sessão conta.",
+    "done": "Concluir"
+  },
+  "playAlongTake": {
+    "goal": "Meta {goal} · melhor limpa {best}",
+    "noBest": "nenhuma ainda",
+    "warmUpHint": "Aquecimento: toque relaxado. Não conta para o seu progresso.",
+    "start": "Começar execução",
+    "countInHint": "Um compasso de contagem, depois toque junto.",
+    "playing": "Toque junto. A execução termina sozinha. Andamento errado? Recomeçar volta ao andamento sem avaliar.",
+    "stopEarly": "Parar antes",
+    "ratePrompt": "Como foi essa execução a {tempo}?",
+    "chordPrompt": "Como soou o {chord}?",
+    "ratings": {
+      "struggled": "Difícil",
+      "almost": "Quase",
+      "clean": "Limpa"
+    },
+    "ratingHints": {
+      "struggled": "Desandou ou precisei parar",
+      "almost": "Passei com deslizes",
+      "clean": "Sem deslizes"
+    },
+    "up": "Limpa duas vezes: subindo para {tempo}.",
+    "down": "Vamos firmar a {tempo}.",
+    "loadError": "O som não carregou. Verifique sua conexão e tente de novo.",
+    "unavailable": "Este diagrama não pode ser tocado aqui.",
+    "skip": "Pular",
+    "slower": "{step} BPM mais lento",
+    "faster": "{step} BPM mais rápido",
+    "info": "Sobre esta prática",
+    "takeOf": "Execução {current} de {total}",
+    "restart": "Recomeçar",
+    "restartUnrated": "Recomeçar sem avaliar"
+  },
+  "playAlongInfo": {
+    "title": "Sobre esta prática",
+    "whyTitle": "Por que agora",
+    "why": {
+      "teacher_suggested": "Seu professor sugeriu que você praticasse isto.",
+      "due": "Você já praticou isto e está na hora de revisar, para não esquecer.",
+      "weak": "Você começou isto e ainda não está firme. Mais algumas execuções vão firmar.",
+      "new": "Algo novo da sua trilha, para começar a construir.",
+      "warm_up": "Algo que você já toca bem, para aquecer as mãos. Não conta para o seu progresso.",
+      "application": "Aplicando o que você sabe na música.",
+      "review_ahead": "Nada está pendente agora, então você está revisando isto um pouco antes.",
+      "stretch": "Nada está pendente agora, e você está pronto para este próximo passo."
+    },
+    "skills": "Habilidades trabalhadas",
+    "concepts": "Conceitos",
+    "howTitle": "Como funciona",
+    "howTake": "Cada execução começa com um compasso de contagem, depois você toca junto enquanto as notas acendem.",
+    "howRate": "Depois, avalie a execução com sinceridade: difícil, quase ou limpa.",
+    "howLadder": "Após duas execuções limpas seguidas, o andamento sobe 5 BPM; após uma difícil, desce 5.",
+    "howWarmUp": "Um aquecimento fica no mesmo andamento e não conta para o seu progresso.",
+    "howTempo": "Fácil ou difícil demais? Mude o andamento antes da próxima execução.",
+    "close": "Ocultar a explicação"
+  },
+  "sessionExercise": {
+    "check": "Verificar",
+    "right": "Certo!",
+    "wrong": "Não foi dessa vez.",
+    "next": "Continuar",
+    "skip": "Pular",
+    "soundFailed": "O som não carregou. Você precisa ouvi-lo para responder — tente de novo ou pule.",
+    "pictureFailed": "A imagem não carregou. Você precisa vê-la para responder — tente de novo ou pule.",
+    "unavailable": "Este exercício não pode ser mostrado agora. Pule — ele não conta contra você."
+  },
+  "sessionFretboardCell": {
+    "nameTheNote": "Que nota é esta?",
+    "findTheNote": "Encontre {note} na corda {string}, casas {from}–{to}",
+    "board": "Braço do instrumento",
+    "notes": "Notas"
+  },
+  "sessionDiagramShape": {
+    "nameTheShape": "Que forma é esta?",
+    "findTheDegree": "Toque a {degree} nesta forma",
+    "shapes": "Formas",
+    "unavailable": "Esta forma não pode ser mostrada agora. Pule — ela não conta contra você."
+  },
+  "tapCheck": {
+    "title": "Teste de toque",
+    "intro": "Por cerca de 20 segundos, toque em cada casa assim que ela acender. Assim sabemos quanto tempo um toque leva para você, e suas respostas são cronometradas pelo que você sabe, não pelo toque.",
+    "secondsLeft": "faltam {seconds} s",
+    "board": "Casas para tocar",
+    "start": "Começar",
+    "skip": "Pular"
+  },
+  "feltQuestions": {
+    "title": "Como foi?",
+    "easy": "Fácil",
+    "aboutRight": "Na medida",
+    "hard": "Difícil",
+    "skip": "Pular",
+    "drills": {
+      "nameTheNote": "Dizer as notas no braço",
+      "findTheNote": "Encontrar as notas no braço",
+      "textResponse": "Responder perguntas",
+      "audioRecognition": "Reconhecer o que você ouve",
+      "imageRecognition": "Reconhecer o que você vê",
+      "imageChoice": "Escolher uma imagem",
+      "audioSelection": "Escolher um som",
+      "nameTheShape": "Dizer as formas",
+      "findTheDegree": "Encontrar graus nas formas",
+      "other": "Este exercício",
+      "numeralToChord": "Achar acordes pelo grau",
+      "chordToNumeral": "Dizer o grau de um acorde",
+      "chordToFunction": "Dizer a função de um acorde",
+      "functionToChord": "Achar um acorde pela função",
+      "chartToNumbers": "Ler cifras pelos graus",
+      "numbersToChart": "Escolher a cifra de uma progressão",
+      "cadenceThenChord": "Dizer o grau de um acorde que você ouve",
+      "progressionByNumber": "Dizer a progressão que você ouve"
+    }
+  },
+  "practiceHomeView": {
+    "summaryError": "Não conseguimos carregar a prática deste instrumento.",
+    "practiceDays": "Dias de prática",
+    "daysOf7": "Nenhum dos últimos 7 dias | 1 dos últimos 7 dias | {count} dos últimos 7 dias",
+    "progressTitle": "Esta semana",
+    "noProgress": "Nada mudou ainda esta semana. Uma sessão vai aparecer aqui.",
+    "measures": {
+      "accuracy": "Precisão",
+      "fluency": "Fluência",
+      "best_clean_tempo_bpm": "Melhor andamento limpo"
+    },
+    "tempoChange": "{before} → {after} BPM",
+    "nextStepsTitle": "Próximos passos",
+    "steps": {
+      "refresh": "Revisar",
+      "strengthen": "Fortalecer",
+      "ready_to_start": "Pronto para começar"
+    },
+    "seeAll": "Ver todos ({count})",
+    "skillsTitle": "Suas habilidades",
+    "nothingToPractise": "Ainda não há nada para praticar neste instrumento.",
+    "anyInstrument": "Qualquer instrumento",
+    "fading": "Esmaecendo",
+    "coverage": "{met} de {total} dominados",
+    "levels": {
+      "new": "Novo",
+      "learning": "Aprendendo",
+      "accurate": "Preciso",
+      "fluent": "Fluente",
+      "retained": "Retido"
+    },
+    "fretboard": {
+      "title": "Mapa do braço",
+      "label": "Mapa do braço, cada casa colorida conforme o quanto você a conhece",
+      "noun": "o mapa do braço",
+      "error": "Não foi possível carregar o mapa do braço.",
+      "cell": "{place}: {level}",
+      "cellFading": "{place}: {level}, esmaecendo"
+    }
+  },
+  "yourProgressView": {
+    "title": "Seu progresso",
+    "back": "Voltar",
+    "allInstruments": "Todos os instrumentos",
+    "learningDays": "Dias de estudo",
+    "learned": "estudou",
+    "practiceDays": "Dias de prática",
+    "practised": "praticou",
+    "instrumentChoice": "Instrumento",
+    "anyInstrument": "Qualquer",
+    "movedTitle": "Avançou esta semana",
+    "instrumentError": "Não conseguimos carregar seu progresso neste instrumento."
+  },
+  "studentHome": {
+    "greeting": {
+      "morning": "Bom dia",
+      "afternoon": "Boa tarde",
+      "evening": "Boa noite"
+    },
+    "today": {
+      "eyebrow": "Prática de hoje · {instrument}",
+      "eyebrowAnyInstrument": "Prática de hoje",
+      "step": "{kind}: {skill}",
+      "kinds": {
+        "refresh": "Revisar",
+        "strengthen": "Fortalecer",
+        "ready_to_start": "Pronto para começar"
+      },
+      "length": "Cerca de {minutes} minutos",
+      "start": "Começar a praticar",
+      "nothingSuggested": "Nada para revisar agora. Comece uma sessão e pratique o que escolher.",
+      "error": "Não conseguimos carregar a prática de hoje."
+    },
+    "path": {
+      "step": "Passo {position} · {title}",
+      "noPath": "Siga uma trilha e o próximo passo dela aparece aqui.",
+      "findPath": "Encontrar uma trilha",
+      "error": "Não conseguimos carregar sua trilha."
+    },
+    "week": {
+      "title": "Esta semana",
+      "minutes": "Minutos",
+      "streak": "Dias seguidos",
+      "songs": "Músicas",
+      "minutesMore": "+{count} vs. anterior",
+      "minutesFewer": "{count} a menos que a anterior",
+      "minutesSame": "Igual à anterior",
+      "best": "Recorde: {count}",
+      "startStreak": "Comece hoje · recorde {count}",
+      "startFirstStreak": "Comece hoje",
+      "songsThisWeek": "+{count} esta semana",
+      "error": "Não conseguimos carregar esta semana.",
+      "skillsUp": "Habilidades em alta",
+      "skillsUpThisWeek": "esta semana"
+    },
+    "skills": {
+      "title": "Suas habilidades",
+      "seeAll": "Ver tudo",
+      "fading": "{count} enfraquecendo — revise-a | {count} enfraquecendo — revise-as",
+      "error": "Não conseguimos carregar suas habilidades."
+    }
+  },
+  "weekDays": {
+    "count": "{label} · {count} de 7",
+    "today": "(hoje)"
+  },
+  "howToAnswer": {
+    "title": "Como responder",
+    "interaction": {
+      "imageRecognitionMultiple": "Toque em todas as áreas da imagem que respondem ao enunciado.",
+      "imageRecognitionSingle": "Toque na área da imagem que responde ao enunciado.",
+      "diagramRecognitionMultiple": "Toque em todos os marcadores do diagrama que respondem ao enunciado.",
+      "diagramRecognitionSingle": "Toque no marcador do diagrama que responde ao enunciado.",
+      "imageChoiceMultiple": "Toque em todas as imagens que se aplicam.",
+      "imageChoiceSingle": "Toque na imagem que responde ao enunciado.",
+      "defaultMultiple": "Toque em todas as opções que se aplicam.",
+      "defaultSingle": "Toque na opção que responde ao enunciado."
+    },
+    "changeHint": "Depois toque em Próximo. Você pode voltar e mudar uma resposta até terminar; vale a que você deixar ao seguir."
+  },
+  "challengeRun": {
+    "tag": "Desafio",
+    "exit": "Voltar para a lição",
+    "noAnswersYet": "As respostas só aparecem no final.",
+    "next": "Próximo",
+    "seeResult": "Ver resultado",
+    "errorMessage": "Não foi possível carregar este desafio.",
+    "empty": "Ainda não há desafio para esta lição.",
+    "backToLesson": "Voltar para a lição",
+    "doneTitle": "Desafio concluído",
+    "resultSummary": "{correct} de {total} corretas",
+    "finish": "Concluir",
+    "review": {
+      "heading": "Suas respostas",
+      "exercise": "Exercício {number}",
+      "yourAnswer": "Sua resposta: {label}",
+      "rightAnswer": "Resposta certa: {label}",
+      "noAnswer": "Sem resposta",
+      "right": "Certa",
+      "wrong": "Errada"
+    }
+  },
+  "firstRun": {
+    "welcome": "Boas-vindas, {name}",
+    "welcomeNoName": "Boas-vindas",
+    "intro": "Duas perguntas rápidas e mostramos por onde começar.",
+    "instrumentQuestion": "O que você quer tocar?",
+    "experienceQuestion": "Quanto você já tocou?",
+    "experiences": {
+      "never_played": "Nunca toquei",
+      "plays_a_bit": "Toco um pouco",
+      "plays_well": "Toco bem"
+    },
+    "show": "Mostrar por onde começar",
+    "whereToStart": "Por onde começar",
+    "change": "Alterar",
+    "paths": "{count} trilha | {count} trilhas",
+    "courses": "{count} curso | {count} cursos",
+    "kinds": {
+      "path": "Trilha",
+      "course": "Curso"
+    },
+    "lessons": "{count} aula | {count} aulas",
+    "closestNew": "Ainda não há nada para iniciantes no {instrument}. Os mais próximos:",
+    "closestLevel": "Ainda não há nada no seu nível no {instrument}. Os mais próximos:",
+    "nothingTitle": "Ainda não há cursos de {instrument}",
+    "nothingMessage": "Estamos adicionando mais. Fale com a gente e ajudamos você a começar.",
+    "askWhatsApp": "Fale com a gente no WhatsApp",
+    "notSure": "Na dúvida? Fale com a gente no WhatsApp",
+    "browse": "Ver tudo em Explorar",
+    "error": "Não foi possível carregar por onde começar.",
+    "homeError": "Não foi possível carregar seu início.",
+    "whatsAppMessage": "Oi! Estou começando no MotifPath e queria ajuda para escolher por onde começar.",
+    "backToWhereToStart": "Por onde começar"
+  },
+  "catalogCard": {
+    "inLearning": "Aprendendo",
+    "finished": "Concluído",
+    "parts": "{count} parte | {count} partes",
+    "lessons": "{count} lição | {count} lições"
+  },
+  "discoverView": {
+    "segments": "Cursos ou trilhas",
+    "courses": "Cursos",
+    "paths": "Trilhas",
+    "search": {
+      "courses": "Buscar cursos",
+      "paths": "Buscar trilhas"
+    },
+    "count": {
+      "courses": "{count} curso · A–Z | {count} cursos · A–Z",
+      "paths": "{count} trilha · A–Z | {count} trilhas · A–Z"
+    },
+    "noMatches": {
+      "courses": "Nenhum curso encontrado",
+      "paths": "Nenhuma trilha encontrada"
+    },
+    "nothingFor": {
+      "searchAndFilters": "Nada para “{q}” com {filters}. Tente outra palavra ou menos filtros.",
+      "search": "Nada para “{q}”. Tente outra palavra.",
+      "filters": "Nada com {filters}. Tente menos filtros."
+    },
+    "clearFilters": "Limpar filtros",
+    "otherMatches": {
+      "courses": "{count} curso encontrado | {count} cursos encontrados",
+      "paths": "{count} trilha encontrada | {count} trilhas encontradas"
+    },
+    "showOther": {
+      "courses": "Ver cursos",
+      "paths": "Ver trilhas"
+    },
+    "empty": {
+      "courses": "Nenhum curso ainda",
+      "paths": "Nenhuma trilha ainda"
+    },
+    "emptyMessage": "Os professores ainda estão criando. Volte em breve.",
+    "loadFailed": "O catálogo não carregou. Verifique sua conexão e tente de novo."
+  },
+  "discoverFilters": {
+    "title": "Filtros",
+    "close": "Fechar filtros",
+    "groups": {
+      "levels": "Nível",
+      "instrument": "Instrumento",
+      "language": "Idioma",
+      "teacher": "Professor"
+    },
+    "show": {
+      "courses": "Mostrar {shown} curso | Mostrar {shown} cursos",
+      "paths": "Mostrar {shown} trilha | Mostrar {shown} trilhas"
+    },
+    "showUnknown": "Mostrar resultados"
+  },
+  "sessionGeneratedChoice": {
+    "numeralToChord": "Em {key}, qual acorde é o {numeral}?",
+    "chordToNumeral": "Em {key}, que grau é este acorde?",
+    "chordToFunction": "Em {key}, o que o {chord} faz?",
+    "functionToChord": "Em {key}, qual acorde {function}?",
+    "functions": {
+      "tonic": "repousa",
+      "subdominant": "se afasta",
+      "dominant": "puxa para casa"
+    },
+    "chartToNumbers": "Que progressão é esta cifra?",
+    "numbersToChart": "Qual cifra é {progression}?",
+    "cadenceThenChord": "Qual acorde você ouve?",
+    "progressionByNumber": "Qual progressão você ouve?",
+    "heard": {
+      "cadence": "Uma cadência define o tom, depois o acorde",
+      "tonic": "A tônica define o tom, depois o acorde",
+      "progression": "Quatro acordes, num tom que não é dito"
+    },
+    "chordsOfKey": "Os quatro são acordes de {key} maior.",
+    "keyOf": "Tom de {key} maior",
+    "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."
+  }
+}

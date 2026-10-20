@@ -1,0 +1,705 @@
+{
+  "pathView": {
+    "heading": "My path",
+    "coursePart": "{course} · Part {part} of {parts}",
+    "sectionCount": "{done} of {total}",
+    "kind": {
+      "video": "Video",
+      "article": "Article"
+    },
+    "upNext": "Up next · step {position} of {total}",
+    "startLesson": "Start lesson",
+    "meta": {
+      "done": "{kind} · Done",
+      "current": "Up next · {kind}",
+      "language": "Only in {language} for now"
+    },
+    "locked": {
+      "title": "Step {position} opens later",
+      "message": "Finish step {current}, “{title}”, and the steps after it open one by one.",
+      "action": "Go to step {current}"
+    },
+    "language": {
+      "title": "Not in {ownLanguage} yet",
+      "message": {
+        "video": "This lesson is only in {language} for now. Watch it in {language} — finishing it opens the next step.",
+        "article": "This lesson is only in {language} for now. Read it in {language} — finishing it opens the next step."
+      },
+      "action": {
+        "video": "Watch in {language}",
+        "article": "Read in {language}"
+      }
+    },
+    "complete": {
+      "title": "You finished {title}",
+      "message": "{total} of {total} steps. What you learned keeps coming back in Practice so it stays with you.",
+      "findNext": "Find your next path",
+      "practise": "Practise what you learned"
+    },
+    "empty": {
+      "title": "No path yet",
+      "message": "A path is a short series of lessons, in order. Pick a course or a path to start one.",
+      "action": "Explore courses and paths"
+    },
+    "errorMessage": "We couldn't load your path."
+  },
+  "nodeView": {
+    "heading": "Lesson",
+    "backToMyPath": "Back to My path",
+    "stepMeta": "Step {position} of {total} · {kind}",
+    "stepMetaDone": "Step {position} of {total} · {kind} · Done",
+    "errorMessage": "We couldn't load this lesson.",
+    "notFound": {
+      "title": "This lesson isn't on your path",
+      "message": "It may have moved or been replaced. Your path shows where you are.",
+      "action": "Go to My path"
+    },
+    "locked": {
+      "title": "This step opens later",
+      "message": "Finish step {position}, “{title}”, first. Steps open one by one.",
+      "messageNoCurrent": "Finish the steps before it first. Steps open one by one.",
+      "action": "Go to step {position}",
+      "actionNoCurrent": "Go to My path"
+    },
+    "noVideo": "This lesson doesn't have a video yet.",
+    "noText": "This lesson doesn't have any text yet.",
+    "playbackError": "The video didn't load.",
+    "playerLoadError": "The video player couldn't load. Reload the page to try again.",
+    "tryIt": {
+      "title": "Now try it",
+      "message": "A few short exercises on what you just watched. They finish this step.",
+      "messageArticle": "A few short exercises on what you just read. They finish this step."
+    },
+    "practiseThis": "Practise this",
+    "practiseAgain": "Practise again",
+    "stepDone": "Step done",
+    "savingProgress": "Saving your progress…",
+    "articleEnd": {
+      "title": "That's the lesson.",
+      "markAsDone": "Mark as done",
+      "marksDone": "Marks step {position} done.",
+      "marksDoneAndOpens": "Marks step {position} done and opens step {next}."
+    },
+    "review": {
+      "partMeta": "Part {part} · Lesson {lesson} of {total} · {kind} · Done",
+      "pathMeta": "Lesson {lesson} of {total} · {kind} · Done",
+      "upNextPart": "Up next · Part {part} · Lesson {lesson} of {total}",
+      "upNextPath": "Up next · Lesson {lesson} of {total}",
+      "backTo": "Back to {title}",
+      "lastLesson": "That was the last lesson of {title}.",
+      "goToLearning": "Go to Learning",
+      "opensLater": {
+        "title": "This lesson opens later",
+        "message": "It's in a course or path you haven't finished yet. You'll reach it from My path.",
+        "action": "Go to My path"
+      }
+    }
+  },
+  "lessonPlayer": {
+    "play": "Play",
+    "seek": "Seek",
+    "mute": "Mute",
+    "fullscreen": "Fullscreen",
+    "resizeAside": "Resize the notes panel",
+    "resetAsideWidth": "Reset the notes panel to its default size"
+  },
+  "learningView": {
+    "heading": "Learning",
+    "errorMessage": "We couldn't load your courses and paths.",
+    "emptyHeading": "Nothing here yet",
+    "emptyMessage": "Courses and paths you start show up here.",
+    "explore": "Explore courses and paths",
+    "nothingInProgress": "Nothing in progress",
+    "findNextCourse": "Find your next course",
+    "inProgress": "In progress",
+    "finished": "Finished",
+    "left": "Left",
+    "nowOn": "Now on {title}",
+    "undo": "Undo",
+    "leaveCourseTitle": "Leave {title}?",
+    "leaveCourseMessage": "You lose your place. Starting again begins at part 1. Your practice and skill levels stay.",
+    "leaveCourseConfirm": "Leave course",
+    "removePathTitle": "Remove {title}?",
+    "removePathMessage": "You lose your place in it. Your practice and skill levels stay.",
+    "removePathConfirm": "Remove",
+    "continueWith": "You'll continue with {title}.",
+    "leaveFailedAfterSwitch": "You're now on {now}, but {title} wasn't left. Try again."
+  },
+  "learningCard": {
+    "course": "Course",
+    "path": "Path",
+    "part": "Part {position} of {count}",
+    "finished": "Finished",
+    "assignedBy": "Assigned by {name}",
+    "current": "Current",
+    "parts": "{completed} of {count} part | {completed} of {count} parts",
+    "partsSummary": "{completed} of {count} part done | {completed} of {count} parts done",
+    "lessons": "{completed} of {count} lesson | {completed} of {count} lessons",
+    "lessonsSummary": "{completed} of {count} lesson done | {completed} of {count} lessons done",
+    "startAgainCourse": "Start again from part 1",
+    "startAgainPath": "Start again from the first lesson",
+    "more": "More for {title}",
+    "newVersion": "New version available"
+  },
+  "partRow": {
+    "part": "Part {position}",
+    "lessons": "{count} lesson | {count} lessons",
+    "lessonsDone": "{completed} of {count} lesson done | {completed} of {count} lessons done",
+    "done": "Done",
+    "lessonDone": "Done",
+    "moreDone": "{count} more done",
+    "more": "… {count} more"
+  },
+  "learningMenu": {
+    "courseDetails": "Course details",
+    "pathDetails": "Path details",
+    "leaveCourse": "Leave course",
+    "removePath": "Remove from Learning",
+    "update": "Update to the latest version"
+  },
+  "updateCopy": {
+    "title": "Update {title}?",
+    "courseMessage": "You get the latest parts, lessons and picture. Lessons you finished stay finished. If the lesson you are on was removed, you continue at the next one you haven't finished. This can't be undone.",
+    "pathMessage": "You get the latest lessons and picture. Lessons you finished stay finished. If the lesson you are on was removed, you continue at the next one you haven't finished. This can't be undone.",
+    "updateCourse": "Update course",
+    "updatePath": "Update path",
+    "notNow": "Not now",
+    "tryAgain": "Try again",
+    "courseFailed": "We couldn't update the course. Nothing changed. Check your connection and try again.",
+    "pathFailed": "We couldn't update the path. Nothing changed. Check your connection and try again.",
+    "upToDate": "{title} is up to date"
+  },
+  "courseDetailView": {
+    "newVersionHeading": "A newer version is available",
+    "newVersionMessage": "Get the latest parts, lessons and picture. Lessons you finished stay finished.",
+    "errorMessage": "We couldn't load this course.",
+    "notFoundHeading": "This course is not published yet",
+    "notFoundMessage": "This course is not available in the catalog.",
+    "backToLearning": "Back to Learning",
+    "backToDiscover": "Back to Discover",
+    "backToWhereToStart": "Back to Where to start",
+    "start": "Start course",
+    "continuePart": "Continue part {position}",
+    "leftBefore": "You left this course before. Starting again begins at part 1.",
+    "finished": "Finished",
+    "practise": "Practise what you learned",
+    "openInPath": "Open in My path",
+    "leave": "Leave this course",
+    "outline": "Course outline",
+    "parts": "{count} part | {count} parts",
+    "startedNotCurrent": "{title} is in Learning, but {current} is still current.",
+    "partsLoadFailed": "The lessons didn't load."
+  },
+  "courseCompletedView": {
+    "errorMessage": "We couldn't load your course.",
+    "notFoundHeading": "Nothing to celebrate here yet",
+    "notFoundMessage": "This course isn't one you've finished.",
+    "findNextCourse": "Find your next course",
+    "myCourses": "My learning",
+    "finished": "You finished {title}",
+    "keepsComingBack": "What you learned keeps coming back in Practice so it stays with you.",
+    "continueItem": "Continue {title}"
+  },
+  "sendToTeacher": {
+    "button": "Send to your teacher",
+    "hint": "Opens WhatsApp. Your message goes to the MotifPath team.",
+    "greeting": "Hi!",
+    "greetingNamed": "Hi! I'm {name}.",
+    "pathLine": "Path: {title}",
+    "lessonLine": "Lesson: {title}",
+    "referenceLine": "Ref: {reference}",
+    "prompt": "My question or recording:"
+  },
+  "pathDetailView": {
+    "backToLearning": "Back to Learning",
+    "newVersionHeading": "A newer version is available",
+    "newVersionMessage": "Get the latest lessons and picture. Lessons you finished stay finished.",
+    "errorMessage": "We couldn't load this path.",
+    "notFoundHeading": "This path is not published yet",
+    "notFoundMessage": "This path is not available in the catalog.",
+    "continue": "Continue path",
+    "outlineHeading": "Path outline",
+    "start": "Start path",
+    "inLearning": "In Learning",
+    "reviewHeading": "Lessons"
+  },
+  "practiceSessionView": {
+    "title": "Practice",
+    "intro": "Choose the instrument in your hands, or practise in your head, and how long you have.",
+    "instrumentLabel": "Instrument in your hands",
+    "minutesLabel": "How long",
+    "minutesOption": "{minutes} min",
+    "start": "Start practising",
+    "starting": "Putting your session together…",
+    "instrumentsError": "We couldn't load the instruments. Check your connection and try again.",
+    "planError": "We couldn't put your session together. Your choices are kept — try again.",
+    "nothingToPlay": "There’s nothing to play on this instrument yet. You can practise in your head instead.",
+    "practiseInTheHead": "Practise in my head",
+    "endSession": "End session",
+    "unsupported": "This kind of practice isn't available here yet.",
+    "skip": "Skip",
+    "reasons": {
+      "teacher_suggested": "Your teacher suggested this",
+      "due": "Due for review",
+      "weak": "Still settling in",
+      "new": "New",
+      "warm_up": "Warm-up",
+      "application": "Put it into music",
+      "review_ahead": "Reviewing ahead",
+      "stretch": "A step further"
+    },
+    "doneTitle": "Session done",
+    "practiseAgain": "Practise again",
+    "progressLabel": "Session progress",
+    "applyIt": "Apply it",
+    "close": "Close",
+    "inMyHead": "In my head",
+    "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument.",
+    "findWhereToStart": "Find where to start"
+  },
+  "sessionChord": {
+    "voicingHint": "Fret it, strum once and let it ring.",
+    "rootFifthHint": "Root, then fifth, each note ringing its full length.",
+    "bassBoard": "Bass board with the places to play for {chord}",
+    "bassChangeBoard": "Bass board with the roots of {from} and {to}",
+    "unavailable": "This chord can’t be shown right now. Skip it — it won’t count against you.",
+    "skip": "Skip",
+    "everyBeat": "Change on every beat",
+    "everyBeatDetail": "change on every beat",
+    "best": "best {count} clean changes",
+    "noBest": "no clean minute yet",
+    "goal": "Goal {count} changes a minute",
+    "readyHint": "Set the tempo first: the metronome ticks while you try it. Start the minute gives a bar of count-in.",
+    "start": "Start the minute",
+    "runningHint": "Nothing to tap while the minute runs. Keep changing on every beat.",
+    "countIn": "Count-in",
+    "timeUp": "Time is up. Count only the changes where every string rang.",
+    "timeUpBass": "Time is up. Count only the changes where the root rang clean.",
+    "cleanChanges": "clean changes",
+    "cleanChangesBest": "clean changes · best {count}",
+    "save": "Save {count} change | Save {count} changes"
+  },
+  "sessionPlan": {
+    "chords": {
+      "voicing": "Play {chord} clean",
+      "change": "{from} and {to}, back and forth",
+      "rootFifth": "Play the root and fifth of {chord}",
+      "rootChange": "{from} and {to} roots, back and forth"
+    },
+    "title": "Today's plan",
+    "start": "Let's go",
+    "playAlong": "Play-along",
+    "cells": "{drill} · {count} note | {drill} · {count} notes",
+    "shapes": "{drill} · {count} shape | {drill} · {count} shapes",
+    "drills": {
+      "nameTheNote": "Name the note",
+      "findTheNote": "Find the note",
+      "nameTheShape": "Name the shape",
+      "findTheDegree": "Find the degree",
+      "numeralToChord": "Chords by number",
+      "chordToNumeral": "Numbers of chords",
+      "chordToFunction": "What chords do",
+      "functionToChord": "Chords by what they do",
+      "chartToNumbers": "Reading charts",
+      "numbersToChart": "Picking charts",
+      "cadenceThenChord": "Chords by ear",
+      "progressionByNumber": "Progressions by ear"
+    },
+    "nextUp": {
+      "played": "You played {name} up to {tempo}.",
+      "next": "Next",
+      "continue": "Continue"
+    },
+    "meta": "{minutes} min · {instrument}",
+    "kinds": {
+      "exercise": "Exercise",
+      "playAlong": "Play-along",
+      "fretboard": "Fretboard",
+      "chordChange": "Chord change",
+      "harmony": "Harmony",
+      "ear": "Ear",
+      "chord": "Chord",
+      "guideTones": "Guide tones"
+    }
+  },
+  "sessionSummary": {
+    "minutes": "{minutes} min · {instrument}",
+    "withItems": "{ran} · {count} item | {ran} · {count} items",
+    "whatYouPractised": "What you practised",
+    "played": "up to {tempo} · {rating}",
+    "counted": "{right} of {answered} right",
+    "changes": "{count} clean changes at {tempo} BPM · {rating}",
+    "right": "Right",
+    "notQuite": "Not quite",
+    "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
+    "done": "Done"
+  },
+  "playAlongTake": {
+    "goal": "Goal {goal} · best clean {best}",
+    "noBest": "none yet",
+    "warmUpHint": "Warm-up: play it relaxed. It doesn't count toward your progress.",
+    "start": "Start take",
+    "countInHint": "A bar of count-in, then play along.",
+    "playing": "Play along. The take ends by itself. Wrong tempo? Restart goes back to the tempo without rating.",
+    "stopEarly": "Stop early",
+    "ratePrompt": "How was that take at {tempo}?",
+    "chordPrompt": "How did {chord} sound?",
+    "ratings": {
+      "struggled": "Struggled",
+      "almost": "Almost",
+      "clean": "Clean"
+    },
+    "ratingHints": {
+      "struggled": "Fell apart or had to stop",
+      "almost": "Got through with slips",
+      "clean": "No slips"
+    },
+    "up": "Clean twice: up to {tempo}.",
+    "down": "Let's settle it at {tempo}.",
+    "loadError": "The sound didn't load. Check your connection and try again.",
+    "unavailable": "This diagram can't be played here.",
+    "skip": "Skip",
+    "slower": "{step} BPM slower",
+    "faster": "{step} BPM faster",
+    "info": "About this practice",
+    "takeOf": "Take {current} of {total}",
+    "restart": "Restart",
+    "restartUnrated": "Restart without rating"
+  },
+  "playAlongInfo": {
+    "title": "About this practice",
+    "whyTitle": "Why now",
+    "why": {
+      "teacher_suggested": "Your teacher suggested you practise this.",
+      "due": "You've practised this before, and it's time to review it so it stays with you.",
+      "weak": "You've started this, and it isn't secure yet. A few more takes will settle it.",
+      "new": "Something new from your path, to start building it.",
+      "warm_up": "Something you already play well, to get your hands going. It doesn't count toward your progress.",
+      "application": "Putting what you know into music.",
+      "review_ahead": "Nothing is due right now, so you're reviewing this a little early.",
+      "stretch": "Nothing is due right now, and you're ready for this next step."
+    },
+    "skills": "Skills it works on",
+    "concepts": "Concepts",
+    "howTitle": "How it works",
+    "howTake": "Each take starts with a bar of count-in, then you play along as the notes light up.",
+    "howRate": "Afterwards, rate the take honestly: struggled, almost or clean.",
+    "howLadder": "After two clean takes in a row the tempo goes up 5 BPM; after a struggle it comes down 5.",
+    "howWarmUp": "A warm-up stays at the same tempo and doesn't count toward your progress.",
+    "howTempo": "Too easy or too hard? Change the tempo before the next take.",
+    "close": "Hide the explanation"
+  },
+  "sessionExercise": {
+    "check": "Check",
+    "right": "Right!",
+    "wrong": "Not quite.",
+    "next": "Continue",
+    "skip": "Skip",
+    "soundFailed": "The sound didn’t load. You need to hear it to answer — try again, or skip it.",
+    "pictureFailed": "The picture didn’t load. You need to see it to answer — try again, or skip it.",
+    "unavailable": "This exercise can’t be shown right now. Skip it — it won’t count against you."
+  },
+  "sessionFretboardCell": {
+    "nameTheNote": "Name this note",
+    "findTheNote": "Find {note} on string {string}, frets {from}–{to}",
+    "board": "Fretboard",
+    "notes": "Notes"
+  },
+  "sessionDiagramShape": {
+    "nameTheShape": "Which shape is this?",
+    "findTheDegree": "Tap the {degree} in this shape",
+    "shapes": "Shapes",
+    "unavailable": "This shape can’t be shown right now. Skip it — it won’t count against you."
+  },
+  "tapCheck": {
+    "title": "Tap check",
+    "intro": "For about 20 seconds, tap each fret as soon as it lights up. It tells us how long a tap takes you, so your answers are timed on what you know, not on your tapping.",
+    "secondsLeft": "{seconds} s left",
+    "board": "Frets to tap",
+    "start": "Start",
+    "skip": "Skip"
+  },
+  "feltQuestions": {
+    "title": "How did it feel?",
+    "easy": "Easy",
+    "aboutRight": "About right",
+    "hard": "Hard",
+    "skip": "Skip",
+    "drills": {
+      "nameTheNote": "Naming notes on the fretboard",
+      "findTheNote": "Finding notes on the fretboard",
+      "textResponse": "Answering questions",
+      "audioRecognition": "Recognising what you hear",
+      "imageRecognition": "Recognising what you see",
+      "imageChoice": "Choosing a picture",
+      "audioSelection": "Choosing a sound",
+      "nameTheShape": "Naming shapes",
+      "findTheDegree": "Finding degrees in shapes",
+      "other": "This drill",
+      "numeralToChord": "Finding chords by number",
+      "chordToNumeral": "Naming the number of a chord",
+      "chordToFunction": "Naming what a chord does",
+      "functionToChord": "Finding a chord by what it does",
+      "chartToNumbers": "Reading charts by number",
+      "numbersToChart": "Picking the chart of a progression",
+      "cadenceThenChord": "Naming the number of a chord you hear",
+      "progressionByNumber": "Naming a progression you hear"
+    }
+  },
+  "practiceHomeView": {
+    "summaryError": "We couldn't load this instrument's practice.",
+    "practiceDays": "Practice days",
+    "daysOf7": "None of the last 7 days | 1 of the last 7 days | {count} of the last 7 days",
+    "progressTitle": "This week",
+    "noProgress": "Nothing has moved yet this week. A session will show it here.",
+    "measures": {
+      "accuracy": "Accuracy",
+      "fluency": "Fluency",
+      "best_clean_tempo_bpm": "Best clean tempo"
+    },
+    "tempoChange": "{before} → {after} BPM",
+    "nextStepsTitle": "Next steps",
+    "steps": {
+      "refresh": "Refresh",
+      "strengthen": "Strengthen",
+      "ready_to_start": "Ready to start"
+    },
+    "seeAll": "See all ({count})",
+    "skillsTitle": "Your skills",
+    "nothingToPractise": "Nothing to practise on this instrument yet.",
+    "anyInstrument": "Any instrument",
+    "fading": "Fading",
+    "coverage": "{met} of {total} met",
+    "levels": {
+      "new": "New",
+      "learning": "Learning",
+      "accurate": "Accurate",
+      "fluent": "Fluent",
+      "retained": "Retained"
+    },
+    "fretboard": {
+      "title": "Your fretboard",
+      "label": "Your fretboard, each cell coloured by how well you know it",
+      "noun": "your fretboard",
+      "error": "Couldn’t load your fretboard.",
+      "cell": "{place}: {level}",
+      "cellFading": "{place}: {level}, fading"
+    }
+  },
+  "yourProgressView": {
+    "title": "Your progress",
+    "back": "Back",
+    "allInstruments": "All instruments",
+    "learningDays": "Learning days",
+    "learned": "learned",
+    "practiceDays": "Practice days",
+    "practised": "practised",
+    "instrumentChoice": "Instrument",
+    "anyInstrument": "Any instrument",
+    "movedTitle": "Moved this week",
+    "instrumentError": "We couldn't load your progress on this instrument."
+  },
+  "studentHome": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "today": {
+      "eyebrow": "Today’s practice · {instrument}",
+      "eyebrowAnyInstrument": "Today’s practice",
+      "step": "{kind}: {skill}",
+      "kinds": {
+        "refresh": "Refresh",
+        "strengthen": "Strengthen",
+        "ready_to_start": "Ready to start"
+      },
+      "length": "About {minutes} minutes",
+      "start": "Start practice",
+      "nothingSuggested": "Nothing to refresh right now. Start a session and practise what you choose.",
+      "error": "We couldn't load today's practice."
+    },
+    "path": {
+      "step": "Step {position} · {title}",
+      "noPath": "Follow a path and its next step shows here.",
+      "findPath": "Find a path",
+      "error": "We couldn't load your path."
+    },
+    "week": {
+      "title": "This week",
+      "minutes": "Minutes",
+      "streak": "Day streak",
+      "songs": "Songs",
+      "minutesMore": "+{count} vs last wk",
+      "minutesFewer": "{count} fewer than last wk",
+      "minutesSame": "Same as last wk",
+      "best": "Best: {count}",
+      "startStreak": "Start one today · best {count}",
+      "startFirstStreak": "Start one today",
+      "songsThisWeek": "+{count} this week",
+      "error": "We couldn't load this week.",
+      "skillsUp": "Skills up",
+      "skillsUpThisWeek": "this week"
+    },
+    "skills": {
+      "title": "Your skills",
+      "seeAll": "See all",
+      "fading": "{count} fading — refresh it | {count} fading — refresh them",
+      "error": "We couldn't load your skills."
+    }
+  },
+  "weekDays": {
+    "count": "{label} · {count} of 7",
+    "today": "(today)"
+  },
+  "howToAnswer": {
+    "title": "How to answer",
+    "interaction": {
+      "imageRecognitionMultiple": "Tap every area on the image that answers the prompt.",
+      "imageRecognitionSingle": "Tap the area on the image that answers the prompt.",
+      "diagramRecognitionMultiple": "Tap every marker on the diagram that answers the prompt.",
+      "diagramRecognitionSingle": "Tap the marker on the diagram that answers the prompt.",
+      "imageChoiceMultiple": "Tap every image that applies.",
+      "imageChoiceSingle": "Tap the image that answers the prompt.",
+      "defaultMultiple": "Tap every option that applies.",
+      "defaultSingle": "Tap the option that answers the prompt."
+    },
+    "changeHint": "Then tap Next. You can go back and change an answer until you finish; the one you move on with is the one that counts."
+  },
+  "challengeRun": {
+    "tag": "Challenge",
+    "exit": "Back to lesson",
+    "noAnswersYet": "No answers are shown until the end.",
+    "next": "Next",
+    "seeResult": "See result",
+    "errorMessage": "We couldn't load this challenge.",
+    "empty": "There's no challenge for this lesson yet.",
+    "backToLesson": "Back to lesson",
+    "doneTitle": "Challenge done",
+    "resultSummary": "{correct} of {total} correct",
+    "finish": "Finish",
+    "review": {
+      "heading": "Your answers",
+      "exercise": "Exercise {number}",
+      "yourAnswer": "Your answer: {label}",
+      "rightAnswer": "Right answer: {label}",
+      "noAnswer": "Not answered",
+      "right": "Right",
+      "wrong": "Wrong"
+    }
+  },
+  "firstRun": {
+    "welcome": "Welcome, {name}",
+    "welcomeNoName": "Welcome",
+    "intro": "Two quick questions and we'll show you where to start.",
+    "instrumentQuestion": "What do you want to play?",
+    "experienceQuestion": "How much have you played it?",
+    "experiences": {
+      "never_played": "Never played",
+      "plays_a_bit": "I can play a bit",
+      "plays_well": "I play well"
+    },
+    "show": "Show me where to start",
+    "whereToStart": "Where to start",
+    "change": "Change",
+    "paths": "{count} path | {count} paths",
+    "courses": "{count} course | {count} courses",
+    "kinds": {
+      "path": "Path",
+      "course": "Course"
+    },
+    "lessons": "{count} lesson | {count} lessons",
+    "closestNew": "Nothing for beginners on {instrument} yet. These are the closest:",
+    "closestLevel": "Nothing at your level on {instrument} yet. These are the closest:",
+    "nothingTitle": "No {instrument} courses yet",
+    "nothingMessage": "We're adding more. Ask us and we'll help you find a way in.",
+    "askWhatsApp": "Ask us on WhatsApp",
+    "notSure": "Not sure? Ask us on WhatsApp",
+    "browse": "Browse everything in Discover",
+    "error": "Where to start couldn't load.",
+    "homeError": "Your home couldn't load.",
+    "whatsAppMessage": "Hi! I'm new to MotifPath and I'd like help choosing where to start.",
+    "backToWhereToStart": "Where to start"
+  },
+  "catalogCard": {
+    "inLearning": "In Learning",
+    "finished": "Finished",
+    "parts": "{count} part | {count} parts",
+    "lessons": "{count} lesson | {count} lessons"
+  },
+  "discoverView": {
+    "segments": "Courses or paths",
+    "courses": "Courses",
+    "paths": "Paths",
+    "search": {
+      "courses": "Search courses",
+      "paths": "Search paths"
+    },
+    "count": {
+      "courses": "{count} course · A–Z | {count} courses · A–Z",
+      "paths": "{count} path · A–Z | {count} paths · A–Z"
+    },
+    "noMatches": {
+      "courses": "No courses match",
+      "paths": "No paths match"
+    },
+    "nothingFor": {
+      "searchAndFilters": "Nothing for “{q}” with {filters}. Try another word or fewer filters.",
+      "search": "Nothing for “{q}”. Try another word.",
+      "filters": "Nothing with {filters}. Try fewer filters."
+    },
+    "clearFilters": "Clear filters",
+    "otherMatches": {
+      "courses": "{count} course matches | {count} courses match",
+      "paths": "{count} path matches | {count} paths match"
+    },
+    "showOther": {
+      "courses": "Show courses",
+      "paths": "Show paths"
+    },
+    "empty": {
+      "courses": "No courses yet",
+      "paths": "No paths yet"
+    },
+    "emptyMessage": "Teachers are still writing them. Come back soon.",
+    "loadFailed": "The catalog did not load. Check your connection and try again."
+  },
+  "discoverFilters": {
+    "title": "Filters",
+    "close": "Close filters",
+    "groups": {
+      "levels": "Level",
+      "instrument": "Instrument",
+      "language": "Language",
+      "teacher": "Teacher"
+    },
+    "show": {
+      "courses": "Show {shown} course | Show {shown} courses",
+      "paths": "Show {shown} path | Show {shown} paths"
+    },
+    "showUnknown": "Show results"
+  },
+  "sessionGeneratedChoice": {
+    "numeralToChord": "In {key}, which chord is {numeral}?",
+    "chordToNumeral": "In {key}, which numeral is this chord?",
+    "chordToFunction": "In {key}, what does {chord} do?",
+    "functionToChord": "In {key}, which chord {function}?",
+    "functions": {
+      "tonic": "is at rest",
+      "subdominant": "moves away",
+      "dominant": "pulls home"
+    },
+    "chartToNumbers": "Which progression is this chart?",
+    "numbersToChart": "Which chart is {progression}?",
+    "cadenceThenChord": "Which chord do you hear?",
+    "progressionByNumber": "Which progression do you hear?",
+    "heard": {
+      "cadence": "A cadence sets the key, then the chord",
+      "tonic": "The tonic sets the key, then the chord",
+      "progression": "Four chords, in a key you aren’t told"
+    },
+    "chordsOfKey": "All four are chords of {key} major.",
+    "keyOf": "Key of {key} major",
+    "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you."
+  }
+}

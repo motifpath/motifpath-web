@@ -1,0 +1,96 @@
+import { onScopeDispose, ref, watch } from 'vue'
+
+import { useApi } from '@/shared/composables/useApi'
+import type { components } from '@/api/generated/core-domain'
+
+/** A creator with how many of the list's items they made that the caller can see. */
+export type CreatorRef = components['schemas']['CreatorRef']
+
+const SEARCH_DEBOUNCE_MS = 300
+
+/**
+ * Which list the creators belong to: the learner course catalog (published
+ * courses, the same for everyone), the learner path catalog (published
+ * paths), the caller's authoring course list, the authoring path library
+ * (every path, any status), the diagram library the caller can see, the
+ * exercise pool, or the lessons.
+ */
+export type CourseCreatorsScope =
+  | 'catalog'
+  | 'path-catalog'
+  | 'managed'
+  | 'path-library'
+  | 'diagrams'
+  | 'exercises'
+  | 'lessons'
+
+const ENDPOINT = {
+  catalog: '/catalog/creators',
+  'path-catalog': '/catalog/path-creators',
+  managed: '/courses/creators',
+  'path-library': '/learning-paths/creators',
+  diagrams: '/diagrams/creators',
+  exercises: '/exercises/creators',
+  lessons: '/content-nodes/creators',
+} as const
+
+/**
+ * The teachers behind a course list, for its teacher filter. The list is
+ * complete (never paged) and comes back in name order; typing a name
+ * narrows it server-side once typing pauses.
+ */
+export function useCourseCreators(scope: CourseCreatorsScope = 'catalog') {
+  const { coreApi } = useApi()
+
+  const creators = ref<CreatorRef[]>([])
+  const nameQuery = ref('')
+  const isLoading = ref(false)
+  const error = ref(false)
+
+  let appliedQuery = ''
+  // Only the newest request may write its result — an older search that
+  // answers late must not replace the list for the name typed since.
+  let latestRequest = 0
+
+  async function load() {
+    const request = ++latestRequest
+    isLoading.value = true
+    error.value = false
+
+    const query = appliedQuery ? { q: appliedQuery } : {}
+    const result = await coreApi.GET(ENDPOINT[scope], { params: { query } })
+    if (request !== latestRequest) return
+
+    if (result.error || !result.data) {
+      error.value = true
+      creators.value = []
+    } else {
+      creators.value = result.data
+    }
+    isLoading.value = false
+  }
+
+  function applyQuery(text: string) {
+    const trimmed = text.trim()
+    if (trimmed === appliedQuery) return
+    appliedQuery = trimmed
+    void load()
+  }
+
+  // A search waits for typing to pause; clearing the name restores the full
+  // list at once, so reopening a picker never shows the previous search.
+  let searchTimer: ReturnType<typeof setTimeout> | undefined
+  watch(nameQuery, (text) => {
+    clearTimeout(searchTimer)
+    if (text.trim() === '') {
+      applyQuery(text)
+      return
+    }
+    searchTimer = setTimeout(() => applyQuery(text), SEARCH_DEBOUNCE_MS)
+  })
+  onScopeDispose(() => clearTimeout(searchTimer))
+
+  void load()
+
+  return { creators, nameQuery, isLoading, error, retry: load }
+}

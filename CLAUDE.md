@@ -51,6 +51,12 @@ NEVER put business logic directly in components — delegate to composables or s
 ALWAYS handle loading and error states in components that fetch data.
 NEVER ship a component that can render in a broken state due to missing null checks.
 ALWAYS use Vue Router named routes — NEVER hardcode path strings in components.
+NEVER reference an ADR, backlog item (PB-NNN), ticket, or spec file by name/number in a code
+comment — state the invariant, constraint, or reason in the comment's own words instead. A doc
+reference goes stale the moment that document is archived or renumbered, and forces every future
+reader (human or AI) into an external lookup to understand code sitting in front of them. Doc
+references belong in commit messages and PR descriptions, which are allowed to age — never in
+the comment itself.
 
 ## Branching
 Feature branches target `dev` — NEVER open a PR directly to `main`.

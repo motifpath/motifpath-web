@@ -1,0 +1,10 @@
+# mise — the pinned Node.js version for motifpath-web.
+#
+#   curl https://mise.run | sh        # install mise (once per machine)
+#   mise trust && mise install        # install the version pinned below
+#
+# Keep in step with motifpath-core's mise.toml, which runs this repo's dev
+# server in its full-stack process-compose setup.
+
+[tools]
+node = "26"

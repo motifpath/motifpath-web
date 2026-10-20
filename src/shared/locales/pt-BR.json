@@ -1,0 +1,544 @@
+{
+  "nav": {
+    "home": "Início",
+    "practice": "Praticar",
+    "findCourse": "Encontrar um curso",
+    "findPath": "Encontrar uma trilha",
+    "content": "Aulas",
+    "paths": "Trilhas",
+    "courses": "Cursos",
+    "exercises": "Exercícios",
+    "diagrams": "Diagramas",
+    "knowledgeMap": "Mapa de conhecimento",
+    "songCharts": "Cifras",
+    "engagement": "Engajamento",
+    "myPath": "Trilha",
+    "learning": "Aprender",
+    "discover": "Explorar",
+    "ariaLabel": "Principal"
+  },
+  "appBar": {
+    "accountMenuAriaLabel": "Menu da conta",
+    "themeToggleAriaLabel": "Alternar tema",
+    "brand": "MotifPath"
+  },
+  "editorAppBar": {
+    "back": "Voltar para {section}",
+    "save": "Salvar",
+    "saving": "Salvando…",
+    "saved": "Salvo ✓"
+  },
+  "unsavedChangesGuard": {
+    "title": "Sair sem salvar?",
+    "keepEditing": "Continuar editando",
+    "leave": "Sair"
+  },
+  "statusPanel": {
+    "label": "Status",
+    "beforeYouPublish": "Antes de publicar, adicione:"
+  },
+  "authoringStatus": {
+    "draft": "Rascunho",
+    "published": "Publicado",
+    "publishedVersion": "Publicado · v{version}",
+    "unpublishedChanges": "Alterações não publicadas",
+    "retired": "Descontinuado",
+    "notPublishedYet": "Ainda não publicado — os alunos não o encontram.",
+    "learnersGet": "Os alunos recebem a versão {version}.",
+    "learnersStillGet": "Os alunos ainda recebem a versão {version}.",
+    "publishToGiveThem": "Publique para que recebam suas alterações.",
+    "publish": "Publicar",
+    "publishChanges": "Publicar alterações",
+    "publishedAsVersion": "Publicado como versão {version}",
+    "seeWhatLearnersSee": "Ver o que os alunos veem"
+  },
+  "saveBlockers": {
+    "title": "Antes de salvar:"
+  },
+  "orderedRow": {
+    "moveUp": "Mover para cima",
+    "moveDown": "Mover para baixo",
+    "more": "Mais opções de {title}"
+  },
+  "previewLayer": {
+    "close": "Fechar a prévia",
+    "whatLearnersSee": "Prévia — o que os alunos veem",
+    "asStudent": "Prévia como aluno",
+    "notInPreview": "(não na prévia)"
+  },
+  "buttons": {
+    "save": "Salvar",
+    "tryAgain": "Tentar novamente",
+    "signOut": "Sair",
+    "backToPath": "Voltar para a trilha",
+    "back": "‹ Voltar"
+  },
+  "states": {
+    "loading": "Carregando…",
+    "locked": {
+      "title": "Esta etapa abre depois",
+      "message": "Complete a etapa anterior para desbloquear esta lição."
+    }
+  },
+  "errors": {
+    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente."
+  },
+  "localeSwitcher": {
+    "label": "Idioma",
+    "en": "English",
+    "ptBr": "Português"
+  },
+  "exerciseView": {
+    "noStimulusImage": "Sem imagem de estímulo",
+    "noStimulusAudio": "Sem áudio de estímulo",
+    "diagramChoice": "Corda {string}, casa {fret}",
+    "markRight": "Resposta certa",
+    "markWrong": "Sua resposta, errada",
+    "choiceMarkedRight": "{choice}, resposta certa",
+    "choiceMarkedWrong": "{choice}, sua resposta, errada",
+    "chooseCount": "Escolha {count}",
+    "soundNumber": "Som {number}"
+  },
+  "modalCloseButton": {
+    "ariaLabel": "Fechar"
+  },
+  "notFoundView": {
+    "title": "Esta página não está disponível",
+    "message": "Esta página não existe.",
+    "backToHome": "Voltar para o início"
+  },
+  "progressMeter": {
+    "summary": "{completed} de {total} etapas concluídas",
+    "short": "{completed} de {total}"
+  },
+  "toastStack": {
+    "dismissAriaLabel": "Dispensar"
+  },
+  "colorPalette": {
+    "clear": "Cor padrão",
+    "colors": {
+      "red": "Vermelho",
+      "orange": "Laranja",
+      "amber": "Âmbar",
+      "green": "Verde",
+      "teal": "Verde-azulado",
+      "blue": "Azul",
+      "indigo": "Índigo",
+      "purple": "Roxo",
+      "pink": "Rosa",
+      "gray": "Cinza",
+      "black": "Preto",
+      "white": "Branco"
+    }
+  },
+  "loadMore": {
+    "showingCount": "Mostrando {loaded} de {total}",
+    "button": "Carregar mais",
+    "failed": "Não foi possível carregar mais. Tente novamente."
+  },
+  "intervals": {
+    "root": "T",
+    "flat2": "2m",
+    "natural2": "2M",
+    "sharp2": "2aum",
+    "flat3": "3m",
+    "natural3": "3M",
+    "natural4": "4J",
+    "sharp4": "4aum",
+    "flat5": "5dim",
+    "natural5": "5J",
+    "sharp5": "5aum",
+    "flat6": "6m",
+    "natural6": "6M",
+    "doubleFlat7": "7dim",
+    "flat7": "7m",
+    "natural7": "7M",
+    "flat9": "9m",
+    "natural9": "9M",
+    "sharp9": "9aum",
+    "natural11": "11J",
+    "sharp11": "11aum",
+    "flat13": "13m",
+    "natural13": "13M"
+  },
+  "languages": {
+    "en": "Inglês",
+    "pt_BR": "Português"
+  },
+  "skillConceptTreePicker": {
+    "removeSelectedAriaLabel": "Remover {name}",
+    "addButton": "Adicionar {label}",
+    "changeButton": "Alterar {label}",
+    "modalTitle": "Selecionar {label}",
+    "search": "Nome ou chave",
+    "loading": "Carregando…",
+    "empty": "Nenhum item encontrado.",
+    "closeButton": "Concluir",
+    "missingHint": "Falta algum? Peça à equipe.",
+    "missingHintCreate": "Falta algum? Adicione no mapa de conhecimento",
+    "unsuitedNote": "Os itens em vermelho não são para os instrumentos deste conteúdo. Remova-os antes de salvar.",
+    "loadFailed": "Não foi possível carregar a lista.",
+    "retry": "Tentar novamente",
+    "searchLabel": "Buscar",
+    "instrumentFilterLabel": "Instrumento",
+    "fitsContent": "Adequados a este conteúdo",
+    "suggestedOnly": "Sugeridos ({count})",
+    "suggestedBadge": "Sugerido",
+    "moreFilters": "Mais filtros",
+    "areaLabel": "Área",
+    "allAreas": "Todas as áreas",
+    "selectedOnly": "Somente selecionados",
+    "selectionHeading": "Selecionados ({count})",
+    "nothingSelected": "Nada selecionado ainda.",
+    "unsuitedRow": "Não é para os instrumentos deste conteúdo",
+    "expandAriaLabel": "Expandir {name}",
+    "collapseAriaLabel": "Recolher {name}",
+    "moreAriaLabel": "e mais {count} abaixo"
+  },
+  "levels": {
+    "beginner": "Iniciante",
+    "early_intermediate": "Pré-intermediário",
+    "intermediate": "Intermediário",
+    "advanced": "Avançado",
+    "expert": "Especialista"
+  },
+  "courseFilters": {
+    "searchLabel": "Buscar cursos",
+    "searchPlaceholder": "Busque por título ou resumo",
+    "levelFilterLabel": "Nível",
+    "skillFilterLabel": "Habilidade",
+    "conceptFilterLabel": "Conceito",
+    "clearFilters": "Limpar filtros",
+    "languageFilterLabel": "Idioma",
+    "anyLanguage": "Qualquer idioma",
+    "filters": "Filtros",
+    "appliedFilters": "Filtros aplicados"
+  },
+  "teacherFilterPicker": {
+    "label": "Professor",
+    "anyTeacher": "Qualquer professor",
+    "searchPlaceholder": "Buscar pelo nome",
+    "clearAriaLabel": "Remover o filtro de professor",
+    "loading": "Carregando professores…",
+    "errorMessage": "Não foi possível carregar os professores.",
+    "retry": "Tentar novamente",
+    "noMatches": "Nenhum professor com esse nome."
+  },
+  "courseStatus": {
+    "draft": "Rascunho",
+    "published": "Publicado",
+    "retired": "Descontinuado"
+  },
+  "languageCodesPicker": {
+    "any": "Qualquer idioma"
+  },
+  "instrumentPicker": {
+    "every": "Todos os instrumentos",
+    "any": "Qualquer instrumento",
+    "filterLabel": "Instrumento",
+    "loading": "Carregando instrumentos…",
+    "loadError": "Não foi possível carregar os instrumentos."
+  },
+  "confirmDialog": {
+    "cancel": "Cancelar"
+  },
+  "diagramThumbnail": {
+    "noPreview": "Sem prévia"
+  },
+  "embeddedDiagram": {
+    "loadFailed": "Este diagrama não carregou."
+  },
+  "diagramPlayer": {
+    "play": "Tocar",
+    "stop": "Parar",
+    "retry": "Tentar de novo",
+    "loading": "Carregando o som…",
+    "tempo": "Andamento",
+    "tempoControl": "Andamento: {bpm} BPM",
+    "closeTempo": "Fechar andamento",
+    "tempoHint": "20–300 BPM · muda a partir do próximo passo",
+    "loadFailed": "Não foi possível carregar o som. Toque em Tentar de novo."
+  },
+  "footer": {
+    "credits": "Créditos"
+  },
+  "creditsView": {
+    "title": "Créditos",
+    "soundsTitle": "Sons",
+    "soundsIntro": "Os diagramas tocam com estas gravações, usadas conforme as suas licenças.",
+    "errorMessage": "Não foi possível carregar os créditos."
+  },
+  "fretboard": {
+    "closeDescription": "Fechar descrição"
+  },
+  "courseCard": {
+    "byline": "por {name}",
+    "lessons": "{count} lição | {count} lições",
+    "learningPaths": "{count} trilha de aprendizagem | {count} trilhas de aprendizagem"
+  },
+  "courseDetailContent": {
+    "outlineHeading": "Estrutura do curso",
+    "learningPath": "Trilha de aprendizagem {position}"
+  },
+  "practiceShell": {
+    "progressLabel": "Progresso"
+  },
+  "diagramPlayback": {
+    "defaultName": "Reprodução {n}"
+  },
+  "drillFretboard": {
+    "label": "Braço do instrumento",
+    "cell": "Corda {string}, casa {fret}",
+    "openCell": "Corda {string}, solta",
+    "root": "Fundamental",
+    "fifth": "Quinta",
+    "rootOf": "Fundamental de {chord}",
+    "fifthOf": "Quinta de {chord}",
+    "markedPlace": "{role}, corda {string}, casa {fret}",
+    "markedOpen": "{role}, corda {string}, solta"
+  },
+  "songChart": {
+    "key": "Tom {key}",
+    "capo": "Capotraste {fret}",
+    "tempo": "{bpm} BPM",
+    "markPlayed": "Toquei",
+    "played": "Tocada",
+    "voicings": "Formas",
+    "closeSheet": "Fechar",
+    "voicingUnavailable": "Não foi possível mostrar esta forma.",
+    "missingBass": "Mostra {chord} — o baixo {bass} não aparece",
+    "sectionKind": {
+      "verse": "Estrofe",
+      "chorus": "Refrão",
+      "bridge": "Ponte",
+      "intro": "Introdução",
+      "outro": "Final",
+      "instrumental": "Instrumental",
+      "other": "Música"
+    },
+    "openVoicing": "Solta",
+    "minimizeCard": "Minimizar",
+    "expandCard": "Mostrar o acorde {chord}",
+    "noCapo": "Sem capotraste",
+    "draft": "Rascunho",
+    "chordsInSong": "Acordes desta música",
+    "songTempo": "Andamento da música {bpm} BPM",
+    "youreAt": "você está em {bpm}",
+    "atTempo": "Em {bpm} BPM",
+    "metronomeKeys": "M liga / desliga · − + andamento",
+    "playedToast": "{title} marcada como tocada",
+    "previewTitle": "Prévia",
+    "previewBanner": "Prévia do rascunho · nada é registrado"
+  },
+  "songChartPage": {
+    "close": "Fechar",
+    "unavailableHeading": "Esta cifra não está disponível",
+    "unavailableMessage": "Ela pode ter sido retirada, ou o link pode estar errado.",
+    "loadFailed": "Não foi possível carregar a cifra.",
+    "goHome": "Ir para o início"
+  },
+  "sheetHeader": {
+    "back": "Voltar",
+    "close": "Fechar"
+  },
+  "accountMenu": {
+    "label": "Conta",
+    "appearance": "Aparência",
+    "system": "Auto",
+    "light": "Claro",
+    "dark": "Escuro",
+    "language": "Idioma",
+    "languageNote": "O conteúdo das lições mantém o próprio idioma — isto muda só o app.",
+    "teach": "Ensinar",
+    "teachValue": "Criação",
+    "backToLearning": "Voltar a aprender",
+    "roleTeacher": "Professor",
+    "roleAdmin": "Admin",
+    "en": "English",
+    "ptBr": "Português (Brasil)"
+  },
+  "levelBar": {
+    "learning": "{count} aprendendo",
+    "accurate": "{count} precisa | {count} precisas",
+    "fluent": "{count} fluente | {count} fluentes",
+    "retained": "{count} retida | {count} retidas"
+  },
+  "pathCard": {
+    "eyebrow": "Sua trilha"
+  },
+  "optionTile": {
+    "markRight": "Resposta certa",
+    "markWrong": "Sua resposta, errada"
+  },
+  "audioOption": {
+    "play": "Tocar {label}",
+    "stop": "Parar {label}"
+  },
+  "overviewStrip": {
+    "window": "{name}: parte visível"
+  },
+  "diagramLegend": {
+    "label": "Diagramas neste braço"
+  },
+  "chordView": {
+    "fingeredNote": "Corda {string}, casa {fret}, dedo {finger}",
+    "label": "Mostrar o acorde como",
+    "box": "Caixa",
+    "neck": "Braço"
+  },
+  "googleButton": {
+    "continue": "Continuar com o Google",
+    "busy": "Configurando sua conta…"
+  },
+  "signedOutToast": "Você saiu. Sua prática e seu progresso estão salvos.",
+  "tempoControl": {
+    "label": "Andamento",
+    "metronome": "Metrônomo",
+    "bpm": "{bpm} BPM",
+    "bestTick": "Melhor limpa {tempo}",
+    "goalTick": "Meta {tempo}",
+    "typeTempo": "Digite um andamento em BPM"
+  },
+  "noteValue": {
+    "halves": "Mínimas",
+    "quarters": "Semínimas",
+    "eighths": "Colcheias",
+    "triplets": "Tercinas",
+    "sixteenths": "Semicolcheias",
+    "quintuplets": "Quintinas",
+    "sextuplets": "Sextinas",
+    "thirty_seconds": "Fusas"
+  },
+  "noteValueHint": {
+    "halves": "Mínimas · 1 nota a cada 2 tempos",
+    "quarters": "Semínimas · só o tempo",
+    "eighths": "Colcheias · 2 notas por tempo",
+    "triplets": "Tercinas · 3 notas por tempo",
+    "sixteenths": "Semicolcheias · 4 notas por tempo",
+    "quintuplets": "Quintinas · 5 notas por tempo",
+    "sextuplets": "Sextinas · 6 notas por tempo",
+    "thirty_seconds": "Fusas · 8 notas por tempo"
+  },
+  "tempoAsPlayed": {
+    "quarters": "{bpm} BPM",
+    "other": "{bpm} BPM em {value}",
+    "shortOther": "{bpm} em {value}"
+  },
+  "noteValueIn": {
+    "halves": "mínimas",
+    "quarters": "semínimas",
+    "eighths": "colcheias",
+    "triplets": "tercinas",
+    "sixteenths": "semicolcheias",
+    "quintuplets": "quintinas",
+    "sextuplets": "sextinas",
+    "thirty_seconds": "fusas"
+  },
+  "noteValuePicker": {
+    "button": "Figura: {value}",
+    "suggested": "Figuras",
+    "all": "Figura"
+  },
+  "lockedTimeSignature": {
+    "diagram": "{signature} · definido pelo diagrama",
+    "progression": "{signature} · um acorde por compasso"
+  },
+  "tools": {
+    "label": "Ferramentas",
+    "metronome": "Metrônomo",
+    "back": "Voltar para praticar"
+  },
+  "timeSignaturePicker": {
+    "button": "Fórmula de compasso: {signature}",
+    "heading": "Fórmula de compasso",
+    "beats": "Tempos",
+    "beatNote": "Figura do tempo",
+    "fewerBeats": "Um tempo a menos",
+    "moreBeats": "Um tempo a mais",
+    "shorterBeatNote": "Uma figura mais curta",
+    "longerBeatNote": "Uma figura mais longa"
+  },
+  "metronomeTool": {
+    "start": "Começar",
+    "stop": "Parar"
+  },
+  "progressionTempo": {
+    "done": "Pronto"
+  },
+  "teach": {
+    "intro": "Crie e cuide do que seus alunos aprendem. Ajustes rápidos funcionam aqui; edições grandes são mais fáceis no computador.",
+    "admin": "Admin"
+  },
+  "listEnd": {
+    "loading": "Carregando mais…",
+    "failed": "Não foi possível carregar mais.",
+    "retry": "Tentar de novo"
+  },
+  "filters": {
+    "button": "Filtros",
+    "buttonApplied": "Filtros, {count} aplicados",
+    "remove": "Remover {label}",
+    "clearAll": "Limpar tudo"
+  },
+  "rootNoteSelect": {
+    "label": "Nota fundamental",
+    "any": "Qualquer"
+  },
+  "listenControl": {
+    "listen": "Ouvir",
+    "sound": "{name} · {bpm} BPM"
+  },
+  "whatYouHeard": {
+    "heading": "O que você ouviu: {name}",
+    "playAgain": "Tocar de novo"
+  },
+  "revealedSound": {
+    "yours": "{label} · sua resposta",
+    "right": "{label} · resposta certa",
+    "folded": "{label} · {name}"
+  },
+  "drill": {
+    "countStepper": {
+      "more": "Mais um: {label}",
+      "fewer": "Menos um: {label}",
+      "valueText": "{count} {label}"
+    },
+    "changeTimer": {
+      "left": "restantes de {total}",
+      "ready": "começa após um compasso de contagem",
+      "withDetail": "{caption} · {detail}",
+      "elapsed": "Tempo passado"
+    },
+    "chart": {
+      "label": "Cifra",
+      "bar": "Compasso {position}"
+    },
+    "player": {
+      "listen": "Ouvir",
+      "bars": "Compassos",
+      "givenBar": "Compasso {position}, {label}",
+      "askedBar": "Compasso {position}, o acorde perguntado"
+    },
+    "options": {
+      "chord": "Acorde {key}",
+      "chart": "Cifra {key}"
+    },
+    "question": {
+      "chord": "O acorde"
+    }
+  },
+  "musicKeys": {
+    "C": "Dó",
+    "Db": "Ré♭",
+    "D": "Ré",
+    "Eb": "Mi♭",
+    "E": "Mi",
+    "F": "Fá",
+    "Fsharp": "Fá♯",
+    "G": "Sol",
+    "Ab": "Lá♭",
+    "A": "Lá",
+    "Bb": "Si♭",
+    "B": "Si"
+  }
+}

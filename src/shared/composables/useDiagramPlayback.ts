@@ -1,0 +1,254 @@
+import { computed, onScopeDispose, ref, shallowRef, toValue, watch } from 'vue'
+import type { MaybeRefOrGetter } from 'vue'
+
+import type { components } from '@/api/generated/core-domain'
+import { audibleTime, unlockAudioContext } from '@/shared/audio/audioContext'
+import { createClickSink } from '@/shared/audio/clickSink'
+import { claimPlayback, releasePlayback, stopAnyPlayback } from '@/shared/audio/exclusivePlayback'
+import { createPlaybackRun } from '@/shared/audio/playbackRun'
+import type { PlaybackRun } from '@/shared/audio/playbackRun'
+import { clearPrefetchedSamples as clearPrefetched, fetchVoiceSamples } from '@/shared/audio/samplePrefetch'
+import { playbackSteps, secondsPerWhole } from '@/shared/audio/timeline'
+import { resolvePlayback } from '@/shared/utils/diagramPlayback'
+import { beatsPerBar, pulse } from '@/shared/utils/sequence'
+import { useApi } from '@/shared/composables/useApi'
+import { fetchVoices } from '@/shared/composables/useListVoices'
+import { frettedPitch } from '@/shared/utils/pitch'
+import { speedFactor } from '@/shared/utils/tempoNoteValue'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
+
+type Diagram = components['schemas']['Diagram']
+type Instrument = components['schemas']['Instrument']
+type TimeSignature = components['schemas']['TimeSignature']
+type Playback = NonNullable<components['schemas']['DiagramRef']['playback']>
+
+export type PlaybackState = 'idle' | 'loading' | 'playing' | 'error'
+
+export interface PlaybackSource {
+  diagram: Diagram
+  instrument: Instrument
+  /** How this usage plays the diagram; null when it offers no Play control. */
+  playback: Playback | null
+}
+
+const FALLBACK_TEMPO_BPM = 90
+/** The spread between the strings of a strummed step, as a pick crosses them. */
+const STRUM_SECONDS = 0.018
+/** How far ahead of the audio clock the first note is placed, so it isn't already late. */
+const START_DELAY_SECONDS = 0.1
+
+function sameIds(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i])
+}
+
+/** Forgets which recordings were prefetched. For tests. */
+export function clearPrefetchedSamples() {
+  clearPrefetched()
+}
+
+/** Stops whatever is playing, such as when a clip starts sounding instead. */
+export function stopDiagramPlayback() {
+  stopAnyPlayback()
+}
+
+/** Each position's sounding pitch; null where the tuning doesn't give one. */
+function positionPitches({ diagram, instrument }: PlaybackSource): Map<string | undefined, number | null> {
+  const tuning = instrument.tuning ?? []
+  return new Map(diagram.positions.map((p) => [p.position_id, frettedPitch(tuning, p.string ?? 0, p.fret ?? 0)]))
+}
+
+/** The diagram's playback this usage plays: the one it chose, else the default. */
+function playedPlayback({ diagram, playback }: PlaybackSource) {
+  return resolvePlayback(diagram, playback?.playback_id)
+}
+
+/**
+ * Whether a usage offers Play for a diagram: a fretted diagram whose usage enables playback and
+ * whose played playback has a step that sounds, so a playback of rests never plays silence.
+ */
+export function isPlayable(source: PlaybackSource): boolean {
+  if (source.playback === null || source.instrument.family !== 'fretted') return false
+  const pitches = positionPitches(source)
+  const steps = playedPlayback(source)?.steps ?? []
+  return steps.some((step) => step.position_ids.some((id) => (pitches.get(id) ?? null) !== null))
+}
+
+/**
+ * Plays one of a diagram's playbacks (the usage's choice, else the default) and says which positions are sounding, so the
+ * view can light them up. Every note is scheduled on the audio clock up
+ * front; an animation-frame loop reads what is audible right now (output
+ * latency included) rather than trusting timers or note callbacks.
+ *
+ * The voice is the usage's, else the instrument's default; the tempo the
+ * student's (`tempo`, never saved), which starts at the usage's, else the
+ * played playback's. A new tempo applies from the next step. Positions a usage hides
+ * still sound. Playing stops when the owning component goes away. With
+ * `metronome`, a click sounds on every beat of the run, the first of each bar
+ * accented, read when Play is pressed. At a `noteValue` the music as written
+ * plays that many times faster while the click stays on the beat; a change of
+ * it, like one of tempo, applies from the next step.
+ */
+export function useDiagramPlayback(
+  source: MaybeRefOrGetter<PlaybackSource | null>,
+  options: { metronome?: MaybeRefOrGetter<boolean>; noteValue?: MaybeRefOrGetter<TempoNoteValue> } = {},
+) {
+  const { coreApi } = useApi()
+
+  const state = ref<PlaybackState>('idle')
+  const activePositionIds = shallowRef<string[]>([])
+
+  const sourceNow = computed(() => toValue(source))
+  const played = computed(() => (sourceNow.value ? playedPlayback(sourceNow.value) : null))
+  const timeSignature = computed<TimeSignature>(() => played.value?.time_signature ?? { beats: 4, beat_value: 4 })
+
+  const effectiveTempo = computed(
+    () => sourceNow.value?.playback?.tempo_bpm ?? played.value?.tempo_bpm ?? FALLBACK_TEMPO_BPM,
+  )
+  const tempo = ref(effectiveTempo.value)
+  const factor = computed(() => speedFactor(toValue(options.noteValue) ?? 'quarters'))
+
+  /** How long a written whole note lasts at `bpm`, and how far apart the clicks fall in written notes. */
+  function timing(bpm: number) {
+    const beat = pulse(timeSignature.value)
+    return {
+      wholeSeconds: secondsPerWhole(bpm, timeSignature.value) / factor.value,
+      clickBeat: (beat.num / beat.den) * factor.value,
+    }
+  }
+
+  const pitches = computed(() => (sourceNow.value ? positionPitches(sourceNow.value) : new Map<string | undefined, number | null>()))
+  const pitchOf = (positionId: string) => pitches.value.get(positionId) ?? null
+
+  const canPlay = computed(() => sourceNow.value !== null && isPlayable(sourceNow.value))
+
+  const voiceId = computed(() => {
+    if (!sourceNow.value) return undefined
+    const { instrument, playback } = sourceNow.value
+    return playback?.voice_id ?? instrument.default_voice_id
+  })
+
+  async function findVoice() {
+    const voices = await fetchVoices(coreApi)
+    const voice = voices.data?.find((v) => v.voice_id === voiceId.value)
+    if (!voice) throw new Error(`voice ${voiceId.value} unavailable`)
+    return voice
+  }
+
+  /**
+   * Fetches the voice's recordings ahead of Play and says whether all of them came: false when the
+   * voice or a recording can't be had, so a sound that must play can be known lost before Play.
+   */
+  async function checkVoice(): Promise<boolean> {
+    try {
+      return await fetchVoiceSamples(await findVoice())
+    } catch {
+      return false
+    }
+  }
+
+  /** Fetches the voice's recordings ahead of Play, such as when the player scrolls into view. */
+  async function prefetch() {
+    // Play loads what's missing.
+    if (canPlay.value) await checkVoice()
+  }
+
+  let run: PlaybackRun | null = null
+  let context: AudioContext | null = null
+  let frame = 0
+  // Bumped by every Play and Stop, so a load that finishes after either is dropped.
+  let attempt = 0
+
+  function stop() {
+    attempt++
+    cancelAnimationFrame(frame)
+    run?.stop()
+    run = null
+    activePositionIds.value = []
+    if (state.value !== 'error') state.value = 'idle'
+    releasePlayback(stop)
+  }
+
+  function tick() {
+    if (!run || !context) return
+    const heard = audibleTime(context)
+    run.update(context.currentTime)
+    if (run.finished(heard)) {
+      stop()
+      return
+    }
+    // Assigned only when the lit positions change: every assignment re-renders the diagram (and
+    // whatever holds it), and a step lasts many frames.
+    const heardIds = run.activePositionIds(heard)
+    if (!sameIds(heardIds, activePositionIds.value)) activePositionIds.value = heardIds
+    frame = requestAnimationFrame(tick)
+  }
+
+  async function play() {
+    claimPlayback(stop)
+    const current = ++attempt
+    // Created and resumed inside the click, before anything is awaited, or iOS keeps it silent.
+    const audio = unlockAudioContext()
+    context = audio
+    state.value = 'loading'
+
+    const playback = sourceNow.value?.playback
+    const steps = played.value?.steps ?? []
+    const signature = timeSignature.value
+    try {
+      const [{ loadVoiceSampler }, voice] = await Promise.all([import('@/shared/audio/voiceSampler'), findVoice()])
+      const sink = await loadVoiceSampler(audio, voice)
+      if (current !== attempt) return
+      const { wholeSeconds, clickBeat } = timing(tempo.value)
+      const metronome = toValue(options.metronome)
+        ? { sink: createClickSink(audio), beat: clickBeat, beatsPerBar: beatsPerBar(signature) }
+        : undefined
+
+      const scheduled = playbackSteps(steps, pitchOf, {
+        direction: playback?.direction ?? 'as_authored',
+        strumSeconds: STRUM_SECONDS,
+      })
+      run = createPlaybackRun(scheduled, {
+        sink,
+        wholeSeconds,
+        loop: playback?.loop ?? false,
+        startAt: audio.currentTime + START_DELAY_SECONDS,
+        metronome,
+      })
+      state.value = 'playing'
+      frame = requestAnimationFrame(tick)
+    } catch {
+      if (current !== attempt) return
+      state.value = 'error'
+      stop()
+    }
+  }
+
+  function toggle() {
+    if (state.value === 'playing' || state.value === 'loading') {
+      stop()
+    } else if (canPlay.value) {
+      state.value = 'idle'
+      void play()
+    }
+  }
+
+  watch([tempo, factor], ([bpm]) => {
+    if (!run || !context) return
+    const { wholeSeconds, clickBeat } = timing(bpm)
+    run.setWholeSeconds(wholeSeconds, context.currentTime, clickBeat)
+  })
+
+  // Another diagram, or another way of playing it, starts over at its own tempo.
+  watch(
+    () => JSON.stringify([sourceNow.value?.diagram, sourceNow.value?.playback]),
+    () => {
+      stop()
+      state.value = 'idle'
+      tempo.value = effectiveTempo.value
+    },
+  )
+
+  onScopeDispose(stop)
+
+  return { canPlay, state, activePositionIds, tempo, toggle, stop, prefetch, checkVoice }
+}
