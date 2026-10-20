@@ -45,7 +45,8 @@ export const TheMinuteRuns: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: /start the minute|começar o minuto/i }))
     await expect(canvas.getByText('4')).toBeVisible()
 
-    await waitFor(() => expect(canvas.getByRole('timer')).toHaveTextContent('0:59'), { timeout: 4_000 })
+    // Any time under the minute: under load the second shown may be a few past 0:59 already.
+    await waitFor(() => expect(canvas.getByRole('timer')).toHaveTextContent(/^0:[0-5]\d$/), { timeout: 4_000 })
     const restart = canvas.getByRole('button', { name: /restart|recomeçar/i })
     for (const button of canvas.getAllByRole('button').filter((b) => b !== restart)) {
       const off = button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true'

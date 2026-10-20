@@ -1,0 +1,118 @@
+name: Deploy
+
+# Builds the SPA for one environment and publishes it to that environment's
+# bucket behind CloudFront. The bundle is built per environment because the
+# API URLs and the Clerk key are compiled into it, so what is promoted from
+# staging to production is the commit, not the build.
+#
+# Staging deploys on every push to `stage`. Production is started by hand
+# with a commit that is already on `main`.
+on:
+  push:
+    branches: [stage]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        type: choice
+        options: [staging, production]
+        required: true
+      commit:
+        description: Full commit SHA to build and deploy
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-2
+  DEPLOY_ENV: ${{ inputs.environment || 'staging' }}
+  COMMIT: ${{ inputs.commit || github.sha }}
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'staging' }}
+    steps:
+      - name: Validate inputs and configuration
+        env:
+          KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          BUCKET: ${{ vars.SPA_BUCKET }}
+          DISTRIBUTION: ${{ vars.SPA_DISTRIBUTION_ID }}
+          CORE_API: ${{ vars.VITE_CORE_API_URL }}
+          EVENTS_API: ${{ vars.VITE_EVENTS_API_URL }}
+          CLERK_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          [[ "$DEPLOY_ENV" =~ ^(staging|production)$ ]] || { echo "::error::unknown environment '$DEPLOY_ENV'"; exit 1; }
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::commit must be a full 40-char SHA"; exit 1; }
+          missing=()
+          [[ -n "$KEY_ID" ]] || missing+=(secret:AWS_ACCESS_KEY_ID)
+          for v in BUCKET DISTRIBUTION CORE_API EVENTS_API CLERK_KEY; do [[ -n "${!v}" ]] || missing+=("var:$v"); done
+          [[ ${#missing[@]} -eq 0 ]] || { echo "::error::GitHub environment '$DEPLOY_ENV' is missing ${missing[*]}; see README → Deploying"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT }}
+          fetch-depth: 0
+
+      # Production only runs what has been promoted to main. Staging runs
+      # release candidates from stage, or a hotfix already on main.
+      - name: Check the commit is on a release branch
+        run: |
+          git fetch --quiet origin main stage 2>/dev/null || git fetch --quiet origin main
+          on() { git rev-parse --verify --quiet "origin/$1" >/dev/null && git merge-base --is-ancestor "$COMMIT" "origin/$1"; }
+          if [[ "$DEPLOY_ENV" == production ]]; then
+            on main || { echo "::error::$COMMIT is not on main; promote stage to main with a merge commit first"; exit 1; }
+          else
+            on stage || on main || { echo "::error::$COMMIT is on neither stage nor main"; exit 1; }
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build for ${{ env.DEPLOY_ENV }}
+        env:
+          VITE_CORE_API_URL: ${{ vars.VITE_CORE_API_URL }}
+          VITE_EVENTS_API_URL: ${{ vars.VITE_EVENTS_API_URL }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ vars.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_CONCIERGE_WHATSAPP_NUMBER: ${{ vars.VITE_CONCIERGE_WHATSAPP_NUMBER }}
+        run: npm run build
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Hashed assets first and cached for good, then the entry files, which
+      # must always be revalidated so a release shows up on the next load.
+      # Old assets are kept: a tab still running the previous release may
+      # lazy-load one of its chunks after this deploy.
+      - name: Publish to the bucket
+        env:
+          BUCKET: ${{ vars.SPA_BUCKET }}
+        run: |
+          set -euo pipefail
+          aws s3 sync dist/assets "s3://$BUCKET/assets" \
+            --cache-control 'public, max-age=31536000, immutable'
+          aws s3 sync dist "s3://$BUCKET" --exclude 'assets/*' --delete \
+            --cache-control 'no-cache'
+
+      - name: Invalidate the CDN
+        env:
+          DISTRIBUTION: ${{ vars.SPA_DISTRIBUTION_ID }}
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" \
+            --paths '/*' --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION" --id "$id"
+          echo "### Deployed \`$COMMIT\` to $DEPLOY_ENV" >> "$GITHUB_STEP_SUMMARY"
