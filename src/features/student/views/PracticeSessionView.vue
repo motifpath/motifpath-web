@@ -9,6 +9,10 @@
  * drills they practised felt. A session left mid-way, by navigating away or closing or reloading
  * the page, ends as left early.
  *
+ * What to practise is Today's mix, or one skill or concept the student chooses in a picker that
+ * opens as a page inside the shell, like Tools. A "Practise this" elsewhere opens the setup with
+ * its subject already chosen.
+ *
  * All of it runs in the Practice Shell: × ends a running session, and otherwise leaves for where
  * the student came from. The screen stays on while the session runs. On the setup, and only
  * there, the shell's header offers Tools, which open as a page inside the shell; its arrow, or
@@ -21,8 +25,9 @@ import type { components } from '@/api/generated/core-domain'
 import FeltQuestions from '@/features/student/components/FeltQuestions.vue'
 import NextUpCard from '@/features/student/components/NextUpCard.vue'
 import PracticeSetup from '@/features/student/components/PracticeSetup.vue'
+import PracticeSubjectPicker from '@/features/student/components/PracticeSubjectPicker.vue'
 import SessionSummary from '@/features/student/components/SessionSummary.vue'
-import type { SetupProblem } from '@/features/student/components/PracticeSetup.vue'
+import type { SetupProblem, WhatToPractise } from '@/features/student/components/PracticeSetup.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionChordChange from '@/features/student/components/SessionChordChange.vue'
 import SessionChordVoicing from '@/features/student/components/SessionChordVoicing.vue'
@@ -33,8 +38,12 @@ import SessionFretboardCell from '@/features/student/components/SessionFretboard
 import TapCheck from '@/features/student/components/TapCheck.vue'
 import TodaysPlan from '@/features/student/components/TodaysPlan.vue'
 import { useComposePracticeSession, DEFAULT_SESSION_MINUTES } from '@/features/student/composables/useComposePracticeSession'
+import { useFirstRun } from '@/features/student/composables/useFirstRun'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
+import { usePracticeSubjects } from '@/features/student/composables/usePracticeSubjects'
+import { reviewResult, subjectResults } from '@/features/student/utils/focusPlan'
+import { findSubject } from '@/features/student/utils/practiceSubjects'
 import { summaryRows } from '@/features/student/utils/sessionSummary'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeShell from '@/shared/components/PracticeShell.vue'
@@ -44,11 +53,13 @@ import MetronomeTool from '@/shared/components/MetronomeTool.vue'
 import ToolsMenu from '@/shared/components/ToolsMenu.vue'
 import { useListInstruments } from '@/shared/composables/useListInstruments'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
+import { useOverlayHistory } from '@/shared/composables/useOverlayHistory'
 import { usePracticeTool } from '@/shared/composables/usePracticeTool'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { useWakeLock } from '@/shared/composables/useWakeLock'
 
 type Item = components['schemas']['PracticeSessionItem']
+type Subject = components['schemas']['PracticeSubject']
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
@@ -75,9 +86,59 @@ watch(
   { immediate: true },
 )
 
+// A "Practise this" names its subject; the setup opens on it once the subjects have loaded.
+let askedFocus = typeof route.query.focus === 'string' ? route.query.focus : null
+const whatToPractise = ref<WhatToPractise>(askedFocus ? 'choose' : 'mix')
+const subject = ref<Subject | null>(null)
+const subjects = usePracticeSubjects(() => instrumentId.value)
+// The subjects follow the instrument: the one chosen is kept, with its level for this instrument,
+// while the instrument has something of it, and let go of otherwise. The subject a "Practise this"
+// asked for waits for a list that has it, since the instrument may still be settling.
+watch(
+  subjects.list,
+  (list) => {
+    if (!list) return
+    if (subject.value) {
+      subject.value = findSubject(list, subject.value.node_id)
+      return
+    }
+    const asked = askedFocus ? findSubject(list, askedFocus) : null
+    if (!asked) return
+    subject.value = asked
+    askedFocus = null
+  },
+  { immediate: true },
+)
+
+/** The subject picker, open over the setup as a page with its own history entry, like Tools. */
+const pickerOpen = ref(false)
+useOverlayHistory(pickerOpen, () => {
+  pickerOpen.value = false
+})
+function openPicker() {
+  pickerOpen.value = true
+}
+// Choosing with nothing chosen yet goes straight to the picker.
+watch(whatToPractise, (choice) => {
+  if (choice === 'choose' && subject.value === null) openPicker()
+})
+/**
+ * Picking is the student's last choice, so the session is composed on it at once and today's plan
+ * shows; the setup comes back only when the subject has nothing to practise this way.
+ */
+function pick(picked: Subject) {
+  askedFocus = null
+  subject.value = picked
+  whatToPractise.value = 'choose'
+  pickerOpen.value = false
+  void startSession()
+}
+
+const { status: firstRunStatus } = useFirstRun()
+
 const problem = ref<SetupProblem | null>(null)
 // Having nothing to practise is about the choice made; another choice may have something.
-watch(instrumentId, () => {
+watch([instrumentId, whatToPractise, subject], () => {
   if (problem.value !== 'failed') problem.value = null
 })
 const run = shallowRef<ReturnType<typeof usePracticeSessionRun> | null>(null)
@@ -95,10 +156,17 @@ function tuningOf(id: string): string[] | undefined {
 
 async function startSession() {
   if (isComposing.value) return
-  const inTheHead = instrumentId.value === null
-  const outcome = await compose(instrumentId.value, minutes.value)
+  const chosen = whatToPractise.value === 'choose' ? subject.value : null
+  if (whatToPractise.value === 'choose' && !chosen) {
+    openPicker()
+    return
+  }
+  const outcome = await compose(instrumentId.value, minutes.value, chosen?.node_id)
   if (outcome.kind === 'failed') problem.value = 'failed'
-  else if (outcome.kind === 'nothing_to_practise') problem.value = inTheHead ? 'nothing_in_the_head' : 'nothing_to_play'
+  else if (outcome.kind === 'nothing_to_practise') {
+    if (chosen) problem.value = 'subject_unavailable'
+    else problem.value = firstRunStatus.value === 'first-run' ? 'nothing_started' : 'nothing_to_mix'
+  }
   if (outcome.kind !== 'composed') return
   problem.value = null
   run.value = usePracticeSessionRun(outcome.plan, { tuningOf })
@@ -108,8 +176,8 @@ const { labelOf } = usePlanItemNames(() => run.value?.plan.items ?? [])
 
 const practiceTool = usePracticeTool()
 const openTool = computed(() => practiceTool.tool.value)
-/** Tools are for the setup: never once a session is being composed, shown or run. */
-const offersTools = computed(() => !run.value && !isComposing.value && openTool.value === null)
+/** Tools are for the setup: never once a session is being composed, shown or run, nor over the picker. */
+const offersTools = computed(() => !run.value && !isComposing.value && openTool.value === null && !pickerOpen.value)
 
 const started = computed(() => run.value?.started.value ?? false)
 const finished = computed(() => run.value?.finished.value ?? false)
@@ -173,11 +241,12 @@ const position = computed(() => {
   return { current: Math.min(session.index.value + 1, total), total }
 })
 
-/** In hand is for playing; with nothing to play there yet, the same minutes go to recall in the head. */
-function practiseInTheHead() {
-  instrumentId.value = null
-  void startSession()
-}
+/** How each subject of the finished session went, and the quick review of other subjects. */
+const results = computed(() => {
+  const session = run.value
+  if (!session) return { subjects: [], review: null }
+  return { subjects: subjectResults(session.plan, session.outcomes.value), review: reviewResult(session.plan, session.outcomes.value) }
+})
 
 /** With nothing to practise in the head either, the home's first run shows where to start. */
 function findWhereToStart() {
@@ -201,13 +270,14 @@ function leave() {
 }
 
 function exit() {
-  if (openTool.value) practiceTool.close()
+  if (pickerOpen.value) pickerOpen.value = false
+  else if (openTool.value) practiceTool.close()
   else if (running.value) run.value!.end()
   else leave()
 }
 
 const exitLabel = computed(() => {
-  if (openTool.value) return t('tools.back')
+  if (openTool.value || pickerOpen.value) return t('tools.back')
   return running.value ? t('practiceSessionView.endSession') : t('practiceSessionView.close')
 })
 
@@ -249,17 +319,28 @@ onBeforeUnmount(() => {
       </PracticeActionBar>
     </section>
 
+    <PracticeSubjectPicker
+      v-else-if="!run && pickerOpen"
+      :list="subjects.list.value"
+      :is-loading="subjects.isLoading.value"
+      :error="subjects.error.value"
+      @pick="pick"
+      @retry="subjects.retry()"
+    />
+
     <PracticeSetup
       v-else-if="!run"
       v-model:instrument-id="instrumentId"
       v-model:minutes="minutes"
+      v-model:what-to-practise="whatToPractise"
       :instruments="playable"
       :instruments-loading="isLoading"
       :instruments-failed="instrumentsError"
       :problem="problem"
+      :subject="subject"
       @start="startSession"
       @retry-instruments="retryInstruments()"
-      @practise-in-the-head="practiseInTheHead"
+      @choose-subject="openPicker"
       @find-where-to-start="findWhereToStart"
     />
 
@@ -269,6 +350,8 @@ onBeforeUnmount(() => {
       :minutes="run.plan.minutes"
       :instrument-name="instrumentLabel(run.plan.instrument_id ?? null)"
       :label-of="labelOf"
+      :focus-source="run.plan.focus_source"
+      :focus-nodes="run.plan.focus_nodes"
       @start="run.start()"
     />
 
@@ -279,6 +362,9 @@ onBeforeUnmount(() => {
       :instrument-name="instrumentLabel(run.plan.instrument_id ?? null)"
       :item-count="run.outcomes.value.size"
       :label-of="labelOf"
+      :subjects="results.subjects"
+      :review="results.review"
+      :chosen="run.plan.focus_source === 'chosen'"
       @done="leaveHome"
       @practise-again="practiseAgain"
     />
