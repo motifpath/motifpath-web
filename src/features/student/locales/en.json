@@ -233,8 +233,6 @@
     "starting": "Putting your session together…",
     "instrumentsError": "We couldn't load the instruments. Check your connection and try again.",
     "planError": "We couldn't put your session together. Your choices are kept — try again.",
-    "nothingToPlay": "There’s nothing to play on this instrument yet. You can practise in your head instead.",
-    "practiseInTheHead": "Practise in my head",
     "endSession": "End session",
     "unsupported": "This kind of practice isn't available here yet.",
     "skip": "Skip",
@@ -254,8 +252,20 @@
     "applyIt": "Apply it",
     "close": "Close",
     "inMyHead": "In my head",
-    "nothingInTheHead": "There’s nothing to practise in your head yet. Pick an instrument.",
-    "findWhereToStart": "Find where to start"
+    "findWhereToStart": "Find where to start",
+    "whatToPractise": "What to practise",
+    "todaysMix": "Today's mix",
+    "illChoose": "I'll choose",
+    "mixHint": "A mix of what's due, what needs work and what's next on your path.",
+    "chosenHint": "Only this, as much as fits in {minutes} min. Its due reviews come first.",
+    "pickSubject": "Pick a skill or concept",
+    "tapToChange": "Tap to change",
+    "levelTapToChange": "{level} · tap to change",
+    "chooseWhatToPractise": "Choose what to practise",
+    "nothingToMix": "Nothing is suggested for this instrument yet. Choose a skill or concept to practise on it.",
+    "nothingToMixInTheHead": "Nothing is suggested for your head yet. Choose a skill or concept you can practise without the instrument.",
+    "nothingStarted": "Nothing is suggested yet: you haven't started a course or path. You can still choose a skill or concept to practise.",
+    "subjectUnavailable": "There's nothing of {subject} to practise this way. Choose another skill or concept."
   },
   "sessionChord": {
     "voicingHint": "Fret it, strum once and let it ring.",
@@ -321,6 +331,19 @@
       "ear": "Ear",
       "chord": "Chord",
       "guideTones": "Guide tones"
+    },
+    "today": "Today",
+    "youChoseThis": "You chose this",
+    "review": "Quick review · other subjects",
+    "yourSubjects": "Your subjects",
+    "rungs": {
+      "know": "Know it",
+      "hear": "Hear it",
+      "play_clean": "Play it clean",
+      "play_in_time": "Play it in time",
+      "move": "Move it",
+      "target": "Target it",
+      "use": "Use it"
     }
   },
   "sessionSummary": {
@@ -333,7 +356,9 @@
     "right": "Right",
     "notQuite": "Not quite",
     "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
-    "done": "Done"
+    "done": "Done",
+    "review": "Quick review of other subjects: {right} of {answered} right",
+    "everyItem": "Every item ({count})"
   },
   "playAlongTake": {
     "goal": "Goal {goal} · best clean {best}",
@@ -702,5 +727,18 @@
     "chordsOfKey": "All four are chords of {key} major.",
     "keyOf": "Key of {key} major",
     "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you."
+  },
+  "subjectPicker": {
+    "title": "What to practise",
+    "question": "What do you want to get better at?",
+    "search": "Search skills and concepts",
+    "fromYourPath": "From your path",
+    "moreToExplore": "More to explore",
+    "back": "What to practise",
+    "onYourPath": "{level} · on your path",
+    "onYourPathOnly": "On your path",
+    "noMatch": "Nothing matches “{text}”.",
+    "noSubjects": "Nothing can be practised this way yet. Try another instrument, or in your head.",
+    "error": "We couldn't load what you can practise. Check your connection and try again."
   }
 }

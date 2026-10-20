@@ -51,3 +51,34 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 export const InTheHead: Story = { args: { instrumentName: 'In my head' } }
+
+const CHORDS = 'aaaaaaaa-0000-4000-8000-000000000001'
+const NOTES = 'aaaaaaaa-0000-4000-8000-000000000002'
+const EAR = 'aaaaaaaa-0000-4000-8000-000000000003'
+const OTHER = 'aaaaaaaa-0000-4000-8000-000000000004'
+const mixItems = [
+  item('play_along:warm', 'play_along', 'warm_up', { node_id: OTHER }),
+  item('exercise:third', 'exercise', 'due', { node_id: OTHER }),
+  item('exercise:quality', 'exercise', 'due', { node_id: CHORDS, rung: 'hear' }),
+  ...[1, 3, 5].map((fret) => ({ ...cell(fret), node_id: NOTES })),
+  item('exercise:chords-new', 'exercise', 'new', { node_id: CHORDS, rung: 'know' }),
+  item('play_along:triads', 'play_along', 'new', { node_id: EAR, rung: 'hear' }),
+]
+const mixNodes = [
+  { node_id: CHORDS, names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' } },
+  { node_id: NOTES, names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' } },
+  { node_id: EAR, names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' } },
+]
+
+/** Today's mix names its subjects and their rungs; other subjects' due items come as a quick review after the warm-up. */
+export const TodaysMixBySubject: Story = { args: { items: mixItems, minutes: 15, focusSource: 'suggested', focusNodes: mixNodes } }
+export const TodaysMixDarkPortuguese: Story = { ...TodaysMixBySubject, globals: { theme: 'dark', locale: 'pt-BR' } }
+
+/** A session the student chose: "You chose this" once, above its one subject. */
+export const Chosen: Story = {
+  args: {
+    items: mixItems.slice(2).map((planItem) => ({ ...planItem, node_id: CHORDS })),
+    focusSource: 'chosen',
+    focusNodes: [{ node_id: CHORDS, names: { en: 'Common progressions' } }],
+  },
+}
