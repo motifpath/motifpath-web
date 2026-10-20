@@ -54,6 +54,37 @@ vi.mock('@/shared/composables/useListInstruments', () => ({
   useListInstruments: () => instruments,
 }))
 
+type Subject = components['schemas']['PracticeSubject']
+type SubjectList = components['schemas']['PracticeSubjectList']
+
+const PROGRESSIONS = 'dddddddd-0000-4000-8000-000000000001'
+const INTERVALS = 'dddddddd-0000-4000-8000-000000000002'
+function subject(id: string, en: string, fields: Partial<Subject> = {}): Subject {
+  return { node_id: id, names: { en }, on_path: false, item_count: 4, level: 'new', current_rung: 'know', ...fields }
+}
+const progressions = subject(PROGRESSIONS, 'Common progressions', { on_path: true, level: 'learning' })
+const intervals = subject(INTERVALS, 'Recognise intervals')
+function subjectList(subjects: Subject[] = [progressions, intervals]): SubjectList {
+  return { instrument_id: null, groups: [{ area_node_id: 'area', names: { en: 'Harmony' }, subjects }] }
+}
+// The subjects offered follow the instrument chosen; a test sets which list each instrument gets.
+let subjectsFor: (instrumentId: string | null) => SubjectList = () => subjectList()
+const subjectsState = { list: ref<SubjectList | null>(null), isLoading: ref(false), error: ref(false), retry: vi.fn() }
+vi.mock('@/features/student/composables/usePracticeSubjects', async () => {
+  const { watch } = await import('vue')
+  return {
+    usePracticeSubjects: (instrumentId: () => string | null) => {
+      watch(instrumentId, (id) => (subjectsState.list.value = subjectsFor(id)), { immediate: true })
+      return subjectsState
+    },
+  }
+})
+
+const firstRun = { status: ref<'loading' | 'first-run' | 'returning' | 'failed'>('returning'), retry: vi.fn() }
+vi.mock('@/features/student/composables/useFirstRun', () => ({
+  useFirstRun: () => firstRun,
+}))
+
 // The take itself is PlayAlongTake's: here it only reports what it was given and emits.
 const PlayAlongTakeStub = defineComponent({
   name: 'PlayAlongTake',
@@ -146,6 +177,8 @@ const TodaysPlanStub = defineComponent({
     minutes: { type: Number, required: true },
     instrumentName: { type: String, required: true },
     labelOf: { type: Function, required: true },
+    focusSource: String,
+    focusNodes: Array,
   },
   emits: ['start'],
   setup(props) {
@@ -165,7 +198,7 @@ const NextUpCardStub = defineComponent({
 // The summary loads this week's numbers itself: here it only reports what it was given and emits.
 const SessionSummaryStub = defineComponent({
   name: 'SessionSummary',
-  props: { rows: { type: Array, required: true }, minutes: Number, instrumentName: String, itemCount: Number, labelOf: Function },
+  props: { rows: { type: Array, required: true }, minutes: Number, instrumentName: String, itemCount: Number, labelOf: Function, subjects: Array, review: Object, chosen: Boolean },
   emits: ['done', 'practiseAgain'],
   setup(props) {
     return () => h('div', { 'data-test': 'session-done' }, `${props.minutes} min · ${props.instrumentName} · ${props.itemCount} items · ${props.rows.length} rows`)
@@ -397,6 +430,8 @@ describe('PracticeSessionView', () => {
     router.push.mockReset()
     window.history.replaceState({}, '')
     route.query = {}
+    subjectsFor = () => subjectList()
+    firstRun.status.value = 'returning'
     instruments.isLoading.value = false
     instruments.error.value = false
     instruments.instruments.value = allInstruments
@@ -562,7 +597,7 @@ describe('PracticeSessionView', () => {
       expect(wrapper.get('[data-test="start-session"]').attributes('disabled')).toBeUndefined()
     })
 
-    it('says when there is nothing to practise in the head, and the way out is the primary action', async () => {
+    it('says when nothing is suggested for the head, and choosing what to practise is the primary action', async () => {
       const wrapper = mountView()
       await headTile(wrapper).get('input').setValue()
       POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
@@ -571,7 +606,26 @@ describe('PracticeSessionView', () => {
 
       const notice = wrapper.get('[data-test="inline-notice"]')
       expect(notice.attributes('data-tone')).toBe('unavailable')
-      expect(notice.text()).toBe('There’s nothing to practise in your head yet. Pick an instrument.')
+      expect(notice.text()).toBe('Nothing is suggested for your head yet. Choose a skill or concept you can practise without the instrument.')
+      const primary = wrapper.get('[data-primary-action]')
+      expect(primary.text()).toBe('Choose what to practise')
+
+      await primary.trigger('click')
+      expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(true)
+    })
+
+    it('leads a student who has never started anything to where to start', async () => {
+      firstRun.status.value = 'first-run'
+      const wrapper = mountView()
+      await headTile(wrapper).get('input').setValue()
+      POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
+      await wrapper.get('[data-test="start-session"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="inline-notice"]').text()).toBe(
+        "Nothing is suggested yet: you haven't started a course or path. You can still choose a skill or concept to practise.",
+      )
+      expect(wrapper.find('[data-test="what-to-practise-choose"]').exists()).toBe(true)
       const primary = wrapper.get('[data-primary-action]')
       expect(primary.text()).toBe('Find where to start')
 
@@ -1108,6 +1162,169 @@ describe('PracticeSessionView', () => {
     expect(track).not.toHaveBeenCalled()
   })
 
+  describe('choose what to practise', () => {
+    const mixChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-mix"] input')
+    const chooseChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-choose"] input')
+
+    /** Chooses I'll choose, which opens the picker, and picks a subject from the student's path. */
+    async function chooseProgressions(wrapper: ReturnType<typeof mountView>) {
+      await chooseChoice(wrapper).setValue()
+      await wrapper.get('[data-test="path-subject"]').trigger('click')
+      await flushPromises()
+    }
+
+    it("offers both Today's mix, chosen, and I'll choose, even when the mix can be composed", () => {
+      const wrapper = mountView()
+
+      expect(wrapper.get('[data-test="what-to-practise-mix"]').text()).toBe("Today's mix")
+      expect(wrapper.get('[data-test="what-to-practise-choose"]').text()).toBe("I'll choose")
+      expect(mixChoice(wrapper).element.checked).toBe(true)
+      expect(wrapper.text()).toContain("A mix of what's due, what needs work and what's next on your path.")
+    })
+
+    it("composes Today's mix with no subject", async () => {
+      const wrapper = mountView()
+
+      await composeSession(wrapper)
+
+      expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10 } })
+    })
+
+    it("opens the picker as a page inside the shell on I'll choose, offering the subjects for the instrument chosen", async () => {
+      const wrapper = mountView()
+
+      await chooseChoice(wrapper).setValue()
+
+      expect(wrapper.find('[data-test="practice-setup"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(true)
+      expect(wrapper.findAll('[data-test="path-subject"] [data-test="subject-name"]').map((name) => name.text())).toEqual(['Common progressions'])
+      expect(wrapper.get('[data-test="shell-exit"]').attributes('aria-label')).toBe('Back to practice')
+      expect(wrapper.find('[data-test="tools"]').exists()).toBe(false)
+    })
+
+    it('goes back to the setup from the picker, leaving nothing', async () => {
+      const wrapper = mountView()
+      await chooseChoice(wrapper).setValue()
+
+      await wrapper.get('[data-test="shell-exit"]').trigger('click')
+
+      expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(false)
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Choose what to practise')
+      expect(router.back).not.toHaveBeenCalled()
+      expect(router.push).not.toHaveBeenCalled()
+    })
+
+    it('shows the subject picked on the setup with its level, and says the session is only this', async () => {
+      const wrapper = mountView()
+
+      await chooseProgressions(wrapper)
+
+      expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(false)
+      expect(chooseChoice(wrapper).element.checked).toBe(true)
+      const chosen = wrapper.get('[data-test="chosen-subject"]')
+      expect(chosen.text()).toContain('Common progressions')
+      expect(chosen.text()).toContain('Learning · tap to change')
+      expect(wrapper.text()).toContain('Only this, as much as fits in 10 min. Its due reviews come first.')
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Start practising')
+    })
+
+    it('composes a session on the subject picked', async () => {
+      const wrapper = mountView()
+      await chooseProgressions(wrapper)
+
+      await composeSession(wrapper, plan(undefined, { focus_source: 'chosen', focus_nodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }] }))
+
+      expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10, focus_node_id: PROGRESSIONS } })
+      expect(wrapper.getComponent(TodaysPlanStub).props()).toMatchObject({
+        focusSource: 'chosen',
+        focusNodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }],
+      })
+    })
+
+    it('opens the picker again from the subject picked, to change it', async () => {
+      const wrapper = mountView()
+      await chooseProgressions(wrapper)
+
+      await wrapper.get('[data-test="chosen-subject"]').trigger('click')
+
+      expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(true)
+    })
+
+    it('goes back to Today’s mix without the subject', async () => {
+      const wrapper = mountView()
+      await chooseProgressions(wrapper)
+
+      await mixChoice(wrapper).setValue()
+      await composeSession(wrapper)
+
+      expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10 } })
+    })
+
+    it('opens with the subject a “Practise this” asked for already chosen', async () => {
+      route.query = { focus: INTERVALS }
+      const wrapper = mountView()
+      await flushPromises()
+
+      expect(chooseChoice(wrapper).element.checked).toBe(true)
+      expect(wrapper.get('[data-test="chosen-subject"]').text()).toContain('Recognise intervals')
+    })
+
+    it('keeps the subject asked for until the instrument settles on one that has it', async () => {
+      route.query = { focus: PROGRESSIONS }
+      subjectsFor = (id) => (id === GUITAR ? subjectList() : subjectList([intervals]))
+      instruments.instruments.value = []
+      const wrapper = mountView()
+      await flushPromises()
+
+      instruments.instruments.value = allInstruments
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="chosen-subject"]').text()).toContain('Common progressions')
+    })
+
+    it('lets go of a subject the instrument chosen has nothing for', async () => {
+      subjectsFor = (id) => (id === BASS ? subjectList([intervals]) : subjectList())
+      const wrapper = mountView()
+      await chooseProgressions(wrapper)
+
+      await wrapper.findAll('[data-test="instrument-tile"]')[1].get('input').setValue()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="chosen-subject"]').text()).toBe('Pick a skill or concept')
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Choose what to practise')
+    })
+
+    it('says when the subject has nothing to practise this way, and choosing another is the primary action', async () => {
+      const wrapper = mountView()
+      await chooseProgressions(wrapper)
+      POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
+
+      await wrapper.get('[data-test="start-session"]').trigger('click')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="inline-notice"]').text()).toBe("There's nothing of Common progressions to practise this way. Choose another skill or concept.")
+      await wrapper.get('[data-primary-action]').trigger('click')
+      expect(wrapper.find('[data-test="subject-picker"]').exists()).toBe(true)
+    })
+
+    it('gives the summary each subject’s result, the review block’s and whether the subject was chosen', async () => {
+      const notes = 'dddddddd-0000-4000-8000-000000000009'
+      const right = { ...exerciseItem(EXERCISE), node_id: notes }
+      const wrapper = mountView()
+      await startSession(wrapper, plan([right], { focus_nodes: [{ node_id: notes, names: { en: 'Find notes' } }] }))
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
+      await flushPromises()
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.getComponent(SessionSummaryStub).props()).toMatchObject({
+        subjects: [{ node: { node_id: notes }, right: 1, answered: 1, rungs: ['know'] }],
+        review: null,
+        chosen: false,
+      })
+    })
+  })
+
   describe('setup', () => {
     it('keeps the choices when the session can’t be put together, and Try again sends them again', async () => {
       const wrapper = mountView()
@@ -1127,7 +1344,7 @@ describe('PracticeSessionView', () => {
       expect(segments(wrapper)).toEqual([0, 0])
     })
 
-    it('makes practising in the head the primary action when there is nothing to play on the chosen instrument', async () => {
+    it('makes choosing what to practise the primary action when nothing is suggested for the chosen instrument', async () => {
       const wrapper = mountView()
       POST.mockResolvedValueOnce({ error: { message: 'not found' }, response: { status: 404 } })
       await wrapper.get('[data-test="start-session"]').trigger('click')
@@ -1135,17 +1352,10 @@ describe('PracticeSessionView', () => {
 
       const notice = wrapper.get('[data-test="inline-notice"]')
       expect(notice.attributes('data-tone')).toBe('unavailable')
-      expect(notice.text()).toBe('There’s nothing to play on this instrument yet. You can practise in your head instead.')
+      expect(notice.text()).toBe('Nothing is suggested for this instrument yet. Choose a skill or concept to practise on it.')
       expect(wrapper.findAll('[data-test="instrument-tile"]')).toHaveLength(2)
       expect(wrapper.findAll('[data-primary-action]')).toHaveLength(1)
-      expect(wrapper.get('[data-primary-action]').text()).toBe('Practise in my head')
-
-      POST.mockResolvedValueOnce({ data: plan([cellItem(5, 3, 'name_the_note')], { instrument_id: null }), response: { status: 200 } })
-      await wrapper.get('[data-primary-action]').trigger('click')
-      await flushPromises()
-
-      expect(POST).toHaveBeenLastCalledWith('/students/me/practice-sessions', { body: { instrument_id: null, minutes: 10 } })
-      expect(wrapper.find('[data-test="plan"]').exists()).toBe(true)
+      expect(wrapper.get('[data-primary-action]').text()).toBe('Choose what to practise')
     })
 
     it('goes back to Start practising once another instrument is chosen', async () => {
