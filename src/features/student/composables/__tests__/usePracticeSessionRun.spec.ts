@@ -16,6 +16,7 @@ vi.mock('@/shared/composables/useEmbeddedDiagram', () => ({
   fetchDiagram: (coreApi: unknown, diagramId: string) => fetchDiagram(coreApi, diagramId),
 }))
 
+import { EVERY_THIRD_AT_60, guideToneItem } from '@/features/student/testing/guideToneItems'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import type { ShapeBoard } from '@/features/student/composables/usePracticeSessionRun'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -1824,6 +1825,70 @@ describe('usePracticeSessionRun', () => {
         cleanKeys: 2,
         tourBpm: 60,
       })
+    })
+  })
+
+  describe('guide tones', () => {
+    const GUITAR = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
+    const tuningOf = (id: string) => (id === 'guitar' ? GUITAR : undefined)
+    const take = (taps = EVERY_THIRD_AT_60) => ({ tempoBpm: 60, noteValue: 'quarters' as const, taps })
+
+    it('gives the takes the plan gives', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      expect(run.takesTotal.value).toBe(3)
+      expect(run.takesLeft.value).toBe(3)
+    })
+
+    it('sends each take with its key, tone, tempo, note value and taps', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      run.tapGuideTone(take())
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: 'guide_tone:guitar:ii-V-I',
+          response: { response_type: 'timed_taps', music_key: 'G', tone: '3', tempo_bpm: 60, note_value: 'quarters', taps: EVERY_THIRD_AT_60 },
+        },
+      ])
+      expect(run.takesLeft.value).toBe(2)
+    })
+
+    it('keeps the best take’s bars hit as the item’s outcome', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      run.tapGuideTone(take(EVERY_THIRD_AT_60.slice(0, 2)))
+      run.tapGuideTone(take(EVERY_THIRD_AT_60.slice(0, 1)))
+
+      expect(run.outcomes.value.get(0)).toEqual({ kind: 'tapped', hits: 2, bars: 4, correct: false })
+      run.tapGuideTone(take())
+      expect(run.outcomes.value.get(0)).toEqual({ kind: 'tapped', hits: 4, bars: 4, correct: true })
+    })
+
+    it('stays on the item after a take until the student moves on', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem(), guideToneItem()], null), { tuningOf })
+      run.start()
+
+      run.tapGuideTone(take())
+
+      expect(run.index.value).toBe(0)
+      run.nextItem()
+      expect(run.index.value).toBe(1)
+      expect(run.takesLeft.value).toBe(3)
+    })
+
+    it('takes no more takes than the plan gives', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      for (let i = 0; i < 4; i++) run.tapGuideTone(take([]))
+
+      expect(tracked('practice.item_answered')).toHaveLength(3)
     })
   })
 })

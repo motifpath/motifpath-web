@@ -236,6 +236,31 @@ describe('useProgressionPlayback', () => {
     expect(sounding('acoustic-guitar')[0]!.time - audio.clicks[0]!.time).toBeCloseTo(4)
   })
 
+  it('tells how far into the music it is, from the first chord’s downbeat after the count-in', async () => {
+    const { player } = setup({ countInBars: 1 })
+    expect(player.musicMs()).toBeNull()
+    await startPlaying(player)
+    const firstChord = sounding('acoustic-guitar')[0]!.time
+
+    audio.now = firstChord - 1
+    expect(player.musicMs()).toBe(-1000)
+    audio.now = firstChord + 2.25
+    expect(player.musicMs()).toBe(2250)
+    player.stop()
+    expect(player.musicMs()).toBeNull()
+  })
+
+  it('counts the music’s time at the note value it plays in', async () => {
+    const { player } = setup({ countInBars: 1, noteValue: 'eighths' })
+    await startPlaying(player)
+    const firstChord = sounding('acoustic-guitar')[0]!.time
+
+    // The count-in is a bar of beats at 60 BPM, 4 seconds, whatever the note value.
+    expect(firstChord - (audio.clicks[0]?.time ?? firstChord - 4)).toBeCloseTo(4)
+    audio.now = firstChord + 1
+    expect(player.musicMs()).toBe(1000)
+  })
+
   it('says no bar is sounding during the count-in', async () => {
     const { player } = setup({ countInBars: 1 })
     await startPlaying(player)

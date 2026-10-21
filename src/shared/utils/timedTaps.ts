@@ -1,6 +1,7 @@
 /**
  * Guide tones: a chord tone of each chord of a progression tapped on the fretboard in time with its
- * playback, four beats to a bar, one chord per bar. Grades exactly as the server does, so instant
+ * playback, four beats to a bar, one chord per bar, a faster note value shortening each bar by its speed
+ * factor. Grades exactly as the server does, so instant
  * feedback never contradicts the record: a bar is hit when a tap within it sounds the asked tone and
  * no tap within it sounds another note; the take is right only when every bar is hit; taps after the
  * last bar aren't graded.
@@ -8,14 +9,18 @@
 import type { components } from '@/api/generated/event-ingestion'
 import { SHARP_NAMES, chordOf, chordSymbol, pitchClassOf, seventhOf, thirdOf } from '@/shared/utils/harmony'
 import { frettedPitch } from '@/shared/utils/pitch'
+import { speedFactor } from '@/shared/utils/tempoNoteValue'
+import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
-/** What a take was asked: the layout's tuning, the progression's numerals, the key, tone and tempo. */
+/** What a take was asked: the layout's tuning, the progression's numerals, the key, tone, tempo and note value. */
 export interface GuideToneTake {
   tuning: string[]
   bars: string[]
   key: string
   tone: components['schemas']['TimedTapsResponse']['tone']
   tempoBpm: number
+  /** The note value it played at; quarters when it says none. */
+  noteValue?: TempoNoteValue
 }
 
 /** One tap of the take, milliseconds after the first bar's downbeat. */
@@ -48,7 +53,8 @@ export function gradeTimedTaps(take: GuideToneTake, taps: TimedTap[]): GradedTak
     if (pitch === null || tap.string > take.tuning.length) return null
     tapped.push(pitch % 12)
   }
-  const barStart = (i: number) => Math.floor((i * BEATS_PER_BAR_MS) / take.tempoBpm)
+  const speed = take.tempoBpm * speedFactor(take.noteValue ?? 'quarters')
+  const barStart = (i: number) => Math.floor((i * BEATS_PER_BAR_MS) / speed)
   const bars: GradedBar[] = []
   let latencyMs = 0
   for (const [i, numeral] of take.bars.entries()) {

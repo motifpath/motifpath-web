@@ -7,6 +7,7 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
+import { guideToneItem } from '@/features/student/testing/guideToneItems'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -249,5 +250,12 @@ describe('usePlanItemNames', () => {
     const { labelOf } = setUp([tour])
 
     expect(labelOf(tour)).toBe('I–V–vi–IV (pop) in every key')
+  })
+
+  it('names a guide tone by its progression', () => {
+    const guide = guideToneItem()
+    const { labelOf } = setUp([guide])
+
+    expect(labelOf(guide)).toBe('ii–V–I')
   })
 })

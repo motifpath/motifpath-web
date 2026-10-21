@@ -31,6 +31,7 @@ import type { SetupProblem, WhatToPractise } from '@/features/student/components
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionChordChange from '@/features/student/components/SessionChordChange.vue'
 import SessionProgressionKeys from '@/features/student/components/SessionProgressionKeys.vue'
+import SessionGuideTone from '@/features/student/components/SessionGuideTone.vue'
 import SessionChordVoicing from '@/features/student/components/SessionChordVoicing.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
 import SessionGeneratedChoice from '@/features/student/components/SessionGeneratedChoice.vue'
@@ -210,6 +211,14 @@ const currentTourTuning = computed(() => {
   const tour = current.value?.progression_keys
   if (!tour || !tour.keys.some((k) => k.chord_tones.length > 0)) return null
   return tuningOf(tour.layout_instrument_id) ?? null
+})
+
+/** The layout a guide tone is tapped on: its tuning and name; null when its instrument isn't known. */
+const currentGuideToneLayout = computed(() => {
+  const id = current.value?.guide_tone?.layout_instrument_id
+  const instrument = id ? instruments.value.find((candidate) => candidate.instrument_id === id) : undefined
+  if (!instrument?.tuning) return null
+  return { tuning: instrument.tuning, name: localizedName(instrument.names) }
 })
 
 /** In a session mixing instruments, each fretboard question names its own; otherwise none does. */
@@ -488,6 +497,18 @@ onBeforeUnmount(() => {
         @skip="run.skip($event)"
         @tempo="run.setTempo($event)"
         @note-value="run.setNoteValue($event)"
+      />
+      <SessionGuideTone
+        v-else-if="current.guide_tone && currentGuideToneLayout"
+        :key="run.index.value"
+        :item="current"
+        :tuning="currentGuideToneLayout.tuning"
+        :layout-name="currentGuideToneLayout.name"
+        :takes-left="run.takesLeft.value"
+        :takes-total="run.takesTotal.value"
+        @take="run.tapGuideTone($event)"
+        @next="run.nextItem()"
+        @skip="run.skip($event)"
       />
       <div v-else class="flex flex-col items-start gap-3">
         <p class="text-ink-muted">{{ t('practiceSessionView.unsupported') }}</p>

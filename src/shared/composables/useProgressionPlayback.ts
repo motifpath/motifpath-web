@@ -133,12 +133,15 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
   let attempt = 0
   // Bumped by every new progression, so a check of the voices of an old one is dropped.
   let check = 0
+  /** When the first chord's bar starts on the audio clock, after the count-in; null while nothing plays. */
+  let musicStart: number | null = null
 
   function stop() {
     attempt++
     cancelAnimationFrame(frame)
     runs.forEach((run) => run.stop())
     runs = []
+    musicStart = null
     currentBar.value = null
     if (state.value !== 'error') state.value = 'idle'
     releasePlayback(stop)
@@ -176,6 +179,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       if (now.bass) stepLists.push([...countIn, ...bassLineSteps(now.bass.roots, now.bass.instrument.tuning ?? [])])
       const startAt = audio.currentTime + START_DELAY_SECONDS
       const { wholeSeconds, clickBeat } = timing()
+      musicStart = startAt + countIn.reduce((seconds, step) => seconds + step.value * wholeSeconds, 0)
       const click = metronome.value ? { sink: createClickSink(audio), beat: clickBeat, beatsPerBar: FOUR_FOUR.beats } : undefined
       // The click goes with the chords only, so it sounds once whatever plays under them.
       runs = stepLists.map((steps, i) =>
@@ -229,7 +233,17 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     { immediate: true },
   )
 
+  /**
+   * How far into the music it is, in milliseconds of audible time from the first chord's downbeat:
+   * negative during the count-in, null while nothing plays. Taps timed by it line up with what the
+   * student hears, not with what was scheduled.
+   */
+  function musicMs(): number | null {
+    if (musicStart === null || !context) return null
+    return Math.round((audibleTime(context) - musicStart) * 1000)
+  }
+
   onScopeDispose(stop)
 
-  return { state, status, currentBar, tempo, noteValue, metronome, lengthMs, toggle, stop }
+  return { state, status, currentBar, tempo, noteValue, metronome, lengthMs, toggle, stop, musicMs }
 }

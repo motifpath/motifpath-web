@@ -54,6 +54,15 @@ describe('summaryRows', () => {
     ])
   })
 
+  it('gives a guide tone the bars its best take hit', () => {
+    const guide = item('guide_tone:guitar:ii-V-I', 'guide_tone')
+    const outcomes = new Map<number, ItemOutcome>([[0, { kind: 'tapped', hits: 3, bars: 4, correct: false }]])
+
+    expect(summaryRows([guide], outcomes)).toEqual([
+      { key: 'guide_tone:guitar:ii-V-I', item: guide, result: { kind: 'tapped', hits: 3, bars: 4 }, good: true },
+    ])
+  })
+
   it('finds the fastest take at effective speed and keeps it as played', () => {
     const triads = item('play_along:triads', 'play_along')
     const outcomes = new Map<number, ItemOutcome>([

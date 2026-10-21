@@ -22,6 +22,7 @@ import type { EveryInstanceGrade } from '@/shared/utils/multiTap'
 import { gradeGeneratedChoice, rightAnswerOf } from '@/shared/utils/generatedChoice'
 import type { GeneratedQuestion, ProgressionCatalog } from '@/shared/utils/generatedChoice'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
+import { gradeTimedTaps } from '@/shared/utils/timedTaps'
 import { keepEffectiveSpeed, speedFactor } from '@/shared/utils/tempoNoteValue'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
@@ -35,11 +36,19 @@ export type NotAnsweredReason = EventComponents['schemas']['NotAnsweredResponse'
 const FOCUS_TAKES = 4
 const WARM_UP_TAKES = 2
 
-/** Takes of an item: a play-along's, or a progression key tour's as its plan gives them. */
+/** Takes of an item: a play-along's, or a progression key tour's or a guide tone's as its plan gives them. */
 function takesOf(item: Item) {
   if (item.progression_keys) return item.progression_keys.takes
+  if (item.guide_tone) return item.guide_tone.takes
   if (item.kind !== 'play_along') return 0
   return item.reason === 'warm_up' ? WARM_UP_TAKES : FOCUS_TAKES
+}
+
+/** A guide tone's take as played: its tempo and note value, and every tap timed from the first bar's downbeat. */
+export interface GuideToneTakePlayed {
+  tempoBpm: number
+  noteValue: TempoNoteValue
+  taps: EventComponents['schemas']['TimedTap'][]
 }
 
 export interface ExerciseAnswer {
@@ -129,6 +138,8 @@ export type ItemOutcome =
   | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
   /** A progression key tour: its takes, the keys clean when the last was rated, and the tour tempo in quarters. */
   | { kind: 'toured'; takes: RatedTake[]; cleanKeys: number; tourBpm: number }
+  /** A guide tone: the bars its best take hit, of its bars, and whether any take hit them all. */
+  | { kind: 'tapped'; hits: number; bars: number; correct: boolean }
 
 /** A play-along just finished, handing over to the next item. */
 export interface Handoff {
@@ -193,6 +204,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
   const index = ref(0)
   const takes = ref<RatedTake[]>([])
+  /** The guide tone on's takes, graded; a take the tuning can't grade counts with no bar hit. */
+  const guideToneTakes = ref<{ hits: number; correct: boolean }[]>([])
   /** A tempo the student chose for the next take, over the ladder's; forgotten once it's rated. */
   const chosenTempo = ref<number | null>(null)
   /** The tempo the student last chose for the item on, below which the ladder never goes. */
@@ -314,7 +327,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   }
 
   const takesTotal = computed(() => (current.value ? takesOf(current.value) : 0))
-  const takesLeft = computed(() => takesTotal.value - takes.value.length)
+  const takesLeft = computed(() => takesTotal.value - (current.value?.guide_tone ? guideToneTakes.value.length : takes.value.length))
 
   /**
    * How much of each item is done, from 0 to 1: the items moved past in full, the current
@@ -369,6 +382,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function nextItem() {
     if (!active() || tapCheckPending.value) return
     takes.value = []
+    guideToneTakes.value = []
     chosenTempo.value = null
     chosenFloor.value = null
     chosenNoteValue.value = null
@@ -490,6 +504,49 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       response: { response_type: 'self_rating', rating, tempo_bpm: tempoBpm, changes_per_minute: cleanChanges },
     })
     nextItem()
+  }
+
+  /**
+   * Sends a take of the guide tone on: the key and tone its plan asks, the tempo and note value it
+   * played at, and every tap, timed from the first bar's downbeat. It stays on the item, so another
+   * take can follow, until the student moves on; no more takes than the plan gives are sent.
+   */
+  function tapGuideTone(played: GuideToneTakePlayed) {
+    const item = current.value
+    const planned = item?.guide_tone
+    if (!active() || !item || !planned || takesLeft.value <= 0) return
+
+    const tuning = options.tuningOf?.(planned.layout_instrument_id)
+    const graded = tuning
+      ? gradeTimedTaps(
+          {
+            tuning,
+            bars: planned.bars.map((bar) => bar.numeral),
+            key: planned.music_key,
+            tone: planned.tone,
+            tempoBpm: played.tempoBpm,
+            noteValue: played.noteValue,
+          },
+          played.taps,
+        )
+      : null
+    guideToneTakes.value = [...guideToneTakes.value, { hits: graded?.bars.filter((bar) => bar.hit).length ?? 0, correct: graded?.correct ?? false }]
+    markAnswered(item)
+    const best = guideToneTakes.value.reduce((top, next) => (next.hits > top.hits ? next : top))
+    recordOutcome({ kind: 'tapped', hits: best.hits, bars: planned.bars.length, correct: guideToneTakes.value.some((t) => t.correct) })
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: {
+        response_type: 'timed_taps',
+        music_key: planned.music_key,
+        tone: planned.tone,
+        tempo_bpm: played.tempoBpm,
+        note_value: played.noteValue,
+        taps: played.taps,
+      },
+    })
   }
 
   /** Moves on from a play-along's handoff to the next item. */
@@ -676,6 +733,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     rate,
     rateChord,
     saveChangeMinute,
+    tapGuideTone,
     answer,
     clipPlaying,
     skip,
