@@ -36,6 +36,7 @@ function resultText(result: SummaryResult): string {
     return t('sessionSummary.changes', { count: result.cleanChanges, tempo: result.tempoBpm, rating: t(`playAlongTake.ratings.${result.rating}`) })
   }
   if (result.kind === 'toured') return t('sessionSummary.toured', { count: result.cleanKeys, total: TOUR_ORDER.length, tempo: result.tourBpm })
+  if (result.kind === 'tapped') return t('sessionSummary.tapped', { hits: result.hits, total: result.bars })
   if (result.kind === 'counted') return t('sessionSummary.counted', { right: result.right, answered: result.answered })
   return result.correct ? t('sessionSummary.right') : t('sessionSummary.notQuite')
 }

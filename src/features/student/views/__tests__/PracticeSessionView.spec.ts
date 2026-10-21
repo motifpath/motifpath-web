@@ -169,6 +169,21 @@ const SessionProgressionKeysStub = defineComponent({
   },
 })
 
+const SessionGuideToneStub = defineComponent({
+  name: 'SessionGuideTone',
+  props: {
+    item: { type: Object, required: true },
+    tuning: { type: Array, required: true },
+    layoutName: { type: String, required: true },
+    takesLeft: { type: Number, required: true },
+    takesTotal: { type: Number, required: true },
+  },
+  emits: ['take', 'next', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'guide-tone' })
+  },
+})
+
 const TapCheckStub = defineComponent({
   name: 'TapCheck',
   props: { tuning: { type: Array, required: true } },
@@ -222,6 +237,7 @@ const SessionSummaryStub = defineComponent({
   },
 })
 
+import { guideToneItem } from '@/features/student/testing/guideToneItems'
 import PracticeSessionView from '@/features/student/views/PracticeSessionView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 
@@ -429,6 +445,7 @@ function mountView() {
         SessionChordVoicing: SessionChordVoicingStub,
         SessionChordChange: SessionChordChangeStub,
         SessionProgressionKeys: SessionProgressionKeysStub,
+        SessionGuideTone: SessionGuideToneStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
@@ -771,6 +788,37 @@ describe('PracticeSessionView', () => {
 
       expect(events('practice.item_answered')).toEqual([])
       expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true })])
+    })
+  })
+
+  describe('with a guide tone', () => {
+    function guideTone(layout: string): Item {
+      return { ...guideToneItem(), item_key: `guide_tone:${layout}:ii-V-I`, guide_tone: { ...guideToneItem().guide_tone!, layout_instrument_id: layout } }
+    }
+
+    it('taps the guide tone on its layout and records each take', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([guideTone(BASS), shapeItem()]))
+
+      const tone = wrapper.getComponent(SessionGuideToneStub)
+      expect(tone.props()).toMatchObject({ tuning: ['E1', 'A1', 'D2', 'G2'], layoutName: 'Electric bass', takesLeft: 3, takesTotal: 3 })
+      tone.vm.$emit('take', { tempoBpm: 60, noteValue: 'quarters', taps: [] })
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: { response_type: 'timed_taps', music_key: 'G', tone: '3', tempo_bpm: 60, note_value: 'quarters', taps: [] } }),
+      ])
+      expect(wrapper.getComponent(SessionGuideToneStub).props('takesLeft')).toBe(2)
+    })
+
+    it('moves on when the student does', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([guideTone(GUITAR), shapeItem()]))
+
+      wrapper.getComponent(SessionGuideToneStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SessionGuideToneStub).exists()).toBe(false)
     })
   })
 
