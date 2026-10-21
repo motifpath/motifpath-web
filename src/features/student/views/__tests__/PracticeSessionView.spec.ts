@@ -152,6 +152,23 @@ const SessionChordChangeStub = defineComponent({
   },
 })
 
+const SessionProgressionKeysStub = defineComponent({
+  name: 'SessionProgressionKeys',
+  props: {
+    item: { type: Object, required: true },
+    tempo: { type: Number, required: true },
+    noteValue: { type: String, required: true },
+    takesLeft: { type: Number, required: true },
+    takesTotal: { type: Number, required: true },
+    tour: { type: Object, required: true },
+    tuning: { type: Array, default: null },
+  },
+  emits: ['rate', 'skip', 'tempo', 'noteValue'],
+  setup() {
+    return () => h('div', { 'data-test': 'tour' })
+  },
+})
+
 const TapCheckStub = defineComponent({
   name: 'TapCheck',
   props: { tuning: { type: Array, required: true } },
@@ -372,6 +389,31 @@ function rootChangeItem(): Item {
   }
 }
 
+function tourItem(layout: string): Item {
+  const tones = layout === BASS ? [{ chord: 'A', root: { string: 3, fret: 0 }, third: { string: 2, fret: 4 }, fifth: { string: 4, fret: 0 } }] : []
+  const order: components['schemas']['MusicKey'][] = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G']
+  const keys = order.map((music_key) => ({ music_key, clean: false, chart: [], voicings: [], chord_tones: tones }))
+  return {
+    ...chordBase,
+    item_key: `progression_keys:${layout}:I-V-vi-IV`,
+    kind: 'progression_keys',
+    rung: 'move',
+    estimated_seconds: 234,
+    progression_keys: {
+      layout_instrument_id: layout,
+      progression: { key: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)' },
+      times_through: 4,
+      takes: 3,
+      start_music_key: 'A',
+      tour_tempo_bpm: 85,
+      start_note_value: 'quarters',
+      target_tempo_bpm: 100,
+      min_tempo_bpm: 60,
+      keys,
+    },
+  }
+}
+
 const SHAPE_BOARD = { stringCount: 6, positions: [{ string: 5, fret: 3, interval: 'R' }] }
 
 function mountView() {
@@ -386,6 +428,7 @@ function mountView() {
         SessionGeneratedChoice: SessionGeneratedChoiceStub,
         SessionChordVoicing: SessionChordVoicingStub,
         SessionChordChange: SessionChordChangeStub,
+        SessionProgressionKeys: SessionProgressionKeysStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
@@ -728,6 +771,31 @@ describe('PracticeSessionView', () => {
 
       expect(events('practice.item_answered')).toEqual([])
       expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true })])
+    })
+  })
+
+  describe('with a progression key tour', () => {
+    it('plays the tour at its planned key and tempo, and records each take with its key', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([tourItem(GUITAR), shapeItem()]))
+
+      const tour = wrapper.getComponent(SessionProgressionKeysStub)
+      expect(tour.props()).toMatchObject({ tempo: 85, noteValue: 'quarters', takesLeft: 3, takesTotal: 3, tour: { key: 'A', speed: 85, clean: [] }, tuning: null })
+      tour.vm.$emit('rate', 'clean')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 85, note_value: 'quarters', music_key: 'A' } }),
+      ])
+      expect(wrapper.getComponent(SessionProgressionKeysStub).props('tour')).toEqual({ key: 'D', speed: 85, clean: ['A'] })
+      expect(segments(wrapper)[0]).toBeCloseTo(100 / 3, 0)
+    })
+
+    it('marks a bass tour’s chord tones on its layout’s board', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([tourItem(BASS)], { instrument_id: BASS }))
+
+      expect(wrapper.getComponent(SessionProgressionKeysStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
     })
   })
 

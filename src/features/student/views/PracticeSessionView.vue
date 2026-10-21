@@ -30,6 +30,7 @@ import SessionSummary from '@/features/student/components/SessionSummary.vue'
 import type { SetupProblem, WhatToPractise } from '@/features/student/components/PracticeSetup.vue'
 import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionChordChange from '@/features/student/components/SessionChordChange.vue'
+import SessionProgressionKeys from '@/features/student/components/SessionProgressionKeys.vue'
 import SessionChordVoicing from '@/features/student/components/SessionChordVoicing.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
 import SessionGeneratedChoice from '@/features/student/components/SessionGeneratedChoice.vue'
@@ -202,6 +203,13 @@ function fretboardOf(item: Item): string | undefined {
 const currentBassTuning = computed(() => {
   const layout = current.value?.root_fifth?.layout_instrument_id ?? current.value?.root_change?.layout_instrument_id
   return layout ? tuningOf(layout) : undefined
+})
+
+/** The tuning a bass tour marks its chord tones with; null on guitar, whose tour shows boxes. */
+const currentTourTuning = computed(() => {
+  const tour = current.value?.progression_keys
+  if (!tour || !tour.keys.some((k) => k.chord_tones.length > 0)) return null
+  return tuningOf(tour.layout_instrument_id) ?? null
 })
 
 /** In a session mixing instruments, each fretboard question names its own; otherwise none does. */
@@ -465,6 +473,21 @@ onBeforeUnmount(() => {
         :instrument-name="currentInstrumentName"
         @save="(tempo, changes) => run!.saveChangeMinute(tempo, changes)"
         @skip="run.skip($event)"
+      />
+      <SessionProgressionKeys
+        v-else-if="current.progression_keys && run.tour.value && run.tempo.value !== null && run.noteValue.value !== null"
+        :key="run.index.value"
+        :item="current"
+        :tempo="run.tempo.value"
+        :note-value="run.noteValue.value"
+        :takes-left="run.takesLeft.value"
+        :takes-total="run.takesTotal.value"
+        :tour="run.tour.value"
+        :tuning="currentTourTuning"
+        @rate="run.rate($event)"
+        @skip="run.skip($event)"
+        @tempo="run.setTempo($event)"
+        @note-value="run.setNoteValue($event)"
       />
       <div v-else class="flex flex-col items-start gap-3">
         <p class="text-ink-muted">{{ t('practiceSessionView.unsupported') }}</p>
