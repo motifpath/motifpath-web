@@ -291,8 +291,10 @@
     "cell": "String {string}, fret {fret}",
     "openCell": "String {string}, open",
     "root": "Root",
+    "third": "Third",
     "fifth": "Fifth",
     "rootOf": "Root of {chord}",
+    "thirdOf": "Third of {chord}",
     "fifthOf": "Fifth of {chord}",
     "markedPlace": "{role}, string {string}, fret {fret}",
     "markedOpen": "{role}, string {string}, open"
