@@ -432,7 +432,10 @@
     "nameTheNote": "Que nota é esta?",
     "findTheNote": "Encontre {note} na corda {string}, casas {from}–{to}",
     "board": "Braço do instrumento",
-    "notes": "Notas"
+    "notes": "Notas",
+    "findEveryInstance": "Toque em todos os {note}, casas {from}–{to}",
+    "found": "{found} de {places} encontrados",
+    "foundWithExtra": "{found} de {places} encontrados · {extra} a mais"
   },
   "sessionDiagramShape": {
     "nameTheShape": "Que forma é esta?",

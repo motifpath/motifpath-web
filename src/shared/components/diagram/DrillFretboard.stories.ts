@@ -18,6 +18,22 @@ export const AskedString: Story = { args: { askedString: 5 } }
 export const Marked: Story = {
   args: { locked: true, marks: [{ string: 3, fret: 5, mark: 'right' }, { string: 2, fret: 3, mark: 'wrong' }] },
 }
+/** Finding every G in frets 3 to 7, checked: two places found and ringed, one missed, one extra tap. */
+export const EveryInstanceChecked: Story = {
+  args: {
+    locked: true,
+    fretWindow: { from: 3, to: 7 },
+    tapStrings: [1, 2, 3, 4, 5, 6],
+    selectable: true,
+    selected: [{ string: 6, fret: 3 }, { string: 1, fret: 3 }, { string: 5, fret: 5 }],
+    marks: [
+      { string: 1, fret: 3, mark: 'right' },
+      { string: 4, fret: 5, mark: 'right' },
+      { string: 5, fret: 5, mark: 'wrong' },
+      { string: 6, fret: 3, mark: 'right' },
+    ],
+  },
+}
 
 const settle = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 

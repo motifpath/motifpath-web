@@ -53,8 +53,12 @@ const props = withDefaults(
     marks?: CellMark[]
     /** Places to play, marked. */
     places?: MarkedPlace[]
+    /** Whether a tap toggles a place on or off, for a drill answered with several places. */
+    selectable?: boolean
+    /** The places toggled on, ringed with a dashed halo, and still after the answer is graded. */
+    selected?: CellPlace[]
   }>(),
-  { fretWindow: null, lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [], places: () => [] },
+  { fretWindow: null, lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [], places: () => [], selectable: false, selected: () => [] },
 )
 
 const emit = defineEmits<{ tap: [place: CellPlace] }>()
@@ -158,6 +162,13 @@ function placeLabel(place: MarkedPlace): string {
   return place.fret === 0 ? t('drillFretboard.markedOpen', where) : t('drillFretboard.markedPlace', where)
 }
 
+/** A selected place's halo sits just outside an answer mark's ring, so both show at once. */
+const SELECTED_RADIUS = MARKER_RADIUS + 7
+
+function isSelected(place: CellPlace): boolean {
+  return props.selected.some((s) => s.string === place.string && s.fret === place.fret)
+}
+
 function tap(place: CellPlace) {
   if (!props.locked) emit('tap', place)
 }
@@ -235,6 +246,22 @@ function tap(place: CellPlace) {
         >{{ ROLE_GLYPHS[place.role] }}</text>
       </g>
 
+      <circle
+        v-for="place in selected"
+        :key="`selected-${place.string}:${place.fret}`"
+        data-test="selected-cell"
+        :data-string="place.string"
+        :data-fret="place.fret"
+        :cx="cx(place.fret)"
+        :cy="cy(place.string)"
+        :r="SELECTED_RADIUS"
+        fill="none"
+        class="stroke-accent"
+        stroke-width="2.5"
+        stroke-dasharray="4 3"
+        aria-hidden="true"
+      />
+
       <g v-for="mark in marks" :key="`${mark.string}:${mark.fret}`" data-test="cell-mark" :data-string="mark.string" :data-fret="mark.fret">
         <AnswerMark :mark="mark.mark" :cx="cx(mark.fret)" :cy="cy(mark.string)" :ring-radius="MARKER_RADIUS + 2" :badge-offset="BADGE_OFFSET" />
       </g>
@@ -250,6 +277,7 @@ function tap(place: CellPlace) {
         :tabindex="locked ? -1 : 0"
         :aria-label="cellLabel(cell)"
         :aria-disabled="locked"
+        :aria-pressed="selectable ? isSelected(cell) : undefined"
         fill="transparent"
         class="cursor-pointer outline-none focus:stroke-focus"
         stroke-width="2"
