@@ -361,7 +361,8 @@
     "done": "Done",
     "review": "Quick review of other subjects: {right} of {answered} right",
     "everyItem": "Every item ({count})",
-    "toured": "clean in {count} of {total} keys at {tempo} BPM"
+    "toured": "clean in {count} of {total} keys at {tempo} BPM",
+    "tapped": "{hits} of {total} chords in time"
   },
   "playAlongTake": {
     "goal": "Goal {goal} · best clean {best}",
@@ -758,6 +759,27 @@
     "tapForBox": "Tap a chord to see its box.",
     "tapForTones": "Tap a chord to see its root, 3rd and 5th.",
     "tonesOf": "{chord}: root, 3rd and 5th",
+    "unavailable": "This progression can’t be played here right now."
+  },
+  "guideTone": {
+    "promptThird": "Tap the 3rd of each chord",
+    "promptSeventh": "Tap the 7th of each chord",
+    "progression": "{name} in {key}",
+    "meta": "{instrument} · frets {from}–{to}",
+    "soFar": "{hits} of {passed} in time so far",
+    "board": "Fretboard, frets {from} to {to}",
+    "countInThird": "A bar of count-in, then tap each chord’s 3rd as it sounds.",
+    "countInSeventh": "A bar of count-in, then tap each chord’s 7th as it sounds.",
+    "start": "Start the take",
+    "countingIn": "Count-in…",
+    "tapping": "Tap each chord’s tone while it sounds.",
+    "allInTime": "Every chord in time",
+    "someInTime": "{hits} of {total} chords in time",
+    "hit": "in time",
+    "missed": "missed",
+    "anotherTake": "Another take",
+    "moveOn": "Move on",
+    "next": "Next",
     "unavailable": "This progression can’t be played here right now."
   }
 }

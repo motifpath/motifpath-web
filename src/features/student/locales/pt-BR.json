@@ -361,7 +361,8 @@
     "done": "Concluir",
     "review": "Revisão rápida de outros assuntos: {right} de {answered} certas",
     "everyItem": "Todos os itens ({count})",
-    "toured": "limpo em {count} de {total} tons a {tempo} BPM"
+    "toured": "limpo em {count} de {total} tons a {tempo} BPM",
+    "tapped": "{hits} de {total} acordes no tempo"
   },
   "playAlongTake": {
     "goal": "Meta {goal} · melhor limpa {best}",
@@ -758,6 +759,27 @@
     "tapForBox": "Toque num acorde para ver o diagrama.",
     "tapForTones": "Toque num acorde para ver a tônica, a terça e a quinta.",
     "tonesOf": "{chord}: tônica, terça e quinta",
+    "unavailable": "Esta progressão não pode ser tocada aqui agora."
+  },
+  "guideTone": {
+    "promptThird": "Toque a 3ª de cada acorde",
+    "promptSeventh": "Toque a 7ª de cada acorde",
+    "progression": "{name} em {key}",
+    "meta": "{instrument} · casas {from}–{to}",
+    "soFar": "{hits} de {passed} no tempo até agora",
+    "board": "Braço, casas {from} a {to}",
+    "countInThird": "Um compasso de contagem, depois toque a 3ª de cada acorde enquanto ele soa.",
+    "countInSeventh": "Um compasso de contagem, depois toque a 7ª de cada acorde enquanto ele soa.",
+    "start": "Começar",
+    "countingIn": "Contagem…",
+    "tapping": "Toque a nota de cada acorde enquanto ele soa.",
+    "allInTime": "Todos os acordes no tempo",
+    "someInTime": "{hits} de {total} acordes no tempo",
+    "hit": "no tempo",
+    "missed": "errou",
+    "anotherTake": "Outra tentativa",
+    "moveOn": "Seguir",
+    "next": "Próximo",
     "unavailable": "Esta progressão não pode ser tocada aqui agora."
   }
 }
