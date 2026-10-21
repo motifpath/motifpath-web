@@ -3,8 +3,10 @@
  * One fretboard cell of a practice session, asked the way its drill says. Naming the note: the cell
  * is lit and the student taps one of four near notes, or presses its number; the answer keeps the
  * four in the order shown. Finding the note: the note, its string and its fret window are named and the student taps
- * where it is on that string, within the window. The tap is the answer, since latency counts from the prompt. The parent records and
- * grades it; feedback shows in place, a wrong answer revealing where the right one was.
+ * where it is on that string, within the window. The tap is the answer, since latency counts from the prompt.
+ * Finding every instance: the cell's note and its window are named, nothing is marked and how many
+ * places it has is never said; taps toggle places on any string, and Check answers with those tapped.
+ * The parent records and grades it; feedback shows in place, a wrong answer revealing where the right one was.
  */
 import { CircleCheck, CircleX } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -49,6 +51,8 @@ const { t } = useTypedT()
 
 const cell = computed<Cell>(() => props.item.fretboard_cell!)
 const naming = computed(() => cell.value.drill === 'name_the_note')
+const everyInstance = computed(() => cell.value.drill === 'find_every_instance')
+const allStrings = computed(() => props.tuning.map((_, i) => i + 1))
 const fretWindow = computed(() => fretWindowRange(cell.value.fret_window.from_fret))
 
 /** The cell's note, spelled with sharps. */
@@ -67,9 +71,48 @@ watch(
 /** A note name as the student reads it: a real sharp sign. */
 const shown = (noteName: string) => noteName.replace('#', '♯')
 
-const prompt = computed(() =>
-  naming.value ? t('sessionFretboardCell.nameTheNote') : t('sessionFretboardCell.findTheNote', { note: shown(rightNote.value), string: cell.value.string, from: fretWindow.value.from, to: fretWindow.value.to }),
+const prompt = computed(() => {
+  if (naming.value) return t('sessionFretboardCell.nameTheNote')
+  const where = { note: shown(rightNote.value), from: fretWindow.value.from, to: fretWindow.value.to }
+  if (everyInstance.value) return t('sessionFretboardCell.findEveryInstance', where)
+  return t('sessionFretboardCell.findTheNote', { ...where, string: cell.value.string })
+})
+
+/** The places toggled on while finding every instance, in the order tapped; cleared for each cell. */
+const taps = ref<CellPlace[]>([])
+watch(
+  () => props.item.item_key,
+  () => {
+    taps.value = []
+  },
 )
+
+/** The places ringed as tapped: those toggled on, then those the graded answer sent. */
+const selectedPlaces = computed<CellPlace[]>(() => {
+  const given = props.answer?.answer
+  return given?.response_type === 'multi_tap' ? given.cells : taps.value
+})
+
+function togglePlace(place: CellPlace) {
+  if (props.answer) return
+  const at = taps.value.findIndex((t) => t.string === place.string && t.fret === place.fret)
+  taps.value = at === -1 ? [...taps.value, place] : taps.value.filter((_, i) => i !== at)
+}
+
+function checkEveryInstance() {
+  if (!props.answer) emit('answer', { response_type: 'multi_tap', fret_window: { from_fret: cell.value.fret_window.from_fret }, cells: taps.value })
+}
+
+/** A wrong answer to finding every instance says how many places were found, and any extra taps. */
+const feedback = computed(() => {
+  const given = props.answer
+  if (!given) return ''
+  if (given.correct) return t('sessionExercise.right')
+  const grade = given.grade
+  if (!grade) return t('sessionExercise.wrong')
+  const counts = { found: grade.found, places: grade.places, extra: grade.extra }
+  return grade.extra > 0 ? t('sessionFretboardCell.foundWithExtra', counts) : t('sessionFretboardCell.found', counts)
+})
 
 /** How a graded answer marks a note choice: the one picked, and the right one beside a wrong pick. */
 function noteMark(noteName: string): 'right' | 'wrong' | undefined {
@@ -82,6 +125,14 @@ function noteMark(noteName: string): 'right' | 'wrong' | undefined {
 /** A graded tap's marks: the tap, and where the note is beside a wrong one. */
 const boardMarks = computed<CellMark[]>(() => {
   const given = props.answer
+  if (given?.grade) {
+    // Every place of the note shows as right, found or missed; a tap on any other cell as wrong.
+    const tapped = selectedPlaces.value
+    return given.grade.cells.map((c) => {
+      const extra = !c.correct && tapped.some((t) => t.string === c.string && t.fret === c.fret)
+      return { string: c.string, fret: c.fret, mark: extra ? 'wrong' : 'right' }
+    })
+  }
   if (!given || given.answer.response_type !== 'find_the_note') return []
   const tapped: CellPlace = { string: given.answer.string, fret: given.answer.fret }
   if (given.correct) return [{ ...tapped, mark: 'right' }]
@@ -97,6 +148,11 @@ function nameNote(noteName: string) {
 
 function findNote(place: CellPlace) {
   if (!props.answer) emit('answer', { response_type: 'find_the_note', string: place.string, fret: place.fret })
+}
+
+function onTap(place: CellPlace) {
+  if (everyInstance.value) togglePlace(place)
+  else findNote(place)
 }
 
 const { next } = useAdvanceAfterAnswer(
@@ -126,11 +182,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         :fret-window="fretWindow"
         :label="t('sessionFretboardCell.board')"
         :lit="naming ? cell : null"
-        :asked-string="naming ? null : cell.string"
-        :tap-strings="naming ? [] : [cell.string]"
+        :asked-string="naming || everyInstance ? null : cell.string"
+        :tap-strings="naming ? [] : everyInstance ? allStrings : [cell.string]"
         :locked="answer !== null"
         :marks="boardMarks"
-        @tap="findNote"
+        :selectable="everyInstance"
+        :selected="everyInstance ? selectedPlaces : []"
+        @tap="onTap"
       />
     </PracticeBreakout>
 
@@ -157,12 +215,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         >
           <CircleCheck v-if="answer.correct" :size="22" aria-hidden="true" />
           <CircleX v-else :size="22" aria-hidden="true" />
-          {{ answer.correct ? t('sessionExercise.right') : t('sessionExercise.wrong') }}
+          {{ feedback }}
         </p>
         <PrimaryButton data-test="next-item" data-primary-action class="ml-auto h-12 px-6" @click="next">
           {{ t('sessionExercise.next') }}
         </PrimaryButton>
       </template>
+      <PrimaryButton v-else-if="everyInstance" data-test="check-answer" data-primary-action class="h-12 w-full px-6" @click="checkEveryInstance">
+        {{ t('sessionExercise.check') }}
+      </PrimaryButton>
     </PracticeActionBar>
   </div>
 </template>

@@ -432,7 +432,10 @@
     "nameTheNote": "Name this note",
     "findTheNote": "Find {note} on string {string}, frets {from}–{to}",
     "board": "Fretboard",
-    "notes": "Notes"
+    "notes": "Notes",
+    "findEveryInstance": "Tap every {note}, frets {from}–{to}",
+    "found": "{found} of {places} found",
+    "foundWithExtra": "{found} of {places} found · {extra} extra"
   },
   "sessionDiagramShape": {
     "nameTheShape": "Which shape is this?",

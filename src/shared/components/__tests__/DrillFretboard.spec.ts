@@ -12,6 +12,22 @@ function places(wrapper: ReturnType<typeof mount>, selector: string) {
 }
 
 describe('DrillFretboard', () => {
+  it('rings the places toggled on, and says which tap targets are pressed when taps toggle', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: { tuning: STANDARD, maxFret: 12, label: 'Fretboard', fretWindow: { from: 3, to: 7 }, tapStrings: [1, 6], selectable: true, selected: [{ string: 6, fret: 3 }] },
+    })
+
+    expect(places(wrapper, '[data-test="selected-cell"]')).toEqual(['6:3'])
+    expect(wrapper.get('[data-test="drill-cell"][data-string="6"][data-fret="3"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="drill-cell"][data-string="1"][data-fret="3"]').attributes('aria-pressed')).toBe('false')
+  })
+
+  it('says nothing about pressed taps when a tap answers at once', () => {
+    const wrapper = mount(DrillFretboard, { props: { tuning: STANDARD, maxFret: 12, label: 'Fretboard', tapStrings: [6] } })
+
+    expect(wrapper.get('[data-test="drill-cell"]').attributes('aria-pressed')).toBeUndefined()
+  })
+
   it('draws the board for the tuning, from the nut to the last fret', () => {
     const wrapper = mount(DrillFretboard, { props: { tuning: STANDARD, maxFret: 11, label: 'Fretboard' } })
 
