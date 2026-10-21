@@ -7,6 +7,7 @@ import { createClickSink } from '@/shared/audio/clickSink'
 import { claimPlayback, releasePlayback } from '@/shared/audio/exclusivePlayback'
 import { createPlaybackRun } from '@/shared/audio/playbackRun'
 import type { PlaybackRun } from '@/shared/audio/playbackRun'
+import type { PlaybackStep } from '@/shared/audio/timeline'
 import { barOfPositionIds, bassLineSteps, chordSteps } from '@/shared/audio/progressionSteps'
 import { fetchVoiceSamples } from '@/shared/audio/samplePrefetch'
 import { secondsPerWhole } from '@/shared/audio/timeline'
@@ -28,6 +29,10 @@ export interface ProgressionSource {
   /** The bass line under the chords, in the bass's own voice; null for none. */
   bass: { instrument: Instrument; roots: string[] } | null
   tempoBpm: number
+  /** The note value it starts in; quarters when it says none. */
+  noteValue?: TempoNoteValue
+  /** Bars of silence before the first chord, which the metronome counts in when it's on; none when it says none. */
+  countInBars?: number
 }
 
 export type ProgressionSoundStatus = 'loading' | 'ready' | 'missing'
@@ -73,8 +78,22 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     return { wholeSeconds: secondsPerWhole(tempo.value, FOUR_FOUR) / factor, clickBeat: BEAT * factor }
   }
 
-  /** How long one play lasts at the tempo and note value it plays at now: a whole note a bar. */
-  const lengthMs = computed(() => Math.round((sourceNow.value?.chords.length ?? 0) * timing().wholeSeconds * 1000))
+  /** How long one play lasts at the tempo and note value it plays at now: a whole note a bar, the count-in a bar of beats. */
+  const lengthMs = computed(() => {
+    const now = sourceNow.value
+    if (!now) return 0
+    const { wholeSeconds } = timing()
+    const countIn = (now.countInBars ?? 0) * wholeSeconds * speedFactor(noteValue.value)
+    return Math.round((now.chords.length * wholeSeconds + countIn) * 1000)
+  })
+
+  /**
+   * The count-in's silent bars, to go before each list of steps: a bar of beats at the tempo, so as
+   * many written wholes as the note value plays the music faster. Nothing lights, so no bar is sounding.
+   */
+  function countInSteps(bars: number): PlaybackStep[] {
+    return Array.from({ length: bars }, () => ({ value: speedFactor(noteValue.value), positionIds: [], notes: [] }))
+  }
 
   /** Each voice the progression plays in, the chords' first. */
   const voiceIds = computed(() => {
@@ -152,8 +171,9 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       const voices = await Promise.all(voiceIds.value.map(findVoice))
       const sinks = await Promise.all(voices.map((voice) => loadVoiceSampler(audio, voice)))
       if (current !== attempt) return
-      const stepLists = [chordSteps(now.chords, now.chordInstrument.tuning ?? [], STRUM_SECONDS)]
-      if (now.bass) stepLists.push(bassLineSteps(now.bass.roots, now.bass.instrument.tuning ?? []))
+      const countIn = countInSteps(now.countInBars ?? 0)
+      const stepLists = [[...countIn, ...chordSteps(now.chords, now.chordInstrument.tuning ?? [], STRUM_SECONDS)]]
+      if (now.bass) stepLists.push([...countIn, ...bassLineSteps(now.bass.roots, now.bass.instrument.tuning ?? [])])
       const startAt = audio.currentTime + START_DELAY_SECONDS
       const { wholeSeconds, clickBeat } = timing()
       const click = metronome.value ? { sink: createClickSink(audio), beat: clickBeat, beatsPerBar: FOUR_FOUR.beats } : undefined
@@ -201,7 +221,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
       voicesReady.value = null
       if (!sourceNow.value) return
       tempo.value = sourceNow.value.tempoBpm
-      noteValue.value = 'quarters'
+      noteValue.value = sourceNow.value.noteValue ?? 'quarters'
       const asked = ++check
       const ok = await checkVoices()
       if (asked === check) voicesReady.value = ok
