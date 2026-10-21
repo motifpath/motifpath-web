@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
 import { changeMinuteRating } from '@/features/student/utils/changeMinute'
+import { afterTake, tourStart, tourTempoIn } from '@/features/student/utils/keyTour'
+import type { TourState } from '@/features/student/utils/keyTour'
 import { ladderFloorIn, nextTempo, speedOf } from '@/features/student/utils/tempoLadder'
 import type { PlayedTempo, RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import { useApi } from '@/shared/composables/useApi'
@@ -17,7 +19,7 @@ import type { CellAnswer } from '@/shared/utils/fretboardCell'
 import { gradeGeneratedChoice, rightAnswerOf } from '@/shared/utils/generatedChoice'
 import type { GeneratedQuestion, ProgressionCatalog } from '@/shared/utils/generatedChoice'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
-import { keepEffectiveSpeed } from '@/shared/utils/tempoNoteValue'
+import { keepEffectiveSpeed, speedFactor } from '@/shared/utils/tempoNoteValue'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Plan = components['schemas']['PracticeSessionPlan']
@@ -30,8 +32,9 @@ export type NotAnsweredReason = EventComponents['schemas']['NotAnsweredResponse'
 const FOCUS_TAKES = 4
 const WARM_UP_TAKES = 2
 
-/** Takes of an item; only a play-along is played in takes. */
+/** Takes of an item: a play-along's, or a progression key tour's as its plan gives them. */
 function takesOf(item: Item) {
+  if (item.progression_keys) return item.progression_keys.takes
   if (item.kind !== 'play_along') return 0
   return item.reason === 'warm_up' ? WARM_UP_TAKES : FOCUS_TAKES
 }
@@ -105,6 +108,8 @@ export type ItemOutcome =
   | { kind: 'played'; takes: RatedTake[] }
   | { kind: 'rated'; rating: TakeRating }
   | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
+  /** A progression key tour: its takes, the keys clean when the last was rated, and the tour tempo in quarters. */
+  | { kind: 'toured'; takes: RatedTake[]; cleanKeys: number; tourBpm: number }
 
 /** A play-along just finished, handing over to the next item. */
 export interface Handoff {
@@ -232,15 +237,24 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
    * values existed doesn't.
    */
   const noteValue = computed<TempoNoteValue | null>(() => {
-    const playAlong = current.value?.play_along
-    if (!playAlong) return null
-    return chosenNoteValue.value ?? takes.value.at(-1)?.noteValue ?? playAlong.start_note_value ?? 'quarters'
+    const planned = current.value?.play_along ?? current.value?.progression_keys
+    if (!planned) return null
+    return chosenNoteValue.value ?? takes.value.at(-1)?.noteValue ?? planned.start_note_value ?? 'quarters'
+  })
+
+  /** Where the progression key tour on stands: its plan's start, moved on by each take rated so far. */
+  const tour = computed<TourState | null>(() => {
+    const planned = current.value?.progression_keys
+    if (!planned) return null
+    const limits = { target: planned.target_tempo_bpm, min: planned.min_tempo_bpm }
+    return takes.value.reduce((state, take) => afterTake(state, take, limits), tourStart(planned))
   })
 
   const tempo = computed(() => {
+    if (chosenTempo.value !== null && noteValue.value !== null) return chosenTempo.value
+    if (tour.value && noteValue.value !== null) return tourTempoIn(tour.value, noteValue.value)
     const playAlong = current.value?.play_along
     if (!playAlong || noteValue.value === null) return null
-    if (chosenTempo.value !== null) return chosenTempo.value
     // A warm-up stays at the tempo of its last take, outside the ladder.
     if (current.value!.reason === 'warm_up') return takes.value.at(-1)?.bpm ?? playAlong.start_tempo_bpm
     return nextTempo(
@@ -249,13 +263,26 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     )
   })
 
+  /**
+   * The slowest tempo the next take may be chosen at, in its note value: a play-along's ladder floor,
+   * or a tour's floor; null when the item on isn't played in takes.
+   */
+  function slowestTempo(): number | null {
+    const value = noteValue.value
+    if (value === null) return null
+    const playAlong = current.value?.play_along
+    if (playAlong) return ladderFloorIn(playAlong.target_tempo_bpm, value)
+    const planned = current.value?.progression_keys
+    return planned ? Math.ceil(planned.min_tempo_bpm / speedFactor(value)) : null
+  }
+
   /** Plays the next take at a tempo of the student's choosing, from the ladder's floor up to the fastest playable. */
   function setTempo(bpm: number) {
-    const playAlong = current.value?.play_along
-    if (!playAlong || noteValue.value === null) return
-    const floor = ladderFloorIn(playAlong.target_tempo_bpm, noteValue.value)
+    const floor = slowestTempo()
+    const value = noteValue.value
+    if (floor === null || value === null) return
     chosenTempo.value = Math.min(MAX_TEMPO_BPM, Math.max(floor, Math.round(bpm)))
-    chosenFloor.value = { bpm: chosenTempo.value, noteValue: noteValue.value }
+    chosenFloor.value = { bpm: chosenTempo.value, noteValue: value }
   }
 
   /** Plays the next take in another note value, at the same effective speed rounded down to the 5 BPM grid. */
@@ -385,17 +412,21 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     const played = noteValue.value
     if (!active() || !item || bpm === null || played === null) return
 
+    // A tour's take says which key it was played in: the item holds every key.
+    const key = tour.value?.key
     if (item.reason !== 'warm_up') {
       markAnswered(item)
       void track({
         event_type: 'practice.item_answered',
         practice_session_id: plan.practice_session_id,
         item_key: item.item_key,
-        response: { response_type: 'self_rating', rating, tempo_bpm: bpm, note_value: played },
+        response: { response_type: 'self_rating', rating, tempo_bpm: bpm, note_value: played, ...(key ? { music_key: key } : {}) },
       })
     }
     takes.value = [...takes.value, { bpm, rating, noteValue: played }]
-    recordOutcome({ kind: 'played', takes: takes.value })
+    const toured = tour.value
+    if (toured) recordOutcome({ kind: 'toured', takes: takes.value, cleanKeys: toured.clean.length, tourBpm: toured.speed })
+    else recordOutcome({ kind: 'played', takes: takes.value })
     chosenTempo.value = null
     chosenNoteValue.value = null
     if (takesLeft.value > 0) return
@@ -599,6 +630,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     index,
     current,
     tempo,
+    tour,
     noteValue,
     takesTotal,
     takesLeft,

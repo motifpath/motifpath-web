@@ -7,6 +7,7 @@
 import { CircleCheck, CircleX } from 'lucide-vue-next'
 
 import type { components } from '@/api/generated/core-domain'
+import { TOUR_ORDER } from '@/features/student/utils/keyTour'
 import type { SummaryResult, SummaryRow } from '@/features/student/utils/sessionSummary'
 import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -34,6 +35,7 @@ function resultText(result: SummaryResult): string {
   if (result.kind === 'changes') {
     return t('sessionSummary.changes', { count: result.cleanChanges, tempo: result.tempoBpm, rating: t(`playAlongTake.ratings.${result.rating}`) })
   }
+  if (result.kind === 'toured') return t('sessionSummary.toured', { count: result.cleanKeys, total: TOUR_ORDER.length, tempo: result.tourBpm })
   if (result.kind === 'counted') return t('sessionSummary.counted', { right: result.right, answered: result.answered })
   return result.correct ? t('sessionSummary.right') : t('sessionSummary.notQuite')
 }

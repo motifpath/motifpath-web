@@ -223,4 +223,31 @@ describe('usePlanItemNames', () => {
     expect(labelOf(rootFifth)).toBe('Play the root and fifth of G')
     expect(labelOf(rootChange)).toBe('Am and C roots, back and forth')
   })
+
+  it('names a progression key tour by its progression, in every key', () => {
+    const tour: Item = {
+      item_key: 'progression_keys:guitar:I-V-vi-IV',
+      kind: 'progression_keys',
+      rung: 'move',
+      reason: 'new',
+      node_id: null,
+      level: 'new',
+      estimated_seconds: 234,
+      progression_keys: {
+        layout_instrument_id: 'guitar',
+        progression: { key: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)' },
+        times_through: 4,
+        takes: 3,
+        start_music_key: 'C',
+        tour_tempo_bpm: 60,
+        start_note_value: 'quarters',
+        target_tempo_bpm: 100,
+        min_tempo_bpm: 60,
+        keys: [],
+      },
+    }
+    const { labelOf } = setUp([tour])
+
+    expect(labelOf(tour)).toBe('I–V–vi–IV (pop) in every key')
+  })
 })

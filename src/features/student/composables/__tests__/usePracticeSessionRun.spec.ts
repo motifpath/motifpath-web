@@ -1651,4 +1651,126 @@ describe('usePracticeSessionRun', () => {
       expect(quick.elapsedMinutes.value).toBe(1)
     })
   })
+  describe('progression key tours', () => {
+    const TOUR_KEYS = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G'] as const
+
+    function tourItem(fields: Partial<NonNullable<Item['progression_keys']>> = {}, clean: string[] = []): Item {
+      return {
+        item_key: `progression_keys:${GUITAR_ID}:I-V-vi-IV`,
+        kind: 'progression_keys',
+        rung: 'move',
+        reason: 'new',
+        node_id: null,
+        level: 'new',
+        estimated_seconds: 234,
+        progression_keys: {
+          layout_instrument_id: GUITAR_ID,
+          progression: { key: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)' },
+          times_through: 4,
+          takes: 3,
+          start_music_key: 'C',
+          tour_tempo_bpm: 60,
+          start_note_value: 'quarters',
+          target_tempo_bpm: 100,
+          min_tempo_bpm: 60,
+          keys: TOUR_KEYS.map((key) => ({ music_key: key, clean: clean.includes(key), chart: [], voicings: [], chord_tones: [] })),
+          ...fields,
+        },
+      }
+    }
+
+    it('plays the takes the plan gives, from the planned key and tempo', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ start_music_key: 'Bb', tour_tempo_bpm: 70 }, ['C', 'F'])]))
+      run.start()
+
+      expect(run.takesTotal.value).toBe(3)
+      expect(run.tour.value).toEqual({ key: 'Bb', speed: 70, clean: ['C', 'F'] })
+      expect(run.tempo.value).toBe(70)
+      expect(run.noteValue.value).toBe('quarters')
+    })
+
+    it('sends each take with its tempo, note value and the key it was played in', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ start_music_key: 'A', tour_tempo_bpm: 85 })]))
+      run.start()
+
+      run.rate('clean')
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: `progression_keys:${GUITAR_ID}:I-V-vi-IV`,
+          response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 85, note_value: 'quarters', music_key: 'A' },
+        },
+      ])
+    })
+
+    it('moves a clean take to the next key not yet clean, at the same tempo', () => {
+      const run = usePracticeSessionRun(plan([tourItem({}, ['F', 'Bb'])]))
+      run.start()
+
+      run.rate('clean')
+
+      expect(run.tour.value).toEqual({ key: 'Eb', speed: 60, clean: ['C', 'F', 'Bb'] })
+      expect(run.tempo.value).toBe(60)
+      run.rate('almost')
+      expect(tracked('practice.item_answered')[1].response).toMatchObject({ music_key: 'Eb' })
+    })
+
+    it('stays in the key 5 BPM slower after a struggle', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ tour_tempo_bpm: 70 })]))
+      run.start()
+
+      run.rate('struggled')
+
+      expect(run.tour.value?.key).toBe('C')
+      expect(run.tempo.value).toBe(65)
+    })
+
+    it('keeps a clean take at a slower tempo the student chose in the key', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ tour_tempo_bpm: 70 })]))
+      run.start()
+
+      run.setTempo(60)
+      run.rate('clean')
+
+      expect(tracked('practice.item_answered')[0].response).toMatchObject({ tempo_bpm: 60, music_key: 'C' })
+      expect(run.tour.value).toEqual({ key: 'C', speed: 70, clean: [] })
+      expect(run.tempo.value).toBe(70)
+    })
+
+    it('plays the tour tempo in the note value the student switches to', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ tour_tempo_bpm: 70 })]))
+      run.start()
+
+      run.setNoteValue('eighths')
+      run.rate('clean')
+
+      expect(tracked('practice.item_answered')[0].response).toMatchObject({ tempo_bpm: 35, note_value: 'eighths', music_key: 'C' })
+      expect(run.tour.value?.key).toBe('F')
+      expect(run.noteValue.value).toBe('eighths')
+      expect(run.tempo.value).toBe(35)
+    })
+
+    it('hands over to the next item after the last take, with the keys clean', () => {
+      const run = usePracticeSessionRun(plan([tourItem(), exerciseItem('e1', 'due')]))
+      run.start()
+
+      run.rate('clean')
+      run.rate('clean')
+      run.rate('struggled')
+
+      expect(run.handoff.value?.done.item_key).toBe(`progression_keys:${GUITAR_ID}:I-V-vi-IV`)
+      expect(run.outcomes.value.get(0)).toEqual({
+        kind: 'toured',
+        takes: [
+          { bpm: 60, rating: 'clean', noteValue: 'quarters' },
+          { bpm: 60, rating: 'clean', noteValue: 'quarters' },
+          { bpm: 60, rating: 'struggled', noteValue: 'quarters' },
+        ],
+        cleanKeys: 2,
+        tourBpm: 60,
+      })
+    })
+  })
 })

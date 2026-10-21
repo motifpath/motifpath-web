@@ -330,7 +330,8 @@
       "harmony": "Harmonia",
       "ear": "Percepção",
       "chord": "Acorde",
-      "guideTones": "Notas-guia"
+      "guideTones": "Notas-guia",
+      "everyKey": "Todos os tons"
     },
     "today": "Hoje",
     "youChoseThis": "Você escolheu",
@@ -344,7 +345,8 @@
       "move": "Mudar de tom",
       "target": "Mirar",
       "use": "Usar"
-    }
+    },
+    "tour": "{name} em todos os tons"
   },
   "sessionSummary": {
     "minutes": "{minutes} min · {instrument}",
@@ -358,7 +360,8 @@
     "nothingAnswered": "Nada respondido ou avaliado desta vez. Toda sessão conta.",
     "done": "Concluir",
     "review": "Revisão rápida de outros assuntos: {right} de {answered} certas",
-    "everyItem": "Todos os itens ({count})"
+    "everyItem": "Todos os itens ({count})",
+    "toured": "limpo em {count} de {total} tons a {tempo} BPM"
   },
   "playAlongTake": {
     "goal": "Meta {goal} · melhor limpa {best}",
@@ -740,5 +743,21 @@
     "noMatch": "Nada corresponde a “{text}”.",
     "noSubjects": "Ainda não há nada para praticar assim. Tente outro instrumento, ou na cabeça.",
     "error": "Não conseguimos carregar o que você pode praticar. Verifique sua conexão e tente de novo."
+  },
+  "progressionKeys": {
+    "nowIn": "agora em {key}",
+    "cleanIn": "Limpo em {key} a {tempo}",
+    "keys": "Tons:",
+    "start": "Começar em {key}",
+    "countInHint": "Um compasso de contagem, depois toque junto.",
+    "countingIn": "Contagem…",
+    "info": "Toque a progressão junto com o acompanhamento. Uma tomada limpa passa para o próximo tom no ciclo das quartas; uma com erros fica neste tom. Quando todos os tons estiverem limpos, o tour recomeça um pouco mais rápido.",
+    "chart": "A progressão em {key}",
+    "showBox": "Mostrar o diagrama de {chord}",
+    "showTones": "Mostrar a tônica, a terça e a quinta de {chord}",
+    "tapForBox": "Toque num acorde para ver o diagrama.",
+    "tapForTones": "Toque num acorde para ver a tônica, a terça e a quinta.",
+    "tonesOf": "{chord}: tônica, terça e quinta",
+    "unavailable": "Esta progressão não pode ser tocada aqui agora."
   }
 }

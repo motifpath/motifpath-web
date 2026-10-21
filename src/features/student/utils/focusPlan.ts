@@ -86,7 +86,7 @@ export function planSections(plan: Plan): PlanSection[] {
 /** Whether an answered or played item went right: an answer that was right, or a take, a rating or a minute that went clean. */
 function wentRight(outcome: ItemOutcome): boolean {
   if (outcome.kind === 'answered') return outcome.correct
-  if (outcome.kind === 'played') return outcome.takes.some((take) => take.rating === 'clean')
+  if (outcome.kind === 'played' || outcome.kind === 'toured') return outcome.takes.some((take) => take.rating === 'clean')
   return outcome.rating === 'clean'
 }
 
