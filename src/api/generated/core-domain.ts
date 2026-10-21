@@ -7629,9 +7629,6 @@ export interface components {
          *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
          *       of a progression in time with its playback. The key, the tone and the tempo are picked
          *       each time.
-         *     - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
-         *       every place of a note is a way of asking a fretboard cell. No item has this key; it
-         *       stays only until the multi_tap.v1 golden cases that use it are removed.
          *     - progression_keys:<layout instrument id>:<progression key> — playing a progression along
          *       with its backing, key after key around the cycle of fourths. The key is the tour's next
          *       one, sent back with each take.
@@ -7639,8 +7636,7 @@ export interface components {
          *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
          *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
          *     same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-         *     (major); <note> is spelled with sharps; <progression key> is a key of the progression
-         *     catalog.
+         *     (major); <progression key> is a key of the progression catalog.
          *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
@@ -7649,11 +7645,10 @@ export interface components {
         PracticeItemKey: string;
         /**
          * @description The kind of a practice item, the prefix of its item key. The set is open: a new kind
-         *     is added with its key scheme, grader and golden cases. fretboard_note is retired and has
-         *     no items.
+         *     is added with its key scheme, grader and golden cases.
          * @enum {string}
          */
-        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "fretboard_note" | "progression_keys";
+        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "progression_keys";
         /**
          * @description Why the session composer put an item in a session, shown to the student.
          *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
