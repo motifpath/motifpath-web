@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { gradeTimedTaps } from '@/shared/utils/timedTaps'
 import type { GradedTake, GuideToneTake, TimedTap } from '@/shared/utils/timedTaps'
+import { ALL_NOTE_VALUES } from '@/shared/utils/tempoNoteValue'
 import golden from '@/api/generated/golden/practice-graders/timed_taps.v1.json'
 
 const instruments: Record<string, { tuning: string[] }> = golden.reference.instruments
@@ -25,7 +26,8 @@ describe('gradeTimedTaps against the timed_taps.v1 golden cases', () => {
     const bars = progressions[progression]?.bars
     if (!tuning || !bars) return []
     const tone = response.tone === '7' ? '7' : '3'
-    const take: GuideToneTake = { tuning, bars, key: response.music_key, tone, tempoBpm: response.tempo_bpm }
+    const noteValue = ALL_NOTE_VALUES.find((value) => value === response.note_value)
+    const take: GuideToneTake = { tuning, bars, key: response.music_key, tone, tempoBpm: response.tempo_bpm, noteValue }
     if ('evidence' in expected && expected.evidence) {
       const { correct, latency_ms, answer_key } = expected.evidence
       return [{ name, take, taps: response.taps, want: { correct, latencyMs: latency_ms, bars: answer_key.bars } }]
