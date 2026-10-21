@@ -53,6 +53,12 @@ describe('gradeEveryInstance', () => {
     expect(gradeEveryInstance(question, [{ string: 6, fret: 3 }, { string: 1, fret: 3 }])?.allRight).toBe(false)
   })
 
+  it('counts a place tapped twice once, and never in place of one missed', () => {
+    const twice = { string: 6, fret: 3 }
+    expect(gradeEveryInstance(question, [twice, twice, { string: 1, fret: 3 }, { string: 4, fret: 5 }])?.allRight).toBe(true)
+    expect(gradeEveryInstance(question, [twice, twice, { string: 1, fret: 3 }])?.allRight).toBe(false)
+  })
+
   it('counts the places found, missed and the extra taps', () => {
     const grade = gradeEveryInstance(question, [{ string: 6, fret: 3 }, { string: 1, fret: 3 }, { string: 5, fret: 5 }])
 
