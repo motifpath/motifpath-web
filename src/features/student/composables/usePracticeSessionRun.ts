@@ -15,7 +15,10 @@ import { isExactMatch } from '@/shared/utils/exerciseOptions'
 import { gradeDiagramShape } from '@/shared/utils/diagramShape'
 import type { ShapeAnswer, ShapeReference } from '@/shared/utils/diagramShape'
 import { gradeFretboardCell } from '@/shared/utils/fretboardCell'
+import { cellDrillOf } from '@/shared/utils/fretboardCell'
 import type { CellAnswer } from '@/shared/utils/fretboardCell'
+import { gradeEveryInstance } from '@/shared/utils/multiTap'
+import type { EveryInstanceGrade } from '@/shared/utils/multiTap'
 import { gradeGeneratedChoice, rightAnswerOf } from '@/shared/utils/generatedChoice'
 import type { GeneratedQuestion, ProgressionCatalog } from '@/shared/utils/generatedChoice'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
@@ -47,6 +50,8 @@ export interface ExerciseAnswer {
 export interface GradedCellAnswer {
   answer: CellAnswer
   correct: boolean
+  /** How each cell was graded, when every instance of the cell's note was looked for. */
+  grade?: EveryInstanceGrade
 }
 
 export interface GradedShapeAnswer {
@@ -88,6 +93,20 @@ export type ShapeBoard = Pick<ShapeReference, 'positions' | 'stringCount'>
 export interface TapCheckResult {
   medianMs: number
   count: number
+}
+
+/**
+ * Grades a cell's answer as the server does; null when it can't be graded. Finding every instance
+ * must be answered in the cell's own window, and is right only with every place found and no other.
+ */
+function gradeCellAnswer(tuning: string[], cell: NonNullable<Item['fretboard_cell']>, answer: CellAnswer): GradedCellAnswer | null {
+  if (answer.response_type !== 'multi_tap') {
+    const correct = gradeFretboardCell(tuning, cell, answer)
+    return correct === null ? null : { answer, correct }
+  }
+  if (answer.fret_window.from_fret !== cell.fret_window.from_fret) return null
+  const grade = gradeEveryInstance({ tuning, planned: cell, fromFret: cell.fret_window.from_fret }, answer.cells)
+  return grade ? { answer, correct: grade.allRight, grade } : null
 }
 
 /** The timed drill an item practises, as felt questions name it; none for a play-along. */
@@ -524,12 +543,14 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function answerCell(answer: CellAnswer) {
     const item = current.value
     const cell = item?.fretboard_cell
-    if (!active() || !item || !cell || cellAnswer.value || answer.response_type !== cell.drill) return
+    if (!active() || !item || !cell || cellAnswer.value || cellDrillOf(answer) !== cell.drill) return
     const tuning = options.tuningOf?.(cell.layout_instrument_id)
-    const correct = tuning ? gradeFretboardCell(tuning, cell, answer) : null
-    if (correct === null) return
+    if (!tuning) return
+    const graded = gradeCellAnswer(tuning, cell, answer)
+    if (!graded) return
 
-    cellAnswer.value = { answer, correct }
+    cellAnswer.value = graded
+    const correct = graded.correct
     markAnswered(item)
     recordOutcome({ kind: 'answered', correct })
     void track({

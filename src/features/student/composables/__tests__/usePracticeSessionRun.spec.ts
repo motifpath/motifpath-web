@@ -1222,7 +1222,9 @@ describe('usePracticeSessionRun', () => {
     const STANDARD = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
     const tuningOf = (instrumentId: string) => (instrumentId === LAYOUT ? STANDARD : undefined)
 
-    function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note'): Item {
+    type FromFret = NonNullable<Item['fretboard_cell']>['fret_window']['from_fret']
+
+    function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note' | 'find_every_instance', fromFret: FromFret = 0): Item {
       return {
         item_key: `fretboard_cell:${LAYOUT}:${string}:${fret}`,
         kind: 'fretboard_cell',
@@ -1231,7 +1233,7 @@ describe('usePracticeSessionRun', () => {
         node_id: null,
         level: 'new',
         estimated_seconds: 8,
-        fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill, fret_window: { from_fret: 0 } },
+        fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill, fret_window: { from_fret: fromFret } },
       }
     }
 
@@ -1300,6 +1302,57 @@ describe('usePracticeSessionRun', () => {
 
       expect(tracked('practice.item_answered')).toEqual([])
       expect(run.cellAnswer.value).toBeNull()
+    })
+
+    describe('finding every instance', () => {
+      // G is at string 1 fret 3, string 4 fret 5 and string 6 fret 3 in frets 3 to 7.
+      const everyG = () => plan([cell(6, 3, 'find_every_instance', 3)], null)
+      const taps = [
+        { string: 6, fret: 3 },
+        { string: 1, fret: 3 },
+      ]
+
+      it('sends every place tapped as one answer, timed from when the cell was shown', () => {
+        const run = usePracticeSessionRun(everyG(), { tuningOf })
+        run.start()
+        vi.advanceTimersByTime(5200)
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps })
+
+        expect(tracked('practice.item_answered')).toEqual([
+          {
+            event_type: 'practice.item_answered',
+            practice_session_id: SESSION_ID,
+            item_key: `fretboard_cell:${LAYOUT}:6:3`,
+            response: { response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps, latency_ms: 5200 },
+          },
+        ])
+      })
+
+      it('is right only when every place is found, and keeps how each cell was graded', () => {
+        const run = usePracticeSessionRun(everyG(), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps })
+
+        expect(run.cellAnswer.value?.correct).toBe(false)
+        expect(run.cellAnswer.value?.grade).toMatchObject({ note: 'G', found: 2, places: 3, extra: 0 })
+        expect(run.outcomes.value.get(0)).toEqual({ kind: 'answered', correct: false })
+      })
+
+      it('takes no answer from another window', () => {
+        const run = usePracticeSessionRun(everyG(), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 0 }, cells: taps })
+
+        expect(tracked('practice.item_answered')).toEqual([])
+      })
+
+      it('is no answer to a cell asked another way', () => {
+        const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 0 }, cells: [{ string: 5, fret: 3 }] })
+
+        expect(tracked('practice.item_answered')).toEqual([])
+      })
     })
 
     it('takes no answer to a cell whose instrument’s tuning isn’t known', () => {

@@ -10,6 +10,7 @@ import { frettedPitch } from '@/shared/utils/pitch'
 
 type NameTheNote = components['schemas']['NameTheNoteResponse']
 type FindTheNote = components['schemas']['FindTheNoteResponse']
+type MultiTap = components['schemas']['MultiTapResponse']
 
 /** A cell's place: string 1 is the highest-pitched, fret 0 the open string. */
 export interface CellPlace {
@@ -17,8 +18,19 @@ export interface CellPlace {
   fret: number
 }
 
-/** What the student answered, before it's timed: a named note keeps the choices it was picked from. */
-export type CellAnswer = Pick<NameTheNote, 'response_type' | 'note_name' | 'choices'> | Pick<FindTheNote, 'response_type' | 'string' | 'fret'>
+/**
+ * What the student answered, before it's timed: a named note keeps the choices it was picked from,
+ * and finding every instance of a cell's note sends every place tapped in its window.
+ */
+export type CellAnswer =
+  | Pick<NameTheNote, 'response_type' | 'note_name' | 'choices'>
+  | Pick<FindTheNote, 'response_type' | 'string' | 'fret'>
+  | Pick<MultiTap, 'response_type' | 'fret_window' | 'cells'>
+
+/** The way of asking a cell an answer belongs to: finding every instance answers by tapping many. */
+export function cellDrillOf(answer: CellAnswer): 'name_the_note' | 'find_the_note' | 'find_every_instance' {
+  return answer.response_type === 'multi_tap' ? 'find_every_instance' : answer.response_type
+}
 
 const LETTER_CLASS: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 
@@ -47,6 +59,7 @@ export function gradeFretboardCell(tuning: string[], cell: CellPlace, answer: Ce
   const asked = pitchClassAt(tuning, cell)
   if (asked === null) return null
   if (answer.response_type === 'name_the_note') return pitchClassOf(answer.note_name) === asked
+  if (answer.response_type === 'multi_tap') return null
   const tapped = pitchClassAt(tuning, answer)
   if (tapped === null) return null
   return answer.string === cell.string && tapped === asked
