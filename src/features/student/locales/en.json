@@ -330,7 +330,8 @@
       "harmony": "Harmony",
       "ear": "Ear",
       "chord": "Chord",
-      "guideTones": "Guide tones"
+      "guideTones": "Guide tones",
+      "everyKey": "Every key"
     },
     "today": "Today",
     "youChoseThis": "You chose this",
@@ -344,7 +345,8 @@
       "move": "Move it",
       "target": "Target it",
       "use": "Use it"
-    }
+    },
+    "tour": "{name} in every key"
   },
   "sessionSummary": {
     "minutes": "{minutes} min · {instrument}",
@@ -358,7 +360,8 @@
     "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
     "done": "Done",
     "review": "Quick review of other subjects: {right} of {answered} right",
-    "everyItem": "Every item ({count})"
+    "everyItem": "Every item ({count})",
+    "toured": "clean in {count} of {total} keys at {tempo} BPM"
   },
   "playAlongTake": {
     "goal": "Goal {goal} · best clean {best}",
@@ -740,5 +743,21 @@
     "noMatch": "Nothing matches “{text}”.",
     "noSubjects": "Nothing can be practised this way yet. Try another instrument, or in your head.",
     "error": "We couldn't load what you can practise. Check your connection and try again."
+  },
+  "progressionKeys": {
+    "nowIn": "now in {key}",
+    "cleanIn": "Clean in {key} at {tempo}",
+    "keys": "Keys:",
+    "start": "Start take in {key}",
+    "countInHint": "A bar of count-in, then play along.",
+    "countingIn": "Count-in…",
+    "info": "Play the progression along with the backing. A clean take moves on to the next key around the cycle of fourths; a rough one stays in this key. When every key is clean, the tour starts again a little faster.",
+    "chart": "The progression in {key}",
+    "showBox": "Show the {chord} box",
+    "showTones": "Show the root, 3rd and 5th of {chord}",
+    "tapForBox": "Tap a chord to see its box.",
+    "tapForTones": "Tap a chord to see its root, 3rd and 5th.",
+    "tonesOf": "{chord}: root, 3rd and 5th",
+    "unavailable": "This progression can’t be played here right now."
   }
 }

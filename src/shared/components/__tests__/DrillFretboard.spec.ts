@@ -44,6 +44,27 @@ describe('DrillFretboard', () => {
     expect(marked[1]!.get('circle').classes()).toContain('fill-accent')
   })
 
+  it('marks a third as 3, named as the third of its chord, so a line shows the chord is major or minor', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: {
+        tuning: ['E1', 'A1', 'D2', 'G2'],
+        maxFret: 5,
+        label: 'Bass',
+        places: [
+          { string: 4, fret: 0, role: 'root', chord: 'Em' },
+          { string: 1, fret: 0, role: 'third', chord: 'Em' },
+          { string: 3, fret: 2, role: 'fifth', chord: 'Em' },
+        ],
+      },
+    })
+
+    const marked = wrapper.findAll('[data-test="marked-place"]')
+    expect(marked.map((place) => place.attributes('data-role'))).toEqual(['root', 'third', 'fifth'])
+    expect(marked.map((place) => place.text())).toEqual(['R', '3', ''])
+    expect(marked[1]!.attributes('aria-label')).toBe('Third of Em, string 1, open')
+    expect(marked[1]!.get('circle').classes()).toContain('fill-accent')
+  })
+
   it('names an open place as open', () => {
     const wrapper = mount(DrillFretboard, {
       props: { tuning: ['E1', 'A1', 'D2', 'G2'], maxFret: 5, label: 'Bass', places: [{ string: 3, fret: 0, role: 'root' }] },

@@ -6986,7 +6986,8 @@ export interface components {
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
          *     one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
-         *     chord_voicing, chord_change, root_fifth and root_change is present, matching kind:
+         *     chord_voicing, chord_change, root_fifth, root_change and progression_keys is present,
+         *     matching kind:
          *     generated_choice for a diatonic chord, a chord function, a chart progression, a heard
          *     chord or a heard progression.
          */
@@ -7108,6 +7109,7 @@ export interface components {
             chord_change?: components["schemas"]["PlannedChordChange"];
             root_fifth?: components["schemas"]["PlannedRootFifth"];
             root_change?: components["schemas"]["PlannedRootChange"];
+            progression_keys?: components["schemas"]["PlannedProgressionKeys"];
         };
         /** @description The home for one instrument, derived from the student's evidence. */
         PracticeSummary: {
@@ -7621,6 +7623,9 @@ export interface components {
          *       each time.
          *     - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
          *       fret window. The window is picked each time.
+         *     - progression_keys:<layout instrument id>:<progression key> — playing a progression along
+         *       with its backing, key after key around the cycle of fourths. The key is the tour's next
+         *       one, sent back with each take.
          *
          *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
          *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
@@ -7638,7 +7643,7 @@ export interface components {
          *     is added with its key scheme, grader and golden cases.
          * @enum {string}
          */
-        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "fretboard_note";
+        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "fretboard_note" | "progression_keys";
         /**
          * @description Why the session composer put an item in a session, shown to the student.
          *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
@@ -7660,7 +7665,7 @@ export interface components {
          *     play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
          *     while the music moves; use = play it in a piece of music. A drill template has one rung;
          *     a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
-         *     and a song chart item is use.
+         *     a progression key tour is move, and a song chart item is use.
          * @enum {string}
          */
         PracticeRung: "know" | "hear" | "play_clean" | "play_in_time" | "move" | "target" | "use";
@@ -7740,9 +7745,10 @@ export interface components {
          */
         GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name";
         /**
-         * @description A major key. In a response, the key a question was asked in when its item doesn't fix one:
-         *     a chart progression, a heard chord, a heard progression or a guide tone; absent in a
-         *     response to any other item. A planned question always names its key.
+         * @description A major key. In a response, the key a question was asked in or a take was played in when
+         *     its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
+         *     tone or a progression key tour; absent in a response to any other item. A planned question
+         *     always names its key.
          * @enum {string}
          */
         MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B";
@@ -7993,6 +7999,90 @@ export interface components {
             to_root: components["schemas"]["FretPlace"];
             minute: components["schemas"]["ChangeMinute"];
         };
+        /**
+         * @description A progression played along with, key after key around the cycle of fourths (kind
+         *     progression_keys), self-rated take by take. The plan lists the whole tour, so the client
+         *     moves to the next key without asking again: after a clean take at an effective speed at
+         *     or above tour_tempo_bpm, the next take is in the next key of keys not yet clean, at the
+         *     same tempo; after an almost or a struggle it stays in the key, and a struggle lowers the
+         *     tempo by 5 BPM, never below min_tempo_bpm. When every key is clean, the tour starts again
+         *     at the first key, 5 BPM faster, never past target_tempo_bpm by itself. The student may
+         *     choose any tempo for a take; a clean take slower than the tour tempo doesn't make its key
+         *     clean.
+         */
+        PlannedProgressionKeys: {
+            /**
+             * Format: uuid
+             * @description The instrument whose fretboard layout the tour is played on: guitar (chord symbols, chord
+             *     boxes on demand) or electric bass (chord symbols and each chord's root, third and fifth
+             *     on the board).
+             */
+            layout_instrument_id: string;
+            /** @description The progression played. */
+            progression: {
+                /** @description The progression's key in the progression catalog, such as I-V-vi-IV. */
+                key: string;
+                /** @description The progression's name in the student's language, such as "I–V–vi–IV (pop)". */
+                name: string;
+            };
+            /**
+             * @description How many times one take plays the progression after its bar of count-in: 4 for a
+             *     four-bar progression, 1 for a 12-bar blues.
+             */
+            times_through: number;
+            /** @description The most takes of the tour this session plays. */
+            takes: number;
+            start_music_key: components["schemas"]["MusicKey"];
+            /**
+             * @description The tour's tempo, in start_note_value: the tempo of the first take, and the one a take
+             *     must be clean at, or faster than, to make its key clean. 60% of the target, rounded down
+             *     to 5 BPM, for a tour never played.
+             */
+            tour_tempo_bpm: number;
+            start_note_value: components["schemas"]["practice_NoteValue"];
+            /** @description The tempo the tour aims for, in quarters, the same for every progression. */
+            target_tempo_bpm: number;
+            /** @description The slowest tempo a struggle lowers the tour to, 60% of the target. */
+            min_tempo_bpm: number;
+            /**
+             * @description The tour's 12 keys in its order, the cycle of fourths from C: C F Bb Eb Ab Db F# B E A D
+             *     G, each with whether it is clean and the progression drawn in it.
+             */
+            keys: {
+                music_key: components["schemas"]["MusicKey"];
+                /** @description Whether the key is clean at the tour tempo. */
+                clean: boolean;
+                /**
+                 * @description The progression in this key, one chord symbol per bar, spelled as the chord
+                 *     catalog spells roots.
+                 */
+                chart: string[];
+                /** @description One voicing per distinct chord of chart. */
+                voicings: {
+                    /** @description The chord symbol, as it appears in chart. */
+                    chord: string;
+                    /**
+                     * Format: uuid
+                     * @description The chord catalog voicing the backing sounds, and the box shown on demand on
+                     *     guitar: the chord's open voicing if the catalog has one, else its
+                     *     lowest-difficulty voicing.
+                     */
+                    diagram_id: string;
+                }[];
+                /**
+                 * @description On a bass layout, the places of each distinct chord's root, third and fifth, each
+                 *     at its lowest fret, then its lowest string, inside frets 0–5. A dominant seventh
+                 *     keeps its root, third and fifth. Empty on guitar.
+                 */
+                chord_tones: {
+                    /** @description The chord symbol, as it appears in chart. */
+                    chord: string;
+                    root: components["schemas"]["FretPlace"];
+                    third: components["schemas"]["FretPlace"];
+                    fifth: components["schemas"]["FretPlace"];
+                }[];
+            }[];
+        };
     };
     responses: never;
     parameters: {
@@ -8214,6 +8304,7 @@ export type SchemaPlannedChordChange = components['schemas']['PlannedChordChange
 export type SchemaFretPlace = components['schemas']['FretPlace'];
 export type SchemaPlannedRootFifth = components['schemas']['PlannedRootFifth'];
 export type SchemaPlannedRootChange = components['schemas']['PlannedRootChange'];
+export type SchemaPlannedProgressionKeys = components['schemas']['PlannedProgressionKeys'];
 export type ParameterAlphaWeek = components['parameters']['AlphaWeek'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];

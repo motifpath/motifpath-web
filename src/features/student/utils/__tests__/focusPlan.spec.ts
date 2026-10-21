@@ -137,6 +137,16 @@ describe('subjectResults', () => {
     expect(subjectResults(plan(items), outcomes)[0]).toMatchObject({ right: 2, answered: 3 })
   })
 
+  it('counts a progression key tour right when one of its takes went clean', () => {
+    const items = [item('t1', { kind: 'progression_keys' }), item('t2', { kind: 'progression_keys' })]
+    const outcomes = new Map<number, ItemOutcome>([
+      [0, { kind: 'toured', takes: [{ bpm: 60, rating: 'struggled' }, { bpm: 55, rating: 'clean' }], cleanKeys: 1, tourBpm: 55 }],
+      [1, { kind: 'toured', takes: [{ bpm: 60, rating: 'almost' }], cleanKeys: 0, tourBpm: 60 }],
+    ])
+
+    expect(subjectResults(plan(items), outcomes)[0]).toMatchObject({ right: 1, answered: 2 })
+  })
+
   it('leaves out a subject with nothing answered', () => {
     const results = subjectResults(plan([item('a'), item('b', { node_id: NOTES })]), new Map([[0, right]]))
 
