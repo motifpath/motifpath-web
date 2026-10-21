@@ -572,9 +572,6 @@ export interface components {
          *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
          *       of a progression in time with its playback. The key, the tone and the tempo are picked
          *       each time.
-         *     - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
-         *       every place of a note is a way of asking a fretboard cell. No item has this key; it
-         *       stays only until the multi_tap.v1 golden cases that use it are removed.
          *     - progression_keys:<layout instrument id>:<progression key> — playing a progression along
          *       with its backing, key after key around the cycle of fourths. The key is the tour's next
          *       one, sent back with each take.
@@ -582,8 +579,7 @@ export interface components {
          *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
          *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
          *     same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-         *     (major); <note> is spelled with sharps; <progression key> is a key of the progression
-         *     catalog.
+         *     (major); <progression key> is a key of the progression catalog.
          *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
