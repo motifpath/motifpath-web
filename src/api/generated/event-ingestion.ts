@@ -543,7 +543,9 @@ export interface components {
          *     - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
          *       The instrument is the one whose fretboard layout the cell belongs to, so instruments
          *       that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-         *       fret 0 is the open string.
+         *       fret 0 is the open string. A cell asked to find every place of its note in a fret
+         *       window is answered under its own key, and that answer is graded on every cell of the
+         *       window.
          *     - exercise:<exercise id> — an authored exercise.
          *     - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
          *     - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -570,8 +572,9 @@ export interface components {
          *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
          *       of a progression in time with its playback. The key, the tone and the tempo are picked
          *       each time.
-         *     - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-         *       fret window. The window is picked each time.
+         *     - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+         *       every place of a note is a way of asking a fretboard cell. No item has this key; it
+         *       stays only until the multi_tap.v1 golden cases that use it are removed.
          *     - progression_keys:<layout instrument id>:<progression key> — playing a progression along
          *       with its backing, key after key around the cycle of fourths. The key is the tour's next
          *       one, sent back with each take.
@@ -880,8 +883,9 @@ export interface components {
         /**
          * @description A take of tapping a chord tone of each chord of a progression in time with its playback,
          *     on the fretboard of the item's layout. The progression is played in the key and at the
-         *     tempo sent, four beats to a bar, one chord per bar. Each tap is kept with the time it
-         *     was made, so every bar can be graded.
+         *     tempo and note value sent, one chord per bar of four beats: in quarters a bar lasts
+         *     240000 / tempo_bpm milliseconds, and a faster note value shortens it by its speed factor.
+         *     Each tap is kept with the time it was made, so every bar can be graded.
          */
         TimedTapsResponse: {
             /**
@@ -898,6 +902,7 @@ export interface components {
             tone: "3" | "7";
             /** @description The tempo the progression played at, in beats per minute. */
             tempo_bpm: number;
+            note_value?: components["schemas"]["NoteValue"];
             /** @description Every tap of the take, in the order made. A take with no taps sends an empty list. */
             taps: components["schemas"]["TimedTap"][];
         };
@@ -922,9 +927,11 @@ export interface components {
             from_fret: 0 | 2 | 3 | 4 | 5 | 6 | 7;
         };
         /**
-         * @description Answer to a note asked within a fret window: the student taps every place of the note in
-         *     the window, then says they are done. It is right only when the places tapped are exactly
-         *     the note's places in the window.
+         * @description Answer to a fretboard cell asked to find every instance: the cell's note is named, and the
+         *     student taps every place of it in the fret window, then says they are done. It is graded on
+         *     every cell it covers: each place of the note in the window is right when tapped and wrong
+         *     when missed, and each other place tapped is wrong. Its time covers several taps, so it
+         *     counts for accuracy only, never for fluency.
          */
         MultiTapResponse: {
             /**

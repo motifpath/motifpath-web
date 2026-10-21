@@ -2513,8 +2513,8 @@ export interface paths {
          *
          *     With an instrument in hand, only items that suit that instrument (or every
          *     instrument) are picked, fretboard cells of its layout included. Without one (a session in the head), only items that need no
-         *     instrument in hand are picked: fretboard cells of every fretboard layout among the
-         *     student's instruments, and exercises; never a play-along, so such a session has no
+         *     instrument in hand are picked: fretboard cells and guide tones of every fretboard
+         *     layout among the student's instruments, and exercises; never a play-along, so such a session has no
          *     application ending. Any instrument may be named, not only the ones the student is
          *     enrolled for.
          *
@@ -6986,8 +6986,8 @@ export interface components {
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
          *     one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
-         *     chord_voicing, chord_change, root_fifth, root_change and progression_keys is present,
-         *     matching kind:
+         *     chord_voicing, chord_change, root_fifth, root_change, progression_keys and guide_tone is
+         *     present, matching kind:
          *     generated_choice for a diatonic chord, a chord function, a chart progression, a heard
          *     chord or a heard progression.
          */
@@ -7010,7 +7010,12 @@ export interface components {
             estimated_seconds: number;
             /**
              * @description Present when kind is fretboard_cell. The drill is the way of asking the cell has
-             *     the fewer right answers so far, name_the_note on a tie. The fret window is the one
+             *     the fewest right answers so far: name_the_note, then find_the_note, then
+             *     find_every_instance on a tie. No two cells of the same layout and note are asked
+             *     find_every_instance in one plan; the second is asked the way it has the next fewest
+             *     right answers. A cell asked
+             *     find_every_instance is answered under its own key, and its note is the one to find
+             *     everywhere in the window. The fret window is the one
              *     the composer picked for this drill and layout: the one holding the most of the
              *     drill's due cells, then weak, then new, the one nearest the nut on a tie. When the
              *     student has started an odd number of sessions in the head so far and the drill has
@@ -7110,6 +7115,7 @@ export interface components {
             root_fifth?: components["schemas"]["PlannedRootFifth"];
             root_change?: components["schemas"]["PlannedRootChange"];
             progression_keys?: components["schemas"]["PlannedProgressionKeys"];
+            guide_tone?: components["schemas"]["PlannedGuideTone"];
         };
         /** @description The home for one instrument, derived from the student's evidence. */
         PracticeSummary: {
@@ -7594,7 +7600,9 @@ export interface components {
          *     - fretboard_cell:<layout instrument id>:<string>:<fret> — a generated fretboard cell.
          *       The instrument is the one whose fretboard layout the cell belongs to, so instruments
          *       that share a layout share the cell. Strings are numbered from 1, the highest-pitched;
-         *       fret 0 is the open string.
+         *       fret 0 is the open string. A cell asked to find every place of its note in a fret
+         *       window is answered under its own key, and that answer is graded on every cell of the
+         *       window.
          *     - exercise:<exercise id> — an authored exercise.
          *     - play_along:<diagram id> — playing a diagram along with its playback, at a tempo.
          *     - chord_change:<from diagram id>:<to diagram id> — changing between two chord diagrams.
@@ -7621,8 +7629,9 @@ export interface components {
          *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
          *       of a progression in time with its playback. The key, the tone and the tempo are picked
          *       each time.
-         *     - fretboard_note:<layout instrument id>:<note> — finding every place of a note within a
-         *       fret window. The window is picked each time.
+         *     - fretboard_note:<layout instrument id>:<note> — retired before it was installed: finding
+         *       every place of a note is a way of asking a fretboard cell. No item has this key; it
+         *       stays only until the multi_tap.v1 golden cases that use it are removed.
          *     - progression_keys:<layout instrument id>:<progression key> — playing a progression along
          *       with its backing, key after key around the cycle of fourths. The key is the tour's next
          *       one, sent back with each take.
@@ -7640,7 +7649,8 @@ export interface components {
         PracticeItemKey: string;
         /**
          * @description The kind of a practice item, the prefix of its item key. The set is open: a new kind
-         *     is added with its key scheme, grader and golden cases.
+         *     is added with its key scheme, grader and golden cases. fretboard_note is retired and has
+         *     no items.
          * @enum {string}
          */
         PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "fretboard_note" | "progression_keys";
@@ -7680,10 +7690,12 @@ export interface components {
         KnowledgeLevel: "new" | "learning" | "accurate" | "fluent" | "retained";
         /**
          * @description How a fretboard cell is asked. name_the_note = the cell is shown and the student names
-         *     its note; find_the_note = the note and string are named and the student taps the cell.
+         *     its note; find_the_note = the note and string are named and the student taps the cell;
+         *     find_every_instance = the cell's note is named and the student taps every place of it in
+         *     the fret window, on a board with nothing marked and without being told how many there are.
          * @enum {string}
          */
-        FretboardDrill: "name_the_note" | "find_the_note";
+        FretboardDrill: "name_the_note" | "find_the_note" | "find_every_instance";
         /**
          * @description The frets a fretboard drill is asked within, so its board is drawn at full tap size without
          *     scrolling sideways. Five frets, plus the open string when the window starts at the nut: a
@@ -8083,6 +8095,72 @@ export interface components {
                 }[];
             }[];
         };
+        /**
+         * @description A progression played once in a key, one chord a bar after a bar of count-in, while the
+         *     student taps the asked tone of each chord on an empty fretboard as it sounds (kind
+         *     guide_tone), graded by timed_taps.v1. It names the chords, the key and the tone, never the
+         *     notes to tap or their places. The item ends after a right take or after takes takes, all in
+         *     music_key; each take is answered with a timed_taps response sending music_key, tone, the
+         *     tempo and note value it played at, and the taps.
+         */
+        PlannedGuideTone: {
+            /**
+             * Format: uuid
+             * @description The instrument whose fretboard layout is tapped on: guitar or electric bass. On electric
+             *     bass each chord's root also plays under it in the bass voice.
+             */
+            layout_instrument_id: string;
+            /** @description The progression played. */
+            progression: {
+                /** @description The progression's key in the progression catalog, such as ii-V-I. */
+                key: string;
+                /** @description The progression's name in the student's language, such as "ii–V–I". */
+                name: string;
+            };
+            music_key: components["schemas"]["MusicKey"];
+            /**
+             * @description The chord tone asked of every chord: 3 = its third, until the student is accurate on the
+             *     item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
+             *     seventh of every other chord and of a dominant seventh).
+             * @enum {string}
+             */
+            tone: "3" | "7";
+            /**
+             * @description The tempo the first take starts at, in quarter notes per minute, by the student's level
+             *     on the item: 60 while new or learning, 72 once accurate, 90 once fluent. The student may
+             *     change it, and the note value, before any take.
+             */
+            tempo_bpm: number;
+            /**
+             * @description The tempo a right take's effective speed is measured against for fluency, in quarters,
+             *     the same for every progression and layout.
+             */
+            target_tempo_bpm: number;
+            /** @description The most takes of the item this session plays. */
+            takes: number;
+            fret_window: components["schemas"]["FretWindow"];
+            /** @description Every bar of the progression, in order, played once a take. */
+            bars: {
+                /** @description The bar's numeral in the progression catalog; a 7 marks a dominant seventh. */
+                numeral: string;
+                /**
+                 * @description The bar's chord symbol in music_key, spelled as the chord catalog spells roots. It
+                 *     is shown and sounded.
+                 */
+                chord: string;
+            }[];
+            /** @description One voicing per distinct chord of bars. */
+            voicings: {
+                /** @description The chord symbol, as it appears in bars. */
+                chord: string;
+                /**
+                 * Format: uuid
+                 * @description The chord catalog voicing the playback sounds: the chord's open voicing if the
+                 *     catalog has one, else its lowest-difficulty voicing.
+                 */
+                diagram_id: string;
+            }[];
+        };
     };
     responses: never;
     parameters: {
@@ -8305,6 +8383,7 @@ export type SchemaFretPlace = components['schemas']['FretPlace'];
 export type SchemaPlannedRootFifth = components['schemas']['PlannedRootFifth'];
 export type SchemaPlannedRootChange = components['schemas']['PlannedRootChange'];
 export type SchemaPlannedProgressionKeys = components['schemas']['PlannedProgressionKeys'];
+export type SchemaPlannedGuideTone = components['schemas']['PlannedGuideTone'];
 export type ParameterAlphaWeek = components['parameters']['AlphaWeek'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
