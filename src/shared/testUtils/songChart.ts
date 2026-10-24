@@ -26,7 +26,7 @@ export function makeLyricLine(...runs: Array<[string, Anchor | null]>): LyricLin
 }
 
 export function makeSection(lines: Section['content'], overrides: Partial<Section['attrs']> = {}): Section {
-  return { type: 'section', attrs: { kind: 'verse', label: null, ...overrides }, content: lines }
+  return { type: 'section', attrs: { kind: 'verse', label: null, progression_keys: [], ...overrides }, content: lines }
 }
 
 export function makeVoicing(id: string, chordId: string, overrides: Partial<ChordVoicing> = {}): ChordVoicing {

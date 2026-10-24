@@ -35,6 +35,27 @@ describe('the song chart editor document', () => {
     expect(toSavedDocument(editorWith(doc).getJSON())).toEqual(doc)
   })
 
+  it('keeps the progressions each section is tagged with', () => {
+    const doc: SongChartDocument = {
+      type: 'doc',
+      content: [
+        makeSection([makeLyricLine(['La', makeAnchor('a1', 'G')])], { progression_keys: ['I-IV-I-V', 'I-V-vi-IV'] }),
+        makeSection([makeLyricLine(['Lo', makeAnchor('a2', 'C')])], { kind: 'chorus' }),
+      ],
+    }
+
+    expect(toSavedDocument(editorWith(doc).getJSON())).toEqual(doc)
+  })
+
+  it('saves a section without tags with an empty list, so nothing is left to chance', () => {
+    const untagged = makeSection([makeLyricLine(['La', makeAnchor('a1', 'G')])])
+    delete untagged.attrs.progression_keys
+
+    const saved = toSavedDocument(editorWith({ type: 'doc', content: [untagged] }).getJSON())
+
+    expect(saved.content[0]!.attrs.progression_keys).toEqual([])
+  })
+
   it('leaves out lines with nothing on them, and sections left empty', () => {
     const doc: SongChartDocument = {
       type: 'doc',

@@ -14,6 +14,11 @@ function text(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
 
+/** A section's tags, always as a list: a section saved without one loses the tags it had. */
+function progressionKeys(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((key): key is string => typeof key === 'string') : []
+}
+
 function isSectionKind(value: unknown): value is SectionKind {
   return SECTION_KINDS.some((kind) => kind === value)
 }
@@ -72,7 +77,7 @@ export function toSavedDocument(json: JSONContent): SongChartDocument {
     const kind = node.attrs?.kind
     sections.push({
       type: 'section',
-      attrs: { kind: isSectionKind(kind) ? kind : 'other', label: text(node.attrs?.label) },
+      attrs: { kind: isSectionKind(kind) ? kind : 'other', label: text(node.attrs?.label), progression_keys: progressionKeys(node.attrs?.progression_keys) },
       content: lines,
     })
   }

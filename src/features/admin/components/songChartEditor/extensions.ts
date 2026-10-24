@@ -13,7 +13,11 @@ export const SECTION_KINDS = ['verse', 'chorus', 'bridge', 'intro', 'outro', 'in
 /** A song chart is sections, and nothing else, at its top level. */
 const SongChartDoc = Document.extend({ content: 'section+' })
 
-/** A part of the song, with its kind and an optional label, holding lyric lines and comments. */
+/**
+ * A part of the song, with its kind, an optional label and the progressions it's tagged with,
+ * holding lyric lines and comments. The tags live only in the document: they aren't written to
+ * the HTML, so a copied section doesn't carry them along.
+ */
 const Section = Node.create({
   name: 'section',
   content: '(lyricLine | comment)+',
@@ -22,6 +26,7 @@ const Section = Node.create({
     return {
       kind: { default: 'verse', parseHTML: (el: HTMLElement) => el.getAttribute('data-kind'), renderHTML: (a: { kind: string }) => ({ 'data-kind': a.kind }) },
       label: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute('data-label'), renderHTML: (a: { label: string | null }) => (a.label ? { 'data-label': a.label } : {}) },
+      progression_keys: { default: [], parseHTML: () => [], renderHTML: () => ({}) },
     }
   },
   parseHTML: () => [{ tag: 'section[data-kind]' }],

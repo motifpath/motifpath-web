@@ -95,7 +95,7 @@ describe('SongChartLyricsEditor', () => {
     await wrapper.get('[data-test="section-label"]').setValue('Abertura')
     await wrapper.get('[data-test="section-label"]').trigger('change')
 
-    expect(lastEmitted(wrapper).content[0]!.attrs).toEqual({ kind: 'intro', label: 'Abertura' })
+    expect(lastEmitted(wrapper).content[0]!.attrs).toEqual({ kind: 'intro', label: 'Abertura', progression_keys: [] })
   })
 
   it('adds a section of the chosen kind after the one the cursor is in', async () => {
