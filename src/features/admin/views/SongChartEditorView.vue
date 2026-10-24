@@ -9,11 +9,16 @@ import { ChevronRight, Download, Eye, FileUp, Monitor } from 'lucide-vue-next'
 import { computed, ref, toRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
+import ProgressionPicker from '@/features/admin/components/songChartEditor/ProgressionPicker.vue'
 import SongChartLyricsEditor from '@/features/admin/components/songChartEditor/SongChartLyricsEditor.vue'
+import SongChartSectionHeading from '@/features/admin/components/songChartEditor/SongChartSectionHeading.vue'
 import SongChartStatusPanel from '@/features/admin/components/songChartEditor/SongChartStatusPanel.vue'
 import { publishBlockers } from '@/features/admin/utils/publishBlockers'
+import { unplayedProgressions } from '@/features/admin/utils/unplayedProgressions'
 import InlineNotice from '@/shared/components/InlineNotice.vue'
+import OverlayPanel from '@/shared/components/OverlayPanel.vue'
 import { useChordLookup } from '@/shared/composables/useChordLookup'
+import { useProgressionNames } from '@/shared/composables/useProgressionNames'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { lineSegments } from '@/shared/utils/songChartReading'
 import { useSongChartEditor } from '@/features/admin/composables/useSongChartEditor'
@@ -49,7 +54,32 @@ const writtenSymbols = computed(() =>
   body.value.content.flatMap((s) => s.content.flatMap((line) => (line.type === 'lyricLine' ? line.content.flatMap((r) => (r.marks ?? []).map((m) => m.attrs.writtenSymbol)) : []))),
 )
 watch(writtenSymbols, (symbols) => new Set(symbols).forEach(lookUp), { immediate: true })
-const blockers = computed(() => publishBlockers(body.value, details.rightsConfirmed, checkOf))
+// A tag the last save found a section doesn't play blocks publishing, and is marked on its section.
+const unplayed = computed(() => unplayedProgressions(body.value, chart.value?.draft ?? null))
+const blockers = computed(() => publishBlockers(body.value, details.rightsConfirmed, checkOf, unplayed.value))
+
+function unplayedAt(sectionIndex: number): string[] {
+  return unplayed.value.filter((u) => u.section_index === sectionIndex).map((u) => u.progression_key)
+}
+
+// On a phone the lyrics are read-only, but a section's tags are edited on its heading, the
+// picker in a sheet.
+const { progressions } = useProgressionNames()
+const pickingSection = ref<number | null>(null)
+
+function setTags(sectionIndex: number, keys: (current: string[]) => string[]) {
+  body.value = {
+    ...body.value,
+    content: body.value.content.map((section, i) =>
+      i === sectionIndex ? { ...section, attrs: { ...section.attrs, progression_keys: keys(section.attrs.progression_keys ?? []) } } : section,
+    ),
+  }
+}
+
+function toggleTag(key: string) {
+  if (pickingSection.value === null) return
+  setTags(pickingSection.value, (keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]))
+}
 
 /** An emptied optional field is not set, rather than set to nothing. */
 function inputValue(event: Event): string | null {
@@ -286,7 +316,14 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
               <template v-if="compact">
                 <div data-test="lyrics-read-only" class="flex flex-col gap-3">
                   <section v-for="(section, i) in body.content" :key="i" class="flex flex-col gap-1">
-                    <h3 class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">{{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}</h3>
+                    <SongChartSectionHeading
+                      data-test="section-heading"
+                      :section="section.attrs"
+                      :unplayed="unplayedAt(i)"
+                      :concert-key="chart?.draft.concert_key ?? null"
+                      @remove="(key) => setTags(i, (keys) => keys.filter((k) => k !== key))"
+                      @add="pickingSection = i"
+                    />
                     <template v-for="(line, j) in section.content" :key="j">
                       <p v-if="line.type === 'comment'" class="text-sm italic text-ink-muted">{{ line.content.map((c) => c.text).join('') }}</p>
                       <p v-else class="flex flex-wrap items-end text-base text-ink">
@@ -300,7 +337,7 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
                 </div>
                 <InlineNotice data-test="larger-screen-notice" tone="unavailable" :icon="Monitor" :message="t('songChartEditorView.largerScreen')" />
               </template>
-              <SongChartLyricsEditor v-else v-model="body" />
+              <SongChartLyricsEditor v-else v-model="body" :unplayed="unplayed" :concert-key="chart?.draft.concert_key ?? null" />
               <span v-if="fieldErrors.body" data-test="error-body" class="text-xs text-danger">{{ t('songChartEditorView.lyricsNeeded') }}</span>
             </section>
 
@@ -390,5 +427,8 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
       @cancel="leaving?.(false)"
     />
   </div>
+    <OverlayPanel :open="pickingSection !== null" :title="t('songChartEditor.progressions')" @close="pickingSection = null">
+      <ProgressionPicker :progressions="progressions" :tagged="pickingSection === null ? [] : (body.content[pickingSection]?.attrs.progression_keys ?? [])" @toggle="toggleTag" />
+    </OverlayPanel>
   </TeachShell>
 </template>
