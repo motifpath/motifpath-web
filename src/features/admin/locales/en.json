@@ -159,7 +159,8 @@
     "refused": "Publishing was refused:",
     "refusal": {
       "rights_not_confirmed": "Nobody has confirmed the song's rights were checked.",
-      "unresolved_chords": "Some chords block publishing:"
+      "unresolved_chords": "Some chords block publishing:",
+      "progressions_not_played": "A section doesn't play a progression it's tagged with."
     },
     "details": "Details",
     "title": "Title",

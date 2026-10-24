@@ -4237,6 +4237,7 @@ export interface components {
                  *     "Refrão"); null shows no heading.
                  */
                 label: string | null;
+                progression_keys?: components["schemas"]["SongChartProgressionKeys"];
             };
             /** @description The section's lines and comments, in order. */
             content: (components["schemas"]["SongChartLyricLine"] | components["schemas"]["SongChartComment"])[];
@@ -4331,6 +4332,16 @@ export interface components {
                 chordVoicingId: string | null;
             };
         };
+        /**
+         * @description The progressions a section plays, by their key in the progression
+         *     catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
+         *     a tagged section is practised as a song on those progressions'
+         *     knowledge nodes, played whole; an untagged chart never is. On
+         *     input, absent means none, and a key the catalog doesn't have is
+         *     refused. The server always writes it, empty for an untagged
+         *     section.
+         */
+        SongChartProgressionKeys: string[];
         /** @description The fields of a song chart's draft that authors write. */
         SongChartDraftInput: {
             /** @description The song's title as shown to learners. */
@@ -4370,6 +4381,21 @@ export interface components {
              *     document order; empty when every anchor resolved.
              */
             warnings: components["schemas"]["SongChartAnchorWarning"][];
+            /**
+             * @description The sections' tagged progressions the section doesn't play, by
+             *     section in document order, then in the order they were tagged;
+             *     empty when every section plays its tags. A progression is played
+             *     by a section when its chords appear in a row in that section, in
+             *     the chart's concert key: the section's chords as they sound
+             *     (each written chord moved up by the capo), each counted by its
+             *     root and triad (major, minor or diminished), N.C. skipped and a
+             *     chord repeated in a row counted once, against the progression's
+             *     numerals spelled in the concert key, a dominant seventh counting
+             *     as major and a repeated numeral counted once. The chords of
+             *     another section never count. With no stated major concert key,
+             *     every tag is unplayed. Any entry blocks publication.
+             */
+            unplayed_progressions: components["schemas"]["SongChartUnplayedProgression"][];
             updated_by: components["schemas"]["UserRef"];
             /**
              * Format: date-time
@@ -4528,6 +4554,11 @@ export interface components {
              *     string first (e.g. "E2-A2-D3-G3-B3-E4", standard guitar tuning).
              */
             tuning_fingerprint: string;
+            /**
+             * @description Every progression the revision's sections are tagged with, each
+             *     once, in document order: read from the body, never written.
+             */
+            progression_keys: string[];
             body: components["schemas"]["SongChartDocument"];
             rights_confirmation: components["schemas"]["RightsConfirmation"];
             published_by: components["schemas"]["UserRef"];
@@ -4591,10 +4622,21 @@ export interface components {
              * @description rights_not_confirmed: no admin has confirmed the song's rights
              *     were checked. unresolved_chords: at least one anchor has a
              *     warning that blocks publication (see anchor_warnings).
+             *     progressions_not_played: a section doesn't play at least one
+             *     progression it is tagged with (see unplayed_progressions).
              */
-            reasons: ("rights_not_confirmed" | "unresolved_chords")[];
+            reasons: ("rights_not_confirmed" | "unresolved_chords" | "progressions_not_played")[];
             /** @description The anchors whose warnings block publication; empty unless reasons has unresolved_chords. */
             anchor_warnings: components["schemas"]["SongChartAnchorWarning"][];
+            /** @description The sections' tags the section doesn't play; empty unless reasons has progressions_not_played. */
+            unplayed_progressions: components["schemas"]["SongChartUnplayedProgression"][];
+        };
+        /** @description A progression a section is tagged with but doesn't play. */
+        SongChartUnplayedProgression: {
+            /** @description The section, numbered from 0 in document order. */
+            section_index: number;
+            /** @description The tagged progression, by its key in the progression catalog. */
+            progression_key: string;
         };
         /** @description The result of importing ChordPro text into a song chart's draft. */
         SongChartChordProImport: {
@@ -6904,8 +6946,9 @@ export interface components {
              */
             felt_questions: string[];
             /**
-             * @description True when the plan has a fretboard cell or a diagram shape and the student has
-             *     done no tap check in the last 30 days, or never. The client then offers the tap
+             * @description True when the plan has a timed fretboard drill (a fretboard cell named or found,
+             *     or a diagram shape) and the student has done no tap check in the last 30 days, or
+             *     never. A cell asked to find every instance isn't timed, so it needs none. The client then offers the tap
              *     check before the first item; the student may skip it, and their answers are then
              *     judged on the whole latency.
              */
@@ -6986,8 +7029,8 @@ export interface components {
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
          *     one of fretboard_cell, exercise, play_along, diagram_shape, generated_choice,
-         *     chord_voicing, chord_change, root_fifth, root_change, progression_keys and guide_tone is
-         *     present, matching kind:
+         *     chord_voicing, chord_change, root_fifth, root_change, progression_keys, guide_tone and
+         *     song is present, matching kind:
          *     generated_choice for a diatonic chord, a chord function, a chart progression, a heard
          *     chord or a heard progression.
          */
@@ -7116,6 +7159,7 @@ export interface components {
             root_change?: components["schemas"]["PlannedRootChange"];
             progression_keys?: components["schemas"]["PlannedProgressionKeys"];
             guide_tone?: components["schemas"]["PlannedGuideTone"];
+            song?: components["schemas"]["PlannedSong"];
         };
         /** @description The home for one instrument, derived from the student's evidence. */
         PracticeSummary: {
@@ -7632,6 +7676,8 @@ export interface components {
          *     - progression_keys:<layout instrument id>:<progression key> — playing a progression along
          *       with its backing, key after key around the cycle of fourths. The key is the tour's next
          *       one, sent back with each take.
+         *     - song:<layout instrument id>:<song chart id> — playing a published song chart whole, as
+         *       written, on an instrument of the layout: its chords on guitar, their roots on bass.
          *
          *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
          *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
@@ -7648,16 +7694,17 @@ export interface components {
          *     is added with its key scheme, grader and golden cases.
          * @enum {string}
          */
-        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "progression_keys";
+        PracticeItemKind: "fretboard_cell" | "exercise" | "play_along" | "chord_change" | "diagram_shape" | "diatonic_chord" | "chord_function" | "chart_progression" | "heard_chord" | "heard_progression" | "chord_voicing" | "root_fifth" | "root_change" | "guide_tone" | "progression_keys" | "song";
         /**
          * @description Why the session composer put an item in a session, shown to the student.
          *     teacher_suggested = a teacher asked for it; due = its review is due; weak = it has been
          *     practised, is not due, and is not yet fluent; new = it has not been practised yet;
          *     warm_up = something already known, played first with the instrument in hand, below the
          *     student's edge and outside the evidence: its takes are not sent as practice.item_answered;
-         *     application = one play-along at the end of a session of 10 minutes or more, applying a
-         *     skill the session's focus items practised (or, with none, another skill of the student's
-         *     paths), and evidence like any other take; review_ahead = a known item coming due within the
+         *     application = one play-along or song at the end of a session of 10 minutes or more,
+         *     applying a skill the session's focus items practised (or, with none, another skill of the
+         *     student's paths), and evidence like any other take; it is a song when one of the session's
+         *     subjects is at the use rung and a song practises it; review_ahead = a known item coming due within the
          *     week, reviewed before it falls due, when nothing else is due; stretch = an unseen item of a
          *     node the student is ready to start, the skills of their paths first, when nothing else is due
          *     or past the new share.
@@ -7670,7 +7717,7 @@ export interface components {
          *     play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
          *     while the music moves; use = play it in a piece of music. A drill template has one rung;
          *     a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
-         *     a progression key tour is move, and a song chart item is use.
+         *     a progression key tour is move, and a song is use.
          * @enum {string}
          */
         PracticeRung: "know" | "hear" | "play_clean" | "play_in_time" | "move" | "target" | "use";
@@ -8156,6 +8203,44 @@ export interface components {
                 diagram_id: string;
             }[];
         };
+        /**
+         * @description A published song chart to play whole on the instrument in hand, then rate (kind song). It is
+         *     always a session's application ending. The chart is played as written, in its concert key
+         *     with its capo, never transposed; the client loads it as learners read it. The take is rated
+         *     by the student and has no measure.
+         */
+        PlannedSong: {
+            /**
+             * Format: uuid
+             * @description The published song chart to play.
+             */
+            song_chart_id: string;
+            /**
+             * Format: uuid
+             * @description The instrument whose layout the song is practised on.
+             */
+            layout_instrument_id: string;
+            /** @description The song's title, from the chart's latest published revision. */
+            title: string;
+            /** @description The performer or composer the song is known by. */
+            artist: string;
+            /**
+             * @description The key, in the progression catalog, of the progression the chart plays that practises
+             *     the session's subject, shown as why this song was picked.
+             */
+            progression_key: string;
+            /**
+             * @description The first section, numbered from 0 in document order, tagged with progression_key: the
+             *     section shown as playing it ("Its verse plays I–IV–I–V"). The whole song is played.
+             */
+            section_index: number;
+            /**
+             * @description What the student plays from the chart. chords = the chords as written, on a guitar
+             *     layout; roots = the root of each chord, on a bass layout.
+             * @enum {string}
+             */
+            plays: "chords" | "roots";
+        };
     };
     responses: never;
     parameters: {
@@ -8235,6 +8320,7 @@ export type SchemaSongChartLyricLine = components['schemas']['SongChartLyricLine
 export type SchemaSongChartComment = components['schemas']['SongChartComment'];
 export type SchemaSongChartText = components['schemas']['SongChartText'];
 export type SchemaSongChartChordAnchor = components['schemas']['SongChartChordAnchor'];
+export type SchemaSongChartProgressionKeys = components['schemas']['SongChartProgressionKeys'];
 export type SchemaSongChartDraftInput = components['schemas']['SongChartDraftInput'];
 export type SchemaSongChartDraft = components['schemas']['SongChartDraft'];
 export type SchemaSongChartAnchorWarning = components['schemas']['SongChartAnchorWarning'];
@@ -8246,6 +8332,7 @@ export type SchemaSongChartRevisionSummary = components['schemas']['SongChartRev
 export type SchemaSongChartRevision = components['schemas']['SongChartRevision'];
 export type SchemaLearnerSongChart = components['schemas']['LearnerSongChart'];
 export type SchemaSongChartNotPublishableError = components['schemas']['SongChartNotPublishableError'];
+export type SchemaSongChartUnplayedProgression = components['schemas']['SongChartUnplayedProgression'];
 export type SchemaSongChartChordProImport = components['schemas']['SongChartChordProImport'];
 export type SchemaSongChartChordProReading = components['schemas']['SongChartChordProReading'];
 export type SchemaChordProImportWarning = components['schemas']['ChordProImportWarning'];
@@ -8379,6 +8466,7 @@ export type SchemaPlannedRootFifth = components['schemas']['PlannedRootFifth'];
 export type SchemaPlannedRootChange = components['schemas']['PlannedRootChange'];
 export type SchemaPlannedProgressionKeys = components['schemas']['PlannedProgressionKeys'];
 export type SchemaPlannedGuideTone = components['schemas']['PlannedGuideTone'];
+export type SchemaPlannedSong = components['schemas']['PlannedSong'];
 export type ParameterAlphaWeek = components['parameters']['AlphaWeek'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
