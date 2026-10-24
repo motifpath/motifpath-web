@@ -9,25 +9,42 @@
  * checked as it is written, the same way the server reads it, and the chords that stop the chart
  * from being published are listed. A chord the catalog has offers its voicings; until the author
  * picks one, learners see the best one first.
+ *
+ * Each section is headed by its name and the progressions it's tagged with; + Progression opens
+ * the catalog to tag it with more. A tag the last save found a section doesn't play is marked.
  */
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import type { Editor, JSONContent } from '@tiptap/core'
-import { MessageSquare, Music, Plus, Redo2, Undo2 } from 'lucide-vue-next'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { MessageSquare, Music, Plus, Redo2, Undo2, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import ChordPopover from '@/features/admin/components/songChartEditor/ChordPopover.vue'
+import ProgressionPicker from '@/features/admin/components/songChartEditor/ProgressionPicker.vue'
+import SongChartSectionView from '@/features/admin/components/songChartEditor/SongChartSectionView.vue'
+import { sectionHeadingContextKey } from '@/features/admin/components/songChartEditor/sectionHeadingContext'
 import { chordProblemsKey, SECTION_KINDS, songChartExtensions } from '@/features/admin/components/songChartEditor/extensions'
 import type { ChordProblem } from '@/features/admin/components/songChartEditor/extensions'
 import { useChordLookup } from '@/shared/composables/useChordLookup'
+import { useProgressionNames } from '@/shared/composables/useProgressionNames'
 import { toSavedDocument } from '@/features/admin/utils/songChartEditorDocument'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type SongChartDocument = components['schemas']['SongChartDocument']
 type SectionKind = (typeof SECTION_KINDS)[number]
 type Anchor = components['schemas']['SongChartChordAnchor']['attrs']
+type UnplayedProgression = components['schemas']['SongChartUnplayedProgression']
 
 const model = defineModel<SongChartDocument>({ required: true })
+const props = withDefaults(
+  defineProps<{
+    /** The tags the last save found a section doesn't play. */
+    unplayed?: UnplayedProgression[]
+    /** The song's key as of the last save, which is the key the tags were checked in. */
+    concertKey?: string | null
+  }>(),
+  { unplayed: () => [], concertKey: null },
+)
 
 const { t } = useTypedT()
 
@@ -54,7 +71,7 @@ function reasonOf(symbol: string, problem: ChordProblem): string {
 }
 
 const editor = useEditor({
-  extensions: songChartExtensions({ problemOf, reasonOf }),
+  extensions: songChartExtensions({ problemOf, reasonOf }, SongChartSectionView),
   content: editable(model.value),
   editorProps: {
     attributes: { class: 'song-chart-lyrics', 'aria-label': t('songChartEditor.lyricsLabel'), spellcheck: 'false' },
@@ -280,6 +297,60 @@ function pickVoicing(voicingId: string | null) {
   editor.value?.chain().focus().extendMarkRange('chordAnchor').updateAttributes('chordAnchor', { chordVoicingId: voicingId }).run()
 }
 
+// ── Progressions a section plays ─────────────────────────────────────────────
+
+const { progressions } = useProgressionNames()
+/** The section the picker tags, by its place in the chart, and where the picker sits. */
+const picking = ref<{ sectionIndex: number; top: number; left: number } | null>(null)
+
+/** Where the section at that place starts in the document, and its tags. */
+function sectionAt(sectionIndex: number): { pos: number; keys: string[] } | null {
+  const doc = editor.value?.state.doc
+  if (!doc || sectionIndex < 0 || sectionIndex >= doc.childCount) return null
+  let pos = 0
+  for (let i = 0; i < sectionIndex; i++) pos += doc.child(i).nodeSize
+  const keys: unknown = doc.child(sectionIndex).attrs.progression_keys
+  return { pos, keys: Array.isArray(keys) ? keys.filter((k): k is string => typeof k === 'string') : [] }
+}
+
+function setTags(sectionIndex: number, keys: (current: string[]) => string[]) {
+  const section = sectionAt(sectionIndex)
+  if (!section) return
+  editor.value
+    ?.chain()
+    .command(({ tr }) => {
+      tr.setNodeAttribute(section.pos, 'progression_keys', keys(section.keys))
+      return true
+    })
+    .run()
+}
+
+function toggleTag(key: string) {
+  if (!picking.value) return
+  setTags(picking.value.sectionIndex, (keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]))
+}
+
+const pickingTags = computed(() => (picking.value ? (sectionAt(picking.value.sectionIndex)?.keys ?? []) : []))
+
+function openPicker(sectionIndex: number, anchor: HTMLElement) {
+  const box = lyricsBox.value?.getBoundingClientRect()
+  const at = anchor.getBoundingClientRect()
+  picking.value = { sectionIndex, top: box ? at.bottom + POPOVER_GAP - box.top : 0, left: box ? Math.max(0, at.left - box.left) : 0 }
+  void nextTick(() => lyricsBox.value?.querySelector<HTMLInputElement>('[data-test="progression-search"]')?.focus())
+}
+
+function closePicker() {
+  picking.value = null
+  editor.value?.commands.focus()
+}
+
+provide(sectionHeadingContextKey, {
+  unplayedAt: (sectionIndex) => props.unplayed.filter((u) => u.section_index === sectionIndex).map((u) => u.progression_key),
+  concertKey: () => props.concertKey,
+  remove: (sectionIndex, key) => setTags(sectionIndex, (keys) => keys.filter((k) => k !== key)),
+  openPicker,
+})
+
 onBeforeUnmount(() => editor.value?.destroy())
 
 const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink hover:bg-surface-sunken disabled:opacity-40'
@@ -342,6 +413,22 @@ const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font
         @pick="pickVoicing"
         @close="closeChordPopover"
       />
+      <div
+        v-if="picking"
+        data-test="progression-picker"
+        role="dialog"
+        :aria-label="t('songChartEditor.progressions')"
+        class="absolute z-30 flex w-[min(320px,calc(100vw-48px))] flex-col rounded-2xl border border-border bg-surface-raised p-2 shadow-level2"
+        :style="{ top: `${picking.top}px`, left: `${picking.left}px` }"
+        @keydown.esc.stop="closePicker"
+      >
+        <div class="flex justify-end">
+          <button type="button" data-test="close-progression-picker" class="flex size-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken" :aria-label="t('songChart.closeSheet')" @click="closePicker">
+            <X :size="16" aria-hidden="true" />
+          </button>
+        </div>
+        <ProgressionPicker :progressions="progressions" :tagged="pickingTags" @toggle="toggleTag" />
+      </div>
     </div>
   </div>
 </template>
@@ -356,13 +443,6 @@ const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font
   margin-bottom: 1.25rem;
   padding-left: 0.75rem;
   border-left: 2px solid rgb(var(--color-border));
-}
-:deep(.song-chart-lyrics section[data-label])::before {
-  content: attr(data-label);
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgb(var(--color-ink-muted));
 }
 :deep(.song-chart-lyrics p[data-lyric-line]) {
   line-height: 2.6;
