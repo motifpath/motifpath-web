@@ -1,5 +1,5 @@
 import { Editor } from '@tiptap/core'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { songChartExtensions } from '@/features/admin/components/songChartEditor/extensions'
 import { toSavedDocument } from '@/features/admin/utils/songChartEditorDocument'
@@ -16,7 +16,10 @@ function editorWith(doc: SongChartDocument): Editor {
   return editor
 }
 
-afterEach(() => editor?.destroy())
+afterEach(() => {
+  editor?.destroy()
+  vi.unstubAllGlobals()
+})
 
 describe('the song chart editor document', () => {
   it('loads a chart document and gives it back unchanged', () => {
@@ -33,6 +36,43 @@ describe('the song chart editor document', () => {
     }
 
     expect(toSavedDocument(editorWith(doc).getJSON())).toEqual(doc)
+  })
+
+  it('keeps the progressions each section is tagged with', () => {
+    const doc: SongChartDocument = {
+      type: 'doc',
+      content: [
+        makeSection([makeLyricLine(['La', makeAnchor('a1', 'G')])], { progression_keys: ['I-IV-I-V', 'I-V-vi-IV'] }),
+        makeSection([makeLyricLine(['Lo', makeAnchor('a2', 'C')])], { kind: 'chorus' }),
+      ],
+    }
+
+    expect(toSavedDocument(editorWith(doc).getJSON())).toEqual(doc)
+  })
+
+  it('keeps a section’s tags when it is cut and pasted below another', () => {
+    const verse = makeSection([makeLyricLine(['La', makeAnchor('a1', 'G')])], { progression_keys: ['I-IV-I-V'] })
+    const chorus = makeSection([makeLyricLine(['Lo', makeAnchor('a2', 'C')])], { kind: 'chorus' })
+    const e = editorWith({ type: 'doc', content: [verse, chorus] })
+    const verseEnd = e.state.doc.child(0).nodeSize
+
+    // jsdom has no ClipboardEvent, which a paste is handed.
+    vi.stubGlobal('ClipboardEvent', class extends Event {})
+    const { dom } = e.view.serializeForClipboard(e.state.doc.slice(0, verseEnd))
+    e.chain().deleteRange({ from: 0, to: verseEnd }).setTextSelection(e.state.doc.content.size - 1).run()
+    e.view.pasteHTML(dom.innerHTML)
+
+    const sections = toSavedDocument(e.getJSON()).content
+    expect(sections.map((s) => [s.attrs.kind, s.attrs.progression_keys])).toEqual([['chorus', []], ['verse', ['I-IV-I-V']]])
+  })
+
+  it('saves a section without tags with an empty list, so nothing is left to chance', () => {
+    const untagged = makeSection([makeLyricLine(['La', makeAnchor('a1', 'G')])])
+    delete untagged.attrs.progression_keys
+
+    const saved = toSavedDocument(editorWith({ type: 'doc', content: [untagged] }).getJSON())
+
+    expect(saved.content[0]!.attrs.progression_keys).toEqual([])
   })
 
   it('leaves out lines with nothing on them, and sections left empty', () => {

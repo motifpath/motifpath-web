@@ -294,6 +294,23 @@ describe('SongChartEditorView', () => {
       expect(wrapper.get('[data-test="status-text"]').text()).toContain('Draft')
     })
 
+    it('says so when a section does not play a progression it is tagged with', async () => {
+      serve(makeSongChart('chart-1', rightsConfirmed))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+      POST.mockReturnValueOnce(
+        fail({
+          message: 'not publishable',
+          reasons: ['progressions_not_played'],
+          anchor_warnings: [],
+          unplayed_progressions: [{ section_index: 0, progression_key: 'I-IV-V-I' }],
+        }, 409),
+      )
+
+      await click(wrapper, '[data-test="publish"]')
+
+      expect(wrapper.get('[data-test="refusal-reason"]').text()).toBe("A section doesn't play a progression it's tagged with.")
+    })
+
     it('offers no withdrawal for a chart that is not published', async () => {
       serve(makeSongChart('chart-1'))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')

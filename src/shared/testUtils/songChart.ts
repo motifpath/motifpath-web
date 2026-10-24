@@ -26,7 +26,7 @@ export function makeLyricLine(...runs: Array<[string, Anchor | null]>): LyricLin
 }
 
 export function makeSection(lines: Section['content'], overrides: Partial<Section['attrs']> = {}): Section {
-  return { type: 'section', attrs: { kind: 'verse', label: null, ...overrides }, content: lines }
+  return { type: 'section', attrs: { kind: 'verse', label: null, progression_keys: [], ...overrides }, content: lines }
 }
 
 export function makeVoicing(id: string, chordId: string, overrides: Partial<ChordVoicing> = {}): ChordVoicing {
@@ -149,6 +149,7 @@ export function makeSongChart(
       body: learner.body,
       rights_confirmation: null,
       warnings: [],
+      unplayed_progressions: [],
       updated_by: ana,
       updated_at: '2026-10-07T12:00:00Z',
       ...draft,
@@ -181,6 +182,7 @@ export function makeRevision(revision: number): components['schemas']['SongChart
     time_signature: learner.time_signature,
     tuning_fingerprint: learner.tuning_fingerprint,
     body: learner.body,
+    progression_keys: [],
     rights_confirmation: { confirmed_by: ana, confirmed_at: '2026-10-07T12:00:00Z' },
     published_by: ana,
     published_at: '2026-10-07T12:00:00Z',

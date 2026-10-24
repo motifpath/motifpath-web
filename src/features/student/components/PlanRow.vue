@@ -32,6 +32,7 @@ const KIND_KEYS = {
   root_change: 'sessionPlan.kinds.chordChange',
   guide_tone: 'sessionPlan.kinds.guideTones',
   progression_keys: 'sessionPlan.kinds.everyKey',
+  song: 'sessionPlan.kinds.song',
 } as const satisfies Record<Item['kind'], string>
 
 const { t } = useTypedT()

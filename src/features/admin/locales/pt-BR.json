@@ -159,7 +159,8 @@
     "refused": "A publicação foi recusada:",
     "refusal": {
       "rights_not_confirmed": "Ninguém confirmou que os direitos da música foram verificados.",
-      "unresolved_chords": "Alguns acordes impedem a publicação:"
+      "unresolved_chords": "Alguns acordes impedem a publicação:",
+      "progressions_not_played": "Uma seção não toca uma progressão marcada nela."
     },
     "details": "Detalhes",
     "title": "Título",

@@ -13,7 +13,22 @@ export const SECTION_KINDS = ['verse', 'chorus', 'bridge', 'intro', 'outro', 'in
 /** A song chart is sections, and nothing else, at its top level. */
 const SongChartDoc = Document.extend({ content: 'section+' })
 
-/** A part of the song, with its kind and an optional label, holding lyric lines and comments. */
+/** A section's tags read back from pasted HTML: only strings are kept, and anything unreadable is none. */
+function progressionKeysOf(value: string | null): string[] {
+  if (!value) return []
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * A part of the song, with its kind, an optional label and the progressions it's tagged with,
+ * holding lyric lines and comments. The tags travel with a section that is cut or copied, since
+ * the editor's clipboard goes through HTML.
+ */
 const Section = Node.create({
   name: 'section',
   content: '(lyricLine | comment)+',
@@ -22,6 +37,12 @@ const Section = Node.create({
     return {
       kind: { default: 'verse', parseHTML: (el: HTMLElement) => el.getAttribute('data-kind'), renderHTML: (a: { kind: string }) => ({ 'data-kind': a.kind }) },
       label: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute('data-label'), renderHTML: (a: { label: string | null }) => (a.label ? { 'data-label': a.label } : {}) },
+      progression_keys: {
+        default: [],
+        parseHTML: (el: HTMLElement) => progressionKeysOf(el.getAttribute('data-progression-keys')),
+        renderHTML: (a: { progression_keys: string[] }) =>
+          a.progression_keys.length ? { 'data-progression-keys': JSON.stringify(a.progression_keys) } : {},
+      },
     }
   },
   parseHTML: () => [{ tag: 'section[data-kind]' }],

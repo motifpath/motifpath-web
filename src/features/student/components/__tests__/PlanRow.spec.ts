@@ -19,6 +19,7 @@ describe('PlanRow', () => {
     ['fretboard_cell', 'Fretboard'],
     ['diagram_shape', 'Fretboard'],
     ['chord_change', 'Chord change'],
+    ['song', 'Song'],
   ] as const)('labels a %s as “%s”', (kind, label) => {
     const wrapper = mount(PlanRow, { props: { position: 1, name: 'Item', reason: 'new', kind } })
 
