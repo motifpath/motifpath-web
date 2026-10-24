@@ -1,5 +1,7 @@
 import { Extension, Mark, Node } from '@tiptap/core'
 import type { Extensions } from '@tiptap/core'
+import { VueNodeViewRenderer } from '@tiptap/vue-3'
+import type { Component } from 'vue'
 import Document from '@tiptap/extension-document'
 import History from '@tiptap/extension-history'
 import Text from '@tiptap/extension-text'
@@ -149,7 +151,11 @@ export const ChordProblems = Extension.create<ChordProblemsOptions>({
   },
 })
 
-/** Everything the song chart editor's schema holds, and undo; chord problems marked as `chordProblems` says. */
-export function songChartExtensions(chordProblems?: Partial<ChordProblemsOptions>): Extensions {
-  return [SongChartDoc, Section, LyricLine, Comment, Text, ChordAnchor, History, ChordProblems.configure(chordProblems ?? {})]
+/**
+ * Everything the song chart editor's schema holds, and undo; chord problems marked as
+ * `chordProblems` says, and each section drawn by `sectionView` when one is given.
+ */
+export function songChartExtensions(chordProblems?: Partial<ChordProblemsOptions>, sectionView?: Component): Extensions {
+  const section = sectionView ? Section.extend({ addNodeView: () => VueNodeViewRenderer(sectionView) }) : Section
+  return [SongChartDoc, section, LyricLine, Comment, Text, ChordAnchor, History, ChordProblems.configure(chordProblems ?? {})]
 }

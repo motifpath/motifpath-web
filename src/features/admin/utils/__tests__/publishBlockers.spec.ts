@@ -36,6 +36,14 @@ describe('publishBlockers', () => {
     ])
   })
 
+  it("lists each tag a section doesn't play after the chords, naming the section", () => {
+    const unplayed = [{ section_index: 1, progression_key: 'I-IV-V-I' }]
+
+    expect(publishBlockers(body, true, checkOf, unplayed).slice(-1)).toEqual([
+      { kind: 'progression', progressionKey: 'I-IV-V-I', section: { kind: 'chorus', label: 'Refrão', progression_keys: [] } },
+    ])
+  })
+
   it('has nothing to list when the rights are confirmed and every chord is fine', () => {
     const fine = { type: 'doc' as const, content: [makeSection([makeLyricLine(['Ciranda', makeAnchor('a1', 'G')])])] }
 
