@@ -22,7 +22,13 @@ describe('ProgressionPicker', () => {
     const wrapper = mountPicker(['I-IV-I-V'])
 
     expect(options(wrapper).map((o) => o.text())).toEqual(['I–IV–V–I', 'I–IV–I–V', 'I–vi–IV–V (doo-wop)', 'ii–V–I'])
-    expect(options(wrapper).map((o) => o.attributes('aria-checked'))).toEqual(['false', 'true', 'false', 'false'])
+    expect(options(wrapper).map((o) => [o.element.tagName, o.attributes('aria-pressed')])).toEqual([
+      ['BUTTON', 'false'],
+      ['BUTTON', 'true'],
+      ['BUTTON', 'false'],
+      ['BUTTON', 'false'],
+    ])
+    expect(wrapper.find('[role="menu"], [role="menuitemcheckbox"]').exists()).toBe(false)
   })
 
   it('finds a progression by a word of its name or by its numerals as typed', async () => {

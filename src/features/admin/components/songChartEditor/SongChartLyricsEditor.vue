@@ -88,7 +88,12 @@ const editor = useEditor({
     model.value = doc
   },
   onCreate: ({ editor: e }) => readPosition(e),
-  onTransaction: ({ editor: e }) => readPosition(e),
+  onTransaction: ({ editor: e, transaction }) => {
+    readPosition(e)
+    // The picker tags a section by its place in the chart: any other change to the lyrics may
+    // move that place, so it closes rather than tag another section.
+    if (transaction.docChanged && !transaction.getMeta(PICKER_CHANGE)) picking.value = null
+  },
 })
 
 watch(model, (doc) => {
@@ -300,6 +305,8 @@ function pickVoicing(voicingId: string | null) {
 // ── Progressions a section plays ─────────────────────────────────────────────
 
 const { progressions } = useProgressionNames()
+/** Marks the changes the picker and the headings make to a section's tags. */
+const PICKER_CHANGE = 'sectionTags'
 /** The section the picker tags, by its place in the chart, and where the picker sits. */
 const picking = ref<{ sectionIndex: number; top: number; left: number } | null>(null)
 
@@ -319,7 +326,7 @@ function setTags(sectionIndex: number, keys: (current: string[]) => string[]) {
   editor.value
     ?.chain()
     .command(({ tr }) => {
-      tr.setNodeAttribute(section.pos, 'progression_keys', keys(section.keys))
+      tr.setNodeAttribute(section.pos, 'progression_keys', keys(section.keys)).setMeta(PICKER_CHANGE, true)
       return true
     })
     .run()

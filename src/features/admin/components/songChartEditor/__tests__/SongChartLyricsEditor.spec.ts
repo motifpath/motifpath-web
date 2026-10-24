@@ -208,6 +208,17 @@ describe('SongChartLyricsEditor', () => {
       expect(lastEmitted(wrapper).content[0]!.attrs.progression_keys).toEqual(['I-IV-I-V'])
     })
 
+    it('closes the picker when the lyrics change under it, so a pick never lands on another section', async () => {
+      const wrapper = mountEditor(twoSections)
+      await flushPromises()
+
+      await headings(wrapper)[1]!.get('[data-test="add-progression"]').trigger('click')
+      await wrapper.get('[data-test="add-section"]').trigger('click')
+
+      expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(false)
+      expect(headings(wrapper)).toHaveLength(3)
+    })
+
     it('closes the picker with Escape', async () => {
       const wrapper = mountEditor(twoSections)
       await flushPromises()

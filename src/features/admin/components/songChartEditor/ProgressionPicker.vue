@@ -47,13 +47,12 @@ const shown = computed(() => {
         class="min-w-0 flex-1 bg-transparent text-base text-ink outline-none"
       />
     </label>
-    <ul class="flex max-h-72 flex-col overflow-y-auto" role="menu" :aria-label="t('songChartEditor.progressions')">
+    <ul class="flex max-h-72 flex-col overflow-y-auto" :aria-label="t('songChartEditor.progressions')">
       <li v-for="p in shown" :key="p.key">
         <button
           type="button"
-          role="menuitemcheckbox"
           data-test="progression-option"
-          :aria-checked="tagged.includes(p.key)"
+          :aria-pressed="tagged.includes(p.key)"
           class="flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-2 text-left text-base hover:bg-surface-sunken"
           :class="tagged.includes(p.key) ? 'text-accent-text' : 'text-ink'"
           @click="emit('toggle', p.key)"
