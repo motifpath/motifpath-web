@@ -98,6 +98,18 @@ describe('SongChartLyricsEditor', () => {
     expect(lastEmitted(wrapper).content[0]!.attrs).toEqual({ kind: 'intro', label: 'Abertura', progression_keys: [] })
   })
 
+  it('keeps the progressions a section is tagged with when its kind and label change', async () => {
+    const tagged = makeSection([makeLyricLine(['Amazing grace', makeAnchor('a1', 'G')])], { progression_keys: ['I-IV-I-V'] })
+    const wrapper = mountEditor({ type: 'doc', content: [tagged] })
+    await flushPromises()
+
+    await wrapper.get('[data-test="section-kind"]').setValue('chorus')
+    await wrapper.get('[data-test="section-label"]').setValue('Refrão')
+    await wrapper.get('[data-test="section-label"]').trigger('change')
+
+    expect(lastEmitted(wrapper).content[0]!.attrs).toEqual({ kind: 'chorus', label: 'Refrão', progression_keys: ['I-IV-I-V'] })
+  })
+
   it('adds a section of the chosen kind after the one the cursor is in', async () => {
     const wrapper = mountEditor()
     await flushPromises()
