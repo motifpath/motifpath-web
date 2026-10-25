@@ -17,6 +17,7 @@ vi.mock('@/shared/composables/useEmbeddedDiagram', () => ({
 }))
 
 import { EVERY_THIRD_AT_60, guideToneItem } from '@/features/student/testing/guideToneItems'
+import { songItem } from '@/features/student/testing/songItems'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import type { ShapeBoard } from '@/features/student/composables/usePracticeSessionRun'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -1889,6 +1890,64 @@ describe('usePracticeSessionRun', () => {
       for (let i = 0; i < 4; i++) run.tapGuideTone(take([]))
 
       expect(tracked('practice.item_answered')).toHaveLength(3)
+    })
+  })
+
+  describe('a song', () => {
+    it('sends the rating alone, with no tempo, note value or key, and stays on the song', () => {
+      const run = usePracticeSessionRun(plan([exerciseItem('e1', 'due'), songItem()]))
+      run.start()
+      run.nextItem()
+
+      run.rateSong('almost')
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: 'song:guitar:chart-amazing-grace',
+          response: { response_type: 'self_rating', rating: 'almost' },
+        },
+      ])
+      expect(run.songRating.value).toBe('almost')
+      expect(run.index.value).toBe(1)
+      expect(run.answeredCount.value).toBe(1)
+      expect(run.outcomes.value.get(1)).toEqual({ kind: 'rated', rating: 'almost' })
+      expect(run.progress.value).toEqual([1, 1])
+    })
+
+    it('rates the song once, and is never skipped once rated', () => {
+      const run = usePracticeSessionRun(plan([songItem()]))
+      run.start()
+
+      run.rateSong('clean')
+      run.rateSong('struggled')
+      run.skip('unavailable')
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.songRating.value).toBe('clean')
+      expect(run.finished.value).toBe(false)
+    })
+
+    it('ends the session once the student moves on from the rated song', () => {
+      const run = usePracticeSessionRun(plan([songItem()]))
+      run.start()
+      run.rateSong('clean')
+
+      run.nextItem()
+
+      expect(run.finished.value).toBe(true)
+      expect(run.songRating.value).toBeNull()
+    })
+
+    it('rates only a song this way', () => {
+      const run = usePracticeSessionRun(plan([exerciseItem('e1', 'due')]))
+      run.start()
+
+      run.rateSong('clean')
+
+      expect(tracked('practice.item_answered')).toEqual([])
+      expect(run.songRating.value).toBeNull()
     })
   })
 })

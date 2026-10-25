@@ -111,6 +111,7 @@ const HEADING = 'text-xs font-semibold uppercase tracking-wide text-accent-text'
           :name="rowName(row)"
           :reason="row.item.reason"
           :kind="row.item.kind"
+          :progression-key="row.item.song?.progression_key"
         />
       </ol>
     </section>

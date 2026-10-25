@@ -395,7 +395,8 @@
     "info": "Sobre esta prática",
     "takeOf": "Execução {current} de {total}",
     "restart": "Recomeçar",
-    "restartUnrated": "Recomeçar sem avaliar"
+    "restartUnrated": "Recomeçar sem avaliar",
+    "songPrompt": "Como foi {song}?"
   },
   "playAlongInfo": {
     "title": "Sobre esta prática",
@@ -785,5 +786,36 @@
     "moveOn": "Seguir",
     "next": "Próximo",
     "unavailable": "Esta progressão não pode ser tocada aqui agora."
+  },
+  "sessionSong": {
+    "rootsHint": "Toque a fundamental de cada acorde",
+    "why": {
+      "verse": "A estrofe toca {progression}, a progressão que você praticou hoje.",
+      "chorus": "O refrão toca {progression}, a progressão que você praticou hoje.",
+      "bridge": "A ponte toca {progression}, a progressão que você praticou hoje.",
+      "intro": "A introdução toca {progression}, a progressão que você praticou hoje.",
+      "outro": "O final toca {progression}, a progressão que você praticou hoje.",
+      "instrumental": "O instrumental toca {progression}, a progressão que você praticou hoje.",
+      "other": "A música toca {progression}, a progressão que você praticou hoje."
+    },
+    "tapToHear": "Toque num acorde para ouvi-lo.",
+    "tapToHearRoot": "Toque num acorde para ouvir a fundamental.",
+    "chordsLabel": "Os acordes da música",
+    "metronomeOff": "Metrônomo desligado · {bpm} BPM (o andamento da cifra)",
+    "metronomeOn": "Metrônomo ligado · {bpm} BPM (o andamento da cifra)",
+    "start": "Começar",
+    "keyCapo": "Tom {key} · capotraste {fret}",
+    "keyNoCapo": "Tom {key} · sem capotraste",
+    "result": {
+      "clean": "Você tocou {title} limpa.",
+      "almost": "Você quase tocou {title} limpa.",
+      "struggled": "{title} foi difícil hoje."
+    },
+    "today": "Hoje",
+    "finish": "Concluir",
+    "loadFailed": "Não foi possível carregar a música.",
+    "tryAgain": "Tentar de novo",
+    "unavailable": "Esta música não está mais disponível.",
+    "skip": "Pular"
   }
 }
