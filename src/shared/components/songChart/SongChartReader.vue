@@ -20,7 +20,7 @@ import ChordCard from '@/shared/components/songChart/ChordCard.vue'
 import ChordStrip from '@/shared/components/songChart/ChordStrip.vue'
 import FloatingChordCard from '@/shared/components/songChart/FloatingChordCard.vue'
 import type { CardCorner } from '@/shared/components/songChart/FloatingChordCard.vue'
-import ProgressionChips from '@/shared/components/songChart/ProgressionChips.vue'
+import SongChartLyrics from '@/shared/components/songChart/SongChartLyrics.vue'
 import SongProgressions from '@/shared/components/songChart/SongProgressions.vue'
 import TempoControl from '@/shared/components/TempoControl.vue'
 import type { ChordView } from '@/shared/composables/useChordView'
@@ -32,7 +32,7 @@ import { useSongTempo } from '@/shared/composables/useSongTempo'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { MAX_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
-import { chordsOfSong, lineSegments, missingBass, openingVoicing, progressionsOfSong } from '@/shared/utils/songChartReading'
+import { chordsOfSong, missingBass, openingVoicing, progressionsOfSong } from '@/shared/utils/songChartReading'
 
 type LearnerSongChart = components['schemas']['LearnerSongChart']
 type Instrument = components['schemas']['Instrument']
@@ -270,47 +270,12 @@ function playedIt() {
         />
         <SongProgressions v-if="songProgressions.length > 0 && !paneOpen" :keys="songProgressions" />
 
-        <section v-for="(section, sectionIndex) in chart.body.content" :key="sectionIndex" class="flex flex-col gap-1">
-          <div data-test="section-header" class="flex flex-wrap items-center gap-2">
-            <h2 data-test="section-heading" class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-              {{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}
-            </h2>
-            <ProgressionChips v-if="section.attrs.progression_keys?.length" :keys="section.attrs.progression_keys" />
-          </div>
-
-          <template v-for="(line, lineIndex) in section.content" :key="lineIndex">
-            <p v-if="line.type === 'comment'" class="text-sm italic text-ink-muted">
-              {{ line.content.map((c) => c.text).join('') }}
-            </p>
-            <p v-else class="flex flex-wrap items-end gap-y-1 text-base text-ink">
-              <span
-                v-for="(segment, i) in lineSegments(line)"
-                :key="i"
-                :data-test="segment.anchor ? 'chord-segment' : undefined"
-                class="inline-flex flex-col whitespace-pre"
-              >
-                <template v-if="segment.anchor">
-                  <button
-                    v-if="cardFor(segment.anchor)"
-                    type="button"
-                    data-test="chord-symbol"
-                    :aria-pressed="open?.anchor?.anchorId === segment.anchor.anchorId"
-                    class="h-6 self-start rounded-md px-[3px] text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                    :class="open?.anchor?.anchorId === segment.anchor.anchorId ? 'bg-accent text-accent-fg' : 'text-accent-text'"
-                    @click="openFromLyrics(segment.anchor)"
-                  >
-                    {{ segment.anchor.writtenSymbol }}
-                  </button>
-                  <span v-else data-test="chord-symbol" class="h-6 self-start px-[3px] text-sm font-semibold text-ink-muted">
-                    {{ segment.anchor.writtenSymbol }}
-                  </span>
-                </template>
-                <span v-else class="h-6" aria-hidden="true" />
-                <span data-test="chord-word" class="leading-6">{{ segment.text }}</span>
-              </span>
-            </p>
-          </template>
-        </section>
+        <SongChartLyrics
+          :body="chart.body"
+          :is-tappable="(anchor) => cardFor(anchor) !== null"
+          :selected-anchor-id="open?.anchor?.anchorId ?? null"
+          @tap="openFromLyrics"
+        />
       </article>
 
       <aside

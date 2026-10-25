@@ -61,11 +61,11 @@ export function voicingNames(voicings: ChordVoicing[], open: string): string[] {
 }
 
 /**
- * The chords a song uses that have something to show, each once, in the order they first appear:
- * no-chord markings, symbols that resolved to no catalog chord, and chords without a voicing are
+ * The chords a song uses, each once, in the order they first appear: every symbol that resolved to
+ * a catalog chord, whether or not it has a voicing. No-chord markings and unresolved symbols are
  * left out.
  */
-export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): ChordDefinition[] {
+export function chordDefinitionsOfSong(body: SongChartBody, chords: ChordDefinition[]): ChordDefinition[] {
   const byId = new Map(chords.map((c) => [c.chord_definition_id, c]))
   const found = new Map<string, ChordDefinition>()
   for (const section of body.content) {
@@ -74,11 +74,16 @@ export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): Ch
       for (const run of line.content) {
         const id = run.marks?.[0]?.attrs.chordDefinitionId
         const chord = id ? byId.get(id) : undefined
-        if (chord && chord.voicings.length > 0 && !found.has(chord.chord_definition_id)) found.set(chord.chord_definition_id, chord)
+        if (chord && !found.has(chord.chord_definition_id)) found.set(chord.chord_definition_id, chord)
       }
     }
   }
   return [...found.values()]
+}
+
+/** The chords a song uses that have something to show: as chordDefinitionsOfSong, with a voicing. */
+export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): ChordDefinition[] {
+  return chordDefinitionsOfSong(body, chords).filter((chord) => chord.voicings.length > 0)
 }
 
 /**
