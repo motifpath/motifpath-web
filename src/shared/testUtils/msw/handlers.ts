@@ -28,6 +28,7 @@ export const endpoints = {
   catalogPaths: '*/catalog/paths',
   catalogCourses: '*/catalog/courses',
   songCharts: '*/song-charts',
+  progressions: '*/progressions',
   alphaStudents: '*/admin/alpha-observation/students',
   // The event-ingestion service, which tracking posts to.
   events: '*/events',
@@ -83,6 +84,7 @@ export const defaultHandlers: Record<Endpoint, HttpHandler> = {
     HttpResponse.json({ ...fixtures.publishedCourse, course_id: String(params.course_id) }),
   ),
   songCharts: respondWith('songCharts', { items: [], total: 0, limit: 20, offset: 0 }),
+  progressions: respondWith('progressions', fixtures.progressions),
   alphaStudents: respondWith('alphaStudents', { items: fixtures.alphaStudents, total: fixtures.alphaStudents.length, limit: 20, offset: 0 }),
   events: http.post(endpoints.events, () => new HttpResponse(null, { status: 202 })),
   startingPoints: respondWith('startingPoints', fixtures.startingPoints),

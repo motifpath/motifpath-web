@@ -324,6 +324,7 @@
     "noCapo": "No capo",
     "draft": "Draft",
     "chordsInSong": "Chords in this song",
+    "progressionsInSong": "Progressions in this song",
     "songTempo": "Song tempo {bpm} BPM",
     "youreAt": "you're at {bpm}",
     "atTempo": "At {bpm} BPM",

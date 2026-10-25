@@ -80,3 +80,11 @@ export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): Ch
   }
   return [...found.values()]
 }
+
+/**
+ * The progressions a song plays: every progression its sections are tagged with, each once, in the
+ * order they first appear.
+ */
+export function progressionsOfSong(body: SongChartBody): string[] {
+  return [...new Set(body.content.flatMap((section) => section.attrs.progression_keys ?? []))]
+}

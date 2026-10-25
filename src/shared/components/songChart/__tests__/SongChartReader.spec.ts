@@ -22,9 +22,15 @@ vi.mock('@/shared/composables/useMetronome', () => ({
 }))
 const toastSuccess = vi.fn()
 vi.mock('@/shared/composables/useToast', () => ({ useToast: () => ({ success: toastSuccess }) }))
+const progression = (key: string, en: string) => ({ progression_id: key, key, bars: [], confusable: [], names: { en } })
+const getProgressions = vi.fn(() =>
+  Promise.resolve({ data: [progression('I-IV-I-V', 'I–IV–I–V'), progression('ii-V-I', 'ii–V–I')], error: undefined, response: { status: 200 } }),
+)
+vi.mock('@/shared/composables/useApi', () => ({ useApi: () => ({ coreApi: { GET: getProgressions }, eventApi: {} }) }))
 
 import SongChartReader from '@/shared/components/songChart/SongChartReader.vue'
 import TempoControl from '@/shared/components/TempoControl.vue'
+import { clearProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
 import { mockViewport } from '@/shared/testUtils/viewport'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import {
@@ -102,8 +108,39 @@ beforeEach(() => {
   toastSuccess.mockReset()
   metronomeOn.value = false
   localStorage.clear()
+  clearProgressionCatalog()
+  getProgressions.mockClear()
   mockViewport(390)
 })
+
+/** Amazing Grace with two verses on I–IV–I–V and a chorus on ii–V–I, or with the tags given. */
+function taggedChart(tags: Array<string[]> = [['I-IV-I-V'], ['I-IV-I-V'], ['ii-V-I']]) {
+  const labels = ['Verse 1', 'Verse 2', null]
+  const kinds = ['verse', 'verse', 'chorus'] as const
+  const content = tags.map((keys, i) =>
+    makeSection([makeLyricLine(['Amazing grace, how ', makeAnchor(`a${i}`, 'G', { chordDefinitionId: 'chord-g' })])], {
+      kind: kinds[i],
+      label: labels[i],
+      progression_keys: keys,
+    }),
+  )
+  return makeLearnerSongChart({ body: { type: 'doc', content } })
+}
+
+async function mountTagged(chart = taggedChart()) {
+  const wrapper = mountReader(chart)
+  await flushPromises()
+  return wrapper
+}
+
+const songProgressions = (wrapper: VueWrapper) => wrapper.findAll('[data-test="song-progressions"] [data-test="progression-chip"]').map((c) => c.text())
+
+/** Each section's heading: its name, and the progressions beside it. */
+const headings = (wrapper: VueWrapper) =>
+  wrapper.findAll('[data-test="section-header"]').map((h) => [
+    h.get('[data-test="section-heading"]').text(),
+    h.findAll('[data-test="progression-chip"]').map((c) => c.text()),
+  ])
 
 describe('SongChartReader', () => {
   describe('reading', () => {
@@ -389,6 +426,41 @@ describe('SongChartReader', () => {
     })
   })
 
+  describe('the progressions it plays', () => {
+    it('lists each progression once under the chords in this song, in the order it first appears', async () => {
+      const wrapper = await mountTagged()
+
+      expect(wrapper.get('[data-test="song-progressions"] h2').text()).toBe('Progressions in this song')
+      expect(songProgressions(wrapper)).toEqual(['I–IV–I–V', 'ii–V–I'])
+    })
+
+    it('shows each section its own progressions beside its heading', async () => {
+      const wrapper = await mountTagged()
+
+      expect(headings(wrapper)).toEqual([
+        ['Verse 1', ['I–IV–I–V']],
+        ['Verse 2', ['I–IV–I–V']],
+        ['Chorus', ['ii–V–I']],
+      ])
+    })
+
+    it('shows no progressions, and asks for no catalog, when no section is tagged', async () => {
+      const wrapper = await mountTagged(taggedChart([[], [], []]))
+
+      expect(wrapper.find('[data-test="song-progressions"]').exists()).toBe(false)
+      expect(wrapper.findAll('[data-test="progression-chip"]')).toHaveLength(0)
+      expect(getProgressions).not.toHaveBeenCalled()
+    })
+
+    it('still lists the progressions on a chart read without an instrument', async () => {
+      const wrapper = mountReader(taggedChart(), null)
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="strip-chord"]').exists()).toBe(false)
+      expect(songProgressions(wrapper)).toEqual(['I–IV–I–V', 'ii–V–I'])
+    })
+  })
+
   describe('the metronome', () => {
     async function turnOn(wrapper: VueWrapper) {
       await wrapper.get('[data-test="reader-metronome"]').trigger('click')
@@ -491,6 +563,16 @@ describe('SongChartReader', () => {
       expect(pane.find('[data-test="strip-chord"]').exists()).toBe(true)
       expect(pane.find('[data-test="chord-card"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="floating-chord-card"]').exists()).toBe(false)
+    })
+
+    it('moves the progressions into the pane with the chords in this song', async () => {
+      const wrapper = await mountTagged()
+
+      await tap(wrapper, 'G')
+
+      const pane = wrapper.get('[data-test="reader-pane"]')
+      expect(pane.findAll('[data-test="song-progressions"] [data-test="progression-chip"]').map((c) => c.text())).toEqual(['I–IV–I–V', 'ii–V–I'])
+      expect(wrapper.findAll('[data-test="song-progressions"]')).toHaveLength(1)
     })
 
     it('opens the pane when the metronome is turned on', async () => {
