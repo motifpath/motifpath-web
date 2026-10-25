@@ -12,6 +12,10 @@ interface ImportMetaEnv {
    * Unset or empty hides the "Send to your teacher" button.
    */
   readonly VITE_CONCIERGE_WHATSAPP_NUMBER?: string
+  /** Google Web OAuth client ID — the audience of native Google sign-in ID tokens. */
+  readonly VITE_GOOGLE_WEB_CLIENT_ID?: string
+  /** Google iOS OAuth client ID, used only by the iOS app. */
+  readonly VITE_GOOGLE_IOS_CLIENT_ID?: string
 }
 
 interface ImportMeta {

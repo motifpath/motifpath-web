@@ -1,3 +1,6 @@
+window.addEventListener('error', (e) => console.error('[probe] error', e.message, e.filename, e.lineno))
+window.addEventListener('unhandledrejection', (e) => console.error('[probe] rejection', String(e.reason), e.reason?.stack))
+console.log('[probe] start', location.href)
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { clerkPlugin } from '@clerk/vue'
@@ -7,6 +10,8 @@ import { i18n } from '@/i18n'
 import { router } from '@/router'
 import { loadClerkLocalization } from '@/shared/utils/clerkLocalization'
 import { resolveAnonymousLocale } from '@/stores/currentUser'
+import { prepareNativeClerkClient } from '@/spikes/native-sign-in/nativeClerkClient'
+import { isNativeApp } from '@/spikes/native-sign-in/nativeGoogleIdToken'
 import '@/assets/main.css'
 
 async function resolveInitialClerkLocalization() {
@@ -25,6 +30,9 @@ async function bootstrap() {
 
   app.use(createPinia())
 
+  const native = isNativeApp()
+  if (native) await prepareNativeClerkClient(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY)
+
   // Only sets Clerk's *initial* localization — the anonymous-resolution
   // rules the app itself uses (a prior explicit choice on this device, else
   // the browser's language, else English). App.vue keeps this in sync with
@@ -38,12 +46,15 @@ async function bootstrap() {
     routerPush: (to) => router.push(to),
     routerReplace: (to) => router.replace(to),
     afterSignOutUrl: '/',
+    standardBrowser: !native,
   })
 
   app.use(i18n)
   app.use(router)
 
-  app.mount('#app')
+  router.isReady().then(() => console.log("[probe] router ready", router.currentRoute.value.fullPath)).catch((e) => console.error("[probe] router failed", String(e)))
+  app.mount("#app")
+  console.log("[probe] mounted")
 }
 
 void bootstrap()

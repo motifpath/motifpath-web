@@ -1,5 +1,7 @@
 import { computed, type ComputedRef } from 'vue'
-import { useAuth as useClerkAuth, useSignIn, useSignUp, useUser as useClerkUser } from '@clerk/vue'
+import { useAuth as useClerkAuth, useClerk, useSignIn, useSignUp, useUser as useClerkUser } from '@clerk/vue'
+
+import { isNativeApp, nativeGoogleIdToken } from '@/spikes/native-sign-in/nativeGoogleIdToken'
 
 import { useToast } from '@/shared/composables/useToast'
 import { i18n } from '@/i18n'
@@ -14,6 +16,8 @@ export interface PersonName {
 export interface GoogleSignInUrls {
   callbackUrl: string
   completeUrl: string
+  /** Where a sign-up goes when Google gave no full name. */
+  nameStepUrl?: string
 }
 
 export interface AuthContext {
@@ -63,6 +67,7 @@ export interface AuthContext {
  */
 export function useAuth(): AuthContext {
   const clerk = useClerkAuth()
+  const clerkInstance = useClerk()
   const clerkUser = useClerkUser()
   const { signIn } = useSignIn()
   const { signUp, setActive } = useSignUp()
@@ -77,7 +82,27 @@ export function useAuth(): AuthContext {
       await clerk.signOut.value()
       toast.neutral(i18n.global.t('signedOutToast'))
     },
-    startGoogleSignIn: async ({ callbackUrl, completeUrl }) => {
+    startGoogleSignIn: async ({ callbackUrl, completeUrl, nameStepUrl }) => {
+      if (isNativeApp()) {
+        const instance = clerkInstance.value
+        if (!instance) throw new Error('Clerk has not loaded yet')
+        try {
+          const token = await nativeGoogleIdToken()
+          console.log('[probe] google token received')
+          const result = await instance.authenticateWithGoogleOneTap({ token })
+          console.log('[probe] one tap result', result.status, result.createdSessionId)
+          await instance.handleGoogleOneTapCallback(result, {
+            signInForceRedirectUrl: completeUrl,
+            signUpForceRedirectUrl: completeUrl,
+            continueSignUpUrl: nameStepUrl,
+          })
+          console.log('[probe] callback done, signed in', instance.isSignedIn)
+        } catch (error) {
+          console.error('[probe] native sign-in failed', String(error), JSON.stringify(error))
+          throw error
+        }
+        return
+      }
       const attempt = signIn.value
       if (!attempt) throw new Error('Clerk has not loaded yet')
       await attempt.authenticateWithRedirect({ strategy: 'oauth_google', redirectUrl: callbackUrl, redirectUrlComplete: completeUrl })

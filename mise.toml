@@ -8,3 +8,6 @@
 
 [tools]
 node = "26"
+# The Android build's Gradle does not run on newer JDKs (such as the JDK 25
+# bundled with Android Studio), so the native build pins JDK 21.
+java = "temurin-21"

@@ -34,6 +34,7 @@ async function continueWithGoogle() {
     await startGoogleSignIn({
       callbackUrl: router.resolve({ name: 'sso-callback', query }).href,
       completeUrl: router.resolve({ name: 'registering', query }).href,
+      nameStepUrl: router.resolve({ name: 'name-step', query }).href,
     })
   } catch {
     couldNotStart.value = true
