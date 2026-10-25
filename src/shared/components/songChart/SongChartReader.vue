@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
  * A song chart as a learner reads it, taking the whole screen: a bar with × and the metronome, the
- * title, artist and the song's details as chips, the chords in this song, then its sections,
- * headed by their label (or their kind), with each chord over the word it falls on, and "I played
- * it" for the whole song at the bottom. Lines wrap between words, so a chord never leaves its word.
+ * title, artist and the song's details as chips, the chords in this song and the progressions it
+ * plays, then its sections, headed by their label (or their kind) and the progressions each plays,
+ * with each chord over the word it falls on, and "I played it" for the whole song at the bottom. Lines wrap between words, so a chord never leaves its word.
  *
  * Tapping a chord over the lyrics or in the strip opens its chord card. On a phone or a tablet the
  * card floats over the chart, which keeps scrolling; on a wide screen it docks in a side pane with
- * the metronome and the chords in this song, and closing it collapses the pane. The metronome is a
+ * the metronome, the chords and the progressions in this song, and closing it collapses the pane. The metronome is a
  * practice aid at the tempo the student chose for this song; the song's own tempo is the target.
  *
  * A preview of a draft is the same reader under a banner, and sends nothing.
@@ -20,6 +20,8 @@ import ChordCard from '@/shared/components/songChart/ChordCard.vue'
 import ChordStrip from '@/shared/components/songChart/ChordStrip.vue'
 import FloatingChordCard from '@/shared/components/songChart/FloatingChordCard.vue'
 import type { CardCorner } from '@/shared/components/songChart/FloatingChordCard.vue'
+import ProgressionChips from '@/shared/components/songChart/ProgressionChips.vue'
+import SongProgressions from '@/shared/components/songChart/SongProgressions.vue'
 import TempoControl from '@/shared/components/TempoControl.vue'
 import type { ChordView } from '@/shared/composables/useChordView'
 import { useMetronome } from '@/shared/composables/useMetronome'
@@ -30,7 +32,7 @@ import { useSongTempo } from '@/shared/composables/useSongTempo'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { MAX_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
-import { chordsOfSong, lineSegments, missingBass, openingVoicing } from '@/shared/utils/songChartReading'
+import { chordsOfSong, lineSegments, missingBass, openingVoicing, progressionsOfSong } from '@/shared/utils/songChartReading'
 
 type LearnerSongChart = components['schemas']['LearnerSongChart']
 type Instrument = components['schemas']['Instrument']
@@ -86,6 +88,7 @@ onUnmounted(() => headerObserver?.disconnect())
 
 const chordsById = computed(() => new Map(props.chart.chords.map((c) => [c.chord_definition_id, c])))
 const songChords = computed(() => (props.instrument ? chordsOfSong(props.chart.body, props.chart.chords) : []))
+const songProgressions = computed(() => progressionsOfSong(props.chart.body))
 
 /** The chord and voicing an anchor's card opens on; null when it has none to show. */
 function cardFor(anchor: Anchor): { chord: ChordDefinition; voicing: ChordVoicing } | null {
@@ -265,11 +268,15 @@ function playedIt() {
           layout="row"
           @pick="openFromStrip"
         />
+        <SongProgressions v-if="songProgressions.length > 0 && !paneOpen" :keys="songProgressions" />
 
         <section v-for="(section, sectionIndex) in chart.body.content" :key="sectionIndex" class="flex flex-col gap-1">
-          <h2 data-test="section-heading" class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-            {{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}
-          </h2>
+          <div data-test="section-header" class="flex flex-wrap items-center gap-2">
+            <h2 data-test="section-heading" class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+              {{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}
+            </h2>
+            <ProgressionChips v-if="section.attrs.progression_keys?.length" :keys="section.attrs.progression_keys" />
+          </div>
 
           <template v-for="(line, lineIndex) in section.content" :key="lineIndex">
             <p v-if="line.type === 'comment'" class="text-sm italic text-ink-muted">
@@ -339,6 +346,7 @@ function playedIt() {
           layout="wrap"
           @pick="openFromStrip"
         />
+        <SongProgressions v-if="songProgressions.length > 0" :keys="songProgressions" />
 
         <ChordCard
           v-if="open && instrument"

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { chordC, makeAnchor, makeChord, makeLearnerSongChart, makeLyricLine, makeSection, makeVoicing } from '@/shared/testUtils/songChart'
-import { chordsOfSong, lineSegments, missingBass, openingVoicing, voicingNames } from '@/shared/utils/songChartReading'
+import { chordsOfSong, lineSegments, missingBass, openingVoicing, progressionsOfSong, voicingNames } from '@/shared/utils/songChartReading'
 
 const anchor = makeAnchor
 const line = makeLyricLine
@@ -107,5 +107,20 @@ describe('chordsOfSong', () => {
     const chords = [makeChord('chord-d', 'D', []), chordC]
 
     expect(chordsOfSong(body, chords).map((c) => c.canonical_symbol)).toEqual(['C'])
+  })
+})
+
+describe('progressionsOfSong', () => {
+  const tagged = (...tags: string[][]) => ({ type: 'doc' as const, content: tags.map((keys) => makeSection([], { progression_keys: keys })) })
+
+  it('lists each progression the sections are tagged with once, in the order it first appears', () => {
+    expect(progressionsOfSong(tagged(['I-IV-I-V'], ['ii-V-I', 'I-IV-I-V'], ['I-IV-I-V']))).toEqual(['I-IV-I-V', 'ii-V-I'])
+  })
+
+  it('is empty when no section is tagged, or a section has no tags at all', () => {
+    const untagged = { type: 'doc' as const, content: [makeSection([], { progression_keys: undefined })] }
+
+    expect(progressionsOfSong(tagged([], []))).toEqual([])
+    expect(progressionsOfSong(untagged)).toEqual([])
   })
 })
