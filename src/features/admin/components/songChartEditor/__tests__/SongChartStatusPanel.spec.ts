@@ -1,5 +1,11 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+
+const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
+const I_IV_V_I = { progression_id: 'p1', key: 'I-IV-V-I', bars: ['I', 'IV', 'V', 'I'], confusable: [], names: { en: 'I–IV–V–I' } }
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { GET: () => ok([I_IV_V_I]) }, eventApi: {} }),
+}))
 
 import SongChartStatusPanel from '@/features/admin/components/songChartEditor/SongChartStatusPanel.vue'
 import type { PublishBlocker } from '@/features/admin/utils/publishBlockers'
@@ -26,6 +32,14 @@ describe('SongChartStatusPanel', () => {
       '“H7” in Verse, line 2, isn’t a chord',
       '“C#7” in Refrão, line 1, isn’t in the chord catalog',
     ])
+    expect(wrapper.get('[data-test="publish"]').attributes('disabled')).toBeDefined()
+  })
+
+  it("names the section and the progression of a tag the section doesn't play, by the progression's name", async () => {
+    const wrapper = mountPanel({ blockers: [{ kind: 'progression', progressionKey: 'I-IV-V-I', section: { kind: 'verse', label: null } }] })
+    await flushPromises()
+
+    expect(wrapper.get('[data-test="blocker"]').text()).toBe('Verse: play I–IV–V–I in a row, or remove the tag')
     expect(wrapper.get('[data-test="publish"]').attributes('disabled')).toBeDefined()
   })
 

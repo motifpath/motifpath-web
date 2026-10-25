@@ -27,6 +27,7 @@ vi.mock('@/shared/utils/downloadText', async (importOriginal) => ({
 
 import SongChartEditorView from '@/features/admin/views/SongChartEditorView.vue'
 import { clearChordLookups } from '@/shared/composables/useChordLookup'
+import { clearProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
 import { mockViewport } from '@/shared/testUtils/viewport'
 import { makeAnchor, makeLyricLine, makeRevision, makeRevisionSummary, makeSection, makeSongChart } from '@/shared/testUtils/songChart'
 
@@ -41,13 +42,28 @@ const rightsConfirmed = { rights_confirmed: true, rights_confirmation: { confirm
 
 const ciranda = { type: 'doc' as const, content: [makeSection([makeLyricLine(['Ciranda, cirandinha', null])])] }
 
+const progression = (key: string, en: string) => ({ progression_id: key, key, bars: [], confusable: [], names: { en } })
+const PROGRESSIONS = [progression('I-IV-V-I', 'I–IV–V–I'), progression('I-IV-I-V', 'I–IV–I–V')]
+
+/** A draft of Ciranda in C whose verse is tagged I–IV–V–I, which the last save found it doesn't play. */
+const unplayedVerse = {
+  ...rightsConfirmed,
+  concert_key: 'C',
+  body: { type: 'doc' as const, content: [makeSection([makeLyricLine(['Ciranda, cirandinha', makeAnchor('a1', 'C')])], { progression_keys: ['I-IV-V-I'] })] },
+  unplayed_progressions: [{ section_index: 0, progression_key: 'I-IV-V-I' }],
+}
+
 /** The lyrics editor is tested on its own; here it shows its lyrics and can write a line. */
 const LyricsEditorStub = defineComponent({
-  props: { modelValue: { type: Object as PropType<SongChartDocument>, required: true } },
+  props: {
+    modelValue: { type: Object as PropType<SongChartDocument>, required: true },
+    unplayed: { type: Array as PropType<components['schemas']['SongChartUnplayedProgression'][]>, default: () => [] },
+    concertKey: { type: String as PropType<string | null>, default: null },
+  },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
     return () =>
-      h('div', { 'data-test': 'lyrics' }, [
+      h('div', { 'data-test': 'lyrics', 'data-unplayed': JSON.stringify(props.unplayed), 'data-concert-key': props.concertKey }, [
         h('span', { 'data-test': 'lyrics-text' }, JSON.stringify(props.modelValue)),
         h('button', { 'data-test': 'write-line', onClick: () => emit('update:modelValue', ciranda) }),
       ])
@@ -58,6 +74,7 @@ function serve(chart: SongChart | null, revisions = [] as components['schemas'][
   GET.mockImplementation((path: string) => {
     if (path === '/song-charts/{song_chart_id}' && chart) return ok(chart)
     if (path === '/song-charts/{song_chart_id}/revisions') return ok(revisions)
+    if (path === '/progressions') return ok(PROGRESSIONS)
     if (path === '/song-charts/{song_chart_id}/chordpro') return ok('{title: Amazing Grace}\n')
     return fail({ message: 'not found' }, 404)
   })
@@ -99,6 +116,7 @@ beforeEach(() => {
   PUT.mockReset()
   downloadText.mockReset()
   clearChordLookups()
+  clearProgressionCatalog()
   mockViewport(1280)
   serve(null)
 })
@@ -238,6 +256,23 @@ describe('SongChartEditorView', () => {
       expect(wrapper.get('[data-test="publish"]').attributes('disabled')).toBeUndefined()
     })
 
+    it("lists a tag a section doesn't play among the blockers, naming the section, and Publish waits", async () => {
+      serve(makeSongChart('chart-1', unplayedVerse))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      expect(wrapper.findAll('[data-test="blocker"]').map((b) => b.text())).toEqual(['Verse: play I–IV–V–I in a row, or remove the tag'])
+      expect(wrapper.get('[data-test="publish"]').attributes('disabled')).toBeDefined()
+    })
+
+    it('hands the lyrics editor the tags the last save found unplayed, and the key they were checked in', async () => {
+      serve(makeSongChart('chart-1', unplayedVerse))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      const lyrics = wrapper.get('[data-test="lyrics"]')
+      expect(JSON.parse(lyrics.attributes('data-unplayed') ?? '[]')).toEqual([{ section_index: 0, progression_key: 'I-IV-V-I' }])
+      expect(lyrics.attributes('data-concert-key')).toBe('C')
+    })
+
     it('shows who confirmed the rights', async () => {
       serve(makeSongChart('chart-1', { rights_confirmed: true, rights_confirmation: { confirmed_by: { user_id: 'u-ana', display_name: 'Ana' }, confirmed_at: '2026-10-07T12:00:00Z' } }))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')
@@ -351,6 +386,42 @@ describe('SongChartEditorView', () => {
       expect(wrapper.find('[data-test="lyrics"]').exists()).toBe(false)
       expect(wrapper.get('[data-test="lyrics-read-only"]').text()).toContain('Amazing grace')
       expect(wrapper.find('[data-test="larger-screen-notice"]').exists()).toBe(true)
+    })
+
+    it("heads each section of the lyrics with its tags, marking one it doesn't play", async () => {
+      serve(makeSongChart('chart-1', unplayedVerse))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      const heading = wrapper.get('[data-test="lyrics-read-only"] [data-test="section-heading"]')
+      expect(heading.get('[data-test="progression-chip"]').text()).toBe('I–IV–V–I')
+      expect(heading.get('[data-test="progression-chip"]').attributes('data-unplayed')).toBe('true')
+      expect(heading.get('[data-test="not-played"]').text()).toContain('its chords never come I–IV–V–I in a row in C')
+    })
+
+    it('tags a section from its heading in a sheet, and Save sends the tag', async () => {
+      serve(makeSongChart('chart-1'))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="lyrics-read-only"] [data-test="add-progression"]')
+      const sheet = wrapper.get('[data-test="overlay-sheet"]')
+      await sheet.findAll('[data-test="progression-option"]')[1]!.trigger('click')
+      await flushPromises()
+      expect(wrapper.get('[data-test="lyrics-read-only"] [data-test="progression-chip"]').text()).toBe('I–IV–I–V')
+
+      PUT.mockReturnValueOnce(ok(makeSongChart('chart-1')))
+      await click(wrapper, '[data-test="save"]')
+      const sent = PUT.mock.calls[0]![1].body.body as SongChartDocument
+      expect(sent.content[0]!.attrs.progression_keys).toEqual(['I-IV-I-V'])
+    })
+
+    it('removes a tag with its × on the heading', async () => {
+      serve(makeSongChart('chart-1', unplayedVerse))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="lyrics-read-only"] [data-test="remove-progression"]')
+
+      expect(wrapper.find('[data-test="lyrics-read-only"] [data-test="progression-chip"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="blocker"]').exists()).toBe(false)
     })
 
     it('puts the larger-screen note under the lyrics, with the larger-screen icon', async () => {

@@ -143,6 +143,25 @@
     },
     "notAChordReason": "“{symbol}” não é um acorde",
     "notInCatalogReason": "“{symbol}” não está no catálogo de acordes",
+    "addProgression": "+ Progressão",
+    "removeProgression": "Remover {progression}",
+    "progressions": "Progressões",
+    "progressionSearch": "Buscar progressões",
+    "noProgression": "Nenhuma progressão corresponde a “{query}”",
+    "notPlayed": {
+      "majorKey": "Não tocada {where}: seus acordes nunca formam {progression} em sequência em {key}. Mude os acordes ou remova a progressão.",
+      "noKey": "Não tocada {where}: a música não tem tom, então suas progressões não podem ser encontradas. Defina o tom ou remova a progressão.",
+      "minorKey": "Não tocada {where}: as progressões são encontradas em tom maior, e a música está em {key}. Remova a progressão."
+    },
+    "inThisSection": {
+      "verse": "nesta estrofe",
+      "chorus": "neste refrão",
+      "bridge": "nesta ponte",
+      "intro": "nesta introdução",
+      "outro": "neste final",
+      "instrumental": "neste instrumental",
+      "other": "nesta seção"
+    },
     "undo": "Desfazer",
     "redo": "Refazer",
     "chordHint": "Selecione uma palavra ou sílaba e toque em Acorde (ou digite [ ) para pôr um acorde nela. Os acordes são conferidos enquanto você escreve."
@@ -216,6 +235,7 @@
     "confirmRights": "Confirme os direitos",
     "notAChord": "“{symbol}” em {section}, linha {line}, não é um acorde",
     "notInCatalog": "“{symbol}” em {section}, linha {line}, não está no catálogo de acordes",
+    "notPlayed": "{section}: toque {progression} em sequência, ou remova a progressão",
     "publishAgain": "Publicar de novo",
     "withdraw": "Retirar…"
   },
