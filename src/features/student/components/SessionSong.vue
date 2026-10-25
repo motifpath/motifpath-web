@@ -7,9 +7,10 @@
  * quality, whose root plays when tapped, since on bass the student plays the root of each chord.
  * The metronome is an aid at the chart's tempo, when it has one; it is never rated.
  *
- * Playing shows the chart with each chord over its word. Once played, the student rates the song
- * on its own, with no tempo, and the rating shows until they finish: the song is the session's
- * last item. A chart withdrawn since the session was planned can only be skipped.
+ * Playing shows the chart with each chord over its word. Tapping a chord opens its chord card over
+ * the chart on guitar, as the reader does, and plays its root on bass. Once played, the student
+ * rates the song on its own, with no tempo, and the rating shows until they finish: the song is the
+ * session's last item. A chart withdrawn since the session was planned can only be skipped.
  */
 import { computed, ref, watch } from 'vue'
 
@@ -23,18 +24,22 @@ import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import ChordCard from '@/shared/components/songChart/ChordCard.vue'
 import ChordStrip from '@/shared/components/songChart/ChordStrip.vue'
+import FloatingChordCard from '@/shared/components/songChart/FloatingChordCard.vue'
 import SongChartLyrics from '@/shared/components/songChart/SongChartLyrics.vue'
 import { useChordSound } from '@/shared/composables/useChordSound'
 import { useMetronome } from '@/shared/composables/useMetronome'
 import { useProgressionNames } from '@/shared/composables/useProgressionNames'
 import { usePublishedSongChart } from '@/shared/composables/usePublishedSongChart'
+import { useSongChordCard } from '@/shared/composables/useSongChordCard'
 import { useTypedT } from '@/shared/composables/useTypedT'
-import { chordDefinitionsOfSong, chordsOfSong } from '@/shared/utils/songChartReading'
+import { chordDefinitionsOfSong, chordsOfSong, missingBass } from '@/shared/utils/songChartReading'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Instrument = components['schemas']['Instrument']
 type ChordDefinition = components['schemas']['ChordDefinition']
+type Anchor = components['schemas']['SongChartChordAnchor']['attrs']
 
 const props = defineProps<{
   /** A song item. */
@@ -94,6 +99,31 @@ function strum(chord: ChordDefinition) {
 function playRoot(chord: ChordDefinition) {
   if (props.layout) sound.playRoot(chord.root, props.layout)
 }
+
+// While playing, a chord over the lyrics opens its card on guitar; a bass has no card, since the
+// chart's voicings are for guitar.
+const card = useSongChordCard(chart, () => (onBass.value ? null : instrument.value), { floating: true })
+
+/** The chord over the lyrics whose root was last played, on bass. */
+const rootTapped = ref<string | null>(null)
+
+function chordOf(anchor: Anchor): ChordDefinition | undefined {
+  return anchor.chordDefinitionId ? chart.value?.chords.find((c) => c.chord_definition_id === anchor.chordDefinitionId) : undefined
+}
+
+function tapLyricChord(anchor: Anchor) {
+  if (!onBass.value) {
+    card.openFromLyrics(anchor)
+    return
+  }
+  const chord = chordOf(anchor)
+  if (!chord) return
+  rootTapped.value = anchor.anchorId
+  playRoot(chord)
+}
+
+const lyricTappable = (anchor: Anchor) => (onBass.value ? chordOf(anchor) !== undefined : card.cardFor(anchor) !== null)
+const lyricSelected = computed(() => (onBass.value ? rootTapped.value : (card.open.value?.anchor?.anchorId ?? null)))
 
 const metronome = useMetronome(() => ({
   bpm: chart.value?.tempo_bpm ?? 0,
@@ -211,7 +241,22 @@ const RESULT_TONES: Record<TakeRating, string> = {
       </header>
       <p v-if="onBass" data-test="roots-hint" class="-mt-2 font-medium">{{ t('sessionSong.rootsHint') }}</p>
 
-      <SongChartLyrics :body="chart.body" />
+      <SongChartLyrics :body="chart.body" :is-tappable="lyricTappable" :selected-anchor-id="lyricSelected" @tap="tapLyricChord" />
+
+      <FloatingChordCard v-if="card.open.value && instrument && !onBass" v-model:corner="card.corner.value" :lifted="metronome.on.value">
+        <ChordCard
+          v-model:voicing-id="card.openVoicingId.value"
+          v-model:view="card.view.value"
+          v-model:minimized="card.minimized.value"
+          :written-symbol="card.open.value.title"
+          :chord="card.open.value.chord"
+          :diagrams="chart.diagrams"
+          :instrument="instrument"
+          :missing-bass="card.open.value.anchor ? missingBass(card.open.value.anchor, card.open.value.chord) : null"
+          placement="floating"
+          @close="card.close()"
+        />
+      </FloatingChordCard>
 
       <SelfRating v-if="phase === 'rating'" :song="planned.title" @rate="emit('rate', $event)" />
       <PracticeActionBar v-else>

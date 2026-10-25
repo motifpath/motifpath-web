@@ -36,6 +36,13 @@ const strum = vi.fn()
 const playRoot = vi.fn()
 vi.mock('@/shared/composables/useChordSound', () => ({ useChordSound: () => ({ strum, playRoot }) }))
 
+const track = vi.fn()
+vi.mock('@/shared/composables/useEventTracking', () => ({ useEventTracking: () => ({ track }) }))
+vi.mock('@/shared/composables/useDiagramPlayback', () => ({
+  useDiagramPlayback: () => ({ canPlay: ref(true), state: ref('idle'), activePositionIds: ref([]), toggle: vi.fn() }),
+  isPlayable: () => true,
+}))
+
 const metronomeOn = ref(false)
 const toggleMetronome = vi.fn(() => {
   metronomeOn.value = !metronomeOn.value
@@ -55,7 +62,10 @@ import { chordC, makeLearnerSongChart } from '@/shared/testUtils/songChart'
 const guitar = makeFrettedInstrument()
 
 // A chord box draws a voicing; these tests are about which chords are shown, not how.
-const stubs = { ChordBox: { props: ['voicing'], template: '<div data-test="chord-box" />' } }
+const stubs = {
+  ChordBox: { props: ['voicing'], template: '<div data-test="chord-box" :data-voicing-id="voicing.chord_voicing_id" />' },
+  FrettedDiagramView: { props: ['diagram'], template: '<div data-test="neck" />' },
+}
 
 async function mountSong(options: { onBass?: boolean; sectionIndex?: number; songRating?: TakeRating | null } = {}) {
   const wrapper = mount(SessionSong, {
@@ -65,6 +75,7 @@ async function mountSong(options: { onBass?: boolean; sectionIndex?: number; son
       layout: options.onBass ? drillBass : guitar,
     },
     global: { stubs },
+    attachTo: document.body,
   })
   await flushPromises()
   return wrapper
@@ -88,6 +99,7 @@ beforeEach(() => {
   state.retry.mockReset()
   chartOf.mockClear()
   strum.mockReset()
+  track.mockReset()
   playRoot.mockReset()
   toggleMetronome.mockClear()
   metronomeOn.value = false
@@ -165,6 +177,32 @@ describe('SessionSong', () => {
       expect(wrapper.findAll('[data-test="chord-word"]')[0]!.text()).toBe('Amazing')
       expect(wrapper.find('[data-test="strip-chord"]').exists()).toBe(false)
       expect(text(wrapper, 'played-song')).toBe('I played it')
+    })
+
+    it("opens a chord's card over the chart when it's tapped on guitar, as the reader does, sending nothing", async () => {
+      const wrapper = await mountSong()
+      await start(wrapper)
+
+      await wrapper.findAll('button[data-test="chord-symbol"]')[1]!.trigger('click')
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="chord-card-title"]').text()).toBe('C')
+      expect(wrapper.find('[data-test="floating-chord-card"]').exists()).toBe(true)
+      expect(wrapper.findAll('button[data-test="chord-symbol"]').map((c) => c.attributes('aria-pressed'))).toEqual(['false', 'true', 'false'])
+      expect(playRoot).not.toHaveBeenCalled()
+      expect(track).not.toHaveBeenCalled()
+    })
+
+    it("plays a chord's root when it's tapped on bass, with no chord card", async () => {
+      const wrapper = await mountSong({ onBass: true })
+      await start(wrapper)
+
+      await wrapper.findAll('button[data-test="chord-symbol"]')[1]!.trigger('click')
+      await flushPromises()
+
+      expect(playRoot).toHaveBeenCalledWith(chordC.root, drillBass)
+      expect(wrapper.findAll('button[data-test="chord-symbol"]').map((c) => c.attributes('aria-pressed'))).toEqual(['false', 'true', 'false'])
+      expect(wrapper.find('[data-test="chord-card"]').exists()).toBe(false)
     })
 
     it('keeps asking for the roots on bass', async () => {

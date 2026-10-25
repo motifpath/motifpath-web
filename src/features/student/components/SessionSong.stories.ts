@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
-import { expect, userEvent } from 'storybook/test'
+import { expect, userEvent, waitFor } from 'storybook/test'
 
 import { chordInstrumentsHandler } from '@/features/student/testing/chordItems'
 import { songItem } from '@/features/student/testing/songItems'
@@ -44,6 +44,16 @@ export const Playing: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(await canvas.findByRole('button', { name: /^(start|começar)$/i }))
     await expect(await canvas.findByRole('button', { name: /I played it|Toquei/ })).toBeVisible()
+  },
+}
+
+/** Playing on guitar: tapping a chord over the lyrics floats its chord card over the chart, as in the reader. */
+export const ChordCardWhilePlaying: Story = {
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: /^(start|começar)$/i }))
+    const chords = canvasElement.querySelectorAll<HTMLButtonElement>('button[data-test="chord-symbol"]')
+    await userEvent.click(chords[1]!)
+    await waitFor(() => expect(canvasElement.querySelector('[data-test="chord-card"]')).toBeVisible())
   },
 }
 
