@@ -10,7 +10,8 @@ const meta = {
   component: ChordCard,
   args: {
     writtenSymbol: 'C',
-    chord: chordC,
+    chordSymbol: chordC.canonical_symbol,
+    voicings: chordC.voicings,
     voicingId: cOpen.chord_voicing_id,
     view: 'box',
     minimized: false,

@@ -188,16 +188,32 @@ describe('SessionProgressionKeys', () => {
     expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
   })
 
-  it('on guitar, shows a chord’s box on demand, from the voicing the plan gives', async () => {
+  it('on guitar, shows a chord’s card on demand, as a song chart does, on the voicing the plan gives', async () => {
     serve()
     const wrapper = mountTour()
     await flushPromises()
-    expect(wrapper.find('[data-test="tour-chord"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="chord-card"]').exists()).toBe(false)
 
     await wrapper.findAll('[data-test="tour-bar"]')[2]!.trigger('click')
 
-    expect(wrapper.get('[data-test="tour-chord-title"]').text()).toBe('Em')
-    expect(wrapper.find('[data-test="tour-chord-box"]').exists()).toBe(true)
+    const card = wrapper.get('[data-test="chord-card"]')
+    expect(card.get('[data-test="chord-card-title"]').text()).toBe('Em')
+    expect(card.findAll('[data-test="voicing-chip"]').map((chip) => chip.attributes('data-voicing-id'))).toEqual([
+      drillVoicings.Em.voicing.chord_voicing_id,
+    ])
+    expect(card.find('[data-test="nut"]').exists()).toBe(true)
+  })
+
+  it('closes the chord’s card with its ×, back to the hint', async () => {
+    serve()
+    const wrapper = mountTour()
+    await flushPromises()
+    await wrapper.findAll('[data-test="tour-bar"]')[2]!.trigger('click')
+
+    await wrapper.get('[data-test="chord-card-close"]').trigger('click')
+
+    expect(wrapper.find('[data-test="chord-card"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-test="tour-bar"]')[2]!.attributes('aria-pressed')).toBe('false')
   })
 
   it('on bass, marks the chosen chord’s root, third and fifth on the board', async () => {
