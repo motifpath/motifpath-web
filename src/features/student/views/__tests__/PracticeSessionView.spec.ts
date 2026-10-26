@@ -68,13 +68,23 @@ function subjectList(subjects: Subject[] = [progressions, intervals]): SubjectLi
   return { instrument_id: null, groups: [{ area_node_id: 'area', names: { en: 'Harmony' }, subjects }] }
 }
 // The subjects offered follow the instrument chosen; a test sets which list each instrument gets.
+// subjectsAsked records each instrument the subjects were asked for; none while it isn't known yet.
 let subjectsFor: (instrumentId: string | null) => SubjectList = () => subjectList()
+const subjectsAsked: (string | null)[] = []
 const subjectsState = { list: ref<SubjectList | null>(null), isLoading: ref(false), error: ref(false), retry: vi.fn() }
 vi.mock('@/features/student/composables/usePracticeSubjects', async () => {
   const { watch } = await import('vue')
   return {
-    usePracticeSubjects: (instrumentId: () => string | null) => {
-      watch(instrumentId, (id) => (subjectsState.list.value = subjectsFor(id)), { immediate: true })
+    usePracticeSubjects: (instrumentId: () => string | null | undefined) => {
+      watch(
+        instrumentId,
+        (id) => {
+          if (id === undefined) return
+          subjectsAsked.push(id)
+          subjectsState.list.value = subjectsFor(id)
+        },
+        { immediate: true },
+      )
       return subjectsState
     },
   }
@@ -506,6 +516,7 @@ describe('PracticeSessionView', () => {
     window.history.replaceState({}, '')
     route.query = {}
     subjectsFor = () => subjectList()
+    subjectsAsked.length = 0
     firstRun.status.value = 'returning'
     instruments.isLoading.value = false
     instruments.error.value = false
@@ -1350,6 +1361,21 @@ describe('PracticeSessionView', () => {
       await flushPromises()
       return wrapper
     }
+
+    it('asks for the subjects only once the instruments have loaded, for the instrument chosen', async () => {
+      instruments.isLoading.value = true
+      instruments.instruments.value = []
+
+      mountView()
+      await flushPromises()
+      expect(subjectsAsked).toEqual([])
+
+      instruments.instruments.value = allInstruments
+      instruments.isLoading.value = false
+      await flushPromises()
+
+      expect(subjectsAsked).toEqual([GUITAR])
+    })
 
     it("offers both Today's mix, chosen, and I'll choose, even when the mix can be composed", () => {
       const wrapper = mountView()

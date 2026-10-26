@@ -1,6 +1,6 @@
 import { flushPromises } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick, ref } from 'vue'
+import { effectScope, nextTick, ref } from 'vue'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -22,7 +22,7 @@ describe('usePracticeSubjects', () => {
     expect(isLoading.value).toBe(true)
     await flushPromises()
 
-    expect(GET).toHaveBeenCalledWith('/students/me/practice-subjects', { params: { query: { instrument_id: GUITAR } } })
+    expect(GET).toHaveBeenCalledWith('/students/me/practice-subjects', { params: { query: { instrument_id: GUITAR } }, signal: expect.any(AbortSignal) })
     expect(list.value).toEqual(listFor(GUITAR))
     expect(isLoading.value).toBe(false)
   })
@@ -33,7 +33,7 @@ describe('usePracticeSubjects', () => {
     usePracticeSubjects(() => null)
     await flushPromises()
 
-    expect(GET).toHaveBeenCalledWith('/students/me/practice-subjects', { params: { query: {} } })
+    expect(GET).toHaveBeenCalledWith('/students/me/practice-subjects', { params: { query: {} }, signal: expect.any(AbortSignal) })
   })
 
   it('reloads when the instrument changes, and keeps only the latest answer', async () => {
@@ -50,6 +50,49 @@ describe('usePracticeSubjects', () => {
     await flushPromises()
 
     expect(list.value).toEqual(listFor(null))
+  })
+
+  it('waits while the instrument is not known yet, then loads once', async () => {
+    GET.mockResolvedValue({ data: listFor(GUITAR), response: { status: 200 } })
+    const instrument = ref<string | null | undefined>(undefined)
+
+    const { list, isLoading } = usePracticeSubjects(() => instrument.value)
+    await flushPromises()
+    expect(GET).not.toHaveBeenCalled()
+    expect(isLoading.value).toBe(true)
+    expect(list.value).toBeNull()
+
+    instrument.value = GUITAR
+    await nextTick()
+    await flushPromises()
+
+    expect(GET).toHaveBeenCalledTimes(1)
+    expect(list.value).toEqual(listFor(GUITAR))
+  })
+
+  it('cancels the request for an instrument no longer chosen', async () => {
+    GET.mockReturnValueOnce(new Promise(() => {}))
+    GET.mockResolvedValueOnce({ data: listFor(null), response: { status: 200 } })
+    const instrument = ref<string | null>(GUITAR)
+
+    usePracticeSubjects(() => instrument.value)
+    const first: AbortSignal = GET.mock.calls[0][1].signal
+    expect(first.aborted).toBe(false)
+    instrument.value = null
+    await nextTick()
+
+    expect(first.aborted).toBe(true)
+    expect(GET.mock.calls[1][1].signal.aborted).toBe(false)
+  })
+
+  it('cancels its request when the page goes away', () => {
+    GET.mockReturnValueOnce(new Promise(() => {}))
+    const scope = effectScope()
+
+    scope.run(() => usePracticeSubjects(() => GUITAR))
+    scope.stop()
+
+    expect(GET.mock.calls[0][1].signal.aborted).toBe(true)
   })
 
   it('fails on an error or a network failure, and loads again on retry', async () => {

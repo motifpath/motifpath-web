@@ -93,7 +93,8 @@ watch(
 let askedFocus = typeof route.query.focus === 'string' ? route.query.focus : null
 const whatToPractise = ref<WhatToPractise>(askedFocus ? 'choose' : 'mix')
 const subject = ref<Subject | null>(null)
-const subjects = usePracticeSubjects(() => instrumentId.value)
+// Until the instruments load, the instrument isn't known: asking then would list every instrument's.
+const subjects = usePracticeSubjects(() => (isLoading.value ? undefined : instrumentId.value))
 // The subjects follow the instrument: the one chosen is kept, with its level for this instrument,
 // while the instrument has something of it, and let go of otherwise. The subject a "Practise this"
 // asked for waits for a list that has it, since the instrument may still be settling.
