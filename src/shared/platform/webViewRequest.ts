@@ -10,7 +10,9 @@ const WEBVIEW_XHR = 'CapacitorWebXMLHttpRequest'
 /** The WebView's own XHR `open`, when native HTTP has replaced it. */
 function webViewXhrOpen(): unknown {
   const originals: unknown = Reflect.get(window, WEBVIEW_XHR)
-  return typeof originals === 'object' && originals !== null ? Reflect.get(originals, 'open') : undefined
+  return typeof originals === 'object' && originals !== null
+    ? Reflect.get(originals, 'open')
+    : undefined
 }
 
 /**

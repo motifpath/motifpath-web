@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { capacitorSecureStorage, webSecureStorage, type NativeSecureStore } from '@/shared/platform/secureStorage'
+import {
+  capacitorSecureStorage,
+  webSecureStorage,
+  type NativeSecureStore,
+} from '@/shared/platform/secureStorage'
 
 /** A stand-in for the device keychain: a map behind the plugin's string methods. */
 function fakeKeychain(): NativeSecureStore {
@@ -52,14 +56,22 @@ describe.each(adapters)('%s', (_name, create) => {
 
 describe('capacitorSecureStorage', () => {
   it('treats an unreadable keychain entry as missing, so the user is asked to sign in again', async () => {
-    const keychain = { ...fakeKeychain(), getItem: vi.fn().mockRejectedValue(new Error('item is corrupt')) }
+    const keychain = {
+      ...fakeKeychain(),
+      getItem: vi.fn().mockRejectedValue(new Error('item is corrupt')),
+    }
 
     await expect(capacitorSecureStorage(keychain).get('client')).resolves.toBeNull()
   })
 
   it('reports a failed write, so a credential is never thought kept when it is not', async () => {
-    const keychain = { ...fakeKeychain(), setItem: vi.fn().mockRejectedValue(new Error('keychain locked')) }
+    const keychain = {
+      ...fakeKeychain(),
+      setItem: vi.fn().mockRejectedValue(new Error('keychain locked')),
+    }
 
-    await expect(capacitorSecureStorage(keychain).set('client', 'token-1')).rejects.toThrow('keychain locked')
+    await expect(capacitorSecureStorage(keychain).set('client', 'token-1')).rejects.toThrow(
+      'keychain locked',
+    )
   })
 })

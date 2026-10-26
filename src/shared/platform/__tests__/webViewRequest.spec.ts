@@ -61,7 +61,9 @@ describe('fetchInWebView', () => {
     const browserFetch = vi.fn().mockResolvedValue(response)
     vi.stubGlobal('fetch', browserFetch)
 
-    await expect(fetchInWebView('https://media.example/upload', { method: 'PUT' })).resolves.toBe(response)
+    await expect(fetchInWebView('https://media.example/upload', { method: 'PUT' })).resolves.toBe(
+      response,
+    )
 
     expect(browserFetch).toHaveBeenCalledWith('https://media.example/upload', { method: 'PUT' })
   })

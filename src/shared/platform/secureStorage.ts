@@ -44,7 +44,9 @@ export function webSecureStorage(): SecureStoragePort {
 }
 
 /** The iOS Keychain or the Android Keystore. */
-export function capacitorSecureStorage(store: NativeSecureStore = SecureStorage): SecureStoragePort {
+export function capacitorSecureStorage(
+  store: NativeSecureStore = SecureStorage,
+): SecureStoragePort {
   return {
     async get(key) {
       try {
