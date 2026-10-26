@@ -1,5 +1,7 @@
 import { Extension, Mark, Node } from '@tiptap/core'
 import type { Extensions } from '@tiptap/core'
+import { VueNodeViewRenderer } from '@tiptap/vue-3'
+import type { Component } from 'vue'
 import Document from '@tiptap/extension-document'
 import History from '@tiptap/extension-history'
 import Text from '@tiptap/extension-text'
@@ -13,7 +15,22 @@ export const SECTION_KINDS = ['verse', 'chorus', 'bridge', 'intro', 'outro', 'in
 /** A song chart is sections, and nothing else, at its top level. */
 const SongChartDoc = Document.extend({ content: 'section+' })
 
-/** A part of the song, with its kind and an optional label, holding lyric lines and comments. */
+/** A section's tags read back from pasted HTML: only strings are kept, and anything unreadable is none. */
+function progressionKeysOf(value: string | null): string[] {
+  if (!value) return []
+  try {
+    const parsed: unknown = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * A part of the song, with its kind, an optional label and the progressions it's tagged with,
+ * holding lyric lines and comments. The tags travel with a section that is cut or copied, since
+ * the editor's clipboard goes through HTML.
+ */
 const Section = Node.create({
   name: 'section',
   content: '(lyricLine | comment)+',
@@ -22,6 +39,12 @@ const Section = Node.create({
     return {
       kind: { default: 'verse', parseHTML: (el: HTMLElement) => el.getAttribute('data-kind'), renderHTML: (a: { kind: string }) => ({ 'data-kind': a.kind }) },
       label: { default: null, parseHTML: (el: HTMLElement) => el.getAttribute('data-label'), renderHTML: (a: { label: string | null }) => (a.label ? { 'data-label': a.label } : {}) },
+      progression_keys: {
+        default: [],
+        parseHTML: (el: HTMLElement) => progressionKeysOf(el.getAttribute('data-progression-keys')),
+        renderHTML: (a: { progression_keys: string[] }) =>
+          a.progression_keys.length ? { 'data-progression-keys': JSON.stringify(a.progression_keys) } : {},
+      },
     }
   },
   parseHTML: () => [{ tag: 'section[data-kind]' }],
@@ -128,7 +151,11 @@ export const ChordProblems = Extension.create<ChordProblemsOptions>({
   },
 })
 
-/** Everything the song chart editor's schema holds, and undo; chord problems marked as `chordProblems` says. */
-export function songChartExtensions(chordProblems?: Partial<ChordProblemsOptions>): Extensions {
-  return [SongChartDoc, Section, LyricLine, Comment, Text, ChordAnchor, History, ChordProblems.configure(chordProblems ?? {})]
+/**
+ * Everything the song chart editor's schema holds, and undo; chord problems marked as
+ * `chordProblems` says, and each section drawn by `sectionView` when one is given.
+ */
+export function songChartExtensions(chordProblems?: Partial<ChordProblemsOptions>, sectionView?: Component): Extensions {
+  const section = sectionView ? Section.extend({ addNodeView: () => VueNodeViewRenderer(sectionView) }) : Section
+  return [SongChartDoc, section, LyricLine, Comment, Text, ChordAnchor, History, ChordProblems.configure(chordProblems ?? {})]
 }

@@ -31,8 +31,16 @@ describe('publishBlockers', () => {
   it('lists the rights first, then each chord that blocks, with its section and lyric line', () => {
     expect(publishBlockers(body, false, checkOf)).toEqual([
       { kind: 'rights' },
-      { kind: 'chord', anchorId: 'a3', symbol: 'H7', problem: 'not_a_chord', section: { kind: 'verse', label: null }, line: 2 },
-      { kind: 'chord', anchorId: 'a4', symbol: 'C#7', problem: 'not_in_catalog', section: { kind: 'chorus', label: 'Refrão' }, line: 1 },
+      { kind: 'chord', anchorId: 'a3', symbol: 'H7', problem: 'not_a_chord', section: { kind: 'verse', label: null, progression_keys: [] }, line: 2 },
+      { kind: 'chord', anchorId: 'a4', symbol: 'C#7', problem: 'not_in_catalog', section: { kind: 'chorus', label: 'Refrão', progression_keys: [] }, line: 1 },
+    ])
+  })
+
+  it("lists each tag a section doesn't play after the chords, naming the section", () => {
+    const unplayed = [{ section_index: 1, progression_key: 'I-IV-V-I' }]
+
+    expect(publishBlockers(body, true, checkOf, unplayed).slice(-1)).toEqual([
+      { kind: 'progression', progressionKey: 'I-IV-V-I', section: { kind: 'chorus', label: 'Refrão', progression_keys: [] } },
     ])
   })
 

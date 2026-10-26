@@ -12,6 +12,22 @@ function places(wrapper: ReturnType<typeof mount>, selector: string) {
 }
 
 describe('DrillFretboard', () => {
+  it('rings the places toggled on, and says which tap targets are pressed when taps toggle', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: { tuning: STANDARD, maxFret: 12, label: 'Fretboard', fretWindow: { from: 3, to: 7 }, tapStrings: [1, 6], selectable: true, selected: [{ string: 6, fret: 3 }] },
+    })
+
+    expect(places(wrapper, '[data-test="selected-cell"]')).toEqual(['6:3'])
+    expect(wrapper.get('[data-test="drill-cell"][data-string="6"][data-fret="3"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('[data-test="drill-cell"][data-string="1"][data-fret="3"]').attributes('aria-pressed')).toBe('false')
+  })
+
+  it('says nothing about pressed taps when a tap answers at once', () => {
+    const wrapper = mount(DrillFretboard, { props: { tuning: STANDARD, maxFret: 12, label: 'Fretboard', tapStrings: [6] } })
+
+    expect(wrapper.get('[data-test="drill-cell"]').attributes('aria-pressed')).toBeUndefined()
+  })
+
   it('draws the board for the tuning, from the nut to the last fret', () => {
     const wrapper = mount(DrillFretboard, { props: { tuning: STANDARD, maxFret: 11, label: 'Fretboard' } })
 
@@ -41,6 +57,27 @@ describe('DrillFretboard', () => {
     expect(marked.map((place) => place.attributes('aria-label'))).toEqual(['Root, string 4, fret 3', 'Fifth, string 3, fret 5'])
     expect(marked[0]!.text()).toBe('R')
     expect(marked[0]!.get('circle').classes()).toContain('fill-ink')
+    expect(marked[1]!.get('circle').classes()).toContain('fill-accent')
+  })
+
+  it('marks a third as 3, named as the third of its chord, so a line shows the chord is major or minor', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: {
+        tuning: ['E1', 'A1', 'D2', 'G2'],
+        maxFret: 5,
+        label: 'Bass',
+        places: [
+          { string: 4, fret: 0, role: 'root', chord: 'Em' },
+          { string: 1, fret: 0, role: 'third', chord: 'Em' },
+          { string: 3, fret: 2, role: 'fifth', chord: 'Em' },
+        ],
+      },
+    })
+
+    const marked = wrapper.findAll('[data-test="marked-place"]')
+    expect(marked.map((place) => place.attributes('data-role'))).toEqual(['root', 'third', 'fifth'])
+    expect(marked.map((place) => place.text())).toEqual(['R', '3', ''])
+    expect(marked[1]!.attributes('aria-label')).toBe('Third of Em, string 1, open')
     expect(marked[1]!.get('circle').classes()).toContain('fill-accent')
   })
 

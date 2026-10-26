@@ -1,5 +1,7 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+enableAutoUnmount(afterEach)
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -9,13 +11,18 @@ vi.mock('@/shared/composables/useApi', () => ({
 import type { components } from '@/api/generated/core-domain'
 import SongChartLyricsEditor from '@/features/admin/components/songChartEditor/SongChartLyricsEditor.vue'
 import { clearChordLookups } from '@/shared/composables/useChordLookup'
+import { clearProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
 import { makeFrettedInstrument } from '@/shared/testUtils/diagram'
 import { chordC, chordG, gEShape, makeAnchor, makeLearnerSongChart, makeLyricLine, makeSection, makeVoicingDiagram } from '@/shared/testUtils/songChart'
+
+const progression = (key: string, en: string) => ({ progression_id: key, key, bars: [], confusable: [], names: { en } })
+const PROGRESSIONS = [progression('I-IV-V-I', 'I–IV–V–I'), progression('I-IV-I-V', 'I–IV–I–V')]
 
 /** The catalog has G and C, with their voicings' diagrams; anything else that parses isn't in it. */
 function serveCatalog() {
   GET.mockImplementation((path: string, init: { params: { query: { symbol: string }; path: { diagram_id: string } } }) => {
     if (path === '/instruments') return Promise.resolve({ data: [makeFrettedInstrument()] })
+    if (path === '/progressions') return Promise.resolve({ data: PROGRESSIONS })
     if (path === '/diagrams/{diagram_id}') {
       const voicing = [...chordG.voicings, ...chordC.voicings].find((v) => v.diagram_id === init.params.path.diagram_id)
       return Promise.resolve(voicing ? { data: makeVoicingDiagram(voicing) } : { error: { message: 'not found' } })
@@ -30,6 +37,7 @@ beforeEach(() => {
   GET.mockReset()
   serveCatalog()
   clearChordLookups()
+  clearProgressionCatalog()
 })
 
 const plainLine: SongChartDocument = { type: 'doc', content: [makeSection([makeLyricLine(['Ciranda', null])])] }
@@ -43,6 +51,12 @@ function emittedChords(wrapper: ReturnType<typeof mountEditor>): Array<[string, 
         : [],
     ),
   )
+}
+
+/** The editor redraws its toolbar (what Undo can do) two animation frames after a change. */
+async function toolbarRedrawn() {
+  for (let i = 0; i < 2; i++) await new Promise((resolve) => requestAnimationFrame(resolve))
+  await flushPromises()
 }
 
 /** Opens the chord popover at the selection or the chord at the cursor, as Chord does. */
@@ -95,7 +109,19 @@ describe('SongChartLyricsEditor', () => {
     await wrapper.get('[data-test="section-label"]').setValue('Abertura')
     await wrapper.get('[data-test="section-label"]').trigger('change')
 
-    expect(lastEmitted(wrapper).content[0]!.attrs).toEqual({ kind: 'intro', label: 'Abertura' })
+    expect(lastEmitted(wrapper).content[0]!.attrs).toEqual({ kind: 'intro', label: 'Abertura', progression_keys: [] })
+  })
+
+  it('keeps the progressions a section is tagged with when its kind and label change', async () => {
+    const tagged = makeSection([makeLyricLine(['Amazing grace', makeAnchor('a1', 'G')])], { progression_keys: ['I-IV-I-V'] })
+    const wrapper = mountEditor({ type: 'doc', content: [tagged] })
+    await flushPromises()
+
+    await wrapper.get('[data-test="section-kind"]').setValue('chorus')
+    await wrapper.get('[data-test="section-label"]').setValue('Refrão')
+    await wrapper.get('[data-test="section-label"]').trigger('change')
+
+    expect(lastEmitted(wrapper).content[0]!.attrs).toEqual({ kind: 'chorus', label: 'Refrão', progression_keys: ['I-IV-I-V'] })
   })
 
   it('adds a section of the chosen kind after the one the cursor is in', async () => {
@@ -135,6 +161,84 @@ describe('SongChartLyricsEditor', () => {
 
     expect(wrapper.findAll('section[data-kind="verse"]')).toHaveLength(1)
     expect(wrapper.findAll('p[data-lyric-line]')).toHaveLength(1)
+  })
+
+  describe('the progressions a section plays', () => {
+    const twoSections: SongChartDocument = {
+      type: 'doc',
+      content: [
+        makeSection([makeLyricLine(['Amazing grace', makeAnchor('a1', 'G')])], { progression_keys: ['I-IV-I-V'] }),
+        makeSection([makeLyricLine(['How sweet', makeAnchor('a2', 'C')])], { kind: 'chorus' }),
+      ],
+    }
+    const headings = (wrapper: ReturnType<typeof mountEditor>) => wrapper.findAll('[data-test="section-heading"]')
+
+    it("heads each section with its name and the progressions it's tagged with, by name", async () => {
+      const wrapper = mountEditor(twoSections)
+      await flushPromises()
+
+      expect(headings(wrapper).map((h) => [h.get('[data-test="section-name"]').text(), h.findAll('[data-test="progression-chip"]').map((c) => c.text())])).toEqual([
+        ['Verse', ['I–IV–I–V']],
+        ['Chorus', []],
+      ])
+    })
+
+    it("tags the section whose + Progression opened the picker, and unchecks a tag it's picked again", async () => {
+      const wrapper = mountEditor(twoSections)
+      await flushPromises()
+
+      await headings(wrapper)[1]!.get('[data-test="add-progression"]').trigger('click')
+      const picker = () => wrapper.get('[data-test="progression-picker"]')
+      await picker().findAll('[data-test="progression-option"]')[0]!.trigger('click')
+      expect(lastEmitted(wrapper).content.map((s) => s.attrs.progression_keys)).toEqual([['I-IV-I-V'], ['I-IV-V-I']])
+
+      await picker().findAll('[data-test="progression-option"]')[0]!.trigger('click')
+      expect(lastEmitted(wrapper).content.map((s) => s.attrs.progression_keys)).toEqual([['I-IV-I-V'], []])
+    })
+
+    it('removes a tag with its ×, and Undo brings it back', async () => {
+      const wrapper = mountEditor(twoSections)
+      await flushPromises()
+
+      await headings(wrapper)[0]!.get('[data-test="remove-progression"]').trigger('click')
+      expect(lastEmitted(wrapper).content[0]!.attrs.progression_keys).toEqual([])
+
+      await toolbarRedrawn()
+      await wrapper.get('[data-test="undo"]').trigger('click')
+      expect(lastEmitted(wrapper).content[0]!.attrs.progression_keys).toEqual(['I-IV-I-V'])
+    })
+
+    it('closes the picker when the lyrics change under it, so a pick never lands on another section', async () => {
+      const wrapper = mountEditor(twoSections)
+      await flushPromises()
+
+      await headings(wrapper)[1]!.get('[data-test="add-progression"]').trigger('click')
+      await wrapper.get('[data-test="add-section"]').trigger('click')
+
+      expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(false)
+      expect(headings(wrapper)).toHaveLength(3)
+    })
+
+    it('closes the picker with Escape', async () => {
+      const wrapper = mountEditor(twoSections)
+      await flushPromises()
+
+      await headings(wrapper)[0]!.get('[data-test="add-progression"]').trigger('click')
+      await wrapper.get('[data-test="progression-picker"]').trigger('keydown', { key: 'Escape' })
+
+      expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(false)
+    })
+
+    it("marks a tag the last save found the section doesn't play, with why under its heading", async () => {
+      const wrapper = mount(SongChartLyricsEditor, {
+        props: { modelValue: twoSections, unplayed: [{ section_index: 0, progression_key: 'I-IV-I-V' }], concertKey: 'C' },
+      })
+      await flushPromises()
+
+      expect(headings(wrapper)[0]!.get('[data-test="progression-chip"]').attributes('data-unplayed')).toBe('true')
+      expect(headings(wrapper)[0]!.get('[data-test="not-played"]').text()).toContain('its chords never come I–IV–I–V in a row in C')
+      expect(headings(wrapper)[1]!.find('[data-test="not-played"]').exists()).toBe(false)
+    })
   })
 
   describe('chords', () => {

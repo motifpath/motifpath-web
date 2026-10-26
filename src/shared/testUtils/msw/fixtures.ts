@@ -213,3 +213,8 @@ export const alphaStudents: Schemas['UserRef'][] = [
   { user_id: '00000000-0000-4000-8000-0000000000c2', display_name: 'Camila Rocha' },
   { user_id: '00000000-0000-4000-8000-0000000000c3', display_name: 'Beatriz Rocha' },
 ]
+
+export const progressions: Schemas['Progression'][] = [
+  { progression_id: 'progression-i-iv-i-v', key: 'I-IV-I-V', bars: ['I', 'IV', 'I', 'V'], confusable: [], names: { en: 'I–IV–I–V', 'pt-BR': 'I–IV–I–V' } },
+  { progression_id: 'progression-ii-v-i', key: 'ii-V-I', bars: ['ii', 'V', 'I'], confusable: [], names: { en: 'ii–V–I', 'pt-BR': 'ii–V–I' } },
+]

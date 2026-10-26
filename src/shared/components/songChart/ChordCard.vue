@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * One chord of a song chart, opened from a tap on it: the chord as written, Box | Neck, the
- * voicing drawn that way with Strum, and one chip per voicing, named by where it sits ("Open",
- * "3fr"). The parent holds the voicing, the view and whether the card is minimized, so it can
+ * One chord, opened from a tap on it in a song chart or a progression: the chord as written,
+ * Box | Neck, the voicing drawn that way with Strum, and one chip per voicing it can be played in,
+ * named by where it sits ("Open", "3fr"). The parent holds the voicing, the view and whether the card is minimized, so it can
  * remember them across chords. It minimizes to a chip with the chord and closes with ×, floating
  * over the chart or docked across a side pane. A slash chord shown without its bass says so.
  */
@@ -18,7 +18,7 @@ import type { ChordView } from '@/shared/composables/useChordView'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { voicingNames } from '@/shared/utils/songChartReading'
 
-type ChordDefinition = components['schemas']['ChordDefinition']
+type ChordVoicing = components['schemas']['ChordVoicing']
 type Diagram = components['schemas']['Diagram']
 type DiagramRef = components['schemas']['DiagramRef']
 type Instrument = components['schemas']['Instrument']
@@ -26,7 +26,10 @@ type Instrument = components['schemas']['Instrument']
 const props = defineProps<{
   /** The symbol as the author wrote it, the card's title. */
   writtenSymbol: string
-  chord: ChordDefinition
+  /** The chord's name in the catalog, which a missing bass is said against. */
+  chordSymbol: string
+  /** The voicings the chord can be shown in, best first; at least one. */
+  voicings: ChordVoicing[]
   diagrams: Diagram[]
   instrument: Instrument
   /** The bass the written slash chord asks for that the shown voicings don't have; null when none. */
@@ -43,9 +46,9 @@ const minimized = defineModel<boolean>('minimized', { default: false })
 const { t } = useTypedT()
 const titleId = useId()
 
-const voicing = computed(() => props.chord.voicings.find((v) => v.chord_voicing_id === voicingId.value) ?? props.chord.voicings[0]!)
+const voicing = computed(() => props.voicings.find((v) => v.chord_voicing_id === voicingId.value) ?? props.voicings[0]!)
 const diagram = computed(() => props.diagrams.find((d) => d.diagram_id === voicing.value.diagram_id) ?? null)
-const names = computed(() => voicingNames(props.chord.voicings, t('songChart.openVoicing')))
+const names = computed(() => voicingNames(props.voicings, t('songChart.openVoicing')))
 const floating = computed(() => props.placement === 'floating')
 
 /** The voicing's default playback, the one Strum sounds. */
@@ -103,7 +106,7 @@ const diagramRef = computed<DiagramRef | null>(() =>
     </div>
 
     <p v-if="missingBass" data-test="missing-bass" class="pr-2 text-sm text-ink-muted">
-      {{ t('songChart.missingBass', { chord: chord.canonical_symbol, bass: missingBass }) }}
+      {{ t('songChart.missingBass', { chord: chordSymbol, bass: missingBass }) }}
     </p>
 
     <ChordViewSwitch v-model="view" />
@@ -122,7 +125,7 @@ const diagramRef = computed<DiagramRef | null>(() =>
 
     <div role="group" :aria-label="t('songChart.voicings')" class="flex flex-wrap gap-1.5">
       <button
-        v-for="(v, i) in chord.voicings"
+        v-for="(v, i) in voicings"
         :key="v.chord_voicing_id"
         type="button"
         data-test="voicing-chip"

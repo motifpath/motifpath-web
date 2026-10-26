@@ -7,6 +7,8 @@ vi.mock('@/shared/composables/useApi', () => ({
   useApi: () => ({ coreApi: { GET }, eventApi: {} }),
 }))
 
+import { guideToneItem } from '@/features/student/testing/guideToneItems'
+import { songItem } from '@/features/student/testing/songItems'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -222,5 +224,46 @@ describe('usePlanItemNames', () => {
     expect(labelOf(change)).toBe('Am and C, back and forth')
     expect(labelOf(rootFifth)).toBe('Play the root and fifth of G')
     expect(labelOf(rootChange)).toBe('Am and C roots, back and forth')
+  })
+
+  it('names a progression key tour by its progression, in every key', () => {
+    const tour: Item = {
+      item_key: 'progression_keys:guitar:I-V-vi-IV',
+      kind: 'progression_keys',
+      rung: 'move',
+      reason: 'new',
+      node_id: null,
+      level: 'new',
+      estimated_seconds: 234,
+      progression_keys: {
+        layout_instrument_id: 'guitar',
+        progression: { key: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)' },
+        times_through: 4,
+        takes: 3,
+        start_music_key: 'C',
+        tour_tempo_bpm: 60,
+        start_note_value: 'quarters',
+        target_tempo_bpm: 100,
+        min_tempo_bpm: 60,
+        keys: [],
+      },
+    }
+    const { labelOf } = setUp([tour])
+
+    expect(labelOf(tour)).toBe('I–V–vi–IV (pop) in every key')
+  })
+
+  it('names a guide tone by its progression', () => {
+    const guide = guideToneItem()
+    const { labelOf } = setUp([guide])
+
+    expect(labelOf(guide)).toBe('ii–V–I')
+  })
+
+  it('names a song by its title', () => {
+    const song = songItem()
+    const { labelOf } = setUp([song])
+
+    expect(labelOf(song)).toBe('Amazing Grace')
   })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { chordC, makeAnchor, makeChord, makeLearnerSongChart, makeLyricLine, makeSection, makeVoicing } from '@/shared/testUtils/songChart'
-import { chordsOfSong, lineSegments, missingBass, openingVoicing, voicingNames } from '@/shared/utils/songChartReading'
+import { chordDefinitionsOfSong, chordsOfSong, lineSegments, missingBass, openingVoicing, progressionsOfSong, voicingNames } from '@/shared/utils/songChartReading'
 
 const anchor = makeAnchor
 const line = makeLyricLine
@@ -84,10 +84,18 @@ describe('missingBass', () => {
 })
 
 describe('voicingNames', () => {
-  const at = (id: string, lowest: number) => makeVoicing(id, 'chord-g', { fret_window: { lowest_fret: lowest, highest_fret: lowest + 3 } })
+  type Shape = NonNullable<Parameters<typeof makeVoicing>[2]>['shape_family']
+  const at = (id: string, lowest: number, shape: Shape = lowest === 0 ? 'open' : 'e_shape') =>
+    makeVoicing(id, 'chord-g', { fret_window: { lowest_fret: lowest, highest_fret: lowest + 3 }, shape_family: shape })
 
   it('names a voicing by where it sits: open, or the fret it starts on', () => {
     expect(voicingNames([at('g-open', 0), at('g-3', 3), at('g-10', 10)], 'Open')).toEqual(['Open', '3fr', '10fr'])
+  })
+
+  it('names an open shape Open, though its lowest fretted note is above the nut', () => {
+    // As the catalog has them: open C frets 1–3, open Em and the Em D shape both start on fret 2.
+    expect(voicingNames([at('c-open', 1, 'open'), at('c-a', 3, 'a_shape')], 'Open')).toEqual(['Open', '3fr'])
+    expect(voicingNames([at('em-open', 2, 'open'), at('em-d', 2, 'd_shape')], 'Open')).toEqual(['Open', '2fr'])
   })
 
   it('numbers voicings that sit at the same place, so each name is its own', () => {
@@ -107,5 +115,29 @@ describe('chordsOfSong', () => {
     const chords = [makeChord('chord-d', 'D', []), chordC]
 
     expect(chordsOfSong(body, chords).map((c) => c.canonical_symbol)).toEqual(['C'])
+  })
+})
+
+describe('progressionsOfSong', () => {
+  const tagged = (...tags: string[][]) => ({ type: 'doc' as const, content: tags.map((keys) => makeSection([], { progression_keys: keys })) })
+
+  it('lists each progression the sections are tagged with once, in the order it first appears', () => {
+    expect(progressionsOfSong(tagged(['I-IV-I-V'], ['ii-V-I', 'I-IV-I-V'], ['I-IV-I-V']))).toEqual(['I-IV-I-V', 'ii-V-I'])
+  })
+
+  it('is empty when no section is tagged, or a section has no tags at all', () => {
+    const untagged = { type: 'doc' as const, content: [makeSection([], { progression_keys: undefined })] }
+
+    expect(progressionsOfSong(tagged([], []))).toEqual([])
+    expect(progressionsOfSong(untagged)).toEqual([])
+  })
+})
+
+describe('chordDefinitionsOfSong', () => {
+  it('lists each chord the song resolves to once, in the order it first appears, voicings or not', () => {
+    const body = { type: 'doc' as const, content: [makeSection([makeLyricLine(['Amazing ', makeAnchor('a1', 'N.C.')], ['grace ', makeAnchor('a2', 'H7')], ['how ', makeAnchor('a3', 'D', { chordDefinitionId: 'chord-d' })], ['sweet', makeAnchor('a4', 'C', { chordDefinitionId: 'chord-c' })], ['the ', makeAnchor('a5', 'D', { chordDefinitionId: 'chord-d' })])])] }
+    const chords = [chordC, makeChord('chord-d', 'D', [])]
+
+    expect(chordDefinitionsOfSong(body, chords).map((c) => c.canonical_symbol)).toEqual(['D', 'C'])
   })
 })

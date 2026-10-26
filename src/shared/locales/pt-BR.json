@@ -291,8 +291,10 @@
     "cell": "Corda {string}, casa {fret}",
     "openCell": "Corda {string}, solta",
     "root": "Fundamental",
+    "third": "Terça",
     "fifth": "Quinta",
     "rootOf": "Fundamental de {chord}",
+    "thirdOf": "Terça de {chord}",
     "fifthOf": "Quinta de {chord}",
     "markedPlace": "{role}, corda {string}, casa {fret}",
     "markedOpen": "{role}, corda {string}, solta"
@@ -322,6 +324,7 @@
     "noCapo": "Sem capotraste",
     "draft": "Rascunho",
     "chordsInSong": "Acordes desta música",
+    "progressionsInSong": "Progressões desta música",
     "songTempo": "Andamento da música {bpm} BPM",
     "youreAt": "você está em {bpm}",
     "atTempo": "Em {bpm} BPM",

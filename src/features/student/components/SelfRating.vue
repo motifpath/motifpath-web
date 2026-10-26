@@ -2,7 +2,8 @@
 /**
  * How a play-along take went, asked in the action bar once the take ends: the rating is the commit,
  * so one tap (or key 1–3) sends it. Restart without rating throws the take away instead. A single
- * chord is asked about by its name, and has no take to restart.
+ * chord is asked about by its name, and a song by its title, with no tempo; neither has a take to
+ * restart.
  */
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { RotateCcw } from 'lucide-vue-next'
@@ -20,8 +21,10 @@ const props = withDefaults(
     noteValue?: TempoNoteValue
     /** The chord played, for a single chord rather than a take. */
     chord?: string
+    /** The song played, for a whole song rather than a take. */
+    song?: string
   }>(),
-  { bpm: undefined, noteValue: 'quarters', chord: undefined },
+  { bpm: undefined, noteValue: 'quarters', chord: undefined, song: undefined },
 )
 
 const emit = defineEmits<{ rate: [rating: TakeRating]; restart: [] }>()
@@ -29,11 +32,12 @@ const emit = defineEmits<{ rate: [rating: TakeRating]; restart: [] }>()
 const { t } = useTypedT()
 const { asPlayed } = useTempoAsPlayed()
 
-const prompt = computed(() =>
-  props.bpm === undefined
+const prompt = computed(() => {
+  if (props.song !== undefined) return t('playAlongTake.songPrompt', { song: props.song })
+  return props.bpm === undefined
     ? t('playAlongTake.chordPrompt', { chord: props.chord ?? '' })
-    : t('playAlongTake.ratePrompt', { tempo: asPlayed(props.bpm, props.noteValue) }),
-)
+    : t('playAlongTake.ratePrompt', { tempo: asPlayed(props.bpm, props.noteValue) })
+})
 
 const ratings = [
   {

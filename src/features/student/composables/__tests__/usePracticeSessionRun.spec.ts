@@ -16,6 +16,8 @@ vi.mock('@/shared/composables/useEmbeddedDiagram', () => ({
   fetchDiagram: (coreApi: unknown, diagramId: string) => fetchDiagram(coreApi, diagramId),
 }))
 
+import { EVERY_THIRD_AT_60, guideToneItem } from '@/features/student/testing/guideToneItems'
+import { songItem } from '@/features/student/testing/songItems'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import type { ShapeBoard } from '@/features/student/composables/usePracticeSessionRun'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -1222,7 +1224,9 @@ describe('usePracticeSessionRun', () => {
     const STANDARD = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
     const tuningOf = (instrumentId: string) => (instrumentId === LAYOUT ? STANDARD : undefined)
 
-    function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note'): Item {
+    type FromFret = NonNullable<Item['fretboard_cell']>['fret_window']['from_fret']
+
+    function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note' | 'find_every_instance', fromFret: FromFret = 0): Item {
       return {
         item_key: `fretboard_cell:${LAYOUT}:${string}:${fret}`,
         kind: 'fretboard_cell',
@@ -1231,7 +1235,7 @@ describe('usePracticeSessionRun', () => {
         node_id: null,
         level: 'new',
         estimated_seconds: 8,
-        fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill, fret_window: { from_fret: 0 } },
+        fretboard_cell: { layout_instrument_id: LAYOUT, string, fret, drill, fret_window: { from_fret: fromFret } },
       }
     }
 
@@ -1300,6 +1304,57 @@ describe('usePracticeSessionRun', () => {
 
       expect(tracked('practice.item_answered')).toEqual([])
       expect(run.cellAnswer.value).toBeNull()
+    })
+
+    describe('finding every instance', () => {
+      // G is at string 1 fret 3, string 4 fret 5 and string 6 fret 3 in frets 3 to 7.
+      const everyG = () => plan([cell(6, 3, 'find_every_instance', 3)], null)
+      const taps = [
+        { string: 6, fret: 3 },
+        { string: 1, fret: 3 },
+      ]
+
+      it('sends every place tapped as one answer, timed from when the cell was shown', () => {
+        const run = usePracticeSessionRun(everyG(), { tuningOf })
+        run.start()
+        vi.advanceTimersByTime(5200)
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps })
+
+        expect(tracked('practice.item_answered')).toEqual([
+          {
+            event_type: 'practice.item_answered',
+            practice_session_id: SESSION_ID,
+            item_key: `fretboard_cell:${LAYOUT}:6:3`,
+            response: { response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps, latency_ms: 5200 },
+          },
+        ])
+      })
+
+      it('is right only when every place is found, and keeps how each cell was graded', () => {
+        const run = usePracticeSessionRun(everyG(), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps })
+
+        expect(run.cellAnswer.value?.correct).toBe(false)
+        expect(run.cellAnswer.value?.grade).toMatchObject({ note: 'G', found: 2, places: 3, extra: 0 })
+        expect(run.outcomes.value.get(0)).toEqual({ kind: 'answered', correct: false })
+      })
+
+      it('takes no answer from another window', () => {
+        const run = usePracticeSessionRun(everyG(), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 0 }, cells: taps })
+
+        expect(tracked('practice.item_answered')).toEqual([])
+      })
+
+      it('is no answer to a cell asked another way', () => {
+        const run = usePracticeSessionRun(inTheHead(), { tuningOf })
+        run.start()
+        run.answerCell({ response_type: 'multi_tap', fret_window: { from_fret: 0 }, cells: [{ string: 5, fret: 3 }] })
+
+        expect(tracked('practice.item_answered')).toEqual([])
+      })
     })
 
     it('takes no answer to a cell whose instrument’s tuning isn’t known', () => {
@@ -1649,6 +1704,250 @@ describe('usePracticeSessionRun', () => {
       quick.end()
 
       expect(quick.elapsedMinutes.value).toBe(1)
+    })
+  })
+  describe('progression key tours', () => {
+    const TOUR_KEYS = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G'] as const
+
+    function tourItem(fields: Partial<NonNullable<Item['progression_keys']>> = {}, clean: string[] = []): Item {
+      return {
+        item_key: `progression_keys:${GUITAR_ID}:I-V-vi-IV`,
+        kind: 'progression_keys',
+        rung: 'move',
+        reason: 'new',
+        node_id: null,
+        level: 'new',
+        estimated_seconds: 234,
+        progression_keys: {
+          layout_instrument_id: GUITAR_ID,
+          progression: { key: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)' },
+          times_through: 4,
+          takes: 3,
+          start_music_key: 'C',
+          tour_tempo_bpm: 60,
+          start_note_value: 'quarters',
+          target_tempo_bpm: 100,
+          min_tempo_bpm: 60,
+          keys: TOUR_KEYS.map((key) => ({ music_key: key, clean: clean.includes(key), chart: [], voicings: [], chord_tones: [] })),
+          ...fields,
+        },
+      }
+    }
+
+    it('plays the takes the plan gives, from the planned key and tempo', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ start_music_key: 'Bb', tour_tempo_bpm: 70 }, ['C', 'F'])]))
+      run.start()
+
+      expect(run.takesTotal.value).toBe(3)
+      expect(run.tour.value).toEqual({ key: 'Bb', speed: 70, clean: ['C', 'F'] })
+      expect(run.tempo.value).toBe(70)
+      expect(run.noteValue.value).toBe('quarters')
+    })
+
+    it('sends each take with its tempo, note value and the key it was played in', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ start_music_key: 'A', tour_tempo_bpm: 85 })]))
+      run.start()
+
+      run.rate('clean')
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: `progression_keys:${GUITAR_ID}:I-V-vi-IV`,
+          response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 85, note_value: 'quarters', music_key: 'A' },
+        },
+      ])
+    })
+
+    it('moves a clean take to the next key not yet clean, at the same tempo', () => {
+      const run = usePracticeSessionRun(plan([tourItem({}, ['F', 'Bb'])]))
+      run.start()
+
+      run.rate('clean')
+
+      expect(run.tour.value).toEqual({ key: 'Eb', speed: 60, clean: ['C', 'F', 'Bb'] })
+      expect(run.tempo.value).toBe(60)
+      run.rate('almost')
+      expect(tracked('practice.item_answered')[1].response).toMatchObject({ music_key: 'Eb' })
+    })
+
+    it('stays in the key 5 BPM slower after a struggle', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ tour_tempo_bpm: 70 })]))
+      run.start()
+
+      run.rate('struggled')
+
+      expect(run.tour.value?.key).toBe('C')
+      expect(run.tempo.value).toBe(65)
+    })
+
+    it('keeps a clean take at a slower tempo the student chose in the key', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ tour_tempo_bpm: 70 })]))
+      run.start()
+
+      run.setTempo(60)
+      run.rate('clean')
+
+      expect(tracked('practice.item_answered')[0].response).toMatchObject({ tempo_bpm: 60, music_key: 'C' })
+      expect(run.tour.value).toEqual({ key: 'C', speed: 70, clean: [] })
+      expect(run.tempo.value).toBe(70)
+    })
+
+    it('plays the tour tempo in the note value the student switches to', () => {
+      const run = usePracticeSessionRun(plan([tourItem({ tour_tempo_bpm: 70 })]))
+      run.start()
+
+      run.setNoteValue('eighths')
+      run.rate('clean')
+
+      expect(tracked('practice.item_answered')[0].response).toMatchObject({ tempo_bpm: 35, note_value: 'eighths', music_key: 'C' })
+      expect(run.tour.value?.key).toBe('F')
+      expect(run.noteValue.value).toBe('eighths')
+      expect(run.tempo.value).toBe(35)
+    })
+
+    it('hands over to the next item after the last take, with the keys clean', () => {
+      const run = usePracticeSessionRun(plan([tourItem(), exerciseItem('e1', 'due')]))
+      run.start()
+
+      run.rate('clean')
+      run.rate('clean')
+      run.rate('struggled')
+
+      expect(run.handoff.value?.done.item_key).toBe(`progression_keys:${GUITAR_ID}:I-V-vi-IV`)
+      expect(run.outcomes.value.get(0)).toEqual({
+        kind: 'toured',
+        takes: [
+          { bpm: 60, rating: 'clean', noteValue: 'quarters' },
+          { bpm: 60, rating: 'clean', noteValue: 'quarters' },
+          { bpm: 60, rating: 'struggled', noteValue: 'quarters' },
+        ],
+        cleanKeys: 2,
+        tourBpm: 60,
+      })
+    })
+  })
+
+  describe('guide tones', () => {
+    const GUITAR = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
+    const tuningOf = (id: string) => (id === 'guitar' ? GUITAR : undefined)
+    const take = (taps = EVERY_THIRD_AT_60) => ({ tempoBpm: 60, noteValue: 'quarters' as const, taps })
+
+    it('gives the takes the plan gives', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      expect(run.takesTotal.value).toBe(3)
+      expect(run.takesLeft.value).toBe(3)
+    })
+
+    it('sends each take with its key, tone, tempo, note value and taps', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      run.tapGuideTone(take())
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: 'guide_tone:guitar:ii-V-I',
+          response: { response_type: 'timed_taps', music_key: 'G', tone: '3', tempo_bpm: 60, note_value: 'quarters', taps: EVERY_THIRD_AT_60 },
+        },
+      ])
+      expect(run.takesLeft.value).toBe(2)
+    })
+
+    it('keeps the best take’s bars hit as the item’s outcome', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      run.tapGuideTone(take(EVERY_THIRD_AT_60.slice(0, 2)))
+      run.tapGuideTone(take(EVERY_THIRD_AT_60.slice(0, 1)))
+
+      expect(run.outcomes.value.get(0)).toEqual({ kind: 'tapped', hits: 2, bars: 4, correct: false })
+      run.tapGuideTone(take())
+      expect(run.outcomes.value.get(0)).toEqual({ kind: 'tapped', hits: 4, bars: 4, correct: true })
+    })
+
+    it('stays on the item after a take until the student moves on', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem(), guideToneItem()], null), { tuningOf })
+      run.start()
+
+      run.tapGuideTone(take())
+
+      expect(run.index.value).toBe(0)
+      run.nextItem()
+      expect(run.index.value).toBe(1)
+      expect(run.takesLeft.value).toBe(3)
+    })
+
+    it('takes no more takes than the plan gives', () => {
+      const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
+      run.start()
+
+      for (let i = 0; i < 4; i++) run.tapGuideTone(take([]))
+
+      expect(tracked('practice.item_answered')).toHaveLength(3)
+    })
+  })
+
+  describe('a song', () => {
+    it('sends the rating alone, with no tempo, note value or key, and stays on the song', () => {
+      const run = usePracticeSessionRun(plan([exerciseItem('e1', 'due'), songItem()]))
+      run.start()
+      run.nextItem()
+
+      run.rateSong('almost')
+
+      expect(tracked('practice.item_answered')).toEqual([
+        {
+          event_type: 'practice.item_answered',
+          practice_session_id: SESSION_ID,
+          item_key: 'song:guitar:chart-amazing-grace',
+          response: { response_type: 'self_rating', rating: 'almost' },
+        },
+      ])
+      expect(run.songRating.value).toBe('almost')
+      expect(run.index.value).toBe(1)
+      expect(run.answeredCount.value).toBe(1)
+      expect(run.outcomes.value.get(1)).toEqual({ kind: 'rated', rating: 'almost' })
+      expect(run.progress.value).toEqual([1, 1])
+    })
+
+    it('rates the song once, and is never skipped once rated', () => {
+      const run = usePracticeSessionRun(plan([songItem()]))
+      run.start()
+
+      run.rateSong('clean')
+      run.rateSong('struggled')
+      run.skip('unavailable')
+
+      expect(tracked('practice.item_answered')).toHaveLength(1)
+      expect(run.songRating.value).toBe('clean')
+      expect(run.finished.value).toBe(false)
+    })
+
+    it('ends the session once the student moves on from the rated song', () => {
+      const run = usePracticeSessionRun(plan([songItem()]))
+      run.start()
+      run.rateSong('clean')
+
+      run.nextItem()
+
+      expect(run.finished.value).toBe(true)
+      expect(run.songRating.value).toBeNull()
+    })
+
+    it('rates only a song this way', () => {
+      const run = usePracticeSessionRun(plan([exerciseItem('e1', 'due')]))
+      run.start()
+
+      run.rateSong('clean')
+
+      expect(tracked('practice.item_answered')).toEqual([])
+      expect(run.songRating.value).toBeNull()
     })
   })
 })

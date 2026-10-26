@@ -12,7 +12,7 @@ const STANDARD = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
 
 type FromFret = NonNullable<Item['fretboard_cell']>['fret_window']['from_fret']
 
-function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note', fromFret: FromFret = 0): Item {
+function cell(string: number, fret: number, drill: 'name_the_note' | 'find_the_note' | 'find_every_instance', fromFret: FromFret = 0): Item {
   return {
     item_key: `fretboard_cell:${LAYOUT}:${string}:${fret}`,
     kind: 'fretboard_cell',
@@ -199,6 +199,81 @@ describe('SessionFretboardCell', () => {
       })
 
       expect(marks(wrapper, '[data-test="diagram-mark"]')).toEqual(['diagram-mark=right'])
+    })
+  })
+
+  describe('find every instance', () => {
+    // G is at string 1 fret 3, string 4 fret 5 and string 6 fret 3 in frets 3 to 7.
+    const everyG = cell(6, 3, 'find_every_instance', 3)
+    const tapAt = (wrapper: ReturnType<typeof mountCell>, string: number, fret: number) =>
+      wrapper.get(`[data-test="drill-cell"][data-string="${string}"][data-fret="${fret}"]`).trigger('click')
+    const selected = (wrapper: ReturnType<typeof mountCell>) =>
+      wrapper.findAll('[data-test="selected-cell"]').map((c) => `${c.attributes('data-string')}:${c.attributes('data-fret')}`)
+
+    it('asks for every place of the note in its window, on a board with nothing marked', () => {
+      const wrapper = mountCell({ item: everyG })
+
+      expect(wrapper.get('h2[data-test="item-title"]').text()).toBe('Tap every G, frets 3–7')
+      expect(wrapper.findAll('[data-test="drill-cell"]')).toHaveLength(6 * 5)
+      expect(wrapper.find('[data-test="lit-cell"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="asked-string"]').exists()).toBe(false)
+      expect(wrapper.text()).not.toMatch(/\b3 places\b/)
+    })
+
+    it('toggles a place on each tap, without answering', async () => {
+      const wrapper = mountCell({ item: everyG })
+
+      await tapAt(wrapper, 6, 3)
+      await tapAt(wrapper, 1, 3)
+      expect(selected(wrapper)).toEqual(['6:3', '1:3'])
+      expect(wrapper.get('[data-test="drill-cell"][data-string="6"][data-fret="3"]').attributes('aria-pressed')).toBe('true')
+
+      await tapAt(wrapper, 6, 3)
+      expect(selected(wrapper)).toEqual(['1:3'])
+      expect(wrapper.emitted('answer')).toBeUndefined()
+    })
+
+    it('answers with every place tapped, in the order tapped, once Check is pressed', async () => {
+      const wrapper = mountCell({ item: everyG })
+      await tapAt(wrapper, 6, 3)
+      await tapAt(wrapper, 1, 3)
+
+      await wrapper.get('[data-test="check-answer"]').trigger('click')
+
+      expect(wrapper.emitted('answer')).toEqual([
+        [{ response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: [{ string: 6, fret: 3 }, { string: 1, fret: 3 }] }],
+      ])
+    })
+
+    it('reveals every place, marks the extra taps wrong, and keeps the taps ringed', async () => {
+      const taps = [{ string: 6, fret: 3 }, { string: 1, fret: 3 }, { string: 5, fret: 5 }]
+      const wrapper = mountCell({
+        item: everyG,
+        answer: {
+          answer: { response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps },
+          correct: false,
+          grade: {
+            note: 'G',
+            places: 3,
+            found: 2,
+            extra: 1,
+            allRight: false,
+            cells: [
+              { string: 1, fret: 3, correct: true },
+              { string: 4, fret: 5, correct: false },
+              { string: 5, fret: 5, correct: false },
+              { string: 6, fret: 3, correct: true },
+            ],
+          },
+        },
+      })
+
+      const placed = wrapper.findAll('[data-test="cell-mark"]').map((m) => `${m.attributes('data-string')}:${m.attributes('data-fret')}`)
+      expect(placed).toEqual(['1:3', '4:5', '5:5', '6:3'])
+      expect(marks(wrapper, '[data-test="diagram-mark"]')).toEqual(['diagram-mark=right', 'diagram-mark=right', 'diagram-mark=wrong', 'diagram-mark=right'])
+      expect(selected(wrapper)).toEqual(['6:3', '1:3', '5:5'])
+      expect(wrapper.get('[data-test="answer-feedback"]').text()).toBe('2 of 3 found · 1 extra')
+      expect(wrapper.find('[data-test="check-answer"]').exists()).toBe(false)
     })
   })
 

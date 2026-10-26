@@ -27,7 +27,7 @@ export interface CellMark extends CellPlace {
 
 /** A place marked for the student to play, by what it is in the chord. */
 export interface MarkedPlace extends CellPlace {
-  role: 'root' | 'fifth'
+  role: 'root' | 'third' | 'fifth'
   /** The chord it belongs to, named when a board marks more than one. */
   chord?: string
 }
@@ -53,8 +53,12 @@ const props = withDefaults(
     marks?: CellMark[]
     /** Places to play, marked. */
     places?: MarkedPlace[]
+    /** Whether a tap toggles a place on or off, for a drill answered with several places. */
+    selectable?: boolean
+    /** The places toggled on, ringed with a dashed halo, and still after the answer is graded. */
+    selected?: CellPlace[]
   }>(),
-  { fretWindow: null, lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [], places: () => [] },
+  { fretWindow: null, lit: null, askedString: null, tapStrings: () => [], locked: false, marks: () => [], places: () => [], selectable: false, selected: () => [] },
 )
 
 const emit = defineEmits<{ tap: [place: CellPlace] }>()
@@ -142,12 +146,27 @@ function cellLabel(place: CellPlace): string {
   return place.fret === 0 ? t('drillFretboard.openCell', { string: place.string }) : t('drillFretboard.cell', { string: place.string, fret: place.fret })
 }
 
+const ROLE_NAMES = {
+  root: { alone: 'drillFretboard.root', of: 'drillFretboard.rootOf' },
+  third: { alone: 'drillFretboard.third', of: 'drillFretboard.thirdOf' },
+  fifth: { alone: 'drillFretboard.fifth', of: 'drillFretboard.fifthOf' },
+} as const
+
+/** What a marked place shows on its marker: R for a root, 3 for a third; a fifth shows nothing. */
+const ROLE_GLYPHS: Partial<Record<MarkedPlace['role'], string>> = { root: 'R', third: '3' }
+
 function placeLabel(place: MarkedPlace): string {
-  const role = place.chord
-    ? t(place.role === 'root' ? 'drillFretboard.rootOf' : 'drillFretboard.fifthOf', { chord: place.chord })
-    : t(place.role === 'root' ? 'drillFretboard.root' : 'drillFretboard.fifth')
+  const names = ROLE_NAMES[place.role]
+  const role = place.chord ? t(names.of, { chord: place.chord }) : t(names.alone)
   const where = { role, string: place.string, fret: place.fret }
   return place.fret === 0 ? t('drillFretboard.markedOpen', where) : t('drillFretboard.markedPlace', where)
+}
+
+/** A selected place's halo sits just outside an answer mark's ring, so both show at once. */
+const SELECTED_RADIUS = MARKER_RADIUS + 7
+
+function isSelected(place: CellPlace): boolean {
+  return props.selected.some((s) => s.string === place.string && s.fret === place.fret)
 }
 
 function tap(place: CellPlace) {
@@ -217,14 +236,31 @@ function tap(place: CellPlace) {
           stroke-width="2"
         />
         <text
-          v-if="place.role === 'root'"
+          v-if="ROLE_GLYPHS[place.role]"
           :x="cx(place.fret)"
           :y="cy(place.string) + 4"
           text-anchor="middle"
           aria-hidden="true"
-          class="fill-surface text-[11px] font-bold"
-        >R</text>
+          class="text-[11px] font-bold"
+          :class="place.role === 'root' ? 'fill-surface' : 'fill-accent-fg'"
+        >{{ ROLE_GLYPHS[place.role] }}</text>
       </g>
+
+      <circle
+        v-for="place in selected"
+        :key="`selected-${place.string}:${place.fret}`"
+        data-test="selected-cell"
+        :data-string="place.string"
+        :data-fret="place.fret"
+        :cx="cx(place.fret)"
+        :cy="cy(place.string)"
+        :r="SELECTED_RADIUS"
+        fill="none"
+        class="stroke-accent"
+        stroke-width="2.5"
+        stroke-dasharray="4 3"
+        aria-hidden="true"
+      />
 
       <g v-for="mark in marks" :key="`${mark.string}:${mark.fret}`" data-test="cell-mark" :data-string="mark.string" :data-fret="mark.fret">
         <AnswerMark :mark="mark.mark" :cx="cx(mark.fret)" :cy="cy(mark.string)" :ring-radius="MARKER_RADIUS + 2" :badge-offset="BADGE_OFFSET" />
@@ -241,6 +277,7 @@ function tap(place: CellPlace) {
         :tabindex="locked ? -1 : 0"
         :aria-label="cellLabel(cell)"
         :aria-disabled="locked"
+        :aria-pressed="selectable ? isSelected(cell) : undefined"
         fill="transparent"
         class="cursor-pointer outline-none focus:stroke-focus"
         stroke-width="2"
