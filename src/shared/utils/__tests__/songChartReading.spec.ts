@@ -84,10 +84,18 @@ describe('missingBass', () => {
 })
 
 describe('voicingNames', () => {
-  const at = (id: string, lowest: number) => makeVoicing(id, 'chord-g', { fret_window: { lowest_fret: lowest, highest_fret: lowest + 3 } })
+  type Shape = NonNullable<Parameters<typeof makeVoicing>[2]>['shape_family']
+  const at = (id: string, lowest: number, shape: Shape = lowest === 0 ? 'open' : 'e_shape') =>
+    makeVoicing(id, 'chord-g', { fret_window: { lowest_fret: lowest, highest_fret: lowest + 3 }, shape_family: shape })
 
   it('names a voicing by where it sits: open, or the fret it starts on', () => {
     expect(voicingNames([at('g-open', 0), at('g-3', 3), at('g-10', 10)], 'Open')).toEqual(['Open', '3fr', '10fr'])
+  })
+
+  it('names an open shape Open, though its lowest fretted note is above the nut', () => {
+    // As the catalog has them: open C frets 1–3, open Em and the Em D shape both start on fret 2.
+    expect(voicingNames([at('c-open', 1, 'open'), at('c-a', 3, 'a_shape')], 'Open')).toEqual(['Open', '3fr'])
+    expect(voicingNames([at('em-open', 2, 'open'), at('em-d', 2, 'd_shape')], 'Open')).toEqual(['Open', '2fr'])
   })
 
   it('numbers voicings that sit at the same place, so each name is its own', () => {
