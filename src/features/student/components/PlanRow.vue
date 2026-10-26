@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /**
- * One line of today's plan: its place in the session, what it is called and why it was picked,
- * and on the right what kind of item it is, in a short label that fits beside a long name.
+ * One line of today's plan: its place in the session, what it is called and why it was picked
+ * (for a song, with the progression it plays), and on the right what kind of item it is, in a short
+ * label that fits beside a long name.
  */
 import type { components } from '@/api/generated/core-domain'
 import { pickReasonKeys } from '@/features/student/utils/pickReason'
+import ProgressionName from '@/shared/components/ProgressionName.vue'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
 type Item = components['schemas']['PracticeSessionItem']
@@ -14,6 +16,8 @@ defineProps<{
   name: string
   reason: Item['reason']
   kind: Item['kind']
+  /** The progression a song plays, said after why it was picked. */
+  progressionKey?: string
 }>()
 
 const KIND_KEYS = {
@@ -31,7 +35,8 @@ const KIND_KEYS = {
   root_fifth: 'sessionPlan.kinds.chord',
   root_change: 'sessionPlan.kinds.chordChange',
   guide_tone: 'sessionPlan.kinds.guideTones',
-  fretboard_note: 'sessionPlan.kinds.fretboard',
+  progression_keys: 'sessionPlan.kinds.everyKey',
+  song: 'sessionPlan.kinds.song',
 } as const satisfies Record<Item['kind'], string>
 
 const { t } = useTypedT()
@@ -42,7 +47,9 @@ const { t } = useTypedT()
     <span data-test="plan-row-position" class="w-5 shrink-0 text-right text-sm tabular-nums text-ink-subtle">{{ position }}</span>
     <div class="flex min-w-0 flex-1 flex-col">
       <span data-test="plan-row-name" class="font-medium">{{ name }}</span>
-      <span data-test="plan-row-reason" class="text-xs text-ink-muted">{{ t(pickReasonKeys[reason]) }}</span>
+      <span data-test="plan-row-reason" class="text-xs text-ink-muted">
+        {{ t(pickReasonKeys[reason]) }}<template v-if="progressionKey"> · <ProgressionName :progression-key="progressionKey" /></template>
+      </span>
     </div>
     <span data-test="plan-row-kind" class="shrink-0 text-xs text-ink-muted">{{ t(KIND_KEYS[kind]) }}</span>
   </li>

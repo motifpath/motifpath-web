@@ -330,7 +330,9 @@
       "harmony": "Harmony",
       "ear": "Ear",
       "chord": "Chord",
-      "guideTones": "Guide tones"
+      "guideTones": "Guide tones",
+      "song": "Song",
+      "everyKey": "Every key"
     },
     "today": "Today",
     "youChoseThis": "You chose this",
@@ -344,7 +346,8 @@
       "move": "Move it",
       "target": "Target it",
       "use": "Use it"
-    }
+    },
+    "tour": "{name} in every key"
   },
   "sessionSummary": {
     "minutes": "{minutes} min · {instrument}",
@@ -358,7 +361,9 @@
     "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
     "done": "Done",
     "review": "Quick review of other subjects: {right} of {answered} right",
-    "everyItem": "Every item ({count})"
+    "everyItem": "Every item ({count})",
+    "toured": "clean in {count} of {total} keys at {tempo} BPM",
+    "tapped": "{hits} of {total} chords in time"
   },
   "playAlongTake": {
     "goal": "Goal {goal} · best clean {best}",
@@ -390,7 +395,8 @@
     "info": "About this practice",
     "takeOf": "Take {current} of {total}",
     "restart": "Restart",
-    "restartUnrated": "Restart without rating"
+    "restartUnrated": "Restart without rating",
+    "songPrompt": "How did {song} go?"
   },
   "playAlongInfo": {
     "title": "About this practice",
@@ -429,7 +435,10 @@
     "nameTheNote": "Name this note",
     "findTheNote": "Find {note} on string {string}, frets {from}–{to}",
     "board": "Fretboard",
-    "notes": "Notes"
+    "notes": "Notes",
+    "findEveryInstance": "Tap every {note}, frets {from}–{to}",
+    "found": "{found} of {places} found",
+    "foundWithExtra": "{found} of {places} found · {extra} extra"
   },
   "sessionDiagramShape": {
     "nameTheShape": "Which shape is this?",
@@ -740,5 +749,73 @@
     "noMatch": "Nothing matches “{text}”.",
     "noSubjects": "Nothing can be practised this way yet. Try another instrument, or in your head.",
     "error": "We couldn't load what you can practise. Check your connection and try again."
+  },
+  "progressionKeys": {
+    "nowIn": "now in {key}",
+    "cleanIn": "Clean in {key} at {tempo}",
+    "keys": "Keys:",
+    "start": "Start take in {key}",
+    "countInHint": "A bar of count-in, then play along.",
+    "countingIn": "Count-in…",
+    "info": "Play the progression along with the backing. A clean take moves on to the next key around the cycle of fourths; a rough one stays in this key. When every key is clean, the tour starts again a little faster.",
+    "chart": "The progression in {key}",
+    "showBox": "Show the {chord} box",
+    "showTones": "Show the root, 3rd and 5th of {chord}",
+    "tapForBox": "Tap a chord to see its box.",
+    "tapForTones": "Tap a chord to see its root, 3rd and 5th.",
+    "tonesOf": "{chord}: root, 3rd and 5th",
+    "unavailable": "This progression can’t be played here right now."
+  },
+  "guideTone": {
+    "promptThird": "Tap the 3rd of each chord",
+    "promptSeventh": "Tap the 7th of each chord",
+    "progression": "{name} in {key}",
+    "meta": "{instrument} · frets {from}–{to}",
+    "soFar": "{hits} of {passed} in time so far",
+    "board": "Fretboard, frets {from} to {to}",
+    "countInThird": "A bar of count-in, then tap each chord’s 3rd as it sounds.",
+    "countInSeventh": "A bar of count-in, then tap each chord’s 7th as it sounds.",
+    "start": "Start the take",
+    "countingIn": "Count-in…",
+    "tapping": "Tap each chord’s tone while it sounds.",
+    "allInTime": "Every chord in time",
+    "someInTime": "{hits} of {total} chords in time",
+    "hit": "in time",
+    "missed": "missed",
+    "anotherTake": "Another take",
+    "moveOn": "Move on",
+    "next": "Next",
+    "unavailable": "This progression can’t be played here right now."
+  },
+  "sessionSong": {
+    "rootsHint": "Play the root of each chord",
+    "why": {
+      "verse": "Its verse plays {progression}, the progression you practised today.",
+      "chorus": "Its chorus plays {progression}, the progression you practised today.",
+      "bridge": "Its bridge plays {progression}, the progression you practised today.",
+      "intro": "Its intro plays {progression}, the progression you practised today.",
+      "outro": "Its outro plays {progression}, the progression you practised today.",
+      "instrumental": "Its instrumental plays {progression}, the progression you practised today.",
+      "other": "It plays {progression}, the progression you practised today."
+    },
+    "tapToHear": "Tap a chord to hear it.",
+    "tapToHearRoot": "Tap a chord to hear its root.",
+    "chordsLabel": "The song's chords",
+    "metronomeOff": "Metronome off · {bpm} BPM (the chart's tempo)",
+    "metronomeOn": "Metronome on · {bpm} BPM (the chart's tempo)",
+    "start": "Start",
+    "keyCapo": "Key {key} · capo {fret}",
+    "keyNoCapo": "Key {key} · no capo",
+    "result": {
+      "clean": "You played {title} clean.",
+      "almost": "You almost played {title} clean.",
+      "struggled": "{title} was a struggle today."
+    },
+    "today": "Today",
+    "finish": "Finish",
+    "loadFailed": "The song couldn't load.",
+    "tryAgain": "Try again",
+    "unavailable": "This song isn't available anymore.",
+    "skip": "Skip"
   }
 }

@@ -83,10 +83,13 @@ export function planSections(plan: Plan): PlanSection[] {
   return sections.filter((section) => section.positions.length > 0)
 }
 
-/** Whether an answered or played item went right: an answer that was right, or a take, a rating or a minute that went clean. */
+/**
+ * Whether an answered or played item went right: an answer that was right, a guide tone with a take
+ * that hit every bar, or a take, a rating or a minute that went clean.
+ */
 function wentRight(outcome: ItemOutcome): boolean {
-  if (outcome.kind === 'answered') return outcome.correct
-  if (outcome.kind === 'played') return outcome.takes.some((take) => take.rating === 'clean')
+  if (outcome.kind === 'answered' || outcome.kind === 'tapped') return outcome.correct
+  if (outcome.kind === 'played' || outcome.kind === 'toured') return outcome.takes.some((take) => take.rating === 'clean')
   return outcome.rating === 'clean'
 }
 

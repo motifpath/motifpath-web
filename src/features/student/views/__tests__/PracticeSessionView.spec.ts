@@ -68,13 +68,23 @@ function subjectList(subjects: Subject[] = [progressions, intervals]): SubjectLi
   return { instrument_id: null, groups: [{ area_node_id: 'area', names: { en: 'Harmony' }, subjects }] }
 }
 // The subjects offered follow the instrument chosen; a test sets which list each instrument gets.
+// subjectsAsked records each instrument the subjects were asked for; none while it isn't known yet.
 let subjectsFor: (instrumentId: string | null) => SubjectList = () => subjectList()
+const subjectsAsked: (string | null)[] = []
 const subjectsState = { list: ref<SubjectList | null>(null), isLoading: ref(false), error: ref(false), retry: vi.fn() }
 vi.mock('@/features/student/composables/usePracticeSubjects', async () => {
   const { watch } = await import('vue')
   return {
-    usePracticeSubjects: (instrumentId: () => string | null) => {
-      watch(instrumentId, (id) => (subjectsState.list.value = subjectsFor(id)), { immediate: true })
+    usePracticeSubjects: (instrumentId: () => string | null | undefined) => {
+      watch(
+        instrumentId,
+        (id) => {
+          if (id === undefined) return
+          subjectsAsked.push(id)
+          subjectsState.list.value = subjectsFor(id)
+        },
+        { immediate: true },
+      )
       return subjectsState
     },
   }
@@ -152,6 +162,51 @@ const SessionChordChangeStub = defineComponent({
   },
 })
 
+const SessionProgressionKeysStub = defineComponent({
+  name: 'SessionProgressionKeys',
+  props: {
+    item: { type: Object, required: true },
+    tempo: { type: Number, required: true },
+    noteValue: { type: String, required: true },
+    takesLeft: { type: Number, required: true },
+    takesTotal: { type: Number, required: true },
+    tour: { type: Object, required: true },
+    tuning: { type: Array, default: null },
+  },
+  emits: ['rate', 'skip', 'tempo', 'noteValue'],
+  setup() {
+    return () => h('div', { 'data-test': 'tour' })
+  },
+})
+
+const SessionSongStub = defineComponent({
+  name: 'SessionSong',
+  props: {
+    item: { type: Object, required: true },
+    songRating: { type: String, default: null },
+    layout: { type: Object, default: null },
+  },
+  emits: ['rate', 'next', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'song' })
+  },
+})
+
+const SessionGuideToneStub = defineComponent({
+  name: 'SessionGuideTone',
+  props: {
+    item: { type: Object, required: true },
+    tuning: { type: Array, required: true },
+    layoutName: { type: String, required: true },
+    takesLeft: { type: Number, required: true },
+    takesTotal: { type: Number, required: true },
+  },
+  emits: ['take', 'next', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'guide-tone' })
+  },
+})
+
 const TapCheckStub = defineComponent({
   name: 'TapCheck',
   props: { tuning: { type: Array, required: true } },
@@ -205,6 +260,8 @@ const SessionSummaryStub = defineComponent({
   },
 })
 
+import { guideToneItem } from '@/features/student/testing/guideToneItems'
+import { songItem } from '@/features/student/testing/songItems'
 import PracticeSessionView from '@/features/student/views/PracticeSessionView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 
@@ -372,6 +429,31 @@ function rootChangeItem(): Item {
   }
 }
 
+function tourItem(layout: string): Item {
+  const tones = layout === BASS ? [{ chord: 'A', root: { string: 3, fret: 0 }, third: { string: 2, fret: 4 }, fifth: { string: 4, fret: 0 } }] : []
+  const order: components['schemas']['MusicKey'][] = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G']
+  const keys = order.map((music_key) => ({ music_key, clean: false, chart: [], voicings: [], chord_tones: tones }))
+  return {
+    ...chordBase,
+    item_key: `progression_keys:${layout}:I-V-vi-IV`,
+    kind: 'progression_keys',
+    rung: 'move',
+    estimated_seconds: 234,
+    progression_keys: {
+      layout_instrument_id: layout,
+      progression: { key: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)' },
+      times_through: 4,
+      takes: 3,
+      start_music_key: 'A',
+      tour_tempo_bpm: 85,
+      start_note_value: 'quarters',
+      target_tempo_bpm: 100,
+      min_tempo_bpm: 60,
+      keys,
+    },
+  }
+}
+
 const SHAPE_BOARD = { stringCount: 6, positions: [{ string: 5, fret: 3, interval: 'R' }] }
 
 function mountView() {
@@ -386,6 +468,9 @@ function mountView() {
         SessionGeneratedChoice: SessionGeneratedChoiceStub,
         SessionChordVoicing: SessionChordVoicingStub,
         SessionChordChange: SessionChordChangeStub,
+        SessionProgressionKeys: SessionProgressionKeysStub,
+        SessionGuideTone: SessionGuideToneStub,
+        SessionSong: SessionSongStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
@@ -431,6 +516,7 @@ describe('PracticeSessionView', () => {
     window.history.replaceState({}, '')
     route.query = {}
     subjectsFor = () => subjectList()
+    subjectsAsked.length = 0
     firstRun.status.value = 'returning'
     instruments.isLoading.value = false
     instruments.error.value = false
@@ -728,6 +814,98 @@ describe('PracticeSessionView', () => {
 
       expect(events('practice.item_answered')).toEqual([])
       expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: true })])
+    })
+  })
+
+  describe('with a guide tone', () => {
+    function guideTone(layout: string): Item {
+      return { ...guideToneItem(), item_key: `guide_tone:${layout}:ii-V-I`, guide_tone: { ...guideToneItem().guide_tone!, layout_instrument_id: layout } }
+    }
+
+    it('taps the guide tone on its layout and records each take', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([guideTone(BASS), shapeItem()]))
+
+      const tone = wrapper.getComponent(SessionGuideToneStub)
+      expect(tone.props()).toMatchObject({ tuning: ['E1', 'A1', 'D2', 'G2'], layoutName: 'Electric bass', takesLeft: 3, takesTotal: 3 })
+      tone.vm.$emit('take', { tempoBpm: 60, noteValue: 'quarters', taps: [] })
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: { response_type: 'timed_taps', music_key: 'G', tone: '3', tempo_bpm: 60, note_value: 'quarters', taps: [] } }),
+      ])
+      expect(wrapper.getComponent(SessionGuideToneStub).props('takesLeft')).toBe(2)
+    })
+
+    it('moves on when the student does', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([guideTone(GUITAR), shapeItem()]))
+
+      wrapper.getComponent(SessionGuideToneStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SessionGuideToneStub).exists()).toBe(false)
+    })
+  })
+
+  describe('with a song', () => {
+    function song(layout: string): Item {
+      return { ...songItem(), item_key: `song:${layout}:chart-amazing-grace`, song: { ...songItem().song!, layout_instrument_id: layout } }
+    }
+
+    it('plays the song on its layout, with no separate heading, and records its rating alone', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([song(BASS)]))
+
+      const stub = wrapper.getComponent(SessionSongStub)
+      expect(stub.props('layout')).toMatchObject({ instrument_id: BASS })
+      expect(stub.props('songRating')).toBeNull()
+      expect(wrapper.find('[data-test="apply-it"]').exists()).toBe(false)
+      stub.vm.$emit('rate', 'almost')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ item_key: `song:${BASS}:chart-amazing-grace`, response: { response_type: 'self_rating', rating: 'almost' } }),
+      ])
+      expect(wrapper.getComponent(SessionSongStub).props('songRating')).toBe('almost')
+    })
+
+    it('ends the session when the student finishes the song', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([song(GUITAR)]))
+      wrapper.getComponent(SessionSongStub).vm.$emit('rate', 'clean')
+      await flushPromises()
+
+      wrapper.getComponent(SessionSongStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SessionSongStub).exists()).toBe(false)
+      expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false })])
+    })
+  })
+
+  describe('with a progression key tour', () => {
+    it('plays the tour at its planned key and tempo, and records each take with its key', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([tourItem(GUITAR), shapeItem()]))
+
+      const tour = wrapper.getComponent(SessionProgressionKeysStub)
+      expect(tour.props()).toMatchObject({ tempo: 85, noteValue: 'quarters', takesLeft: 3, takesTotal: 3, tour: { key: 'A', speed: 85, clean: [] }, tuning: null })
+      tour.vm.$emit('rate', 'clean')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 85, note_value: 'quarters', music_key: 'A' } }),
+      ])
+      expect(wrapper.getComponent(SessionProgressionKeysStub).props('tour')).toEqual({ key: 'D', speed: 85, clean: ['A'] })
+      expect(segments(wrapper)[0]).toBeCloseTo(100 / 3, 0)
+    })
+
+    it('marks a bass tour’s chord tones on its layout’s board', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([tourItem(BASS)], { instrument_id: BASS }))
+
+      expect(wrapper.getComponent(SessionProgressionKeysStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
     })
   })
 
@@ -1183,6 +1361,21 @@ describe('PracticeSessionView', () => {
       await flushPromises()
       return wrapper
     }
+
+    it('asks for the subjects only once the instruments have loaded, for the instrument chosen', async () => {
+      instruments.isLoading.value = true
+      instruments.instruments.value = []
+
+      mountView()
+      await flushPromises()
+      expect(subjectsAsked).toEqual([])
+
+      instruments.instruments.value = allInstruments
+      instruments.isLoading.value = false
+      await flushPromises()
+
+      expect(subjectsAsked).toEqual([GUITAR])
+    })
 
     it("offers both Today's mix, chosen, and I'll choose, even when the mix can be composed", () => {
       const wrapper = mountView()

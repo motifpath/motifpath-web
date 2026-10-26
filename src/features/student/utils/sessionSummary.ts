@@ -15,6 +15,10 @@ export type SummaryResult =
   | { kind: 'rated'; rating: TakeRating }
   /** A minute of changes: the clean changes counted at the tempo played, and the rating they give. */
   | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
+  /** A progression key tour: the keys clean at the tour tempo, in quarters, when its last take was rated. */
+  | { kind: 'toured'; cleanKeys: number; tourBpm: number }
+  /** A guide tone: the bars its best take hit, of its bars. */
+  | { kind: 'tapped'; hits: number; bars: number }
   /** One item answered once. */
   | { kind: 'answered'; correct: boolean }
   /** A drill's fretboard cells or diagram shapes, answered many to a session. */
@@ -62,6 +66,10 @@ export function summaryRows(items: Item[], outcomes: ReadonlyMap<number, ItemOut
       const take = fastestTake(outcome.takes)
       const result = { kind: 'played' as const, fastestBpm: take.bpm, fastestNoteValue: take.noteValue ?? 'quarters', rating: take.rating }
       rows.push({ key: row.key, item: row.item, result, good: true })
+    } else if (outcome.kind === 'tapped') {
+      rows.push({ key: row.key, item: row.item, result: { kind: 'tapped', hits: outcome.hits, bars: outcome.bars }, good: true })
+    } else if (outcome.kind === 'toured') {
+      rows.push({ key: row.key, item: row.item, result: { kind: 'toured', cleanKeys: outcome.cleanKeys, tourBpm: outcome.tourBpm }, good: true })
     } else if (outcome.kind === 'rated' || outcome.kind === 'changes') {
       rows.push({ key: row.key, item: row.item, result: outcome, good: true })
     } else {

@@ -137,6 +137,26 @@ describe('subjectResults', () => {
     expect(subjectResults(plan(items), outcomes)[0]).toMatchObject({ right: 2, answered: 3 })
   })
 
+  it('counts a progression key tour right when one of its takes went clean', () => {
+    const items = [item('t1', { kind: 'progression_keys' }), item('t2', { kind: 'progression_keys' })]
+    const outcomes = new Map<number, ItemOutcome>([
+      [0, { kind: 'toured', takes: [{ bpm: 60, rating: 'struggled' }, { bpm: 55, rating: 'clean' }], cleanKeys: 1, tourBpm: 55 }],
+      [1, { kind: 'toured', takes: [{ bpm: 60, rating: 'almost' }], cleanKeys: 0, tourBpm: 60 }],
+    ])
+
+    expect(subjectResults(plan(items), outcomes)[0]).toMatchObject({ right: 1, answered: 2 })
+  })
+
+  it('counts a guide tone right when one of its takes hit every bar', () => {
+    const items = [item('g1', { kind: 'guide_tone' }), item('g2', { kind: 'guide_tone' })]
+    const outcomes = new Map<number, ItemOutcome>([
+      [0, { kind: 'tapped', hits: 4, bars: 4, correct: true }],
+      [1, { kind: 'tapped', hits: 3, bars: 4, correct: false }],
+    ])
+
+    expect(subjectResults(plan(items), outcomes)[0]).toMatchObject({ right: 1, answered: 2 })
+  })
+
   it('leaves out a subject with nothing answered', () => {
     const results = subjectResults(plan([item('a'), item('b', { node_id: NOTES })]), new Map([[0, right]]))
 

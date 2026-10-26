@@ -11,6 +11,7 @@ import { computed } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 import type { PublishBlocker } from '@/features/admin/utils/publishBlockers'
 import StatusChip from '@/shared/components/StatusChip.vue'
+import { useProgressionNames } from '@/shared/composables/useProgressionNames'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { formatDate } from '@/shared/utils/formatDate'
 
@@ -25,6 +26,7 @@ const props = defineProps<{
 const emit = defineEmits<{ publish: []; withdraw: [] }>()
 
 const { t, locale } = useTypedT()
+const { nameOf } = useProgressionNames()
 
 const chip = computed(() => {
   const status = props.chart?.status ?? 'draft'
@@ -43,12 +45,13 @@ const statusText = computed(() => {
   return t('songChartStatus.draft')
 })
 
-function sectionName(section: Extract<PublishBlocker, { kind: 'chord' }>['section']): string {
+function sectionName(section: Exclude<PublishBlocker, { kind: 'rights' }>['section']): string {
   return section.label ?? t(`songChart.sectionKind.${section.kind}`)
 }
 
 function blockerText(blocker: PublishBlocker): string {
   if (blocker.kind === 'rights') return t('songChartStatus.confirmRights')
+  if (blocker.kind === 'progression') return t('songChartStatus.notPlayed', { section: sectionName(blocker.section), progression: nameOf(blocker.progressionKey) })
   const where = { symbol: blocker.symbol, section: sectionName(blocker.section), line: blocker.line }
   return blocker.problem === 'not_in_catalog' ? t('songChartStatus.notInCatalog', where) : t('songChartStatus.notAChord', where)
 }

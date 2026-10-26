@@ -3,6 +3,8 @@ import { computed, ref } from 'vue'
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
 import { changeMinuteRating } from '@/features/student/utils/changeMinute'
+import { afterTake, tourStart, tourTempoIn } from '@/features/student/utils/keyTour'
+import type { TourState } from '@/features/student/utils/keyTour'
 import { ladderFloorIn, nextTempo, speedOf } from '@/features/student/utils/tempoLadder'
 import type { PlayedTempo, RatedTake, TakeRating } from '@/features/student/utils/tempoLadder'
 import { useApi } from '@/shared/composables/useApi'
@@ -13,11 +15,15 @@ import { isExactMatch } from '@/shared/utils/exerciseOptions'
 import { gradeDiagramShape } from '@/shared/utils/diagramShape'
 import type { ShapeAnswer, ShapeReference } from '@/shared/utils/diagramShape'
 import { gradeFretboardCell } from '@/shared/utils/fretboardCell'
+import { cellDrillOf } from '@/shared/utils/fretboardCell'
 import type { CellAnswer } from '@/shared/utils/fretboardCell'
+import { gradeEveryInstance } from '@/shared/utils/multiTap'
+import type { EveryInstanceGrade } from '@/shared/utils/multiTap'
 import { gradeGeneratedChoice, rightAnswerOf } from '@/shared/utils/generatedChoice'
 import type { GeneratedQuestion, ProgressionCatalog } from '@/shared/utils/generatedChoice'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
-import { keepEffectiveSpeed } from '@/shared/utils/tempoNoteValue'
+import { gradeTimedTaps } from '@/shared/utils/timedTaps'
+import { keepEffectiveSpeed, speedFactor } from '@/shared/utils/tempoNoteValue'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Plan = components['schemas']['PracticeSessionPlan']
@@ -30,10 +36,19 @@ export type NotAnsweredReason = EventComponents['schemas']['NotAnsweredResponse'
 const FOCUS_TAKES = 4
 const WARM_UP_TAKES = 2
 
-/** Takes of an item; only a play-along is played in takes. */
+/** Takes of an item: a play-along's, or a progression key tour's or a guide tone's as its plan gives them. */
 function takesOf(item: Item) {
+  if (item.progression_keys) return item.progression_keys.takes
+  if (item.guide_tone) return item.guide_tone.takes
   if (item.kind !== 'play_along') return 0
   return item.reason === 'warm_up' ? WARM_UP_TAKES : FOCUS_TAKES
+}
+
+/** A guide tone's take as played: its tempo and note value, and every tap timed from the first bar's downbeat. */
+export interface GuideToneTakePlayed {
+  tempoBpm: number
+  noteValue: TempoNoteValue
+  taps: EventComponents['schemas']['TimedTap'][]
 }
 
 export interface ExerciseAnswer {
@@ -44,6 +59,8 @@ export interface ExerciseAnswer {
 export interface GradedCellAnswer {
   answer: CellAnswer
   correct: boolean
+  /** How each cell was graded, when every instance of the cell's note was looked for. */
+  grade?: EveryInstanceGrade
 }
 
 export interface GradedShapeAnswer {
@@ -87,6 +104,20 @@ export interface TapCheckResult {
   count: number
 }
 
+/**
+ * Grades a cell's answer as the server does; null when it can't be graded. Finding every instance
+ * must be answered in the cell's own window, and is right only with every place found and no other.
+ */
+function gradeCellAnswer(tuning: string[], cell: NonNullable<Item['fretboard_cell']>, answer: CellAnswer): GradedCellAnswer | null {
+  if (answer.response_type !== 'multi_tap') {
+    const correct = gradeFretboardCell(tuning, cell, answer)
+    return correct === null ? null : { answer, correct }
+  }
+  if (answer.fret_window.from_fret !== cell.fret_window.from_fret) return null
+  const grade = gradeEveryInstance({ tuning, planned: cell, fromFret: cell.fret_window.from_fret }, answer.cells)
+  return grade ? { answer, correct: grade.allRight, grade } : null
+}
+
 /** The timed drill an item practises, as felt questions name it; none for a play-along. */
 function drillTemplateOf(item: Item): string | null {
   if (item.fretboard_cell) return `fretboard_cell:${item.fretboard_cell.drill}`
@@ -105,6 +136,10 @@ export type ItemOutcome =
   | { kind: 'played'; takes: RatedTake[] }
   | { kind: 'rated'; rating: TakeRating }
   | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
+  /** A progression key tour: its takes, the keys clean when the last was rated, and the tour tempo in quarters. */
+  | { kind: 'toured'; takes: RatedTake[]; cleanKeys: number; tourBpm: number }
+  /** A guide tone: the bars its best take hit, of its bars, and whether any take hit them all. */
+  | { kind: 'tapped'; hits: number; bars: number; correct: boolean }
 
 /** A play-along just finished, handing over to the next item. */
 export interface Handoff {
@@ -149,7 +184,8 @@ export interface PracticeSessionRunOptions {
  * of its diagram, once that's loaded. A harmony question is answered once among the options its
  * plan gives, graded and sent with the way it was asked and the options as shown.
  *
- * A single chord, or a chord's root and fifth on bass, is rated once and moves on. A minute of
+ * A single chord, or a chord's root and fifth on bass, is rated once and moves on. A song is rated
+ * once, on its own with no tempo, and stays on until the student moves on, so its rating can show. A minute of
  * changes between two chords (or two roots) is saved once with the tempo it was played at and the
  * clean changes counted, never more than the minute's beats; its rating follows from the two.
  *
@@ -169,6 +205,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
   const index = ref(0)
   const takes = ref<RatedTake[]>([])
+  /** The guide tone on's takes, graded; a take the tuning can't grade counts with no bar hit. */
+  const guideToneTakes = ref<{ hits: number; correct: boolean }[]>([])
   /** A tempo the student chose for the next take, over the ladder's; forgotten once it's rated. */
   const chosenTempo = ref<number | null>(null)
   /** The tempo the student last chose for the item on, below which the ladder never goes. */
@@ -209,6 +247,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const shapeAnswer = ref<GradedShapeAnswer | null>(null)
   /** The answer to the harmony question on, once given. */
   const generatedAnswer = ref<GradedGeneratedAnswer | null>(null)
+  /** How the song on went, once rated. */
+  const songRating = ref<TakeRating | null>(null)
   /** When the item on was shown, which an exercise's latency counts from. */
   let shownAt = 0
   /** Whether a clip of the item on is sounding, when its first one started, and when the last one ended. */
@@ -232,15 +272,24 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
    * values existed doesn't.
    */
   const noteValue = computed<TempoNoteValue | null>(() => {
-    const playAlong = current.value?.play_along
-    if (!playAlong) return null
-    return chosenNoteValue.value ?? takes.value.at(-1)?.noteValue ?? playAlong.start_note_value ?? 'quarters'
+    const planned = current.value?.play_along ?? current.value?.progression_keys
+    if (!planned) return null
+    return chosenNoteValue.value ?? takes.value.at(-1)?.noteValue ?? planned.start_note_value ?? 'quarters'
+  })
+
+  /** Where the progression key tour on stands: its plan's start, moved on by each take rated so far. */
+  const tour = computed<TourState | null>(() => {
+    const planned = current.value?.progression_keys
+    if (!planned) return null
+    const limits = { target: planned.target_tempo_bpm, min: planned.min_tempo_bpm }
+    return takes.value.reduce((state, take) => afterTake(state, take, limits), tourStart(planned))
   })
 
   const tempo = computed(() => {
+    if (chosenTempo.value !== null && noteValue.value !== null) return chosenTempo.value
+    if (tour.value && noteValue.value !== null) return tourTempoIn(tour.value, noteValue.value)
     const playAlong = current.value?.play_along
     if (!playAlong || noteValue.value === null) return null
-    if (chosenTempo.value !== null) return chosenTempo.value
     // A warm-up stays at the tempo of its last take, outside the ladder.
     if (current.value!.reason === 'warm_up') return takes.value.at(-1)?.bpm ?? playAlong.start_tempo_bpm
     return nextTempo(
@@ -249,13 +298,26 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     )
   })
 
+  /**
+   * The slowest tempo the next take may be chosen at, in its note value: a play-along's ladder floor,
+   * or a tour's floor; null when the item on isn't played in takes.
+   */
+  function slowestTempo(): number | null {
+    const value = noteValue.value
+    if (value === null) return null
+    const playAlong = current.value?.play_along
+    if (playAlong) return ladderFloorIn(playAlong.target_tempo_bpm, value)
+    const planned = current.value?.progression_keys
+    return planned ? Math.ceil(planned.min_tempo_bpm / speedFactor(value)) : null
+  }
+
   /** Plays the next take at a tempo of the student's choosing, from the ladder's floor up to the fastest playable. */
   function setTempo(bpm: number) {
-    const playAlong = current.value?.play_along
-    if (!playAlong || noteValue.value === null) return
-    const floor = ladderFloorIn(playAlong.target_tempo_bpm, noteValue.value)
+    const floor = slowestTempo()
+    const value = noteValue.value
+    if (floor === null || value === null) return
     chosenTempo.value = Math.min(MAX_TEMPO_BPM, Math.max(floor, Math.round(bpm)))
-    chosenFloor.value = { bpm: chosenTempo.value, noteValue: noteValue.value }
+    chosenFloor.value = { bpm: chosenTempo.value, noteValue: value }
   }
 
   /** Plays the next take in another note value, at the same effective speed rounded down to the 5 BPM grid. */
@@ -268,7 +330,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   }
 
   const takesTotal = computed(() => (current.value ? takesOf(current.value) : 0))
-  const takesLeft = computed(() => takesTotal.value - takes.value.length)
+  const takesLeft = computed(() => takesTotal.value - (current.value?.guide_tone ? guideToneTakes.value.length : takes.value.length))
 
   /**
    * How much of each item is done, from 0 to 1: the items moved past in full, the current
@@ -282,6 +344,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       if (item.kind === 'fretboard_cell') return cellAnswer.value ? 1 : 0
       if (item.kind === 'diagram_shape') return shapeAnswer.value ? 1 : 0
       if (item.generated_choice) return generatedAnswer.value ? 1 : 0
+      if (item.song) return songRating.value ? 1 : 0
       const total = takesOf(item)
       return total === 0 ? 0 : takes.value.length / total
     }),
@@ -323,6 +386,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function nextItem() {
     if (!active() || tapCheckPending.value) return
     takes.value = []
+    guideToneTakes.value = []
     chosenTempo.value = null
     chosenFloor.value = null
     chosenNoteValue.value = null
@@ -330,6 +394,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     cellAnswer.value = null
     shapeAnswer.value = null
     generatedAnswer.value = null
+    songRating.value = null
     shownAt = Date.now()
     clipSounding = false
     firstClipStartedAt = null
@@ -385,17 +450,21 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     const played = noteValue.value
     if (!active() || !item || bpm === null || played === null) return
 
+    // A tour's take says which key it was played in: the item holds every key.
+    const key = tour.value?.key
     if (item.reason !== 'warm_up') {
       markAnswered(item)
       void track({
         event_type: 'practice.item_answered',
         practice_session_id: plan.practice_session_id,
         item_key: item.item_key,
-        response: { response_type: 'self_rating', rating, tempo_bpm: bpm, note_value: played },
+        response: { response_type: 'self_rating', rating, tempo_bpm: bpm, note_value: played, ...(key ? { music_key: key } : {}) },
       })
     }
     takes.value = [...takes.value, { bpm, rating, noteValue: played }]
-    recordOutcome({ kind: 'played', takes: takes.value })
+    const toured = tour.value
+    if (toured) recordOutcome({ kind: 'toured', takes: takes.value, cleanKeys: toured.clean.length, tourBpm: toured.speed })
+    else recordOutcome({ kind: 'played', takes: takes.value })
     chosenTempo.value = null
     chosenNoteValue.value = null
     if (takesLeft.value > 0) return
@@ -421,6 +490,22 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     nextItem()
   }
 
+  /** Records how the song on went: the rating alone, since a chart has no timing to play it against. */
+  function rateSong(rating: TakeRating) {
+    const item = current.value
+    if (!active() || !item?.song || songRating.value) return
+
+    songRating.value = rating
+    markAnswered(item)
+    recordOutcome({ kind: 'rated', rating })
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { response_type: 'self_rating', rating },
+    })
+  }
+
   /**
    * Records a minute of chord or root changes, one change on every beat: the tempo it was played
    * at and the clean changes counted, rated by their share of the beats, and moves on.
@@ -440,6 +525,49 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       response: { response_type: 'self_rating', rating, tempo_bpm: tempoBpm, changes_per_minute: cleanChanges },
     })
     nextItem()
+  }
+
+  /**
+   * Sends a take of the guide tone on: the key and tone its plan asks, the tempo and note value it
+   * played at, and every tap, timed from the first bar's downbeat. It stays on the item, so another
+   * take can follow, until the student moves on; no more takes than the plan gives are sent.
+   */
+  function tapGuideTone(played: GuideToneTakePlayed) {
+    const item = current.value
+    const planned = item?.guide_tone
+    if (!active() || !item || !planned || takesLeft.value <= 0) return
+
+    const tuning = options.tuningOf?.(planned.layout_instrument_id)
+    const graded = tuning
+      ? gradeTimedTaps(
+          {
+            tuning,
+            bars: planned.bars.map((bar) => bar.numeral),
+            key: planned.music_key,
+            tone: planned.tone,
+            tempoBpm: played.tempoBpm,
+            noteValue: played.noteValue,
+          },
+          played.taps,
+        )
+      : null
+    guideToneTakes.value = [...guideToneTakes.value, { hits: graded?.bars.filter((bar) => bar.hit).length ?? 0, correct: graded?.correct ?? false }]
+    markAnswered(item)
+    const best = guideToneTakes.value.reduce((top, next) => (next.hits > top.hits ? next : top))
+    recordOutcome({ kind: 'tapped', hits: best.hits, bars: planned.bars.length, correct: guideToneTakes.value.some((t) => t.correct) })
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: {
+        response_type: 'timed_taps',
+        music_key: planned.music_key,
+        tone: planned.tone,
+        tempo_bpm: played.tempoBpm,
+        note_value: played.noteValue,
+        taps: played.taps,
+      },
+    })
   }
 
   /** Moves on from a play-along's handoff to the next item. */
@@ -493,12 +621,14 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function answerCell(answer: CellAnswer) {
     const item = current.value
     const cell = item?.fretboard_cell
-    if (!active() || !item || !cell || cellAnswer.value || answer.response_type !== cell.drill) return
+    if (!active() || !item || !cell || cellAnswer.value || cellDrillOf(answer) !== cell.drill) return
     const tuning = options.tuningOf?.(cell.layout_instrument_id)
-    const correct = tuning ? gradeFretboardCell(tuning, cell, answer) : null
-    if (correct === null) return
+    if (!tuning) return
+    const graded = gradeCellAnswer(tuning, cell, answer)
+    if (!graded) return
 
-    cellAnswer.value = { answer, correct }
+    cellAnswer.value = graded
+    const correct = graded.correct
     markAnswered(item)
     recordOutcome({ kind: 'answered', correct })
     void track({
@@ -574,7 +704,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function skip(reason: NotAnsweredReason) {
     const item = current.value
     if (!active() || !item) return
-    if (exerciseAnswer.value || cellAnswer.value || shapeAnswer.value || generatedAnswer.value || takes.value.length > 0) return
+    if (exerciseAnswer.value || cellAnswer.value || shapeAnswer.value || generatedAnswer.value || songRating.value || takes.value.length > 0) return
 
     void track({
       event_type: 'practice.item_answered',
@@ -599,6 +729,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     index,
     current,
     tempo,
+    tour,
     noteValue,
     takesTotal,
     takesLeft,
@@ -610,6 +741,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     cellAnswer,
     shapeAnswer,
     generatedAnswer,
+    songRating,
     started,
     handoff,
     tapCheckPending,
@@ -622,7 +754,9 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     setNoteValue,
     rate,
     rateChord,
+    rateSong,
     saveChangeMinute,
+    tapGuideTone,
     answer,
     clipPlaying,
     skip,

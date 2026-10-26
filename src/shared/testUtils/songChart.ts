@@ -26,7 +26,7 @@ export function makeLyricLine(...runs: Array<[string, Anchor | null]>): LyricLin
 }
 
 export function makeSection(lines: Section['content'], overrides: Partial<Section['attrs']> = {}): Section {
-  return { type: 'section', attrs: { kind: 'verse', label: null, ...overrides }, content: lines }
+  return { type: 'section', attrs: { kind: 'verse', label: null, progression_keys: [], ...overrides }, content: lines }
 }
 
 export function makeVoicing(id: string, chordId: string, overrides: Partial<ChordVoicing> = {}): ChordVoicing {
@@ -81,9 +81,10 @@ export function makeVoicingDiagram(voicing: ChordVoicing): Diagram {
   })
 }
 
-export const gOpen = makeVoicing('g-open', 'chord-g')
+// Open shapes as the catalog has them: the window starts at the lowest fretted note, above the nut.
+export const gOpen = makeVoicing('g-open', 'chord-g', { fret_window: { lowest_fret: 2, highest_fret: 3 } })
 export const gEShape = makeVoicing('g-e-shape-3', 'chord-g', { recommended_rank: 2, shape_family: 'e_shape', fret_window: { lowest_fret: 3, highest_fret: 5 } })
-export const cOpen = makeVoicing('c-open', 'chord-c')
+export const cOpen = makeVoicing('c-open', 'chord-c', { fret_window: { lowest_fret: 1, highest_fret: 3 } })
 export const cBarre = makeVoicing('c-a-shape-3', 'chord-c', { recommended_rank: 2, shape_family: 'a_shape', fret_window: { lowest_fret: 3, highest_fret: 5 } })
 export const chordG = makeChord('chord-g', 'G', [gOpen, gEShape], { root_pitch_class: 7 })
 export const chordC = makeChord('chord-c', 'C', [cOpen, cBarre])
@@ -149,6 +150,7 @@ export function makeSongChart(
       body: learner.body,
       rights_confirmation: null,
       warnings: [],
+      unplayed_progressions: [],
       updated_by: ana,
       updated_at: '2026-10-07T12:00:00Z',
       ...draft,
@@ -181,6 +183,7 @@ export function makeRevision(revision: number): components['schemas']['SongChart
     time_signature: learner.time_signature,
     tuning_fingerprint: learner.tuning_fingerprint,
     body: learner.body,
+    progression_keys: [],
     rights_confirmation: { confirmed_by: ana, confirmed_at: '2026-10-07T12:00:00Z' },
     published_by: ana,
     published_at: '2026-10-07T12:00:00Z',

@@ -143,6 +143,25 @@
     },
     "notAChordReason": "“{symbol}” isn’t a chord",
     "notInCatalogReason": "“{symbol}” isn’t in the chord catalog",
+    "addProgression": "+ Progression",
+    "removeProgression": "Remove {progression}",
+    "progressions": "Progressions",
+    "progressionSearch": "Search progressions",
+    "noProgression": "No progression matches “{query}”",
+    "notPlayed": {
+      "majorKey": "Not played {where}: its chords never come {progression} in a row in {key}. Change the chords or remove the tag.",
+      "noKey": "Not played {where}: the song has no key, so its progressions can't be found. Set its key, or remove the tag.",
+      "minorKey": "Not played {where}: progressions are found in a major key, and the song is in {key}. Remove the tag."
+    },
+    "inThisSection": {
+      "verse": "in this verse",
+      "chorus": "in this chorus",
+      "bridge": "in this bridge",
+      "intro": "in this intro",
+      "outro": "in this outro",
+      "instrumental": "in this instrumental",
+      "other": "in this section"
+    },
     "undo": "Undo",
     "redo": "Redo",
     "chordHint": "Select a word or a syllable, then Chord (or type [ ) to put a chord on it. Chords are checked as you write them."
@@ -159,7 +178,8 @@
     "refused": "Publishing was refused:",
     "refusal": {
       "rights_not_confirmed": "Nobody has confirmed the song's rights were checked.",
-      "unresolved_chords": "Some chords block publishing:"
+      "unresolved_chords": "Some chords block publishing:",
+      "progressions_not_played": "A section doesn't play a progression it's tagged with."
     },
     "details": "Details",
     "title": "Title",
@@ -215,6 +235,7 @@
     "confirmRights": "Confirm the rights",
     "notAChord": "“{symbol}” in {section}, line {line}, isn’t a chord",
     "notInCatalog": "“{symbol}” in {section}, line {line}, isn’t in the chord catalog",
+    "notPlayed": "{section}: play {progression} in a row, or remove the tag",
     "publishAgain": "Publish again",
     "withdraw": "Withdraw…"
   },

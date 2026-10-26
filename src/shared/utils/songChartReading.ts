@@ -46,14 +46,16 @@ export function missingBass(anchor: Anchor, chord: ChordDefinition): string | nu
 }
 
 /**
- * Each voicing's name, by where it sits on the neck: `open` for an open voicing, else the fret it
- * starts on ("3fr"). Voicings that sit at the same place are numbered after the first ("3fr · 2"),
- * so each name is its own.
+ * Each voicing's name, by where it sits on the neck: `open` for an open shape, else the fret it
+ * starts on ("3fr"). An open shape's lowest fretted note is often above the nut (open C starts on
+ * fret 1), so it's told by its shape, not its frets. Voicings that sit at the same place are
+ * numbered after the first ("3fr · 2"), so each name is its own.
  */
 export function voicingNames(voicings: ChordVoicing[], open: string): string[] {
   const seen = new Map<string, number>()
   return voicings.map((v) => {
-    const base = v.fret_window.lowest_fret === 0 ? open : `${v.fret_window.lowest_fret}fr`
+    const isOpen = v.shape_family === 'open' || v.fret_window.lowest_fret === 0
+    const base = isOpen ? open : `${v.fret_window.lowest_fret}fr`
     const count = (seen.get(base) ?? 0) + 1
     seen.set(base, count)
     return count === 1 ? base : `${base} · ${count}`
@@ -61,11 +63,11 @@ export function voicingNames(voicings: ChordVoicing[], open: string): string[] {
 }
 
 /**
- * The chords a song uses that have something to show, each once, in the order they first appear:
- * no-chord markings, symbols that resolved to no catalog chord, and chords without a voicing are
+ * The chords a song uses, each once, in the order they first appear: every symbol that resolved to
+ * a catalog chord, whether or not it has a voicing. No-chord markings and unresolved symbols are
  * left out.
  */
-export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): ChordDefinition[] {
+export function chordDefinitionsOfSong(body: SongChartBody, chords: ChordDefinition[]): ChordDefinition[] {
   const byId = new Map(chords.map((c) => [c.chord_definition_id, c]))
   const found = new Map<string, ChordDefinition>()
   for (const section of body.content) {
@@ -74,9 +76,22 @@ export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): Ch
       for (const run of line.content) {
         const id = run.marks?.[0]?.attrs.chordDefinitionId
         const chord = id ? byId.get(id) : undefined
-        if (chord && chord.voicings.length > 0 && !found.has(chord.chord_definition_id)) found.set(chord.chord_definition_id, chord)
+        if (chord && !found.has(chord.chord_definition_id)) found.set(chord.chord_definition_id, chord)
       }
     }
   }
   return [...found.values()]
+}
+
+/** The chords a song uses that have something to show: as chordDefinitionsOfSong, with a voicing. */
+export function chordsOfSong(body: SongChartBody, chords: ChordDefinition[]): ChordDefinition[] {
+  return chordDefinitionsOfSong(body, chords).filter((chord) => chord.voicings.length > 0)
+}
+
+/**
+ * The progressions a song plays: every progression its sections are tagged with, each once, in the
+ * order they first appear.
+ */
+export function progressionsOfSong(body: SongChartBody): string[] {
+  return [...new Set(body.content.flatMap((section) => section.attrs.progression_keys ?? []))]
 }

@@ -31,7 +31,8 @@ type LocalizedNames = components['schemas']['LocalizedNames']
  * loaded. A fretboard cell has no name of its own; its drill says what it is. Nor has a diagram
  * shape: its diagram's name would give away the shape to name. A harmony question is called by
  * the way it is asked, which never names its answer. A chord item is called by its chords, since
- * playing them is the skill.
+ * playing them is the skill, a progression key tour or a guide tone by its progression, and a song
+ * by its title.
  */
 export function usePlanItemNames(items: MaybeRefOrGetter<Item[]>) {
   const { coreApi } = useApi()
@@ -55,6 +56,9 @@ export function usePlanItemNames(items: MaybeRefOrGetter<Item[]>) {
   /** The item's name; null for a fretboard cell, a diagram shape, or a play-along whose diagram isn't loaded. */
   function nameOf(item: Item): string | null {
     if (item.exercise) return item.exercise.title
+    if (item.progression_keys) return t('sessionPlan.tour', { name: item.progression_keys.progression.name })
+    if (item.guide_tone) return item.guide_tone.progression.name
+    if (item.song) return item.song.title
     const chords = chordNameOf(item)
     if (chords) return chords
     const names = item.play_along && diagramNames.value[item.play_along.diagram_id]

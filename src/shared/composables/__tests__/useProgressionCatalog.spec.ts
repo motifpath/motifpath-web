@@ -37,6 +37,15 @@ describe('useProgressionCatalog', () => {
     expect(GET).toHaveBeenCalledTimes(1)
   })
 
+  it('gives the whole catalog, names included, from the same one request', async () => {
+    GET.mockImplementation(() => ok([POP, DOOWOP]))
+
+    const [progressions] = await Promise.all([useProgressionCatalog().progressions(), useProgressionCatalog().load()])
+
+    expect(progressions).toEqual([POP, DOOWOP])
+    expect(GET).toHaveBeenCalledTimes(1)
+  })
+
   it('is null when it can not be loaded, and asks again next time', async () => {
     GET.mockImplementationOnce(() => fail()).mockImplementationOnce(() => ok([POP]))
 

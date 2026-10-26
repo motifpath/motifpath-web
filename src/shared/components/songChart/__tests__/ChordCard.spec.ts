@@ -31,7 +31,8 @@ function mountCard(props: Partial<Props> = {}): VueWrapper {
   return mount(ChordCard, {
     props: {
       writtenSymbol: 'C',
-      chord: chordC,
+      chordSymbol: chordC.canonical_symbol,
+      voicings: chordC.voicings,
       voicingId: cOpen.chord_voicing_id,
       view: 'box',
       minimized: false,

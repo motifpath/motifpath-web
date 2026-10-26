@@ -100,4 +100,11 @@ describe('SelfRating', () => {
     await wrapper.get('[data-test="rate-clean"]').trigger('click')
     expect(wrapper.emitted('rate')).toEqual([['clean']])
   })
+
+  it('asks how a song went by its title, with no tempo and no take to restart', () => {
+    const wrapper = mount(SelfRating, { props: { song: 'Amazing Grace' }, attachTo: document.body })
+
+    expect(wrapper.get('[data-test="rate-prompt"]').text()).toBe('How did Amazing Grace go?')
+    expect(wrapper.find('[data-test="restart-take"]').exists()).toBe(false)
+  })
 })
