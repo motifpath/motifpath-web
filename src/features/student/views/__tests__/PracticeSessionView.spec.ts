@@ -169,6 +169,19 @@ const SessionProgressionKeysStub = defineComponent({
   },
 })
 
+const SessionSongStub = defineComponent({
+  name: 'SessionSong',
+  props: {
+    item: { type: Object, required: true },
+    songRating: { type: String, default: null },
+    layout: { type: Object, default: null },
+  },
+  emits: ['rate', 'next', 'skip'],
+  setup() {
+    return () => h('div', { 'data-test': 'song' })
+  },
+})
+
 const SessionGuideToneStub = defineComponent({
   name: 'SessionGuideTone',
   props: {
@@ -238,6 +251,7 @@ const SessionSummaryStub = defineComponent({
 })
 
 import { guideToneItem } from '@/features/student/testing/guideToneItems'
+import { songItem } from '@/features/student/testing/songItems'
 import PracticeSessionView from '@/features/student/views/PracticeSessionView.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 
@@ -446,6 +460,7 @@ function mountView() {
         SessionChordChange: SessionChordChangeStub,
         SessionProgressionKeys: SessionProgressionKeysStub,
         SessionGuideTone: SessionGuideToneStub,
+        SessionSong: SessionSongStub,
         TapCheck: TapCheckStub,
         FeltQuestions: FeltQuestionsStub,
         TodaysPlan: TodaysPlanStub,
@@ -819,6 +834,42 @@ describe('PracticeSessionView', () => {
       await flushPromises()
 
       expect(wrapper.findComponent(SessionGuideToneStub).exists()).toBe(false)
+    })
+  })
+
+  describe('with a song', () => {
+    function song(layout: string): Item {
+      return { ...songItem(), item_key: `song:${layout}:chart-amazing-grace`, song: { ...songItem().song!, layout_instrument_id: layout } }
+    }
+
+    it('plays the song on its layout, with no separate heading, and records its rating alone', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([song(BASS)]))
+
+      const stub = wrapper.getComponent(SessionSongStub)
+      expect(stub.props('layout')).toMatchObject({ instrument_id: BASS })
+      expect(stub.props('songRating')).toBeNull()
+      expect(wrapper.find('[data-test="apply-it"]').exists()).toBe(false)
+      stub.vm.$emit('rate', 'almost')
+      await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ item_key: `song:${BASS}:chart-amazing-grace`, response: { response_type: 'self_rating', rating: 'almost' } }),
+      ])
+      expect(wrapper.getComponent(SessionSongStub).props('songRating')).toBe('almost')
+    })
+
+    it('ends the session when the student finishes the song', async () => {
+      const wrapper = mountView()
+      await startSession(wrapper, plan([song(GUITAR)]))
+      wrapper.getComponent(SessionSongStub).vm.$emit('rate', 'clean')
+      await flushPromises()
+
+      wrapper.getComponent(SessionSongStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SessionSongStub).exists()).toBe(false)
+      expect(events('practice.session_ended')).toEqual([expect.objectContaining({ left_early: false })])
     })
   })
 

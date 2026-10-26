@@ -13,32 +13,27 @@
  * A preview of a draft is the same reader under a banner, and sends nothing.
  */
 import { Check, Eye, Metronome, X } from 'lucide-vue-next'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import ChordCard from '@/shared/components/songChart/ChordCard.vue'
 import ChordStrip from '@/shared/components/songChart/ChordStrip.vue'
 import FloatingChordCard from '@/shared/components/songChart/FloatingChordCard.vue'
-import type { CardCorner } from '@/shared/components/songChart/FloatingChordCard.vue'
-import ProgressionChips from '@/shared/components/songChart/ProgressionChips.vue'
+import SongChartLyrics from '@/shared/components/songChart/SongChartLyrics.vue'
 import SongProgressions from '@/shared/components/songChart/SongProgressions.vue'
 import TempoControl from '@/shared/components/TempoControl.vue'
-import type { ChordView } from '@/shared/composables/useChordView'
 import { useMetronome } from '@/shared/composables/useMetronome'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useSongChartTracking } from '@/shared/composables/useSongChartTracking'
-import type { ChordViewOrigin } from '@/shared/composables/useSongChartTracking'
+import { useSongChordCard } from '@/shared/composables/useSongChordCard'
 import { useSongTempo } from '@/shared/composables/useSongTempo'
 import { useToast } from '@/shared/composables/useToast'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { MAX_TEMPO_BPM, TEMPO_STEP_BPM } from '@/shared/utils/sequence'
-import { chordsOfSong, lineSegments, missingBass, openingVoicing, progressionsOfSong } from '@/shared/utils/songChartReading'
+import { chordsOfSong, missingBass, progressionsOfSong } from '@/shared/utils/songChartReading'
 
 type LearnerSongChart = components['schemas']['LearnerSongChart']
 type Instrument = components['schemas']['Instrument']
-type Anchor = components['schemas']['SongChartChordAnchor']['attrs']
-type ChordDefinition = components['schemas']['ChordDefinition']
-type ChordVoicing = components['schemas']['ChordVoicing']
 
 const props = withDefaults(
   defineProps<{
@@ -86,81 +81,21 @@ onUnmounted(() => headerObserver?.disconnect())
 
 // ── Chords and the chord card ───────────────────────────────────────────────
 
-const chordsById = computed(() => new Map(props.chart.chords.map((c) => [c.chord_definition_id, c])))
 const songChords = computed(() => (props.instrument ? chordsOfSong(props.chart.body, props.chart.chords) : []))
 const songProgressions = computed(() => progressionsOfSong(props.chart.body))
 
-/** The chord and voicing an anchor's card opens on; null when it has none to show. */
-function cardFor(anchor: Anchor): { chord: ChordDefinition; voicing: ChordVoicing } | null {
-  if (!props.instrument) return null
-  const chord = anchor.chordDefinitionId ? chordsById.value.get(anchor.chordDefinitionId) : undefined
-  const voicing = chord ? openingVoicing(chord, anchor) : null
-  return chord && voicing ? { chord, voicing } : null
-}
-
-/** The open card: the chord, as written where it was tapped, and the voicing shown. */
-const open = ref<{ anchor: Anchor | null; title: string; chord: ChordDefinition; voicingId: string } | null>(null)
-
-/** The voicing the student last chose for each chord in this song, by chord; it wins over the
- *  author's pick for every anchor of that chord. */
-const chosenVoicings = ref(new Map<string, string>())
-/** Box or Neck, kept from one chord to the next. */
-const view = ref<ChordView>('box')
-const minimized = ref(false)
-const corner = ref<CardCorner>('bottom-right')
-
-const openVoicingId = computed({
-  get: () => open.value?.voicingId ?? '',
-  set: (id: string) => {
-    if (!open.value) return
-    open.value.voicingId = id
-    chosenVoicings.value.set(open.value.chord.chord_definition_id, id)
-  },
-})
-
-function show(origin: ChordViewOrigin, chord: ChordDefinition, authorVoicing: ChordVoicing) {
-  const chordId = chord.chord_definition_id
-  const voicingId = chosenVoicings.value.get(chordId) ?? authorVoicing.chord_voicing_id
-  const anchor = origin.source === 'lyrics' ? origin.anchor : null
-  open.value = { anchor, title: anchor?.writtenSymbol ?? chord.canonical_symbol, chord, voicingId }
-  minimized.value = false
-  if (!props.preview) chordViewed(origin, chordId, voicingId)
-}
-
-function openFromLyrics(anchor: Anchor) {
-  const card = cardFor(anchor)
-  if (card) show({ source: 'lyrics', anchor }, card.chord, card.voicing)
-}
-
-function openFromStrip(chord: ChordDefinition) {
-  const best = chord.voicings[0]
-  if (best) show({ source: 'strip' }, chord, best)
-}
-
-function stripVoicing(chord: ChordDefinition): ChordVoicing {
-  const chosen = chosenVoicings.value.get(chord.chord_definition_id)
-  return chord.voicings.find((v) => v.chord_voicing_id === chosen) ?? chord.voicings[0]!
-}
-
-function closeCard() {
-  open.value = null
-}
-
-// The chart stays readable under a floating card: scrolling it tucks the card away to a chip.
-// Scroll events don't bubble, so the window hears them while capturing: the page's own scroll, or
-// that of a layer holding the reader, such as over a lesson.
-const SCROLL_LISTENER = { capture: true, passive: true } as const
-function minimizeOnScroll() {
-  if (open.value && !expanded.value) minimized.value = true
-}
-watch(
-  () => open.value !== null,
-  (isOpen) => {
-    if (isOpen) window.addEventListener('scroll', minimizeOnScroll, SCROLL_LISTENER)
-    else window.removeEventListener('scroll', minimizeOnScroll, SCROLL_LISTENER)
+const card = useSongChordCard(
+  () => props.chart,
+  () => props.instrument,
+  {
+    floating: () => !expanded.value,
+    onViewed: (origin, chordId, voicingId) => {
+      if (!props.preview) chordViewed(origin, chordId, voicingId)
+    },
   },
 )
-onUnmounted(() => window.removeEventListener('scroll', minimizeOnScroll, SCROLL_LISTENER))
+const { open, openVoicingId, view, minimized, corner, cardFor, openFromLyrics, openFromStrip, stripVoicing } = card
+const closeCard = card.close
 
 // ── The metronome ───────────────────────────────────────────────────────────
 
@@ -270,47 +205,12 @@ function playedIt() {
         />
         <SongProgressions v-if="songProgressions.length > 0 && !paneOpen" :keys="songProgressions" />
 
-        <section v-for="(section, sectionIndex) in chart.body.content" :key="sectionIndex" class="flex flex-col gap-1">
-          <div data-test="section-header" class="flex flex-wrap items-center gap-2">
-            <h2 data-test="section-heading" class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-              {{ section.attrs.label ?? t(`songChart.sectionKind.${section.attrs.kind}`) }}
-            </h2>
-            <ProgressionChips v-if="section.attrs.progression_keys?.length" :keys="section.attrs.progression_keys" />
-          </div>
-
-          <template v-for="(line, lineIndex) in section.content" :key="lineIndex">
-            <p v-if="line.type === 'comment'" class="text-sm italic text-ink-muted">
-              {{ line.content.map((c) => c.text).join('') }}
-            </p>
-            <p v-else class="flex flex-wrap items-end gap-y-1 text-base text-ink">
-              <span
-                v-for="(segment, i) in lineSegments(line)"
-                :key="i"
-                :data-test="segment.anchor ? 'chord-segment' : undefined"
-                class="inline-flex flex-col whitespace-pre"
-              >
-                <template v-if="segment.anchor">
-                  <button
-                    v-if="cardFor(segment.anchor)"
-                    type="button"
-                    data-test="chord-symbol"
-                    :aria-pressed="open?.anchor?.anchorId === segment.anchor.anchorId"
-                    class="h-6 self-start rounded-md px-[3px] text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                    :class="open?.anchor?.anchorId === segment.anchor.anchorId ? 'bg-accent text-accent-fg' : 'text-accent-text'"
-                    @click="openFromLyrics(segment.anchor)"
-                  >
-                    {{ segment.anchor.writtenSymbol }}
-                  </button>
-                  <span v-else data-test="chord-symbol" class="h-6 self-start px-[3px] text-sm font-semibold text-ink-muted">
-                    {{ segment.anchor.writtenSymbol }}
-                  </span>
-                </template>
-                <span v-else class="h-6" aria-hidden="true" />
-                <span data-test="chord-word" class="leading-6">{{ segment.text }}</span>
-              </span>
-            </p>
-          </template>
-        </section>
+        <SongChartLyrics
+          :body="chart.body"
+          :is-tappable="(anchor) => cardFor(anchor) !== null"
+          :selected-anchor-id="open?.anchor?.anchorId ?? null"
+          @tap="openFromLyrics"
+        />
       </article>
 
       <aside

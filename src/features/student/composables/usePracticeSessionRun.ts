@@ -184,7 +184,8 @@ export interface PracticeSessionRunOptions {
  * of its diagram, once that's loaded. A harmony question is answered once among the options its
  * plan gives, graded and sent with the way it was asked and the options as shown.
  *
- * A single chord, or a chord's root and fifth on bass, is rated once and moves on. A minute of
+ * A single chord, or a chord's root and fifth on bass, is rated once and moves on. A song is rated
+ * once, on its own with no tempo, and stays on until the student moves on, so its rating can show. A minute of
  * changes between two chords (or two roots) is saved once with the tempo it was played at and the
  * clean changes counted, never more than the minute's beats; its rating follows from the two.
  *
@@ -246,6 +247,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   const shapeAnswer = ref<GradedShapeAnswer | null>(null)
   /** The answer to the harmony question on, once given. */
   const generatedAnswer = ref<GradedGeneratedAnswer | null>(null)
+  /** How the song on went, once rated. */
+  const songRating = ref<TakeRating | null>(null)
   /** When the item on was shown, which an exercise's latency counts from. */
   let shownAt = 0
   /** Whether a clip of the item on is sounding, when its first one started, and when the last one ended. */
@@ -341,6 +344,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       if (item.kind === 'fretboard_cell') return cellAnswer.value ? 1 : 0
       if (item.kind === 'diagram_shape') return shapeAnswer.value ? 1 : 0
       if (item.generated_choice) return generatedAnswer.value ? 1 : 0
+      if (item.song) return songRating.value ? 1 : 0
       const total = takesOf(item)
       return total === 0 ? 0 : takes.value.length / total
     }),
@@ -390,6 +394,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     cellAnswer.value = null
     shapeAnswer.value = null
     generatedAnswer.value = null
+    songRating.value = null
     shownAt = Date.now()
     clipSounding = false
     firstClipStartedAt = null
@@ -483,6 +488,22 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       response: { response_type: 'self_rating', rating },
     })
     nextItem()
+  }
+
+  /** Records how the song on went: the rating alone, since a chart has no timing to play it against. */
+  function rateSong(rating: TakeRating) {
+    const item = current.value
+    if (!active() || !item?.song || songRating.value) return
+
+    songRating.value = rating
+    markAnswered(item)
+    recordOutcome({ kind: 'rated', rating })
+    void track({
+      event_type: 'practice.item_answered',
+      practice_session_id: plan.practice_session_id,
+      item_key: item.item_key,
+      response: { response_type: 'self_rating', rating },
+    })
   }
 
   /**
@@ -683,7 +704,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function skip(reason: NotAnsweredReason) {
     const item = current.value
     if (!active() || !item) return
-    if (exerciseAnswer.value || cellAnswer.value || shapeAnswer.value || generatedAnswer.value || takes.value.length > 0) return
+    if (exerciseAnswer.value || cellAnswer.value || shapeAnswer.value || generatedAnswer.value || songRating.value || takes.value.length > 0) return
 
     void track({
       event_type: 'practice.item_answered',
@@ -720,6 +741,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     cellAnswer,
     shapeAnswer,
     generatedAnswer,
+    songRating,
     started,
     handoff,
     tapCheckPending,
@@ -732,6 +754,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     setNoteValue,
     rate,
     rateChord,
+    rateSong,
     saveChangeMinute,
     tapGuideTone,
     answer,

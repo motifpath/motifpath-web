@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { chordC, makeAnchor, makeChord, makeLearnerSongChart, makeLyricLine, makeSection, makeVoicing } from '@/shared/testUtils/songChart'
-import { chordsOfSong, lineSegments, missingBass, openingVoicing, progressionsOfSong, voicingNames } from '@/shared/utils/songChartReading'
+import { chordDefinitionsOfSong, chordsOfSong, lineSegments, missingBass, openingVoicing, progressionsOfSong, voicingNames } from '@/shared/utils/songChartReading'
 
 const anchor = makeAnchor
 const line = makeLyricLine
@@ -130,5 +130,14 @@ describe('progressionsOfSong', () => {
 
     expect(progressionsOfSong(tagged([], []))).toEqual([])
     expect(progressionsOfSong(untagged)).toEqual([])
+  })
+})
+
+describe('chordDefinitionsOfSong', () => {
+  it('lists each chord the song resolves to once, in the order it first appears, voicings or not', () => {
+    const body = { type: 'doc' as const, content: [makeSection([makeLyricLine(['Amazing ', makeAnchor('a1', 'N.C.')], ['grace ', makeAnchor('a2', 'H7')], ['how ', makeAnchor('a3', 'D', { chordDefinitionId: 'chord-d' })], ['sweet', makeAnchor('a4', 'C', { chordDefinitionId: 'chord-c' })], ['the ', makeAnchor('a5', 'D', { chordDefinitionId: 'chord-d' })])])] }
+    const chords = [chordC, makeChord('chord-d', 'D', [])]
+
+    expect(chordDefinitionsOfSong(body, chords).map((c) => c.canonical_symbol)).toEqual(['D', 'C'])
   })
 })

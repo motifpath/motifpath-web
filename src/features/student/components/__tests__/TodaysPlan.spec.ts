@@ -1,7 +1,13 @@
-import { mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+
+const progression = (key: string, en: string) => ({ progression_id: key, key, bars: [], confusable: [], names: { en } })
+vi.mock('@/shared/composables/useApi', () => ({
+  useApi: () => ({ coreApi: { GET: () => Promise.resolve({ data: [progression('I-IV-I-V', 'I–IV–I–V')], error: undefined, response: { status: 200 } }) }, eventApi: {} }),
+}))
 
 import TodaysPlan from '@/features/student/components/TodaysPlan.vue'
+import { songItem } from '@/features/student/testing/songItems'
 import type { components } from '@/api/generated/core-domain'
 
 type Item = components['schemas']['PracticeSessionItem']
@@ -35,6 +41,17 @@ function mountPlan() {
 }
 
 describe('TodaysPlan', () => {
+  it("says a song puts it into music, and names the progression it plays", async () => {
+    const song = songItem()
+    const wrapper = mount(TodaysPlan, { props: { items: [song], minutes: 20, instrumentName: 'Guitar', labelOf: () => 'Amazing Grace' } })
+    await flushPromises()
+
+    const row = wrapper.get('[data-test="plan-row"]')
+    expect(row.get('[data-test="plan-row-name"]').text()).toBe('Amazing Grace')
+    expect(row.get('[data-test="plan-row-reason"]').text()).toBe('Put it into music · I–IV–I–V')
+    expect(row.get('[data-test="plan-row-kind"]').text()).toBe('Song')
+  })
+
   it('groups diagram shapes by drill too, counted as shapes', () => {
     const shape = (diagramId: string, drill: 'name_the_shape' | 'find_the_degree') =>
       item(`diagram_shape:${diagramId}`, 'diagram_shape', 'new', {

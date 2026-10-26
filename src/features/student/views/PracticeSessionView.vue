@@ -5,7 +5,7 @@
  * today's plan shows what it holds before the student starts it. A tap check comes first when the
  * plan asks for one. Then each exercise, fretboard cell and diagram shape is answered, each play-along played
  * take by take, with a card naming what's next after it, each chord rated and each minute of changes counted, ending with one that applies what was
- * practised, until the plan runs out or the student ends it. After the last item, the student is asked how the
+ * practised (a play-along, or a song played whole and rated once), until the plan runs out or the student ends it. After the last item, the student is asked how the
  * drills they practised felt. A session left mid-way, by navigating away or closing or reloading
  * the page, ends as left early.
  *
@@ -32,6 +32,7 @@ import PlayAlongTake from '@/features/student/components/PlayAlongTake.vue'
 import SessionChordChange from '@/features/student/components/SessionChordChange.vue'
 import SessionProgressionKeys from '@/features/student/components/SessionProgressionKeys.vue'
 import SessionGuideTone from '@/features/student/components/SessionGuideTone.vue'
+import SessionSong from '@/features/student/components/SessionSong.vue'
 import SessionChordVoicing from '@/features/student/components/SessionChordVoicing.vue'
 import SessionDiagramShape from '@/features/student/components/SessionDiagramShape.vue'
 import SessionGeneratedChoice from '@/features/student/components/SessionGeneratedChoice.vue'
@@ -219,6 +220,12 @@ const currentGuideToneLayout = computed(() => {
   const instrument = id ? instruments.value.find((candidate) => candidate.instrument_id === id) : undefined
   if (!instrument?.tuning) return null
   return { tuning: instrument.tuning, name: localizedName(instrument.names) }
+})
+
+/** The instrument a song is played on, whose layout says whether it's played as chords or roots. */
+const currentSongLayout = computed(() => {
+  const id = current.value?.song?.layout_instrument_id
+  return (id ? instruments.value.find((candidate) => candidate.instrument_id === id) : undefined) ?? null
 })
 
 /** In a session mixing instruments, each fretboard question names its own; otherwise none does. */
@@ -412,7 +419,7 @@ onBeforeUnmount(() => {
     />
 
     <section v-else-if="current" class="flex flex-col gap-3" data-test="practice-session">
-      <h2 v-if="current.reason === 'application'" data-test="apply-it" class="text-lg font-semibold">
+      <h2 v-if="current.reason === 'application' && !current.song" data-test="apply-it" class="text-lg font-semibold">
         {{ t('practiceSessionView.applyIt') }}
       </h2>
 
@@ -507,6 +514,16 @@ onBeforeUnmount(() => {
         :takes-left="run.takesLeft.value"
         :takes-total="run.takesTotal.value"
         @take="run.tapGuideTone($event)"
+        @next="run.nextItem()"
+        @skip="run.skip($event)"
+      />
+      <SessionSong
+        v-else-if="current.song"
+        :key="run.index.value"
+        :item="current"
+        :song-rating="run.songRating.value"
+        :layout="currentSongLayout"
+        @rate="run.rateSong($event)"
         @next="run.nextItem()"
         @skip="run.skip($event)"
       />
