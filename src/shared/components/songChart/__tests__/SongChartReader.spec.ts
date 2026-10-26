@@ -205,8 +205,9 @@ describe('SongChartReader', () => {
     })
 
     it('names the voicings by where they sit on the neck', async () => {
-      const at = (id: string, lowest: number) => ({ ...cOpen, chord_voicing_id: id, diagram_id: `diagram-${id}`, fret_window: { lowest_fret: lowest, highest_fret: lowest + 3 } })
-      const chart = makeLearnerSongChart({ chords: [chordG, makeChord('chord-c', 'C', [at('c-open', 0), at('c-3', 3), at('c-8', 8)])] })
+      const at = (id: string, lowest: number, shape: 'a_shape' | 'e_shape') =>
+        ({ ...cOpen, chord_voicing_id: id, diagram_id: `diagram-${id}`, shape_family: shape, fret_window: { lowest_fret: lowest, highest_fret: lowest + 3 } })
+      const chart = makeLearnerSongChart({ chords: [chordG, makeChord('chord-c', 'C', [cOpen, at('c-3', 3, 'a_shape'), at('c-8', 8, 'e_shape')])] })
       const wrapper = mountReader(chart)
 
       await tap(wrapper, 'C')

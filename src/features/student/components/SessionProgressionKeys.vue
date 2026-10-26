@@ -6,8 +6,8 @@
  * one stays) and decides the next take's tempo. A line of five keys around the current one shows
  * where the tour stands, the clean ones ticked.
  *
- * On guitar a chord's box shows on demand, from the voicing the plan gives, which the backing also
- * strums. On bass the board marks a chord's root, third and fifth, so the line shows whether the
+ * On guitar a chord's card shows on demand, as in a song chart, on the voicing the plan gives,
+ * which the backing also strums. On bass the board marks a chord's root, third and fifth, so the line shows whether the
  * chord is major or minor. A key whose chords can't be loaded can only be skipped.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
@@ -22,15 +22,13 @@ import { tourWindow } from '@/features/student/utils/keyTour'
 import type { TourState } from '@/features/student/utils/keyTour'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
 import AppButton from '@/shared/components/AppButton.vue'
-import ChordBox from '@/shared/components/diagram/ChordBox.vue'
-import ChordViewSwitch from '@/shared/components/diagram/ChordViewSwitch.vue'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 import type { MarkedPlace } from '@/shared/components/diagram/DrillFretboard.vue'
-import FrettedDiagramView from '@/shared/components/diagram/FrettedDiagramView.vue'
 import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
+import ChordCard from '@/shared/components/songChart/ChordCard.vue'
 import TempoControl from '@/shared/components/TempoControl.vue'
 import type { ChordView } from '@/shared/composables/useChordView'
 import { useProgressionPlayback } from '@/shared/composables/useProgressionPlayback'
@@ -43,7 +41,6 @@ import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Tour = NonNullable<Item['progression_keys']>
-type DiagramRef = components['schemas']['DiagramRef']
 
 /** The frets a bass line is marked within: the open string and the first five. */
 const BASS_FRETS = 5
@@ -183,8 +180,10 @@ function choose(chord: string) {
 }
 
 const view = ref<ChordView>('box')
+const minimized = ref(false)
 const shownDiagram = computed(() => (shown.value ? (chords.diagrams.value[shown.value] ?? null) : null))
-const shownRef = computed<DiagramRef | null>(() => (shownDiagram.value ? { diagram_id: shownDiagram.value.diagram_id, layers: {} } : null))
+/** The voicing the plan gives the chord shown: the only one its card offers, as the backing strums it. */
+const shownVoicing = computed(() => shownDiagram.value?.chord_voicing ?? null)
 
 const shownTones = computed<MarkedPlace[]>(() => {
   const tones = chords.key.value?.chord_tones.find((c) => c.chord === shown.value)
@@ -264,21 +263,20 @@ const infoOpen = ref(false)
         </template>
       </p>
 
-      <section v-if="shown && !onBass && shownDiagram && chords.instrument.value" data-test="tour-chord" class="flex flex-col gap-2 rounded-lg border border-border bg-surface-raised p-3">
-        <h3 data-test="tour-chord-title" class="text-lg font-bold">{{ shown }}</h3>
-        <ChordViewSwitch v-model="view" />
-        <div v-if="view === 'box' && shownDiagram.chord_voicing" data-test="tour-chord-box">
-          <ChordBox :voicing="shownDiagram.chord_voicing" :diagram="shownDiagram" :instrument="chords.instrument.value" :label="shown" />
-        </div>
-        <FrettedDiagramView
-          v-else-if="shownRef"
-          class="w-full"
-          :diagram="shownDiagram"
-          :instrument="chords.instrument.value"
-          :diagram-ref="shownRef"
-          :region-info="false"
-        />
-      </section>
+      <ChordCard
+        v-if="shown && !onBass && shownDiagram && shownVoicing && chords.instrument.value"
+        v-model:view="view"
+        v-model:minimized="minimized"
+        :voicing-id="shownVoicing.chord_voicing_id"
+        :written-symbol="shown"
+        :chord-symbol="shown"
+        :voicings="[shownVoicing]"
+        :diagrams="[shownDiagram]"
+        :instrument="chords.instrument.value"
+        :missing-bass="null"
+        placement="docked"
+        @close="selected = null"
+      />
       <section v-if="shown && onBass && tuning" data-test="tour-tones" class="flex flex-col gap-2">
         <h3 class="text-sm font-semibold">{{ t('progressionKeys.tonesOf', { chord: shown }) }}</h3>
         <DrillFretboard :tuning="tuning" :max-fret="BASS_FRETS" :label="t('progressionKeys.tonesOf', { chord: shown })" :places="shownTones" locked />
