@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "run-p typecheck build-only",
     "build-only": "vite build",
+    "cap:sync": "vite build && cap sync",
     "preview": "vite preview",
     "typecheck": "vue-tsc --build",
     "lint": "eslint . --max-warnings 0",
