@@ -395,7 +395,8 @@
     "info": "About this practice",
     "takeOf": "Take {current} of {total}",
     "restart": "Restart",
-    "restartUnrated": "Restart without rating"
+    "restartUnrated": "Restart without rating",
+    "songPrompt": "How did {song} go?"
   },
   "playAlongInfo": {
     "title": "About this practice",
@@ -785,5 +786,36 @@
     "moveOn": "Move on",
     "next": "Next",
     "unavailable": "This progression can’t be played here right now."
+  },
+  "sessionSong": {
+    "rootsHint": "Play the root of each chord",
+    "why": {
+      "verse": "Its verse plays {progression}, the progression you practised today.",
+      "chorus": "Its chorus plays {progression}, the progression you practised today.",
+      "bridge": "Its bridge plays {progression}, the progression you practised today.",
+      "intro": "Its intro plays {progression}, the progression you practised today.",
+      "outro": "Its outro plays {progression}, the progression you practised today.",
+      "instrumental": "Its instrumental plays {progression}, the progression you practised today.",
+      "other": "It plays {progression}, the progression you practised today."
+    },
+    "tapToHear": "Tap a chord to hear it.",
+    "tapToHearRoot": "Tap a chord to hear its root.",
+    "chordsLabel": "The song's chords",
+    "metronomeOff": "Metronome off · {bpm} BPM (the chart's tempo)",
+    "metronomeOn": "Metronome on · {bpm} BPM (the chart's tempo)",
+    "start": "Start",
+    "keyCapo": "Key {key} · capo {fret}",
+    "keyNoCapo": "Key {key} · no capo",
+    "result": {
+      "clean": "You played {title} clean.",
+      "almost": "You almost played {title} clean.",
+      "struggled": "{title} was a struggle today."
+    },
+    "today": "Today",
+    "finish": "Finish",
+    "loadFailed": "The song couldn't load.",
+    "tryAgain": "Try again",
+    "unavailable": "This song isn't available anymore.",
+    "skip": "Skip"
   }
 }

@@ -8,6 +8,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { guideToneItem } from '@/features/student/testing/guideToneItems'
+import { songItem } from '@/features/student/testing/songItems'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
 import { plainTextPrompt } from '@/shared/testUtils/promptDocument'
@@ -257,5 +258,12 @@ describe('usePlanItemNames', () => {
     const { labelOf } = setUp([guide])
 
     expect(labelOf(guide)).toBe('ii–V–I')
+  })
+
+  it('names a song by its title', () => {
+    const song = songItem()
+    const { labelOf } = setUp([song])
+
+    expect(labelOf(song)).toBe('Amazing Grace')
   })
 })
