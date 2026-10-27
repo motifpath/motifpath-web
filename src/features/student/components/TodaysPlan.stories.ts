@@ -6,6 +6,7 @@ import PracticeShell from '@/shared/components/PracticeShell.vue'
 import TodaysPlan from './TodaysPlan.vue'
 
 type Item = components['schemas']['PracticeSessionItem']
+type FocusNode = components['schemas']['PracticeFocusNode']
 
 const LAYOUT = '6ea2d087-ab9c-59dc-9657-8546025414d2'
 
@@ -64,10 +65,10 @@ const mixItems = [
   item('exercise:chords-new', 'exercise', 'new', { node_id: CHORDS, rung: 'know' }),
   item('play_along:triads', 'play_along', 'new', { node_id: EAR, rung: 'hear' }),
 ]
-const mixNodes = [
-  { node_id: CHORDS, names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' } },
-  { node_id: NOTES, names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' } },
-  { node_id: EAR, names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' } },
+const mixNodes: FocusNode[] = [
+  { node_id: CHORDS, names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' }, rung: 'know', rung_level: 'new' },
+  { node_id: NOTES, names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' }, rung: 'know', rung_level: 'new' },
+  { node_id: EAR, names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' }, rung: 'know', rung_level: 'new' },
 ]
 
 /** Today's mix names its subjects and their rungs; other subjects' due items come as a quick review after the warm-up. */
@@ -79,6 +80,6 @@ export const Chosen: Story = {
   args: {
     items: mixItems.slice(2).map((planItem) => ({ ...planItem, node_id: CHORDS })),
     focusSource: 'chosen',
-    focusNodes: [{ node_id: CHORDS, names: { en: 'Common progressions' } }],
+    focusNodes: [{ node_id: CHORDS, names: { en: 'Common progressions' }, rung: 'know', rung_level: 'new' }],
   },
 }

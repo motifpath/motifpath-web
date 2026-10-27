@@ -53,6 +53,9 @@ function mountMenu({
     role,
     display_name: 'Gilson Yamada',
     locale: { code: 'en', name: 'English' },
+    email: null,
+    time_zone: null,
+    email_preferences: { progress_report: true, reminders: true },
     registered_at: '2026-01-01T00:00:00Z',
   }
   const wrapper = mount(AccountMenu, {

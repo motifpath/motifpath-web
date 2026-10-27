@@ -25,8 +25,8 @@ function plan(items: Item[], fields: Partial<Plan> = {}): Plan {
     minutes: 10,
     focus_source: 'suggested',
     focus_nodes: [
-      { node_id: CHORDS, names: names('Diatonic chords') },
-      { node_id: NOTES, names: names('Find notes') },
+      { node_id: CHORDS, names: names('Diatonic chords'), rung: 'know', rung_level: 'new' },
+      { node_id: NOTES, names: names('Find notes'), rung: 'know', rung_level: 'new' },
     ],
     items,
     felt_questions: [],
@@ -64,7 +64,7 @@ describe('planSubjects', () => {
   it("counts a chosen subject's subtree as the subject", () => {
     const chosen = plan([item('a', { node_id: CHILD, rung: 'use' })], {
       focus_source: 'chosen',
-      focus_nodes: [{ node_id: CHORDS, names: names('Common progressions') }],
+      focus_nodes: [{ node_id: CHORDS, names: names('Common progressions'), rung: 'know', rung_level: 'new' }],
     })
 
     expect(planSubjects(chosen)[0].rungs).toEqual(['use'])
@@ -97,7 +97,7 @@ describe('planSections', () => {
   it("has no review block in a chosen session: due items of the subject's subtree are the subject's", () => {
     const chosen = plan([item('a', { reason: 'due', node_id: CHILD }), item('b')], {
       focus_source: 'chosen',
-      focus_nodes: [{ node_id: CHORDS, names: names('Common progressions') }],
+      focus_nodes: [{ node_id: CHORDS, names: names('Common progressions'), rung: 'know', rung_level: 'new' }],
     })
 
     expect(planSections(chosen)).toEqual([{ kind: 'subjects', positions: [0, 1] }])

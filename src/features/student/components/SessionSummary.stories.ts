@@ -9,6 +9,7 @@ import { failing, respondWith } from '@/shared/testUtils/msw/handlers'
 import SessionSummary from './SessionSummary.vue'
 
 type Item = components['schemas']['PracticeSessionItem']
+type FocusNode = components['schemas']['PracticeFocusNode']
 
 function item(itemKey: string, kind: Item['kind']): Item {
   return { item_key: itemKey, kind, reason: 'new', rung: 'know', node_id: null, level: 'new', estimated_seconds: 30 }
@@ -54,9 +55,9 @@ export const NothingAnswered: Story = { args: { rows: [], itemCount: 0, minutes:
 /** This week's numbers didn't load: the results still show. */
 export const WeekFailed: Story = { parameters: { msw: { handlers: { practiceOverview: failing('practiceOverview') } } } }
 
-const chords = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' } }
-const notes = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' } }
-const progressions = { node_id: 'aaaaaaaa-0000-4000-8000-000000000003', names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' } }
+const chords: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' }, rung: 'know', rung_level: 'new' }
+const notes: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' }, rung: 'know', rung_level: 'new' }
+const progressions: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000003', names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' }, rung: 'know', rung_level: 'new' }
 
 /** Today's mix: one result per subject, the quick review in one line, the items behind Every item. */
 export const TodaysMixBySubject: Story = {

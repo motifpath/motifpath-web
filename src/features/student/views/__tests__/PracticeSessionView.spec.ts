@@ -1344,7 +1344,7 @@ describe('PracticeSessionView', () => {
     const mixChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-mix"] input')
     const chooseChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-choose"] input')
 
-    const chosenPlan = () => plan(undefined, { focus_source: 'chosen', focus_nodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }] })
+    const chosenPlan = () => plan(undefined, { focus_source: 'chosen', focus_nodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' }, rung: 'know', rung_level: 'new' }] })
 
     /** Chooses I'll choose, which opens the picker, and picks a subject from the student's path, which composes the session. */
     async function chooseProgressions(wrapper: ReturnType<typeof mountView>, composed: { data?: Plan; error?: unknown; response: { status: number } } = { data: chosenPlan(), response: { status: 200 } }) {
@@ -1428,7 +1428,7 @@ describe('PracticeSessionView', () => {
       expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10, focus_node_id: PROGRESSIONS } })
       expect(wrapper.getComponent(TodaysPlanStub).props()).toMatchObject({
         focusSource: 'chosen',
-        focusNodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }],
+        focusNodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' }, rung: 'know', rung_level: 'new' }],
       })
     })
 
@@ -1525,7 +1525,7 @@ describe('PracticeSessionView', () => {
       const notes = 'dddddddd-0000-4000-8000-000000000009'
       const right = { ...exerciseItem(EXERCISE), node_id: notes }
       const wrapper = mountView()
-      await startSession(wrapper, plan([right], { focus_nodes: [{ node_id: notes, names: { en: 'Find notes' } }] }))
+      await startSession(wrapper, plan([right], { focus_nodes: [{ node_id: notes, names: { en: 'Find notes' }, rung: 'know', rung_level: 'new' }] }))
       wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
       await flushPromises()
       wrapper.getComponent(SessionExerciseStub).vm.$emit('next')

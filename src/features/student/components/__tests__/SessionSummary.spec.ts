@@ -8,6 +8,7 @@ import type { SummaryRow } from '@/features/student/utils/sessionSummary'
 
 type Overview = components['schemas']['PracticeOverview']
 type Item = components['schemas']['PracticeSessionItem']
+type FocusNode = components['schemas']['PracticeFocusNode']
 
 const overviewState = { item: ref<Overview | null>(null), isLoading: ref(false), error: ref(false), retry: vi.fn() }
 vi.mock('@/features/student/composables/usePracticeHome', () => ({
@@ -147,8 +148,8 @@ describe('SessionSummary', () => {
   })
 
   describe('by subject', () => {
-    const chords = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords' } }
-    const notes = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings' } }
+    const chords: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords' }, rung: 'know', rung_level: 'new' }
+    const notes: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings' }, rung: 'know', rung_level: 'new' }
     const subjects: SubjectResult[] = [
       { node: chords, right: 9, answered: 10, rungs: ['know', 'hear'] },
       { node: notes, right: 7, answered: 8, rungs: ['know'] },
