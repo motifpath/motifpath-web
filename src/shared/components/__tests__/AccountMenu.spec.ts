@@ -225,11 +225,11 @@ describe('AccountMenu', () => {
       expect(row.text()).toContain(value)
     })
 
-    it.each(['teacher', 'admin'] as const)('is not offered to a %s, who gets no platform emails', async (role) => {
+    it.each(['teacher', 'admin'] as const)('is offered to every role, since anyone may learn: %s', async (role) => {
       const { wrapper } = mountMenu({ role })
       await open(wrapper)
 
-      expect(wrapper.find('[data-test="account-emails"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="account-emails"]').exists()).toBe(true)
     })
 
     it('opens a sub-view in place of the menu, with a switch for each kind and a back arrow', async () => {
@@ -301,12 +301,12 @@ describe('AccountMenu', () => {
       expect(menu.attributes('style')).toMatch(/(top|bottom):/)
     })
 
-    it("doesn't open for a teacher asked to show the email settings", async () => {
+    it('opens on the email settings for an admin too', async () => {
       useAccountMenuRequest().request('emails')
-      const { wrapper } = mountMenu({ role: 'teacher' })
+      const { wrapper } = mountMenu({ role: 'admin' })
       await nextTick()
 
-      expect(wrapper.find('[data-test="account-menu"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="email-switch-progress_report"]').exists()).toBe(true)
       expect(useAccountMenuRequest().pending.value).toBeNull()
     })
   })

@@ -63,8 +63,6 @@ const roleLabel = computed(() =>
 )
 const subline = computed(() => [roleLabel.value, email.value].filter(Boolean).join(' · '))
 
-// Only students get the platform's emails, so only they have switches for them.
-const hasEmails = computed(() => role.value === 'student')
 const emailPreferences = computed(() => currentUser.profile?.email_preferences)
 const emailsValue = computed(() => {
   const preferences = emailPreferences.value
@@ -119,19 +117,19 @@ function setEmailPreference(preference: EmailPreference, on: boolean) {
 }
 
 // A link that leads to a view of this menu (the email settings link) asks for it; the request
-// waits for the profile, since only a student has email settings. Taken once mounted, so a menu
-// anchored to the avatar has the avatar to anchor to.
+// waits for the profile, which holds the email settings. Taken once mounted, so a menu anchored
+// to the avatar has the avatar to anchor to.
 const menuRequest = useAccountMenuRequest()
 function takeMenuRequest() {
-  if (menuRequest.pending.value === null || role.value === undefined) return
+  if (menuRequest.pending.value === null || emailPreferences.value === undefined) return
   const requested = menuRequest.take()
-  if (requested === 'emails' && hasEmails.value) {
+  if (requested === 'emails') {
     show()
     view.value = 'emails'
   }
 }
 onMounted(takeMenuRequest)
-watch([menuRequest.pending, role], takeMenuRequest)
+watch([menuRequest.pending, emailPreferences], takeMenuRequest)
 </script>
 
 <template>
@@ -207,8 +205,9 @@ watch([menuRequest.pending, role], takeMenuRequest)
             chevron
             @click="view = 'language'"
           />
+          <!-- Every role: teachers and admins learn too, and get the same emails once they do. -->
           <MenuRow
-            v-if="hasEmails"
+            v-if="emailPreferences"
             data-test="account-emails"
             :icon="Mail"
             :label="t('accountMenu.emails')"

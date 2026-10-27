@@ -41,7 +41,7 @@ export const TeacherCompact: Story = { play: openMenu, globals: { role: 'teacher
 /** The Language sub-view replaces the sheet's content. */
 export const LanguageCompact: Story = { play: openLanguage, globals: { viewport: { value: 'compact' } } }
 
-/** Students only: the Emails sub-view, one switch per kind, each saved as it flips. */
+/** Every role: the Emails sub-view, one switch per kind, each saved as it flips. */
 export const EmailsCompact: Story = { play: openEmails, globals: { viewport: { value: 'compact' } } }
 
 /** The Emails sub-view in the menu anchored to the avatar. */
