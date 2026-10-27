@@ -12,6 +12,7 @@ vi.mock('@clerk/vue', () => ({
 
 import { router } from '@/router'
 import { updateAuthBridge, updateRegistrationBridge, updateRoleBridge } from '@/features/auth/authBridge'
+import { useAccountMenuRequest } from '@/shared/composables/useAccountMenuRequest'
 
 describe('router', () => {
   beforeEach(async () => {
@@ -52,6 +53,37 @@ describe('router', () => {
     await router.push(path)
 
     expect(router.currentRoute.value.name).toBe(name)
+  })
+
+  it('opens the email settings link on home, with the account menu asked to show the email settings', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+    updateRegistrationBridge('registered')
+
+    await router.push({ name: 'email-settings' })
+
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(useAccountMenuRequest().take()).toBe('emails')
+  })
+
+  it('signs a visitor in first when they open the email settings link signed out', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+    useAccountMenuRequest().take()
+
+    await router.push({ name: 'email-settings' })
+
+    expect(router.currentRoute.value.name).toBe('home')
+    expect(router.currentRoute.value.query.redirect).toBe('/settings/emails')
+    expect(useAccountMenuRequest().pending.value).toBeNull()
+  })
+
+  it('lets a signed-out visitor open an unsubscribe link', async () => {
+    updateAuthBridge({ isLoaded: true, isSignedIn: false, getToken: async () => null })
+
+    await router.push('/unsubscribe?token=abc')
+
+    expect(router.currentRoute.value.name).toBe('unsubscribe')
+    expect(router.currentRoute.value.query.token).toBe('abc')
   })
 
   it('lets a registered visitor reach a protected route', async () => {

@@ -17,5 +17,19 @@
     "lastNameRequired": "Informe seu sobrenome.",
     "saveFailed": "Não conseguimos salvar seu nome. Tente de novo.",
     "continue": "Continuar"
+  },
+  "unsubscribe": {
+    "working": "Desativando estes emails…",
+    "reportsOff": "Resumos semanais desativados",
+    "reportsOffBody": "Não vamos mais enviar o resumo semanal de progresso. Você pode ativá-lo de novo nas suas configurações de email.",
+    "remindersOff": "Lembretes desativados",
+    "remindersOffBody": "Não vamos mais enviar lembretes. Você pode ativá-los de novo nas suas configurações de email.",
+    "brokenTitle": "Este link não funcionou",
+    "brokenBody": "Ele pode ter sido cortado ao ser copiado.",
+    "failedTitle": "Não foi possível desativar os emails",
+    "failedBody": "Verifique sua conexão e tente de novo.",
+    "nothingChanged": "Nada foi alterado: você continua recebendo os mesmos emails de antes.",
+    "tryAgain": "Tentar de novo",
+    "emailSettings": "Configurações de email"
   }
 }
