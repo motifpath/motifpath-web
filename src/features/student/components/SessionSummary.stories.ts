@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 
 import type { components } from '@/api/generated/core-domain'
+import type { SubjectLevels } from '@/features/student/utils/levelChange'
 import type { SummaryRow } from '@/features/student/utils/sessionSummary'
 import PracticeShell from '@/shared/components/PracticeShell.vue'
 import { practiceOverview } from '@/shared/testUtils/msw/fixtures'
@@ -55,11 +56,24 @@ export const NothingAnswered: Story = { args: { rows: [], itemCount: 0, minutes:
 /** This week's numbers didn't load: the results still show. */
 export const WeekFailed: Story = { parameters: { msw: { handlers: { practiceOverview: failing('practiceOverview') } } } }
 
-const chords: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' }, rung: 'know', rung_level: 'new' }
-const notes: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' }, rung: 'know', rung_level: 'new' }
-const progressions: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000003', names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' }, rung: 'know', rung_level: 'new' }
+const chords: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000001', names: { en: 'Diatonic chords', pt_BR: 'Campo harmônico maior' }, rung: 'know', rung_level: 'learning' }
+const notes: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000002', names: { en: 'Find notes on the root strings', pt_BR: 'Notas nas cordas 6 e 5' }, rung: 'know', rung_level: 'accurate' }
+const progressions: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000003', names: { en: 'Hear progressions', pt_BR: 'Reconhecer progressões por graus' }, rung: 'hear', rung_level: 'new' }
 
-/** Today's mix: one result per subject, the quick review in one line, the items behind Every item. */
+/** Where the student stands on the subjects once the session caught up. */
+const caughtUp: SubjectLevels = {
+  state: 'read',
+  subjects: [
+    { node_id: chords.node_id, current_rung: 'hear', rungs: [{ rung: 'know', level: 'accurate' }, { rung: 'hear', level: 'new' }] },
+    { node_id: notes.node_id, current_rung: 'know', rungs: [{ rung: 'know', level: 'accurate' }] },
+    { node_id: progressions.node_id, current_rung: 'hear', rungs: [{ rung: 'know', level: 'accurate' }, { rung: 'hear', level: 'learning' }] },
+  ],
+}
+
+/**
+ * Today's mix: one result per subject with its level change on the rung practised, the quick
+ * review in one line, the items behind Every item.
+ */
 export const TodaysMixBySubject: Story = {
   args: {
     itemCount: 31,
@@ -70,9 +84,16 @@ export const TodaysMixBySubject: Story = {
       { node: progressions, right: 2, answered: 4, rungs: ['hear'] },
     ],
     review: { right: 4, answered: 5 },
+    levels: caughtUp,
   },
 }
 export const TodaysMixDarkPortuguese: Story = { ...TodaysMixBySubject, globals: { theme: 'dark', locale: 'pt-BR' } }
+
+/** While the session catches up: the scores show, and each level change keeps its place. */
+export const LevelsPending: Story = { args: { ...TodaysMixBySubject.args, levels: { state: 'pending' } } }
+
+/** The session didn't catch up in time: each subject shows the rungs practised instead. */
+export const LevelsUnknown: Story = { args: { ...TodaysMixBySubject.args, levels: { state: 'unknown' } } }
 
 /** A session the student chose: its one subject, then its items listed. */
 export const Chosen: Story = {

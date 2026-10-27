@@ -45,6 +45,7 @@ import { useFirstRun } from '@/features/student/composables/useFirstRun'
 import { usePlanItemNames } from '@/features/student/composables/usePlanItemNames'
 import { usePracticeSessionRun } from '@/features/student/composables/usePracticeSessionRun'
 import { usePracticeSubjects } from '@/features/student/composables/usePracticeSubjects'
+import { useSessionSubjectProgress } from '@/features/student/composables/useSessionSubjectProgress'
 import { reviewResult, subjectResults } from '@/features/student/utils/focusPlan'
 import { findSubject } from '@/features/student/utils/practiceSubjects'
 import { summaryRows } from '@/features/student/utils/sessionSummary'
@@ -273,6 +274,16 @@ const results = computed(() => {
   return { subjects: subjectResults(session.plan, session.outcomes.value), review: reviewResult(session.plan, session.outcomes.value) }
 })
 
+/** Once the session finishes, where the student now stands on the subjects answered; a new run stops reading. */
+const subjectProgress = useSessionSubjectProgress()
+watch(finished, (done) => {
+  const session = run.value
+  if (done && session) {
+    const nodeIds = results.value.subjects.map((result) => result.node.node_id)
+    subjectProgress.start(session.plan.practice_session_id, session.plan.instrument_id ?? null, nodeIds)
+  } else subjectProgress.stop()
+})
+
 /** With nothing to practise in the head either, the home's first run shows where to start. */
 function findWhereToStart() {
   leaveHome()
@@ -390,6 +401,7 @@ onBeforeUnmount(() => {
       :subjects="results.subjects"
       :review="results.review"
       :chosen="run.plan.focus_source === 'chosen'"
+      :levels="subjectProgress.levels.value"
       @done="leaveHome"
       @practise-again="practiseAgain"
     />

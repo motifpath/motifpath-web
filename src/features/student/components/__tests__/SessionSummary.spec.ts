@@ -4,6 +4,7 @@ import { ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { SubjectResult, SubjectScore } from '@/features/student/utils/focusPlan'
+import type { SubjectLevels } from '@/features/student/utils/levelChange'
 import type { SummaryRow } from '@/features/student/utils/sessionSummary'
 
 type Overview = components['schemas']['PracticeOverview']
@@ -174,6 +175,71 @@ describe('SessionSummary', () => {
         ['Diatonic chords', '9 of 10 right', 'Know it · Hear it'],
         ['Find notes on the root strings', '7 of 8 right', 'Know it'],
       ])
+    })
+
+    describe('the level change on the rung practised', () => {
+      type Progress = components['schemas']['PracticeSubjectProgress']
+      const hearProgressions: FocusNode = { node_id: 'aaaaaaaa-0000-4000-8000-000000000003', names: { en: 'Hear progressions' }, rung: 'hear', rung_level: 'new' }
+      const before: SubjectResult[] = [
+        { node: { ...chords, rung: 'know', rung_level: 'learning' }, right: 9, answered: 10, rungs: ['know'] },
+        { node: hearProgressions, right: 5, answered: 8, rungs: ['hear'] },
+        { node: { ...notes, rung: 'know', rung_level: 'accurate' }, right: 7, answered: 8, rungs: ['know'] },
+      ]
+      const after: Progress[] = [
+        { node_id: chords.node_id, current_rung: 'hear', rungs: [{ rung: 'know', level: 'accurate' }, { rung: 'hear', level: 'new' }] },
+        { node_id: hearProgressions.node_id, current_rung: 'hear', rungs: [{ rung: 'know', level: 'accurate' }, { rung: 'hear', level: 'learning' }] },
+        { node_id: notes.node_id, current_rung: 'know', rungs: [{ rung: 'know', level: 'accurate' }] },
+      ]
+
+      function mountWithLevels(levels: SubjectLevels, results: SubjectResult[] = before) {
+        return mount(SessionSummary, {
+          props: { rows, minutes: 16, instrumentName: 'Guitar', itemCount: 31, labelOf: (planItem: Item) => labels[planItem.item_key], subjects: results, levels },
+        })
+      }
+
+      function lines(wrapper: ReturnType<typeof mountWithLevels>) {
+        return wrapper.findAll('[data-test="subject-result"]').map((result) => [
+          result.get('[data-test="subject-result-score"]').text(),
+          result.find('[data-test="subject-result-level"]').exists() ? result.get('[data-test="subject-result-level"]').text() : null,
+        ])
+      }
+
+      it('once caught up, reads before → after, the next rung once the rung is reached, or steady', () => {
+        expect(lines(mountWithLevels({ state: 'read', subjects: after }))).toEqual([
+          ['9 of 10 right', 'Know it: Learning → Accurate · next: Hear it'],
+          ['5 of 8 right', 'Hear it: New → Learning'],
+          ['7 of 8 right', 'Know it: Accurate · steady'],
+        ])
+      })
+
+      it('names no next rung for a subject that reached its top rung', () => {
+        const top: SubjectResult = { node: { ...notes, rung: 'know', rung_level: 'learning' }, right: 7, answered: 8, rungs: ['know'] }
+
+        expect(lines(mountWithLevels({ state: 'read', subjects: [after[2]] }, [top]))).toEqual([['7 of 8 right', 'Know it: Learning → Accurate']])
+      })
+
+      it('while the session catches up, shows the score and keeps the level change’s place', () => {
+        const wrapper = mountWithLevels({ state: 'pending' })
+
+        expect(lines(wrapper)).toEqual([['9 of 10 right', null], ['5 of 8 right', null], ['7 of 8 right', null]])
+        expect(wrapper.findAll('[data-test="subject-result-pending"]')).toHaveLength(3)
+        expect(wrapper.find('[data-test="subject-result-rungs"]').exists()).toBe(false)
+      })
+
+      it('when the session didn’t catch up, shows the score and the rungs practised, with no level change', () => {
+        const wrapper = mountWithLevels({ state: 'unknown' })
+
+        expect(lines(wrapper)).toEqual([['9 of 10 right', null], ['5 of 8 right', null], ['7 of 8 right', null]])
+        expect(wrapper.findAll('[data-test="subject-result-rungs"]').map((rungs) => rungs.text())).toEqual(['Know it', 'Hear it', 'Know it'])
+        expect(wrapper.find('[data-test="subject-result-pending"]').exists()).toBe(false)
+      })
+
+      it('keeps the rungs practised for a subject whose rung wasn’t read', () => {
+        const wrapper = mountWithLevels({ state: 'read', subjects: [after[0]] })
+
+        expect(lines(wrapper)).toEqual([['9 of 10 right', 'Know it: Learning → Accurate · next: Hear it'], ['5 of 8 right', null], ['7 of 8 right', null]])
+        expect(wrapper.findAll('[data-test="subject-result-rungs"]').map((rungs) => rungs.text())).toEqual(['Hear it', 'Know it'])
+      })
     })
 
     it("sums up Today's mix's review block in one line, and keeps each item behind Every item", async () => {

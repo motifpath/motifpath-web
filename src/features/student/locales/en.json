@@ -363,7 +363,11 @@
     "review": "Quick review of other subjects: {right} of {answered} right",
     "everyItem": "Every item ({count})",
     "toured": "clean in {count} of {total} keys at {tempo} BPM",
-    "tapped": "{hits} of {total} chords in time"
+    "tapped": "{hits} of {total} chords in time",
+    "moved": "{rung}: {before} → {after}",
+    "next": "{moved} · next: {next}",
+    "steady": "{rung}: {level} · steady",
+    "levelPending": "Checking your level…"
   },
   "playAlongTake": {
     "goal": "Goal {goal} · best clean {best}",
