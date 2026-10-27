@@ -253,7 +253,7 @@ const NextUpCardStub = defineComponent({
 // The summary loads this week's numbers itself: here it only reports what it was given and emits.
 const SessionSummaryStub = defineComponent({
   name: 'SessionSummary',
-  props: { rows: { type: Array, required: true }, minutes: Number, instrumentName: String, itemCount: Number, labelOf: Function, subjects: Array, review: Object, chosen: Boolean },
+  props: { rows: { type: Array, required: true }, minutes: Number, instrumentName: String, itemCount: Number, labelOf: Function, subjects: Array, review: Object, chosen: Boolean, levels: Object },
   emits: ['done', 'practiseAgain'],
   setup(props) {
     return () => h('div', { 'data-test': 'session-done' }, `${props.minutes} min · ${props.instrumentName} · ${props.itemCount} items · ${props.rows.length} rows`)
@@ -522,8 +522,10 @@ describe('PracticeSessionView', () => {
     instruments.error.value = false
     instruments.instruments.value = allInstruments
     clearEmbeddedDiagramCache()
-    GET.mockReset().mockImplementation((_path: string, init: { params: { path: { diagram_id: string } } }) =>
-      Promise.resolve({ data: { diagram_id: init.params.path.diagram_id, names: { en: `Diagram ${init.params.path.diagram_id.slice(0, 4)}` } } }),
+    GET.mockReset().mockImplementation((path: string, init: { params: { path: { diagram_id: string } } }) =>
+      path.endsWith('/subject-progress')
+        ? Promise.resolve({ data: { caught_up: true, subjects: [] } })
+        : Promise.resolve({ data: { diagram_id: init.params.path.diagram_id, names: { en: `Diagram ${init.params.path.diagram_id.slice(0, 4)}` } } }),
     )
   })
 
@@ -1344,7 +1346,7 @@ describe('PracticeSessionView', () => {
     const mixChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-mix"] input')
     const chooseChoice = (wrapper: ReturnType<typeof mountView>) => wrapper.get<HTMLInputElement>('[data-test="what-to-practise-choose"] input')
 
-    const chosenPlan = () => plan(undefined, { focus_source: 'chosen', focus_nodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }] })
+    const chosenPlan = () => plan(undefined, { focus_source: 'chosen', focus_nodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' }, rung: 'know', rung_level: 'new' }] })
 
     /** Chooses I'll choose, which opens the picker, and picks a subject from the student's path, which composes the session. */
     async function chooseProgressions(wrapper: ReturnType<typeof mountView>, composed: { data?: Plan; error?: unknown; response: { status: number } } = { data: chosenPlan(), response: { status: 200 } }) {
@@ -1428,7 +1430,7 @@ describe('PracticeSessionView', () => {
       expect(POST).toHaveBeenCalledWith('/students/me/practice-sessions', { body: { instrument_id: GUITAR, minutes: 10, focus_node_id: PROGRESSIONS } })
       expect(wrapper.getComponent(TodaysPlanStub).props()).toMatchObject({
         focusSource: 'chosen',
-        focusNodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' } }],
+        focusNodes: [{ node_id: PROGRESSIONS, names: { en: 'Common progressions' }, rung: 'know', rung_level: 'new' }],
       })
     })
 
@@ -1525,7 +1527,7 @@ describe('PracticeSessionView', () => {
       const notes = 'dddddddd-0000-4000-8000-000000000009'
       const right = { ...exerciseItem(EXERCISE), node_id: notes }
       const wrapper = mountView()
-      await startSession(wrapper, plan([right], { focus_nodes: [{ node_id: notes, names: { en: 'Find notes' } }] }))
+      await startSession(wrapper, plan([right], { focus_nodes: [{ node_id: notes, names: { en: 'Find notes' }, rung: 'know', rung_level: 'new' }] }))
       wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
       await flushPromises()
       wrapper.getComponent(SessionExerciseStub).vm.$emit('next')
@@ -1536,6 +1538,24 @@ describe('PracticeSessionView', () => {
         review: null,
         chosen: false,
       })
+    })
+
+    it('reads where the student now stands on the subjects answered, for the summary’s level change', async () => {
+      const notes = 'dddddddd-0000-4000-8000-000000000009'
+      const progress = [{ node_id: notes, current_rung: 'hear', rungs: [{ rung: 'know', level: 'accurate' }] }]
+      const right = { ...exerciseItem(EXERCISE), node_id: notes }
+      const wrapper = mountView()
+      await startSession(wrapper, plan([right], { focus_nodes: [{ node_id: notes, names: { en: 'Find notes' }, rung: 'know', rung_level: 'learning' }] }))
+      GET.mockResolvedValueOnce({ data: { caught_up: true, subjects: progress } })
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('answer', ['right'])
+      await flushPromises()
+      wrapper.getComponent(SessionExerciseStub).vm.$emit('next')
+      await flushPromises()
+
+      expect(GET).toHaveBeenLastCalledWith('/students/me/practice-sessions/{practice_session_id}/subject-progress', {
+        params: { path: { practice_session_id: SESSION_ID }, query: { instrument_id: GUITAR, node_id: [notes] } },
+      })
+      expect(wrapper.getComponent(SessionSummaryStub).props('levels')).toEqual({ state: 'read', subjects: progress })
     })
   })
 

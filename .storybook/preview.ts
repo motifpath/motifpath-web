@@ -151,6 +151,9 @@ const preview: Preview = {
         role,
         display_name: 'Ana Souza',
         locale: { code: locale.replace('-', '_'), name: locale },
+        email: null,
+        time_zone: null,
+        email_preferences: { progress_report: true, reminders: true },
         registered_at: '2026-01-01T00:00:00Z',
       }
       return { components: { story }, template: '<div class="min-h-screen bg-surface p-4 text-ink"><story /></div>' }
