@@ -33,6 +33,7 @@ vi.mock('@clerk/vue', () => ({
 const { default: AccountMenu } = await import('@/shared/components/AccountMenu.vue')
 const { useCurrentUserStore } = await import('@/stores/currentUser')
 const { useThemeStore } = await import('@/stores/theme')
+const { useAccountMenuRequest } = await import('@/shared/composables/useAccountMenuRequest')
 
 type Role = 'student' | 'teacher' | 'admin'
 
@@ -43,6 +44,8 @@ function mountMenu({
   role = 'student' as Role,
   routeMeta = {} as Record<string, unknown>,
   props = {} as Record<string, unknown>,
+  emailPreferences = { progress_report: true, reminders: true },
+  email = 'gilson@example.com' as string | null,
 } = {}) {
   mockViewport(width)
   const pinia = createPinia()
@@ -53,9 +56,9 @@ function mountMenu({
     role,
     display_name: 'Gilson Yamada',
     locale: { code: 'en', name: 'English' },
-    email: null,
+    email,
     time_zone: null,
-    email_preferences: { progress_report: true, reminders: true },
+    email_preferences: emailPreferences,
     registered_at: '2026-01-01T00:00:00Z',
   }
   const wrapper = mount(AccountMenu, {
@@ -204,6 +207,107 @@ describe('AccountMenu', () => {
 
       expect(wrapper.get('[data-test="language-option-en"]').attributes('aria-checked')).toBe('true')
       expect(wrapper.get('[data-test="language-option-pt-BR"]').attributes('aria-checked')).toBe('false')
+    })
+  })
+
+  describe('Emails', () => {
+    it.each([
+      [{ progress_report: true, reminders: true }, 'On'],
+      [{ progress_report: false, reminders: false }, 'Off'],
+      [{ progress_report: true, reminders: false }, 'Reports only'],
+      [{ progress_report: false, reminders: true }, 'Reminders only'],
+    ])('says on its row which emails a student gets: %o reads %s', async (emailPreferences, value) => {
+      const { wrapper } = mountMenu({ emailPreferences })
+      await open(wrapper)
+
+      const row = wrapper.get('[data-test="account-emails"]')
+      expect(row.text()).toContain('Emails')
+      expect(row.text()).toContain(value)
+    })
+
+    it.each(['teacher', 'admin'] as const)('is not offered to a %s, who gets no platform emails', async (role) => {
+      const { wrapper } = mountMenu({ role })
+      await open(wrapper)
+
+      expect(wrapper.find('[data-test="account-emails"]').exists()).toBe(false)
+    })
+
+    it('opens a sub-view in place of the menu, with a switch for each kind and a back arrow', async () => {
+      const { wrapper } = mountMenu({ emailPreferences: { progress_report: true, reminders: false } })
+      await open(wrapper)
+
+      await wrapper.get('[data-test="account-emails"]').trigger('click')
+
+      expect(wrapper.find('[data-test="account-identity"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="email-switch-progress_report"]').attributes('aria-checked')).toBe('true')
+      expect(wrapper.get('[data-test="email-switch-progress_report"]').text()).toContain('Weekly progress report')
+      expect(wrapper.get('[data-test="email-switch-reminders"]').attributes('aria-checked')).toBe('false')
+      expect(wrapper.text()).toContain('Sent to gilson@example.com.')
+
+      await wrapper.get('[data-test="overlay-back"]').trigger('click')
+      expect(wrapper.find('[data-test="account-identity"]').exists()).toBe(true)
+    })
+
+    it('leaves the address out of the note when none is on record', async () => {
+      const { wrapper } = mountMenu({ email: null })
+      await open(wrapper)
+      await wrapper.get('[data-test="account-emails"]').trigger('click')
+
+      expect(wrapper.text()).not.toContain('Sent to')
+      expect(wrapper.text()).toContain('Every email has a link to stop it.')
+    })
+
+    it('saves a switch the moment it is flipped, and only that switch', async () => {
+      const { wrapper, currentUser } = mountMenu()
+      const setEmailPreference = vi.spyOn(currentUser, 'setEmailPreference').mockResolvedValue()
+      await open(wrapper)
+      await wrapper.get('[data-test="account-emails"]').trigger('click')
+
+      await wrapper.get('[data-test="email-switch-progress_report"]').trigger('click')
+
+      expect(setEmailPreference).toHaveBeenCalledTimes(1)
+      expect(setEmailPreference).toHaveBeenCalledWith('progress_report', false)
+    })
+
+    it('shows what was saved, so a switch whose save failed reads as it was', async () => {
+      const { wrapper, currentUser } = mountMenu()
+      // A failed save leaves the profile as it was.
+      vi.spyOn(currentUser, 'setEmailPreference').mockResolvedValue()
+      await open(wrapper)
+      await wrapper.get('[data-test="account-emails"]').trigger('click')
+
+      await wrapper.get('[data-test="email-switch-progress_report"]').trigger('click')
+
+      expect(wrapper.get('[data-test="email-switch-progress_report"]').attributes('aria-checked')).toBe('true')
+    })
+
+    it('opens on the email settings when asked to, as the email settings link does', async () => {
+      useAccountMenuRequest().request('emails')
+      const { wrapper } = mountMenu()
+      await nextTick()
+
+      expect(wrapper.find('[data-test="account-menu"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="email-switch-progress_report"]').exists()).toBe(true)
+      expect(useAccountMenuRequest().pending.value).toBeNull()
+    })
+
+    it('anchors to the avatar when it opens on the email settings on a desktop', async () => {
+      useAccountMenuRequest().request('emails')
+      const { wrapper } = mountMenu({ width: 1280 })
+      await nextTick()
+
+      const menu = wrapper.get('[data-test="account-menu"]')
+      expect(menu.attributes('data-presentation')).toBe('menu')
+      expect(menu.attributes('style')).toMatch(/(top|bottom):/)
+    })
+
+    it("doesn't open for a teacher asked to show the email settings", async () => {
+      useAccountMenuRequest().request('emails')
+      const { wrapper } = mountMenu({ role: 'teacher' })
+      await nextTick()
+
+      expect(wrapper.find('[data-test="account-menu"]').exists()).toBe(false)
+      expect(useAccountMenuRequest().pending.value).toBeNull()
     })
   })
 

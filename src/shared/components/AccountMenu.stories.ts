@@ -24,6 +24,12 @@ const openLanguage: Story['play'] = async (context) => {
   await userEvent.click(document.querySelector<HTMLElement>('[data-test="account-language"]')!)
 }
 
+const openEmails: Story['play'] = async (context) => {
+  await openMenu(context)
+  const { userEvent } = context
+  await userEvent.click(document.querySelector<HTMLElement>('[data-test="account-emails"]')!)
+}
+
 export const Closed: Story = {}
 
 /** A bottom sheet on a phone. */
@@ -34,6 +40,14 @@ export const TeacherCompact: Story = { play: openMenu, globals: { role: 'teacher
 
 /** The Language sub-view replaces the sheet's content. */
 export const LanguageCompact: Story = { play: openLanguage, globals: { viewport: { value: 'compact' } } }
+
+/** Students only: the Emails sub-view, one switch per kind, each saved as it flips. */
+export const EmailsCompact: Story = { play: openEmails, globals: { viewport: { value: 'compact' } } }
+
+/** The Emails sub-view in the menu anchored to the avatar. */
+export const EmailsExpanded: Story = { play: openEmails, globals: { viewport: { value: 'expanded' } } }
+
+export const EmailsLongPortuguese: Story = { play: openEmails, globals: { locale: 'pt-BR', viewport: { value: 'compact' } } }
 
 /** A menu anchored to the avatar on Medium and Expanded. */
 export const MenuExpanded: Story = { play: openMenu, globals: { role: 'admin', viewport: { value: 'expanded' } } }
