@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
     // Origin header, which the auth provider requires whenever its client token travels in the
     // Authorization header, and they are not subject to CORS.
     CapacitorHttp: { enabled: true },
+    // The launch screen stays until the first screen can render; the app hides it.
+    SplashScreen: { launchAutoHide: false },
+    // The page draws edge to edge and pads by the safe-area insets. Android also gets them as
+    // --safe-area-inset-* custom properties, which older WebViews don't expose through env().
+    SystemBars: { insetsHandling: 'css', initialViewportFitValueHint: 'cover' },
   },
 }
 
