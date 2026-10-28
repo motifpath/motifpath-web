@@ -388,7 +388,7 @@ describe('NodeView', () => {
       setLesson({ cues: [makeTimedCue('a', 5, 10)] })
       const wrapper = await mountView()
 
-      expect(page(wrapper).classes()).toContain('h-dvh')
+      expect(page(wrapper).classes()).toContain('h-dvh-under-status-bar')
       expect(details(wrapper).classes()).toContain('mt-auto')
       expect(details(wrapper).find('h1').exists()).toBe(true)
       expect(details(wrapper).find('[data-test="step-meta"]').exists()).toBe(true)
@@ -401,6 +401,23 @@ describe('NodeView', () => {
       expect(wrapper.get('[data-test="lesson-layout"]').classes()).toEqual(expect.arrayContaining(['min-h-0', 'flex-1']))
       expect(wrapper.get('[data-test="lesson"]').classes()).toEqual(expect.arrayContaining(['flex', 'min-h-0', 'flex-col']))
       expect(details(wrapper).classes()).toContain('shrink-0')
+    })
+
+    it('ends above the home indicator while no action bar does it', async () => {
+      setLesson({ cues: [makeTimedCue('a', 5, 10)] })
+      const wrapper = await mountView()
+
+      expect(page(wrapper).classes()).toContain('pb-inset-bottom')
+    })
+
+    it('leaves the home indicator to Practise this once its bar is there', async () => {
+      setLesson({ hasChallenge: true })
+      const wrapper = await mountView()
+
+      await endVideo(wrapper)
+      await flushPromises()
+
+      expect(page(wrapper).classes()).not.toContain('pb-inset-bottom')
     })
 
     it('keeps Practise this at the foot with the title once the video ends', async () => {
@@ -428,8 +445,8 @@ describe('NodeView', () => {
       setLesson({ node: makeArticleNode('node-abc', ['First.']) })
       const wrapper = await mountView()
 
-      expect(page(wrapper).classes()).not.toContain('h-dvh')
-      expect(page(wrapper).classes()).toContain('pb-5')
+      expect(page(wrapper).classes()).not.toContain('h-dvh-under-status-bar')
+      expect(page(wrapper).classes()).toContain('pb-safe-5')
       expect(details(wrapper).classes()).not.toContain('mt-auto')
     })
 
@@ -437,15 +454,15 @@ describe('NodeView', () => {
       isShortHeight.value = true
       const wrapper = await mountView()
 
-      expect(page(wrapper).classes()).not.toContain('h-dvh')
+      expect(page(wrapper).classes()).not.toContain('h-dvh-under-status-bar')
     })
 
     it('leaves room under a lesson the student cannot open yet', async () => {
       setLesson({ state: 'locked', node: null })
       const wrapper = await mountView()
 
-      expect(page(wrapper).classes()).not.toContain('h-dvh')
-      expect(page(wrapper).classes()).toContain('pb-5')
+      expect(page(wrapper).classes()).not.toContain('h-dvh-under-status-bar')
+      expect(page(wrapper).classes()).toContain('pb-safe-5')
     })
   })
 

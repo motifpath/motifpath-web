@@ -159,4 +159,12 @@ describe('SongChartPickerModal', () => {
 
     expect(document.body.querySelector('[data-test="song-chart-none"]')).not.toBeNull()
   })
+
+  it('on a phone starts its header below the status bar and ends its list above the home indicator', () => {
+    mountPicker()
+
+    expect([...document.querySelector('[data-test="modal-panel"]')!.classList]).toEqual(
+      expect.arrayContaining(['pt-inset-top', 'pb-inset-bottom']),
+    )
+  })
 })

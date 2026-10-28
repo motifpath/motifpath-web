@@ -1,6 +1,6 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive, ref } from 'vue'
+import { reactive, ref, type Ref } from 'vue'
 
 import { i18n } from '@/i18n'
 import type { CurrentUserState } from '@/stores/currentUser'
@@ -51,6 +51,30 @@ vi.mock('@/features/auth/authBridge', () => ({
   updateRoleBridge: vi.fn(),
 }))
 
+const native = ref(false)
+
+vi.mock('@/shared/platform/platform', () => ({
+  isNativeApp: () => native.value,
+}))
+
+const holdSplashUntilReady = vi.fn()
+
+vi.mock('@/shared/platform/splashScreen', () => ({
+  holdSplashUntilReady: (...args: unknown[]) => holdSplashUntilReady(...args),
+}))
+
+const followThemeWithSystemBars = vi.fn()
+
+vi.mock('@/shared/platform/systemBars', () => ({
+  followThemeWithSystemBars: (...args: unknown[]) => followThemeWithSystemBars(...args),
+}))
+
+const themeStore = reactive({ theme: ref<'light' | 'dark'>('light') })
+
+vi.mock('@/stores/theme', () => ({
+  useThemeStore: () => themeStore,
+}))
+
 import App from '@/App.vue'
 
 let activeWrapper: VueWrapper | null = null
@@ -71,6 +95,10 @@ describe('App', () => {
     updateClerkOptions.mockClear()
     loadClerkLocalization.mockClear()
     i18n.global.locale.value = 'en'
+    native.value = false
+    themeStore.theme = 'light'
+    holdSplashUntilReady.mockClear()
+    followThemeWithSystemBars.mockClear()
   })
 
   afterEach(() => {
@@ -124,6 +152,67 @@ describe('App', () => {
     currentUser.state = 'registered'
     await wrapper.vm.$nextTick()
     expect(updateRegistrationBridge).toHaveBeenLastCalledWith('registered')
+  })
+
+  describe('inside the app shell', () => {
+    beforeEach(() => {
+      native.value = true
+    })
+
+    function splashReady(): Ref<boolean> {
+      const [ready] = holdSplashUntilReady.mock.calls[0] as [Ref<boolean>]
+      return ready
+    }
+
+    it('keeps the launch screen up until sign-in is known', async () => {
+      auth.isLoaded.value = false
+      const wrapper = mountApp()
+      expect(splashReady().value).toBe(false)
+
+      auth.isLoaded.value = true
+      await wrapper.vm.$nextTick()
+
+      expect(splashReady().value).toBe(true)
+    })
+
+    it('keeps it up for a signed-in student until their account is known', async () => {
+      auth.isSignedIn.value = true
+      currentUser.state = 'registering'
+      const wrapper = mountApp()
+      expect(splashReady().value).toBe(false)
+
+      currentUser.state = 'registered'
+      await wrapper.vm.$nextTick()
+
+      expect(splashReady().value).toBe(true)
+    })
+
+    it('lets the first screen show its error when the account can’t be loaded', async () => {
+      auth.isSignedIn.value = true
+      currentUser.state = 'failed'
+
+      mountApp()
+
+      expect(splashReady().value).toBe(true)
+    })
+
+    it('styles the system bars after the appearance in use', async () => {
+      const wrapper = mountApp()
+      const [theme] = followThemeWithSystemBars.mock.calls[0] as [Ref<string>]
+      expect(theme.value).toBe('light')
+
+      themeStore.theme = 'dark'
+      await wrapper.vm.$nextTick()
+
+      expect(theme.value).toBe('dark')
+    })
+  })
+
+  it('leaves the browser’s own bars and launch alone', () => {
+    mountApp()
+
+    expect(holdSplashUntilReady).not.toHaveBeenCalled()
+    expect(followThemeWithSystemBars).not.toHaveBeenCalled()
   })
 
   describe('Clerk localization sync', () => {

@@ -13,6 +13,7 @@ import { RouterLink } from 'vue-router'
 import AccountMenu from '@/shared/components/AccountMenu.vue'
 import BrandMark from '@/shared/components/BrandMark.vue'
 import NavItem from '@/shared/components/NavItem.vue'
+import StatusBarBackdrop from '@/shared/components/StatusBarBackdrop.vue'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { ADMIN_SECTIONS, TEACHER_SECTIONS } from '@/shared/navigation'
@@ -41,33 +42,27 @@ const shownBar = computed(() => (expanded.value ? 'none' : props.bar))
 
 <template>
   <div class="flex min-h-dvh bg-surface">
-    <aside
+    <!-- The sidebar owns the left edge, top to bottom: clear of the status bar, a notch and the home
+         indicator. -->
+    <div
       v-if="expanded"
-      data-test="teach-sidebar"
-      class="sticky top-0 flex h-dvh w-[248px] shrink-0 flex-col gap-0.5 border-r border-border bg-surface-raised p-4"
+      data-test="side-navigation-edge"
+      class="sticky top-0 flex h-dvh shrink-0 bg-surface-raised pb-inset-bottom pl-inset-left pt-inset-top"
     >
-      <RouterLink
-        :to="{ name: 'teach' }"
-        class="mb-4 flex items-center gap-2.5 self-start rounded-md pl-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      <aside
+        data-test="teach-sidebar"
+        class="flex h-full w-[248px] shrink-0 flex-col gap-0.5 border-r border-border bg-surface-raised p-4"
       >
-        <BrandMark size="md" />
-        <span class="text-base font-semibold text-ink">{{ t('accountMenu.teach') }}</span>
-      </RouterLink>
-      <nav :aria-label="t('accountMenu.teach')" class="flex flex-col gap-0.5">
-        <NavItem
-          v-for="item in TEACHER_SECTIONS"
-          :key="item.name"
-          data-test="teach-section"
-          layout="row"
-          :label="t(item.labelKey)"
-          :icon="item.icon"
-          :to="{ name: item.name }"
-          :current="item.name === section"
-        />
-        <template v-if="isAdmin">
-          <p data-test="teach-admin-label" class="pb-1.5 pl-3 pt-4 text-xs font-semibold uppercase tracking-wider text-ink-muted">{{ t('teach.admin') }}</p>
+        <RouterLink
+          :to="{ name: 'teach' }"
+          class="mb-4 flex items-center gap-2.5 self-start rounded-md pl-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <BrandMark size="md" />
+          <span class="text-base font-semibold text-ink">{{ t('accountMenu.teach') }}</span>
+        </RouterLink>
+        <nav :aria-label="t('accountMenu.teach')" class="flex flex-col gap-0.5">
           <NavItem
-            v-for="item in ADMIN_SECTIONS"
+            v-for="item in TEACHER_SECTIONS"
             :key="item.name"
             data-test="teach-section"
             layout="row"
@@ -76,21 +71,39 @@ const shownBar = computed(() => (expanded.value ? 'none' : props.bar))
             :to="{ name: item.name }"
             :current="item.name === section"
           />
-        </template>
-      </nav>
-      <div class="mt-auto flex flex-col gap-0.5 border-t border-border pt-2">
-        <NavItem data-test="teach-back-to-learning" layout="row" :label="t('accountMenu.backToLearning')" :icon="House" :to="{ name: 'home' }" />
-        <AccountMenu entry="row" />
-      </div>
-    </aside>
+          <template v-if="isAdmin">
+            <p data-test="teach-admin-label" class="pb-1.5 pl-3 pt-4 text-xs font-semibold uppercase tracking-wider text-ink-muted">{{ t('teach.admin') }}</p>
+            <NavItem
+              v-for="item in ADMIN_SECTIONS"
+              :key="item.name"
+              data-test="teach-section"
+              layout="row"
+              :label="t(item.labelKey)"
+              :icon="item.icon"
+              :to="{ name: item.name }"
+              :current="item.name === section"
+            />
+          </template>
+        </nav>
+        <div class="mt-auto flex flex-col gap-0.5 border-t border-border pt-2">
+          <NavItem data-test="teach-back-to-learning" layout="row" :label="t('accountMenu.backToLearning')" :icon="House" :to="{ name: 'home' }" />
+          <AccountMenu entry="row" />
+        </div>
+      </aside>
+    </div>
 
-    <div class="flex min-w-0 flex-1 flex-col">
-      <header v-if="shownBar === 'home'" data-test="teach-home-bar" class="sticky top-0 z-20 flex h-14 items-center gap-2.5 bg-surface py-1.5 pl-4 pr-1.5">
+    <div class="flex min-w-0 flex-1 flex-col pb-inset-bottom pr-inset-right" :class="{ 'pl-inset-left': !expanded }">
+      <StatusBarBackdrop v-if="shownBar === 'none'" />
+      <header
+        v-if="shownBar === 'home'"
+        data-test="teach-home-bar"
+        class="sticky top-0 z-20 box-content flex h-14 items-center gap-2.5 bg-surface pl-4 pr-1.5 pt-inset-top"
+      >
         <BrandMark />
         <span class="flex-1 text-base font-semibold text-ink">{{ t('accountMenu.teach') }}</span>
         <AccountMenu />
       </header>
-      <header v-else-if="shownBar === 'back'" class="sticky top-0 z-20 flex h-14 items-center gap-1 bg-surface py-1 pl-1 pr-2">
+      <header v-else-if="shownBar === 'back'" class="sticky top-0 z-20 box-content flex h-14 items-center gap-1 bg-surface pl-1 pr-2 pt-inset-top">
         <RouterLink
           data-test="teach-back"
           :to="{ name: 'teach' }"

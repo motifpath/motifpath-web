@@ -72,8 +72,24 @@ const config: Config = {
       fontSize,
       spacing: {
         ...scaleValues<string>(tokens.space),
-        // The bottom inset of a phone's home indicator, never less than a comfortable gap.
-        safe: 'max(0.75rem, env(safe-area-inset-bottom))',
+        // What the device takes from each edge (status bar, notch, home indicator); 0 on a desktop.
+        // Only the element that owns an edge pads by its inset.
+        'inset-top': 'var(--inset-top)',
+        'inset-right': 'var(--inset-right)',
+        'inset-bottom': 'var(--inset-bottom)',
+        'inset-left': 'var(--inset-left)',
+        // A bottom edge's padding: the home indicator's inset, never less than a comfortable gap.
+        safe: 'max(0.75rem, var(--inset-bottom))',
+        'safe-4': 'max(1rem, var(--inset-bottom))',
+        'safe-5': 'max(1.25rem, var(--inset-bottom))',
+        'safe-7': 'max(1.75rem, var(--inset-bottom))',
+        // A top edge's padding: the status bar's inset, never less than the layer's own gap.
+        'safe-top-4': 'max(1rem, var(--inset-top))',
+        // The height of a screen below the status bar, for a page that fits the screen under it.
+        'dvh-under-status-bar': 'calc(100dvh - var(--inset-top))',
+        // Where something sticks under a 3.5 or 4 rem bar that itself starts below the status bar.
+        'under-bar-14': 'calc(3.5rem + var(--inset-top))',
+        'under-bar-16': 'calc(4rem + var(--inset-top))',
       },
       borderRadius: scaleValues<string>(tokens.radius),
       boxShadow,

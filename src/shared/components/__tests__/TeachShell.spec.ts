@@ -133,4 +133,23 @@ describe('TeachShell', () => {
       expect(wrapper.find('[data-test="account-menu-avatar"]').exists()).toBe(true)
     })
   })
+
+describe('TeachShell at the device edges', () => {
+  it.each(['home', 'back'] as const)('on a phone, starts the %s bar below the status bar', (bar) => {
+    const wrapper = mountShell({ width: 390, bar })
+
+    expect(wrapper.get('header').classes()).toEqual(expect.arrayContaining(['box-content', 'pt-inset-top']))
+  })
+
+  it('puts a backdrop behind the status bar when a page brings its own bar', () => {
+    expect(mountShell({ width: 390, bar: 'none' }).find('[data-test="status-bar-backdrop"]').exists()).toBe(true)
+  })
+
+  it('keeps the sidebar clear of the status bar, the notch and the home indicator', () => {
+    const edge = mountShell({ width: 1280 }).get('[data-test="side-navigation-edge"]')
+
+    expect(edge.classes()).toEqual(expect.arrayContaining(['pl-inset-left', 'pt-inset-top', 'pb-inset-bottom']))
+    expect(edge.find('[data-test="teach-sidebar"]').exists()).toBe(true)
+  })
+})
 })

@@ -131,7 +131,7 @@ const instrumentName = computed(
       class="flex flex-col bg-surface-raised"
       :class="isCompact ? 'fixed inset-0' : 'max-h-[90vh] w-[min(35rem,calc(100vw-2rem))] rounded-xl shadow-level3'"
     >
-      <header class="flex min-h-14 shrink-0 items-center gap-2 px-2">
+      <header data-test="filters-header" class="flex min-h-14 shrink-0 items-center gap-2 px-2" :class="{ 'box-content pt-inset-top': isCompact }">
         <button
           v-if="page === 'filters'"
           type="button"
@@ -164,7 +164,11 @@ const instrumentName = computed(
         </button>
       </header>
 
-      <div data-test="filters-body" class="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4 pt-2">
+      <div
+        data-test="filters-body"
+        class="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-2"
+        :class="page === 'author' && isCompact ? 'pb-safe' : 'pb-4'"
+      >
         <AuthoringFilterFields
           v-if="page === 'filters'"
           v-model="draft"

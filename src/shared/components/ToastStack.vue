@@ -16,7 +16,7 @@ const { t } = useTypedT()
        indicator. -->
   <div
     data-test="toast-region"
-    class="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center px-4 pb-[var(--toast-clearance,max(0.75rem,env(safe-area-inset-bottom)))]"
+    class="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center px-4 pb-[var(--toast-clearance,theme(spacing.safe))]"
   >
     <div
       v-for="toast in toasts"
