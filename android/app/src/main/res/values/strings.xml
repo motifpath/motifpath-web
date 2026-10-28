@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MotifPath</string>
+    <string name="title_activity_main">MotifPath</string>
+    <string name="package_name">com.motifpath.app</string>
+    <string name="custom_url_scheme">com.motifpath.app</string>
+</resources>

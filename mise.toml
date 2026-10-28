@@ -1,10 +1,13 @@
-# mise — the pinned Node.js version for motifpath-web.
+# mise — the pinned tool versions for motifpath-web.
 #
 #   curl https://mise.run | sh        # install mise (once per machine)
-#   mise trust && mise install        # install the version pinned below
+#   mise trust && mise install        # install the versions pinned below
 #
 # Keep in step with motifpath-core's mise.toml, which runs this repo's dev
 # server in its full-stack process-compose setup.
 
 [tools]
 node = "26"
+# The Android app's Gradle build fails on newer JDKs, such as the JDK 25 bundled
+# with Android Studio.
+java = "temurin-21"

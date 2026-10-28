@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Check, CircleUserRound, GraduationCap, Languages, LogOut, PencilRuler } from 'lucide-vue-next'
-import { computed, inject, ref, useId } from 'vue'
+import { Check, CircleUserRound, GraduationCap, Languages, LogOut, Mail, PencilRuler } from 'lucide-vue-next'
+import { computed, inject, onMounted, ref, useId, watch } from 'vue'
 import { routeLocationKey } from 'vue-router'
 
 import { useAuth } from '@/features/auth/composables/useAuth'
@@ -10,10 +10,12 @@ import MenuRow from '@/shared/components/MenuRow.vue'
 import OverlayLayer from '@/shared/components/OverlayLayer.vue'
 import SegmentedControl from '@/shared/components/SegmentedControl.vue'
 import SheetHeader from '@/shared/components/SheetHeader.vue'
+import SwitchRow from '@/shared/components/SwitchRow.vue'
+import { useAccountMenuRequest } from '@/shared/composables/useAccountMenuRequest'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { anchoredPosition, type AnchoredPosition } from '@/shared/utils/anchoredPosition'
-import { useCurrentUserStore } from '@/stores/currentUser'
+import { useCurrentUserStore, type EmailPreference } from '@/stores/currentUser'
 import { useThemeStore, type ThemePreference } from '@/stores/theme'
 
 const LANGUAGES: { code: SupportedLocale; labelKey: MessageKey }[] = [
@@ -22,6 +24,11 @@ const LANGUAGES: { code: SupportedLocale; labelKey: MessageKey }[] = [
 ]
 // The short name, for the Language row's value.
 const SHORT_LANGUAGE: Record<SupportedLocale, MessageKey> = { en: 'localeSwitcher.en', 'pt-BR': 'localeSwitcher.ptBr' }
+
+const EMAIL_SWITCHES: { preference: EmailPreference; labelKey: MessageKey; descriptionKey: MessageKey }[] = [
+  { preference: 'progress_report', labelKey: 'accountMenu.emailProgressReport', descriptionKey: 'accountMenu.emailProgressReportDescription' },
+  { preference: 'reminders', labelKey: 'accountMenu.emailReminders', descriptionKey: 'accountMenu.emailRemindersDescription' },
+]
 
 withDefaults(
   defineProps<{
@@ -38,10 +45,11 @@ const currentUser = useCurrentUserStore()
 const themeStore = useThemeStore()
 
 const open = ref(false)
-const view = ref<'main' | 'language'>('main')
+const view = ref<'main' | 'language' | 'emails'>('main')
 const trigger = ref<HTMLElement | null>(null)
 const position = ref<AnchoredPosition>({})
 const languageTitleId = useId()
+const emailsTitleId = useId()
 
 const role = computed(() => currentUser.profile?.role)
 // On a desktop the sidebar shows Teach on its own row, so the menu leaves it out.
@@ -54,6 +62,20 @@ const roleLabel = computed(() =>
   role.value === 'teacher' ? t('accountMenu.roleTeacher') : role.value === 'admin' ? t('accountMenu.roleAdmin') : '',
 )
 const subline = computed(() => [roleLabel.value, email.value].filter(Boolean).join(' · '))
+
+const emailPreferences = computed(() => currentUser.profile?.email_preferences)
+const emailsValue = computed(() => {
+  const preferences = emailPreferences.value
+  if (!preferences) return ''
+  if (preferences.progress_report && preferences.reminders) return t('accountMenu.emailsOn')
+  if (preferences.progress_report) return t('accountMenu.emailsReportsOnly')
+  if (preferences.reminders) return t('accountMenu.emailsRemindersOnly')
+  return t('accountMenu.emailsOff')
+})
+const emailsNote = computed(() => {
+  const address = currentUser.profile?.email
+  return address ? t('accountMenu.emailsNoteWithAddress', { address }) : t('accountMenu.emailsNote')
+})
 
 const PREFERENCES: ThemePreference[] = ['system', 'light', 'dark']
 function isPreference(value: string): value is ThemePreference {
@@ -89,6 +111,25 @@ function chooseLanguage(code: SupportedLocale) {
   void currentUser.setLocale(code)
   view.value = 'main'
 }
+
+function setEmailPreference(preference: EmailPreference, on: boolean) {
+  void currentUser.setEmailPreference(preference, on)
+}
+
+// A link that leads to a view of this menu (the email settings link) asks for it; the request
+// waits for the profile, which holds the email settings. Taken once mounted, so a menu anchored
+// to the avatar has the avatar to anchor to.
+const menuRequest = useAccountMenuRequest()
+function takeMenuRequest() {
+  if (menuRequest.pending.value === null || emailPreferences.value === undefined) return
+  const requested = menuRequest.take()
+  if (requested === 'emails') {
+    show()
+    view.value = 'emails'
+  }
+}
+onMounted(takeMenuRequest)
+watch([menuRequest.pending, emailPreferences], takeMenuRequest)
 </script>
 
 <template>
@@ -164,6 +205,16 @@ function chooseLanguage(code: SupportedLocale) {
             chevron
             @click="view = 'language'"
           />
+          <!-- Every role: teachers and admins learn too, and get the same emails once they do. -->
+          <MenuRow
+            v-if="emailPreferences"
+            data-test="account-emails"
+            :icon="Mail"
+            :label="t('accountMenu.emails')"
+            :value="emailsValue"
+            chevron
+            @click="view = 'emails'"
+          />
           <MenuRow
             v-if="inTeach"
             data-test="account-back-to-learning"
@@ -184,6 +235,28 @@ function chooseLanguage(code: SupportedLocale) {
           />
           <div class="my-1 h-px bg-border" />
           <MenuRow data-test="sign-out" :icon="LogOut" :label="t('buttons.signOut')" @click="signOut()" />
+        </template>
+
+        <template v-else-if="view === 'emails'">
+          <SheetHeader
+            :kind="isCompact ? 'sheet' : 'dialog'"
+            :title="t('accountMenu.emails')"
+            :title-id="emailsTitleId"
+            back
+            @back="view = 'main'"
+          />
+          <div v-if="emailPreferences" role="group" :aria-labelledby="emailsTitleId" class="flex flex-col pt-2">
+            <SwitchRow
+              v-for="emailSwitch in EMAIL_SWITCHES"
+              :key="emailSwitch.preference"
+              :data-test="`email-switch-${emailSwitch.preference}`"
+              :label="t(emailSwitch.labelKey)"
+              :description="t(emailSwitch.descriptionKey)"
+              :model-value="emailPreferences[emailSwitch.preference]"
+              @update:model-value="setEmailPreference(emailSwitch.preference, $event)"
+            />
+          </div>
+          <p class="px-[1.25rem] pb-5 pt-3 text-xs text-ink-muted">{{ emailsNote }}</p>
         </template>
 
         <template v-else>

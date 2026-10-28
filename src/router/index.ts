@@ -6,6 +6,7 @@ import { ensureStudentLocaleLoaded } from '@/features/student/locales'
 import { ensureAdminLocaleLoaded } from '@/features/admin/locales'
 import { ensureTeacherLocaleLoaded } from '@/features/teacher/locales'
 import { createAuthGuard, type Role } from '@/router/guards'
+import { useAccountMenuRequest } from '@/shared/composables/useAccountMenuRequest'
 import { installOverlayHistory } from '@/shared/composables/useOverlayHistory'
 
 declare module 'vue-router' {
@@ -77,6 +78,27 @@ const routes: RouteRecordRaw[] = [
         path: 'welcome/name',
         name: 'name-step',
         component: () => import('@/features/auth/views/NameStepView.vue'),
+      },
+      {
+        // Where an email's unsubscribe link leads: it works signed out, since the link's token is
+        // the authorization.
+        path: 'unsubscribe',
+        name: 'unsubscribe',
+        component: () => import('@/features/auth/views/UnsubscribeView.vue'),
+      },
+      {
+        // The email settings link: home, with the account menu opened on its Emails. The address
+        // stays home's, so a reload doesn't open the menu again. A guard, not a redirect, so the
+        // sign-in guard runs first and a signed-out visitor comes back here once signed in.
+        path: 'settings/emails',
+        name: 'email-settings',
+        meta: { requiresAuth: true },
+        beforeEnter: () => {
+          useAccountMenuRequest().request('emails')
+          return { name: 'home' }
+        },
+        // Never shown: the guard always moves on to home.
+        component: { render: () => null },
       },
       {
         path: 'welcome',

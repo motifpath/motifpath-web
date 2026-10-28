@@ -1,13 +1,13 @@
 import { onBeforeUnmount, onMounted, watch, type Ref } from 'vue'
 
-import { webWakeLock, type WakeLockPort } from '@/shared/platform/wakeLock'
+import { platformWakeLock, type WakeLockPort } from '@/shared/platform/wakeLock'
 
 /**
  * Keeps the screen on while `active` is true, and lets it go when it turns false or the
  * component goes away. The browser drops the lock whenever the page is hidden, so it is taken
  * again when the page comes back while still active.
  */
-export function useWakeLock(active: Ref<boolean>, port: WakeLockPort = webWakeLock()) {
+export function useWakeLock(active: Ref<boolean>, port: WakeLockPort = platformWakeLock()) {
   let held = false
 
   function acquire() {

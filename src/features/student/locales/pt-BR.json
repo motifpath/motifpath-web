@@ -363,7 +363,11 @@
     "review": "Revisão rápida de outros assuntos: {right} de {answered} certas",
     "everyItem": "Todos os itens ({count})",
     "toured": "limpo em {count} de {total} tons a {tempo} BPM",
-    "tapped": "{hits} de {total} acordes no tempo"
+    "tapped": "{hits} de {total} acordes no tempo",
+    "moved": "{rung}: {before} → {after}",
+    "next": "{moved} · próximo: {next}",
+    "steady": "{rung}: {level} · estável",
+    "levelPending": "Conferindo seu nível…"
   },
   "playAlongTake": {
     "goal": "Meta {goal} · melhor limpa {best}",

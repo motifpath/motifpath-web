@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { webWakeLock } from '@/shared/platform/wakeLock'
+import { capacitorWakeLock, webWakeLock } from '@/shared/platform/wakeLock'
 
 function fakeSentinel() {
   return { release: vi.fn().mockResolvedValue(undefined) }
@@ -35,5 +35,34 @@ describe('webWakeLock', () => {
     Object.defineProperty(navigator, 'wakeLock', { value: { request: vi.fn().mockRejectedValue(new Error('NotAllowedError')) }, configurable: true })
 
     await expect(webWakeLock().acquire()).resolves.toBeUndefined()
+  })
+})
+
+describe('capacitorWakeLock', () => {
+  function fakeKeepAwake() {
+    return { keepAwake: vi.fn().mockResolvedValue(undefined), allowSleep: vi.fn().mockResolvedValue(undefined) }
+  }
+
+  it('asks the device to keep the screen on, and lets it sleep on release', async () => {
+    const device = fakeKeepAwake()
+
+    const lock = capacitorWakeLock(device)
+    await lock.acquire()
+    await lock.release()
+
+    expect(device.keepAwake).toHaveBeenCalledOnce()
+    expect(device.allowSleep).toHaveBeenCalledOnce()
+  })
+
+  it('carries on when the device refuses either request', async () => {
+    const device = {
+      keepAwake: vi.fn().mockRejectedValue(new Error('not supported')),
+      allowSleep: vi.fn().mockRejectedValue(new Error('not supported')),
+    }
+
+    const lock = capacitorWakeLock(device)
+
+    await expect(lock.acquire()).resolves.toBeUndefined()
+    await expect(lock.release()).resolves.toBeUndefined()
   })
 })

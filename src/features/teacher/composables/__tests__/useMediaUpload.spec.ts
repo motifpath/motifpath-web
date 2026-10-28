@@ -16,6 +16,30 @@ describe('useMediaUpload', () => {
     fetchMock.mockReset()
   })
 
+  it('PUTs the file through the WebView in the app shell, where native requests would copy the whole file across the bridge', async () => {
+    POST.mockResolvedValueOnce({
+      data: {
+        upload_url: 'https://storage.example.com/put?sig=1',
+        object_url: 'https://cdn.example.com/library/abc.png',
+        expires_at: '2026-01-01T00:00:00Z',
+      },
+      error: undefined,
+      response: { status: 201 },
+    })
+    const webViewFetch = vi.fn().mockResolvedValue({ ok: true })
+    Reflect.set(window, 'CapacitorWebFetch', webViewFetch)
+
+    try {
+      const file = new File(['data'], 'diagram.png', { type: 'image/png' })
+      await expect(useMediaUpload().upload(file, 'image')).resolves.toBe('https://cdn.example.com/library/abc.png')
+
+      expect(webViewFetch).toHaveBeenCalledWith('https://storage.example.com/put?sig=1', expect.objectContaining({ method: 'PUT', body: file }))
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      Reflect.deleteProperty(window, 'CapacitorWebFetch')
+    }
+  })
+
   it('requests an upload URL, PUTs the file, and returns the object_url', async () => {
     POST.mockResolvedValueOnce({
       data: {

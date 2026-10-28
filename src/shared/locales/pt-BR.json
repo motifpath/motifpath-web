@@ -81,7 +81,8 @@
     }
   },
   "errors": {
-    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente."
+    "localeUpdateFailed": "Não foi possível atualizar sua preferência de idioma. Tente novamente.",
+    "emailPreferenceUpdateFailed": "Não foi possível salvar. Verifique sua conexão e tente de novo."
   },
   "localeSwitcher": {
     "label": "Idioma",
@@ -352,6 +353,17 @@
     "dark": "Escuro",
     "language": "Idioma",
     "languageNote": "O conteúdo das lições mantém o próprio idioma — isto muda só o app.",
+    "emails": "Emails",
+    "emailsOn": "Ativados",
+    "emailsOff": "Desativados",
+    "emailsReportsOnly": "Só resumos",
+    "emailsRemindersOnly": "Só lembretes",
+    "emailProgressReport": "Resumo semanal de progresso",
+    "emailProgressReportDescription": "Às segundas: seus dias de prática, minutos e habilidades da semana.",
+    "emailReminders": "Lembretes",
+    "emailRemindersDescription": "Um lembrete à noite nos dias em que você ainda não tocou, menos frequente se você se afastar.",
+    "emailsNoteWithAddress": "Enviados para {address}. Todo email também tem um link para desativá-lo.",
+    "emailsNote": "Todo email tem um link para desativá-lo.",
     "teach": "Ensinar",
     "teachValue": "Criação",
     "backToLearning": "Voltar a aprender",

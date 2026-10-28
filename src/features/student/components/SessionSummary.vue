@@ -4,7 +4,10 @@
  * items), each line of the plan the student got to with how it went, and this week's minutes and
  * day streak. A run with nothing answered says so plainly and shows no score.
  *
- * A session with subjects gives one result per subject first: its score and the rungs practised.
+ * A session with subjects gives one result per subject first: its score and the level change on the
+ * rung practised, from the plan's level then to the level read once the session caught up. Reaching
+ * accurate names the next rung; an unchanged level is steady. While the levels are read the line
+ * keeps its place; a subject whose level isn't known shows the rungs practised instead.
  * In Today's mix one line sums up the quick review of other subjects, and the items wait behind
  * Every item; a session the student chose has one subject, so its items stay listed under it.
  *
@@ -18,6 +21,7 @@ import SummaryItems from '@/features/student/components/SummaryItems.vue'
 import { usePracticeOverview } from '@/features/student/composables/usePracticeHome'
 import { useWeekCaptions } from '@/features/student/composables/useWeekCaptions'
 import type { SubjectResult, SubjectScore } from '@/features/student/utils/focusPlan'
+import { levelChange, type LevelChange, type SubjectLevels } from '@/features/student/utils/levelChange'
 import type { SummaryRow } from '@/features/student/utils/sessionSummary'
 import { thisWeek } from '@/features/student/utils/studentHome'
 import AppButton from '@/shared/components/AppButton.vue'
@@ -48,8 +52,10 @@ const props = withDefaults(
     review?: SubjectScore | null
     /** The student chose the session's one subject. */
     chosen?: boolean
+    /** Where the student stands on the subjects now; unknown shows the rungs practised. */
+    levels?: SubjectLevels
   }>(),
-  { subjects: () => [], review: null, chosen: false },
+  { subjects: () => [], review: null, chosen: false, levels: () => ({ state: 'unknown' }) },
 )
 
 const emit = defineEmits<{ done: []; practiseAgain: [] }>()
@@ -64,6 +70,26 @@ const itemsOpen = ref(false)
 function rungNames(rungs: Rung[]): string {
   return rungs.map((rung) => t(`sessionPlan.rungs.${rung}`)).join(' · ')
 }
+
+function levelLine(change: LevelChange): string {
+  const rung = t(`sessionPlan.rungs.${change.rung}`)
+  const after = t(`practiceHomeView.levels.${change.after}`)
+  if (change.before === change.after) return t('sessionSummary.steady', { rung, level: after })
+  const moved = t('sessionSummary.moved', { rung, before: t(`practiceHomeView.levels.${change.before}`), after })
+  return change.next ? t('sessionSummary.next', { moved, next: t(`sessionPlan.rungs.${change.next}`) }) : moved
+}
+
+/** Each subject's level change line, by node; empty until the levels are read. */
+const levelLines = computed(() => {
+  const levels = props.levels
+  if (levels.state !== 'read') return new Map<string, string>()
+  return new Map(
+    props.subjects.flatMap((result) => {
+      const change = levelChange(result.node, levels.subjects.find((subject) => subject.node_id === result.node.node_id))
+      return change ? [[result.node.node_id, levelLine(change)] as const] : []
+    }),
+  )
+})
 
 const { item: overview, isLoading: weekLoading, error: weekError, retry: retryWeek } = usePracticeOverview()
 const week = computed(() => (overview.value ? thisWeek(overview.value) : null))
@@ -96,7 +122,14 @@ const meta = computed(() => {
             {{ t('sessionSummary.counted', { right: result.right, answered: result.answered }) }}
           </span>
         </div>
-        <span data-test="subject-result-rungs" class="text-xs text-ink-muted">{{ rungNames(result.rungs) }}</span>
+        <span v-if="levelLines.has(result.node.node_id)" data-test="subject-result-level" class="text-xs text-ink-muted">
+          {{ levelLines.get(result.node.node_id) }}
+        </span>
+        <span v-else-if="levels.state === 'pending'" data-test="subject-result-pending" class="flex h-4 items-center">
+          <span class="sr-only">{{ t('sessionSummary.levelPending') }}</span>
+          <span aria-hidden="true" class="h-3 w-40 animate-pulse rounded-full bg-surface-sunken" />
+        </span>
+        <span v-else data-test="subject-result-rungs" class="text-xs text-ink-muted">{{ rungNames(result.rungs) }}</span>
       </li>
     </ul>
 

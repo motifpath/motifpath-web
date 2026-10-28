@@ -81,7 +81,8 @@
     }
   },
   "errors": {
-    "localeUpdateFailed": "Could not update your language preference. Please try again."
+    "localeUpdateFailed": "Could not update your language preference. Please try again.",
+    "emailPreferenceUpdateFailed": "Couldn't save. Check your connection and try again."
   },
   "localeSwitcher": {
     "label": "Language",
@@ -352,6 +353,17 @@
     "dark": "Dark",
     "language": "Language",
     "languageNote": "Lesson content keeps its own language — this changes the app only.",
+    "emails": "Emails",
+    "emailsOn": "On",
+    "emailsOff": "Off",
+    "emailsReportsOnly": "Reports only",
+    "emailsRemindersOnly": "Reminders only",
+    "emailProgressReport": "Weekly progress report",
+    "emailProgressReportDescription": "Mondays: your week's practice days, minutes and skills.",
+    "emailReminders": "Reminders",
+    "emailRemindersDescription": "An evening nudge on days you haven't played yet, fewer if you're away.",
+    "emailsNoteWithAddress": "Sent to {address}. Every email also has a link to stop it.",
+    "emailsNote": "Every email has a link to stop it.",
     "teach": "Teach",
     "teachValue": "Authoring",
     "backToLearning": "Back to learning",

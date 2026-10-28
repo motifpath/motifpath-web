@@ -26,6 +26,13 @@ export interface paths {
          *     stored name is refreshed when the claim differs from it; a missing
          *     or blank claim on a later request leaves the stored name unchanged.
          *
+         *     The user's email address is taken from the "email" claim of the same
+         *     token (trimmed), never from the request body. A token without an email
+         *     claim that is a valid address is rejected with 400 on field "email". It
+         *     is refreshed the same way as the name: when a later token carries a
+         *     different valid address, the stored one is replaced; a missing, blank or
+         *     invalid claim leaves it unchanged.
+         *
          *     This endpoint must be called once per Clerk identity before any other
          *     authenticated operation. Subsequent calls with the same JWT sub return 409.
          *
@@ -2543,6 +2550,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/students/me/practice-sessions/{practice_session_id}/subject-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read where the authenticated student stands on a session's subjects, and whether the session is folded
+         * @description For the session summary: each subject's current rung and the student's level on every
+         *     rung of it with material for the session, read now, and whether the session is caught
+         *     up. Levels are rolled up as in the plan's rung_level: over the items of the subject's
+         *     part_of subtree at that rung that suit the session: with the instrument in hand, or in
+         *     the head every instrument's items together, as the current rung and the composer take
+         *     them.
+         *
+         *     caught_up is true once the Aggregation Worker has recorded the session's
+         *     practice.session_ended. A student's events are folded in order, and an answer is folded
+         *     before it is recorded in its session, so from then on the levels include every answer
+         *     that arrived before the end. Until then they may not, and the client reads again.
+         *     A session that isn't the student's, or isn't known, is never caught up.
+         *
+         *     Derived from the student's evidence; reading it changes nothing.
+         *
+         *     Any authenticated user may read their own sessions.
+         */
+        get: operations["getPracticeSessionSubjectProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/students/me/practice-subjects": {
         parameters: {
             query?: never;
@@ -2679,13 +2721,51 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Set the authenticated user's locale preference
-         * @description Updates the locale preference on the MotifPath user record associated
-         *     with the authenticated Clerk identity. This is the authenticated
-         *     counterpart to the Accept-Language-header/localStorage preference
-         *     used for anonymous visitors.
+         * Update the authenticated user's preferences
+         * @description Updates the locale, the time zone and the email preferences on the
+         *     MotifPath user record associated with the authenticated identity. A
+         *     request changes any of them and must change at least one; a field that
+         *     is left out keeps its value. Within email_preferences, a switch that is
+         *     left out keeps its value too.
+         *
+         *     The locale is the authenticated counterpart to the
+         *     Accept-Language-header/localStorage preference used for anonymous
+         *     visitors. The time zone decides the local time at which the platform's
+         *     emails are sent; the web client sets it to the browser's zone when the
+         *     two differ.
          */
-        patch: operations["updateMyLocale"];
+        patch: operations["updateMyProfile"];
+        trace?: never;
+    };
+    "/email-unsubscribes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn off one kind of email with an unsubscribe token
+         * @description Turns off the email preference named by an unsubscribe token, for the
+         *     user the token was issued to. Every progress report and reminder
+         *     carries such a token, both in its List-Unsubscribe header (RFC 8058
+         *     one-click unsubscribe, which mail clients send as a form POST with the
+         *     body "List-Unsubscribe=One-Click") and in the unsubscribe link in its
+         *     footer, which opens a web page that calls this endpoint.
+         *
+         *     No sign-in is needed: the token is the authorization. It names exactly
+         *     one user and one kind of email, it is signed by the platform so it
+         *     cannot be altered or made up, and it does not expire. Using it when
+         *     that kind is already off still succeeds. The user can turn the kind
+         *     back on in their settings; an old token still turns it off again.
+         */
+        post: operations["unsubscribeFromEmails"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/healthz": {
@@ -6954,7 +7034,15 @@ export interface components {
              */
             tap_check_due: boolean;
         };
-        /** @description One subject of a practice session. */
+        /**
+         * @description One subject of a practice session, with where the student stood on it when the session
+         *     was composed: rung is its current rung for the session (the lowest rung with material
+         *     for the session whose items are not yet accurate; with every rung accurate, the top
+         *     one), and rung_level the student's level on it, the highest level at least 80% of the
+         *     subtree's items at that rung that suit the session reach. The session summary compares
+         *     rung_level with the level read from getPracticeSessionSubjectProgress once the session
+         *     is caught up.
+         */
         PracticeFocusNode: {
             /**
              * Format: uuid
@@ -6962,6 +7050,35 @@ export interface components {
              */
             node_id: string;
             names: components["schemas"]["LocalizedNames"];
+            rung: components["schemas"]["PracticeRung"];
+            rung_level: components["schemas"]["KnowledgeLevel"];
+        };
+        /** @description Where the student stands on a session's subjects now, for its summary. */
+        PracticeSessionSubjectProgress: {
+            /** @description True once the session's end has been folded, so the levels include its answers. */
+            caught_up: boolean;
+            /** @description One per node_id asked, in the same order. */
+            subjects: components["schemas"]["PracticeSubjectProgress"][];
+        };
+        /** @description One subject's rungs, read now. */
+        PracticeSubjectProgress: {
+            /**
+             * Format: uuid
+             * @description The knowledge node.
+             */
+            node_id: string;
+            /**
+             * @description Its current rung now, as in the plan's rung. Null when it has no material for the
+             *     session any more.
+             */
+            current_rung: components["schemas"]["PracticeRung"] | null;
+            /** @description Every rung with material for the session, lowest first. */
+            rungs: components["schemas"]["PracticeRungLevel"][];
+        };
+        /** @description The student's level on one rung of a subject. */
+        PracticeRungLevel: {
+            rung: components["schemas"]["PracticeRung"];
+            level: components["schemas"]["KnowledgeLevel"];
         };
         /** @description The subjects a student can choose to practise, for one instrument in hand or in the head. */
         PracticeSubjectList: {
@@ -7527,22 +7644,59 @@ export interface components {
             /**
              * @description Stable identifier for this language (e.g. "en", "pt_BR"), or the
              *     literal value "any" for language-agnostic content. Used as the
-             *     value of UpdateMyLocaleRequest.locale and of
+             *     value of UpdateMyProfileRequest.locale and of
              *     ContentNode.languages / Exercise.languages entries.
              */
             code: string;
             /** @description Human-readable name of this language (e.g. "English", "Portuguese (Brazil)"). */
             name: string;
         };
-        /** @description Payload for setting the authenticated user's locale preference. */
-        UpdateMyLocaleRequest: {
+        /**
+         * @description Payload for updating the authenticated user's preferences. At least one
+         *     field is required; a field that is left out keeps its value.
+         */
+        UpdateMyProfileRequest: {
+            /**
+             * @description The IANA time zone to store for this user, such as
+             *     "America/Sao_Paulo". Must be a known IANA time zone.
+             */
+            time_zone?: string;
+            email_preferences?: components["schemas"]["EmailPreferencesUpdate"];
             /**
              * @description The Language.code to set as this user's locale preference. Must
              *     be an existing language code; "any" is not a valid locale for a
              *     user, since it names language-agnostic content, not a language
              *     a person reads or speaks.
              */
-            locale: string;
+            locale?: string;
+        };
+        /**
+         * @description Which of the platform's emails this user wants, one switch per kind.
+         *     Both are on for every new user. Only students are sent these emails.
+         */
+        EmailPreferences: {
+            /** @description Whether the user gets the weekly progress report. */
+            progress_report: boolean;
+            /** @description Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it. */
+            reminders: boolean;
+        };
+        /**
+         * @description The email preference switches to change. At least one is required; a
+         *     switch that is left out keeps its value.
+         */
+        EmailPreferencesUpdate: {
+            /** @description Whether the user gets the weekly progress report. */
+            progress_report?: boolean;
+            /** @description Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it. */
+            reminders?: boolean;
+        };
+        /** @description The email kind that was turned off by an unsubscribe link. */
+        EmailUnsubscribeResult: {
+            /**
+             * @description The kind of email the user will no longer get.
+             * @enum {string}
+             */
+            kind: "progress_report" | "reminders";
         };
         /**
          * @description A reference to another MotifPath user, as it appears in any response
@@ -7599,6 +7753,22 @@ export interface components {
             display_name: string;
             locale: components["schemas"]["Language"];
             /**
+             * Format: email
+             * @description The user's email address, taken from the "email" claim of the
+             *     session token and refreshed whenever that claim changes to another
+             *     valid address. Null for a user registered before addresses were
+             *     stored, until their next signed-in request. Shown only to its
+             *     owner; never part of a UserRef.
+             */
+            email: string | null;
+            /**
+             * @description The user's IANA time zone, such as "America/Sao_Paulo", or null when
+             *     none was ever set. The platform's emails use "America/Sao_Paulo"
+             *     when it is null.
+             */
+            time_zone: string | null;
+            email_preferences: components["schemas"]["EmailPreferences"];
+            /**
              * Format: date-time
              * @description Timestamp at which the user record was created.
              */
@@ -7637,6 +7807,25 @@ export interface components {
          * @enum {string}
          */
         PracticeFocusSource: "suggested" | "chosen";
+        /**
+         * @description The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
+         *     note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
+         *     play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
+         *     while the music moves; use = play it in a piece of music. A drill template has one rung;
+         *     a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
+         *     a progression key tour is move, and a song is use.
+         * @enum {string}
+         */
+        PracticeRung: "know" | "hear" | "play_clean" | "play_in_time" | "move" | "target" | "use";
+        /**
+         * @description How well a student knows an item, or a knowledge node, derived from the evidence.
+         *     new = never practised; learning = practised, not yet accurate; accurate = at least 3
+         *     counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
+         *     accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
+         *     over long reviews.
+         * @enum {string}
+         */
+        KnowledgeLevel: "new" | "learning" | "accurate" | "fluent" | "retained";
         /**
          * @description Stable, readable identifier of a practice item: the smallest thing whose knowledge is
          *     tracked. Every answer, rating and review points at one. The prefix is the item kind:
@@ -7711,25 +7900,6 @@ export interface components {
          * @enum {string}
          */
         PracticePickReason: "teacher_suggested" | "due" | "weak" | "new" | "warm_up" | "application" | "review_ahead" | "stretch";
-        /**
-         * @description The rung of the practice ladder an item trains, lowest first. know = recall a fact (a
-         *     note, a numeral, a shape); hear = recognise it by ear; play_clean = play it cleanly, untimed;
-         *     play_in_time = play it at a tempo; move = play it in another key or place; target = aim at it
-         *     while the music moves; use = play it in a piece of music. A drill template has one rung;
-         *     a play-along and a chord change are play_in_time, a single self-rated chord is play_clean,
-         *     a progression key tour is move, and a song is use.
-         * @enum {string}
-         */
-        PracticeRung: "know" | "hear" | "play_clean" | "play_in_time" | "move" | "target" | "use";
-        /**
-         * @description How well a student knows an item, or a knowledge node, derived from the evidence.
-         *     new = never practised; learning = practised, not yet accurate; accurate = at least 3
-         *     counted attempts with accuracy of 0.8 or more; fluent = at least 5 counted attempts,
-         *     accuracy of 0.9 or more and fluency of 0.8 or more; retained = fluent and holding up
-         *     over long reviews.
-         * @enum {string}
-         */
-        KnowledgeLevel: "new" | "learning" | "accurate" | "fluent" | "retained";
         /**
          * @description How a fretboard cell is asked. name_the_note = the cell is shown and the student names
          *     its note; find_the_note = the note and string are named and the student taps the cell;
@@ -8408,6 +8578,9 @@ export type SchemaRegisterUserRequest = components['schemas']['RegisterUserReque
 export type SchemaCreatePracticeSessionPlanRequest = components['schemas']['CreatePracticeSessionPlanRequest'];
 export type SchemaPracticeSessionPlan = components['schemas']['PracticeSessionPlan'];
 export type SchemaPracticeFocusNode = components['schemas']['PracticeFocusNode'];
+export type SchemaPracticeSessionSubjectProgress = components['schemas']['PracticeSessionSubjectProgress'];
+export type SchemaPracticeSubjectProgress = components['schemas']['PracticeSubjectProgress'];
+export type SchemaPracticeRungLevel = components['schemas']['PracticeRungLevel'];
 export type SchemaPracticeSubjectList = components['schemas']['PracticeSubjectList'];
 export type SchemaPracticeSubjectGroup = components['schemas']['PracticeSubjectGroup'];
 export type SchemaPracticeSubject = components['schemas']['PracticeSubject'];
@@ -8432,7 +8605,10 @@ export type SchemaLocalizedDescription = components['schemas']['LocalizedDescrip
 export type SchemaLocalizedCaption = components['schemas']['LocalizedCaption'];
 export type SchemaUpdateInstrumentRequest = components['schemas']['UpdateInstrumentRequest'];
 export type SchemaLanguage = components['schemas']['Language'];
-export type SchemaUpdateMyLocaleRequest = components['schemas']['UpdateMyLocaleRequest'];
+export type SchemaUpdateMyProfileRequest = components['schemas']['UpdateMyProfileRequest'];
+export type SchemaEmailPreferences = components['schemas']['EmailPreferences'];
+export type SchemaEmailPreferencesUpdate = components['schemas']['EmailPreferencesUpdate'];
+export type SchemaEmailUnsubscribeResult = components['schemas']['EmailUnsubscribeResult'];
 export type SchemaUserRef = components['schemas']['UserRef'];
 export type SchemaCreatorRef = components['schemas']['CreatorRef'];
 export type SchemaUserProfile = components['schemas']['UserProfile'];
@@ -8441,11 +8617,11 @@ export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError']
 export type SchemaConflictError = components['schemas']['ConflictError'];
 export type SchemaNotFoundError = components['schemas']['NotFoundError'];
 export type SchemaPracticeFocusSource = components['schemas']['PracticeFocusSource'];
+export type SchemaPracticeRung = components['schemas']['PracticeRung'];
+export type SchemaKnowledgeLevel = components['schemas']['KnowledgeLevel'];
 export type SchemaPracticeItemKey = components['schemas']['PracticeItemKey'];
 export type SchemaPracticeItemKind = components['schemas']['PracticeItemKind'];
 export type SchemaPracticePickReason = components['schemas']['PracticePickReason'];
-export type SchemaPracticeRung = components['schemas']['PracticeRung'];
-export type SchemaKnowledgeLevel = components['schemas']['KnowledgeLevel'];
 export type SchemaFretboardDrill = components['schemas']['FretboardDrill'];
 export type SchemaFretWindow = components['schemas']['FretWindow'];
 export type SchemaPracticeNoteValue = components['schemas']['practice_NoteValue'];
@@ -8501,8 +8677,9 @@ export interface operations {
             };
             /**
              * @description The request is invalid. The role field is missing or contains an
-             *     unrecognised value (field "role"), or the session token carries no
-             *     non-blank name claim (field "name").
+             *     unrecognised value (field "role"), the session token carries no
+             *     non-blank name claim (field "name"), or it carries no email claim
+             *     that is a valid address (field "email").
              */
             400: {
                 headers: {
@@ -14538,6 +14715,64 @@ export interface operations {
             };
         };
     };
+    getPracticeSessionSubjectProgress: {
+        parameters: {
+            query: {
+                /** @description The instrument the session was practised with. Absent means a session in the head. */
+                instrument_id?: string;
+                /** @description The session's subjects, the plan's focus_nodes, in order. */
+                node_id: string[];
+            };
+            header?: never;
+            path: {
+                /** @description The session, as composed by createPracticeSessionPlan. */
+                practice_session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The subjects' rung levels now, in the order asked, and whether the session is caught up. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PracticeSessionSubjectProgress"];
+                };
+            };
+            /**
+             * @description practice_session_id, instrument_id or a node_id is not a valid uuid, or there is no
+             *     node_id or more than three.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description No instrument exists with the given instrument_id, or no knowledge node with a given node_id. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
     listPracticeSubjects: {
         parameters: {
             query?: {
@@ -14784,7 +15019,7 @@ export interface operations {
             };
         };
     };
-    updateMyLocale: {
+    updateMyProfile: {
         parameters: {
             query?: never;
             header?: never;
@@ -14793,7 +15028,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateMyLocaleRequest"];
+                "application/json": components["schemas"]["UpdateMyProfileRequest"];
             };
         };
         responses: {
@@ -14807,8 +15042,10 @@ export interface operations {
                 };
             };
             /**
-             * @description The request body failed schema validation, or locale is not a
-             *     known language code.
+             * @description The request body failed schema validation or changes nothing, locale
+             *     is not a known language code (field "locale"), time_zone is not a
+             *     known IANA time zone (field "time_zone"), or email_preferences names
+             *     an unknown switch (field "email_preferences").
              */
             400: {
                 headers: {
@@ -14837,6 +15074,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    unsubscribeFromEmails: {
+        parameters: {
+            query: {
+                /** @description The unsubscribe token from the email. */
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    /** @description Always "One-Click". */
+                    "List-Unsubscribe"?: string;
+                };
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description The kind of email named by the token is off. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailUnsubscribeResult"];
+                };
+            };
+            /**
+             * @description The token is missing, malformed, altered, or names a user that no
+             *     longer exists. Nothing is changed.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
                 };
             };
         };
