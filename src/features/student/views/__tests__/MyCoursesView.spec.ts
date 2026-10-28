@@ -219,6 +219,24 @@ describe('MyCoursesView', () => {
     expect(titlesIn(wrapper, 'left')).toEqual(['Blues basics'])
   })
 
+  it('keeps every group within the screen width, however long a card’s eyebrow', async () => {
+    enrollments.enrollments.value = [
+      guitar,
+      enrollment({ course_enrollment_id: 'e-3', course_title: 'First songs', status: 'completed' }),
+      enrollment({ course_enrollment_id: 'e-4', course_title: 'Blues basics', status: 'abandoned' }),
+    ]
+
+    const wrapper = mountView()
+    await group(wrapper, 'left').get('button').trigger('click')
+
+    // jsdom does no layout: guard the classes instead. A grid with no column template sizes its one
+    // column to the widest unwrapped line, and the eyebrow is truncated, so the cards would grow
+    // past a phone's width; `grid-cols-1` is a minmax(0,1fr) column that fits the screen.
+    for (const name of ['in-progress', 'finished', 'left'] as const) {
+      expect(group(wrapper, name).get('ul').classes()).toContain('grid-cols-1')
+    }
+  })
+
   it('lists the current item first, then the most recently started', () => {
     enrollments.enrollments.value = [guitar, rhythm]
     standalone.paths.value = [standalonePath({ title: 'Open chords', assigned_at: '2026-09-02T00:00:00Z' })]
