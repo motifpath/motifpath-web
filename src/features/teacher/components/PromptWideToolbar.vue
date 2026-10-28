@@ -52,7 +52,7 @@ const { t } = useTypedT()
 </script>
 
 <template>
-  <div class="sticky top-16 z-10 flex flex-col gap-1.5 bg-surface pb-1.5">
+  <div class="sticky top-under-bar-16 z-10 flex flex-col gap-1.5 bg-surface pb-1.5">
     <div
       class="flex flex-wrap items-center gap-1 rounded-md border border-border bg-surface-sunken p-1.5"
     >

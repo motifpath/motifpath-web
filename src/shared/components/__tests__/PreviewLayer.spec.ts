@@ -42,4 +42,11 @@ describe('PreviewLayer', () => {
 
     expect(document.querySelector('[data-test="preview-layer"]')).toBeNull()
   })
+
+  it('starts the Preview bar below the status bar, and ends what scrolls above the home indicator', () => {
+    mountLayer()
+
+    expect(document.querySelector('[data-test="preview-bar"]')?.classList).toContain('pt-inset-top')
+    expect(document.querySelector('[data-test="preview-body"]')?.classList).toContain('pb-inset-bottom')
+  })
 })

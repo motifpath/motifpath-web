@@ -118,4 +118,12 @@ describe('LandingScreen', () => {
 
     expect(wrapper.get('[data-test="google-button"]').attributes('aria-busy')).toBe('true')
   })
+
+  it('keeps the brand, the action and the language switch clear of every device edge', async () => {
+    const wrapper = await mountAt('/')
+
+    expect(wrapper.get('[data-test="landing-layout"]').classes()).toEqual(
+      expect.arrayContaining(['pt-inset-top', 'pb-inset-bottom', 'pl-inset-left', 'pr-inset-right']),
+    )
+  })
 })

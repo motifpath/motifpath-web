@@ -612,4 +612,11 @@ describe('SongChartReader', () => {
       expect(wrapper.getComponent(TempoControl).props('tempo')).toBe(77)
     })
   })
+
+  it('starts its header below the status bar and keeps its foot above the home indicator', () => {
+    const wrapper = mountReader()
+
+    expect(wrapper.get('[data-test="song-chart-header"]').classes()).toContain('pt-inset-top')
+    expect(wrapper.get('[data-test="song-chart-foot"]').classes()).toContain('pb-inset-bottom')
+  })
 })

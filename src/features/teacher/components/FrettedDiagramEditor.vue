@@ -233,7 +233,7 @@ function onDrop(index: number) {
          while the position list and any slotted content below scroll — otherwise a long list
          pushes the fretboard itself off-screen while editing. The opaque background hides what
          scrolls underneath. -->
-    <div class="sticky top-16 z-10 flex flex-col gap-2 bg-surface py-2" data-test="fretboard-sticky">
+    <div class="sticky top-under-bar-16 z-10 flex flex-col gap-2 bg-surface py-2" data-test="fretboard-sticky">
       <slot name="toolbar" />
       <!-- Drawn at its real size, like a student's board, so markers and fret spaces stay
            readable and easy to hit; it scrolls on its own when wider than the screen. -->

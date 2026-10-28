@@ -9,6 +9,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 import AuthoringFiltersLayer from '@/features/teacher/components/AuthoringFiltersLayer.vue'
 import type { AuthoringListFilters } from '@/features/teacher/utils/authoringListQuery'
 import { overlayInPlaceKey } from '@/shared/composables/overlayInPlace'
+import { mockViewport } from '@/shared/testUtils/viewport'
 import type { TreeNode } from '@/shared/utils/skillConceptTree'
 
 const skills: TreeNode[] = [
@@ -198,5 +199,22 @@ describe('AuthoringFiltersLayer', () => {
 
     expect(wrapper.get('[data-test="filters-title"]').text()).toBe('Filters')
     expect(wrapper.emitted('close')).toBeUndefined()
+  })
+
+  describe('full screen on a phone', () => {
+    it('starts its header below the status bar', () => {
+      mockViewport(390)
+
+      expect(mountLayer().get('[data-test="filters-header"]').classes()).toContain('pt-inset-top')
+    })
+
+    it('ends the Author page above the home indicator, where no footer does it', async () => {
+      mockViewport(390)
+      const wrapper = mountLayer()
+      await wrapper.get('[data-test="filter-group-author"] button').trigger('click')
+
+      expect(wrapper.find('[data-test="filters-footer"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="filters-body"]').classes()).toContain('pb-safe')
+    })
   })
 })

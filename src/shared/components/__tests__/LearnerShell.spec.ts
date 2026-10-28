@@ -222,4 +222,50 @@ describe('LearnerShell', () => {
       expect(toastClearance()).toBe('')
     })
   })
+
+  describe('device edges', () => {
+    it('on a phone, starts the top bar below the status bar, its background filling the area behind it', () => {
+      const bar = mountShell({ width: 390 }).get('[data-test="learner-top-bar"]')
+
+      expect(bar.classes()).toEqual(expect.arrayContaining(['box-content', 'pt-inset-top', 'bg-surface-raised']))
+    })
+
+    it('puts a backdrop behind the status bar when there is no top bar to fill it', () => {
+      route.name = 'node'
+      route.meta = { hidesBottomBar: true, pushed: true }
+
+      expect(has(mountShell({ width: 390 }), 'status-bar-backdrop')).toBe(true)
+    })
+
+    it('needs no backdrop while the top bar is there', () => {
+      expect(has(mountShell({ width: 390 }), 'status-bar-backdrop')).toBe(false)
+    })
+
+    it.each([
+      [720, 'navigation-rail'],
+      [1280, 'navigation-sidebar'],
+    ])('at %i px keeps the %s clear of the notch, the status bar and the home indicator', (width, test) => {
+      const edge = mountShell({ width }).get('[data-test="side-navigation-edge"]')
+
+      expect(edge.classes()).toEqual(expect.arrayContaining(['pl-inset-left', 'pt-inset-top', 'pb-inset-bottom']))
+      expect(edge.find(`[data-test="${test}"]`).exists()).toBe(true)
+    })
+
+    it('keeps the end of the page above the home indicator when there is no bottom bar', () => {
+      route.name = 'node'
+      route.meta = { hidesBottomBar: true }
+
+      expect(mountShell({ width: 390 }).get('[data-test="learner-column"]').classes()).toContain('pb-inset-bottom')
+    })
+
+    it('leaves the home indicator to the bottom bar while it is there', () => {
+      expect(mountShell({ width: 390 }).get('[data-test="learner-column"]').classes()).not.toContain('pb-inset-bottom')
+    })
+
+    it('keeps the content clear of the sides of a phone in landscape', () => {
+      expect(mountShell({ width: 390 }).get('[data-test="learner-column"]').classes()).toEqual(
+        expect.arrayContaining(['pl-inset-left', 'pr-inset-right']),
+      )
+    })
+  })
 })
