@@ -7677,7 +7677,7 @@ export interface components {
         EmailPreferences: {
             /** @description Whether the user gets the weekly progress report. */
             progress_report: boolean;
-            /** @description Whether the user gets reminders after days without learning activity. */
+            /** @description Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it. */
             reminders: boolean;
         };
         /**
@@ -7687,7 +7687,7 @@ export interface components {
         EmailPreferencesUpdate: {
             /** @description Whether the user gets the weekly progress report. */
             progress_report?: boolean;
-            /** @description Whether the user gets reminders after days without learning activity. */
+            /** @description Whether the user gets reminders, both on the first days without learning activity and after 3 and 10 days without it. */
             reminders?: boolean;
         };
         /** @description The email kind that was turned off by an unsubscribe link. */

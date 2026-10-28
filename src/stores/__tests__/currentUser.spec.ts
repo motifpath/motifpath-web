@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { flushPromises } from '@vue/test-utils'
 
 const GET = vi.fn()
 const POST = vi.fn()
@@ -10,13 +11,25 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { i18n } from '@/i18n'
+import { useToast } from '@/shared/composables/useToast'
 import { useCurrentUserStore } from '@/stores/currentUser'
 
+// A profile whose time zone already matches the browser's, so loading it
+// sends no time zone update of its own.
 const profile = {
   user_id: 'u-1',
   role: 'student',
   registered_at: '2026-09-05T00:00:00Z',
   locale: { code: 'en', name: 'English' },
+  time_zone: 'America/Sao_Paulo',
+  email_preferences: { progress_report: true, reminders: true },
+}
+
+function mockBrowserTimeZone(timeZone: string): void {
+  const resolved = Intl.DateTimeFormat.prototype.resolvedOptions
+  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (this: Intl.DateTimeFormat) {
+    return { ...resolved.call(this), timeZone }
+  })
 }
 
 const LOCALE_STORAGE_KEY = 'motifpath:locale'
@@ -34,7 +47,9 @@ describe('useCurrentUserStore', () => {
     PATCH.mockReset()
     window.localStorage.clear()
     mockNavigatorLanguage('en-US')
+    mockBrowserTimeZone('America/Sao_Paulo')
     i18n.global.locale.value = 'en'
+    useToast().clear()
   })
 
   it('starts idle with no requests made', () => {
@@ -522,6 +537,117 @@ describe('useCurrentUserStore', () => {
       expect(i18n.global.locale.value).toBe('en')
       expect(store.profile?.locale.code).toBe('en')
       expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en')
+    })
+  })
+
+  describe("the browser's time zone", () => {
+    it('stores the browser time zone when it differs from the profile', async () => {
+      mockBrowserTimeZone('Europe/Lisbon')
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      PATCH.mockResolvedValueOnce({ data: { ...profile, time_zone: 'Europe/Lisbon' }, error: undefined, response: { status: 200 } })
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+      await flushPromises()
+
+      expect(PATCH).toHaveBeenCalledWith('/users/me', { body: { time_zone: 'Europe/Lisbon' } })
+      expect(store.profile?.time_zone).toBe('Europe/Lisbon')
+    })
+
+    it('stores it for a profile that has none yet, including a new account', async () => {
+      GET.mockResolvedValueOnce({ data: undefined, error: { message: 'not found' }, response: { status: 404 } })
+      POST.mockResolvedValueOnce({ data: { ...profile, time_zone: null }, error: undefined, response: { status: 201 } })
+      PATCH.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+      await flushPromises()
+
+      expect(PATCH).toHaveBeenCalledWith('/users/me', { body: { time_zone: 'America/Sao_Paulo' } })
+    })
+
+    it('sends no update when the browser time zone matches the profile', async () => {
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+      await flushPromises()
+
+      expect(PATCH).not.toHaveBeenCalled()
+    })
+
+    it('keeps the profile and says nothing when the update fails, so the next visit tries again', async () => {
+      mockBrowserTimeZone('Europe/Lisbon')
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      PATCH.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+      const store = useCurrentUserStore()
+      await store.ensure()
+      await flushPromises()
+
+      expect(store.state).toBe('registered')
+      expect(store.profile?.time_zone).toBe('America/Sao_Paulo')
+      expect(useToast().toasts.value).toEqual([])
+    })
+  })
+
+  describe('setEmailPreference', () => {
+    async function registeredStore() {
+      GET.mockResolvedValueOnce({ data: profile, error: undefined, response: { status: 200 } })
+      const store = useCurrentUserStore()
+      await store.ensure()
+      await flushPromises()
+      return store
+    }
+
+    it('turns one switch off at once and saves only that switch', async () => {
+      const store = await registeredStore()
+      PATCH.mockResolvedValueOnce({
+        data: { ...profile, email_preferences: { progress_report: false, reminders: true } },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      const saving = store.setEmailPreference('progress_report', false)
+      expect(store.profile?.email_preferences).toEqual({ progress_report: false, reminders: true })
+      await saving
+
+      expect(PATCH).toHaveBeenCalledWith('/users/me', { body: { email_preferences: { progress_report: false } } })
+      expect(store.profile?.email_preferences).toEqual({ progress_report: false, reminders: true })
+    })
+
+    it('flips the switch back and says the change was not saved when the update fails', async () => {
+      const store = await registeredStore()
+      PATCH.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+
+      await store.setEmailPreference('progress_report', false)
+
+      expect(store.profile?.email_preferences).toEqual({ progress_report: true, reminders: true })
+      expect(useToast().toasts.value).toMatchObject([{ kind: 'error', message: i18n.global.t('errors.emailPreferenceUpdateFailed') }])
+    })
+
+    it('flips the switch back when the update rejects outright', async () => {
+      const store = await registeredStore()
+      PATCH.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+      await store.setEmailPreference('reminders', false)
+
+      expect(store.profile?.email_preferences).toEqual({ progress_report: true, reminders: true })
+      expect(useToast().toasts.value).toMatchObject([{ kind: 'error' }])
+    })
+
+    it('keeps the other switch as it is now when one fails after both were flipped', async () => {
+      const store = await registeredStore()
+      PATCH.mockResolvedValueOnce({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
+      PATCH.mockResolvedValueOnce({
+        data: { ...profile, email_preferences: { progress_report: true, reminders: false } },
+        error: undefined,
+        response: { status: 200 },
+      })
+
+      await Promise.all([store.setEmailPreference('progress_report', false), store.setEmailPreference('reminders', false)])
+
+      expect(store.profile?.email_preferences).toEqual({ progress_report: true, reminders: false })
     })
   })
 })
