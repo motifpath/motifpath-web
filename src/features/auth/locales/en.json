@@ -17,5 +17,19 @@
     "lastNameRequired": "Enter your last name.",
     "saveFailed": "We couldn't save your name. Try again.",
     "continue": "Continue"
+  },
+  "unsubscribe": {
+    "working": "Turning these emails off…",
+    "reportsOff": "Progress reports are off",
+    "reportsOffBody": "We won't send you the weekly progress report anymore. You can turn it back on in your email settings.",
+    "remindersOff": "Reminders are off",
+    "remindersOffBody": "We won't send you reminders anymore. You can turn them back on in your email settings.",
+    "brokenTitle": "This link didn't work",
+    "brokenBody": "It may have been cut off when it was copied.",
+    "failedTitle": "Couldn't turn the emails off",
+    "failedBody": "Check your connection and try again.",
+    "nothingChanged": "Nothing was changed: you still get the same emails as before.",
+    "tryAgain": "Try again",
+    "emailSettings": "Email settings"
   }
 }

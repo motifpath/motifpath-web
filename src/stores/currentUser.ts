@@ -7,6 +7,8 @@ import type { components } from '@/api/generated/core-domain'
 import { i18n, SUPPORTED_LOCALES, fromApiLanguageCode, toApiLanguageCode, type SupportedLocale } from '@/i18n'
 
 type UserProfile = components['schemas']['UserProfile']
+/** One of the switches for the platform's emails, such as the weekly progress report. */
+export type EmailPreference = keyof components['schemas']['EmailPreferences']
 
 export type CurrentUserState = 'idle' | 'registering' | 'registered' | 'failed'
 
@@ -51,6 +53,11 @@ function browserLocale(): SupportedLocale | null {
 
 function persistLocale(locale: SupportedLocale): void {
   window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
+}
+
+/** The browser's IANA time zone, such as "America/Sao_Paulo". */
+function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
 /**
@@ -122,9 +129,24 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
       profile.value = data
       state.value = 'registered'
       i18n.global.locale.value = fromApiLanguageCode(data.locale.code)
+      void keepTimeZone(myEpoch)
       return true
     }
     return false
+  }
+
+  // The platform's emails go out at local times, so the profile follows the browser's time zone.
+  // In the background: a failure says nothing, and the next visit tries again.
+  async function keepTimeZone(myEpoch: number): Promise<void> {
+    const timeZone = browserTimeZone()
+    if (profile.value?.time_zone === timeZone) return
+    try {
+      const updated = await coreApi.PATCH('/users/me', { body: { time_zone: timeZone } })
+      if (myEpoch !== epoch || !updated.data || !profile.value) return
+      profile.value = { ...profile.value, time_zone: updated.data.time_zone }
+    } catch {
+      // Left for the next visit, as above.
+    }
   }
 
   async function register(myEpoch: number): Promise<void> {
@@ -261,5 +283,35 @@ export const useCurrentUserStore = defineStore('currentUser', () => {
     }
   }
 
-  return { state, profile, failureReason, isRegistered, locale, ensure, retry, reset, setLocale }
+  /**
+   * Flips one email switch at once and saves it. A save that fails flips it
+   * back and says so. Each switch is saved on its own, so a failure never
+   * undoes the other one.
+   */
+  async function setEmailPreference(preference: EmailPreference, on: boolean): Promise<void> {
+    if (!profile.value) return
+    const previous = profile.value.email_preferences[preference]
+    applyEmailPreference(preference, on)
+
+    const myEpoch = epoch
+    try {
+      const updated = await coreApi.PATCH('/users/me', { body: { email_preferences: { [preference]: on } } })
+      if (myEpoch !== epoch) return
+      if (updated.data) {
+        applyEmailPreference(preference, updated.data.email_preferences[preference])
+        return
+      }
+    } catch {
+      if (myEpoch !== epoch) return
+    }
+    applyEmailPreference(preference, previous)
+    toast.error(i18n.global.t('errors.emailPreferenceUpdateFailed'))
+  }
+
+  function applyEmailPreference(preference: EmailPreference, on: boolean): void {
+    if (!profile.value) return
+    profile.value = { ...profile.value, email_preferences: { ...profile.value.email_preferences, [preference]: on } }
+  }
+
+  return { state, profile, failureReason, isRegistered, locale, ensure, retry, reset, setLocale, setEmailPreference }
 })

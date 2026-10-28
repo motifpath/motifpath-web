@@ -1,5 +1,6 @@
 import { useApi } from '@/shared/composables/useApi'
 import { describeApiError } from '@/shared/utils/apiError'
+import { fetchInWebView } from '@/shared/platform/webViewRequest'
 import type { components } from '@/api/generated/core-domain'
 
 // Videos go through useVideoUpload, which uploads with progress and a size limit.
@@ -41,7 +42,7 @@ export function useMediaUpload() {
       throw new Error(describeApiError(error, 'Failed to request an upload URL'))
     }
 
-    const putResponse = await fetch(data.upload_url, {
+    const putResponse = await fetchInWebView(data.upload_url, {
       method: 'PUT',
       body: file,
       headers: { 'Content-Type': PRESIGNED_MIME_TYPE[contentType] },

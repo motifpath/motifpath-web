@@ -11,6 +11,7 @@ import { songItem } from '@/features/student/testing/songItems'
 import type { components } from '@/api/generated/core-domain'
 
 type Item = components['schemas']['PracticeSessionItem']
+type FocusNode = components['schemas']['PracticeFocusNode']
 
 const LAYOUT = '6ea2d087-ab9c-59dc-9657-8546025414d2'
 
@@ -117,9 +118,9 @@ describe('TodaysPlan', () => {
     const CHORDS = 'aaaaaaaa-0000-4000-8000-000000000001'
     const NOTES = 'aaaaaaaa-0000-4000-8000-000000000002'
     const OTHER = 'aaaaaaaa-0000-4000-8000-000000000003'
-    const focusNodes = [
-      { node_id: CHORDS, names: { en: 'Diatonic chords' } },
-      { node_id: NOTES, names: { en: 'Find notes on the root strings' } },
+    const focusNodes: FocusNode[] = [
+      { node_id: CHORDS, names: { en: 'Diatonic chords' }, rung: 'know', rung_level: 'new' },
+      { node_id: NOTES, names: { en: 'Find notes on the root strings' }, rung: 'know', rung_level: 'new' },
     ]
     const mix = [
       item('play_along:warm', 'play_along', 'warm_up', { node_id: OTHER }),
@@ -175,7 +176,7 @@ describe('TodaysPlan', () => {
 
     it('says once that the student chose the subject, and gives its items no group title', () => {
       const chosen = [item('exercise:chords', 'exercise', 'due', { node_id: CHORDS, rung: 'hear' }), item('exercise:child', 'exercise', 'new', { node_id: OTHER, rung: 'play_clean' })]
-      const wrapper = mountMix('chosen', chosen, [{ node_id: CHORDS, names: { en: 'Common progressions' } }])
+      const wrapper = mountMix('chosen', chosen, [{ node_id: CHORDS, names: { en: 'Common progressions' }, rung: 'know', rung_level: 'new' }])
 
       expect(wrapper.get('[data-test="plan-subjects-label"]').text()).toBe('You chose this')
       expect(wrapper.findAll('[data-test="plan-subject-name"]').map((name) => name.text())).toEqual(['Common progressions'])
