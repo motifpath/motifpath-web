@@ -107,6 +107,25 @@ describe('useVideoUpload', () => {
     expect(xhr?.body).toBe(file)
   })
 
+  it('opens the PUT on the WebView in the app shell, so a large video keeps its progress and never crosses the bridge', async () => {
+    const webViewOpen = vi.fn(function (this: FakeXhr, method: string, url: string) {
+      this.method = method
+      this.url = url
+    })
+    Reflect.set(window, 'CapacitorWebXMLHttpRequest', { open: webViewOpen })
+
+    try {
+      grantUploadUrl()
+      void useVideoUpload().choose(videoFile('open-chords-lesson.mp4', 980 * MB))
+      await flushPromises()
+
+      expect(webViewOpen).toHaveBeenCalledWith('PUT', 'https://storage.test/lessons/id-1.mp4?sig=1')
+      expect(webViewOpen.mock.contexts[0]).toBe(FakeXhr.last)
+    } finally {
+      Reflect.deleteProperty(window, 'CapacitorWebXMLHttpRequest')
+    }
+  })
+
   it('reports progress while uploading, then the object URL', async () => {
     grantUploadUrl()
     const upload = useVideoUpload()

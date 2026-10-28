@@ -208,6 +208,60 @@ npm run test:coverage # run with coverage report
 Every library component has a Storybook story beside it, built against a mock API.
 The rules are in [STORYBOOK.md](STORYBOOK.md).
 
+## Running the app on a device
+
+The iOS and Android apps wrap this same web build with [Capacitor](https://capacitorjs.com).
+`ios/` and `android/` are native projects. The web build is copied into them with `cap sync`
+and is never committed.
+
+**Toolchain:** Xcode (iOS, macOS only). Android Studio or the Android SDK command-line tools,
+with JDK 21 from `mise.toml`. The Gradle build fails on Android Studio's bundled JDK 25.
+
+```bash
+mise install                                   # node + JDK 21
+export JAVA_HOME="$(mise where java)"          # for Gradle
+export ANDROID_HOME="$HOME/Library/Android/sdk"   # ~/Android/Sdk on Linux
+
+npm run cap:sync                               # web build → both native projects
+npx cap run ios                                # pick a simulator or a connected iPhone
+npx cap run android                            # a connected phone with USB debugging on
+```
+
+Both apps send every `fetch` and XHR through the native network stack (`CapacitorHttp`). Native
+requests carry no `Origin` header and aren't subject to CORS. The exceptions are presigned media
+uploads, which go through the WebView so that large files keep their progress. In the app, they
+need the media bucket's CORS to allow `capacitor://localhost` (iOS) and `https://localhost`
+(Android).
+
+### Against a local stack
+
+Debug builds are the only builds that can reach plain `http` on `localhost` (Android) or the
+local network (iOS). Release builds can't.
+
+**Android, over USB:** forward the phone's `localhost` ports to this machine, so the default
+`.env.local` URLs work unchanged:
+
+```bash
+adb reverse tcp:8080 tcp:8080   # core-domain
+adb reverse tcp:8081 tcp:8081   # event-ingestion
+adb reverse tcp:9000 tcp:9000   # media (instrument samples, uploads)
+```
+
+Run it again after reconnecting the phone.
+
+**iOS Simulator:** `localhost` is this Mac, so nothing changes.
+
+**iPhone:** it reaches this Mac over Wi-Fi. Build with `VITE_CORE_API_URL` and
+`VITE_EVENTS_API_URL` set to the Mac's LAN address (`http://192.168.x.y:8080`, `…:8081`). Run
+`motifpath-core` with `MEDIA_PUBLIC_BASE_URL` on that address too, so media URLs work on the
+phone. Allow the app's local-network prompt on first launch.
+
+### Logs
+
+Debug builds only. Release builds log nothing, because the console can print sign-in tokens.
+- iOS: Xcode's console, or Safari → Develop → the device → the app's page.
+- Android: `adb logcat | grep Capacitor`, or `chrome://inspect` for the WebView.
+
 ## Deploying
 
 `.github/workflows/deploy.yml` builds the SPA for one environment and syncs it to

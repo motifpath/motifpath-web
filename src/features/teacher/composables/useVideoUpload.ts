@@ -1,6 +1,7 @@
 import { readonly, ref } from 'vue'
 
 import { useApi } from '@/shared/composables/useApi'
+import { openInWebView } from '@/shared/platform/webViewRequest'
 
 /** The largest video a lesson may upload: 1 GB, the limit the server signs into the upload URL. */
 export const MAX_VIDEO_BYTES = 1024 * 1024 * 1024
@@ -68,7 +69,7 @@ export function useVideoUpload() {
     return new Promise((resolve) => {
       const request = new XMLHttpRequest()
       xhr = request
-      request.open('PUT', uploadUrl)
+      openInWebView(request, 'PUT', uploadUrl)
       request.setRequestHeader('Content-Type', VIDEO_MIME_TYPE)
       request.upload.onprogress = (event) => {
         if (mine !== generation) return

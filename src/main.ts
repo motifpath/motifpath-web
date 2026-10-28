@@ -7,6 +7,8 @@ import { i18n } from '@/i18n'
 import { router } from '@/router'
 import { loadClerkLocalization } from '@/shared/utils/clerkLocalization'
 import { resolveAnonymousLocale } from '@/stores/currentUser'
+import { playThroughSilentSwitch } from '@/shared/platform/audioSession'
+import { isNativeApp } from '@/shared/platform/platform'
 import '@/assets/main.css'
 
 async function resolveInitialClerkLocalization() {
@@ -21,6 +23,9 @@ async function resolveInitialClerkLocalization() {
 }
 
 async function bootstrap() {
+  // Only inside the app shell: in a mobile browser the silent switch keeps muting the site.
+  if (isNativeApp()) playThroughSilentSwitch()
+
   const app = createApp(App)
 
   app.use(createPinia())
