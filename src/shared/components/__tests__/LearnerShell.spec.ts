@@ -258,6 +258,13 @@ describe('LearnerShell', () => {
       expect(mountShell({ width: 390 }).get('[data-test="learner-column"]').classes()).toContain('pb-inset-bottom')
     })
 
+    it('leaves the bottom edge to a page that fills the screen, which owns it', () => {
+      route.name = 'node'
+      route.meta = { hidesBottomBar: true, pushed: true, fillsScreen: true }
+
+      expect(mountShell({ width: 390 }).get('[data-test="learner-column"]').classes()).not.toContain('pb-inset-bottom')
+    })
+
     it('leaves the home indicator to the bottom bar while it is there', () => {
       expect(mountShell({ width: 390 }).get('[data-test="learner-column"]').classes()).not.toContain('pb-inset-bottom')
     })

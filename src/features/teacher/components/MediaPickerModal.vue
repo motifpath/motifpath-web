@@ -66,7 +66,7 @@ function apply() {
 <template>
   <ModalOverlay
     :open="open"
-    panel-class="-m-4 flex h-dvh w-screen flex-col gap-4 bg-surface-raised p-4 sm:m-0 sm:h-[85vh] sm:w-[1040px] sm:max-w-[92vw] sm:rounded-xl sm:p-5 sm:shadow-level2"
+    panel-class="fixed inset-0 flex flex-col gap-4 bg-surface-raised px-4 pb-safe-4 pt-safe-top-4 sm:static sm:h-[85vh] sm:w-[1040px] sm:max-w-[92vw] sm:rounded-xl sm:p-5 sm:shadow-level2"
     @close="emit('close')"
   >
     <div data-test="media-picker" class="contents">

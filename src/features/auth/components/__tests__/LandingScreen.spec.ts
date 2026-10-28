@@ -126,4 +126,10 @@ describe('LandingScreen', () => {
       expect.arrayContaining(['pt-inset-top', 'pb-inset-bottom', 'pl-inset-left', 'pr-inset-right']),
     )
   })
+
+  it('fills the screen once, rather than a screen plus the device’s insets', async () => {
+    const wrapper = await mountAt('/')
+
+    expect(wrapper.get('[data-test="landing-column"]').classes()).not.toContain('min-h-screen')
+  })
 })

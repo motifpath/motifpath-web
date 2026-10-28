@@ -281,7 +281,7 @@ function playedIt() {
       />
     </FloatingChordCard>
 
-    <div data-test="song-chart-foot" class="fixed bottom-0 left-0 z-20 flex flex-col bg-surface pb-inset-bottom" :class="paneOpen ? 'right-[400px]' : 'right-0'">
+    <div data-test="song-chart-foot" class="fixed bottom-0 left-0 z-20 flex flex-col" :class="paneOpen ? 'right-[400px]' : 'right-0'">
       <div v-if="metronome.on.value && !expanded" data-test="tempo-bar" class="flex justify-center border-t border-border bg-surface px-6 pb-1.5 pt-2.5">
         <div class="flex w-full max-w-[560px] flex-col gap-1">
           <p data-test="tempo-note" class="text-xs font-medium text-ink-muted">
@@ -300,7 +300,7 @@ function playedIt() {
           />
         </div>
       </div>
-      <div class="flex justify-center border-t border-border bg-surface px-6 pb-7 pt-3">
+      <div data-test="played-row" class="flex justify-center border-t border-border bg-surface px-6 pb-safe-7 pt-3">
         <button
           type="button"
           data-test="played-it"

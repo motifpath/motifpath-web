@@ -232,6 +232,16 @@ const fitsScreen = computed(
   () => !isArticle.value && !isShortHeight.value && ['ready', 'no-media'].includes(lesson.state.value),
 )
 
+/**
+ * The lesson fills the screen, so it owns the bottom edge: the practice bar clears the home
+ * indicator when it is there, and the page does otherwise. Fitted, it takes the height below the
+ * status bar, which its backdrop already holds.
+ */
+const pageEdgeClasses = computed(() => {
+  if (fitsScreen.value) return ['h-dvh-under-status-bar', { 'pb-inset-bottom': !showsActionBar.value }]
+  return showsActionBar.value ? 'pb-5 sm:pb-8' : 'pb-safe-5 sm:pb-8'
+})
+
 /** What Mark as done says it will do: mark this step done and, when there is one, open the next. */
 const markAsDoneHint = computed(() => {
   const position = lesson.step.value?.position
@@ -350,7 +360,7 @@ async function practiseArticle(): Promise<void> {
   <section
     data-test="node"
     class="-mt-5 flex flex-col gap-4 sm:-mt-8"
-    :class="fitsScreen ? 'h-dvh' : 'pb-5 sm:pb-8'"
+    :class="pageEdgeClasses"
   >
     <PageBackBar :title="back.title" :to="back.to" :back-label="back.label" />
 

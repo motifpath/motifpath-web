@@ -617,6 +617,10 @@ describe('SongChartReader', () => {
     const wrapper = mountReader()
 
     expect(wrapper.get('[data-test="song-chart-header"]').classes()).toContain('pt-inset-top')
-    expect(wrapper.get('[data-test="song-chart-foot"]').classes()).toContain('pb-inset-bottom')
+    expect(wrapper.get('[data-test="played-row"]').classes()).toContain('pb-safe-7')
+  })
+
+  it('pads its foot once, by the larger of its own gap and the home indicator', () => {
+    expect(mountReader().get('[data-test="song-chart-foot"]').classes()).not.toContain('pb-inset-bottom')
   })
 })

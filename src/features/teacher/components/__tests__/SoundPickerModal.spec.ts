@@ -104,4 +104,12 @@ describe('SoundPickerModal', () => {
     expect(wrapper.emitted('close')).toHaveLength(1)
     expect(wrapper.emitted('apply')).toBeUndefined()
   })
+
+  it('on a phone fills the screen with its × below the status bar and its foot above the home indicator', () => {
+    mountModal()
+
+    expect([...document.querySelector('[data-test="modal-panel"]')!.classList]).toEqual(
+      expect.arrayContaining(['fixed', 'inset-0', 'pt-safe-top-4', 'pb-safe-4', 'sm:static']),
+    )
+  })
 })

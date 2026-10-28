@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
     <div
       data-test="learner-column"
       class="flex min-w-0 flex-1 flex-col pr-inset-right"
-      :class="{ 'pl-inset-left': sizeClass === 'compact', 'pb-inset-bottom': !showsBottomBar }"
+      :class="{ 'pl-inset-left': sizeClass === 'compact', 'pb-inset-bottom': !showsBottomBar && !route.meta.fillsScreen }"
     >
       <StatusBarBackdrop v-if="!showsTopBar" />
       <header
