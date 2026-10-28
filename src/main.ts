@@ -8,6 +8,7 @@ import { router } from '@/router'
 import { loadClerkLocalization } from '@/shared/utils/clerkLocalization'
 import { resolveAnonymousLocale } from '@/stores/currentUser'
 import { playThroughSilentSwitch } from '@/shared/platform/audioSession'
+import { installBackButton } from '@/shared/platform/backButton'
 import { isNativeApp } from '@/shared/platform/platform'
 import '@/assets/main.css'
 
@@ -47,6 +48,9 @@ async function bootstrap() {
 
   app.use(i18n)
   app.use(router)
+
+  // Android's back gesture closes the top layer, then steps back, and leaves the app from Home.
+  if (isNativeApp()) void installBackButton(router)
 
   app.mount('#app')
 }
