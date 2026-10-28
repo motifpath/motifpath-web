@@ -12,6 +12,12 @@ const config: CapacitorConfig = {
     // Origin header, which the auth provider requires whenever its client token travels in the
     // Authorization header, and they are not subject to CORS.
     CapacitorHttp: { enabled: true },
+    // The phone's own Google account picker. Only Google is bundled; the other providers' SDKs stay
+    // out of the app.
+    SocialLogin: {
+      providers: { google: true, apple: false, facebook: false, twitter: false },
+      logLevel: 1,
+    },
   },
 }
 

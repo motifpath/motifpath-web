@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue'
-import { useAuth as useClerkAuth, useSignIn, useSignUp, useUser as useClerkUser } from '@clerk/vue'
+import { useAuth as useClerkAuth, useClerk, useSignIn, useSignUp, useUser as useClerkUser } from '@clerk/vue'
 
+import { forgetAppShellClientToken } from '@/features/auth/appShellClerk'
 import { useToast } from '@/shared/composables/useToast'
 import { i18n } from '@/i18n'
 
@@ -15,6 +16,11 @@ export interface GoogleSignInUrls {
   callbackUrl: string
   completeUrl: string
 }
+
+/**
+ * Where a Google ID token left the visitor: signed in, or at a sign-up that needs a full name first.
+ */
+export type GoogleTokenOutcome = 'signed-in' | 'needs-name'
 
 export interface AuthContext {
   /** `true` once Clerk has resolved the session state. */
@@ -37,6 +43,12 @@ export interface AuthContext {
    * has not loaded yet.
    */
   startGoogleSignIn: (urls: GoogleSignInUrls) => Promise<void>
+  /**
+   * Signs in, or up, with the ID token from the phone's Google account picker, and starts the
+   * session. The app navigates afterwards by itself. Rejects when Clerk refuses the token, or leaves
+   * the sign-in unfinished for another reason.
+   */
+  signInWithGoogleToken: (token: string) => Promise<GoogleTokenOutcome>
   /**
    * The name Google gave a sign-up that cannot finish without a full name, or null when no sign-up
    * is waiting for one.
@@ -63,6 +75,7 @@ export interface AuthContext {
  */
 export function useAuth(): AuthContext {
   const clerk = useClerkAuth()
+  const clerkInstance = useClerk()
   const clerkUser = useClerkUser()
   const { signIn } = useSignIn()
   const { signUp, setActive } = useSignUp()
@@ -75,12 +88,24 @@ export function useAuth(): AuthContext {
     refreshToken: () => clerk.getToken.value({ skipCache: true }),
     signOut: async () => {
       await clerk.signOut.value()
+      await forgetAppShellClientToken()
       toast.neutral(i18n.global.t('signedOutToast'))
     },
     startGoogleSignIn: async ({ callbackUrl, completeUrl }) => {
       const attempt = signIn.value
       if (!attempt) throw new Error('Clerk has not loaded yet')
       await attempt.authenticateWithRedirect({ strategy: 'oauth_google', redirectUrl: callbackUrl, redirectUrlComplete: completeUrl })
+    },
+    signInWithGoogleToken: async (token) => {
+      const instance = clerkInstance.value
+      if (!instance) throw new Error('Clerk has not loaded yet')
+      const attempt = await instance.authenticateWithGoogleOneTap({ token })
+      if (attempt.status === 'missing_requirements') return 'needs-name'
+      if (attempt.status !== 'complete' || !attempt.createdSessionId) {
+        throw new Error(`the Google sign-in is still ${attempt.status ?? 'incomplete'}`)
+      }
+      await instance.setActive({ session: attempt.createdSessionId })
+      return 'signed-in'
     },
     pendingSignUp: computed(() => {
       const attempt = signUp.value
