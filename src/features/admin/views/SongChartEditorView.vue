@@ -354,7 +354,7 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
 
     <ModalOverlay
       :open="importOpen"
-      :panel-class="compact ? 'fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col gap-3 rounded-t-3xl bg-surface-raised p-5 shadow-level2' : 'flex w-[min(560px,calc(100vw-32px))] flex-col gap-3 rounded-3xl bg-surface-raised p-6 shadow-level2'"
+      :panel-class="compact ? 'fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col gap-3 rounded-t-3xl bg-surface-raised px-5 pb-safe-5 pt-5 shadow-level2' : 'flex w-[min(560px,calc(100vw-32px))] flex-col gap-3 rounded-3xl bg-surface-raised p-6 shadow-level2'"
       @close="importOpen = false"
     >
       <h2 class="text-xl font-semibold text-ink">{{ t('songChartEditorView.importHeading') }}</h2>
@@ -385,7 +385,7 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
 
     <ModalOverlay
       :open="withdrawOpen"
-      :panel-class="compact ? 'fixed inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-raised p-5 shadow-level2' : 'flex w-[min(480px,calc(100vw-32px))] flex-col gap-3 rounded-3xl bg-surface-raised p-6 shadow-level2'"
+      :panel-class="compact ? 'fixed inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-raised px-5 pb-safe-5 pt-5 shadow-level2' : 'flex w-[min(480px,calc(100vw-32px))] flex-col gap-3 rounded-3xl bg-surface-raised p-6 shadow-level2'"
       @close="withdrawOpen = false"
     >
       <div data-test="withdraw-panel" :data-layout="compact ? 'sheet' : 'dialog'" class="flex flex-col gap-3">

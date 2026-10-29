@@ -65,4 +65,8 @@ describe('PracticeHeader', () => {
     await back.trigger('click')
     expect(wrapper.emitted('exit')).toHaveLength(1)
   })
+
+  it('starts below the status bar, so × can be tapped on a phone with a notch', () => {
+    expect(mountHeader().get('[data-test="practice-header"]').classes()).toEqual(expect.arrayContaining(['pt-inset-top', 'bg-surface']))
+  })
 })

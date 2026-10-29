@@ -30,8 +30,9 @@ const { t } = useTypedT()
 <template>
   <component
     :is="compact ? 'div' : 'header'"
+    data-test="editor-app-bar"
     class="sticky top-0 z-20 flex gap-3"
-    :class="compact ? 'h-16 items-center border-b border-border bg-surface-raised px-2' : 'items-end bg-surface px-[48px] pb-4 pt-8'"
+    :class="compact ? 'box-content h-16 items-center border-b border-border bg-surface-raised px-2 pt-inset-top' : 'items-end bg-surface px-[48px] pb-4 pt-8'"
   >
     <template v-if="compact">
       <RouterLink

@@ -75,4 +75,10 @@ describe('EditorAppBar', () => {
 
     expect(wrapper.find('[data-test="save-as"]').exists()).toBe(true)
   })
+
+  it('on a phone starts below the status bar, its background filling the area behind it', () => {
+    const bar = mountBar({ compact: true }).get('[data-test="editor-app-bar"]')
+
+    expect(bar.classes()).toEqual(expect.arrayContaining(['box-content', 'pt-inset-top', 'bg-surface-raised']))
+  })
 })

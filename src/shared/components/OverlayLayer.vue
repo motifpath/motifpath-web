@@ -53,10 +53,12 @@ function onScrimClick() {
         @click="onScrimClick"
       />
       <div
-        class="pointer-events-none absolute inset-0 flex"
+        data-test="overlay-area"
+        class="pointer-events-none absolute flex"
         :class="{
-          'items-center justify-center p-4': placement === 'center',
-          'items-end justify-center': placement === 'bottom',
+          'bottom-inset-bottom left-inset-left right-inset-right top-inset-top items-center justify-center p-4': placement === 'center',
+          'bottom-0 left-0 right-0 top-inset-top items-end justify-center': placement === 'bottom',
+          'inset-0': placement === 'none',
         }"
       >
         <div class="pointer-events-auto contents">

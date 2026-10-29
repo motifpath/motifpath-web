@@ -228,7 +228,7 @@ async function confirmLeave() {
 
       <div v-if="groups.inProgress.length" data-test="learning-group-in-progress" class="flex flex-col gap-2">
         <SectionHeader :label="t('learningView.inProgress')" :count="String(groups.inProgress.length)" />
-        <ul class="grid gap-3 min-[1120px]:grid-cols-2">
+        <ul class="grid grid-cols-1 gap-3 min-[1120px]:grid-cols-2">
           <li v-for="item in groups.inProgress" :key="item.key">
             <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
@@ -237,7 +237,7 @@ async function confirmLeave() {
 
       <div v-if="groups.finished.length" data-test="learning-group-finished" class="flex flex-col gap-2">
         <SectionHeader :label="t('learningView.finished')" :count="String(groups.finished.length)" />
-        <ul class="grid gap-3 min-[1120px]:grid-cols-2">
+        <ul class="grid grid-cols-1 gap-3 min-[1120px]:grid-cols-2">
           <li v-for="item in groups.finished" :key="item.key">
             <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
@@ -253,7 +253,7 @@ async function confirmLeave() {
           :expanded="leftOpen"
           @toggle="leftOpen = !leftOpen"
         />
-        <ul v-if="leftOpen" class="grid gap-3 min-[1120px]:grid-cols-2">
+        <ul v-if="leftOpen" class="grid grid-cols-1 gap-3 min-[1120px]:grid-cols-2">
           <li v-for="item in groups.left" :key="item.key">
             <LearningCard :item="item" @open="openItem(item)" @more="(trigger) => openMenu(item, trigger)" />
           </li>
