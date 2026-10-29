@@ -3,11 +3,13 @@ import { createPinia } from 'pinia'
 import { clerkPlugin } from '@clerk/vue'
 
 import App from '@/App.vue'
+import { loadPinnedClerkJs, prepareClerkForAppShell } from '@/features/auth/appShellClerk'
 import { i18n } from '@/i18n'
 import { router } from '@/router'
 import { loadClerkLocalization } from '@/shared/utils/clerkLocalization'
 import { resolveAnonymousLocale } from '@/stores/currentUser'
 import { playThroughSilentSwitch } from '@/shared/platform/audioSession'
+import { installBackButton } from '@/shared/platform/backButton'
 import { isNativeApp } from '@/shared/platform/platform'
 import '@/assets/main.css'
 
@@ -22,9 +24,28 @@ async function resolveInitialClerkLocalization() {
   }
 }
 
+/**
+ * Inside the app shell, Clerk can't keep its session in cookies: it runs in native mode, its client
+ * token kept by the app. A failure is reported, and the app still opens instead of a blank screen.
+ */
+async function prepareAppShellSignIn(clerkJsLoaded: Promise<unknown>) {
+  try {
+    await prepareClerkForAppShell(clerkJsLoaded)
+  } catch (error) {
+    console.error('Sign-in will not last beyond this launch:', error)
+  }
+}
+
 async function bootstrap() {
+  const native = isNativeApp()
   // Only inside the app shell: in a mobile browser the silent switch keeps muting the site.
-  if (isNativeApp()) playThroughSilentSwitch()
+  if (native) playThroughSilentSwitch()
+
+  // The Clerk plugin waits for this script rather than loading its own. A browser doesn't wait for it
+  // here: the plugin reports a failed load itself.
+  const clerkJsLoaded = loadPinnedClerkJs(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY)
+  if (native) await prepareAppShellSignIn(clerkJsLoaded)
+  else void clerkJsLoaded.catch(() => undefined)
 
   const app = createApp(App)
 
@@ -43,10 +64,14 @@ async function bootstrap() {
     routerPush: (to) => router.push(to),
     routerReplace: (to) => router.replace(to),
     afterSignOutUrl: '/',
+    standardBrowser: !native,
   })
 
   app.use(i18n)
   app.use(router)
+
+  // Android's back gesture closes the top layer, then steps back, and leaves the app from Home.
+  if (isNativeApp()) void installBackButton(router)
 
   app.mount('#app')
 }

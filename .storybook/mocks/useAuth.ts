@@ -13,6 +13,7 @@ export function useAuth(): AuthContext {
     displayInitial: computed(() => 'A'),
     email: computed(() => 'ana.souza@example.com'),
     startGoogleSignIn: () => Promise.resolve(),
+    signInWithGoogleToken: () => Promise.resolve('signed-in'),
     pendingSignUp: computed(() => null),
     completeSignUpName: () => Promise.resolve(),
     accountName: computed(() => ({ firstName: 'Ana', lastName: 'Souza' })),

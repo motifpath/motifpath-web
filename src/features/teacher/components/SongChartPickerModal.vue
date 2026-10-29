@@ -74,7 +74,7 @@ function insertSelected() {
     :panel-class="
       asDialog
         ? 'flex h-[min(720px,90vh)] w-[1040px] max-w-[94vw] flex-col overflow-hidden rounded-3xl bg-surface-raised shadow-level2'
-        : 'fixed inset-0 flex h-dvh w-full flex-col bg-surface'
+        : 'fixed inset-0 flex h-dvh w-full flex-col bg-surface pb-inset-bottom pt-inset-top'
     "
     @close="emit('close')"
   >

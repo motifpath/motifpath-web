@@ -23,7 +23,11 @@ const OTHER: Record<SupportedLocale, { locale: SupportedLocale; name: string }> 
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-surface" :class="{ 'items-stretch': sizeClass === 'expanded' }">
+  <div
+    data-test="landing-layout"
+    class="flex min-h-screen bg-surface pb-inset-bottom pl-inset-left pr-inset-right pt-inset-top"
+    :class="{ 'items-stretch': sizeClass === 'expanded' }"
+  >
     <aside
       v-if="sizeClass === 'expanded'"
       data-test="landing-brand-panel"
@@ -33,7 +37,8 @@ const OTHER: Record<SupportedLocale, { locale: SupportedLocale; name: string }> 
     </aside>
 
     <div
-      class="mx-auto flex min-h-screen w-full flex-col px-4 py-5"
+      data-test="landing-column"
+      class="mx-auto flex w-full flex-col px-4 py-5"
       :class="sizeClass === 'compact' ? '' : 'max-w-[26.25rem]'"
     >
       <header class="flex items-center gap-2">

@@ -30,6 +30,20 @@ const signIn = ref<{ authenticateWithRedirect: typeof authenticateWithRedirect }
 const signUp = ref<SignUpStub | undefined>(undefined)
 const setActive = vi.fn<(params: { session: string | null }) => Promise<void>>(async () => {})
 
+interface GoogleTokenAttemptStub {
+  status: string | null
+  createdSessionId: string | null
+}
+
+const authenticateWithGoogleOneTap = vi.fn<(params: { token: string }) => Promise<GoogleTokenAttemptStub>>()
+const clerkInstance = ref<{
+  authenticateWithGoogleOneTap: typeof authenticateWithGoogleOneTap
+  setActive: typeof setActive
+} | null>({ authenticateWithGoogleOneTap, setActive })
+
+const forgetAppShellClientToken = vi.fn(async () => {})
+vi.mock('@/features/auth/appShellClerk', () => ({ forgetAppShellClientToken }))
+
 const toastNeutral = vi.fn()
 vi.mock('@/shared/composables/useToast', () => ({ useToast: () => ({ neutral: toastNeutral }) }))
 
@@ -40,6 +54,7 @@ vi.mock('@clerk/vue', () => ({
     getToken: computed(() => clerk.getToken),
     signOut: computed(() => clerk.signOut),
   }),
+  useClerk: () => computed(() => clerkInstance.value),
   useUser: () => ({
     user: computed(() => clerkUser.value),
   }),
@@ -77,6 +92,16 @@ describe('useAuth', () => {
 
     expect(clerk.signOut).toHaveBeenCalled()
     expect(toastNeutral).toHaveBeenCalledWith("You're signed out. Your practice and progress are saved.")
+  })
+
+  it('forgets the sign-in kept on the phone after signing out', async () => {
+    const order: string[] = []
+    clerk.signOut.mockImplementationOnce(async () => void order.push('signOut'))
+    forgetAppShellClientToken.mockImplementationOnce(async () => void order.push('forget'))
+
+    await useAuth().signOut()
+
+    expect(order).toEqual(['signOut', 'forget'])
   })
 
   it("resolves the display initial from the user's first name", () => {
@@ -125,6 +150,49 @@ describe('useAuth', () => {
 
       await expect(useAuth().startGoogleSignIn({ callbackUrl: '/sso-callback', completeUrl: '/welcome' })).rejects.toThrow()
       signIn.value = { authenticateWithRedirect }
+    })
+  })
+
+  describe("Google sign-in with the phone's account picker", () => {
+    it('hands the Google ID token to Clerk and starts the session it signed in', async () => {
+      setActive.mockClear()
+      authenticateWithGoogleOneTap.mockResolvedValueOnce({ status: 'complete', createdSessionId: 'sess_1' })
+
+      const outcome = await useAuth().signInWithGoogleToken('google-id-token')
+
+      expect(authenticateWithGoogleOneTap).toHaveBeenCalledWith({ token: 'google-id-token' })
+      expect(setActive).toHaveBeenCalledWith({ session: 'sess_1' })
+      expect(outcome).toBe('signed-in')
+    })
+
+    it('reports a sign-up still waiting for a full name, without starting a session', async () => {
+      setActive.mockClear()
+      authenticateWithGoogleOneTap.mockResolvedValueOnce({ status: 'missing_requirements', createdSessionId: null })
+
+      await expect(useAuth().signInWithGoogleToken('google-id-token')).resolves.toBe('needs-name')
+      expect(setActive).not.toHaveBeenCalled()
+    })
+
+    it('fails when Clerk neither signs in nor waits for a name', async () => {
+      setActive.mockClear()
+      authenticateWithGoogleOneTap.mockResolvedValueOnce({ status: 'needs_second_factor', createdSessionId: null })
+
+      await expect(useAuth().signInWithGoogleToken('google-id-token')).rejects.toThrow('needs_second_factor')
+      expect(setActive).not.toHaveBeenCalled()
+    })
+
+    it('fails when Clerk refuses the token', async () => {
+      authenticateWithGoogleOneTap.mockRejectedValueOnce(new Error('authorization_invalid'))
+
+      await expect(useAuth().signInWithGoogleToken('google-id-token')).rejects.toThrow('authorization_invalid')
+    })
+
+    it('refuses before Clerk has loaded', async () => {
+      const loaded = clerkInstance.value
+      clerkInstance.value = null
+
+      await expect(useAuth().signInWithGoogleToken('google-id-token')).rejects.toThrow()
+      clerkInstance.value = loaded
     })
   })
 
