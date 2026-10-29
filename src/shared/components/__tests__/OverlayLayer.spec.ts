@@ -271,4 +271,33 @@ describe('OverlayLayer', () => {
       expect(document.querySelector('[data-test="opener"] [data-test="panel"]')).toBeNull()
     })
   })
+
+  describe('device edges', () => {
+    const area = () => document.querySelector('[data-test="overlay-area"]')!.classList
+
+    it('keeps a centred layer inside every inset', async () => {
+      await openFromTrigger(mountPage({ placement: 'center' }))
+
+      expect([...area()]).toEqual(expect.arrayContaining(['top-inset-top', 'bottom-inset-bottom', 'left-inset-left', 'right-inset-right']))
+    })
+
+    it('never lets a sheet rise into the status bar, and lets it reach the bottom edge', async () => {
+      await openFromTrigger(mountPage({ placement: 'bottom' }))
+
+      expect(area()).toContain('top-inset-top')
+      expect(area()).toContain('bottom-0')
+    })
+
+    it('leaves the whole screen to a layer that places itself', async () => {
+      await openFromTrigger(mountPage({ placement: 'none' }))
+
+      expect(area()).toContain('inset-0')
+    })
+
+    it('dims the whole screen, system bars included', async () => {
+      await openFromTrigger(mountPage())
+
+      expect(document.querySelector('[data-test="overlay-scrim"]')!.classList).toContain('inset-0')
+    })
+  })
 })

@@ -25,7 +25,7 @@ const titleId = useId()
       :aria-labelledby="titleId"
       class="fixed inset-0 flex flex-col bg-surface"
     >
-      <div data-test="preview-bar" class="flex h-14 shrink-0 items-center gap-2 bg-accent px-4 text-accent-fg">
+      <div data-test="preview-bar" class="box-content flex h-14 shrink-0 items-center gap-2 bg-accent px-4 pt-inset-top text-accent-fg">
         <Eye :size="20" aria-hidden="true" />
         <h2 :id="titleId" class="flex-1 truncate text-sm font-semibold">{{ title }}</h2>
         <button
@@ -38,7 +38,7 @@ const titleId = useId()
           <X :size="20" aria-hidden="true" />
         </button>
       </div>
-      <div class="min-h-0 flex-1 overflow-y-auto">
+      <div data-test="preview-body" class="min-h-0 flex-1 overflow-y-auto pb-inset-bottom">
         <div class="mx-auto w-full max-w-[1000px] px-4 py-6 lg:px-10">
           <slot />
         </div>

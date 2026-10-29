@@ -7,6 +7,7 @@ import BrandMark from '@/shared/components/BrandMark.vue'
 import NavigationBar from '@/shared/components/NavigationBar.vue'
 import NavigationRail from '@/shared/components/NavigationRail.vue'
 import NavigationSidebar from '@/shared/components/NavigationSidebar.vue'
+import StatusBarBackdrop from '@/shared/components/StatusBarBackdrop.vue'
 import { useSizeClass } from '@/shared/composables/useSizeClass'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { destinationOf } from '@/shared/navigation'
@@ -61,29 +62,31 @@ onBeforeUnmount(() => {
   <!-- The App Shell: the same five destinations everywhere; only their container follows the size
        class — a bottom bar on a phone, a rail on a tablet, a sidebar on a desktop. -->
   <div class="flex min-h-dvh">
-    <NavigationRail
-      v-if="sizeClass === 'medium'"
-      data-test="navigation-rail"
-      class="sticky top-0 h-dvh shrink-0"
-      :current="current"
+    <!-- The rail or the sidebar owns the left edge, top to bottom: it clears the notch of a phone in
+         landscape, the status bar and the home indicator. -->
+    <div
+      v-if="sizeClass !== 'compact'"
+      data-test="side-navigation-edge"
+      class="sticky top-0 flex h-dvh shrink-0 bg-surface-raised pb-inset-bottom pl-inset-left pt-inset-top"
     >
-      <template #account><AccountMenu /></template>
-    </NavigationRail>
-    <NavigationSidebar
-      v-else-if="sizeClass === 'expanded'"
-      data-test="navigation-sidebar"
-      class="sticky top-0 h-dvh shrink-0"
-      :current="current"
-      :show-teach="canTeach"
-    >
-      <template #account><AccountMenu entry="row" /></template>
-    </NavigationSidebar>
+      <NavigationRail v-if="sizeClass === 'medium'" data-test="navigation-rail" class="h-full" :current="current">
+        <template #account><AccountMenu /></template>
+      </NavigationRail>
+      <NavigationSidebar v-else data-test="navigation-sidebar" class="h-full" :current="current" :show-teach="canTeach">
+        <template #account><AccountMenu entry="row" /></template>
+      </NavigationSidebar>
+    </div>
 
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div
+      data-test="learner-column"
+      class="flex min-w-0 flex-1 flex-col pr-inset-right"
+      :class="{ 'pl-inset-left': sizeClass === 'compact', 'pb-inset-bottom': !showsBottomBar && !route.meta.fillsScreen }"
+    >
+      <StatusBarBackdrop v-if="!showsTopBar" />
       <header
         v-if="showsTopBar"
         data-test="learner-top-bar"
-        class="sticky top-0 z-20 flex h-14 items-center gap-2.5 bg-surface-raised pl-5 pr-2 shadow-level1"
+        class="sticky top-0 z-20 box-content flex h-14 items-center gap-2.5 bg-surface-raised pl-5 pr-2 pt-inset-top shadow-level1"
       >
         <RouterLink :to="{ name: 'home' }" class="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           <BrandMark />

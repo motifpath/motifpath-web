@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { updateClerkOptions } from '@clerk/vue'
 import { RouterView } from 'vue-router'
 
@@ -7,11 +7,27 @@ import { updateAuthBridge, updateRegistrationBridge, updateRoleBridge } from '@/
 import { useAuth } from '@/features/auth/composables/useAuth'
 import { i18n, type SupportedLocale } from '@/i18n'
 import ToastStack from '@/shared/components/ToastStack.vue'
+import { isNativeApp } from '@/shared/platform/platform'
+import { holdSplashUntilReady } from '@/shared/platform/splashScreen'
+import { followThemeWithSystemBars } from '@/shared/platform/systemBars'
 import { loadClerkLocalization } from '@/shared/utils/clerkLocalization'
 import { useCurrentUserStore } from '@/stores/currentUser'
+import { useThemeStore } from '@/stores/theme'
 
 const { isLoaded, isSignedIn, getToken } = useAuth()
 const currentUser = useCurrentUserStore()
+const themeStore = useThemeStore()
+
+// Inside the app shell the launch screen and the system bars are the app's own. The first screen
+// can render once sign-in is known and, for a signed-in student, once their account is known
+// (registered, or failed, which the screen shows in place).
+if (isNativeApp()) {
+  const firstScreenReady = computed(
+    () => isLoaded.value && (!isSignedIn.value || currentUser.state === 'registered' || currentUser.state === 'failed'),
+  )
+  holdSplashUntilReady(firstScreenReady)
+  followThemeWithSystemBars(computed(() => themeStore.theme))
+}
 
 // `main.ts` already synced this value, at Clerk's plugin-install time.
 const lastSyncedClerkLocale = ref<SupportedLocale>(i18n.global.locale.value)

@@ -23,6 +23,13 @@ describe('OverlayPanel', () => {
   })
 
   describe('on a phone (compact)', () => {
+    it('keeps a sheet without actions clear of the home indicator', () => {
+      mockViewport(390)
+      const wrapper = mount(OverlayPanel, { props: { open: true, title: 'About' }, slots: { default: '<p>Text</p>' } })
+
+      expect(wrapper.get('[data-test="overlay-body"]').classes()).toContain('pb-safe')
+    })
+
     it('is a bottom sheet with a grabber, its title, the body and the actions', () => {
       const wrapper = mountPanel(390)
 

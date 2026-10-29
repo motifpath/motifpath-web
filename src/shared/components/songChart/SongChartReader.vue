@@ -150,7 +150,7 @@ function playedIt() {
 
 <template>
   <div class="flex min-h-dvh flex-col bg-surface">
-    <header class="sticky top-0 z-40 flex items-center gap-1 bg-surface py-1 pl-2 pr-4">
+    <header data-test="song-chart-header" class="sticky top-0 z-40 box-content flex h-14 items-center gap-1 bg-surface pl-2 pr-4 pt-inset-top">
       <button
         type="button"
         data-test="close-song-chart"
@@ -216,7 +216,7 @@ function playedIt() {
       <aside
         v-if="paneOpen"
         data-test="reader-pane"
-        class="sticky top-14 flex h-[calc(100dvh-3.5rem)] w-[400px] shrink-0 flex-col gap-6 self-start overflow-y-auto bg-surface-sunken p-6"
+        class="sticky top-under-bar-14 flex h-[calc(100dvh-theme(spacing.under-bar-14))] w-[400px] shrink-0 flex-col gap-6 self-start overflow-y-auto bg-surface-sunken p-6"
       >
         <section data-test="pane-metronome" class="flex flex-col gap-2">
           <h2 class="text-xs font-semibold uppercase tracking-wider text-ink-subtle">{{ t('tempoControl.metronome') }}</h2>
@@ -281,7 +281,7 @@ function playedIt() {
       />
     </FloatingChordCard>
 
-    <div class="fixed bottom-0 left-0 z-20 flex flex-col" :class="paneOpen ? 'right-[400px]' : 'right-0'">
+    <div data-test="song-chart-foot" class="fixed bottom-0 left-0 z-20 flex flex-col" :class="paneOpen ? 'right-[400px]' : 'right-0'">
       <div v-if="metronome.on.value && !expanded" data-test="tempo-bar" class="flex justify-center border-t border-border bg-surface px-6 pb-1.5 pt-2.5">
         <div class="flex w-full max-w-[560px] flex-col gap-1">
           <p data-test="tempo-note" class="text-xs font-medium text-ink-muted">
@@ -300,7 +300,7 @@ function playedIt() {
           />
         </div>
       </div>
-      <div class="flex justify-center border-t border-border bg-surface px-6 pb-7 pt-3">
+      <div data-test="played-row" class="flex justify-center border-t border-border bg-surface px-6 pb-safe-7 pt-3">
         <button
           type="button"
           data-test="played-it"

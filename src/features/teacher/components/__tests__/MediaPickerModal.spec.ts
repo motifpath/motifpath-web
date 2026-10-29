@@ -91,4 +91,12 @@ describe('MediaPickerModal', () => {
 
     expect(wrapper.emitted('close')).toHaveLength(1)
   })
+
+  it('on a phone fills the screen with its × below the status bar and its foot above the home indicator', () => {
+    const wrapper = mountModal()
+
+    expect(wrapper.get('[data-test="modal-panel"]').classes()).toEqual(
+      expect.arrayContaining(['fixed', 'inset-0', 'pt-safe-top-4', 'pb-safe-4', 'sm:static']),
+    )
+  })
 })
