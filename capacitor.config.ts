@@ -17,6 +17,12 @@ const config: CapacitorConfig = {
     // The page draws edge to edge and pads by the safe-area insets. Android also gets them as
     // --safe-area-inset-* custom properties, which older WebViews don't expose through env().
     SystemBars: { insetsHandling: 'css', initialViewportFitValueHint: 'cover' },
+    // The phone's own Google account picker. Only Google is bundled; the other providers' SDKs stay
+    // out of the app.
+    SocialLogin: {
+      providers: { google: true, apple: false, facebook: false, twitter: false },
+      logLevel: 1,
+    },
   },
 }
 
