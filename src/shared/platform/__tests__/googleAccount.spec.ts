@@ -10,7 +10,7 @@ function fakeGoogle(idToken: string | null = 'google-id-token') {
   const plugin = {
     initialize: vi.fn(async () => void calls.push('initialize')),
     logout: vi.fn(async () => void calls.push('logout')),
-    login: vi.fn(async () => {
+    login: vi.fn<(request: { options: { nonce?: string } }) => Promise<{ result: { idToken: string | null } }>>(async () => {
       calls.push('login')
       return { result: { idToken } }
     }),
@@ -43,6 +43,27 @@ describe('googleAccountPicker', () => {
     await pick()
 
     expect(google.calls).toEqual(['initialize', 'logout', 'login', 'logout', 'login'])
+  })
+
+  it('sends a new nonce on every attempt, so Android mints a new token instead of handing back its cached one', async () => {
+    const google = fakeGoogle()
+    const pick = googleAccountPicker(google.plugin, CLIENTS)
+
+    await pick()
+    await pick()
+
+    const nonces = google.plugin.login.mock.calls.map(([request]) => request.options.nonce)
+    expect(nonces).toEqual([expect.any(String), expect.any(String)])
+    expect(nonces[0]).not.toBe(nonces[1])
+  })
+
+  it('leaves the scopes to the platform, whose defaults already cover email and profile', async () => {
+    const google = fakeGoogle()
+
+    await googleAccountPicker(google.plugin, CLIENTS)()
+
+    // The Android plugin refuses any explicit scopes unless the app's main activity is modified.
+    expect(google.plugin.login).toHaveBeenCalledWith({ provider: 'google', options: { nonce: expect.any(String) } })
   })
 
   it('still opens the picker when there was no Google sign-in to end', async () => {
