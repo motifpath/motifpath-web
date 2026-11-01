@@ -44,7 +44,10 @@ export function googleAccountPicker(plugin: GoogleSignInPlugin, clients: GoogleC
     // A Google sign-in restored on the device hands back the ID token it cached, which the auth
     // provider refuses as already used. Ending it first makes the picker issue a fresh one.
     await plugin.logout({ provider: 'google' }).catch(() => undefined)
-    const login = await plugin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } })
+    // Android hands back its cached ID token even after the logout; a new nonce makes Google mint a
+    // new one. No scopes: both platforms already ask for email and profile, and Android refuses
+    // explicit scopes unless the app's main activity is modified for them.
+    const login = await plugin.login({ provider: 'google', options: { nonce: crypto.randomUUID() } })
     return idTokenOf(login.result)
   }
 }
