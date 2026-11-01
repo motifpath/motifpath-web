@@ -72,4 +72,34 @@ describe('createApiClient', () => {
     expect(fetchSpy.mock.calls[0][0].headers.get('Authorization')).toBe('Bearer jwt-1')
     expect(fetchSpy.mock.calls[1][0].headers.get('Authorization')).toBe('Bearer jwt-2')
   })
+
+  it('reads the body of a response that claims to be empty but is not', async () => {
+    // Android's WebView labels a streamed response from the native network stack "Content-Length: 0".
+    const client = createApiClient<paths>({
+      baseUrl: 'https://core.example.test',
+      getToken: async () => 'test-jwt',
+      fetch: async () =>
+        new Response(JSON.stringify({ user_id: 'u_1' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Content-Length': '0' },
+        }),
+    })
+
+    const { data } = await client.GET('/users/me')
+
+    expect(data).toEqual({ user_id: 'u_1' })
+  })
+
+  it('still treats a response that really is empty as having no data', async () => {
+    const client = createApiClient<paths>({
+      baseUrl: 'https://core.example.test',
+      getToken: async () => 'test-jwt',
+      fetch: async () => new Response(null, { status: 200, headers: { 'Content-Length': '0' } }),
+    })
+
+    const { data, error } = await client.GET('/users/me')
+
+    expect(data).toBeUndefined()
+    expect(error).toBeUndefined()
+  })
 })

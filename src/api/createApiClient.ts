@@ -34,7 +34,21 @@ export function createApiClient<Paths extends object>({
     },
   }
 
-  client.use(authMiddleware)
+  // The client takes "Content-Length: 0" as an empty body without reading it. Android's WebView puts
+  // that header on every streamed response from the native network stack, bodies included, so a
+  // response claiming to be empty is read before the claim is trusted.
+  const contentLengthMiddleware: Middleware = {
+    async onResponse({ response }) {
+      if (response.headers.get('Content-Length') !== '0') return undefined
+      const body = await response.clone().text()
+      if (!body) return undefined
+      const headers = new Headers(response.headers)
+      headers.delete('Content-Length')
+      return new Response(body, { status: response.status, statusText: response.statusText, headers })
+    },
+  }
+
+  client.use(authMiddleware, contentLengthMiddleware)
 
   return client
 }
