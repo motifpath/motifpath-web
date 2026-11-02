@@ -376,6 +376,7 @@
     "challengesError": "Não foi possível carregar os desafios deste nó.",
     "challengesLoading": "Carregando desafios…",
     "instrumentsLabel": "Instrumentos",
+    "languagesLabel": "Idiomas",
     "thumbnailLabel": "Miniatura",
     "publishedVersion": "Versão {version} publicada.",
     "publishFailed": "Falha ao publicar a lição",

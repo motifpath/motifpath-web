@@ -268,6 +268,38 @@ describe('ContentAuthoringView', () => {
       expect(POST.mock.calls[0]?.[1].body.instrument_ids).toEqual(['i-guitar'])
     })
 
+    it.each(['video', 'article'] as const)('saves a new %s lesson with the chosen Portuguese language', async (type) => {
+      routeGET({
+        '/knowledge-nodes?kind=skill': { data: [skillFixture], error: undefined, response: { status: 200 } },
+        '/knowledge-nodes?kind=concept': { data: [conceptFixture], error: undefined, response: { status: 200 } },
+      })
+      POST.mockResolvedValueOnce({ data: { ...contentNodeFixture, content_type: type, has_unpublished_changes: true, languages: [{ code: 'pt_BR', name: 'Portuguese (Brazil)' }] }, error: undefined, response: { status: 201 } })
+      const wrapper = mountView()
+      await flushPromises()
+      expect(wrapper.get('[data-test="language-any"]').attributes('aria-pressed')).toBe('true')
+      await wrapper.get('[data-test="language-option-pt_BR"]').trigger('click')
+      if (type === 'article') {
+        await wrapper.get('[data-test="content-type-article"]').trigger('click')
+        wrapper.getComponent(PromptEditor).vm.$emit('update:modelValue', ARTICLE_BODY)
+      } else {
+        await wrapper.get('[data-test="media-url-input"]').setValue(VIDEO_URL)
+      }
+      await classify(wrapper)
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+      expect(POST).toHaveBeenCalledWith('/content-nodes', expect.objectContaining({ body: expect.objectContaining({ language_codes: ['pt_BR'] }) }))
+      expect(wrapper.get('[data-test="language-option-pt_BR"]').attributes('aria-pressed')).toBe('true')
+    })
+
+    it('returns to language-agnostic when the last specific lesson language is removed', async () => {
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.get('[data-test="language-option-pt_BR"]').trigger('click')
+      await wrapper.get('[data-test="language-option-pt_BR"]').trigger('click')
+      expect(wrapper.get('[data-test="language-any"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.get('[data-test="language-option-pt_BR"]').attributes('aria-pressed')).toBe('false')
+    })
+
     async function classify(wrapper: ReturnType<typeof mountView>) {
       await wrapper.findAll('[data-test="tree-open-picker"]')[1].trigger('click')
       await wrapper.get('[data-test="tree-node-checkbox"][value="s-1"]').setValue(true)
@@ -496,6 +528,40 @@ describe('ContentAuthoringView', () => {
 
       expect(wrapper.find('[data-test="challenge-section"]').exists()).toBe(true)
       expect(wrapper.find('[data-test="no-challenge"]').exists()).toBe(true)
+    })
+  })
+
+  describe('lesson language editing', () => {
+    async function portugueseLesson() {
+      route.params = { id: 'cn-1' }
+      routeGET({ '/content-nodes/{content_node_id}': { data: { ...contentNodeFixture, has_unpublished_changes: true, languages: [{ code: 'pt_BR', name: 'Portuguese (Brazil)' }] }, error: undefined, response: { status: 200 } } })
+      const wrapper = mountView()
+      await flushPromises()
+      return wrapper
+    }
+
+    it('loads the saved language and sends an explicit language edit', async () => {
+      const wrapper = await portugueseLesson()
+      expect(wrapper.get('[data-test="language-option-pt_BR"]').attributes('aria-pressed')).toBe('true')
+      PUT.mockResolvedValueOnce({ data: { ...contentNodeFixture, has_unpublished_changes: true, languages: [{ code: 'en', name: 'English' }] }, error: undefined, response: { status: 200 } })
+      await wrapper.get('[data-test="language-option-en"]').trigger('click')
+      await wrapper.get('[data-test="language-option-pt_BR"]').trigger('click')
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(true)
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+      expect(PUT).toHaveBeenCalledWith('/content-nodes/{content_node_id}', expect.objectContaining({ body: expect.objectContaining({ language_codes: ['en'] }) }))
+    })
+
+    it('retains the chosen lesson language after saving fails', async () => {
+      const wrapper = await portugueseLesson()
+      PUT.mockResolvedValueOnce({ data: undefined, error: { message: 'unavailable' }, response: { status: 500 } })
+      await wrapper.get('[data-test="language-option-en"]').trigger('click')
+      await wrapper.get('[data-test="language-option-pt_BR"]').trigger('click')
+      await wrapper.get('[data-test="editor-app-bar-save"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('[data-test="language-option-en"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.get('[data-test="language-option-pt_BR"]').attributes('aria-pressed')).toBe('false')
+      expect(wrapper.find('[data-test="editor-app-bar-save"]').exists()).toBe(true)
     })
   })
 

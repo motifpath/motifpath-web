@@ -30,6 +30,7 @@ import { isUploadedLessonVideo, useVideoUpload } from '@/features/teacher/compos
 import EditorAppBar from '@/shared/components/EditorAppBar.vue'
 import EditorBody from '@/shared/components/EditorBody.vue'
 import InstrumentPicker from '@/shared/components/InstrumentPicker.vue'
+import LanguageCodesPicker from '@/shared/components/LanguageCodesPicker.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import OverlayLayer from '@/shared/components/OverlayLayer.vue'
@@ -571,6 +572,10 @@ const hintClass = 'text-xs text-ink-muted'
           <span :class="labelClass">{{ t('contentAuthoringView.instrumentsLabel') }}</span>
           <InstrumentPicker v-model="form.instrumentIds.value" />
         </div>
+        <fieldset class="flex flex-col gap-1.5">
+          <legend :class="labelClass">{{ t('contentAuthoringView.languagesLabel') }}</legend>
+          <LanguageCodesPicker v-model="form.languageCodes.value" :disabled="saving || publishing" />
+        </fieldset>
       </section>
 
       <section :class="cardClass" data-field="body">
