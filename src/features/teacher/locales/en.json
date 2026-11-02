@@ -376,6 +376,7 @@
     "challengesError": "Couldn't load this node's challenges.",
     "challengesLoading": "Loading challenges…",
     "instrumentsLabel": "Instruments",
+    "languagesLabel": "Languages",
     "thumbnailLabel": "Thumbnail",
     "publishedVersion": "Published version {version}.",
     "publishFailed": "Failed to publish the lesson",

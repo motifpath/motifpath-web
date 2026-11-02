@@ -77,6 +77,23 @@ describe('useContentNodeForm', () => {
     })
   })
 
+  it.each(['article', 'video'] as const)('sends chosen lesson languages on create and update for %s', (type) => {
+    const form = useContentNodeForm()
+    form.contentType.value = type
+    form.languageCodes.value = ['pt_BR']
+    const created = form.toCreateContentNodeRequest()
+    const updated = form.toUpdateContentNodeRequest()
+    form.languageCodes.value.push('en')
+    expect(created.language_codes).toEqual(['pt_BR'])
+    expect(updated.language_codes).toEqual(['pt_BR'])
+  })
+
+  it('keeps the default language selection independent across new forms', () => {
+    const first = useContentNodeForm()
+    first.languageCodes.value.push('pt_BR')
+    expect(useContentNodeForm().languageCodes.value).toEqual(['any'])
+  })
+
   describe('toCreateContentNodeRequest', () => {
     it('maps form state to a CreateContentNodeRequest, defaulting to language-agnostic', () => {
       const form = useContentNodeForm()

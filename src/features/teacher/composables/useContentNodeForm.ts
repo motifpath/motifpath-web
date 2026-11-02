@@ -22,9 +22,9 @@ const LANGUAGE_AGNOSTIC = ['any']
  * to the Create/UpdateContentNodeRequest shapes the API expects. A video's
  * body is its media URL, an article's is its rich content; requests carry only
  * the one matching the content type, since the API rejects both together.
- * content_node-level language tagging has no authoring UI yet — a new node is
- * authored as language-agnostic, same as exercises, and an existing node keeps
- * the languages it was loaded with, since an update replaces them wholesale.
+ * New nodes start as language-agnostic. The teacher can choose specific
+ * languages, and editing starts from the loaded languages because an update
+ * replaces the complete set.
  */
 export function useContentNodeForm() {
   const title = ref('')
@@ -38,7 +38,7 @@ export function useContentNodeForm() {
   // Empty means the content suits every instrument.
   const instrumentIds = ref<string[]>([])
   const thumbnailUrl = ref<string | undefined>(undefined)
-  const languageCodes = ref<string[]>(LANGUAGE_AGNOSTIC)
+  const languageCodes = ref<string[]>([...LANGUAGE_AGNOSTIC])
 
   const hasBody = computed(() =>
     contentType.value === 'video'
@@ -93,7 +93,7 @@ export function useContentNodeForm() {
       content_type: contentType.value,
       ...body(),
       classification: classification(),
-      language_codes: [...LANGUAGE_AGNOSTIC],
+      language_codes: [...languageCodes.value],
       ...metadata(),
     }
   }
@@ -120,7 +120,7 @@ export function useContentNodeForm() {
     instrumentIds.value = [...contentNode.instrument_ids]
     thumbnailUrl.value = contentNode.thumbnail_url
     // The API rejects an empty set, so a node stored without any is re-saved as language-agnostic.
-    languageCodes.value = contentNode.languages.length > 0 ? contentNode.languages.map((l) => l.code) : LANGUAGE_AGNOSTIC
+    languageCodes.value = contentNode.languages.length > 0 ? contentNode.languages.map((l) => l.code) : [...LANGUAGE_AGNOSTIC]
     baseline.value = snapshot()
   }
 
@@ -141,6 +141,7 @@ export function useContentNodeForm() {
     mediaUrl,
     richContent,
     instrumentIds,
+    languageCodes,
     thumbnailUrl,
     hasBody,
     missing,
