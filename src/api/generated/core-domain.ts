@@ -960,17 +960,99 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the progression catalog
-         * @description Returns every progression of the progression catalog, ordered by key: its key, its
-         *     numerals one bar each (in a major key, I7 IV7 V7 being dominant sevenths), the
-         *     progressions a learner mistakes it for, and its names. A client reads it to show and
-         *     grade the progression drills' questions the same way the server does, such as a chart
-         *     picked for a progression. The catalog is reference data, the same for every user and
-         *     language, so a client may keep it for the session. Any authenticated user may list it.
+         * List the progressions
+         * @description Returns every progression, ordered by key: the catalog's and those admins created, each
+         *     with its key, mode, numerals one bar each (I7 IV7 V7 being dominant sevenths), the bars
+         *     that are borrowed, whether it is in the drills, the progressions drills offer as its
+         *     wrong answers, and its names. A client reads it to show and grade the progression drills'
+         *     questions the same way the server does, such as a chart picked for a progression, using
+         *     only the progressions in the drills, and to name the progressions a song chart is tagged
+         *     with. Only an admin sees who created a progression; otherwise it is the same for every
+         *     user and language. It changes only when an admin creates,
+         *     changes or removes a progression, so a client may keep it for the session. Any
+         *     authenticated user may list it.
          */
         get: operations["listProgressions"];
         put?: never;
+        /**
+         * Create a progression for song charts
+         * @description Creates a progression from its mode and numerals, one per bar, so an admin can tag song
+         *     chart sections with a progression the catalog doesn't have. A numeral is a root, I to VII
+         *     optionally preceded by ♭ or ♯, and a quality given by its case and suffix: upper case for
+         *     major (also 7 and maj7), lower case for minor (also 7), and lower case with °, ø7 or °7
+         *     for diminished, half-diminished 7 and diminished 7. The ASCII forms b, #, o and h are
+         *     accepted for ♭, ♯, ° and ø, and the progression keeps the symbols. A numeral outside the
+         *     mode's diatonic chords is accepted and marked borrowed. A progression has 1 to 16 bars.
+         *
+         *     The created progression is for song charts only unless in_drills is true, which also needs
+         *     skill_ids or concept_ids and passes the same checks as addProgressionToDrills; if those
+         *     checks fail, nothing is created. Its key is the mode and its numerals in ASCII, such as
+         *     major/I-bVII-IV-I, and its name is its numerals joined by –, followed by the nickname in
+         *     parentheses when one is given. Mode and numerals never change. Only admins may create a
+         *     progression.
+         */
+        post: operations["createProgression"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/progressions/{progression_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         post?: never;
+        /**
+         * Remove a progression created by mistake
+         * @description Deletes a created progression that isn't in the drills, so its mode and numerals can be
+         *     created again. Refused while the draft or the latest published revision of any song chart
+         *     tags it: the error lists those charts and sections, to untag first. Older published
+         *     revisions don't count; they keep the key, and a client shows a key no progression has as
+         *     the numerals it spells. A progression in the drills, the catalog's included, is never
+         *     removed. Untagging a section in a chart never removes a progression. Only admins may
+         *     remove a progression.
+         */
+        delete: operations["deleteProgression"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a created progression's nickname
+         * @description Replaces a created progression's nicknames, which follow its numerals in its name. An
+         *     empty object removes them. Mode, numerals and key never change. The catalog's
+         *     progressions keep their names. Only admins may change a nickname.
+         */
+        patch: operations["updateProgression"];
+        trace?: never;
+    };
+    "/progressions/{progression_id}/drills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a created progression to the drills
+         * @description Makes a chart-only progression a drill progression, practising the given skills and
+         *     concepts. It is refused, with every reason, unless the progression has 4 or 12 bars, is
+         *     in a mode the drills support (major), and at least one other drill progression has the
+         *     same bar count. Drills offer as its wrong answers the drill progressions with the same
+         *     bar count that share the most chords with it, bar by bar, those in the same mode first.
+         *     There is no way back: a drill progression stays in the drills. Only admins may add a
+         *     progression to the drills.
+         */
+        post: operations["addProgressionToDrills"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4413,15 +4495,17 @@ export interface components {
             };
         };
         /**
-         * @description The progressions a section plays, by their key in the progression
-         *     catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
-         *     a tagged section is practised as a song on those progressions'
-         *     knowledge nodes, played whole; an untagged chart never is. On
-         *     input, absent means none, and a key the catalog doesn't have is
-         *     refused. The server always writes it, empty for an untagged
+         * @description The progressions a section plays, by their key (e.g. "I-IV-V-I" or
+         *     "major/I-bVII-IV-I"), as its author tagged them. A chart with a
+         *     section tagged with a drill progression is practised as a song on
+         *     that progression's knowledge nodes, played whole; an untagged chart,
+         *     or one tagged only with progressions for song charts, never is. On
+         *     input, absent means none, and a key no progression has is refused.
+         *     A published revision keeps its keys even after a progression is
+         *     removed; a client shows such a key as the numerals it spells. The server always writes it, empty for an untagged
          *     section.
          */
-        SongChartProgressionKeys: string[];
+        SongChartProgressionKeys: components["schemas"]["ProgressionKey"][];
         /** @description The fields of a song chart's draft that authors write. */
         SongChartDraftInput: {
             /** @description The song's title as shown to learners. */
@@ -4715,8 +4799,7 @@ export interface components {
         SongChartUnplayedProgression: {
             /** @description The section, numbered from 0 in document order. */
             section_index: number;
-            /** @description The tagged progression, by its key in the progression catalog. */
-            progression_key: string;
+            progression_key: components["schemas"]["ProgressionKey"];
         };
         /** @description The result of importing ChordPro text into a song chart's draft. */
         SongChartChordProImport: {
@@ -7122,8 +7205,10 @@ export interface components {
             current_rung: components["schemas"]["PracticeRung"];
         };
         /**
-         * @description A common chord progression of the progression catalog, by number: one numeral per bar of
-         *     a major key, asked in whatever key a drill picks.
+         * @description A chord progression by number: one numeral per bar of a major or minor key, asked or
+         *     spelled in whatever key a drill or a chart picks. The catalog's progressions and those
+         *     admins create are listed together; in_drills tells the drill progressions apart from
+         *     those for song charts only.
          */
         Progression: {
             /**
@@ -7131,17 +7216,157 @@ export interface components {
              * @description The progression's fixed identifier.
              */
             progression_id: string;
-            /** @description The progression's key in the catalog, such as I-V-vi-IV, as item keys and answers name it. */
-            key: string;
+            key: components["schemas"]["ProgressionKey"];
+            /**
+             * @description The mode its numerals are read in.
+             * @enum {string}
+             */
+            mode: "major" | "minor";
             /**
              * @description One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
              *     four-bar progression has four, a 12-bar form twelve.
              */
-            bars: string[];
-            /** @description The keys of the progressions a learner mistakes it for; each lists it back. */
-            confusable: string[];
+            bars: components["schemas"]["ProgressionNumeral"][];
+            /**
+             * @description The bars, numbered from 0, whose numeral is outside the mode's diatonic chords, judged
+             *     by root and triad (a seventh doesn't change it); empty when none is.
+             */
+            borrowed_bars: number[];
+            /**
+             * @description True for a drill progression: drills, practice and songs on it use it. False for a
+             *     progression for song charts only, which is never a practice subject.
+             */
+            in_drills: boolean;
+            /**
+             * @description The keys of the drill progressions drills offer as its wrong answers, closest first;
+             *     empty for a progression that isn't in the drills.
+             */
+            confusable: components["schemas"]["ProgressionKey"][];
             /** @description The progression's name in each language, such as "I–V–vi–IV (pop)". */
             names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description A created progression's nickname in each language, shown after its numerals in its
+             *     name; absent for one with no nickname and for the catalog's progressions.
+             */
+            nicknames?: {
+                [key: string]: string;
+            };
+            /** @description How many song charts tag it in their draft or latest published revision. */
+            song_chart_count: number;
+            /**
+             * @description The admin who created it, shown only to an admin; null for any other caller, and for
+             *     the catalog's progressions.
+             */
+            created_by: components["schemas"]["UserRef"] | null;
+            /**
+             * Format: date-time
+             * @description When it was created; null for the catalog's progressions.
+             */
+            created_at: string | null;
+        };
+        /**
+         * @description A progression's key, as item keys, answers and song chart tags name it: a catalog
+         *     progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+         *     and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+         */
+        ProgressionKey: string;
+        /**
+         * @description A chord by number: a root I to VII, optionally ♭ or ♯, upper case for a major chord (7 a
+         *     dominant seventh, maj7 a major seventh), lower case for a minor chord (7 a minor
+         *     seventh), or lower case with ° for a diminished chord (ø7 half-diminished, °7 diminished
+         *     seventh).
+         */
+        ProgressionNumeral: string;
+        /** @description A progression to create. */
+        ProgressionInput: {
+            /**
+             * @description The mode its numerals are read in.
+             * @enum {string}
+             */
+            mode: "major" | "minor";
+            /**
+             * @description One numeral per bar, as ProgressionNumeral describes, where b, #, o and h may stand
+             *     for ♭, ♯, ° and ø.
+             */
+            bars: string[];
+            /** @description An optional nickname per language, keyed by Language.code. */
+            nicknames?: {
+                [key: string]: string;
+            };
+            /**
+             * @description True to add it to the drills as it is created.
+             * @default false
+             */
+            in_drills: boolean;
+            /** @description The skills it practises in the drills; used only when in_drills is true. */
+            skill_ids?: string[];
+            /** @description The concepts it practises in the drills; used only when in_drills is true. */
+            concept_ids?: string[];
+        };
+        /** @description A created progression's new nicknames. */
+        ProgressionNicknamesInput: {
+            /** @description The nickname per language, keyed by Language.code; empty to remove them. */
+            nicknames: {
+                [key: string]: string;
+            };
+        };
+        /** @description What a progression practises once it is in the drills; at least one skill or concept. */
+        ProgressionDrillsInput: {
+            /** @description The skills it practises. */
+            skill_ids?: string[];
+            /** @description The concepts it practises. */
+            concept_ids?: string[];
+        };
+        /** @description Returned when a progression with the same mode and numerals already exists. */
+        ProgressionExistsError: {
+            /** @description Human-readable reason for the refusal. */
+            message: string;
+            progression: components["schemas"]["Progression"];
+        };
+        /** @description Returned when a progression can't be added to the drills, with every reason. */
+        ProgressionNotAddableError: {
+            /** @description Human-readable summary of the refusal. */
+            message: string;
+            /**
+             * @description already_in_drills: it is a drill progression already. unsupported_bar_count: drills
+             *     ask 4- and 12-bar progressions only. unsupported_mode: drills don't ask its mode yet.
+             *     no_other_drill_progression: no other drill progression has its bar count, so drills
+             *     have no wrong answer to offer.
+             */
+            reasons: ("already_in_drills" | "unsupported_bar_count" | "unsupported_mode" | "no_other_drill_progression")[];
+        };
+        /** @description Returned when a progression can't be removed. */
+        ProgressionInUseError: {
+            /** @description Human-readable summary of the refusal. */
+            message: string;
+            /**
+             * @description in_use: a song chart's draft or latest published revision tags it (see uses).
+             *     in_drills: it is a drill progression, which is never removed.
+             * @enum {string}
+             */
+            reason: "in_use" | "in_drills";
+            /** @description The sections that tag it; empty unless reason is in_use. */
+            uses: components["schemas"]["ProgressionUse"][];
+        };
+        /** @description A song chart section tagged with a progression. */
+        ProgressionUse: {
+            /**
+             * Format: uuid
+             * @description The chart.
+             */
+            song_chart_id: string;
+            /** @description The chart's title. */
+            title: string;
+            /**
+             * @description draft: the chart's draft tags it. published: its latest published revision does. A
+             *     section tagged in both is listed once for each.
+             * @enum {string}
+             */
+            revision: "draft" | "published";
+            /** @description The section, numbered from 0 in document order. */
+            section_index: number;
+            /** @description The section's label as the chart shows it, such as "Verse 1"; null for an unlabelled section. */
+            section_label: string | null;
         };
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
@@ -7847,7 +8072,7 @@ export interface components {
          *       head: picking the chord for the numeral, or the numeral for the chord.
          *     - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
          *       the function of its chord, or its chord for the function.
-         *     - chart_progression:<progression key> — a progression of the progression catalog read
+         *     - chart_progression:<progression key> — a drill progression read
          *       as a chart: picking the progression for four chords, or its chart for the progression.
          *       The key is picked each time it is asked, so one item covers every key.
          *     - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
@@ -7871,7 +8096,8 @@ export interface components {
          *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
          *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
          *     same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-         *     (major); <progression key> is a key of the progression catalog.
+         *     (major); <progression key> is the key of a drill progression: a catalog handle such as
+         *     I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
          *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
@@ -8065,7 +8291,7 @@ export interface components {
             function: components["schemas"]["ChordFunction"] | null;
             /** @description The progression asked for, for numbers_to_chart. Null for every other way. */
             progression: {
-                /** @description The progression's key in the progression catalog, such as I-V-vi-IV. */
+                /** @description The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I. */
                 key: string;
                 /** @description The progression's name in the student's language, such as "I–V–vi–IV (pop)". */
                 name: string;
@@ -8244,7 +8470,7 @@ export interface components {
             layout_instrument_id: string;
             /** @description The progression played. */
             progression: {
-                /** @description The progression's key in the progression catalog, such as I-V-vi-IV. */
+                /** @description The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I. */
                 key: string;
                 /** @description The progression's name in the student's language, such as "I–V–vi–IV (pop)". */
                 name: string;
@@ -8324,7 +8550,7 @@ export interface components {
             layout_instrument_id: string;
             /** @description The progression played. */
             progression: {
-                /** @description The progression's key in the progression catalog, such as ii-V-I. */
+                /** @description The progression's key, such as ii-V-I or major/I-bVII-IV-I. */
                 key: string;
                 /** @description The progression's name in the student's language, such as "ii–V–I". */
                 name: string;
@@ -8332,8 +8558,10 @@ export interface components {
             music_key: components["schemas"]["MusicKey"];
             /**
              * @description The chord tone asked of every chord: 3 = its third, until the student is accurate on the
-             *     item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
-             *     seventh of every other chord and of a dominant seventh).
+             *     item; 7 = its seventh from then on:
+             *     a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+             *     diminished seventh); a chord with no written seventh takes the major seventh on I and IV
+             *     and the minor seventh on any other numeral, in or out of the key.
              * @enum {string}
              */
             tone: "3" | "7";
@@ -8353,7 +8581,7 @@ export interface components {
             fret_window: components["schemas"]["FretWindow"];
             /** @description Every bar of the progression, in order, played once a take. */
             bars: {
-                /** @description The bar's numeral in the progression catalog; a 7 marks a dominant seventh. */
+                /** @description The bar's numeral as the progression stores it; viio is vii° in the catalog's spelling. */
                 numeral: string;
                 /**
                  * @description The bar's chord symbol in music_key, spelled as the chord catalog spells roots. It
@@ -8395,7 +8623,7 @@ export interface components {
             /** @description The performer or composer the song is known by. */
             artist: string;
             /**
-             * @description The key, in the progression catalog, of the progression the chart plays that practises
+             * @description The key of the progression the chart plays that practises
              *     the session's subject, shown as why this song was picked.
              */
             progression_key: string;
@@ -8585,6 +8813,15 @@ export type SchemaPracticeSubjectList = components['schemas']['PracticeSubjectLi
 export type SchemaPracticeSubjectGroup = components['schemas']['PracticeSubjectGroup'];
 export type SchemaPracticeSubject = components['schemas']['PracticeSubject'];
 export type SchemaProgression = components['schemas']['Progression'];
+export type SchemaProgressionKey = components['schemas']['ProgressionKey'];
+export type SchemaProgressionNumeral = components['schemas']['ProgressionNumeral'];
+export type SchemaProgressionInput = components['schemas']['ProgressionInput'];
+export type SchemaProgressionNicknamesInput = components['schemas']['ProgressionNicknamesInput'];
+export type SchemaProgressionDrillsInput = components['schemas']['ProgressionDrillsInput'];
+export type SchemaProgressionExistsError = components['schemas']['ProgressionExistsError'];
+export type SchemaProgressionNotAddableError = components['schemas']['ProgressionNotAddableError'];
+export type SchemaProgressionInUseError = components['schemas']['ProgressionInUseError'];
+export type SchemaProgressionUse = components['schemas']['ProgressionUse'];
 export type SchemaPracticeSessionItem = components['schemas']['PracticeSessionItem'];
 export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
 export type SchemaFretboardMap = components['schemas']['FretboardMap'];
@@ -11431,7 +11668,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every progression of the catalog. */
+            /** @description Every progression. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -11447,6 +11684,287 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionInput"];
+            };
+        };
+        responses: {
+            /** @description The progression was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Progression"];
+                };
+            };
+            /**
+             * @description The body is invalid: a bar that isn't a numeral (the error's field names the bar,
+             *     such as /bars/2), fewer than 1 or more than 16 bars, an unknown mode, or in_drills
+             *     true with no skill or concept.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins create progressions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description A progression with the same mode and numerals already exists; the error returns it,
+             *     so the client can tag it instead. Also returned, with no progression, when in_drills
+             *     is true and the progression can't be added to the drills; the reasons say why.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionExistsError"] | components["schemas"]["ProgressionNotAddableError"];
+                };
+            };
+        };
+    };
+    deleteProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The progression was deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The identifier isn't a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins remove progressions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The progression is still tagged in a chart's draft or latest published revision
+             *     (reason in_use, with the sections), or it is in the drills (reason in_drills).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionInUseError"];
+                };
+            };
+        };
+    };
+    updateProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionNicknamesInput"];
+            };
+        };
+        responses: {
+            /** @description The progression with its new name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Progression"];
+                };
+            };
+            /** @description The body is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins change a nickname. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The progression is one of the catalog's, whose names don't change. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    addProgressionToDrills: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression to add. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionDrillsInput"];
+            };
+        };
+        responses: {
+            /** @description The progression, now in the drills. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Progression"];
+                };
+            };
+            /** @description The body is invalid, such as no skill and no concept, or a skill or concept that doesn't exist. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins add progressions to the drills. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The progression can't be added to the drills; the reasons say why. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionNotAddableError"];
                 };
             };
         };
