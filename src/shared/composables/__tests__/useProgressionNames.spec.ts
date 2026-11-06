@@ -8,7 +8,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { i18n } from '@/i18n'
-import { clearProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
+import { clearProgressionCatalog, useProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
 import { useProgressionNames } from '@/shared/composables/useProgressionNames'
 
 const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
@@ -46,5 +46,16 @@ describe('useProgressionNames', () => {
 
     expect(progressions.value).toEqual([])
     expect(nameOf('I-vi-IV-V')).toBe('I-vi-IV-V')
+  })
+
+  it('names a progression created since it was asked, once the catalog is refreshed', async () => {
+    GET.mockImplementationOnce(() => ok([])).mockImplementationOnce(() => ok([DOOWOP]))
+    const { nameOf } = useProgressionNames()
+    await flushPromises()
+    expect(nameOf('I-vi-IV-V')).toBe('I-vi-IV-V')
+
+    await useProgressionCatalog().refresh()
+
+    expect(nameOf('I-vi-IV-V')).toBe(DOOWOP.names.en)
   })
 })
