@@ -50,7 +50,7 @@ for (const { spec, out } of specs) {
   )
 }
 
-for (const suite of ['practice-graders', 'chord-symbols']) {
+for (const suite of ['practice-graders', 'chord-symbols', 'progression-numerals']) {
   const goldenDir = resolve(specsDir, 'golden', suite)
   const goldenOutDir = resolve(outDir, 'golden', suite)
   mkdirSync(goldenOutDir, { recursive: true })

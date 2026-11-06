@@ -1,9 +1,22 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import type { components } from '@/api/generated/core-domain'
 import ProgressionPicker from '@/features/admin/components/songChartEditor/ProgressionPicker.vue'
 
-const progression = (key: string, en: string) => ({ progression_id: key, key, bars: [], confusable: [], names: { en } })
+const progression = (key: string, en: string): components['schemas']['Progression'] => ({
+  progression_id: key,
+  key,
+  mode: 'major',
+  bars: [],
+  borrowed_bars: [],
+  in_drills: true,
+  confusable: [],
+  names: { en },
+  song_chart_count: 0,
+  created_by: null,
+  created_at: null,
+})
 const progressions = [
   progression('I-IV-V-I', 'I–IV–V–I'),
   progression('I-IV-I-V', 'I–IV–I–V'),
