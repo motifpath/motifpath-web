@@ -71,4 +71,49 @@ describe('ProgressionPicker', () => {
 
     expect(wrapper.emitted('toggle')).toEqual([['I-IV-V-I'], ['I-IV-I-V']])
   })
+
+  it('marks only the progressions the drills do not use', () => {
+    const chartOnly = { ...progression('major/I-bVII-IV-I', 'I–♭VII–IV–I'), in_drills: false }
+    const wrapper = mount(ProgressionPicker, { props: { progressions: [progressions[0]!, chartOnly], tagged: [] } })
+
+    const marks = options(wrapper).map((o) => o.find('[data-test="chart-only"]').exists())
+    expect(marks).toEqual([false, true])
+    expect(options(wrapper)[1]!.get('[data-test="chart-only"]').text()).toBe('Chart only')
+  })
+
+  it('offers no way to remove a progression', () => {
+    expect(mountPicker().find('[data-test="remove-progression"]').exists()).toBe(false)
+  })
+
+  it('offers to create what it can not find, read as numerals', async () => {
+    const wrapper = mountPicker()
+
+    await wrapper.get('[data-test="progression-search"]').setValue('I bVII IV')
+
+    expect(wrapper.get('[data-test="no-progression"]').text()).toBe('No progression is I–♭VII–IV yet.')
+    const create = wrapper.get('[data-test="create-progression"]')
+    expect(create.text()).toBe('Create “I–♭VII–IV”')
+    expect(wrapper.get('[data-test="create-progression-hint"]').text()).toBe('Read as numerals: I · ♭VII · IV — major. You can change it before creating.')
+
+    await create.trigger('click')
+    expect(wrapper.emitted('create')).toEqual([['I bVII IV']])
+  })
+
+  it('offers an empty form when a name finds nothing', async () => {
+    const wrapper = mountPicker()
+
+    await wrapper.get('[data-test="progression-search"]').setValue('bossa')
+    expect(wrapper.find('[data-test="create-progression-hint"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="create-progression"]').trigger('click')
+    expect(wrapper.emitted('create')).toEqual([['']])
+  })
+
+  it('offers nothing to create while the search finds something, or before a search', async () => {
+    const wrapper = mountPicker()
+    expect(wrapper.find('[data-test="create-progression"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="progression-search"]').setValue('doo')
+    expect(wrapper.find('[data-test="create-progression"]').exists()).toBe(false)
+  })
 })

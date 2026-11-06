@@ -398,6 +398,29 @@ describe('SongChartEditorView', () => {
       expect(heading.get('[data-test="not-played"]').text()).toContain('its chords never come I–IV–V–I in a row in C')
     })
 
+    it('creates a progression from the sheet, full screen, and tags the section until Save sends it', async () => {
+      serve(makeSongChart('chart-1'))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="lyrics-read-only"] [data-test="add-progression"]')
+      await wrapper.get('[data-test="progression-search"]').setValue('I bVII IV I')
+      await click(wrapper, '[data-test="create-progression"]')
+      expect(wrapper.findAll('[data-test="overlay-sheet"]')).toHaveLength(1)
+      expect(wrapper.get('[data-test="overlay-sheet"]').classes()).toContain('h-dvh')
+
+      POST.mockReturnValueOnce(ok({ ...PROGRESSIONS[0]!, key: 'major/I-bVII-IV-I', names: { en: 'I–♭VII–IV–I' } }))
+      await wrapper.get('[data-test="progression-create-form"]').trigger('submit')
+      await flushPromises()
+
+      expect(wrapper.find('[data-test="overlay-sheet"]').exists()).toBe(false)
+      expect(PUT).not.toHaveBeenCalled()
+
+      PUT.mockReturnValueOnce(ok(makeSongChart('chart-1')))
+      await click(wrapper, '[data-test="save"]')
+      const sent = PUT.mock.calls[0]![1].body.body as SongChartDocument
+      expect(sent.content[0]!.attrs.progression_keys).toEqual(['major/I-bVII-IV-I'])
+    })
+
     it('tags a section from its heading in a sheet, and Save sends the tag', async () => {
       serve(makeSongChart('chart-1'))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')

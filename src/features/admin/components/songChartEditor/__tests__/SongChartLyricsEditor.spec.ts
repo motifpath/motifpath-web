@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 enableAutoUnmount(afterEach)
 
 const GET = vi.fn()
+const POST = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { GET }, eventApi: {} }),
+  useApi: () => ({ coreApi: { GET, POST }, eventApi: {} }),
 }))
 
 import type { components } from '@/api/generated/core-domain'
@@ -217,6 +218,61 @@ describe('SongChartLyricsEditor', () => {
 
       expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(false)
       expect(headings(wrapper)).toHaveLength(3)
+    })
+
+    describe('creating one from the picker', () => {
+      const CREATED = { ...progression('major/I-bVII-IV-I', 'I–♭VII–IV–I'), in_drills: false }
+
+      async function openForm(wrapper: ReturnType<typeof mountEditor>, search: string) {
+        await headings(wrapper)[1]!.get('[data-test="add-progression"]').trigger('click')
+        await wrapper.get('[data-test="progression-search"]').setValue(search)
+        await wrapper.get('[data-test="create-progression"]').trigger('click')
+      }
+
+      it('swaps the picker for the form, starting from the search', async () => {
+        const wrapper = mountEditor(twoSections)
+        await flushPromises()
+
+        await openForm(wrapper, 'I bVII IV I')
+
+        expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(false)
+        expect(wrapper.get('[data-test="progression-numerals"] input').element).toHaveProperty('value', 'I bVII IV I')
+      })
+
+      it('goes back to the picker on Cancel', async () => {
+        const wrapper = mountEditor(twoSections)
+        await flushPromises()
+
+        await openForm(wrapper, 'I bVII IV I')
+        await wrapper.get('[data-test="progression-cancel"]').trigger('click')
+
+        expect(wrapper.find('[data-test="progression-numerals"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(true)
+      })
+
+      it('tags the section it was opened on, once created, and closes', async () => {
+        POST.mockResolvedValue({ data: CREATED, response: { status: 201 } })
+        const wrapper = mountEditor(twoSections)
+        await flushPromises()
+
+        await openForm(wrapper, 'I bVII IV I')
+        await wrapper.get('[data-test="progression-create-form"]').trigger('submit')
+        await flushPromises()
+
+        expect(lastEmitted(wrapper).content.map((s) => s.attrs.progression_keys)).toEqual([['I-IV-I-V'], [CREATED.key]])
+        expect(wrapper.find('[data-test="progression-numerals"]').exists()).toBe(false)
+        expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(false)
+      })
+
+      it('names the section in its button', async () => {
+        const wrapper = mountEditor(twoSections)
+        await flushPromises()
+
+        await openForm(wrapper, 'I bVII IV I')
+
+        const name = headings(wrapper)[1]!.get('[data-test="section-name"]').text()
+        expect(wrapper.get('[data-test="progression-submit"]').text().toLowerCase()).toBe(`create and tag ${name}`.toLowerCase())
+      })
     })
 
     it('closes the picker with Escape', async () => {

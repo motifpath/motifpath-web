@@ -20,6 +20,7 @@ import { computed, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import ChordPopover from '@/features/admin/components/songChartEditor/ChordPopover.vue'
+import ProgressionCreateForm from '@/features/admin/components/songChartEditor/ProgressionCreateForm.vue'
 import ProgressionPicker from '@/features/admin/components/songChartEditor/ProgressionPicker.vue'
 import SongChartSectionView from '@/features/admin/components/songChartEditor/SongChartSectionView.vue'
 import { sectionHeadingContextKey } from '@/features/admin/components/songChartEditor/sectionHeadingContext'
@@ -42,8 +43,10 @@ const props = withDefaults(
     unplayed?: UnplayedProgression[]
     /** The song's key as of the last save, which is the key the tags were checked in. */
     concertKey?: string | null
+    /** The song's key as it stands in the editor, for spelling a progression being written. */
+    currentKey?: string | null
   }>(),
-  { unplayed: () => [], concertKey: null },
+  { unplayed: () => [], concertKey: null, currentKey: null },
 )
 
 const { t } = useTypedT()
@@ -337,6 +340,20 @@ function toggleTag(key: string) {
   setTags(picking.value.sectionIndex, (keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]))
 }
 
+// What a new progression's form starts from; null while it is closed. It takes the picker's place.
+const creating = ref<string | null>(null)
+
+const pickingSectionName = computed(() => {
+  const attrs = picking.value ? model.value.content[picking.value.sectionIndex]?.attrs : undefined
+  return attrs?.label ?? t(`songChart.sectionKind.${attrs?.kind ?? 'verse'}`)
+})
+
+function tagFromForm(key: string) {
+  if (picking.value) setTags(picking.value.sectionIndex, (keys) => (keys.includes(key) ? keys : [...keys, key]))
+  creating.value = null
+  closePicker()
+}
+
 const pickingTags = computed(() => (picking.value ? (sectionAt(picking.value.sectionIndex)?.keys ?? []) : []))
 
 function openPicker(sectionIndex: number, anchor: HTMLElement) {
@@ -421,7 +438,7 @@ const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font
         @close="closeChordPopover"
       />
       <div
-        v-if="picking"
+        v-if="picking && creating === null"
         data-test="progression-picker"
         role="dialog"
         :aria-label="t('songChartEditor.progressions')"
@@ -434,8 +451,17 @@ const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font
             <X :size="16" aria-hidden="true" />
           </button>
         </div>
-        <ProgressionPicker :progressions="progressions" :tagged="pickingTags" @toggle="toggleTag" />
+        <ProgressionPicker :progressions="progressions" :tagged="pickingTags" @toggle="toggleTag" @create="creating = $event" />
       </div>
+      <ProgressionCreateForm
+        :open="creating !== null"
+        :progressions="progressions"
+        :chart-key="currentKey"
+        :section-name="pickingSectionName"
+        :numerals="creating ?? ''"
+        @close="creating = null"
+        @tag="tagFromForm"
+      />
     </div>
   </div>
 </template>

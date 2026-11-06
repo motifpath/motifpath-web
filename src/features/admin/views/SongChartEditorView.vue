@@ -9,6 +9,7 @@ import { ChevronRight, Download, Eye, FileUp, Monitor } from 'lucide-vue-next'
 import { computed, ref, toRef, watch } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
+import ProgressionCreateForm from '@/features/admin/components/songChartEditor/ProgressionCreateForm.vue'
 import ProgressionPicker from '@/features/admin/components/songChartEditor/ProgressionPicker.vue'
 import SongChartLyricsEditor from '@/features/admin/components/songChartEditor/SongChartLyricsEditor.vue'
 import SongChartSectionHeading from '@/features/admin/components/songChartEditor/SongChartSectionHeading.vue'
@@ -79,6 +80,21 @@ function setTags(sectionIndex: number, keys: (current: string[]) => string[]) {
 function toggleTag(key: string) {
   if (pickingSection.value === null) return
   setTags(pickingSection.value, (keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]))
+}
+
+// What a new progression's form starts from; null while it is closed. It takes the picker's place.
+const creating = ref<string | null>(null)
+
+const pickingSectionName = computed(() => {
+  const attrs = pickingSection.value === null ? undefined : body.value.content[pickingSection.value]?.attrs
+  return attrs?.label ?? t(`songChart.sectionKind.${attrs?.kind ?? 'verse'}`)
+})
+
+function tagFromForm(key: string) {
+  const section = pickingSection.value
+  if (section !== null) setTags(section, (keys) => (keys.includes(key) ? keys : [...keys, key]))
+  creating.value = null
+  pickingSection.value = null
 }
 
 /** An emptied optional field is not set, rather than set to nothing. */
@@ -337,7 +353,7 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
                 </div>
                 <InlineNotice data-test="larger-screen-notice" tone="unavailable" :icon="Monitor" :message="t('songChartEditorView.largerScreen')" />
               </template>
-              <SongChartLyricsEditor v-else v-model="body" :unplayed="unplayed" :concert-key="chart?.draft.concert_key ?? null" />
+              <SongChartLyricsEditor v-else v-model="body" :unplayed="unplayed" :concert-key="chart?.draft.concert_key ?? null" :current-key="details.concertKey" />
               <span v-if="fieldErrors.body" data-test="error-body" class="text-xs text-danger">{{ t('songChartEditorView.lyricsNeeded') }}</span>
             </section>
 
@@ -427,8 +443,17 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
       @cancel="leaving?.(false)"
     />
   </div>
-    <OverlayPanel :open="pickingSection !== null" :title="t('songChartEditor.progressions')" @close="pickingSection = null">
-      <ProgressionPicker :progressions="progressions" :tagged="pickingSection === null ? [] : (body.content[pickingSection]?.attrs.progression_keys ?? [])" @toggle="toggleTag" />
+    <OverlayPanel :open="pickingSection !== null && creating === null" :title="t('songChartEditor.progressions')" @close="pickingSection = null">
+      <ProgressionPicker :progressions="progressions" :tagged="pickingSection === null ? [] : (body.content[pickingSection]?.attrs.progression_keys ?? [])" @toggle="toggleTag" @create="creating = $event" />
     </OverlayPanel>
+    <ProgressionCreateForm
+      :open="creating !== null"
+      :progressions="progressions"
+      :chart-key="details.concertKey"
+      :section-name="pickingSectionName"
+      :numerals="creating ?? ''"
+      @close="creating = null"
+      @tag="tagFromForm"
+    />
   </TeachShell>
 </template>

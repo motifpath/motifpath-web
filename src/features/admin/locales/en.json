@@ -164,7 +164,12 @@
     },
     "undo": "Undo",
     "redo": "Redo",
-    "chordHint": "Select a word or a syllable, then Chord (or type [ ) to put a chord on it. Chords are checked as you write them."
+    "chordHint": "Select a word or a syllable, then Chord (or type [ ) to put a chord on it. Chords are checked as you write them.",
+    "chartOnly": "Chart only",
+    "noProgressionYet": "No progression is {numerals} yet.",
+    "createNumerals": "Create “{numerals}”",
+    "createProgression": "New progression",
+    "readAsNumerals": "Read as numerals: {numerals} — major. You can change it before creating."
   },
   "songChartEditorView": {
     "untitled": "New song chart",
@@ -405,5 +410,48 @@
       "failed": "Couldn't search the students."
     },
     "loadMore": "Load 20 more"
+  },
+  "progressionForm": {
+    "title": "New progression",
+    "key": "Key",
+    "major": "Major",
+    "minor": "Minor",
+    "numerals": "Numerals, one per bar",
+    "oneBar": "1 bar",
+    "manyBars": "{count} bars",
+    "notAChord": "“{bar}” isn’t a chord. Write a numeral, I to VII with ♭ or ♯ if needed, then 7, maj7, °, ø7 or °7 if needed.",
+    "tooManyBars": "A progression has at most {max} bars.",
+    "inChartKey": "In {key}, this chart’s key: {chart}.",
+    "inKey": "In {key}: {chart}.",
+    "inRelativeKey": "In {key}, the relative key of this chart’s {chartKey}: {chart}.",
+    "keyMajor": "{key} major",
+    "keyMinor": "{key} minor",
+    "majorScale": "the major scale",
+    "minorScale": "the minor scale",
+    "relativeKey": "{key}, the relative key of this chart’s {chartKey}",
+    "borrowedOne": "{numeral} is borrowed: it isn’t in {where}, and that’s fine.",
+    "borrowedMany": "{numerals} are borrowed: they aren’t in {where}, and that’s fine.",
+    "and": "and",
+    "playsOnceValid": "It plays in {key} once every bar is valid.",
+    "nicknameEn": "Nickname in English (optional)",
+    "nicknamePt": "Nickname in Português (optional)",
+    "useInDrills": "Use in drills",
+    "drillsOff": "Off: chart only. You can add it to the drills later in Admin › Progressions.",
+    "drillsOn": "On: learners practising one of these skills or concepts meet it in harmony, hear, play-along and guide-tone drills.",
+    "drillsMinor": "Drills don’t use minor keys yet, so it stays chart only.",
+    "drillsBars": "Drills ask only 4- and 12-bar progressions, so it stays chart only.",
+    "existsTitle": "Already a progression",
+    "existsBody": "These numerals are {progression}. Nothing is created twice — tag that one instead.",
+    "tag": "Tag {progression}",
+    "createAndTag": "Create and tag {section}",
+    "cancel": "Cancel",
+    "created": "Created {progression} and tagged {section}",
+    "failed": "The progression couldn’t be created. Try again.",
+    "refused": {
+      "already_in_drills": "It’s in the drills already.",
+      "unsupported_bar_count": "Drills ask only 4- and 12-bar progressions.",
+      "unsupported_mode": "Drills don’t use minor keys yet.",
+      "no_other_drill_progression": "No other progression in the drills has this many bars, so they have no wrong answer to offer. Turn off “Use in drills” to create it for charts only."
+    }
   }
 }
