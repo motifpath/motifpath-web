@@ -22,6 +22,12 @@ describe('OverlayPanel', () => {
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
   })
 
+  it('fills a phone when it is a full-screen sheet, and stays a dialog on anything wider', () => {
+    expect(mountPanel(390, { fullScreen: true }).get('[data-test="overlay-sheet"]').classes()).toContain('h-dvh')
+    expect(mountPanel(390).get('[data-test="overlay-sheet"]').classes()).not.toContain('h-dvh')
+    expect(mountPanel(1280, { fullScreen: true }).get('[data-test="overlay-dialog"]').classes()).not.toContain('h-dvh')
+  })
+
   describe('on a phone (compact)', () => {
     it('keeps a sheet without actions clear of the home indicator', () => {
       mockViewport(390)
