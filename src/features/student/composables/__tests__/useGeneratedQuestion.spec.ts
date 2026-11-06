@@ -25,8 +25,8 @@ const boxId = (symbol: DrillChordSymbol) => drillVoicings[symbol].diagram.diagra
 const boxes = (...symbols: DrillChordSymbol[]) => symbols.map((symbol) => ({ chord: symbol, diagram_id: boxId(symbol) }))
 
 const PROGRESSIONS = [
-  { progression_id: 'p1', key: 'I-V-vi-IV', bars: ['I', 'V', 'vi', 'IV'], confusable: ['I-vi-IV-V'], names: { en: 'I–V–vi–IV (pop)' } },
-  { progression_id: 'p2', key: 'I-vi-IV-V', bars: ['I', 'vi', 'IV', 'V'], confusable: ['I-V-vi-IV'], names: { en: 'I–vi–IV–V (doo-wop)' } },
+  { progression_id: 'p1', key: 'I-V-vi-IV', bars: ['I', 'V', 'vi', 'IV'], in_drills: true, confusable: ['I-vi-IV-V'], names: { en: 'I–V–vi–IV (pop)' } },
+  { progression_id: 'p2', key: 'I-vi-IV-V', bars: ['I', 'vi', 'IV', 'V'], in_drills: true, confusable: ['I-V-vi-IV'], names: { en: 'I–vi–IV–V (doo-wop)' } },
 ]
 
 /** Serves the drill voicings' diagrams (each carrying its voicing), the guitar and the progressions. */

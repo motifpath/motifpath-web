@@ -1,5 +1,5 @@
 /**
- * The harmony the drill v2 graders share: a major key's numerals, their chords and functions,
+ * The harmony the drill v2 graders share: numerals in a major key, their chords and functions,
  * and chord symbols. Mirrors the server's rules, so a chord is the same chord in any spelling of
  * its root, and an answer names a root as the chord catalog spells it.
  */
@@ -10,7 +10,15 @@ export const CATALOG_ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', '
 /** Each pitch class spelled with sharps, C first. */
 export const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-export type ChordQuality = 'major' | 'minor' | 'diminished' | 'dominant_7'
+export type ChordQuality =
+  | 'major'
+  | 'minor'
+  | 'diminished'
+  | 'dominant_7'
+  | 'major_7'
+  | 'minor_7'
+  | 'half_diminished_7'
+  | 'diminished_7'
 
 /** A chord by its root's pitch class (0 = C) and its quality. */
 export interface Chord {
@@ -18,21 +26,61 @@ export interface Chord {
   quality: ChordQuality
 }
 
-const SUFFIX: Record<ChordQuality, string> = { major: '', minor: 'm', diminished: 'dim', dominant_7: '7' }
-const QUALITY_OF_SUFFIX: Record<string, ChordQuality> = { '': 'major', m: 'minor', dim: 'diminished', '7': 'dominant_7' }
+const SUFFIX: Record<ChordQuality, string> = {
+  major: '',
+  minor: 'm',
+  diminished: 'dim',
+  dominant_7: '7',
+  major_7: 'maj7',
+  minor_7: 'm7',
+  half_diminished_7: 'm7b5',
+  diminished_7: 'dim7',
+}
+const QUALITY_OF_SUFFIX: Record<string, ChordQuality> = {
+  '': 'major',
+  m: 'minor',
+  dim: 'diminished',
+  '7': 'dominant_7',
+  maj7: 'major_7',
+  m7: 'minor_7',
+  m7b5: 'half_diminished_7',
+  dim7: 'diminished_7',
+}
 
-/** Where each numeral of a major key stands: semitones above the key and its chord's quality. */
-const NUMERALS: Record<string, { semitones: number; quality: ChordQuality }> = {
-  I: { semitones: 0, quality: 'major' },
-  ii: { semitones: 2, quality: 'minor' },
-  iii: { semitones: 4, quality: 'minor' },
-  IV: { semitones: 5, quality: 'major' },
-  V: { semitones: 7, quality: 'major' },
-  vi: { semitones: 9, quality: 'minor' },
-  viio: { semitones: 11, quality: 'diminished' },
-  I7: { semitones: 0, quality: 'dominant_7' },
-  IV7: { semitones: 5, quality: 'dominant_7' },
-  V7: { semitones: 7, quality: 'dominant_7' },
+/** Each root of a numeral with its degree in the major scale, longer spellings before the ones they start with. */
+export const NUMERAL_ROOTS = [
+  { upper: 'VII', lower: 'vii', semitones: 11 },
+  { upper: 'III', lower: 'iii', semitones: 4 },
+  { upper: 'VI', lower: 'vi', semitones: 9 },
+  { upper: 'IV', lower: 'iv', semitones: 5 },
+  { upper: 'II', lower: 'ii', semitones: 2 },
+  { upper: 'V', lower: 'v', semitones: 7 },
+  { upper: 'I', lower: 'i', semitones: 0 },
+]
+
+// Upper case is a major chord, lower case a minor or diminished one; viio is the catalog's spelling of vii°.
+const UPPER_NUMERAL_SUFFIXES: Record<string, ChordQuality> = { '': 'major', '7': 'dominant_7', maj7: 'major_7' }
+const LOWER_NUMERAL_SUFFIXES: Record<string, ChordQuality> = {
+  '': 'minor',
+  '7': 'minor_7',
+  '°': 'diminished',
+  o: 'diminished',
+  'ø7': 'half_diminished_7',
+  '°7': 'diminished_7',
+}
+
+/** A stored numeral's root above the tonic and its chord's quality; null when it isn't one. */
+function readNumeral(numeral: string): { semitones: number; quality: ChordQuality } | null {
+  const shift = numeral.startsWith('♭') ? -1 : numeral.startsWith('♯') ? 1 : 0
+  const rest = shift === 0 ? numeral : numeral.slice(1)
+  for (const root of NUMERAL_ROOTS) {
+    const upper = rest.startsWith(root.upper)
+    if (!upper && !rest.startsWith(root.lower)) continue
+    const suffixes = upper ? UPPER_NUMERAL_SUFFIXES : LOWER_NUMERAL_SUFFIXES
+    const quality = suffixes[rest.slice(root.upper.length)]
+    return quality ? { semitones: (root.semitones + shift + 12) % 12, quality } : null
+  }
+  return null
 }
 
 /** The seven numerals of a major key, its triads in order; viio is vii°. */
@@ -58,7 +106,7 @@ export function pitchClassOf(name: string): number | null {
 
 /** The chord on a numeral in the major key on the given pitch class; null for no numeral. */
 export function chordOf(key: number, numeral: string): Chord | null {
-  const degree = NUMERALS[numeral]
+  const degree = readNumeral(numeral)
   return degree ? { root: (key + degree.semitones) % 12, quality: degree.quality } : null
 }
 
@@ -69,24 +117,32 @@ export function chordSymbol(chord: Chord): string {
 
 /** Reads a chord symbol; a seventh only when sevenths are allowed. Null for anything else. */
 export function parseChord(symbol: string, allowSevenths: boolean): Chord | null {
-  const match = /^([A-G][#b]?)(m|dim|7)?$/.exec(symbol)
+  const match = /^([A-G][#b]?)(maj7|m7b5|m7|dim7|m|dim|7)?$/.exec(symbol)
   if (!match) return null
   const root = pitchClassOf(match[1] ?? '')
-  const quality = QUALITY_OF_SUFFIX[match[2] ?? '']
-  if (root === null || !quality || (quality === 'dominant_7' && !allowSevenths)) return null
+  const suffix = match[2] ?? ''
+  const quality = QUALITY_OF_SUFFIX[suffix]
+  if (root === null || !quality || (suffix.includes('7') && !allowSevenths)) return null
   return { root, quality }
 }
 
-/** The pitch class of a chord's third: minor on minor and diminished chords. */
+const OVER_A_MINOR_THIRD: ChordQuality[] = ['minor', 'diminished', 'minor_7', 'half_diminished_7', 'diminished_7']
+
+/** The pitch class of a chord's third: minor on every chord over a minor or diminished triad. */
 export function thirdOf(chord: Chord): number {
-  return (chord.root + (chord.quality === 'minor' || chord.quality === 'diminished' ? 3 : 4)) % 12
+  return (chord.root + (OVER_A_MINOR_THIRD.includes(chord.quality) ? 3 : 4)) % 12
 }
 
-/** The pitch class of a numeral's seventh in the key: major on I and IV, minor otherwise. */
+/**
+ * The pitch class of a numeral's seventh in the key. A written suffix decides: maj7 major, 7 and ø7
+ * minor, °7 diminished. A chord with no written seventh takes the major seventh on I and IV and the
+ * minor seventh on any other numeral, in or out of the key.
+ */
 export function seventhOf(key: number, numeral: string): number {
   const chord = chordOf(key, numeral)
   if (!chord) return 0
-  return (chord.root + (numeral === 'I' || numeral === 'IV' ? 11 : 10)) % 12
+  if (chord.quality === 'major_7' || numeral === 'I' || numeral === 'IV') return (chord.root + 11) % 12
+  return (chord.root + (chord.quality === 'diminished_7' ? 9 : 10)) % 12
 }
 
 /** A progression's chords in the key, one per bar; null when a bar isn't a numeral. */

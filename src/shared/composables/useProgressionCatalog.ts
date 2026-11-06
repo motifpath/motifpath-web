@@ -15,8 +15,8 @@ export function clearProgressionCatalog() {
 
 /**
  * The progression catalog: `load` gives it the way the progression drills are graded against it,
- * by progression key with each progression's numerals, one a bar; `progressions` gives every
- * progression whole, names included. Both resolve to null when it can't be loaded.
+ * by progression key with each progression's numerals, one a bar, and only those in the drills;
+ * `progressions` gives every progression whole, names included. Both resolve to null when it can't be loaded.
  */
 export function useProgressionCatalog() {
   const { coreApi } = useApi()
@@ -37,7 +37,7 @@ export function useProgressionCatalog() {
 
   async function load(): Promise<ProgressionCatalog | null> {
     const list = await progressions()
-    return list ? Object.fromEntries(list.map((p) => [p.key, { bars: p.bars }])) : null
+    return list ? Object.fromEntries(list.filter((p) => p.in_drills).map((p) => [p.key, { bars: p.bars }])) : null
   }
 
   return { load, progressions }
