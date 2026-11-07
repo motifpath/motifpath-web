@@ -62,7 +62,7 @@ const USES: ProgressionUse[] = [
   { song_chart_id: 'c2', title: 'Home on the Range', revision: 'published', section_index: 2, section_label: null },
 ]
 
-const USES_PATH = '/progressions/{progression_id}'
+const USES_PATH = '/progressions/{progression_id}/uses'
 
 const listed = (list: Progression[]) => Promise.resolve({ data: list, error: undefined, response: { status: 200 } })
 const sections = (uses: ProgressionUse[]) => Promise.resolve({ data: uses, error: undefined, response: { status: 200 } })

@@ -42,7 +42,7 @@ let deletesAsked: string[] = []
 
 const handlers = {
   progressions: http.get(endpoints.progressions, () => HttpResponse.json(listed)),
-  progressionUses: http.get(`${endpoints.progressions}/:id`, ({ params }) => HttpResponse.json(params.id === TAGGED.progression_id ? USES : [])),
+  progressionUses: http.get(`${endpoints.progressions}/:id/uses`, ({ params }) => HttpResponse.json(params.id === TAGGED.progression_id ? USES : [])),
   deleteProgression: http.delete(`${endpoints.progressions}/:id`, ({ params }) => {
     deletesAsked.push(String(params.id))
     if (params.id === TAGGED.progression_id) return HttpResponse.json({ message: 'in use', reason: 'in_use', uses: USES }, { status: 409 })

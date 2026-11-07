@@ -51,7 +51,7 @@ export function useProgressionRemoval(onRemoved: (progression: Progression) => v
 
   async function readUses(progression: Progression, mine: number) {
     const { data, response } = await coreApi
-      .GET('/progressions/{progression_id}', { params: { path: { progression_id: progression.progression_id } } })
+      .GET('/progressions/{progression_id}/uses', { params: { path: { progression_id: progression.progression_id } } })
       .catch(() => ({ data: undefined, response: undefined }))
     if (mine !== current) return
     if (response?.status === 404) {
