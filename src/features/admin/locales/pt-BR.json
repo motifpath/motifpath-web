@@ -164,7 +164,12 @@
     },
     "undo": "Desfazer",
     "redo": "Refazer",
-    "chordHint": "Selecione uma palavra ou sílaba e toque em Acorde (ou digite [ ) para pôr um acorde nela. Os acordes são conferidos enquanto você escreve."
+    "chordHint": "Selecione uma palavra ou sílaba e toque em Acorde (ou digite [ ) para pôr um acorde nela. Os acordes são conferidos enquanto você escreve.",
+    "chartOnly": "Só nas cifras",
+    "noProgressionYet": "Ainda não existe a progressão {numerals}.",
+    "createNumerals": "Criar “{numerals}”",
+    "createProgression": "Nova progressão",
+    "readAsNumerals": "Lido como numerais: {numerals} — maior. Você pode mudar antes de criar."
   },
   "songChartEditorView": {
     "untitled": "Nova cifra",
@@ -405,5 +410,48 @@
       "failed": "Não foi possível buscar os alunos."
     },
     "loadMore": "Carregar mais 20"
+  },
+  "progressionForm": {
+    "title": "Nova progressão",
+    "key": "Tom",
+    "major": "Maior",
+    "minor": "Menor",
+    "numerals": "Numerais, um por compasso",
+    "oneBar": "1 compasso",
+    "manyBars": "{count} compassos",
+    "notAChord": "“{bar}” não é um acorde. Escreva um numeral de I a VII, com ♭ ou ♯ se precisar, e depois 7, maj7, °, ø7 ou °7 se precisar.",
+    "tooManyBars": "Uma progressão tem no máximo {max} compassos.",
+    "inChartKey": "Em {key}, o tom desta cifra: {chart}.",
+    "inKey": "Em {key}: {chart}.",
+    "inRelativeKey": "Em {key}, o relativo do {chartKey} desta cifra: {chart}.",
+    "keyMajor": "{key} maior",
+    "keyMinor": "{key}m",
+    "majorScale": "a escala maior",
+    "minorScale": "a escala menor",
+    "relativeKey": "{key}, o relativo do {chartKey} desta cifra",
+    "borrowedOne": "{numeral} é emprestado: não está em {where}, e tudo bem.",
+    "borrowedMany": "{numerals} são emprestados: não estão em {where}, e tudo bem.",
+    "and": "e",
+    "playsOnceValid": "Ela toca em {key} quando todos os compassos forem válidos.",
+    "nicknameEn": "Apelido em inglês (opcional)",
+    "nicknamePt": "Apelido em português (opcional)",
+    "useInDrills": "Usar na Prática",
+    "drillsOff": "Desligado: só nas cifras. Você pode adicioná-la à Prática depois, em Admin › Progressões.",
+    "drillsOn": "Ligado: quem pratica uma destas habilidades ou conceitos a encontra na Prática, em harmonia, de ouvido, tocar junto e notas-guia.",
+    "drillsMinor": "A Prática ainda não usa tons menores, então ela fica só nas cifras.",
+    "drillsBars": "A Prática só usa progressões de 4 e 12 compassos, então ela fica só nas cifras.",
+    "existsTitle": "Essa progressão já existe",
+    "existsBody": "Estes numerais são {progression}. Nada é criado duas vezes — marque essa.",
+    "tag": "Marcar {progression}",
+    "createAndTag": "Criar e marcar em {section}",
+    "cancel": "Cancelar",
+    "created": "{progression} criada e marcada em {section}",
+    "failed": "Não foi possível criar a progressão. Tente de novo.",
+    "refused": {
+      "already_in_drills": "Ela já está na Prática.",
+      "unsupported_bar_count": "A Prática só usa progressões de 4 e 12 compassos.",
+      "unsupported_mode": "A Prática ainda não usa tons menores.",
+      "no_other_drill_progression": "Nenhuma outra progressão da Prática tem esse número de compassos, então não há respostas erradas para oferecer. Desligue “Usar na Prática” para criá-la só nas cifras."
+    }
   }
 }

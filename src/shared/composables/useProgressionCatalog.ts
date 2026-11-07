@@ -1,3 +1,5 @@
+import { shallowRef } from 'vue'
+
 import type { components } from '@/api/generated/core-domain'
 import { useApi } from '@/shared/composables/useApi'
 import type { ProgressionCatalog } from '@/shared/utils/generatedChoice'
@@ -7,10 +9,13 @@ type Progression = components['schemas']['Progression']
 // The catalog is reference data, the same for everyone, so it is asked for once per page load.
 // A failed load is forgotten, so the next question needing it asks again.
 let cached: Promise<Progression[] | null> | null = null
+// The latest list, for whoever shows it: a refresh reaches them without asking again.
+const current = shallowRef<Progression[]>([])
 
 /** Forgets the loaded catalog. For tests. */
 export function clearProgressionCatalog() {
   cached = null
+  current.value = []
 }
 
 /**
@@ -28,11 +33,18 @@ export function useProgressionCatalog() {
       .then(({ data }) => data ?? null)
       .catch(() => null)
       .then((list) => {
-        if (!list) cached = null
+        if (list) current.value = list
+        else cached = null
         return list
       })
     cached = pending
     return pending
+  }
+
+  /** Asks again, after a progression was created or removed. A failure keeps the list there is. */
+  function refresh(): Promise<Progression[] | null> {
+    cached = null
+    return progressions()
   }
 
   async function load(): Promise<ProgressionCatalog | null> {
@@ -40,5 +52,5 @@ export function useProgressionCatalog() {
     return list ? Object.fromEntries(list.filter((p) => p.in_drills).map((p) => [p.key, { bars: p.bars }])) : null
   }
 
-  return { load, progressions }
+  return { load, progressions, refresh, current }
 }

@@ -63,4 +63,28 @@ describe('useProgressionCatalog', () => {
     expect(await useProgressionCatalog().load()).toBeNull()
     expect(await useProgressionCatalog().load()).toEqual({ 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] } })
   })
+
+  it('asks again on a refresh, and every view of the list follows', async () => {
+    GET.mockImplementationOnce(() => ok([POP])).mockImplementationOnce(() => ok([POP, DOOWOP]))
+    const { current, progressions, refresh } = useProgressionCatalog()
+
+    await progressions()
+    expect(current.value).toEqual([POP])
+
+    await refresh()
+
+    expect(GET).toHaveBeenCalledTimes(2)
+    expect(current.value).toEqual([POP, DOOWOP])
+    expect(await useProgressionCatalog().load()).toHaveProperty('I-vi-IV-V')
+  })
+
+  it('keeps the list it has when a refresh fails', async () => {
+    GET.mockImplementationOnce(() => ok([POP])).mockImplementationOnce(() => fail())
+    const { current, progressions, refresh } = useProgressionCatalog()
+
+    await progressions()
+    await refresh()
+
+    expect(current.value).toEqual([POP])
+  })
 })
