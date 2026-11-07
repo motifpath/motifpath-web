@@ -29,9 +29,7 @@ function notPlayed(key: string): string {
   const progression = nameOf(key)
   const songKey = props.concertKey?.trim() ?? ''
   if (!songKey) return t('songChartEditor.notPlayed.noKey', { where })
-  // Progressions are spelled in a major key: a minor key plays none of them.
-  if (songKey.endsWith('m')) return t('songChartEditor.notPlayed.minorKey', { where, key: songKey })
-  return t('songChartEditor.notPlayed.majorKey', { where, progression, key: songKey })
+  return t('songChartEditor.notPlayed.inKey', { where, progression, key: songKey })
 }
 
 function onAdd(event: MouseEvent) {
