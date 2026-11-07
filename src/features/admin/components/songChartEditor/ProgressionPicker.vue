@@ -10,7 +10,7 @@ import { Check, Plus, Search } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import { barsContain, barsLabel, numeralsOf } from '@/features/admin/utils/progressionDraft'
+import { barsLabel, numeralsOf, progressionMatches } from '@/features/admin/utils/progressionDraft'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -30,17 +30,12 @@ const query = defineModel<string>('query', { default: '' })
 
 const typedNumerals = computed(() => numeralsOf(query.value))
 
-/** Typed numerals match the bars or the key, and any word matches the name, whatever the case. */
-const shown = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  const numerals = typedNumerals.value
-  const matching = q
-    ? props.progressions.filter(
-        (p) => p.key.toLowerCase().includes(q) || localizedName(p.names).toLowerCase().includes(q) || (numerals !== null && barsContain(p.bars, p.mode, numerals)),
-      )
-    : props.progressions
-  return matching.map((p) => ({ key: p.key, name: localizedName(p.names), inDrills: p.in_drills }))
-})
+const shown = computed(() =>
+  props.progressions
+    .map((p) => ({ progression: p, name: localizedName(p.names) }))
+    .filter(({ progression, name }) => progressionMatches(progression, name, query.value))
+    .map(({ progression, name }) => ({ key: progression.key, name, inDrills: progression.in_drills })),
+)
 </script>
 
 <template>
