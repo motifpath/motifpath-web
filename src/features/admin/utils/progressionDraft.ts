@@ -121,3 +121,12 @@ export function drillsRefusal(mode: ProgressionMode, barCount: number): 'minor' 
   if (mode === 'minor') return 'minor'
   return barCount === 0 || DRILL_BAR_COUNTS.includes(barCount) ? null : 'bars'
 }
+
+/** Whether a search finds a progression: typed numerals match its bars or key, any word its name, whatever the case. */
+export function progressionMatches(progression: { key: string; bars: string[]; mode: ProgressionMode }, name: string, search: string): boolean {
+  const query = search.trim().toLowerCase()
+  if (!query) return true
+  if (progression.key.toLowerCase().includes(query) || name.toLowerCase().includes(query)) return true
+  const numerals = numeralsOf(search)
+  return numerals !== null && barsContain(progression.bars, progression.mode, numerals)
+}
