@@ -35,7 +35,7 @@ const titleId = useId()
       class="flex w-full flex-col bg-surface-raised shadow-level3"
       :class="fullScreen ? 'h-dvh pt-inset-top' : 'max-h-[90vh] rounded-t-xl'"
     >
-      <SheetHeader kind="sheet" :title="title" :title-id="titleId" :back="back" @close="emit('close')" @back="emit('back')" />
+      <SheetHeader kind="sheet" :title="title" :title-id="titleId" :grabber="!fullScreen" :back="back" @close="emit('close')" @back="emit('back')" />
       <!-- The sheet's last row clears the home indicator: its actions, or its body when it has none. -->
       <div data-test="overlay-body" class="min-h-0 flex-1 overflow-y-auto px-5 pt-2" :class="$slots.actions ? 'pb-4' : 'pb-safe'">
         <slot />

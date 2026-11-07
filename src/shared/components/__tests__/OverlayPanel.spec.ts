@@ -28,6 +28,11 @@ describe('OverlayPanel', () => {
     expect(mountPanel(1280, { fullScreen: true }).get('[data-test="overlay-dialog"]').classes()).not.toContain('h-dvh')
   })
 
+  it('has no grabber on a full-screen sheet, which can’t be dragged away', () => {
+    expect(mountPanel(390).find('[data-test="sheet-grabber"]').exists()).toBe(true)
+    expect(mountPanel(390, { fullScreen: true }).find('[data-test="sheet-grabber"]').exists()).toBe(false)
+  })
+
   describe('on a phone (compact)', () => {
     it('keeps a sheet without actions clear of the home indicator', () => {
       mockViewport(390)
