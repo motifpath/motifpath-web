@@ -187,9 +187,8 @@
     "progressionSearch": "Buscar progressões",
     "noProgression": "Nenhuma progressão corresponde a “{query}”",
     "notPlayed": {
-      "majorKey": "Não tocada {where}: seus acordes nunca formam {progression} em sequência em {key}. Mude os acordes ou remova a progressão.",
-      "noKey": "Não tocada {where}: a música não tem tom, então suas progressões não podem ser encontradas. Defina o tom ou remova a progressão.",
-      "minorKey": "Não tocada {where}: as progressões são encontradas em tom maior, e a música está em {key}. Remova a progressão."
+      "inKey": "Não tocada {where}: seus acordes nunca formam {progression} em sequência em {key}. Mude os acordes ou remova a progressão.",
+      "noKey": "Não tocada {where}: a música não tem tom, então suas progressões não podem ser encontradas. Defina o tom ou remova a progressão."
     },
     "inThisSection": {
       "verse": "nesta estrofe",
