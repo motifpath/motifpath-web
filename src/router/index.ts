@@ -486,6 +486,13 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/features/admin/views/SongChartPreviewView.vue'),
   },
   {
+    path: '/admin/progressions',
+    name: 'admin-progressions',
+    meta: { requiresAuth: true, requiresRole: ['admin'] },
+    beforeEnter: () => ensureAdminLocaleLoaded(),
+    component: () => import('@/features/admin/views/ProgressionListView.vue'),
+  },
+  {
     path: '/admin/alpha',
     name: 'admin-alpha',
     meta: { requiresAuth: true, requiresRole: ['admin'], redirectWhenDenied: { teacher: 'teach' } },

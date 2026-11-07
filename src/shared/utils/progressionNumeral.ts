@@ -86,3 +86,15 @@ export function parseProgressionNumeral(input: string, mode: ProgressionMode): P
   }
   return null
 }
+
+const ASCII_TO_SYMBOL: Record<string, string> = { b: '♭', '#': '♯', o: '°', h: 'ø' }
+
+/**
+ * The numerals a created progression's key spells, such as major/I-bVII-IV-I; null for a catalog
+ * key, which is a handle and not numerals.
+ */
+export function numeralsOfKey(key: string): string[] | null {
+  const created = /^(?:major|minor)\/(.+)$/.exec(key)
+  if (!created?.[1]) return null
+  return created[1].split('-').map((bar) => bar.replace(/[b#oh]/g, (ascii) => ASCII_TO_SYMBOL[ascii] ?? ascii))
+}
