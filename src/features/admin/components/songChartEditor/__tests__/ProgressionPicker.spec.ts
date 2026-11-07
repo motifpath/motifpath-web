@@ -81,6 +81,20 @@ describe('ProgressionPicker', () => {
     expect(options(wrapper)[1]!.get('[data-test="chart-only"]').text()).toBe('Chart only')
   })
 
+  it('finds a progression by its numerals as typed, instead of saying there is none', async () => {
+    const pop = { ...progression('I-V-vi-IV', 'I–V–vi–IV (pop)'), bars: ['I', 'V', 'vi', 'IV'] }
+    const created = { ...progression('major/I-bVII-IV-I', 'I–♭VII–IV–I'), bars: ['I', '♭VII', 'IV', 'I'] }
+    const wrapper = mount(ProgressionPicker, { props: { progressions: [pop, created], tagged: [] } })
+    const search = wrapper.get('[data-test="progression-search"]')
+
+    await search.setValue('I V vi IV')
+    expect(options(wrapper).map((o) => o.text())).toEqual(['I–V–vi–IV (pop)'])
+    expect(wrapper.find('[data-test="create-progression"]').exists()).toBe(false)
+
+    await search.setValue('I bVII IV I')
+    expect(options(wrapper).map((o) => o.text())).toEqual(['I–♭VII–IV–I'])
+  })
+
   it('offers no way to remove a progression', () => {
     expect(mountPicker().find('[data-test="remove-progression"]').exists()).toBe(false)
   })

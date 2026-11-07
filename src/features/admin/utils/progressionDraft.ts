@@ -2,7 +2,7 @@
  * A progression as it is being written: what the numerals typed so far read as, how they sound in
  * the chart's key, and whether one with these numerals exists already.
  */
-import { CATALOG_ROOTS, chordSymbol, pitchClassOf } from '@/shared/utils/harmony'
+import { CATALOG_ROOTS, pitchClassOf, qualitySuffix } from '@/shared/utils/harmony'
 import { parseProgressionNumeral } from '@/shared/utils/progressionNumeral'
 import type { ParsedNumeral, ProgressionMode } from '@/shared/utils/progressionNumeral'
 
@@ -21,8 +21,12 @@ export const MAX_BARS = 16
 /** Bar counts the drills ask. */
 const DRILL_BAR_COUNTS = [4, 12]
 
-/** Semitones from a major key down to its relative minor, or from a minor key up to its relative major. */
-const RELATIVE_MINOR_BELOW = 3
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+const ROMAN_DEGREES = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
+
+// A relative key, as a step above the tonic: a major key's vi, a minor key's ♭III.
+const RELATIVE_MINOR = { steps: 5, semitones: 9 }
+const RELATIVE_MAJOR = { steps: 2, semitones: 3 }
 
 export function readBars(text: string, mode: ProgressionMode): BarReading[] {
   return text
@@ -46,11 +50,22 @@ export function barsLabel(numerals: string[]): string {
   return numerals.join('–')
 }
 
+/**
+ * The note a number of letter steps and semitones above a tonic, spelled from that tonic, so E's
+ * third is G# and G♭'s fourth is Cb. A spelling that would take a double accidental gets the chord
+ * catalog's instead. The tonic is a note name, as pitchClassOf reads it.
+ */
+function noteAbove(tonic: string, steps: number, semitones: number): string {
+  const pitch = (((pitchClassOf(tonic) ?? 0) + semitones) % 12 + 12) % 12
+  const letter = LETTERS[(LETTERS.indexOf(tonic.charAt(0)) + steps) % LETTERS.length] ?? ''
+  const shift = ((pitch - (pitchClassOf(letter) ?? 0) + 18) % 12) - 6
+  if (Math.abs(shift) > 1) return CATALOG_ROOTS[pitch] ?? ''
+  return letter + (shift > 0 ? '#' : shift < 0 ? 'b' : '')
+}
+
 /** The key a progression sounds in on this chart. */
 export interface SpellingKey {
-  /** Its tonic's pitch class. */
-  root: number
-  /** Its tonic, as the chord catalog spells it. */
+  /** Its tonic: as the chart writes it when the modes match, and spelled from it when they don't. */
   name: string
   /** The chart's key, as written. */
   chartKey: string
@@ -62,17 +77,23 @@ export interface SpellingKey {
 export function spellingKey(chartKey: string | null, mode: ProgressionMode): SpellingKey | null {
   const written = chartKey?.trim() ?? ''
   const chartIsMinor = written.endsWith('m')
-  const tonic = pitchClassOf(chartIsMinor ? written.slice(0, -1) : written)
-  if (tonic === null) return null
+  const tonic = chartIsMinor ? written.slice(0, -1) : written
+  if (pitchClassOf(tonic) === null) return null
   const relative = chartIsMinor !== (mode === 'minor')
-  const shift = !relative ? 0 : chartIsMinor ? RELATIVE_MINOR_BELOW : 12 - RELATIVE_MINOR_BELOW
-  const root = (tonic + shift) % 12
-  return { root, name: CATALOG_ROOTS[root] ?? '', chartKey: written, relative }
+  if (!relative) return { name: tonic, chartKey: written, relative }
+  const { steps, semitones } = chartIsMinor ? RELATIVE_MAJOR : RELATIVE_MINOR
+  return { name: noteAbove(tonic, steps, semitones), chartKey: written, relative }
 }
 
-/** The bars' chords on a tonic: G – F – C – G. */
-export function spelledBars(root: number, bars: ParsedNumeral[]): string {
-  return bars.map((bar) => chordSymbol({ root: (root + bar.rootSemitones) % 12, quality: bar.quality })).join(' – ')
+/** How many letter steps a numeral's root stands above the tonic: ♭VII is six, whatever its accidental. */
+function stepsOf(numeral: string): number {
+  const roman = /[ivIV]+/.exec(numeral)?.[0].toUpperCase() ?? ''
+  return Math.max(ROMAN_DEGREES.indexOf(roman), 0)
+}
+
+/** The bars' chords on a tonic, each root spelled from it: G – F – C – G. */
+export function spelledBars(tonic: string, bars: ParsedNumeral[]): string {
+  return bars.map((bar) => noteAbove(tonic, stepsOf(bar.numeral), bar.rootSemitones) + qualitySuffix(bar.quality)).join(' – ')
 }
 
 /** The numeral as it reads in the mode, so a catalog's viio and a typed vii° are the same bar. */
@@ -88,6 +109,11 @@ export function sameNumerals<P extends { mode: ProgressionMode; bars: string[] }
 ): P | undefined {
   const wanted = numerals.join(' ')
   return progressions.find((p) => p.mode === mode && canonicalBars(p.bars, mode).join(' ') === wanted)
+}
+
+/** Whether these numerals come in a row in the bars; each bar counts whole, so I isn't part of IV. */
+export function barsContain(bars: string[], mode: ProgressionMode, numerals: string[]): boolean {
+  return ` ${canonicalBars(bars, mode).join(' ')} `.includes(` ${numerals.join(' ')} `)
 }
 
 /** Why the drills can't use a progression yet; null when they may. An empty form has no bar count to refuse. */

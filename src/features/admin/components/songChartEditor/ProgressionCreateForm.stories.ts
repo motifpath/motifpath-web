@@ -30,6 +30,14 @@ type Story = StoryObj<typeof meta>
 
 const body = () => within(document.body)
 
+/** The first element matching, once there is one. */
+const found = (selector: string) =>
+  waitFor(() => {
+    const element = document.querySelector(selector)
+    if (!(element instanceof HTMLElement)) throw new Error(`No ${selector} yet`)
+    return element
+  })
+
 /** 9c: chart only, with the borrowed chord marked. */
 export const ChartOnly: Story = {}
 
@@ -41,18 +49,8 @@ export const UseInDrills: Story = {
     await expect(body().getByRole('switch')).toHaveAttribute('aria-checked', 'true')
     await expect(submit).toBeDisabled()
 
-    const [openConcepts] = await waitFor(() => {
-      const found = Array.from(document.querySelectorAll<HTMLElement>('[data-test="tree-open-picker"]'))
-      expect(found).toHaveLength(2)
-      return found
-    })
-    await userEvent.click(openConcepts as HTMLElement)
-    const box = await waitFor(() => {
-      const found = document.querySelector<HTMLElement>('[data-test="tree-node-checkbox"]')
-      expect(found).not.toBeNull()
-      return found
-    })
-    await userEvent.click(box as HTMLElement)
+    await userEvent.click(await found('[data-test="tree-open-picker"]'))
+    await userEvent.click(await found('[data-test="tree-node-checkbox"]'))
     await userEvent.keyboard('{Escape}')
 
     await waitFor(() => expect(document.querySelector('[data-test="tree-node-checkbox"]')).toBeNull())
@@ -70,6 +68,9 @@ export const BorrowedAndError: Story = {
     await expect(body().getByRole('switch')).toBeDisabled()
   },
 }
+
+/** A key with sharps: its chords are spelled from it, G#m and C#m rather than Abm and Dbm. */
+export const SharpKey: Story = { args: { chartKey: 'E', numerals: 'I iii vi V' } }
 
 /** 9f: the same numerals offer to tag the one that exists. */
 export const AlreadyExists: Story = { args: { numerals: 'I V vi IV' } }

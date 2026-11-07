@@ -84,6 +84,12 @@ function toggleTag(key: string) {
 
 // What a new progression's form starts from; null while it is closed. It takes the picker's place.
 const creating = ref<string | null>(null)
+const pickerQuery = ref('')
+
+function openPicker(sectionIndex: number) {
+  pickerQuery.value = ''
+  pickingSection.value = sectionIndex
+}
 
 const pickingSectionName = computed(() => {
   const attrs = pickingSection.value === null ? undefined : body.value.content[pickingSection.value]?.attrs
@@ -338,7 +344,7 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
                       :unplayed="unplayedAt(i)"
                       :concert-key="chart?.draft.concert_key ?? null"
                       @remove="(key) => setTags(i, (keys) => keys.filter((k) => k !== key))"
-                      @add="pickingSection = i"
+                      @add="openPicker(i)"
                     />
                     <template v-for="(line, j) in section.content" :key="j">
                       <p v-if="line.type === 'comment'" class="text-sm italic text-ink-muted">{{ line.content.map((c) => c.text).join('') }}</p>
@@ -444,7 +450,7 @@ const eyebrowClass = 'text-xs font-semibold uppercase tracking-wider text-ink-mu
     />
   </div>
     <OverlayPanel :open="pickingSection !== null && creating === null" :title="t('songChartEditor.progressions')" @close="pickingSection = null">
-      <ProgressionPicker :progressions="progressions" :tagged="pickingSection === null ? [] : (body.content[pickingSection]?.attrs.progression_keys ?? [])" @toggle="toggleTag" @create="creating = $event" />
+      <ProgressionPicker v-model:query="pickerQuery" :progressions="progressions" :tagged="pickingSection === null ? [] : (body.content[pickingSection]?.attrs.progression_keys ?? [])" @toggle="toggleTag" @create="creating = $event" />
     </OverlayPanel>
     <ProgressionCreateForm
       :open="creating !== null"

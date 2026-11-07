@@ -115,6 +115,11 @@ export function chordSymbol(chord: Chord): string {
   return (CATALOG_ROOTS[chord.root] ?? '') + SUFFIX[chord.quality]
 }
 
+/** What follows the root in a chord's symbol. */
+export function qualitySuffix(quality: ChordQuality): string {
+  return SUFFIX[quality]
+}
+
 /** Reads a chord symbol; a seventh only when sevenths are allowed. Null for anything else. */
 export function parseChord(symbol: string, allowSevenths: boolean): Chord | null {
   const match = /^([A-G][#b]?)(maj7|m7b5|m7|dim7|m|dim|7)?$/.exec(symbol)

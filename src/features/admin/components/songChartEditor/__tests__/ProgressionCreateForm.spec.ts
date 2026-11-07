@@ -11,6 +11,8 @@ vi.mock('@/shared/composables/useApi', () => ({
 
 import type { components } from '@/api/generated/core-domain'
 import ProgressionCreateForm from '@/features/admin/components/songChartEditor/ProgressionCreateForm.vue'
+import { i18n } from '@/i18n'
+import OverlayPanel from '@/shared/components/OverlayPanel.vue'
 import { clearProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
 import { useToast } from '@/shared/composables/useToast'
 import { mockViewport } from '@/shared/testUtils/viewport'
@@ -65,6 +67,9 @@ beforeEach(() => {
   useToast().clear()
   mockViewport(1280)
   serve()
+})
+afterEach(() => {
+  i18n.global.locale.value = 'en'
 })
 
 describe('ProgressionCreateForm', () => {
@@ -215,7 +220,7 @@ describe('ProgressionCreateForm', () => {
     expect(w.get('[data-test="use-in-drills"]').text()).toContain(why)
   })
 
-  it('turns the switch back off when the progression stops suiting the drills', async () => {
+  it('shows the switch off while the drills can’t use the progression, and sends it chart only', async () => {
     POST.mockResolvedValue({ data: CREATED, response: { status: 201 } })
     const w = mountForm('I bVII IV I')
 
@@ -226,6 +231,56 @@ describe('ProgressionCreateForm', () => {
     await submit(w).trigger('click')
     await flushPromises()
     expect(POST.mock.calls[0]?.[1].body.in_drills).toBe(false)
+  })
+
+  it('keeps the drills on, with what was picked, while a bar is being corrected', async () => {
+    POST.mockResolvedValue({ data: CREATED, response: { status: 201 } })
+    const w = mountForm('I bVII IV I')
+    await drills(w).trigger('click')
+    await flushPromises()
+    w.getComponent({ name: 'ProgressionDrillFields' }).vm.$emit('update:conceptIds', ['n1'])
+    await flushPromises()
+
+    await numerals(w).setValue('I bVII IV')
+    await numerals(w).setValue('I bVII IV V')
+    expect(drills(w).attributes('aria-checked')).toBe('true')
+
+    await submit(w).trigger('click')
+    await flushPromises()
+    expect(POST.mock.calls[0]?.[1].body).toEqual({ mode: 'major', bars: ['I', '♭VII', 'IV', 'V'], in_drills: true, skill_ids: [], concept_ids: ['n1'] })
+  })
+
+  it('can’t be left while it is creating, so a cancelled form never tags', async () => {
+    let finish: (value: unknown) => void = () => {}
+    POST.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const w = mountForm('I bVII IV I')
+
+    await submit(w).trigger('click')
+
+    expect(w.get('[data-test="progression-cancel"]').attributes('disabled')).toBeDefined()
+    w.getComponent(OverlayPanel).vm.$emit('close')
+    expect(w.emitted('close')).toBeUndefined()
+
+    finish({ data: CREATED, response: { status: 201 } })
+    await flushPromises()
+    w.getComponent(OverlayPanel).vm.$emit('close')
+    expect(w.emitted('close')).toHaveLength(1)
+  })
+
+  it('names a section that takes either gender in Portuguese', async () => {
+    i18n.global.locale.value = 'pt-BR'
+    const w = mount(ProgressionCreateForm, {
+      props: { open: true, progressions: [], chartKey: 'G', sectionName: 'Refrão', numerals: 'I bVII IV I' },
+      global: { stubs: { teleport: true } },
+      attachTo: document.body,
+    })
+
+    expect(submit(w).text()).toBe('Criar e marcar em Refrão')
+  })
+
+  it('reads a key with sharps or flats as the chart writes it', () => {
+    expect(reading(mountForm('I iii vi V', 'E'))).toBe('In E, this chart’s key: E – G#m – C#m – B.')
+    expect(reading(mountForm('I IV V', 'Gb'))).toBe('In Gb, this chart’s key: Gb – Cb – Db.')
   })
 
   it('offers the existing progression when someone else created it first', async () => {

@@ -87,11 +87,9 @@ const existing = computed(() => {
 })
 
 const drillsBlock = computed(() => drillsRefusal(mode.value, bars.value.length))
+// The admin's choice outlives a refusal, which may only last while a bar is being corrected.
 const inDrills = computed(() => wantsDrills.value && drillsBlock.value === null)
 
-watch(drillsBlock, (block) => {
-  if (block) wantsDrills.value = false
-})
 watch([typed, mode], () => {
   conflict.value = null
   refusal.value = ''
@@ -100,7 +98,7 @@ watch([typed, mode], () => {
 const drillsDescription = computed(() => {
   if (drillsBlock.value === 'minor') return t('progressionForm.drillsMinor')
   if (drillsBlock.value === 'bars') return t('progressionForm.drillsBars')
-  return t(wantsDrills.value ? 'progressionForm.drillsOn' : 'progressionForm.drillsOff')
+  return t(inDrills.value ? 'progressionForm.drillsOn' : 'progressionForm.drillsOff')
 })
 
 function keyInMode(key: SpellingKey): string {
@@ -108,7 +106,7 @@ function keyInMode(key: SpellingKey): string {
 }
 
 function spelling(key: SpellingKey): string {
-  const chart = spelledBars(key.root, parsedBars.value)
+  const chart = spelledBars(key.name, parsedBars.value)
   if (!key.relative) return t('progressionForm.inChartKey', { key: keyInMode(key), chart })
   if (borrowed.value.length) return t('progressionForm.inKey', { key: keyInMode(key), chart })
   return t('progressionForm.inRelativeKey', { key: keyInMode(key), chartKey: key.chartKey, chart })
@@ -150,6 +148,11 @@ function nicknames(): Record<string, string> | undefined {
   return written.length ? Object.fromEntries(written) : undefined
 }
 
+/** While it is creating there is no leaving: the result tags a section, and the admin would have backed out. */
+function close() {
+  if (!busy.value) emit('close')
+}
+
 async function submit() {
   if (!canSubmit.value) return
   if (existing.value) {
@@ -184,7 +187,7 @@ const chipKind = (bar: { parsed: { borrowed: boolean } | null }) => (!bar.parsed
 </script>
 
 <template>
-  <OverlayPanel :open="open" full-screen :title="t('progressionForm.title')" @close="emit('close')">
+  <OverlayPanel :open="open" full-screen :title="t('progressionForm.title')" @close="close">
     <form id="progression-create-form" data-test="progression-create-form" class="flex flex-col gap-4" @submit.prevent="submit">
       <div class="flex flex-col gap-1.5">
         <span class="text-sm font-semibold text-ink">{{ t('progressionForm.key') }}</span>
@@ -222,7 +225,7 @@ const chipKind = (bar: { parsed: { borrowed: boolean } | null }) => (!bar.parsed
         <TextField v-model="nicknameEn" data-test="nickname-en" :label="t('progressionForm.nicknameEn')" />
         <TextField v-model="nicknamePt" data-test="nickname-pt" :label="t('progressionForm.nicknamePt')" />
         <div data-test="use-in-drills" class="-ml-[1.25rem] -mr-4">
-          <SwitchRow v-model="wantsDrills" :label="t('progressionForm.useInDrills')" :description="drillsDescription" :disabled="drillsBlock !== null" />
+          <SwitchRow :model-value="inDrills" :label="t('progressionForm.useInDrills')" :description="drillsDescription" :disabled="drillsBlock !== null" @update:model-value="wantsDrills = $event" />
         </div>
         <ProgressionDrillFields v-if="inDrills" v-model:skill-ids="skillIds" v-model:concept-ids="conceptIds" />
       </template>
@@ -231,7 +234,7 @@ const chipKind = (bar: { parsed: { borrowed: boolean } | null }) => (!bar.parsed
     </form>
 
     <template #actions>
-      <AppButton data-test="progression-cancel" variant="tertiary" @click="emit('close')">{{ t('progressionForm.cancel') }}</AppButton>
+      <AppButton data-test="progression-cancel" variant="tertiary" :disabled="busy" @click="close">{{ t('progressionForm.cancel') }}</AppButton>
       <AppButton data-test="progression-submit" type="submit" form="progression-create-form" :disabled="!canSubmit" :busy="busy">{{ submitLabel }}</AppButton>
     </template>
   </OverlayPanel>

@@ -443,9 +443,9 @@
     "existsTitle": "Essa progressão já existe",
     "existsBody": "Estes numerais são {progression}. Nada é criado duas vezes — marque essa.",
     "tag": "Marcar {progression}",
-    "createAndTag": "Criar e marcar na {section}",
+    "createAndTag": "Criar e marcar em {section}",
     "cancel": "Cancelar",
-    "created": "{progression} criada e marcada na {section}",
+    "created": "{progression} criada e marcada em {section}",
     "failed": "Não foi possível criar a progressão. Tente de novo.",
     "refused": {
       "already_in_drills": "Ela já está na Prática.",

@@ -342,11 +342,17 @@ function toggleTag(key: string) {
 
 // What a new progression's form starts from; null while it is closed. It takes the picker's place.
 const creating = ref<string | null>(null)
+const pickerQuery = ref('')
 
 const pickingSectionName = computed(() => {
   const attrs = picking.value ? model.value.content[picking.value.sectionIndex]?.attrs : undefined
   return attrs?.label ?? t(`songChart.sectionKind.${attrs?.kind ?? 'verse'}`)
 })
+
+function backToPicker() {
+  creating.value = null
+  void nextTick(() => lyricsBox.value?.querySelector<HTMLInputElement>('[data-test="progression-search"]')?.focus())
+}
 
 function tagFromForm(key: string) {
   if (picking.value) setTags(picking.value.sectionIndex, (keys) => (keys.includes(key) ? keys : [...keys, key]))
@@ -357,6 +363,7 @@ function tagFromForm(key: string) {
 const pickingTags = computed(() => (picking.value ? (sectionAt(picking.value.sectionIndex)?.keys ?? []) : []))
 
 function openPicker(sectionIndex: number, anchor: HTMLElement) {
+  pickerQuery.value = ''
   const box = lyricsBox.value?.getBoundingClientRect()
   const at = anchor.getBoundingClientRect()
   picking.value = { sectionIndex, top: box ? at.bottom + POPOVER_GAP - box.top : 0, left: box ? Math.max(0, at.left - box.left) : 0 }
@@ -451,7 +458,7 @@ const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font
             <X :size="16" aria-hidden="true" />
           </button>
         </div>
-        <ProgressionPicker :progressions="progressions" :tagged="pickingTags" @toggle="toggleTag" @create="creating = $event" />
+        <ProgressionPicker v-model:query="pickerQuery" :progressions="progressions" :tagged="pickingTags" @toggle="toggleTag" @create="creating = $event" />
       </div>
       <ProgressionCreateForm
         :open="creating !== null"
@@ -459,7 +466,7 @@ const toolClass = 'flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font
         :chart-key="currentKey"
         :section-name="pickingSectionName"
         :numerals="creating ?? ''"
-        @close="creating = null"
+        @close="backToPicker"
         @tag="tagFromForm"
       />
     </div>

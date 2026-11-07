@@ -398,6 +398,18 @@ describe('SongChartEditorView', () => {
       expect(heading.get('[data-test="not-played"]').text()).toContain('its chords never come I–IV–V–I in a row in C')
     })
 
+    it('goes back to the sheet with the search kept, on Cancel', async () => {
+      serve(makeSongChart('chart-1'))
+      const { wrapper } = await mountAt('/admin/song-charts/chart-1')
+
+      await click(wrapper, '[data-test="lyrics-read-only"] [data-test="add-progression"]')
+      await wrapper.get('[data-test="progression-search"]').setValue('I bVII IV I')
+      await click(wrapper, '[data-test="create-progression"]')
+      await click(wrapper, '[data-test="progression-cancel"]')
+
+      expect(wrapper.get('[data-test="progression-search"]').element).toHaveProperty('value', 'I bVII IV I')
+    })
+
     it('creates a progression from the sheet, full screen, and tags the section until Save sends it', async () => {
       serve(makeSongChart('chart-1'))
       const { wrapper } = await mountAt('/admin/song-charts/chart-1')

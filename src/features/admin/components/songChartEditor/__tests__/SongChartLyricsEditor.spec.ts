@@ -248,6 +248,19 @@ describe('SongChartLyricsEditor', () => {
 
         expect(wrapper.find('[data-test="progression-numerals"]').exists()).toBe(false)
         expect(wrapper.find('[data-test="progression-picker"]').exists()).toBe(true)
+        expect(wrapper.get('[data-test="progression-search"]').element).toHaveProperty('value', 'I bVII IV I')
+      })
+
+      it('starts with an empty search the next time the picker opens', async () => {
+        const wrapper = mountEditor(twoSections)
+        await flushPromises()
+
+        await openForm(wrapper, 'I bVII IV I')
+        await wrapper.get('[data-test="progression-cancel"]').trigger('click')
+        await wrapper.get('[data-test="close-progression-picker"]').trigger('click')
+        await headings(wrapper)[1]!.get('[data-test="add-progression"]').trigger('click')
+
+        expect(wrapper.get('[data-test="progression-search"]').element).toHaveProperty('value', '')
       })
 
       it('tags the section it was opened on, once created, and closes', async () => {

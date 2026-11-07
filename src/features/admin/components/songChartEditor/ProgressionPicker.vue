@@ -7,10 +7,10 @@
  * create it. Removing a progression happens only in Admin › Progressions, never here.
  */
 import { Check, Plus, Search } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import { barsLabel, numeralsOf } from '@/features/admin/utils/progressionDraft'
+import { barsContain, barsLabel, numeralsOf } from '@/features/admin/utils/progressionDraft'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -26,16 +26,21 @@ const emit = defineEmits<{ toggle: [key: string]; create: [numerals: string] }>(
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
 
-const query = ref('')
-
-/** Typed numerals match the key, and any word matches the name, whatever the case. */
-const shown = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  const named = props.progressions.map((p) => ({ key: p.key, name: localizedName(p.names), inDrills: p.in_drills }))
-  return q ? named.filter((p) => p.key.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : named
-})
+const query = defineModel<string>('query', { default: '' })
 
 const typedNumerals = computed(() => numeralsOf(query.value))
+
+/** Typed numerals match the bars or the key, and any word matches the name, whatever the case. */
+const shown = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  const numerals = typedNumerals.value
+  const matching = q
+    ? props.progressions.filter(
+        (p) => p.key.toLowerCase().includes(q) || localizedName(p.names).toLowerCase().includes(q) || (numerals !== null && barsContain(p.bars, p.mode, numerals)),
+      )
+    : props.progressions
+  return matching.map((p) => ({ key: p.key, name: localizedName(p.names), inDrills: p.in_drills }))
+})
 </script>
 
 <template>
