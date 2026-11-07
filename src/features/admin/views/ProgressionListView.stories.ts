@@ -32,21 +32,20 @@ const TAGGED = row('major-tagged', 'I–♭VII–IV–I', { song_chart_count: 2 
 const MINOR = row('minor-tagged', 'i–♭VI–♭III–♭VII', { mode: 'minor', song_chart_count: 1, created_at: '2026-11-02T12:00:00Z' })
 const UNUSED = row('major-unused', 'I–IV–I–V')
 
-const REFUSED = {
-  message: 'in use',
-  reason: 'in_use',
-  uses: [
-    { song_chart_id: 'c1', title: 'Amazing Grace', revision: 'draft', section_index: 0, section_label: 'Verse 1' },
-    { song_chart_id: 'c2', title: 'Home on the Range', revision: 'published', section_index: 2, section_label: 'Chorus' },
-  ],
-}
+const USES = [
+  { song_chart_id: 'c1', title: 'Amazing Grace', revision: 'draft', section_index: 0, section_label: 'Verse 1' },
+  { song_chart_id: 'c2', title: 'Home on the Range', revision: 'published', section_index: 2, section_label: 'Chorus' },
+]
 
 let listed: Progression[] = []
+let deletesAsked: string[] = []
 
 const handlers = {
   progressions: http.get(endpoints.progressions, () => HttpResponse.json(listed)),
+  progressionUses: http.get(`${endpoints.progressions}/:id/uses`, ({ params }) => HttpResponse.json(params.id === TAGGED.progression_id ? USES : [])),
   deleteProgression: http.delete(`${endpoints.progressions}/:id`, ({ params }) => {
-    if (params.id === TAGGED.progression_id) return HttpResponse.json(REFUSED, { status: 409 })
+    deletesAsked.push(String(params.id))
+    if (params.id === TAGGED.progression_id) return HttpResponse.json({ message: 'in use', reason: 'in_use', uses: USES }, { status: 409 })
     listed = listed.filter((p) => p.progression_id !== params.id)
     return new HttpResponse(null, { status: 204 })
   }),
@@ -59,6 +58,7 @@ const meta = {
   beforeEach: () => {
     clearProgressionCatalog()
     listed = [POP, BLUES, TAGGED, MINOR, UNUSED]
+    deletesAsked = []
     return clearProgressionCatalog
   },
 } satisfies Meta<typeof ProgressionListView>
@@ -89,16 +89,27 @@ export const ChartOnlyFilter: Story = {
   },
 }
 
-/** A progression a chart uses: the sections arrive with the refusal, and nothing is deleted. */
+/** A progression a chart uses: the dialog reads the sections, and asks for no delete. */
 export const RemoveBlocked: Story = {
   play: async ({ canvasElement }) => {
     await chooseRemove(canvasElement, 'I–♭VII–IV–I')
     await expect(await body.findByText(/Amazing Grace · Verse 1/)).toBeVisible()
     await expect(body.getByRole('button', { name: 'Remove' })).toBeDisabled()
+    await expect(deletesAsked).toEqual([])
     await expect(body.getByRole('button', { name: 'Close' })).toHaveFocus()
 
     await userEvent.click(body.getByRole('button', { name: 'Close' }))
     await expect(within(canvasElement).getByText('I–♭VII–IV–I')).toBeVisible()
+  },
+}
+
+/** Counted as tagged, but its last tag went since the list was read: it asks, and deletes nothing. */
+export const RemoveAfterLastTagWent: Story = {
+  play: async ({ canvasElement }) => {
+    await chooseRemove(canvasElement, 'i–♭VI–♭III–♭VII')
+    await expect(await body.findByText(/No chart uses it/)).toBeVisible()
+    await expect(deletesAsked).toEqual([])
+    await expect(within(canvasElement).getByText('i–♭VI–♭III–♭VII')).toBeVisible()
   },
 }
 

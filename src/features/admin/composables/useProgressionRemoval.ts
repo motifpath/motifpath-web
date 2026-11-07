@@ -14,11 +14,8 @@ type ProgressionUse = components['schemas']['ProgressionUse']
 export type RemovalStep = 'checking' | 'confirm' | 'in_use' | 'in_drills' | 'check_failed'
 
 /**
- * Removing a progression. It always starts from a fresh list, since other admins tag and untag.
- * Only a refused delete names the sections that tag a progression, so one the fresh list counts as
- * tagged is tried at once to get them. If its last tag went in the moment between, that delete
- * succeeds with no confirmation; what's lost is a progression no chart uses, which can be created
- * again under the same key.
+ * Removing a progression. It always starts from a fresh list, since other admins tag and untag, and
+ * one the list counts as tagged has its sections read. Only confirming deletes anything.
  */
 export function useProgressionRemoval(onRemoved: (progression: Progression) => void) {
   const { coreApi } = useApi()
@@ -49,7 +46,23 @@ export function useProgressionRemoval(onRemoved: (progression: Progression) => v
     if (!fresh) target.value = null
     else if (fresh.in_drills) step.value = 'in_drills'
     else if (fresh.song_chart_count === 0) step.value = 'confirm'
-    else if (!(await tryDelete(fresh))) step.value = 'check_failed'
+    else await readUses(fresh, mine)
+  }
+
+  async function readUses(progression: Progression, mine: number) {
+    const { data, response } = await coreApi
+      .GET('/progressions/{progression_id}/uses', { params: { path: { progression_id: progression.progression_id } } })
+      .catch(() => ({ data: undefined, response: undefined }))
+    if (mine !== current) return
+    if (response?.status === 404) {
+      target.value = null
+      await refresh()
+    } else if (!data) {
+      step.value = 'check_failed'
+    } else {
+      uses.value = data
+      step.value = data.length > 0 ? 'in_use' : 'confirm'
+    }
   }
 
   /** Deletes it, or takes in why it can't be. False when the server gave no answer to go on. */

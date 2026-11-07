@@ -62,9 +62,17 @@ const USES: ProgressionUse[] = [
   { song_chart_id: 'c2', title: 'Home on the Range', revision: 'published', section_index: 2, section_label: null },
 ]
 
+const USES_PATH = '/progressions/{progression_id}/uses'
+
 const listed = (list: Progression[]) => Promise.resolve({ data: list, error: undefined, response: { status: 200 } })
+const sections = (uses: ProgressionUse[]) => Promise.resolve({ data: uses, error: undefined, response: { status: 200 } })
 const removed = () => Promise.resolve({ data: undefined, error: undefined, response: { status: 204 } })
 const refused = (status: number, error: unknown) => Promise.resolve({ data: undefined, error, response: { status } })
+
+/** The whole list, with the sections that tag a progression answered by readUses. */
+function serving(readUses: () => Promise<unknown>) {
+  GET.mockImplementation((path: string) => (path === USES_PATH ? readUses() : listed([POP, BLUES, TAGGED, ONE_CHART, UNUSED])))
+}
 
 async function mountView() {
   const router = createRouter({
@@ -305,19 +313,21 @@ describe('ProgressionListView', () => {
 
   describe('removing a progression a chart still uses', () => {
     beforeEach(() => {
-      DELETE.mockImplementation(() => refused(409, { message: 'in use', reason: 'in_use', uses: USES }))
+      serving(() => sections(USES))
     })
 
-    it('lists what to untag, with Remove disabled', async () => {
+    it('lists what to untag, with Remove disabled, and deletes nothing', async () => {
       const w = await mountView()
       await chooseRemove(w, 'I–♭VII–IV–I')
 
+      expect(GET).toHaveBeenCalledWith(USES_PATH, { params: { path: { progression_id: TAGGED.progression_id } } })
       const dialog = w.find('[data-test="remove-dialog"]')
       expect(dialog.text()).toContain('It can’t be removed while a chart uses it. Take it off these sections first, then come back to remove it.')
       const uses = w.findAll('[data-test="remove-use"]').map((li) => li.text())
       expect(uses).toEqual(['Amazing Grace · Verse 1 — in the draft: untag it and save', 'Home on the Range · Section 3 — in the published revision: untag it and publish'])
       expect(dialogRemove(w).attributes('disabled')).toBeDefined()
       expect(w.find('[data-test="remove-cancel"]').text()).toBe('Close')
+      expect(DELETE).not.toHaveBeenCalled()
     })
 
     it('never asks to delete a progression the fresh list says is untagged', async () => {
@@ -330,22 +340,75 @@ describe('ProgressionListView', () => {
       expect(w.find('[data-test="remove-dialog"]').text()).toContain('No chart uses it.')
     })
 
-    it('says it can\'t tell when the sections don\'t arrive', async () => {
-      DELETE.mockImplementation(() => refused(500, { message: 'boom' }))
+    it('asks to confirm when its last tag went after the list was read, and removes nothing by itself', async () => {
+      serving(() => sections([]))
+      const w = await mountView()
+      await chooseRemove(w, 'I–♭VII–IV–I')
+
+      expect(w.find('[data-test="remove-dialog"]').text()).toContain('No chart uses it.')
+      expect(DELETE).not.toHaveBeenCalled()
+      expect(success).not.toHaveBeenCalled()
+      expect(names(w)).toContain('I–♭VII–IV–I')
+    })
+
+    it('says it can\'t tell when the sections don\'t arrive, deletes nothing, and can check again', async () => {
+      serving(() => refused(500, { message: 'boom' }))
       const w = await mountView()
       await chooseRemove(w, 'I–♭VII–IV–I')
 
       expect(w.find('[data-test="remove-error"]').text()).toContain('Couldn’t check whether a chart uses it.')
       expect(dialogRemove(w).text()).toBe('Try again')
+      expect(DELETE).not.toHaveBeenCalled()
+
+      serving(() => sections(USES))
+      await dialogRemove(w).trigger('click')
+      await flushPromises()
+
+      expect(w.find('[data-test="remove-error"]').exists()).toBe(false)
+      expect(w.findAll('[data-test="remove-use"]')).toHaveLength(2)
+      expect(DELETE).not.toHaveBeenCalled()
     })
 
-    it('reports the removal when its last tag went just before asking for the sections', async () => {
-      DELETE.mockImplementation(removed)
+    it('says it can\'t tell when asking for the sections never reaches the server', async () => {
+      serving(() => Promise.reject(new TypeError('Failed to fetch')))
       const w = await mountView()
       await chooseRemove(w, 'I–♭VII–IV–I')
 
+      expect(w.find('[data-test="remove-error"]').text()).toContain('Couldn’t check whether a chart uses it.')
+      expect(DELETE).not.toHaveBeenCalled()
+    })
+
+    it('closes quietly when someone else removed it before the sections were read', async () => {
+      const w = await mountView()
+      let read = 0
+      GET.mockImplementation((path: string) => {
+        if (path === USES_PATH) return refused(404, { message: 'gone' })
+        read += 1
+        return listed(read === 1 ? [POP, BLUES, TAGGED] : [POP, BLUES])
+      })
+
+      await chooseRemove(w, 'I–♭VII–IV–I')
+
       expect(w.find('[data-test="remove-dialog"]').exists()).toBe(false)
-      expect(success).toHaveBeenCalledWith('I–♭VII–IV–I removed')
+      expect(names(w)).toEqual(['I–V–vi–IV (pop)', '12-bar blues'])
+      expect(DELETE).not.toHaveBeenCalled()
+      expect(success).not.toHaveBeenCalled()
+    })
+
+    it('ignores sections that arrive after the dialog closed and another one opened', async () => {
+      let answer: (value: unknown) => void = () => {}
+      serving(() => new Promise((resolve) => { answer = resolve }))
+      const w = await mountView()
+
+      await chooseRemove(w, 'I–♭VII–IV–I')
+      await w.find('[data-test="remove-cancel"]').trigger('click')
+      await chooseRemove(w, 'I–IV–I–V')
+      answer({ data: USES, error: undefined, response: { status: 200 } })
+      await flushPromises()
+
+      expect(w.find('[role="dialog"]').text()).toContain('Remove I–IV–I–V?')
+      expect(w.find('[data-test="remove-dialog"]').text()).toContain('No chart uses it.')
+      expect(w.findAll('[data-test="remove-use"]')).toHaveLength(0)
     })
 
     it('closes without the phone\'s Close: × is there, as the sheet shows', async () => {
