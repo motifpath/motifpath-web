@@ -2068,14 +2068,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /**
-         * Read which song chart sections tag a progression
-         * @description The sections of every song chart's draft and latest published revision that tag the
-         *     progression, the same ones a refused removal lists, so a client can show what to untag
-         *     without trying to remove it. Older published revisions don't count. Reading changes
-         *     nothing. Only admins may read them, since a chart's draft is listed.
-         */
-        get: operations["getProgressionUses"];
+        get?: never;
         put?: never;
         post?: never;
         /**
@@ -2098,6 +2091,32 @@ export interface paths {
          *     progressions keep their names. Only admins may change a nickname.
          */
         patch: operations["updateProgression"];
+        trace?: never;
+    };
+    "/progressions/{progression_id}/uses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Read which song chart sections tag a progression
+         * @description The sections of every song chart's draft and latest published revision that tag the
+         *     progression, the same ones a refused removal lists, so a client can show what to untag
+         *     without trying to remove it. Older published revisions don't count. Reading changes
+         *     nothing. Only admins may read them, since a chart's draft is listed.
+         */
+        get: operations["getProgressionUses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/progressions/{progression_id}/drills": {
@@ -15900,65 +15919,6 @@ export interface operations {
             };
         };
     };
-    getProgressionUses: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The progression's identifier. */
-                progression_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The sections that tag it; empty when no chart does. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProgressionUse"][];
-                };
-            };
-            /** @description The identifier isn't a UUID. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationError"];
-                };
-            };
-            /** @description Missing or invalid Bearer token. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedError"];
-                };
-            };
-            /** @description Only admins read where a progression is used. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenError"];
-                };
-            };
-            /** @description No progression has this identifier. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NotFoundError"];
-                };
-            };
-        };
-    };
     deleteProgression: {
         parameters: {
             query?: never;
@@ -16096,6 +16056,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    getProgressionUses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sections that tag it; empty when no chart does. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionUse"][];
+                };
+            };
+            /** @description The identifier isn't a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins read where a progression is used. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
                 };
             };
         };
