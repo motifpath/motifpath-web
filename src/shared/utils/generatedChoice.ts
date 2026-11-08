@@ -13,6 +13,9 @@ import {
   chartSymbol,
   chordOf,
   chordSymbol,
+  isNumeral,
+  musicKeyOf,
+  numeralsOfCreatedKey,
   parseChord,
   pitchClassOf,
 } from '@/shared/utils/harmony'
@@ -44,8 +47,12 @@ export interface GeneratedQuestion {
   progression?: string
 }
 
-/** The progression catalog the options are checked against, by key. */
-export type ProgressionCatalog = Record<string, { bars: string[] }>
+/** The drill progressions the options are checked against, by key, each read in its mode (major when it says none). */
+export type ProgressionCatalog = Record<string, { bars: string[]; mode?: string }>
+
+function modeOf(progression: { mode?: string }): string {
+  return progression.mode === 'minor' ? 'minor' : 'major'
+}
 
 /** What the student answered: the options as shown and the one picked. */
 export type GeneratedAnswer = Pick<components['schemas']['GeneratedChoiceResponse'], 'options' | 'choice'>
@@ -66,10 +73,12 @@ function chordsOfTheKey(key: number): Map<string, string> {
 }
 
 function answerSpaceOf(question: GeneratedQuestion, catalog: ProgressionCatalog): AnswerSpace | null {
-  const key = pitchClassOf(question.key)
-  if (key === null) return null
-  const numeral = question.numeral ?? ''
+  const asked = musicKeyOf(question.key)
   const progression = question.progression === undefined ? undefined : catalog[question.progression]
+  // A progression is asked in a key of its mode; any other question in a major key.
+  if (asked === null || asked.mode !== (progression ? modeOf(progression) : 'major')) return null
+  const key = asked.tonic
+  const numeral = question.numeral ?? ''
   switch (question.way) {
     case 'numeral_to_chord':
     case 'function_to_chord': {
@@ -91,26 +100,30 @@ function answerSpaceOf(question: GeneratedQuestion, catalog: ProgressionCatalog)
       const functions = ['tonic', 'subdominant', 'dominant']
       return fn ? { identify: (o) => (functions.includes(o) ? o : null), right: fn } : null
     }
+    // A progression's options may be made up: any chart, or progression, of its length and mode.
     case 'numbers_to_chart': {
       const chart = progression ? chartOf(key, progression.bars) : null
       if (!chart) return null
-      const charts = new Set(Object.values(catalog).flatMap(({ bars }) => {
-        const c = chartOf(key, bars)
-        return c ? [chartSymbol(c)] : []
-      }))
       const asChart = (option: string) => {
         const chords = option.split(' ').map((s) => parseChord(s, true))
-        if (chords.some((c) => c === null)) return null
-        const symbol = chords.map((c) => (c ? chordSymbol(c) : '')).join(' ')
-        return charts.has(symbol) ? symbol : null
+        if (chords.length !== chart.length || chords.some((c) => c === null)) return null
+        return chords.map((c) => (c ? chordSymbol(c) : '')).join(' ')
       }
       return { identify: asChart, right: chartSymbol(chart) }
     }
     case 'chart_to_numbers':
-    case 'progression_by_number':
-      return progression && question.progression !== undefined
-        ? { identify: (o) => (o in catalog ? o : null), right: question.progression }
-        : null
+    case 'progression_by_number': {
+      if (!progression || question.progression === undefined) return null
+      const { length } = progression.bars
+      const mode = modeOf(progression)
+      const asProgression = (option: string) => {
+        const drill = catalog[option]
+        if (drill) return drill.bars.length === length && modeOf(drill) === mode ? option : null
+        const madeUp = numeralsOfCreatedKey(option)
+        return madeUp && madeUp.mode === mode && madeUp.bars.length === length && madeUp.bars.every(isNumeral) ? option : null
+      }
+      return { identify: asProgression, right: question.progression }
+    }
   }
 }
 

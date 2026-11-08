@@ -29,6 +29,15 @@ describe('useProgressionCatalog', () => {
     expect(catalog).toEqual({ 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] }, 'I-vi-IV-V': { bars: ['I', 'vi', 'IV', 'V'] } })
   })
 
+  it('keeps a progression’s mode, so a minor one is graded in its minor keys', async () => {
+    const minor = { progression_id: 'p4', key: 'minor/i-iv-v-i', mode: 'minor', bars: ['i', 'iv', 'v', 'i'], in_drills: true, confusable: [], names: { en: 'i–iv–v–i' } }
+    GET.mockImplementation(() => ok([minor]))
+
+    const catalog = await useProgressionCatalog().load()
+
+    expect(catalog).toEqual({ 'minor/i-iv-v-i': { bars: ['i', 'iv', 'v', 'i'], mode: 'minor' } })
+  })
+
   it('grades only against progressions in the drills, while the whole list keeps the chart-only ones', async () => {
     GET.mockImplementation(() => ok([POP, CHART_ONLY]))
 
