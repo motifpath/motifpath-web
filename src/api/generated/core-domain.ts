@@ -2131,10 +2131,11 @@ export interface paths {
         /**
          * Add a created progression to the drills
          * @description Makes a chart-only progression a drill progression, practising the given skills and
-         *     concepts. It is refused, with every reason, unless the progression has 4 or 12 bars, is
-         *     in a mode the drills support (major), and at least one other drill progression has the
-         *     same bar count. Drills offer as its wrong answers the drill progressions with the same
-         *     bar count that share the most chords with it, bar by bar, those in the same mode first.
+         *     concepts. It is refused, with every reason, when the progression has a single bar, which
+         *     is a chord, not a progression. Its wrong answers are the drill progressions with its bar
+         *     count and its mode that share the most chords with it, bar by bar; when those are too
+         *     few, drills make up the rest each time they ask it, by changing one of its bars. Drills
+         *     ask it in keys of its mode, and by ear only when it has 2 to 4 bars.
          *     There is no way back: a drill progression stays in the drills. Only admins may add a
          *     progression to the drills.
          */
@@ -5640,10 +5641,11 @@ export interface components {
              *     (each written chord moved up by the capo), each counted by its
              *     root and triad (major, minor or diminished), N.C. skipped and a
              *     chord repeated in a row counted once, against the progression's
-             *     numerals spelled in the concert key, a dominant seventh counting
-             *     as major and a repeated numeral counted once. The chords of
-             *     another section never count. With no stated major concert key,
-             *     every tag is unplayed. Any entry blocks publication.
+             *     numerals spelled in the concert key when their modes match and in
+             *     its relative key when they don't, a dominant seventh counting as
+             *     major and a repeated numeral counted once. The chords of another
+             *     section never count. With no stated concert key, every tag is
+             *     unplayed. Any entry blocks publication.
              */
             unplayed_progressions: components["schemas"]["SongChartUnplayedProgression"][];
             updated_by: components["schemas"]["UserRef"];
@@ -8310,7 +8312,7 @@ export interface components {
             mode: "major" | "minor";
             /**
              * @description One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
-             *     four-bar progression has four, a 12-bar form twelve.
+             *     four-bar progression has four, a 12-bar form twelve. Drills take 2 to 16.
              */
             bars: components["schemas"]["ProgressionNumeral"][];
             /**
@@ -8324,8 +8326,9 @@ export interface components {
              */
             in_drills: boolean;
             /**
-             * @description The keys of the drill progressions drills offer as its wrong answers, closest first;
-             *     empty for a progression that isn't in the drills.
+             * @description The keys of the drill progressions drills offer as its wrong answers, closest first,
+             *     all with its bar count and mode; empty for a progression that isn't in the drills, and
+             *     possibly empty for one that is, whose wrong answers drills then make up.
              */
             confusable: components["schemas"]["ProgressionKey"][];
             /** @description The progression's name in each language, such as "I–V–vi–IV (pop)". */
@@ -8414,10 +8417,9 @@ export interface components {
             /** @description Human-readable summary of the refusal. */
             message: string;
             /**
-             * @description already_in_drills: it is a drill progression already. unsupported_bar_count: drills
-             *     ask 4- and 12-bar progressions only. unsupported_mode: drills don't ask its mode yet.
-             *     no_other_drill_progression: no other drill progression has its bar count, so drills
-             *     have no wrong answer to offer.
+             * @description already_in_drills: it is a drill progression already. unsupported_bar_count: it has a
+             *     single bar. unsupported_mode and no_other_drill_progression are no longer returned:
+             *     drills ask both modes, and make up wrong answers when too few drill progressions fit.
              */
             reasons: ("already_in_drills" | "unsupported_bar_count" | "unsupported_mode" | "no_other_drill_progression")[];
         };
@@ -10413,12 +10415,12 @@ export interface components {
          *     - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
          *       the function of its chord, or its chord for the function.
          *     - chart_progression:<progression key> — a drill progression read
-         *       as a chart: picking the progression for four chords, or its chart for the progression.
+         *       as a chart: picking the progression for its chords, or its chart for the progression.
          *       The key is picked each time it is asked, so one item covers every key.
          *     - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
          *       picked each time.
-         *     - heard_progression:<progression key> — a progression recognised by ear. The key is
-         *       picked each time.
+         *     - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+         *       ear. The key is picked each time.
          *     - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
          *     - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
          *       layout, cleanly, untimed.
@@ -10535,13 +10537,16 @@ export interface components {
          */
         GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name";
         /**
-         * @description A major key. In a response, the key a question was asked in or a take was played in when
+         * @description A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+         *     are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+         *     progression is asked and played only in minor keys, a major one only in major keys. In a
+         *     response, the key a question was asked in or a take was played in when
          *     its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
          *     tone or a progression key tour; absent in a response to any other item. A planned question
          *     always names its key.
          * @enum {string}
          */
-        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B";
+        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B" | "Cm" | "Dbm" | "Dm" | "Ebm" | "Em" | "Fm" | "F#m" | "Gm" | "Abm" | "Am" | "Bbm" | "Bm";
         /**
          * @description A scale degree's chord in a major key, as a roman numeral: upper case for a major triad,
          *     lower case for a minor one, and viio for the diminished triad on the seventh degree (vii°).
@@ -10557,9 +10562,9 @@ export interface components {
         /**
          * @description How the question draws its chords, in the stimulus and in the options. chord_boxes = a
          *     chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
-         *     four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
-         *     chart is laid out in three lines of four bars. A session in the head reads chords the way
-         *     of the student's fretboard layout: guitar or bass, taking turns from one session in the
+         *     charts of up to four bars); chord_symbols = the chord symbol (bass, and every chart of more
+         *     than four bars). A chart of more than four bars is laid out in lines of four bars. A
+         *     session in the head reads chords the way of the student's fretboard layout: guitar or bass, taking turns from one session in the
          *     head to the next for a student who plays both, and chord symbols for a student who plays
          *     neither. Every generated harmony question of a session reads them the same way.
          * @enum {string}
@@ -10591,7 +10596,7 @@ export interface components {
             /**
              * @description The bars in the order they play. cadence_then_chord: the cadence I IV V I with their
              *     numerals, or only I with its numeral once the student is accurate on the item, then the
-             *     asked chord with no numeral. progression_by_number: the progression's four bars, none
+             *     asked chord with no numeral. progression_by_number: the progression's bars, 2 to 4, none
              *     with a numeral.
              */
             bars: {
@@ -10637,7 +10642,7 @@ export interface components {
                 name: string;
             } | null;
             /**
-             * @description The chart the question shows, one chord symbol per bar (four or twelve), for
+             * @description The chart the question shows, one chord symbol per bar (2 to 16), for
              *     chart_to_numbers. Empty for every other way.
              */
             chart: string[];
@@ -10645,9 +10650,13 @@ export interface components {
             /**
              * @description The options in the order to show them, already shuffled; all seven numerals come in scale
              *     order instead, since where one sits then says nothing. Different from one another,
-             *     each a possible answer to the way, the right one among them: four, two for a 12-bar
-             *     progression, and all seven numerals for a heard chord once the student is fluent on it.
-             *     Which are offered follows the drill catalog's harmony and ear rules.
+             *     each a possible answer to the way, the right one among them: four, two for a progression
+             *     of more than four bars, and all seven numerals for a heard chord once the student is
+             *     fluent on it. Which are offered follows the drill catalog's harmony and ear rules: a
+             *     progression's wrong answers are drill progressions of its length and mode, then, when
+             *     those are too few, progressions the server makes up by changing one of its bars. A
+             *     made-up one is offered as the progression it would be if an admin created it: its key,
+             *     its name (its numerals joined by –) and its chart.
              */
             options: {
                 /**
@@ -10816,8 +10825,9 @@ export interface components {
                 name: string;
             };
             /**
-             * @description How many times one take plays the progression after its bar of count-in: 4 for a
-             *     four-bar progression, 1 for a 12-bar blues.
+             * @description How many times one take plays the progression after its bar of count-in: as many whole
+             *     times as fit in 16 bars, at least once (8 for a two-bar progression, 4 for a four-bar
+             *     one, 1 for a 12-bar blues).
              */
             times_through: number;
             /** @description The most takes of the tour this session plays. */
@@ -10900,8 +10910,11 @@ export interface components {
              * @description The chord tone asked of every chord: 3 = its third, until the student is accurate on the
              *     item; 7 = its seventh from then on:
              *     a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
-             *     diminished seventh); a chord with no written seventh takes the major seventh on I and IV
-             *     and the minor seventh on any other numeral, in or out of the key.
+             *     diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+             *     progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+             *     a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+             *     maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+             *     numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
              * @enum {string}
              */
             tone: "3" | "7";
