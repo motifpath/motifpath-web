@@ -10,8 +10,9 @@ type ProgressionUse = components['schemas']['ProgressionUse']
 
 const GET = vi.fn()
 const DELETE = vi.fn()
+const POST = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
-  useApi: () => ({ coreApi: { GET, DELETE }, eventApi: {} }),
+  useApi: () => ({ coreApi: { GET, DELETE, POST }, eventApi: {} }),
 }))
 const isCompact = ref(false)
 vi.mock('@/shared/composables/useSizeClass', () => ({
@@ -31,6 +32,8 @@ const OverlayLayerStub = {
   emits: ['close'],
   template: '<div v-if="open" data-test="layer"><slot /></div>',
 }
+// The picker reads the knowledge map; these tests only need what it picks.
+const DrillFieldsStub = { name: 'ProgressionDrillFields', template: '<div data-test="progression-classification" />' }
 
 const NOW = new Date()
 const ANA = { user_id: 'u1', display_name: 'Ana Souza' }
@@ -68,6 +71,7 @@ const listed = (list: Progression[]) => Promise.resolve({ data: list, error: und
 const sections = (uses: ProgressionUse[]) => Promise.resolve({ data: uses, error: undefined, response: { status: 200 } })
 const removed = () => Promise.resolve({ data: undefined, error: undefined, response: { status: 204 } })
 const refused = (status: number, error: unknown) => Promise.resolve({ data: undefined, error, response: { status } })
+const added = (p: Progression) => Promise.resolve({ data: { ...p, in_drills: true }, error: undefined, response: { status: 200 } })
 
 /** The whole list, with the sections that tag a progression answered by readUses. */
 function serving(readUses: () => Promise<unknown>) {
@@ -80,7 +84,7 @@ async function mountView() {
     routes: [{ path: '/', name: 'home', component: { template: '<div />' } }],
   })
   const wrapper = mount(ProgressionListView, {
-    global: { plugins: [router], stubs: { TeachShell: TeachShellStub, OverlayLayer: OverlayLayerStub } },
+    global: { plugins: [router], stubs: { TeachShell: TeachShellStub, OverlayLayer: OverlayLayerStub, ProgressionDrillFields: DrillFieldsStub } },
   })
   await flushPromises()
   return wrapper
@@ -106,6 +110,7 @@ async function chooseRemove(w: Wrapper, name: string) {
 beforeEach(() => {
   GET.mockReset()
   DELETE.mockReset()
+  POST.mockReset()
   success.mockReset()
   isCompact.value = false
   clearProgressionCatalog()
@@ -134,13 +139,15 @@ describe('ProgressionListView', () => {
       expect(rowOf(w, 'I–V–vi–IV (pop)').find('[data-test="progression-row-meta"]').text()).toBe('Major · 4 bars · catalog')
     })
 
-    it('marks each row, and offers Remove only on a chart-only progression', async () => {
+    it('marks each row, and offers Remove and Add to drills only on a chart-only progression', async () => {
       const w = await mountView()
 
       expect(rowOf(w, 'I–V–vi–IV (pop)').find('[data-test="progression-row-status"]').text()).toBe('In drills')
       expect(rowOf(w, 'I–V–vi–IV (pop)').find('[data-test="progression-row-menu"]').exists()).toBe(false)
       expect(rowOf(w, 'I–IV–I–V').find('[data-test="progression-row-status"]').text()).toBe('Chart only')
       expect(rowOf(w, 'I–IV–I–V').find('[data-test="progression-row-menu"]').exists()).toBe(true)
+      expect(rowOf(w, 'I–IV–I–V').find('[data-test="progression-row-add-to-drills"]').text()).toBe('Add to drills')
+      expect(rowOf(w, 'I–V–vi–IV (pop)').find('[data-test="progression-row-add-to-drills"]').exists()).toBe(false)
     })
 
     it('lists a progression added to the drills as in drills, with its creator and no Remove', async () => {
@@ -487,6 +494,164 @@ describe('ProgressionListView', () => {
 
       expect(DELETE).not.toHaveBeenCalled()
       expect(w.find('[data-test="remove-dialog"]').exists()).toBe(false)
+    })
+  })
+
+  describe('adding a progression to the drills', () => {
+    const PATH = '/progressions/{progression_id}/drills'
+    const dialog = (w: Wrapper) => w.find('[data-test="add-to-drills-dialog"]')
+    const confirmAdd = (w: Wrapper) => w.find('[data-test="add-to-drills-confirm"]')
+
+    async function chooseAdd(w: Wrapper, name: string) {
+      await rowOf(w, name).find('[data-test="progression-row-add-to-drills"]').trigger('click')
+      await flushPromises()
+    }
+
+    async function pickConcept(w: Wrapper) {
+      w.getComponent({ name: 'ProgressionDrillFields' }).vm.$emit('update:conceptIds', ['n1'])
+      await flushPromises()
+    }
+
+    it('says what joining the drills means, and adds nothing until a skill or concept is picked', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+
+      expect(w.find('[role="dialog"]').text()).toContain('Add I–♭VII–IV–I to the drills')
+      const text = dialog(w).text()
+      expect(text).toContain('Major · 4 bars · tagged in 2 charts. Learners practising one of these skills or concepts meet it in harmony, hear, play-along and guide-tone drills, in any key.')
+      expect(text).toContain('Its wrong answers come from the drill progressions that share the most chords with it.')
+      expect(text).toContain('A progression in the drills can’t be taken out or removed: learners’ practice points at it.')
+      expect(dialog(w).find('[data-test="progression-classification"]').exists()).toBe(true)
+      expect(confirmAdd(w).attributes('disabled')).toBeDefined()
+      expect(POST).not.toHaveBeenCalled()
+    })
+
+    it('adds it with what it practises, and the row moves to the drills', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+      await pickConcept(w)
+      POST.mockImplementation(() => added(TAGGED))
+      GET.mockImplementation(() => listed([POP, BLUES, { ...TAGGED, in_drills: true }, ONE_CHART, UNUSED]))
+
+      await confirmAdd(w).trigger('click')
+      await flushPromises()
+
+      expect(POST).toHaveBeenCalledWith(PATH, { params: { path: { progression_id: TAGGED.progression_id } }, body: { skill_ids: [], concept_ids: ['n1'] } })
+      expect(dialog(w).exists()).toBe(false)
+      expect(success).toHaveBeenCalledWith('I–♭VII–IV–I added to the drills')
+      expect(rowOf(w, 'I–♭VII–IV–I').find('[data-test="progression-row-status"]').text()).toBe('In drills')
+      expect(rowOf(w, 'I–♭VII–IV–I').find('[data-test="progression-row-add-to-drills"]').exists()).toBe(false)
+    })
+
+    it.each([
+      ['a minor progression', 'i–♭VI–♭III–♭VII', 'Drills don’t use minor keys yet.'],
+      ['one with bars the drills don’t ask', 'I–V–vi–iii–IV–I–IV–V', 'Drills ask only 4- and 12-bar progressions.'],
+    ])('says why %s can\'t join, with Add disabled', async (_, name, reason) => {
+      const EIGHT = progression({ key: 'major/eight', names: { en: 'I–V–vi–iii–IV–I–IV–V' }, bars: ['I', 'V', 'vi', 'iii', 'IV', 'I', 'IV', 'V'] })
+      GET.mockImplementation(() => listed([POP, ONE_CHART, EIGHT]))
+      const w = await mountView()
+      await chooseAdd(w, name)
+      await pickConcept(w)
+
+      expect(dialog(w).find('[data-test="add-to-drills-refusal"]').text()).toContain(reason)
+      expect(confirmAdd(w).attributes('disabled')).toBeDefined()
+    })
+
+    it('shows every reason the server refuses it for, and stays open', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+      await pickConcept(w)
+      POST.mockImplementation(() => refused(409, { message: 'no', reasons: ['no_other_drill_progression'] }))
+
+      await confirmAdd(w).trigger('click')
+      await flushPromises()
+
+      expect(dialog(w).find('[data-test="add-to-drills-refusal"]').text()).toContain('No other progression in the drills has this many bars, so they have no wrong answer to offer.')
+      expect(success).not.toHaveBeenCalled()
+    })
+
+    it('says so and refreshes when another admin added it first', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+      await pickConcept(w)
+      POST.mockImplementation(() => refused(409, { message: 'no', reasons: ['already_in_drills'] }))
+      GET.mockImplementation(() => listed([POP, BLUES, { ...TAGGED, in_drills: true }, ONE_CHART, UNUSED]))
+
+      await confirmAdd(w).trigger('click')
+      await flushPromises()
+
+      expect(dialog(w).find('[data-test="add-to-drills-refusal"]').text()).toContain('It’s in the drills already.')
+      expect(rowOf(w, 'I–♭VII–IV–I').find('[data-test="progression-row-status"]').text()).toBe('In drills')
+    })
+
+    it('closes quietly when someone else removed it', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+      await pickConcept(w)
+      POST.mockImplementation(() => refused(404, { message: 'gone' }))
+      GET.mockImplementation(() => listed([POP, BLUES]))
+
+      await confirmAdd(w).trigger('click')
+      await flushPromises()
+
+      expect(dialog(w).exists()).toBe(false)
+      expect(names(w)).toEqual(['I–V–vi–IV (pop)', '12-bar blues'])
+      expect(success).not.toHaveBeenCalled()
+    })
+
+    it('stays open with a reason when the server gives no answer, and can be tried again', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+      await pickConcept(w)
+      POST.mockImplementationOnce(() => Promise.reject(new TypeError('Failed to fetch')))
+
+      await confirmAdd(w).trigger('click')
+      await flushPromises()
+
+      expect(dialog(w).find('[data-test="add-to-drills-error"]').text()).toContain('Couldn’t add it. Try again.')
+
+      POST.mockImplementationOnce(() => added(TAGGED))
+      await confirmAdd(w).trigger('click')
+      await flushPromises()
+      expect(dialog(w).exists()).toBe(false)
+    })
+
+    it('can\'t be closed while adding runs', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+      await pickConcept(w)
+      POST.mockImplementation(() => new Promise(() => {}))
+
+      await confirmAdd(w).trigger('click')
+      await w.find('[data-test="add-to-drills-cancel"]').trigger('click')
+
+      expect(dialog(w).exists()).toBe(true)
+    })
+
+    it('starts empty each time it opens', async () => {
+      const w = await mountView()
+      await chooseAdd(w, 'I–♭VII–IV–I')
+      await pickConcept(w)
+      await w.find('[data-test="add-to-drills-cancel"]').trigger('click')
+
+      await chooseAdd(w, 'I–IV–I–V')
+
+      expect(confirmAdd(w).attributes('disabled')).toBeDefined()
+    })
+
+    it('sits in the ⋮ sheet on a phone, above Remove', async () => {
+      isCompact.value = true
+      const w = await mountView()
+      const row = rowOf(w, 'I–♭VII–IV–I')
+
+      expect(row.find('[data-test="progression-row-add-to-drills"]').exists()).toBe(false)
+      await row.find('[data-test="progression-row-menu"]').trigger('click')
+      const items = row.findAll('[data-test^="progression-row-"]').map((item) => item.attributes('data-test'))
+      expect(items.indexOf('progression-row-add-to-drills-menu')).toBeLessThan(items.indexOf('progression-row-remove'))
+
+      await row.find('[data-test="progression-row-add-to-drills-menu"]').trigger('click')
+      await flushPromises()
+      expect(dialog(w).exists()).toBe(true)
     })
   })
 })

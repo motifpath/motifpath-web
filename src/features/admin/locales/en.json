@@ -156,6 +156,20 @@
       "failed": "Couldn’t remove it. Try again.",
       "checkFailed": "Couldn’t check whether a chart uses it.",
       "removed": "{name} removed"
+    },
+    "addToDrills": {
+      "action": "Add to drills",
+      "title": "Add {name} to the drills",
+      "explain": "{meta}. Learners practising one of these skills or concepts meet it in harmony, hear, play-along and guide-tone drills, in any key. Its wrong answers come from the drill progressions that share the most chords with it.",
+      "noWayBack": "A progression in the drills can’t be taken out or removed: learners’ practice points at it.",
+      "failed": "Couldn’t add it. Try again.",
+      "added": "{name} added to the drills",
+      "refused": {
+        "already_in_drills": "It’s in the drills already.",
+        "unsupported_bar_count": "Drills ask only 4- and 12-bar progressions.",
+        "unsupported_mode": "Drills don’t use minor keys yet.",
+        "no_other_drill_progression": "No other progression in the drills has this many bars, so they have no wrong answer to offer."
+      }
     }
   },
   "songChartEditor": {

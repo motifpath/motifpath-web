@@ -6,10 +6,12 @@
 import { computed, onMounted, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import ProgressionAddToDrillsDialog from '@/features/admin/components/progressions/ProgressionAddToDrillsDialog.vue'
 import ProgressionRemoveDialog from '@/features/admin/components/progressions/ProgressionRemoveDialog.vue'
 import ProgressionRow from '@/features/admin/components/progressions/ProgressionRow.vue'
+import { useAddToDrills } from '@/features/admin/composables/useAddToDrills'
 import { useProgressionRemoval } from '@/features/admin/composables/useProgressionRemoval'
-import { progressionMatches } from '@/features/admin/utils/progressionDraft'
+import { drillsRefusal, progressionMatches } from '@/features/admin/utils/progressionDraft'
 import { isSameDay } from '@/features/admin/utils/songChartListing'
 import ChoiceChip from '@/shared/components/ChoiceChip.vue'
 import LoadFailed from '@/shared/components/LoadFailed.vue'
@@ -35,6 +37,9 @@ const { current: progressions, refresh } = useProgressionCatalog()
 const removal = useProgressionRemoval((progression) => toast.success(t('progressionList.remove.removed', { name: localizedName(progression.names) })))
 const { target, step, uses, deleting, deleteFailed } = removal
 
+const adding = useAddToDrills((progression) => toast.success(t('progressionList.addToDrills.added', { name: localizedName(progression.names) })))
+const { target: addTarget, skillIds, conceptIds, picked, adding: addBusy, reasons, failed: addFailed } = adding
+
 const isLoading = ref(progressions.value.length === 0)
 const loadFailed = ref(false)
 const filter = ref<Filter>('all')
@@ -57,11 +62,7 @@ const dayFormat = computed(() => new Intl.DateTimeFormat(locale.value, { day: 'n
 
 /** "Major · 4 bars · created by Ana Souza, today · tagged in 2 charts"; on a phone, "Major · 4 bars · 2 charts". */
 function metaOf(progression: Progression): string {
-  const barCount = progression.bars.length
-  const parts = [
-    t(progression.mode === 'major' ? 'progressionForm.major' : 'progressionForm.minor'),
-    barCount === 1 ? t('progressionForm.oneBar') : t('progressionForm.manyBars', { count: barCount }),
-  ]
+  const parts = shapeOf(progression)
   const catalog = progression.created_by === null
   const charts = progression.song_chart_count
   if (isCompact.value) {
@@ -73,6 +74,21 @@ function metaOf(progression: Progression): string {
   if (charts > 0) parts.push(t('progressionList.taggedIn', { count: charts }))
   else if (!catalog) parts.push(t('progressionList.notTaggedAnywhere'))
   return parts.join(' · ')
+}
+
+/** "Major · 4 bars". */
+function shapeOf(progression: Progression): string[] {
+  const barCount = progression.bars.length
+  return [
+    t(progression.mode === 'major' ? 'progressionForm.major' : 'progressionForm.minor'),
+    barCount === 1 ? t('progressionForm.oneBar') : t('progressionForm.manyBars', { count: barCount }),
+  ]
+}
+
+/** "Major · 4 bars · tagged in 2 charts", as adding to the drills opens. */
+function addMetaOf(progression: Progression): string {
+  const charts = progression.song_chart_count
+  return [...shapeOf(progression), charts > 0 ? t('progressionList.taggedIn', { count: charts }) : t('progressionList.notTaggedAnywhere')].join(' · ')
 }
 
 function createdLabel(progression: Progression): string {
@@ -143,10 +159,26 @@ onMounted(load)
               :meta="metaOf(progression)"
               :in-drills="progression.in_drills"
               @remove="removal.begin(progression)"
+              @add-to-drills="adding.begin(progression)"
             />
           </li>
         </ul>
       </template>
+
+      <ProgressionAddToDrillsDialog
+        v-model:skill-ids="skillIds"
+        v-model:concept-ids="conceptIds"
+        :open="addTarget !== null"
+        :name="addTarget ? localizedName(addTarget.names) : ''"
+        :meta="addTarget ? addMetaOf(addTarget) : ''"
+        :blocked="addTarget ? drillsRefusal(addTarget.mode, addTarget.bars.length) : null"
+        :reasons="reasons"
+        :picked="picked"
+        :adding="addBusy"
+        :failed="addFailed"
+        @close="adding.close"
+        @add="adding.confirm"
+      />
 
       <ProgressionRemoveDialog
         :open="target !== null"
