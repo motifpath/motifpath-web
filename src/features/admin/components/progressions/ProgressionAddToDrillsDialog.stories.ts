@@ -45,17 +45,21 @@ export const Ready: Story = {
   },
 }
 
-/** As in 9e: the drills can't take a minor progression yet, so Add stays disabled and says why. */
+/** A minor progression joins the drills like a major one. */
 export const Minor: Story = {
-  args: { name: 'i–♭VI–♭III–♭VII', meta: 'Minor · 4 bars · tagged in 1 chart', blocked: 'minor', picked: true, conceptIds: ['concept-pentatonic'] },
+  args: { name: 'i–♭VI–♭III–♭VII', meta: 'Minor · 4 bars · tagged in 1 chart', picked: true, conceptIds: ['concept-pentatonic'] },
   play: async () => {
-    await expect(await body.findByText('Drills don’t use minor keys yet.')).toBeVisible()
-    await expect(body.getByRole('button', { name: 'Add to drills' })).toBeDisabled()
+    await expect(body.getByRole('button', { name: 'Add to drills' })).toBeEnabled()
   },
 }
 
-export const BarsTheDrillsDontAsk: Story = {
-  args: { name: 'I–V–vi–iii–IV–I–IV–V', meta: 'Major · 8 bars · tagged in 1 chart', blocked: 'bars' },
+/** A single bar is a chord, not a progression, so Add stays disabled and says why. */
+export const SingleBar: Story = {
+  args: { name: 'I', meta: 'Major · 1 bar · tagged in 1 chart', blocked: 'bars', picked: true, conceptIds: ['concept-pentatonic'] },
+  play: async () => {
+    await expect(await body.findByText('A single bar is a chord, not a progression.')).toBeVisible()
+    await expect(body.getByRole('button', { name: 'Add to drills' })).toBeDisabled()
+  },
 }
 
 export const Refused: Story = { args: { picked: true, conceptIds: ['concept-pentatonic'], reasons: ['no_other_drill_progression'] } }

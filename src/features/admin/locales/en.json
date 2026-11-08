@@ -166,7 +166,7 @@
       "added": "{name} added to the drills",
       "refused": {
         "already_in_drills": "It’s in the drills already.",
-        "unsupported_bar_count": "Drills ask only 4- and 12-bar progressions.",
+        "unsupported_bar_count": "A single bar is a chord, not a progression.",
         "unsupported_mode": "Drills don’t use minor keys yet.",
         "no_other_drill_progression": "No other progression in the drills has this many bars, so they have no wrong answer to offer."
       }
@@ -489,8 +489,7 @@
     "useInDrills": "Use in drills",
     "drillsOff": "Off: chart only. You can add it to the drills later in Admin › Progressions.",
     "drillsOn": "On: learners practising one of these skills or concepts meet it in harmony, hear, play-along and guide-tone drills.",
-    "drillsMinor": "Drills don’t use minor keys yet, so it stays chart only.",
-    "drillsBars": "Drills ask only 4- and 12-bar progressions, so it stays chart only.",
+    "drillsBars": "A single bar is a chord, not a progression, so it stays chart only.",
     "existsTitle": "Already a progression",
     "existsBody": "These numerals are {progression}. Nothing is created twice — tag that one instead.",
     "tag": "Tag {progression}",
@@ -500,7 +499,7 @@
     "failed": "The progression couldn’t be created. Try again.",
     "refused": {
       "already_in_drills": "It’s in the drills already.",
-      "unsupported_bar_count": "Drills ask only 4- and 12-bar progressions.",
+      "unsupported_bar_count": "A single bar is a chord, not a progression.",
       "unsupported_mode": "Drills don’t use minor keys yet.",
       "no_other_drill_progression": "No other progression in the drills has this many bars, so they have no wrong answer to offer. Turn off “Use in drills” to create it for charts only."
     }

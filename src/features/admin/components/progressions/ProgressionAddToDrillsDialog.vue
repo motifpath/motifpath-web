@@ -20,7 +20,7 @@ const props = defineProps<{
   /** "Major · 4 bars · tagged in 2 charts". */
   meta: string
   /** Why the drills can't take it as it is, before asking the server: minor, or a bar count they don't ask. */
-  blocked: 'minor' | 'bars' | null
+  blocked: 'bars' | null
   /** Why the server refused it. */
   reasons: NotAddableReason[]
   picked: boolean
@@ -35,7 +35,6 @@ const { t } = useTypedT()
 const { isCompact } = useSizeClass()
 
 const refusal = computed(() => {
-  if (props.blocked === 'minor') return t('progressionList.addToDrills.refused.unsupported_mode')
   if (props.blocked === 'bars') return t('progressionList.addToDrills.refused.unsupported_bar_count')
   return props.reasons.map((reason) => t(`progressionList.addToDrills.refused.${reason}`)).join(' ')
 })

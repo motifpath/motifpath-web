@@ -11,6 +11,7 @@ import { useProgressionCatalog } from '@/shared/composables/useProgressionCatalo
 import { useTypedT } from '@/shared/composables/useTypedT'
 import type { GeneratedQuestion, ProgressionCatalog } from '@/shared/utils/generatedChoice'
 import { musicKeyMessage, numeralLabel } from '@/shared/utils/musicKey'
+import { musicKeyOf } from '@/shared/utils/harmony'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Question = components['schemas']['GeneratedChoiceQuestion']
@@ -115,6 +116,11 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
 
   const keyName = computed(() => t(musicKeyMessage(question.value.music_key)))
 
+  /** The key a chart is read in: a minor key's name already says its mode. */
+  const chartKey = computed(() =>
+    t(musicKeyOf(question.value.music_key)?.mode === 'minor' ? 'sessionGeneratedChoice.keyOfMinor' : 'sessionGeneratedChoice.keyOf', { key: keyName.value }),
+  )
+
   /** A chord as the question draws it: a box on a guitar reading, a symbol otherwise. */
   function chordOf(symbol: string): DrillChord {
     const box = boxesNeeded.value ? boxes.value[symbol] : undefined
@@ -194,7 +200,7 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
     return {
       way: q.way,
       instrument: q.drawn_as === 'chord_boxes' ? 'guitar' : 'bass',
-      context: isChart ? t('sessionGeneratedChoice.keyOf', { key: keyName.value }) : chordsOfKey ? t('sessionGeneratedChoice.chordsOfKey', { key: keyName.value }) : undefined,
+      context: isChart ? chartKey.value : chordsOfKey ? t('sessionGeneratedChoice.chordsOfKey', { key: keyName.value }) : undefined,
       chord: q.chord ? chordOf(q.chord) : undefined,
       chart: q.chart.length > 0 ? q.chart.map(chordOf) : undefined,
       progression: playback.value ? progressionOf(playback.value) : undefined,

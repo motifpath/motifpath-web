@@ -68,6 +68,15 @@ describe('afterTake', () => {
     expect(afterTake(at('G', 70, elevenClean), { rating: 'clean', bpm: 70 }, limits)).toEqual(at('C', 75))
   })
 
+  it('moves a minor progression’s clean take to the next relative minor of the cycle', () => {
+    expect(afterTake(at('Am', 60), { rating: 'clean', bpm: 60 }, limits)).toEqual(at('Dm', 60, ['Am']))
+  })
+
+  it('starts a minor tour again at A minor when its last key is made clean', () => {
+    const elevenClean: MusicKey[] = ['Am', 'Dm', 'Gm', 'Cm', 'Fm', 'Bbm', 'Ebm', 'Abm', 'Dbm', 'F#m', 'Bm']
+    expect(afterTake(at('Em', 70, elevenClean), { rating: 'clean', bpm: 70 }, limits)).toEqual(at('Am', 75))
+  })
+
   it('never climbs past the target by itself', () => {
     const elevenClean = TOUR_ORDER.filter((key) => key !== 'G')
     expect(afterTake(at('G', 100, elevenClean), { rating: 'clean', bpm: 100 }, limits)).toEqual(at('C', 100))
@@ -101,5 +110,9 @@ describe('tourWindow', () => {
   it('wraps around the cycle', () => {
     expect(tourWindow('C')).toEqual(['D', 'G', 'C', 'F', 'Bb'])
     expect(tourWindow('G')).toEqual(['A', 'D', 'G', 'C', 'F'])
+  })
+
+  it('shows a minor tour’s keys around the current one', () => {
+    expect(tourWindow('Am')).toEqual(['Bm', 'Em', 'Am', 'Dm', 'Gm'])
   })
 })

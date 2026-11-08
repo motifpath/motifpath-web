@@ -19,7 +19,6 @@ const BAR_SEPARATOR = /[\s\-–—]+/
 export const MAX_BARS = 16
 
 /** Bar counts the drills ask. */
-const DRILL_BAR_COUNTS = [4, 12]
 
 const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
 const ROMAN_DEGREES = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
@@ -116,10 +115,12 @@ export function barsContain(bars: string[], mode: ProgressionMode, numerals: str
   return ` ${canonicalBars(bars, mode).join(' ')} `.includes(` ${numerals.join(' ')} `)
 }
 
-/** Why the drills can't use a progression yet; null when they may. An empty form has no bar count to refuse. */
-export function drillsRefusal(mode: ProgressionMode, barCount: number): 'minor' | 'bars' | null {
-  if (mode === 'minor') return 'minor'
-  return barCount === 0 || DRILL_BAR_COUNTS.includes(barCount) ? null : 'bars'
+/**
+ * Why the drills can't use a progression; null when they may. They take any length but a single bar,
+ * which is a chord, in either mode. An empty form has no bar count to refuse.
+ */
+export function drillsRefusal(barCount: number): 'bars' | null {
+  return barCount === 1 ? 'bars' : null
 }
 
 /** Whether a search finds a progression: typed numerals match its bars or key, any word its name, whatever the case. */

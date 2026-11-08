@@ -739,6 +739,7 @@
     },
     "chordsOfKey": "Os quatro são acordes de {key} maior.",
     "keyOf": "Tom de {key} maior",
+    "keyOfMinor": "Tom de {key}",
     "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."
   },
   "subjectPicker": {

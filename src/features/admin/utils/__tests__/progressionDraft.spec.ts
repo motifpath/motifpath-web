@@ -137,14 +137,14 @@ describe('sameNumerals', () => {
 
 describe('drillsRefusal', () => {
   it.each([
-    ['major', 4, null],
-    ['major', 12, null],
-    ['major', 0, null],
-    ['major', 3, 'bars'],
-    ['major', 16, 'bars'],
-    ['minor', 4, 'minor'],
-    ['minor', 3, 'minor'],
-  ] as const)('%s with %i bars', (mode, count, expected) => {
-    expect(drillsRefusal(mode, count)).toBe(expected)
+    [0, null],
+    [1, 'bars'],
+    [2, null],
+    [3, null],
+    [4, null],
+    [8, null],
+    [16, null],
+  ] as const)('%i bars, in either mode', (count, expected) => {
+    expect(drillsRefusal(count)).toBe(expected)
   })
 })
