@@ -156,6 +156,20 @@
       "failed": "Não foi possível removê-la. Tente de novo.",
       "checkFailed": "Não foi possível verificar se uma cifra a usa.",
       "removed": "{name} removida"
+    },
+    "addToDrills": {
+      "action": "Adicionar à Prática",
+      "title": "Adicionar {name} à Prática",
+      "explain": "{meta}. Quem pratica uma destas habilidades ou conceitos a encontra na Prática, em harmonia, de ouvido, tocar junto e notas-guia, em qualquer tom. As respostas erradas vêm das progressões da Prática que têm mais acordes em comum com ela.",
+      "noWayBack": "Uma progressão na Prática não pode ser tirada nem removida: a prática dos alunos aponta para ela.",
+      "failed": "Não foi possível adicioná-la. Tente de novo.",
+      "added": "{name} adicionada à Prática",
+      "refused": {
+        "already_in_drills": "Ela já está na Prática.",
+        "unsupported_bar_count": "A Prática só usa progressões de 4 e 12 compassos.",
+        "unsupported_mode": "A Prática ainda não usa tons menores.",
+        "no_other_drill_progression": "Nenhuma outra progressão da Prática tem esse número de compassos, então não há respostas erradas para oferecer."
+      }
     }
   },
   "songChartEditor": {
