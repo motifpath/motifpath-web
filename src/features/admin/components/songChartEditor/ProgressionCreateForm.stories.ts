@@ -60,12 +60,12 @@ export const UseInDrills: Story = {
   },
 }
 
-/** 9e: a typo is an error, and a minor progression can't use the drills. */
+/** 9e: a typo is an error; a minor progression may still use the drills. */
 export const BorrowedAndError: Story = {
   args: { numerals: 'i bVI bII Vx' },
   play: async () => {
     await userEvent.click(body().getByRole('button', { name: 'Minor' }))
-    await expect(body().getByRole('switch')).toBeDisabled()
+    await expect(body().getByRole('switch')).toBeEnabled()
   },
 }
 
