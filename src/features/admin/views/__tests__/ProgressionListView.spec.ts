@@ -543,18 +543,29 @@ describe('ProgressionListView', () => {
       expect(rowOf(w, 'I–♭VII–IV–I').find('[data-test="progression-row-add-to-drills"]').exists()).toBe(false)
     })
 
+    it('says why a single bar can\'t join, with Add disabled', async () => {
+      const ONE = progression({ key: 'major/I', names: { en: 'I' }, bars: ['I'] })
+      GET.mockImplementation(() => listed([POP, ONE]))
+      const w = await mountView()
+      await chooseAdd(w, 'I')
+      await pickConcept(w)
+
+      expect(dialog(w).find('[data-test="add-to-drills-refusal"]').text()).toContain('A single bar is a chord, not a progression.')
+      expect(confirmAdd(w).attributes('disabled')).toBeDefined()
+    })
+
     it.each([
-      ['a minor progression', 'i–♭VI–♭III–♭VII', 'Drills don’t use minor keys yet.'],
-      ['one with bars the drills don’t ask', 'I–V–vi–iii–IV–I–IV–V', 'Drills ask only 4- and 12-bar progressions.'],
-    ])('says why %s can\'t join, with Add disabled', async (_, name, reason) => {
+      ['a minor progression', 'i–♭VI–♭III–♭VII'],
+      ['eight bars', 'I–V–vi–iii–IV–I–IV–V'],
+    ])('lets %s join', async (_, name) => {
       const EIGHT = progression({ key: 'major/eight', names: { en: 'I–V–vi–iii–IV–I–IV–V' }, bars: ['I', 'V', 'vi', 'iii', 'IV', 'I', 'IV', 'V'] })
       GET.mockImplementation(() => listed([POP, ONE_CHART, EIGHT]))
       const w = await mountView()
       await chooseAdd(w, name)
       await pickConcept(w)
 
-      expect(dialog(w).find('[data-test="add-to-drills-refusal"]').text()).toContain(reason)
-      expect(confirmAdd(w).attributes('disabled')).toBeDefined()
+      expect(dialog(w).find('[data-test="add-to-drills-refusal"]').exists()).toBe(false)
+      expect(confirmAdd(w).attributes('disabled')).toBeUndefined()
     })
 
     it('shows every reason the server refuses it for, and stays open', async () => {

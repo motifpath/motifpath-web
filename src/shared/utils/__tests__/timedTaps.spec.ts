@@ -3,15 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { gradeTimedTaps } from '@/shared/utils/timedTaps'
 import type { GradedTake, GuideToneTake, TimedTap } from '@/shared/utils/timedTaps'
 import { ALL_NOTE_VALUES } from '@/shared/utils/tempoNoteValue'
-import golden from '@/api/generated/golden/practice-graders/timed_taps.v1.json'
+import golden from '@/api/generated/golden/practice-graders/timed_taps.v2.json'
 
 const instruments: Record<string, { tuning: string[] }> = golden.reference.instruments
-const progressions: Record<string, { bars: string[] }> = golden.reference.progressions
+const progressions: Record<string, { bars: string[]; mode?: string }> = golden.reference.progressions
 
 // The server grades the same takes; these shared cases keep the feedback a student sees in
 // agreement with what's recorded. A tap off the instrument is the only rejection a client can
 // meet: the others are about the item or the response's shape.
-describe('gradeTimedTaps against the timed_taps.v1 golden cases', () => {
+describe('gradeTimedTaps against the timed_taps.v2 golden cases', () => {
   interface Case {
     name: string
     take: GuideToneTake
@@ -24,15 +24,16 @@ describe('gradeTimedTaps against the timed_taps.v1 golden cases', () => {
     const [, layout = '', progression = ''] = item_key.split(':')
     const tuning = instruments[layout]?.tuning
     const bars = progressions[progression]?.bars
+    const mode = progressions[progression]?.mode === 'minor' ? 'minor' : 'major'
     if (!tuning || !bars) return []
     const tone = response.tone === '7' ? '7' : '3'
     const noteValue = ALL_NOTE_VALUES.find((value) => value === response.note_value)
-    const take: GuideToneTake = { tuning, bars, key: response.music_key, tone, tempoBpm: response.tempo_bpm, noteValue }
+    const take: GuideToneTake = { tuning, bars, mode, key: response.music_key, tone, tempoBpm: response.tempo_bpm, noteValue }
     if ('evidence' in expected && expected.evidence) {
       const { correct, latency_ms, answer_key } = expected.evidence
       return [{ name, take, taps: response.taps, want: { correct, latencyMs: latency_ms, bars: answer_key.bars } }]
     }
-    if ('reason' in expected && expected.reason === 'invalid_cell') return [{ name, take, taps: response.taps, want: null }]
+    if ('reason' in expected && (expected.reason === 'invalid_cell' || expected.reason === 'response_does_not_fit_item')) return [{ name, take, taps: response.taps, want: null }]
     return []
   })
 

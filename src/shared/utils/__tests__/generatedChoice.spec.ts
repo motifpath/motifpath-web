@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { gradeGeneratedChoice, rightAnswerOf } from '@/shared/utils/generatedChoice'
 import { isGeneratedWay } from '@/shared/utils/generatedChoice'
 import type { GeneratedQuestion } from '@/shared/utils/generatedChoice'
-import golden from '@/api/generated/golden/practice-graders/generated_choice.v1.json'
+import golden from '@/api/generated/golden/practice-graders/generated_choice.v2.json'
 
-const catalog: Record<string, { bars: string[] }> = golden.reference.progressions
+const catalog: Record<string, { bars: string[]; mode?: string }> = golden.reference.progressions
 
 describe('gradeGeneratedChoice', () => {
   const vi: GeneratedQuestion = { way: 'numeral_to_chord', key: 'G', numeral: 'vi' }
@@ -27,7 +27,7 @@ describe('gradeGeneratedChoice', () => {
 // agreement with what's recorded. Only invalid choices are a client's concern: the other
 // rejections are about the item or the response's shape, which a client never gets wrong for a
 // question it was given.
-describe('gradeGeneratedChoice against the generated_choice.v1 golden cases', () => {
+describe('gradeGeneratedChoice against the generated_choice.v2 golden cases', () => {
   const KEYED_BY_THE_ITEM = ['diatonic_chord', 'chord_function']
 
   function questionOf(itemKey: string, way: string, musicKey: string | undefined): GeneratedQuestion | null {

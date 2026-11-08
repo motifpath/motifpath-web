@@ -86,7 +86,7 @@ const existing = computed(() => {
   return conflict.value ?? sameNumerals(props.progressions, mode.value, parsedBars.value.map((bar) => bar.numeral)) ?? null
 })
 
-const drillsBlock = computed(() => drillsRefusal(mode.value, bars.value.length))
+const drillsBlock = computed(() => drillsRefusal(bars.value.length))
 // The admin's choice outlives a refusal, which may only last while a bar is being corrected.
 const inDrills = computed(() => wantsDrills.value && drillsBlock.value === null)
 
@@ -96,7 +96,6 @@ watch([typed, mode], () => {
 })
 
 const drillsDescription = computed(() => {
-  if (drillsBlock.value === 'minor') return t('progressionForm.drillsMinor')
   if (drillsBlock.value === 'bars') return t('progressionForm.drillsBars')
   return t(inDrills.value ? 'progressionForm.drillsOn' : 'progressionForm.drillsOff')
 })

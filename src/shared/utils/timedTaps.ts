@@ -7,7 +7,8 @@
  * last bar aren't graded.
  */
 import type { components } from '@/api/generated/event-ingestion'
-import { SHARP_NAMES, chordOf, chordSymbol, pitchClassOf, seventhOf, thirdOf } from '@/shared/utils/harmony'
+import { SHARP_NAMES, chordOf, chordSymbol, minorSeventhOf, musicKeyOf, seventhOf, thirdOf } from '@/shared/utils/harmony'
+import type { ProgressionMode } from '@/shared/utils/harmony'
 import { frettedPitch } from '@/shared/utils/pitch'
 import { speedFactor } from '@/shared/utils/tempoNoteValue'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
@@ -16,6 +17,8 @@ import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 export interface GuideToneTake {
   tuning: string[]
   bars: string[]
+  /** The mode the numerals are read in, major when it says none; the key must be of this mode. */
+  mode?: ProgressionMode
   key: string
   tone: components['schemas']['TimedTapsResponse']['tone']
   tempoBpm: number
@@ -43,10 +46,15 @@ export interface GradedTake {
 /** Four beats of a minute: a bar lasts this divided by the tempo. */
 const BEATS_PER_BAR_MS = 4 * 60_000
 
-/** The take graded; null when a tap is off the instrument, or the key or a bar is unknown. */
+/**
+ * The take graded; null when a tap is off the instrument, the key or a bar is unknown, or the key is
+ * of the other mode. In a minor progression a chord with no written seventh takes the minor key's.
+ */
 export function gradeTimedTaps(take: GuideToneTake, taps: TimedTap[]): GradedTake | null {
-  const key = pitchClassOf(take.key)
-  if (key === null || take.tempoBpm < 1) return null
+  const asked = musicKeyOf(take.key)
+  if (asked === null || asked.mode !== (take.mode ?? 'major') || take.tempoBpm < 1) return null
+  const key = asked.tonic
+  const seventh = asked.mode === 'minor' ? minorSeventhOf : seventhOf
   const tapped: number[] = []
   for (const tap of taps) {
     const pitch = tap.fret < 0 ? null : frettedPitch(take.tuning, tap.string, tap.fret)
@@ -60,7 +68,7 @@ export function gradeTimedTaps(take: GuideToneTake, taps: TimedTap[]): GradedTak
   for (const [i, numeral] of take.bars.entries()) {
     const chord = chordOf(key, numeral)
     if (!chord) return null
-    const tone = take.tone === '7' ? seventhOf(key, numeral) : thirdOf(chord)
+    const tone = take.tone === '7' ? seventh(key, numeral) : thirdOf(chord)
     const start = barStart(i)
     const end = barStart(i + 1)
     const inBar = taps.flatMap((tap, j) => (tap.at_ms >= start && tap.at_ms < end ? [{ at: tap.at_ms, pitch: tapped[j] }] : []))

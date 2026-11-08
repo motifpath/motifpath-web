@@ -217,6 +217,24 @@ describe('useGeneratedQuestion', () => {
       })
     })
 
+    it('names a minor key as the key it is read in, never as major', async () => {
+      const minor = item('chart_progression:minor/i-bVII-bVI-V', {
+        way: 'chart_to_numbers',
+        music_key: 'Am',
+        chart: ['Am', 'G', 'F', 'E'],
+        drawn_as: 'chord_symbols',
+        voicings: [],
+        options: [
+          { value: 'minor/i-bVII-bVI-V', name: 'i–♭VII–♭VI–V', chart: [] },
+          { value: 'minor/i-bVII-bVI-i', name: 'i–♭VII–♭VI–i', chart: [] },
+        ],
+      })
+      const question = setUp(minor)
+      await flushPromises()
+
+      expect(question.view.value!.context).toBe('Key of A minor')
+    })
+
     it('is unavailable when the catalog it is graded against can not be loaded', async () => {
       serve({ progressions: false })
       const question = setUp(read)

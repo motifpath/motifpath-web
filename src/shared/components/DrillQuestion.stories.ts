@@ -103,6 +103,42 @@ export const TwelveBarNumbersToChart: Story = {
   args: { instrument: null, view: { way: 'numbers_to_chart', instrument: 'bass', context: 'Key of G major', options: [chartOption(symbolChart(BLUES)), chartOption(symbolChart(QUICK_CHANGE))] } },
 }
 
+/** Read an 8-bar chart: chord symbols in two lines of four, and two options, one of them made up by changing a bar. */
+export const EightBarChartToNumbers: Story = {
+  args: {
+    instrument: null,
+    view: {
+      way: 'chart_to_numbers',
+      instrument: 'bass',
+      context: 'Key of G major',
+      chart: symbolChart(['G', 'Em', 'C', 'D', 'G', 'Em', 'C', 'D']),
+      options: [
+        { value: 'major/I-vi-IV-V-I-vi-IV-V', label: 'I–vi–IV–V–I–vi–IV–V' },
+        { value: 'major/I-vi-IV-V-I-vi-V-V', label: 'I–vi–IV–V–I–vi–V–V' },
+      ],
+    },
+  },
+}
+
+/** Read a minor chart: the key is named as minor, and the options are minor progressions. */
+export const MinorChartToNumbers: Story = {
+  args: {
+    instrument: null,
+    view: {
+      way: 'chart_to_numbers',
+      instrument: 'bass',
+      context: 'Key of A minor',
+      chart: symbolChart(['Am', 'G', 'F', 'E']),
+      options: [
+        { value: 'minor/i-bVII-bVI-V', label: 'i–♭VII–♭VI–V (Andalusian)' },
+        { value: 'minor/i-bVII-bVI-i', label: 'i–♭VII–♭VI–i' },
+        { value: 'minor/i-iv-bVI-V', label: 'i–iv–♭VI–V' },
+        { value: 'minor/v-bVII-bVI-V', label: 'v–♭VII–♭VI–V' },
+      ],
+    },
+  },
+}
+
 /** Read the chart: four unnamed boxes in a key, pick the progression. */
 export const ChartToNumbers: Story = {
   args: {

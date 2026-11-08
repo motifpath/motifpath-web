@@ -7,8 +7,11 @@
  * - an almost take, or a clean one slower than the tour tempo, stays in the key;
  * - a struggle at or below the tour tempo stays in the key, one step slower, never below the floor;
  *   a struggle above it, at a tempo the student chose, is exploring and changes nothing;
- * - when the last key is made clean, the tour starts again at C, one step faster, never past the
- *   target by itself.
+ * - when the last key is made clean, the tour starts again at its first key, one step faster, never
+ *   past the target by itself.
+ *
+ * A minor progression tours the minor keys: each key of the cycle replaced by its relative minor,
+ * from A minor.
  *
  * The tour tempo is kept at effective speed (quarter-note BPM), so takes in any note value compare.
  * The server folds the same rules from the takes it records; the next session starts where they
@@ -25,6 +28,14 @@ type MusicKey = components['schemas']['MusicKey']
 
 /** The tour's order: the cycle of fourths from C, spelled as the chord catalog spells roots. */
 export const TOUR_ORDER: readonly MusicKey[] = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G']
+
+/** A minor tour's order: each key of the cycle's relative minor, from A minor. */
+const MINOR_TOUR_ORDER: readonly MusicKey[] = ['Am', 'Dm', 'Gm', 'Cm', 'Fm', 'Bbm', 'Ebm', 'Abm', 'Dbm', 'F#m', 'Bm', 'Em']
+
+/** The order of the tour `key` belongs to: a minor key's tour goes through the minor keys. */
+function orderOf(key: MusicKey): readonly MusicKey[] {
+  return MINOR_TOUR_ORDER.includes(key) ? MINOR_TOUR_ORDER : TOUR_ORDER
+}
 
 /** Keys of the cycle shown on each side of the current one. */
 const WINDOW_SIDE = 2
@@ -62,9 +73,10 @@ export function afterTake(state: TourState, take: TourTake, limits: { target: nu
   }
   if (take.rating === 'almost' || speed < state.speed || state.clean.includes(state.key)) return state
 
+  const order = orderOf(state.key)
   const clean = inTourOrder([...state.clean, state.key])
-  if (clean.length === TOUR_ORDER.length) {
-    return { key: TOUR_ORDER[0]!, speed: Math.max(state.speed, Math.min(state.speed + TEMPO_STEP_BPM, limits.target)), clean: [] }
+  if (clean.length === order.length) {
+    return { key: order[0]!, speed: Math.max(state.speed, Math.min(state.speed + TEMPO_STEP_BPM, limits.target)), clean: [] }
   }
   return { ...state, key: nextKey(state.key, clean), clean }
 }
@@ -76,22 +88,24 @@ export function tourTempoIn(state: TourState, noteValue: TempoNoteValue): number
 
 /** Five keys of the cycle around `key`, wrapping around. */
 export function tourWindow(key: MusicKey): MusicKey[] {
+  const order = orderOf(key)
   const at = indexOf(key)
-  return Array.from({ length: WINDOW_SIDE * 2 + 1 }, (_, i) => TOUR_ORDER[(at - WINDOW_SIDE + i + TOUR_ORDER.length) % TOUR_ORDER.length]!)
+  return Array.from({ length: WINDOW_SIDE * 2 + 1 }, (_, i) => order[(at - WINDOW_SIDE + i + order.length) % order.length]!)
 }
 
 /** The next key after `key` in the cycle that isn't clean. */
 function nextKey(key: MusicKey, clean: MusicKey[]): MusicKey {
+  const order = orderOf(key)
   const at = indexOf(key)
-  for (let step = 1; step <= TOUR_ORDER.length; step++) {
-    const candidate = TOUR_ORDER[(at + step) % TOUR_ORDER.length]!
+  for (let step = 1; step <= order.length; step++) {
+    const candidate = order[(at + step) % order.length]!
     if (!clean.includes(candidate)) return candidate
   }
-  return TOUR_ORDER[0]!
+  return order[0]!
 }
 
 function indexOf(key: MusicKey): number {
-  return Math.max(0, TOUR_ORDER.indexOf(key))
+  return Math.max(0, orderOf(key).indexOf(key))
 }
 
 function inTourOrder(keys: MusicKey[]): MusicKey[] {

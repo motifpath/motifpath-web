@@ -739,6 +739,7 @@
     },
     "chordsOfKey": "All four are chords of {key} major.",
     "keyOf": "Key of {key} major",
+    "keyOfMinor": "Key of {key}",
     "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you."
   },
   "subjectPicker": {

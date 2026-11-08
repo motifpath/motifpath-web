@@ -49,7 +49,7 @@ export function useProgressionCatalog() {
 
   async function load(): Promise<ProgressionCatalog | null> {
     const list = await progressions()
-    return list ? Object.fromEntries(list.filter((p) => p.in_drills).map((p) => [p.key, { bars: p.bars }])) : null
+    return list ? Object.fromEntries(list.filter((p) => p.in_drills).map((p) => [p.key, { bars: p.bars, mode: p.mode }])) : null
   }
 
   return { load, progressions, refresh, current }

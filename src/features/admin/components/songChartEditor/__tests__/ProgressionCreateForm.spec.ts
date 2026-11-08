@@ -207,17 +207,26 @@ describe('ProgressionCreateForm', () => {
     expect(GET).not.toHaveBeenCalled()
   })
 
+  it('disables the switch for a single bar and says why', async () => {
+    const w = mountForm()
+
+    await numerals(w).setValue('I')
+
+    expect(drills(w).attributes('disabled')).toBeDefined()
+    expect(w.get('[data-test="use-in-drills"]').text()).toContain('A single bar is a chord, not a progression, so it stays chart only.')
+  })
+
   it.each([
-    ['a minor progression', 'minor', 'i iv V i', 'Drills don’t use minor keys yet, so it stays chart only.'],
-    ['a bar count drills don’t ask', 'major', 'I IV V', 'Drills ask only 4- and 12-bar progressions, so it stays chart only.'],
-  ])('disables the switch for %s and says why', async (_name, mode, typed, why) => {
+    ['a minor progression', 'minor', 'i bVII bVI V'],
+    ['three bars', 'major', 'I IV V'],
+    ['sixteen bars', 'major', 'I IV V I I IV V I I IV V I I IV V I'],
+  ])('lets %s use the drills', async (_name, mode, typed) => {
     const w = mountForm()
 
     await w.get(`[data-test="mode-${mode}"]`).trigger('click')
     await numerals(w).setValue(typed)
 
-    expect(drills(w).attributes('disabled')).toBeDefined()
-    expect(w.get('[data-test="use-in-drills"]').text()).toContain(why)
+    expect(drills(w).attributes('disabled')).toBeUndefined()
   })
 
   it('shows the switch off while the drills can’t use the progression, and sends it chart only', async () => {
@@ -225,7 +234,7 @@ describe('ProgressionCreateForm', () => {
     const w = mountForm('I bVII IV I')
 
     await drills(w).trigger('click')
-    await w.get('[data-test="mode-minor"]').trigger('click')
+    await numerals(w).setValue('I')
     expect(drills(w).attributes('aria-checked')).toBe('false')
 
     await submit(w).trigger('click')

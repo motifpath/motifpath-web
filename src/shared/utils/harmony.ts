@@ -150,6 +150,53 @@ export function seventhOf(key: number, numeral: string): number {
   return (chord.root + (chord.quality === 'diminished_7' ? 9 : 10)) % 12
 }
 
+/** The mode a progression's numerals are read in. */
+export type ProgressionMode = 'major' | 'minor'
+
+/**
+ * A key a drill names: a major key, its tonic ("G"), or a minor key, its tonic chord ("Gm"),
+ * read as the tonic's pitch class and the key's mode; null for anything else.
+ */
+export function musicKeyOf(name: string): { tonic: number; mode: ProgressionMode } | null {
+  const minor = name.endsWith('m')
+  const tonic = pitchClassOf(minor ? name.slice(0, -1) : name)
+  return tonic === null ? null : { tonic, mode: minor ? 'minor' : 'major' }
+}
+
+/** A minor key's chord with no written seventh: natural minor's seventh, harmonic minor's on V and vii°. */
+const MINOR_BARE_SEVENTHS: Record<string, number> = {
+  i: 10, 'ii°': 10, iio: 10, '♭III': 11, iv: 10, v: 10, '♭VI': 11, '♭VII': 10, V: 10, 'vii°': 9, viio: 9,
+}
+
+const TRIADS: ChordQuality[] = ['major', 'minor', 'diminished']
+
+/**
+ * The pitch class of a numeral's seventh in a minor key. A written suffix decides as in a major key;
+ * a chord with no written seventh takes natural minor's, harmonic minor's on V and vii°, and on any
+ * other numeral the seventh of its quality: major on a major chord, minor on a minor or diminished one.
+ */
+export function minorSeventhOf(key: number, numeral: string): number {
+  const chord = chordOf(key, numeral)
+  if (!chord) return 0
+  if (!TRIADS.includes(chord.quality)) return seventhOf(key, numeral)
+  const above = MINOR_BARE_SEVENTHS[numeral] ?? (chord.quality === 'major' ? 11 : 10)
+  return (chord.root + above) % 12
+}
+
+/** A created progression's key turned back into its numerals: mode, then ASCII numerals (b ♭, # ♯, o °, h ø). */
+export function numeralsOfCreatedKey(key: string): { mode: string; bars: string[] } | null {
+  const slash = key.indexOf('/')
+  if (slash < 0) return null
+  const symbols: Record<string, string> = { b: '♭', '#': '♯', o: '°', h: 'ø' }
+  const bars = key.slice(slash + 1).split('-').map((bar) => bar.replace(/[b#oh]/g, (c) => symbols[c] ?? c))
+  return { mode: key.slice(0, slash), bars }
+}
+
+/** Whether a bar is a numeral a chord can be spelled from. */
+export function isNumeral(numeral: string): boolean {
+  return readNumeral(numeral) !== null
+}
+
 /** A progression's chords in the key, one per bar; null when a bar isn't a numeral. */
 export function chartOf(key: number, bars: string[]): Chord[] | null {
   const chart: Chord[] = []

@@ -1859,6 +1859,32 @@ describe('usePracticeSessionRun', () => {
       expect(run.takesLeft.value).toBe(2)
     })
 
+    it('grades a minor progression’s take in its minor key, with natural minor’s sevenths', () => {
+      const base = guideToneItem({ tone: '7' })
+      const chords = ['Am', 'G', 'F', 'E'] as const
+      const minor = {
+        ...base,
+        item_key: 'guide_tone:guitar:minor/i-bVII-bVI-V',
+        guide_tone: {
+          ...base.guide_tone!,
+          progression: { key: 'minor/i-bVII-bVI-V', name: 'i–♭VII–♭VI–V' },
+          music_key: 'Am' as const,
+          bars: chords.map((chord, i) => ({ chord, numeral: ['i', '♭VII', '♭VI', 'V'][i]! })),
+        },
+      }
+      const run = usePracticeSessionRun(plan([minor], null), { tuningOf })
+      run.start()
+
+      run.tapGuideTone(take([
+        { at_ms: 100, string: 3, fret: 0 },
+        { at_ms: 4100, string: 1, fret: 1 },
+        { at_ms: 8100, string: 1, fret: 0 },
+        { at_ms: 12100, string: 2, fret: 3 },
+      ]))
+
+      expect(run.outcomes.value.get(0)).toEqual({ kind: 'tapped', hits: 4, bars: 4, correct: true })
+    })
+
     it('keeps the best take’s bars hit as the item’s outcome', () => {
       const run = usePracticeSessionRun(plan([guideToneItem()], null), { tuningOf })
       run.start()

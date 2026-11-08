@@ -171,7 +171,7 @@ onMounted(load)
         :open="addTarget !== null"
         :name="addTarget ? localizedName(addTarget.names) : ''"
         :meta="addTarget ? addMetaOf(addTarget) : ''"
-        :blocked="addTarget ? drillsRefusal(addTarget.mode, addTarget.bars.length) : null"
+        :blocked="addTarget ? drillsRefusal(addTarget.bars.length) : null"
         :reasons="reasons"
         :picked="picked"
         :adding="addBusy"
