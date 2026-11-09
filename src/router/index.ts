@@ -9,6 +9,14 @@ import { createAuthGuard, type Role } from '@/router/guards'
 import { useAccountMenuRequest } from '@/shared/composables/useAccountMenuRequest'
 import { installOverlayHistory } from '@/shared/composables/useOverlayHistory'
 
+/**
+ * Admin pages that classify a progression for the drills reuse the teacher's skill and concept
+ * labels, so they load both locales.
+ */
+async function loadProgressionAuthoringLocales(): Promise<void> {
+  await Promise.all([ensureAdminLocaleLoaded(), ensureTeacherLocaleLoaded()])
+}
+
 declare module 'vue-router' {
   interface RouteMeta {
     /** Route requires an authenticated Clerk session. */
@@ -466,7 +474,7 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/song-charts/new',
     name: 'admin-song-chart-new',
     meta: { requiresAuth: true, requiresRole: ['admin'] },
-    beforeEnter: () => ensureAdminLocaleLoaded(),
+    beforeEnter: loadProgressionAuthoringLocales,
     component: () => import('@/features/admin/views/SongChartEditorView.vue'),
   },
   {
@@ -474,7 +482,7 @@ const routes: RouteRecordRaw[] = [
     name: 'admin-song-chart',
     meta: { requiresAuth: true, requiresRole: ['admin'] },
     props: true,
-    beforeEnter: () => ensureAdminLocaleLoaded(),
+    beforeEnter: loadProgressionAuthoringLocales,
     component: () => import('@/features/admin/views/SongChartEditorView.vue'),
   },
   {
@@ -489,7 +497,7 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/progressions',
     name: 'admin-progressions',
     meta: { requiresAuth: true, requiresRole: ['admin'] },
-    beforeEnter: () => ensureAdminLocaleLoaded(),
+    beforeEnter: loadProgressionAuthoringLocales,
     component: () => import('@/features/admin/views/ProgressionListView.vue'),
   },
   {

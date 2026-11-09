@@ -735,7 +735,11 @@
     "heard": {
       "cadence": "Uma cadência define o tom, depois o acorde",
       "tonic": "A tônica define o tom, depois o acorde",
-      "progression": "Quatro acordes, num tom que não é dito"
+      "progression": {
+        "2": "Dois acordes, num tom que não é dito",
+        "3": "Três acordes, num tom que não é dito",
+        "4": "Quatro acordes, num tom que não é dito"
+      }
     },
     "chordsOfKey": "Os quatro são acordes de {key} maior.",
     "keyOf": "Tom de {key} maior",
