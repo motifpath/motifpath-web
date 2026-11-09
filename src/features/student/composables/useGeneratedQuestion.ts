@@ -153,11 +153,18 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
     }
   })
 
-  /** What a heard question says it plays: a cadence, the tonic alone, or a progression in a key not told. */
+  /** What a heard question says it plays: a cadence, the tonic alone, or a progression of its bars' chords in a key not told. */
   function heardSubtitle(heard: Playback): string {
-    if (question.value.way === 'progression_by_number') return t('sessionGeneratedChoice.heard.progression')
+    if (question.value.way === 'progression_by_number') return t(`sessionGeneratedChoice.heard.progression.${heardBars(heard.bars.length)}`)
     const given = heard.bars.filter((bar) => bar.numeral !== null).length
     return given > 1 ? t('sessionGeneratedChoice.heard.cadence') : t('sessionGeneratedChoice.heard.tonic')
+  }
+
+  /** A heard progression's bar count, held to the 2 to 4 bars the ear drills ask. */
+  function heardBars(bars: number): '2' | '3' | '4' {
+    if (bars <= 2) return '2'
+    if (bars === 3) return '3'
+    return '4'
   }
 
   /** The sound of a question asked by ear: its bars in their voicings, and on bass their roots. */

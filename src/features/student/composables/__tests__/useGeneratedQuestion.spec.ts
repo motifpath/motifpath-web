@@ -348,6 +348,24 @@ describe('useGeneratedQuestion', () => {
     })
   })
 
+  it.each([
+    [['G', 'D'], 'Two chords, in a key you aren’t told'],
+    [['G', 'C', 'D'], 'Three chords, in a key you aren’t told'],
+  ] as const)('says how many chords a heard progression of %j plays', async (chords, subtitle) => {
+    const question = setUp(
+      item('heard_progression:major/I-IV-V', {
+        way: 'progression_by_number',
+        drawn_as: 'chord_boxes',
+        playback: { tempo_bpm: 90, bass_line: false, bass_instrument_id: null, bars: chords.map((chord) => ({ chord, numeral: null })) },
+        voicings: boxes(...chords),
+        options: [{ value: 'major/I-IV-V', name: 'I–IV–V', chart: [] }],
+      }),
+    )
+    await flushPromises()
+
+    expect(question.view.value!.progression!.subtitle).toBe(subtitle)
+  })
+
   it('plays a heard progression with every bar hidden, offers the progressions by name, with the catalog to grade it', async () => {
     const question = setUp(
       item('heard_progression:I-V-vi-IV', {

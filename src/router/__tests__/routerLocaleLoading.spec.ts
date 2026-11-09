@@ -77,6 +77,28 @@ describe('router locale loading', () => {
     expect(ensureStudentLocaleLoaded).not.toHaveBeenCalled()
   })
 
+  describe('admin routes that show the skill and concept pickers', () => {
+    beforeEach(() => {
+      updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
+      updateRegistrationBridge('registered')
+      updateRoleBridge('admin')
+    })
+
+    // The progression drill fields reuse the teacher's classification labels,
+    // so these admin routes also need the teacher locale; without it a fresh
+    // navigation renders raw i18n message keys in the pickers.
+    it.each([
+      ['/admin/progressions', 'admin-progressions'],
+      ['/admin/song-charts/new', 'admin-song-chart-new'],
+      ['/admin/song-charts/sc-1', 'admin-song-chart'],
+    ])('loads the teacher locale on a direct navigation to %s', async (path, routeName) => {
+      await router.push(path)
+
+      expect(router.currentRoute.value.name).toBe(routeName)
+      expect(ensureTeacherLocaleLoaded).toHaveBeenCalled()
+    })
+  })
+
   describe('teacher content/paths routes', () => {
     beforeEach(() => {
       updateAuthBridge({ isLoaded: true, isSignedIn: true, getToken: async () => 'jwt' })
