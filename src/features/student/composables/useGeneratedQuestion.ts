@@ -178,6 +178,7 @@ export function useGeneratedQuestion(item: MaybeRefOrGetter<Item>) {
         chordInstrument,
         bass: bass ? { instrument: bass, roots: heard.bars.map((bar) => rootOf(bar.chord)) } : null,
         tempoBpm: heard.tempo_bpm,
+        noteValue: heard.note_value,
       },
       bars: heard.bars.map((bar) => (bar.numeral === null ? null : numeralLabel(bar.numeral))),
       subtitle: heardSubtitle(heard),

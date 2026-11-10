@@ -10578,10 +10578,15 @@ export interface components {
          */
         GeneratedChoicePlayback: {
             /**
-             * @description The tempo it starts at, in quarter notes per minute, set by the student's level on the
-             *     item: 70 while new or learning, 90 once accurate, 110 once fluent.
+             * @description The tempo it starts at, in beats per minute before note_value's speed factor: 70 for
+             *     every question, whatever the student's level on the item.
              */
             tempo_bpm: number;
+            /**
+             * @description The note value it starts in: eighths for every question, two chords a bar, as fast as
+             *     140 BPM in quarters.
+             */
+            note_value: components["schemas"]["practice_NoteValue"];
             /**
              * @description True when the session reads chords on electric-bass: each chord's root plays under it in
              *     the bass voice, on every beat of its bar. False otherwise.
