@@ -1,8 +1,8 @@
 /**
  * How a generated drill question is laid out, from the way it is asked and how it reads chords:
  * what the question shows above its options, and what its options are. Guitar reads chords as
- * boxes; bass reads them as chord symbols, and so does any 12-bar chart. The plan picks the way and
- * the reading; this only says how they look.
+ * boxes; bass reads them as chord symbols, and so does any chart of more than four bars. The plan
+ * picks the way and the reading; this only says how they look.
  */
 import type { GeneratedWay } from '@/shared/utils/generatedChoice'
 

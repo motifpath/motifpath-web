@@ -6,6 +6,7 @@ defineProps<{
   /** One line on what the setting does, under the label. */
   description?: string
   modelValue: boolean
+  disabled?: boolean
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
@@ -21,7 +22,8 @@ const descriptionId = useId()
     :aria-checked="modelValue ? 'true' : 'false'"
     :aria-labelledby="labelId"
     :aria-describedby="description ? descriptionId : undefined"
-    class="flex min-h-12 w-full items-center gap-4 py-3 pl-[1.25rem] pr-4 text-left hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none"
+    :disabled="disabled"
+    class="flex min-h-12 w-full items-center gap-4 py-3 pl-[1.25rem] pr-4 text-left hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
     @click="emit('update:modelValue', !modelValue)"
   >
     <span class="flex min-w-0 flex-1 flex-col gap-0.5">

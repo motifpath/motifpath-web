@@ -13,8 +13,10 @@ withDefaults(
     closable?: boolean
     /** A sub-step: a back arrow before the title instead of ×. */
     back?: boolean
+    /** Off for a sheet that fills the screen: it can't be dragged away. */
+    grabber?: boolean
   }>(),
-  { closable: true, back: false },
+  { closable: true, back: false, grabber: true },
 )
 const emit = defineEmits<{ close: []; back: [] }>()
 
@@ -23,7 +25,7 @@ const { t } = useTypedT()
 
 <template>
   <div class="flex flex-col">
-    <div v-if="kind === 'sheet'" data-test="sheet-grabber" class="mx-auto mt-2 h-1 w-9 rounded-full bg-border" aria-hidden="true" />
+    <div v-if="kind === 'sheet' && grabber" data-test="sheet-grabber" class="mx-auto mt-2 h-1 w-9 rounded-full bg-border" aria-hidden="true" />
     <div class="flex min-h-12 items-center gap-1 pl-2 pr-2 pt-2" :class="{ 'pl-5': !back }">
       <button
         v-if="back"

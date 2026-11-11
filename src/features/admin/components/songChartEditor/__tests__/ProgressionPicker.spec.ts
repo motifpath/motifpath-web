@@ -1,9 +1,22 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
+import type { components } from '@/api/generated/core-domain'
 import ProgressionPicker from '@/features/admin/components/songChartEditor/ProgressionPicker.vue'
 
-const progression = (key: string, en: string) => ({ progression_id: key, key, bars: [], confusable: [], names: { en } })
+const progression = (key: string, en: string): components['schemas']['Progression'] => ({
+  progression_id: key,
+  key,
+  mode: 'major',
+  bars: [],
+  borrowed_bars: [],
+  in_drills: true,
+  confusable: [],
+  names: { en },
+  song_chart_count: 0,
+  created_by: null,
+  created_at: null,
+})
 const progressions = [
   progression('I-IV-V-I', 'I–IV–V–I'),
   progression('I-IV-I-V', 'I–IV–I–V'),
@@ -57,5 +70,64 @@ describe('ProgressionPicker', () => {
     await options(wrapper)[1]!.trigger('click')
 
     expect(wrapper.emitted('toggle')).toEqual([['I-IV-V-I'], ['I-IV-I-V']])
+  })
+
+  it('marks only the progressions the drills do not use', () => {
+    const chartOnly = { ...progression('major/I-bVII-IV-I', 'I–♭VII–IV–I'), in_drills: false }
+    const wrapper = mount(ProgressionPicker, { props: { progressions: [progressions[0]!, chartOnly], tagged: [] } })
+
+    const marks = options(wrapper).map((o) => o.find('[data-test="chart-only"]').exists())
+    expect(marks).toEqual([false, true])
+    expect(options(wrapper)[1]!.get('[data-test="chart-only"]').text()).toBe('Chart only')
+  })
+
+  it('finds a progression by its numerals as typed, instead of saying there is none', async () => {
+    const pop = { ...progression('I-V-vi-IV', 'I–V–vi–IV (pop)'), bars: ['I', 'V', 'vi', 'IV'] }
+    const created = { ...progression('major/I-bVII-IV-I', 'I–♭VII–IV–I'), bars: ['I', '♭VII', 'IV', 'I'] }
+    const wrapper = mount(ProgressionPicker, { props: { progressions: [pop, created], tagged: [] } })
+    const search = wrapper.get('[data-test="progression-search"]')
+
+    await search.setValue('I V vi IV')
+    expect(options(wrapper).map((o) => o.text())).toEqual(['I–V–vi–IV (pop)'])
+    expect(wrapper.find('[data-test="create-progression"]').exists()).toBe(false)
+
+    await search.setValue('I bVII IV I')
+    expect(options(wrapper).map((o) => o.text())).toEqual(['I–♭VII–IV–I'])
+  })
+
+  it('offers no way to remove a progression', () => {
+    expect(mountPicker().find('[data-test="remove-progression"]').exists()).toBe(false)
+  })
+
+  it('offers to create what it can not find, read as numerals', async () => {
+    const wrapper = mountPicker()
+
+    await wrapper.get('[data-test="progression-search"]').setValue('I bVII IV')
+
+    expect(wrapper.get('[data-test="no-progression"]').text()).toBe('No progression is I–♭VII–IV yet.')
+    const create = wrapper.get('[data-test="create-progression"]')
+    expect(create.text()).toBe('Create “I–♭VII–IV”')
+    expect(wrapper.get('[data-test="create-progression-hint"]').text()).toBe('Read as numerals: I · ♭VII · IV — major. You can change it before creating.')
+
+    await create.trigger('click')
+    expect(wrapper.emitted('create')).toEqual([['I bVII IV']])
+  })
+
+  it('offers an empty form when a name finds nothing', async () => {
+    const wrapper = mountPicker()
+
+    await wrapper.get('[data-test="progression-search"]').setValue('bossa')
+    expect(wrapper.find('[data-test="create-progression-hint"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="create-progression"]').trigger('click')
+    expect(wrapper.emitted('create')).toEqual([['']])
+  })
+
+  it('offers nothing to create while the search finds something, or before a search', async () => {
+    const wrapper = mountPicker()
+    expect(wrapper.find('[data-test="create-progression"]').exists()).toBe(false)
+
+    await wrapper.get('[data-test="progression-search"]').setValue('doo')
+    expect(wrapper.find('[data-test="create-progression"]').exists()).toBe(false)
   })
 })

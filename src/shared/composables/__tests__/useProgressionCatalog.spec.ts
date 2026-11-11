@@ -10,8 +10,9 @@ import { clearProgressionCatalog, useProgressionCatalog } from '@/shared/composa
 const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
 const fail = () => Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
 
-const POP = { progression_id: 'p1', key: 'I-V-vi-IV', bars: ['I', 'V', 'vi', 'IV'], confusable: ['I-vi-IV-V'], names: { en: 'I–V–vi–IV (pop)' } }
-const DOOWOP = { progression_id: 'p2', key: 'I-vi-IV-V', bars: ['I', 'vi', 'IV', 'V'], confusable: ['I-V-vi-IV'], names: { en: 'I–vi–IV–V (doo-wop)' } }
+const POP = { progression_id: 'p1', key: 'I-V-vi-IV', bars: ['I', 'V', 'vi', 'IV'], in_drills: true, confusable: ['I-vi-IV-V'], names: { en: 'I–V–vi–IV (pop)' } }
+const CHART_ONLY = { progression_id: 'p3', key: 'major/I-bVII-IV-I', bars: ['I', '♭VII', 'IV', 'I'], in_drills: false, confusable: [], names: { en: 'I–♭VII–IV–I' } }
+const DOOWOP = { progression_id: 'p2', key: 'I-vi-IV-V', bars: ['I', 'vi', 'IV', 'V'], in_drills: true, confusable: ['I-V-vi-IV'], names: { en: 'I–vi–IV–V (doo-wop)' } }
 
 beforeEach(() => {
   GET.mockReset()
@@ -26,6 +27,25 @@ describe('useProgressionCatalog', () => {
 
     expect(GET).toHaveBeenCalledWith('/progressions')
     expect(catalog).toEqual({ 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] }, 'I-vi-IV-V': { bars: ['I', 'vi', 'IV', 'V'] } })
+  })
+
+  it('keeps a progression’s mode, so a minor one is graded in its minor keys', async () => {
+    const minor = { progression_id: 'p4', key: 'minor/i-iv-v-i', mode: 'minor', bars: ['i', 'iv', 'v', 'i'], in_drills: true, confusable: [], names: { en: 'i–iv–v–i' } }
+    GET.mockImplementation(() => ok([minor]))
+
+    const catalog = await useProgressionCatalog().load()
+
+    expect(catalog).toEqual({ 'minor/i-iv-v-i': { bars: ['i', 'iv', 'v', 'i'], mode: 'minor' } })
+  })
+
+  it('grades only against progressions in the drills, while the whole list keeps the chart-only ones', async () => {
+    GET.mockImplementation(() => ok([POP, CHART_ONLY]))
+
+    const catalog = await useProgressionCatalog().load()
+    const progressions = await useProgressionCatalog().progressions()
+
+    expect(catalog).toEqual({ 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] } })
+    expect(progressions).toEqual([POP, CHART_ONLY])
   })
 
   it('asks for it once per page load, however many questions need it', async () => {
@@ -51,5 +71,29 @@ describe('useProgressionCatalog', () => {
 
     expect(await useProgressionCatalog().load()).toBeNull()
     expect(await useProgressionCatalog().load()).toEqual({ 'I-V-vi-IV': { bars: ['I', 'V', 'vi', 'IV'] } })
+  })
+
+  it('asks again on a refresh, and every view of the list follows', async () => {
+    GET.mockImplementationOnce(() => ok([POP])).mockImplementationOnce(() => ok([POP, DOOWOP]))
+    const { current, progressions, refresh } = useProgressionCatalog()
+
+    await progressions()
+    expect(current.value).toEqual([POP])
+
+    await refresh()
+
+    expect(GET).toHaveBeenCalledTimes(2)
+    expect(current.value).toEqual([POP, DOOWOP])
+    expect(await useProgressionCatalog().load()).toHaveProperty('I-vi-IV-V')
+  })
+
+  it('keeps the list it has when a refresh fails', async () => {
+    GET.mockImplementationOnce(() => ok([POP])).mockImplementationOnce(() => fail())
+    const { current, progressions, refresh } = useProgressionCatalog()
+
+    await progressions()
+    await refresh()
+
+    expect(current.value).toEqual([POP])
   })
 })

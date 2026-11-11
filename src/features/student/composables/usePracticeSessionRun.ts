@@ -20,6 +20,7 @@ import type { CellAnswer } from '@/shared/utils/fretboardCell'
 import { gradeEveryInstance } from '@/shared/utils/multiTap'
 import type { EveryInstanceGrade } from '@/shared/utils/multiTap'
 import { gradeGeneratedChoice, rightAnswerOf } from '@/shared/utils/generatedChoice'
+import { musicKeyOf } from '@/shared/utils/harmony'
 import type { GeneratedQuestion, ProgressionCatalog } from '@/shared/utils/generatedChoice'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 import { gradeTimedTaps } from '@/shared/utils/timedTaps'
@@ -543,6 +544,8 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
           {
             tuning,
             bars: planned.bars.map((bar) => bar.numeral),
+            // The plan asks a progression in a key of its mode, so the key tells the mode.
+            mode: musicKeyOf(planned.music_key)?.mode,
             key: planned.music_key,
             tone: planned.tone,
             tempoBpm: played.tempoBpm,

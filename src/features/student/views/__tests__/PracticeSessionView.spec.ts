@@ -947,7 +947,7 @@ describe('PracticeSessionView', () => {
           way: 'cadence_then_chord',
           numeral: null,
           options: ['ii', 'IV', 'V', 'vi'].map((value) => ({ value, name: null, chart: [] })),
-          playback: { tempo_bpm: 70, bass_line: false, bass_instrument_id: null, bars: [{ chord: 'G', numeral: 'I' }, { chord: 'Em', numeral: null }] },
+          playback: { tempo_bpm: 70, note_value: 'eighths', bass_line: false, bass_instrument_id: null, bars: [{ chord: 'G', numeral: 'I' }, { chord: 'Em', numeral: null }] },
         },
       }
       const wrapper = mountView()

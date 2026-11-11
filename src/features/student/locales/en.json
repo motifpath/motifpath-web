@@ -735,10 +735,15 @@
     "heard": {
       "cadence": "A cadence sets the key, then the chord",
       "tonic": "The tonic sets the key, then the chord",
-      "progression": "Four chords, in a key you aren’t told"
+      "progression": {
+        "2": "Two chords, in a key you aren’t told",
+        "3": "Three chords, in a key you aren’t told",
+        "4": "Four chords, in a key you aren’t told"
+      }
     },
     "chordsOfKey": "All four are chords of {key} major.",
     "keyOf": "Key of {key} major",
+    "keyOfMinor": "Key of {key}",
     "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you."
   },
   "subjectPicker": {
