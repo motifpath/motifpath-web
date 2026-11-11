@@ -269,6 +269,7 @@ describe('useGeneratedQuestion', () => {
     type Bar = Playback['bars'][number]
     const playback = (bars: Bar[], bass = false): Playback => ({
       tempo_bpm: 70,
+      note_value: 'eighths',
       bass_line: bass,
       bass_instrument_id: bass ? drillBass.instrument_id : null,
       bars,
@@ -302,6 +303,7 @@ describe('useGeneratedQuestion', () => {
       expect(progression.source.chordInstrument.instrument_id).toBe(drillVoicings.C.diagram.instrument_id)
       expect(progression.source.bass).toBeNull()
       expect(progression.source.tempoBpm).toBe(70)
+      expect(progression.source.noteValue).toBe('eighths')
       expect(question.view.value!.options.map((option) => option.label)).toEqual(['ii', 'IV', 'V', 'vi'])
       expect(question.grading.value).toEqual({ question: { way: 'cadence_then_chord', key: 'G', numeral: 'vi' }, catalog: {} })
     })
@@ -356,7 +358,7 @@ describe('useGeneratedQuestion', () => {
       item('heard_progression:major/I-IV-V', {
         way: 'progression_by_number',
         drawn_as: 'chord_boxes',
-        playback: { tempo_bpm: 90, bass_line: false, bass_instrument_id: null, bars: chords.map((chord) => ({ chord, numeral: null })) },
+        playback: { tempo_bpm: 70, note_value: 'eighths', bass_line: false, bass_instrument_id: null, bars: chords.map((chord) => ({ chord, numeral: null })) },
         voicings: boxes(...chords),
         options: [{ value: 'major/I-IV-V', name: 'I–IV–V', chart: [] }],
       }),
@@ -371,7 +373,7 @@ describe('useGeneratedQuestion', () => {
       item('heard_progression:I-V-vi-IV', {
         way: 'progression_by_number',
         drawn_as: 'chord_boxes',
-        playback: { tempo_bpm: 90, bass_line: false, bass_instrument_id: null, bars: (['G', 'D', 'Em', 'C'] as const).map((chord) => ({ chord, numeral: null })) },
+        playback: { tempo_bpm: 70, note_value: 'eighths', bass_line: false, bass_instrument_id: null, bars: (['G', 'D', 'Em', 'C'] as const).map((chord) => ({ chord, numeral: null })) },
         voicings: boxes('G', 'D', 'Em', 'C'),
         options: [
           { value: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)', chart: [] },
