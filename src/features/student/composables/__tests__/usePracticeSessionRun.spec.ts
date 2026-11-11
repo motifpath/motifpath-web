@@ -1112,6 +1112,7 @@ describe('usePracticeSessionRun', () => {
     describe('asked by ear', () => {
       const playback = {
         tempo_bpm: 70,
+        note_value: 'eighths' as const,
         bass_line: false,
         bass_instrument_id: null,
         bars: [
