@@ -25,8 +25,8 @@ const boxId = (symbol: DrillChordSymbol) => drillVoicings[symbol].diagram.diagra
 const boxes = (...symbols: DrillChordSymbol[]) => symbols.map((symbol) => ({ chord: symbol, diagram_id: boxId(symbol) }))
 
 const PROGRESSIONS = [
-  { progression_id: 'p1', key: 'I-V-vi-IV', bars: ['I', 'V', 'vi', 'IV'], confusable: ['I-vi-IV-V'], names: { en: 'I–V–vi–IV (pop)' } },
-  { progression_id: 'p2', key: 'I-vi-IV-V', bars: ['I', 'vi', 'IV', 'V'], confusable: ['I-V-vi-IV'], names: { en: 'I–vi–IV–V (doo-wop)' } },
+  { progression_id: 'p1', key: 'I-V-vi-IV', bars: ['I', 'V', 'vi', 'IV'], in_drills: true, confusable: ['I-vi-IV-V'], names: { en: 'I–V–vi–IV (pop)' } },
+  { progression_id: 'p2', key: 'I-vi-IV-V', bars: ['I', 'vi', 'IV', 'V'], in_drills: true, confusable: ['I-V-vi-IV'], names: { en: 'I–vi–IV–V (doo-wop)' } },
 ]
 
 /** Serves the drill voicings' diagrams (each carrying its voicing), the guitar and the progressions. */
@@ -217,6 +217,24 @@ describe('useGeneratedQuestion', () => {
       })
     })
 
+    it('names a minor key as the key it is read in, never as major', async () => {
+      const minor = item('chart_progression:minor/i-bVII-bVI-V', {
+        way: 'chart_to_numbers',
+        music_key: 'Am',
+        chart: ['Am', 'G', 'F', 'E'],
+        drawn_as: 'chord_symbols',
+        voicings: [],
+        options: [
+          { value: 'minor/i-bVII-bVI-V', name: 'i–♭VII–♭VI–V', chart: [] },
+          { value: 'minor/i-bVII-bVI-i', name: 'i–♭VII–♭VI–i', chart: [] },
+        ],
+      })
+      const question = setUp(minor)
+      await flushPromises()
+
+      expect(question.view.value!.context).toBe('Key of A minor')
+    })
+
     it('is unavailable when the catalog it is graded against can not be loaded', async () => {
       serve({ progressions: false })
       const question = setUp(read)
@@ -251,6 +269,7 @@ describe('useGeneratedQuestion', () => {
     type Bar = Playback['bars'][number]
     const playback = (bars: Bar[], bass = false): Playback => ({
       tempo_bpm: 70,
+      note_value: 'eighths',
       bass_line: bass,
       bass_instrument_id: bass ? drillBass.instrument_id : null,
       bars,
@@ -284,6 +303,7 @@ describe('useGeneratedQuestion', () => {
       expect(progression.source.chordInstrument.instrument_id).toBe(drillVoicings.C.diagram.instrument_id)
       expect(progression.source.bass).toBeNull()
       expect(progression.source.tempoBpm).toBe(70)
+      expect(progression.source.noteValue).toBe('eighths')
       expect(question.view.value!.options.map((option) => option.label)).toEqual(['ii', 'IV', 'V', 'vi'])
       expect(question.grading.value).toEqual({ question: { way: 'cadence_then_chord', key: 'G', numeral: 'vi' }, catalog: {} })
     })
@@ -330,12 +350,30 @@ describe('useGeneratedQuestion', () => {
     })
   })
 
+  it.each([
+    [['G', 'D'], 'Two chords, in a key you aren’t told'],
+    [['G', 'C', 'D'], 'Three chords, in a key you aren’t told'],
+  ] as const)('says how many chords a heard progression of %j plays', async (chords, subtitle) => {
+    const question = setUp(
+      item('heard_progression:major/I-IV-V', {
+        way: 'progression_by_number',
+        drawn_as: 'chord_boxes',
+        playback: { tempo_bpm: 70, note_value: 'eighths', bass_line: false, bass_instrument_id: null, bars: chords.map((chord) => ({ chord, numeral: null })) },
+        voicings: boxes(...chords),
+        options: [{ value: 'major/I-IV-V', name: 'I–IV–V', chart: [] }],
+      }),
+    )
+    await flushPromises()
+
+    expect(question.view.value!.progression!.subtitle).toBe(subtitle)
+  })
+
   it('plays a heard progression with every bar hidden, offers the progressions by name, with the catalog to grade it', async () => {
     const question = setUp(
       item('heard_progression:I-V-vi-IV', {
         way: 'progression_by_number',
         drawn_as: 'chord_boxes',
-        playback: { tempo_bpm: 90, bass_line: false, bass_instrument_id: null, bars: (['G', 'D', 'Em', 'C'] as const).map((chord) => ({ chord, numeral: null })) },
+        playback: { tempo_bpm: 70, note_value: 'eighths', bass_line: false, bass_instrument_id: null, bars: (['G', 'D', 'Em', 'C'] as const).map((chord) => ({ chord, numeral: null })) },
         voicings: boxes('G', 'D', 'Em', 'C'),
         options: [
           { value: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)', chart: [] },

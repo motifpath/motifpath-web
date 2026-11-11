@@ -1,7 +1,7 @@
 /**
- * How a drill names a major key and a numeral to a student. A key is named as musicians read it in
- * the student's language (G and D♭ in English; Sol and Ré♭ in Portuguese), while its value, as plans
- * and answers carry it, stays the catalog's spelling (G, Db).
+ * How a drill names a key and a numeral to a student. A key is named as musicians read it in the
+ * student's language (G and D♭ in English; Sol and Ré♭ in Portuguese; a minor key as "A minor" and
+ * "Lá menor"), while its value, as plans and answers carry it, stays the catalog's spelling (G, Db, Am).
  */
 import type { MessageKey } from '@/i18n'
 
@@ -18,9 +18,21 @@ const KEY_MESSAGES: Record<string, MessageKey> = {
   A: 'musicKeys.A',
   Bb: 'musicKeys.Bb',
   B: 'musicKeys.B',
+  Cm: 'musicKeys.Cm',
+  Dbm: 'musicKeys.Dbm',
+  Dm: 'musicKeys.Dm',
+  Ebm: 'musicKeys.Ebm',
+  Em: 'musicKeys.Em',
+  Fm: 'musicKeys.Fm',
+  'F#m': 'musicKeys.Fsharpm',
+  Gm: 'musicKeys.Gm',
+  Abm: 'musicKeys.Abm',
+  Am: 'musicKeys.Am',
+  Bbm: 'musicKeys.Bbm',
+  Bm: 'musicKeys.Bm',
 }
 
-/** The message naming a major key; the plain C one for a key not in the catalog. */
+/** The message naming a key, major or minor; the plain C one for a key not in the catalog. */
 export function musicKeyMessage(key: string): MessageKey {
   return KEY_MESSAGES[key] ?? 'musicKeys.C'
 }

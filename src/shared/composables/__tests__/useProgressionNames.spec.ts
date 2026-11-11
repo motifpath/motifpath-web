@@ -8,7 +8,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 }))
 
 import { i18n } from '@/i18n'
-import { clearProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
+import { clearProgressionCatalog, useProgressionCatalog } from '@/shared/composables/useProgressionCatalog'
 import { useProgressionNames } from '@/shared/composables/useProgressionNames'
 
 const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
@@ -46,5 +46,33 @@ describe('useProgressionNames', () => {
 
     expect(progressions.value).toEqual([])
     expect(nameOf('I-vi-IV-V')).toBe('I-vi-IV-V')
+  })
+
+  it('reads a created key no progression has as the numerals it spells', async () => {
+    GET.mockImplementation(() => ok([DOOWOP]))
+    const { nameOf } = useProgressionNames()
+    await flushPromises()
+
+    expect(nameOf('major/I-bVII-IV-I')).toBe('I–♭VII–IV–I')
+    expect(nameOf('minor/io-#IVh7-IIImaj7-viio7')).toBe('i°–♯IVø7–IIImaj7–vii°7')
+  })
+
+  it('never reads a catalog key as numerals: it has no mode, and a handle is not numerals', async () => {
+    GET.mockImplementation(() => ok([]))
+    const { nameOf } = useProgressionNames()
+    await flushPromises()
+
+    expect(nameOf('12-bar-blues')).toBe('12-bar-blues')
+  })
+
+  it('names a progression created since it was asked, once the catalog is refreshed', async () => {
+    GET.mockImplementationOnce(() => ok([])).mockImplementationOnce(() => ok([DOOWOP]))
+    const { nameOf } = useProgressionNames()
+    await flushPromises()
+    expect(nameOf('I-vi-IV-V')).toBe('I-vi-IV-V')
+
+    await useProgressionCatalog().refresh()
+
+    expect(nameOf('I-vi-IV-V')).toBe(DOOWOP.names.en)
   })
 })

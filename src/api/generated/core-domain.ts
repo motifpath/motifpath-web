@@ -4,6 +4,1066 @@
  */
 
 export interface paths {
+    "/admin/commercial-configurations/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the current authoritative commercial configuration
+         * @description Backend-resolved administrator only. Return the currently promoted immutable configuration and its revision. Before first configuration return 404; new sales remain disabled. Never expose credentials. Acquisition OFF does not hide administrative configuration history from authorized roles.
+         */
+        get: operations["getCurrentCommercialConfiguration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List successful payments for refund/support references
+         * @description Return only authenticated caller-owned verified payments across subscription and purchase acquisitions, including refunded payments whose original facts remain unchanged. Refund status is read from its case; a refund does not delete the original payment. No payer-controlled owner filter. Acquisition OFF never hides receipts. Safe provider references are not payment credentials. This read does not create grants or refunds.
+         */
+        get: operations["listMyCommercialPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commercial-releases/{release_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read an authorized immutable commercial manifest
+         * @description Owner/admin or a holder whose existing purchase/copy references the release only. Other callers receive 404. Resolve historical immutable references after withdrawal; never substitute the latest manifest. This read does not deliver protected lesson content or update the caller copy.
+         */
+        get: operations["getCommercialRelease"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/refund-requests/{refund_request_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry a definitively failed refund as an administrator
+         * @description Admin only. Require failed case at expected_revision and authoritative reconciliation proving no prior successful/pending refund or competing dispute return. Unknown outcomes remain processing and return 409. Reuse case/business identity, retain original execution evidence and append a distinct attributable retry attempt; never replace prior history. A new key alone cannot authorize another refund. Check original eligibility or approved review, then apply the existing full refund execution invariants. Same-intent retries return recorded state before revision checks. Acquisition OFF cannot disable support.
+         */
+        post: operations["retryFailedFullRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commercial-content/{content_kind}/{content_id}/ownership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct authoritative ownership as an administrator
+         * @description Backend-resolved admin only; the item's owner and every other caller get 403. Verify legal/creator evidence and expected_revision against the current ownership revision; append provenance correction without rewriting original creator or transferring existing financial obligations. Returns 403 while the content-ownership rollout is OFF. CMS/user claims cannot establish ownership. Same-intent retry returns the original result; conflicting reuse or stale revision returns 409. Durable audit failure prevents mutation.
+         */
+        post: operations["correctCommercialOwnership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commercial-content/{content_kind}/{content_id}/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Freeze validated commercial dependency references
+         * @description Registered owner or admin only. Validate existing content revision and complete transitive dependency graph, reject cycles, missing rights, stale critical metadata and unsupported third-party dependencies. Platform premium exercises in a paid teacher path are recorded as platform_premium dependencies, covered by the platform commission on each sale without a separate license. Check each referenced revision. Concurrent same-intent publication creates one immutable manifest. This operation does not publish a path, alter course checkpoints or update learner copies; existing authoring/update endpoints retain their semantics. A changed manifest invalidates new-sale validation until rechecked.
+         */
+        post: operations["publishCommercialRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/subscription-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the promoted subscription offer as an administrator
+         * @description Backend-resolved administrator only. Return the promoted offer for exactly one scope, billing period and currency, independently of acquisition flags or learner cohort eligibility. Missing configured offer returns 404; the caller then uses expected_offer_id null for first creation. Existing offer_id is the precondition for replacement. Malformed or disabled currency/scope returns 400. No credentials are exposed.
+         */
+        get: operations["getCurrentSubscriptionOffer"];
+        put?: never;
+        /**
+         * Create an authoritative subscription offer revision
+         * @description Admin only. Require current valid commercial configuration and positive enabled-currency amount. Annual price must be lower than twelve monthly payments for the same scope/currency; create the monthly baseline first. Immutable offer snapshots preserve prior payments and accepted checkout terms. Existing subscriptions adopt approved price changes at next renewal only, with the configured annual notices. Duplicate commands return the existing revision; new intentional prices use a new identity. Audit failure prevents change. Require expected_offer_id for the exact scope/billing period/currency, including explicit null before the first offer. Under a scope/currency serialization boundary, compare the current promoted offer and atomically create/promote its replacement with audit evidence; mismatch returns 409. Different operation keys do not bypass the comparison. Annual discount validation and monthly baseline changes share this boundary. Same-key same-intent replay returns its original recorded result before testing the old expected offer. A changed platform configuration also returns 409. Read the current offer through this admin resource even while acquisition is OFF.
+         */
+        post: operations["createSubscriptionOfferRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/refund-requests/{refund_request_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record an explicit admin refund review
+         * @description Backend-resolved admin only; matching expected_revision and case requiring review. approve_full_refund records explicit approved-policy/statutory justification and permits the existing full execution endpoint; it does not return money or revoke access. decline retains the case and reason without claiming commercially eligible status. No partial refund is executed here. Repeat review uses the same durable operation, conflicting disposition/revision returns 409. A declined case can be reviewed again only with new explicit evidence and current revision. Uncertain external financial outcomes cannot be overridden by review.
+         */
+        post: operations["reviewFullRefundEligibility"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teachers/me/commercial-settlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read teacher settlement history
+         * @description Backend-resolved teacher only; expose own financial obligations/history. No customer details or provider credentials. Include unresolved and failed obligations; unknown external outcomes stay pending, not failed. New-acquisition OFF cannot hide obligations or pause their recovery.
+         */
+        get: operations["listMyCommercialSettlements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commercial-content/{content_kind}/{content_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read authoritative commercial content
+         * @description Registered content owner or admin only; other callers receive 404. content_kind must be course, path, content_node or exercise. Public editorial metadata is not ownership proof. sale_blockers lists, for the caller, why a paid change or new sale would be refused now, including new_sales_paused when the rollout denies it; the teacher UI mirrors it (MOT-130).
+         */
+        get: operations["getCommercialContent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commercial-content/{content_kind}/{content_id}/sale-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change free, paid or withdrawn commercial state
+         * @description Require registered owner or admin and matching expected_revision. Allowed content_kind is course or path. Free-to-paid and price/withdrawal changes retain actor, prior/resulting state and immutable references. Paid requires validated transitive rights and valid configured offers. Do not modify existing buyer grants/copies or auto-update learners. CMS hints cannot invoke this authority. Paid also requires an admin-published version learners can get and, for a teacher-owned item, the owner's verified payout account (MOT-130); refusals are listed as sale_blockers on the content read. Every commercial mutation is durably coupled to audit evidence; uncertain external outcomes remain pending. Acquisition OFF never disables existing obligations.  Existing free grants are grandfathered explicitly; paid conversion never creates an unrequested charge or silently removes their granted access.
+         */
+        post: operations["changeCommercialSaleState"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commercial-content/{content_kind}/{content_id}/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an immutable one-time offer revision
+         * @description Registered content owner or admin only; matching expected_revision and positive enabled-currency price under current configuration. Teacher-owned courses and paths stay within teacher price bounds. MotifPath-owned courses and paths are offered only by an administrator, per item, with no commission; an item without an offer stays Plus-only. Validate the complete current sale manifest and transitive dependency rights. New offer revisions never rewrite accepted checkout snapshots. Record durable attributable evidence and enforce idempotent commands before revision checks. Acquisition flags gate new actions, not existing obligations.
+         */
+        post: operations["createCommercialOffer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/commercial-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List eligible one-time acquisition offers
+         * @description Require kind and content_id; course_purchase targets a course, path_purchase a path. Resolve caller eligibility and approved offers server-side; return empty items if acquisition/configuration/prerequisites are unavailable. A disabled currency or malformed kind returns 400. Missing content returns 404. Purchase offers require sale_state paid; withdrawn/free items are not sold. While the caller's platform subscription is active, a MotifPath-owned item returns no offers because Plus already covers it; the offer returns when Plus ends. A caller who already holds a permanent purchase of the item gets no offers.
+         */
+        get: operations["listCommercialOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/commercial-checkouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a permanent course or path purchase checkout
+         * @description Use eligible current offer_id; reject stale terms with 409. Require the current validated sale manifest and refund liquidity; a teacher offer also requires verified seller/Connect capability. Reserve one active holder/item acquisition across operation keys and reject an already active purchase with 409. A MotifPath-owned item is refused with 409 while the caller's platform subscription is active. Bind accepted terms, customer and applicable commission revision before provider work; browser return never proves payment. Durable intent/audit precede provider calls; unknown outcomes remain pending and reconcile before any new attempt. Acquisition OFF never stops existing obligations.
+         */
+        post: operations["createMyCommercialCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/commercial-checkouts/{checkout_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one-time acquisition status
+         * @description Owner only; another user receives 404. No provider/session metadata may substitute for internal ownership. Unknown creation/payment outcomes remain pending and must be reconciled before any new external attempt.
+         */
+        get: operations["getMyCommercialCheckout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/commercial-holdings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List permanent purchases
+         * @description Return caller-owned purchase records including ended records. Stable identity ordering, total/limit/offset; acquisition OFF never hides history. These records do not bypass delivery-time access checks.
+         */
+        get: operations["listMyCommercialHoldings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teachers/me/commercial-balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read teacher earnings by currency
+         * @description Require backend-resolved teacher identity. Return only own reconciled balances; non-teachers receive 403. Currency balances do not expose customer payment data. Provider settlement and recovery offsets determine availability; no voluntary reserve.
+         */
+        get: operations["listMyCommercialBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teachers/me/commercial-terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the current selling terms
+         * @description Backend-resolved teacher only. Return price bounds, commission and teacher fee share from the promoted configuration, without its reason, identity or history (MOT-130). Before first configuration return 404; new sales remain disabled.
+         */
+        get: operations["getMyTeacherSellingTerms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teachers/me/commercial-sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the caller's own sales
+         * @description Backend-resolved teacher only; newest first. Each sale gives the price, the teacher's posted earnings and its status. Never return buyer identity, contact or payment method. New-acquisition OFF never hides past sales or refunds (MOT-130). The required period (at most 366 days, so totals stay bounded) filters on sold_at; summary totals every sale in the period, not just the page. A refunded sale states whether its earnings were cancelled, are still being recovered, or were recovered.
+         */
+        get: operations["listMyTeacherSales"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teachers/me/payout-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the caller's payout account readiness
+         * @description Backend-resolved teacher only. A teacher who never onboarded gets not_started, not 404. Status comes from reconciled provider state; unknown outcomes stay checking. No bank details, identity documents or provider identifiers (MOT-130).
+         */
+        get: operations["getMyPayoutAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teachers/me/payout-account/onboarding-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a provider-hosted payout onboarding link
+         * @description Backend-resolved teacher only. Return a short-lived provider-hosted onboarding link with server-configured return URLs; MotifPath never collects bank details. Refused with 403 while teacher_settlement denies new onboarding for the caller; existing balances, settlements and recovery continue (MOT-130).
+         */
+        post: operations["createMyPayoutOnboardingLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/teachers/me/payout-account/dashboard-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a provider-hosted payout dashboard link
+         * @description Backend-resolved teacher only. Return a short-lived single-use link to the provider's payout dashboard, where the teacher manages bank details and sees bank payouts; MotifPath never shows or stores them. Refused with 409 until onboarding was submitted (status not_started). Allowed while teacher_settlement pauses new onboarding, so existing accounts stay manageable (MOT-130).
+         */
+        post: operations["createMyPayoutDashboardLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-configurations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record immutable platform pricing and allocation configuration
+         * @description Admin only. Validate teacher minimum <= maximum and matching configured currency; reject nonpositive or impossible prices. Changes create a new immutable revision and never alter historical offer/checkout terms. No sales before a complete valid configuration. Subscription prices and annual discounts are represented by immutable monthly/annual offer revisions; this endpoint does not create them. Configuration is never taken from CMS. Every commercial mutation is durably coupled to audit evidence; uncertain external outcomes remain pending. Acquisition OFF never disables existing obligations.  Serialize environment configuration promotion using expected_revision (zero only before first configuration); stale concurrent edits return 409.
+         */
+        post: operations["createCommercialConfiguration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/cms/commercial-hints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Durably accept a CMS editorial synchronization hint
+         * @description Require the environment-specific CMS adapter bearer credential over TLS, isolated from user authentication. Authenticate before storing. Deduplicate trusted source/environment/event identity and reject changed payload for that identity with 409. Resolve only registered source mappings; never trust a CMS owner, price or grant claim. Persist receipt and audit before 200. Worker pulls canonical metadata through a read-only CMS credential, validates core revision/rights and reconciles; source timestamps do not establish ordering. Unprovisioned or disabled CMS integration cannot expand rights. Native Strapi payloads must pass through the configured adapter; this contract does not assume Strapi emits a signed canonical envelope.
+         */
+        post: operations["receiveCMSCommercialHint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/students/me/student-paths/{student_path_id}/content-nodes/{content_node_id}/commercial-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evaluate commercial access for a lesson in the caller's copy
+         * @description Evaluate only the authenticated learner's existing StudentPath and a lesson
+         *     present in that copy. Another learner's copy, missing copy or non-member node
+         *     returns the same 404. Resolve template/course coverage from trusted copy and
+         *     enrollment references, never caller-selected subscription scopes or CMS metadata.
+         *     Paid, grace and independent permanent grants are evaluated together. Cancellation
+         *     alone does not truncate a paid grant. A successful refund removes only its payment's
+         *     grant; pending refunds and unresolved disputes do not remove otherwise valid access.
+         *     Completed-lesson retention follows subscription expiry policy; completion alone
+         *     does not restore a successfully refunded grant. Pending disputes do not extend
+         *     expired subscriptions. Acquisition flags OFF do not disable existing grant checks.
+         *     This is a commercial decision only: allowed does not bypass learning prerequisites,
+         *     copy membership or other authorization, and blocked does not remove the outline
+         *     or progress. The response contains no protected lesson content or media URLs.
+         *     Use trusted server time and authoritative progress; do not accept completion,
+         *     time, payment or grant claims from the client. No copy, grant or billing mutation
+         *     occurs. Every decision has an attributable evidence identity and policy revision.
+         *     Evaluate all applicable independent rights before returning blocked. If required
+         *     authoritative state or applicable approved policy is unavailable, return 503 rather
+         *     than inventing an allowed/blocked decision. A verified final won dispute preserves still-valid rights; final lost immediately ends
+         *     only that payment grant. No outcome restarts an expired period or revives a refunded
+         *     grant. Independent proven rights remain valid.
+         *     This read is not an access token or a reusable authorization lease. Protected
+         *     content/media delivery must independently enforce current authoritative rights;
+         *     no public asset protection mechanism is selected here.
+         */
+        get: operations["getMyLessonCommercialAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trace commercial operations and their attempts
+         * @description Require an administrator resolved from authoritative backend identity (403 otherwise).
+         *     Require operation_id or both resource_kind and resource_id; combine supplied filters
+         *     with AND. The trusted deployment determines environment; callers cannot select it.
+         *     An operation UUID alone is not globally unique: its trusted actor/integration,
+         *     action and business resource namespace remains part of the operation identity.
+         *     Return immutable sanitized evidence for direct and indirect commercial actions,
+         *     including failures, denials, duplicate attempts and uncertain external outcomes.
+         *     Record this read as an attributable audit access operation; that new record is
+         *     outside the returned snapshot. Acquisition flags do not disable authorized reads.
+         *     The first page fixes a snapshot and stable append order. Continuations use an
+         *     opaque cursor bound to that snapshot, filters, administrator and environment.
+         *     Concurrent appends cannot shift or duplicate entries within that traversal.
+         *     Unlike catalog page browsing, audit traversal must preserve a fixed evidence set.
+         *     Tampered, expired or mismatched cursors return 400; start a new traversal explicitly.
+         *     The snapshot spans recent Postgres evidence and its immutable archive. The hot audit
+         *     payload TTL is 720 hours from recorded_at; verified archival and absence of holds
+         *     are required before hot deletion. Export/purge cannot remove or duplicate entries
+         *     from a traversal. A mandatory environment-qualified operation/resource locator index
+         *     resolves archived matches in snapshot order; only matching page batches are fetched,
+         *     not an unbounded archive scan. Complete verified locator coverage is required before
+         *     hot deletion. Missing/incomplete/rebuilding historical indexes or archive evidence
+         *     return 503, never partial/empty success. Locator metadata follows archive retention,
+         *     independently of the 720-hour full-payload TTL.
+         *     Empty results mean no matches, never audit storage failure. No mutation is exposed.
+         */
+        get: operations["listCommercialAuditEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-rollout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read commercial activation as an administrator
+         * @description Backend-resolved administrator only (403 otherwise). Returns every registered flag in the trusted environment, whether or not any flag is on. The environment is the deployment's own and cannot be selected by the caller. If activation storage cannot be read, returns 503; it never reports flags as OFF in place of an error.
+         */
+        get: operations["getCommercialRollout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-rollout/kill-switch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn every commercial flag OFF
+         * @description Backend-resolved administrator only (403 otherwise). Sets every flag's enabled to false in one change, keeping all_users and allowlists, and needs no expected revision, so a stale caller can always use it. Increments the activation revision by one and commits audit evidence with it; if evidence cannot be written, nothing changes and 503 is returned. New commercial intents are refused once it commits; intents authorized earlier keep their recorded revision and remain recoverable. Same key and same intent returns the original receipt.
+         */
+        post: operations["turnOffAllCommercialFlags"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-rollout/{flag}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change one commercial flag's switch and audience
+         * @description Backend-resolved administrator only (403 otherwise). Requires expected_revision equal to the current activation revision; a stale revision returns 409 and changes nothing. Same key and same intent returns the original receipt before the revision check; the same key with a different intent returns 409. An applied change increments the activation revision by one and is committed together with audit evidence recording actor, reason and before/after state; if evidence cannot be written, nothing changes and 503 is returned. Enabling a flag never enables its prerequisites or dependents. all_users must be sent explicitly. A group entry naming a group that does not exist returns 400. A change to the current values is still a recorded change. An unregistered flag returns 404.
+         */
+        put: operations["changeCommercialFlag"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List rollout groups and their members as an administrator
+         * @description Backend-resolved administrator only (403 otherwise). Returns every group in the trusted environment with its members, and the current activation revision. If storage cannot be read, returns 503; it never reports an empty group in place of an error.
+         */
+        get: operations["listCommercialGroups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-groups/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Create or rename a rollout group
+         * @description Backend-resolved administrator only (403 otherwise). Creates the group with no members, or renames an existing one; membership is never changed here. No expected revision is needed. Same key and same intent returns the original receipt; the same key with a different intent returns 409. An applied change increments the activation revision by one and is committed together with audit evidence; if evidence cannot be written, nothing changes and 503 is returned. Groups are not deleted in the MVP.
+         */
+        put: operations["saveCommercialGroup"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/commercial-groups/{slug}/membership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add and remove members of a rollout group
+         * @description Backend-resolved administrator only (403 otherwise). Applies the adds and removes as one change. No expected revision is needed, because the request states the wanted membership for each listed user, so removing someone can never be blocked by a stale view. Every id must be an existing core user and may not appear in both lists (400 otherwise). Same key and same intent returns the original receipt; the same key with a different intent returns 409. An applied change increments the activation revision by one, so a removed member is fenced like an OFF change; intents authorized before it keep their recorded revision. Audit evidence recording actor, reason and the members added and removed is committed with it; if it cannot be written, nothing changes and 503 is returned. An unknown group returns 404.
+         */
+        post: operations["changeCommercialGroupMembers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/subscription-checkouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a Stripe session for an authoritative subscription offer
+         * @description Require server-side acquisition/cohort/prerequisite approval for a new operation.
+         *     Reserve a durable caller/scope intent with its offer/amount/currency and audit evidence
+         *     before external session creation. Configure subscription mode, the mapped customer/price
+         *     and return destinations on the server; no client price, owner or return URL is accepted.
+         *     Refuse retired/ineligible offers, an existing paid/grace subscription or another open
+         *     checkout for the same caller/scope with 409, even under concurrent different-key requests.
+         *     Same-key same-intent replay returns the original checkout before acquisition gates or
+         *     current-offer checks; changed intent returns 409. Unknown external creation outcomes
+         *     remain pending reconciliation; a retry must not create another session.
+         *     A 200 pending/ready result is not payment proof. No grant follows from a browser return.
+         *     Existing authorized obligations remain processable after acquisition switches OFF.
+         */
+        post: operations["createMySubscriptionCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/subscription-checkouts/{checkout_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Stable MotifPath checkout identity owned by the authenticated caller. */
+                checkout_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Read the caller's checkout and fulfillment status
+         * @description Read only the authenticated caller's checkout; another user's checkout is 404.
+         *     Return stored verified state, not client return parameters. Paid and applied fulfillment
+         *     are distinct. This read never charges, grants or starts a new external session and
+         *     remains available during acquisition rollback. Grant history is not a complete current
+         *     access decision: refunds, period expiry and independent grants are resolved separately.
+         */
+        get: operations["getMySubscriptionCheckout"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payments/stripe/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Durably receive verified Stripe financial notifications
+         * @description Stripe-signature authentication replaces bearer authentication on this endpoint.
+         *     Verify the unmodified raw body with the configured environment endpoint secret and
+         *     timestamp/replay tolerance before trusting parsed fields. Validate the expected Stripe
+         *     account or registered connected-account destination and test/live context; request data
+         *     cannot select a different account, environment or secret.
+         *     Persist the verified envelope/reference, receipt identity and attributable audit evidence
+         *     durably before 200. If persistence fails return 503 so delivery can retry. Unknown event
+         *     kinds/versions or unmapped objects are retained for reconciliation without granting access.
+         *     Scope event deduplication by environment/account/event identity. Separately enforce one
+         *     financial effect and grant per business payment/invoice period across distinct events.
+         *     Do not assume delivery order or infer paid status from checkout completion alone.
+         *     Retrieve/reconcile authoritative Stripe invoice/payment state against the recorded offer,
+         *     customer, account, currency, amount and paid period before any fulfillment.
+         *     Receipt remains active during acquisition rollback. Missing callbacks are recovered through
+         *     reconciliation of recorded operations against authoritative provider objects; replay uses
+         *     the same business identities. Logging an error or receiving 200 is not proof of fulfillment.
+         *     Do not treat provider holds/open disputes as authority to block access before final decision.
+         *     Target API v1 snapshot delivery at 2026-09-30.endive with a 300-second signature tolerance,
+         *     under the approved environment/account manifest. Unsupported versions are retained for
+         *     review without business effects. Pin a compatible SDK and validate the destination
+         *     configuration before implementation; provider envelopes are not client learning events.
+         */
+        post: operations["receiveStripePaymentEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/refund-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a full refund of a caller-owned payment
+         * @description Record one refund case per successful payment, with durable actor/audit evidence.
+         *     Derive amount and currency from the backend payment; never accept customer monetary
+         *     terms or owner identity. Another user's payment is indistinguishable from missing (404).
+         *     Unsuccessful payments return 409. This operation creates no financial refund or grant removal.
+         *     Retain cases requiring admin review instead of treating them as commercially eligible.
+         *     A timely request does not become late merely because admin handling is delayed.
+         *     Same-key conflicting intent returns 409. Concurrent or different-key requests for the
+         *     same payment return its existing case with original reason and time intact; retain the
+         *     new attempts in audit evidence. Acquisition OFF does not prevent existing-payment support.
+         */
+        post: operations["requestMyPaymentRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refund-requests/{refund_request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Stable refund case identity, visible only to its payment owner or an admin. */
+                refund_request_id: components["parameters"]["RefundRequestID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Read an owned refund case or an admin handling case
+         * @description Return current case state to its payment owner or a registered admin whose role is
+         *     resolved by the backend. Other callers receive 404 without payment disclosure.
+         *     Available during acquisition rollback; pending/unknown financial outcomes remain processing.
+         *     Only backend-verified refund success changes payment-linked access; neither client polling
+         *     nor the creation/execution request itself proves a successful financial refund.
+         */
+        get: operations["getRefundRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/refund-requests/{refund_request_id}/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Stable refund case identity, visible only to its payment owner or an admin. */
+                refund_request_id: components["parameters"]["RefundRequestID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execute an eligible full refund as an admin
+         * @description Require an authenticated backend-resolved admin role (403 for non-admins).
+         *     Accept only requested cases at expected_revision that are commercially_eligible or
+         *     review_approved by explicit audited admin review. Unreviewed cases are not executable.
+         *     Record durable operator/reason/operation evidence before external refund work. Return
+         *     processing while financial outcome is pending/unknown; never infer failure from a timeout.
+         *     Per-payment financial uniqueness spans request identities and admin actors: concurrent
+         *     admins cannot initiate a second refund, even with distinct keys. A conflicting or uncertain
+         *     execution returns 409; reconcile it instead of issuing another external refund.
+         *     Unresolved competing refund/chargeback settlement also returns 409 until reconciled;
+         *     verified final lost disputes end only that payment grant and require reconciled
+         *     returned-money accounting before any additional customer refund.
+         *     Same-key same-intent replay returns the original operation's current case before checking
+         *     the originally observed revision. Replays still require admin authorization.
+         *     A confirmed successful refund returns 100% in the original currency with fees absorbed
+         *     by MotifPath, ending only its payment-linked access immediately and retaining progress,
+         *     financial history and independent access. Acquisition switches cannot stop fulfillment.
+         *     Partial refunds are outside this full-refund surface. Explicit admin review and failed-case
+         *     recovery have separate revision-checked endpoints; a new key never permits repeating
+         *     an uncertain financial operation.
+         */
+        post: operations["executeFullPaymentRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subscription-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List available offers for one subscription scope
+         * @description Return backend-approved offer revisions for the platform subscription in one enabled
+         *     currency. A disabled currency or invalid combination returns 400.
+         *     Acquisition OFF returns no new offers, without hiding existing subscriptions.
+         *     Currency/period prices are configured independently; client and CMS values
+         *     never override authoritative monetary terms. This read does not start checkout.
+         */
+        get: operations["listSubscriptionOffers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the caller's existing subscriptions
+         * @description Return only the authenticated MotifPath user's established subscriptions,
+         *     including expired subscriptions. No caller-supplied owner is accepted.
+         *     Acquisition flags and cohort removal do not hide billing state or history.
+         *     Subscription billing state is not a complete lesson access decision; permanent
+         *     purchases, completed lessons, refunds and disputes have separate grant rules.
+         */
+        get: operations["listMySubscriptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/subscriptions/{subscription_id}/cancel-renewal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop the next renewal without truncating paid access
+         * @description Durably record a caller-owned cancellation and its attributable audit evidence.
+         *     Preserve paid_until, progress and independent grants. Existing cancellation
+         *     support remains available while acquisition flags are OFF. This is not a refund.
+         *     Another user's subscription is indistinguishable from a missing one (404).
+         *     An accepted command may be pending until external billing state is reconciled;
+         *     200 alone does not claim the provider has already disabled renewal.
+         *     expected_revision prevents racing a renewal or another lifecycle command.
+         *     Process same-key retries as described by IdempotencyKey before revision checks.
+         *     If this subscription already has renewal disabled, record an applied no-op command.
+         */
+        post: operations["cancelMySubscriptionRenewal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/subscriptions/{subscription_id}/resume-renewal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn a stopped renewal back on before the paid period ends
+         * @description Undo a caller-owned cancellation while billing_status is paid and the current
+         *     paid period has not ended. Nothing is charged or credited now; the next renewal
+         *     happens at paid_until on the authoritative terms applicable then. After paid_until,
+         *     or outside the paid status, resuming is refused (409); the learner subscribes again.
+         *     If renewal is already enabled, record an applied no-op command.
+         *     Activation requires server-side action/cohort/prerequisite decisions (403 if OFF),
+         *     because it re-enables future charges. Record one durable operation with audit
+         *     evidence; 200 alone does not claim the provider has already re-enabled renewal.
+         *     expected_revision prevents racing a renewal or another lifecycle command.
+         *     Process same-key retries as described by IdempotencyKey before revision checks.
+         *     Another user's subscription is indistinguishable from a missing one (404).
+         */
+        post: operations["resumeMySubscriptionRenewal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/subscriptions/{subscription_id}/payment-method-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open the provider-hosted page to update the subscription payment method
+         * @description Create a short-lived provider-hosted session, limited to updating the payment
+         *     method of this caller-owned subscription, while billing_status is paid or
+         *     renewal_grace. Return URL and allowed actions are backend-controlled; the page
+         *     cannot change plan, price or cancellation. Returning from the page never proves
+         *     payment: a retried renewal grants only its verified billed interval, without extra
+         *     days for the grace already used. Servicing an existing subscription stays available
+         *     while acquisition flags are OFF. Expired subscriptions are refused (409).
+         *     Another user's subscription is indistinguishable from a missing one (404).
+         */
+        post: operations["createMyPaymentMethodSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me/subscriptions/{subscription_id}/schedule-annual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule monthly-to-annual billing at the next renewal
+         * @description Require a paid, automatically renewing monthly subscription owned by the caller.
+         *     target_offer_id must be a current eligible annual offer for the identical scope
+         *     and currency; stale, wrong-scope or wrong-currency offers are refused (409).
+         *     Do not charge or credit mid-period. Apply annual billing at paid_until, using
+         *     authoritative terms applicable at that renewal, not caller-provided amounts.
+         *     Scheduling an offer does not freeze its price against later approved renewal
+         *     price changes. Annual-to-monthly switching is refused (409).
+         *     Activation requires server-side action/cohort/prerequisite decisions (403 if OFF).
+         *     Record one durable operation with audit evidence; do not report external success
+         *     before reconciliation. A conflicting pending lifecycle command returns 409.
+         *     Known same-intent retries return their recorded operation before evaluating new
+         *     acquisition gates or the originally observed revision; rollback cannot lose them.
+         *     First-subscription refund history is unchanged by this operation.
+         */
+        post: operations["scheduleMyAnnualSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users": {
         parameters: {
             query?: never;
@@ -960,17 +2020,126 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the progression catalog
-         * @description Returns every progression of the progression catalog, ordered by key: its key, its
-         *     numerals one bar each (in a major key, I7 IV7 V7 being dominant sevenths), the
-         *     progressions a learner mistakes it for, and its names. A client reads it to show and
-         *     grade the progression drills' questions the same way the server does, such as a chart
-         *     picked for a progression. The catalog is reference data, the same for every user and
-         *     language, so a client may keep it for the session. Any authenticated user may list it.
+         * List the progressions
+         * @description Returns every progression, ordered by key: the catalog's and those admins created, each
+         *     with its key, mode, numerals one bar each (I7 IV7 V7 being dominant sevenths), the bars
+         *     that are borrowed, whether it is in the drills, the progressions drills offer as its
+         *     wrong answers, and its names. A client reads it to show and grade the progression drills'
+         *     questions the same way the server does, such as a chart picked for a progression, using
+         *     only the progressions in the drills, and to name the progressions a song chart is tagged
+         *     with. Only an admin sees who created a progression; otherwise it is the same for every
+         *     user and language. It changes only when an admin creates,
+         *     changes or removes a progression, so a client may keep it for the session. Any
+         *     authenticated user may list it.
          */
         get: operations["listProgressions"];
         put?: never;
+        /**
+         * Create a progression for song charts
+         * @description Creates a progression from its mode and numerals, one per bar, so an admin can tag song
+         *     chart sections with a progression the catalog doesn't have. A numeral is a root, I to VII
+         *     optionally preceded by ♭ or ♯, and a quality given by its case and suffix: upper case for
+         *     major (also 7 and maj7), lower case for minor (also 7), and lower case with °, ø7 or °7
+         *     for diminished, half-diminished 7 and diminished 7. The ASCII forms b, #, o and h are
+         *     accepted for ♭, ♯, ° and ø, and the progression keeps the symbols. A numeral outside the
+         *     mode's diatonic chords is accepted and marked borrowed. A progression has 1 to 16 bars.
+         *
+         *     The created progression is for song charts only unless in_drills is true, which also needs
+         *     skill_ids or concept_ids and passes the same checks as addProgressionToDrills; if those
+         *     checks fail, nothing is created. Its key is the mode and its numerals in ASCII, such as
+         *     major/I-bVII-IV-I, and its name is its numerals joined by –, followed by the nickname in
+         *     parentheses when one is given. Mode and numerals never change. Only admins may create a
+         *     progression.
+         */
+        post: operations["createProgression"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/progressions/{progression_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         post?: never;
+        /**
+         * Remove a progression created by mistake
+         * @description Deletes a created progression that isn't in the drills, so its mode and numerals can be
+         *     created again. Refused while the draft or the latest published revision of any song chart
+         *     tags it: the error lists those charts and sections, to untag first. Older published
+         *     revisions don't count; they keep the key, and a client shows a key no progression has as
+         *     the numerals it spells. A progression in the drills, the catalog's included, is never
+         *     removed. Untagging a section in a chart never removes a progression. Only admins may
+         *     remove a progression.
+         */
+        delete: operations["deleteProgression"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a created progression's nickname
+         * @description Replaces a created progression's nicknames, which follow its numerals in its name. An
+         *     empty object removes them. Mode, numerals and key never change. The catalog's
+         *     progressions keep their names. Only admins may change a nickname.
+         */
+        patch: operations["updateProgression"];
+        trace?: never;
+    };
+    "/progressions/{progression_id}/uses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Read which song chart sections tag a progression
+         * @description The sections of every song chart's draft and latest published revision that tag the
+         *     progression, the same ones a refused removal lists, so a client can show what to untag
+         *     without trying to remove it. Older published revisions don't count. Reading changes
+         *     nothing. Only admins may read them, since a chart's draft is listed.
+         */
+        get: operations["getProgressionUses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/progressions/{progression_id}/drills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a created progression to the drills
+         * @description Makes a chart-only progression a drill progression, practising the given skills and
+         *     concepts. It is refused, with every reason, when the progression has a single bar, which
+         *     is a chord, not a progression. Its wrong answers are the drill progressions with its bar
+         *     count and its mode that share the most chords with it, bar by bar; when those are too
+         *     few, drills make up the rest each time they ask it, by changing one of its bars. Drills
+         *     ask it in keys of its mode, and by ear only when it has 2 to 4 bars.
+         *     There is no way back: a drill progression stays in the drills. Only admins may add a
+         *     progression to the drills.
+         */
+        post: operations["addProgressionToDrills"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4413,15 +5582,17 @@ export interface components {
             };
         };
         /**
-         * @description The progressions a section plays, by their key in the progression
-         *     catalog (e.g. "I-IV-V-I"), as its author tagged them. A chart with
-         *     a tagged section is practised as a song on those progressions'
-         *     knowledge nodes, played whole; an untagged chart never is. On
-         *     input, absent means none, and a key the catalog doesn't have is
-         *     refused. The server always writes it, empty for an untagged
+         * @description The progressions a section plays, by their key (e.g. "I-IV-V-I" or
+         *     "major/I-bVII-IV-I"), as its author tagged them. A chart with a
+         *     section tagged with a drill progression is practised as a song on
+         *     that progression's knowledge nodes, played whole; an untagged chart,
+         *     or one tagged only with progressions for song charts, never is. On
+         *     input, absent means none, and a key no progression has is refused.
+         *     A published revision keeps its keys even after a progression is
+         *     removed; a client shows such a key as the numerals it spells. The server always writes it, empty for an untagged
          *     section.
          */
-        SongChartProgressionKeys: string[];
+        SongChartProgressionKeys: components["schemas"]["ProgressionKey"][];
         /** @description The fields of a song chart's draft that authors write. */
         SongChartDraftInput: {
             /** @description The song's title as shown to learners. */
@@ -4470,10 +5641,11 @@ export interface components {
              *     (each written chord moved up by the capo), each counted by its
              *     root and triad (major, minor or diminished), N.C. skipped and a
              *     chord repeated in a row counted once, against the progression's
-             *     numerals spelled in the concert key, a dominant seventh counting
-             *     as major and a repeated numeral counted once. The chords of
-             *     another section never count. With no stated major concert key,
-             *     every tag is unplayed. Any entry blocks publication.
+             *     numerals spelled in the concert key when their modes match and in
+             *     its relative key when they don't, a dominant seventh counting as
+             *     major and a repeated numeral counted once. The chords of another
+             *     section never count. With no stated concert key, every tag is
+             *     unplayed. Any entry blocks publication.
              */
             unplayed_progressions: components["schemas"]["SongChartUnplayedProgression"][];
             updated_by: components["schemas"]["UserRef"];
@@ -4715,8 +5887,7 @@ export interface components {
         SongChartUnplayedProgression: {
             /** @description The section, numbered from 0 in document order. */
             section_index: number;
-            /** @description The tagged progression, by its key in the progression catalog. */
-            progression_key: string;
+            progression_key: components["schemas"]["ProgressionKey"];
         };
         /** @description The result of importing ChordPro text into a song chart's draft. */
         SongChartChordProImport: {
@@ -7122,8 +8293,10 @@ export interface components {
             current_rung: components["schemas"]["PracticeRung"];
         };
         /**
-         * @description A common chord progression of the progression catalog, by number: one numeral per bar of
-         *     a major key, asked in whatever key a drill picks.
+         * @description A chord progression by number: one numeral per bar of a major or minor key, asked or
+         *     spelled in whatever key a drill or a chart picks. The catalog's progressions and those
+         *     admins create are listed together; in_drills tells the drill progressions apart from
+         *     those for song charts only.
          */
         Progression: {
             /**
@@ -7131,17 +8304,157 @@ export interface components {
              * @description The progression's fixed identifier.
              */
             progression_id: string;
-            /** @description The progression's key in the catalog, such as I-V-vi-IV, as item keys and answers name it. */
-            key: string;
+            key: components["schemas"]["ProgressionKey"];
+            /**
+             * @description The mode its numerals are read in.
+             * @enum {string}
+             */
+            mode: "major" | "minor";
             /**
              * @description One numeral per bar, such as I V vi IV, or I7 IV7 V7 for a dominant seventh. A
-             *     four-bar progression has four, a 12-bar form twelve.
+             *     four-bar progression has four, a 12-bar form twelve. Drills take 2 to 16.
              */
-            bars: string[];
-            /** @description The keys of the progressions a learner mistakes it for; each lists it back. */
-            confusable: string[];
+            bars: components["schemas"]["ProgressionNumeral"][];
+            /**
+             * @description The bars, numbered from 0, whose numeral is outside the mode's diatonic chords, judged
+             *     by root and triad (a seventh doesn't change it); empty when none is.
+             */
+            borrowed_bars: number[];
+            /**
+             * @description True for a drill progression: drills, practice and songs on it use it. False for a
+             *     progression for song charts only, which is never a practice subject.
+             */
+            in_drills: boolean;
+            /**
+             * @description The keys of the drill progressions drills offer as its wrong answers, closest first,
+             *     all with its bar count and mode; empty for a progression that isn't in the drills, and
+             *     possibly empty for one that is, whose wrong answers drills then make up.
+             */
+            confusable: components["schemas"]["ProgressionKey"][];
             /** @description The progression's name in each language, such as "I–V–vi–IV (pop)". */
             names: components["schemas"]["LocalizedNames"];
+            /**
+             * @description A created progression's nickname in each language, shown after its numerals in its
+             *     name; absent for one with no nickname and for the catalog's progressions.
+             */
+            nicknames?: {
+                [key: string]: string;
+            };
+            /** @description How many song charts tag it in their draft or latest published revision. */
+            song_chart_count: number;
+            /**
+             * @description The admin who created it, shown only to an admin; null for any other caller, and for
+             *     the catalog's progressions.
+             */
+            created_by: components["schemas"]["UserRef"] | null;
+            /**
+             * Format: date-time
+             * @description When it was created; null for the catalog's progressions.
+             */
+            created_at: string | null;
+        };
+        /**
+         * @description A progression's key, as item keys, answers and song chart tags name it: a catalog
+         *     progression's handle, such as I-V-vi-IV or 12-bar-blues, or a created progression's mode
+         *     and numerals in ASCII (b for ♭, # for ♯, o for °, h for ø), such as major/I-bVII-IV-I.
+         */
+        ProgressionKey: string;
+        /**
+         * @description A chord by number: a root I to VII, optionally ♭ or ♯, upper case for a major chord (7 a
+         *     dominant seventh, maj7 a major seventh), lower case for a minor chord (7 a minor
+         *     seventh), or lower case with ° for a diminished chord (ø7 half-diminished, °7 diminished
+         *     seventh).
+         */
+        ProgressionNumeral: string;
+        /** @description A progression to create. */
+        ProgressionInput: {
+            /**
+             * @description The mode its numerals are read in.
+             * @enum {string}
+             */
+            mode: "major" | "minor";
+            /**
+             * @description One numeral per bar, as ProgressionNumeral describes, where b, #, o and h may stand
+             *     for ♭, ♯, ° and ø.
+             */
+            bars: string[];
+            /** @description An optional nickname per language, keyed by Language.code. */
+            nicknames?: {
+                [key: string]: string;
+            };
+            /**
+             * @description True to add it to the drills as it is created.
+             * @default false
+             */
+            in_drills: boolean;
+            /** @description The skills it practises in the drills; used only when in_drills is true. */
+            skill_ids?: string[];
+            /** @description The concepts it practises in the drills; used only when in_drills is true. */
+            concept_ids?: string[];
+        };
+        /** @description A created progression's new nicknames. */
+        ProgressionNicknamesInput: {
+            /** @description The nickname per language, keyed by Language.code; empty to remove them. */
+            nicknames: {
+                [key: string]: string;
+            };
+        };
+        /** @description What a progression practises once it is in the drills; at least one skill or concept. */
+        ProgressionDrillsInput: {
+            /** @description The skills it practises. */
+            skill_ids?: string[];
+            /** @description The concepts it practises. */
+            concept_ids?: string[];
+        };
+        /** @description Returned when a progression with the same mode and numerals already exists. */
+        ProgressionExistsError: {
+            /** @description Human-readable reason for the refusal. */
+            message: string;
+            progression: components["schemas"]["Progression"];
+        };
+        /** @description Returned when a progression can't be added to the drills, with every reason. */
+        ProgressionNotAddableError: {
+            /** @description Human-readable summary of the refusal. */
+            message: string;
+            /**
+             * @description already_in_drills: it is a drill progression already. unsupported_bar_count: it has a
+             *     single bar. unsupported_mode and no_other_drill_progression are no longer returned:
+             *     drills ask both modes, and make up wrong answers when too few drill progressions fit.
+             */
+            reasons: ("already_in_drills" | "unsupported_bar_count" | "unsupported_mode" | "no_other_drill_progression")[];
+        };
+        /** @description Returned when a progression can't be removed. */
+        ProgressionInUseError: {
+            /** @description Human-readable summary of the refusal. */
+            message: string;
+            /**
+             * @description in_use: a song chart's draft or latest published revision tags it (see uses).
+             *     in_drills: it is a drill progression, which is never removed.
+             * @enum {string}
+             */
+            reason: "in_use" | "in_drills";
+            /** @description The sections that tag it; empty unless reason is in_use. */
+            uses: components["schemas"]["ProgressionUse"][];
+        };
+        /** @description A song chart section tagged with a progression. */
+        ProgressionUse: {
+            /**
+             * Format: uuid
+             * @description The chart.
+             */
+            song_chart_id: string;
+            /** @description The chart's title. */
+            title: string;
+            /**
+             * @description draft: the chart's draft tags it. published: its latest published revision does. A
+             *     section tagged in both is listed once for each.
+             * @enum {string}
+             */
+            revision: "draft" | "published";
+            /** @description The section, numbered from 0 in document order. */
+            section_index: number;
+            /** @description The section's label as the chart shows it, such as "Verse 1"; null for an unlabelled section. */
+            section_label: string | null;
         };
         /**
          * @description One item of a composed session, with what the client needs to present it. Exactly
@@ -7801,6 +9114,1260 @@ export interface components {
             /** @description Human-readable description of what was not found. */
             message: string;
         };
+        /** @description Exact original-currency money; no floating-point amounts or cross-currency netting. */
+        Money: {
+            /** @description Nonnegative amount in currency minor units. */
+            amount_minor: number;
+            /** @description Configured enabled ISO 4217 currency; a code does not enable a market. */
+            currency: string;
+        };
+        /** @description Paid price; free access is a separate grant, not a zero-value payment. */
+        PositiveMoney: components["schemas"]["Money"] & {
+            /** @description Strictly positive price. */
+            amount_minor?: number;
+        };
+        /** @description Immutable platform commercial configuration; invalid or missing values disable new sales. */
+        Configuration: {
+            /**
+             * Format: uuid
+             * @description Server-assigned immutable revision identity.
+             */
+            readonly configuration_id: string;
+            /** @description Explicitly approved merchant currencies; no implicit USD. */
+            enabled_currencies: "BRL"[];
+            /** @description Strictly positive teacher price bound. */
+            teacher_minimum: components["schemas"]["PositiveMoney"];
+            /** @description Strictly positive teacher price bound. */
+            teacher_maximum: components["schemas"]["PositiveMoney"];
+            /** @description Platform share of gross before separately recorded fees; denominator 10000. */
+            commission_basis_points: number;
+            /** @description Configured teacher share of actual provider sale fees; refund processing fees remain MotifPath cost. */
+            teacher_fee_basis_points: number;
+            /** @description Admin configuration-change reason. */
+            reason: string;
+            /** @description Monotonic environment configuration revision. */
+            revision: number;
+        };
+        /** @description Authoritative commercial state or durable processing is temporarily unavailable. */
+        CommercialUnavailable: {
+            /** @description Explanation safe to show to the caller, without provider secrets or other users' data. */
+            message: string;
+        };
+        /** @description Immutable successful payment facts with append-only financial corrections. */
+        Payment: {
+            /**
+             * Format: uuid
+             * @description Internal payment identity distinct from checkout/session.
+             */
+            payment_id: string;
+            /**
+             * Format: uuid
+             * @description Backend-correlated customer.
+             */
+            holder_id: string;
+            /** @description Confirmed captured amount in original currency. */
+            amount: components["schemas"]["PositiveMoney"];
+            /** @description Safe verified account reference. */
+            provider_account_id: string;
+            /** @description Immutable verified payment fact; uniqueness also includes trusted environment/account. */
+            provider_payment_id: string;
+            /**
+             * Format: date-time
+             * @description Authoritative payment-success time.
+             */
+            paid_at: string;
+            /**
+             * Format: date-time
+             * @description First usable access availability; null before fulfillment, never guessed from receipt.
+             */
+            access_available_at: string | null;
+            /**
+             * Format: uuid
+             * @description Accepted immutable offer.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Original payment verification evidence.
+             */
+            evidence_entry_id: string;
+        };
+        /** @description Caller-owned verified successful payments, ordered by payment identity; available during rollback. */
+        PaymentPage: {
+            /** @description Only successful payments owned by the authenticated caller. */
+            items: components["schemas"]["Payment"][];
+            /** @description Total matching payments. */
+            total: number;
+            /** @description Requested page size. */
+            limit: number;
+            /** @description Skipped records. */
+            offset: number;
+        };
+        /** @description Existing core content identity; editorial document IDs are never authority. */
+        ContentRef: {
+            /**
+             * @description Existing content family.
+             * @enum {string}
+             */
+            kind: "course" | "path" | "content_node" | "exercise";
+            /**
+             * Format: uuid
+             * @description Stable core content identifier.
+             */
+            content_id: string;
+        };
+        /** @description The item an author copied, with its ownership as it stood when the copy was made. */
+        CopiedFrom: {
+            /** @description Source content. */
+            content: components["schemas"]["ContentRef"];
+            /**
+             * @description Rights-holder category of the source when it was copied.
+             * @enum {string}
+             */
+            owner_kind: "platform" | "teacher" | "unresolved";
+            /**
+             * Format: uuid
+             * @description Rights holder of the source when it was copied; null when it was unresolved.
+             */
+            owner_id: string | null;
+            /** @description Source ownership revision when it was copied. */
+            ownership_revision: number;
+        };
+        /** @description Authoritative provenance retained across revisions and learner copies. */
+        Ownership: {
+            /** @description Attributed content. */
+            content: components["schemas"]["ContentRef"];
+            /**
+             * @description Commercial rights holder.
+             * @enum {string}
+             */
+            owner_kind: "platform" | "teacher" | "unresolved";
+            /**
+             * Format: uuid
+             * @description Core identity of platform steward or owning teacher.
+             */
+            owner_id: string | null;
+            /**
+             * Format: uuid
+             * @description Known original creator; null requires explicit reviewed migration evidence.
+             */
+            creator_id: string | null;
+            /**
+             * @description Attribution origin.
+             * @enum {string}
+             */
+            source: "native" | "imported" | "reviewed_legacy";
+            /**
+             * Format: uuid
+             * @description Attributable ownership evidence; edits never erase prior ownership.
+             */
+            evidence_entry_id: string;
+            /** @description Monotonic rights-holder revision, starting at 1 and increased by each applied correction; separate from template edits, sale-state revisions or offer prices. */
+            revision: number;
+            /** @description Source this content was created from by an author, or null when it was not created from another item. Attribution only; it grants no right to the source. */
+            copied_from: components["schemas"]["CopiedFrom"] | null;
+        } & unknown;
+        /** @description Exact transitive commercial dependency and its validated redistribution permission. */
+        Dependency: {
+            /** @description Referenced core resource. */
+            content: components["schemas"]["ContentRef"];
+            /** @description Immutable referenced content digest. */
+            content_sha256: string;
+            /**
+             * Format: uuid
+             * @description Referenced immutable commercial manifest.
+             */
+            release_id: string;
+            /**
+             * @description Reviewed permission; free display alone is not free redistribution. platform_premium is MotifPath premium content embedded in a paid teacher path, covered by the platform commission on each sale without a separate license.
+             * @enum {string}
+             */
+            permission: "own" | "free_reuse" | "platform_premium";
+            /**
+             * Format: uuid
+             * @description Validated ownership/reuse evidence.
+             */
+            evidence_entry_id: string;
+        };
+        /** @description Immutable commercial manifest, not a new path publishing or learner-update process. */
+        Release: {
+            /**
+             * Format: uuid
+             * @description Server-issued immutable commercial release identifier.
+             */
+            release_id: string;
+            /** @description Stable sale scope. */
+            content: components["schemas"]["ContentRef"];
+            /** @description Monotonic manifest revision for this content. */
+            revision: number;
+            /** @description Digest of canonical immutable manifest including dependency and rights references. */
+            manifest_sha256: string;
+            /** @description Transitive validated commercial dependency releases. */
+            dependency_release_ids: string[];
+            /**
+             * Format: date-time
+             * @description Trusted manifest commit time.
+             */
+            created_at: string;
+            /**
+             * Format: uuid
+             * @description Publish/validation audit evidence.
+             */
+            evidence_entry_id: string;
+            /** @description Immutable reviewed ownership snapshot at commercial publication. */
+            ownership: components["schemas"]["Ownership"];
+            /** @description Immutable digest of the referenced content state. */
+            content_sha256: string;
+            /** @description Existing core version reference where one exists; null for live path content, whose digest is captured. */
+            core_version_ref: string | null;
+            /** @description Complete validated dependency records, including transitive rights evidence. */
+            dependencies: components["schemas"]["Dependency"][];
+        };
+        /** @description Admin request to execute an eligible full refund; authoritative payment terms determine its amount. */
+        ExecuteRefundRequest: {
+            /** @description Request revision observed by the admin before issuing this command. */
+            expected_revision: number;
+            /** @description Admin handling reason durably recorded with the authenticated operator and operation identity. */
+            reason: string;
+        };
+        /** @description One full-refund case per payment, preserving audit history and independent grants throughout processing. */
+        RefundRequest: {
+            /**
+             * Format: uuid
+             * @description Stable full-refund case identifier, unique per successful payment.
+             */
+            refund_request_id: string;
+            /**
+             * Format: uuid
+             * @description Authoritative MotifPath payment being refunded, never a caller-supplied provider transaction reference.
+             */
+            payment_id: string;
+            /** @description Increasing case revision for optimistic concurrency control. */
+            revision: number;
+            /**
+             * Format: uuid
+             * @description Logical operation identity that first created this case; subsequent attempts do not replace it.
+             */
+            request_operation_id: string;
+            /**
+             * Format: date-time
+             * @description Original durable request-receipt time used for commercial-window evaluation, not admin handling time.
+             */
+            requested_at: string;
+            /** @description Original customer explanation, retained unchanged when duplicate request attempts arrive. */
+            reason: string;
+            /** @description Full successful payment amount in currency minor units, with no fee deduction; MotifPath absorbs processing fees. */
+            amount_minor: number;
+            /** @description Original payment currency; no conversion is requested by this refund surface. */
+            currency: string;
+            /**
+             * @description Commercial seven-day eligibility at requested_at: only first platform subscriptions per
+             *     learner and paid course/path purchases (teacher or MotifPath) qualify. Start only after payment
+             *     succeeds and access is available. Renewals/rejoining never reset eligibility.
+             *     Other cases await audited admin review. review_approved requires a documented
+             *     approved policy/statutory basis and current case revision. Approval does not
+             *     assert financial success. Window ends inclusively 168 hours after the later
+             *     of verified payment success and first access availability, using UTC.
+             * @enum {string}
+             */
+            eligibility: "commercially_eligible" | "requires_review" | "review_approved";
+            /**
+             * @description requested does not initiate a refund. processing includes unknown provider outcomes;
+             *     failed requires a reconciled definitive failure. succeeded requires authoritative
+             *     refund confirmation and immediate removal only of this payment's access grant,
+             *     while retaining progress, financial records and independent valid grants.
+             * @enum {string}
+             */
+            status: "requested" | "processing" | "succeeded" | "failed";
+            /**
+             * Format: uuid
+             * @description Original durable execution identity, present once execution starts and never replaced; retry attempt identities append in audit history.
+             */
+            execution_operation_id?: string;
+            /** @description Latest explicit admin review, present after review; prior decisions remain in audit history. */
+            review?: {
+                /**
+                 * @description Audited handling decision; approval is not financial refund completion.
+                 * @enum {string}
+                 */
+                decision: "approve_full_refund" | "decline";
+                /**
+                 * Format: date-time
+                 * @description Trusted review instant; never replaces original requested_at for eligibility.
+                 */
+                reviewed_at: string;
+                /** @description Customer-safe review explanation without confidential evidence or other users' data. */
+                reason: string;
+                /**
+                 * Format: uuid
+                 * @description Immutable evidence of the handling decision and its authenticated operator.
+                 */
+                evidence_entry_id: string;
+            };
+        } & (unknown & unknown);
+        /** @description Admin-only correction of provenance; never silently transfer an existing commercial obligation. */
+        OwnershipCommand: {
+            /** @description Observed ownership revision (Ownership.revision), not the sale-state revision. */
+            expected_revision: number;
+            /**
+             * @description Verified rights-holder category.
+             * @enum {string}
+             */
+            owner_kind: "platform" | "teacher";
+            /**
+             * Format: uuid
+             * @description Reviewed core rights holder.
+             */
+            owner_id: string;
+            /** @description Rights evidence and correction justification. */
+            reason: string;
+        };
+        /** @description Durable receipt for an admin or owner command; pending is not external success. */
+        Command: {
+            /**
+             * Format: uuid
+             * @description Durable scoped logical identity.
+             */
+            operation_id: string;
+            /**
+             * Format: uuid
+             * @description Stable target identity.
+             */
+            resource_id: string;
+            /**
+             * @description Unknown external effects remain pending.
+             * @enum {string}
+             */
+            status: "pending" | "applied" | "failed";
+            /**
+             * Format: uuid
+             * @description Attributable attempt evidence.
+             */
+            evidence_entry_id: string;
+        };
+        /** @description Validate and freeze the current dependency manifest without updating existing learner copies. */
+        PublishRelease: {
+            /** @description Observed commercial revision. */
+            expected_revision: number;
+            /** @description Attributable commercial manifest-publication reason. */
+            reason: string;
+        };
+        /** @description Commercial subscription coverage. The only scope is the platform subscription, which covers MotifPath-owned content and never teacher-priced content. */
+        SubscriptionScope: {
+            /**
+             * @description Platform-wide coverage of MotifPath-owned courses, paths, premium exercises and premium tools.
+             * @enum {string}
+             */
+            kind: "platform";
+        };
+        /** @description Immutable revision of a backend-approved subscription price; editorial metadata cannot override it. */
+        SubscriptionOffer: {
+            /**
+             * Format: uuid
+             * @description Identifier of this immutable offer revision; changing its price creates a new revision identifier.
+             */
+            offer_id: string;
+            /** @description Coverage purchased by this offer. */
+            scope: components["schemas"]["SubscriptionScope"];
+            /**
+             * @description Automatically renewing paid period; the annual discount is configured independently of the monthly price.
+             * @enum {string}
+             */
+            billing_period: "monthly" | "annual";
+            /** @description Full charge for one period in the currency's minor units, never a floating-point amount. */
+            amount_minor: number;
+            /** @description Enabled ISO 4217 currency. The code shape does not enable a currency or approve USD support. */
+            currency: string;
+        };
+        /** @description Admin-only immutable subscription offer creation; existing subscription commands remain unchanged. */
+        SubscriptionOfferConfig: {
+            /** @description Platform subscription offer scope. */
+            scope: components["schemas"]["SubscriptionScope"];
+            /**
+             * @description Recurring billing interval.
+             * @enum {string}
+             */
+            billing_period: "monthly" | "annual";
+            /** @description Full interval price; annual must be discounted against twelve current monthly periods for the same scope/currency. */
+            price: components["schemas"]["PositiveMoney"];
+            /**
+             * Format: uuid
+             * @description Current approved commercial configuration.
+             */
+            configuration_id: string;
+            /** @description Price-change justification. Applies to existing subscriptions only at next renewal. */
+            reason: string;
+            /**
+             * Format: uuid
+             * @description Current promoted offer ID observed for this exact scope, period and currency; null only if none exists. Compare and promote atomically; mismatches return conflict.
+             */
+            expected_offer_id: string | null;
+        };
+        /** @description Audited admin eligibility review; approval never proves an external refund succeeded. */
+        ReviewedRefund: {
+            /** @description Observed refund-case revision. */
+            expected_revision: number;
+            /**
+             * @description Explicit review disposition.
+             * @enum {string}
+             */
+            decision: "approve_full_refund" | "decline";
+            /** @description Applicable approved policy or documented statutory determination. */
+            policy_basis: string;
+            /** @description Attributable review evidence; do not place sensitive documents in public fields. */
+            reason: string;
+        };
+        /** @description Attributable settlement obligation and provider movement evidence; transfer and bank payout are distinct. */
+        Settlement: {
+            /**
+             * Format: uuid
+             * @description Internal obligation identity.
+             */
+            settlement_id: string;
+            /**
+             * Format: uuid
+             * @description Beneficiary core teacher identity.
+             */
+            teacher_id: string;
+            /** @description Currency-specific amount after approved commission/fees/recovery. */
+            amount: components["schemas"]["Money"];
+            /**
+             * @description Unknown external transfer/payout outcomes remain pending.
+             * @enum {string}
+             */
+            status: "pending" | "transferred" | "paid_out" | "failed";
+            /** @description Exactly identified source sale payments; each allocated earning is reserved once. */
+            sale_payment_ids: string[];
+            /**
+             * Format: uuid
+             * @description Latest obligation evidence.
+             */
+            evidence_entry_id: string;
+            /**
+             * Format: date-time
+             * @description When the obligation was created; the period filter uses this time (MOT-130).
+             */
+            created_at: string;
+        };
+        /** @description Teacher-owned settlement history ordered by stable settlement identity. */
+        SettlementPage: {
+            /** @description Caller settlement records. */
+            items: components["schemas"]["Settlement"][];
+            /** @description Matching records. */
+            total: number;
+            /** @description Requested page size. */
+            limit: number;
+            /** @description Skipped records. */
+            offset: number;
+        };
+        /** @description One reason core would refuse a paid sale state or new sale now (MOT-130). Never offers a license or purchase as the resolution (ADR-071). */
+        SaleBlocker: {
+            /**
+             * @description unpublished = no admin-published version learners can get; payout_account_not_verified = the owning teacher's payout account is not verified; unresolved_ownership = no reviewed rights holder; dependency_rights = a dependency the owner may not resell; dependency_missing and dependency_cycle = invalid dependency graph; configuration_missing = no complete selling configuration; new_sales_paused = the applicable rollout flag denies new sale actions.
+             * @enum {string}
+             */
+            code: "unpublished" | "payout_account_not_verified" | "unresolved_ownership" | "dependency_rights" | "dependency_missing" | "dependency_cycle" | "configuration_missing" | "new_sales_paused";
+            /** @description The dependency concerned, or null when the blocker is about the item or the seller. */
+            content: components["schemas"]["ContentRef"] | null;
+        };
+        /** @description Authoritative commercial state independent of editorial availability and existing copy lifecycles. */
+        CommercialContent: {
+            /** @description Reviewed ownership/provenance. */
+            ownership: components["schemas"]["Ownership"];
+            /** @description Optimistic commercial state revision. */
+            revision: number;
+            /**
+             * @description New-acquisition state; withdrawal never deletes prior grants.
+             * @enum {string}
+             */
+            sale_state: "free" | "paid" | "withdrawn";
+            /** @description Latest validated manifest, or null before first commercial validation. */
+            release: components["schemas"]["Release"] | null;
+            /** @description Current reasons a paid change or new sale would be refused, evaluated by core for the caller; empty when nothing blocks. A UI hint only; the command re-evaluates them. */
+            sale_blockers: components["schemas"]["SaleBlocker"][];
+        } & unknown;
+        /** @description Owner proposes a commercial change; core enforces rights, prices and rollout. */
+        ChangeSale: {
+            /** @description Observed commercial revision. */
+            expected_revision: number;
+            /**
+             * @description Target state; withdrawal affects only new acquisition.
+             * @enum {string}
+             */
+            sale_state: "free" | "paid" | "withdrawn";
+            /** @description Attributable business reason. */
+            reason: string;
+        };
+        /** @description Authorized owner chooses terms within approved configuration; backend owns resulting immutable offer. Teacher prices stay within teacher bounds; an administrator sets the price of a MotifPath-owned item, which no teacher bound limits. */
+        CreateOffer: {
+            /** @description Observed commercial content revision. */
+            expected_revision: number;
+            /**
+             * @description Authorized offer family, matching the content kind.
+             * @enum {string}
+             */
+            kind: "path_purchase" | "course_purchase";
+            /** @description Strictly positive configured offer price. */
+            price: components["schemas"]["PositiveMoney"];
+            /** @description Attributable price-change reason. */
+            reason: string;
+        };
+        /** @description Immutable backend-approved one-time offer revision; configurable terms never come from checkout input. A teacher sells an owned course or path; MotifPath sells an owned course or path it chose to offer. */
+        Offer: {
+            /**
+             * Format: uuid
+             * @description Immutable offer revision identity.
+             */
+            offer_id: string;
+            /**
+             * @description One-time commercial product family; its content kind matches.
+             * @enum {string}
+             */
+            kind: "path_purchase" | "course_purchase";
+            /** @description The one course or path this purchase covers. */
+            content: components["schemas"]["ContentRef"];
+            /**
+             * Format: uuid
+             * @description Fully validated sale manifest; a buyer purchase requires validated redistribution rights.
+             */
+            release_id: string;
+            /** @description Strictly positive configured offer price. */
+            price: components["schemas"]["PositiveMoney"];
+            /** @description Approved immutable pricing/commission configuration. */
+            configuration_revision: string;
+            /**
+             * @description Trusted rights holder that sells the item. A platform sale carries no commission, teacher earnings or settlement.
+             * @enum {string}
+             */
+            seller_kind: "platform" | "teacher";
+            /**
+             * Format: uuid
+             * @description The owning teacher; null when MotifPath sells its own item.
+             */
+            seller_id: string | null;
+        } & (unknown & unknown & unknown);
+        /** @description Enabled eligible one-time offers; no offers when acquisition or valid configuration is absent. */
+        OfferList: {
+            /** @description Eligible revisions for the requested product and content. */
+            items: components["schemas"]["Offer"][];
+        };
+        /** @description One acquisition intent; amounts, owner, seller and return URL are backend-controlled. */
+        CheckoutRequest: {
+            /**
+             * Format: uuid
+             * @description Current eligible immutable offer revision.
+             */
+            offer_id: string;
+        };
+        /** @description One-time acquisition, not proof of access; server-managed Stripe session. */
+        Checkout: {
+            /**
+             * Format: uuid
+             * @description Stable internal checkout identity.
+             */
+            checkout_id: string;
+            /**
+             * Format: uuid
+             * @description Durable scoped command identity.
+             */
+            operation_id: string;
+            /** @description Accepted immutable commercial terms. */
+            offer: components["schemas"]["Offer"];
+            /**
+             * @description Unknown external outcomes remain pending until reconciliation.
+             * @enum {string}
+             */
+            status: "pending" | "ready" | "paid" | "expired" | "failed";
+            /**
+             * @description Verified payment and business uniqueness precede applied fulfillment.
+             * @enum {string}
+             */
+            fulfillment_status: "not_started" | "pending" | "applied";
+            /**
+             * Format: uri
+             * @description Verified HTTPS Stripe destination, only while ready.
+             */
+            checkout_url?: string;
+            /**
+             * Format: date-time
+             * @description Verified Stripe session expiry, only while ready.
+             */
+            expires_at?: string;
+        } & (unknown & unknown);
+        /** @description Permanent course or path acquisition independent of learner/teacher subscription; refunded payment rights end separately. A later platform subscription, or its end, never changes it. */
+        Purchase: {
+            /**
+             * Format: uuid
+             * @description Stable purchase identity.
+             */
+            purchase_id: string;
+            /**
+             * Format: uuid
+             * @description Buyer identity.
+             */
+            holder_id: string;
+            /** @description Purchased template scope. */
+            content: components["schemas"]["ContentRef"] & {
+                /**
+                 * @description A purchase covers one course or path.
+                 * @enum {unknown}
+                 */
+                kind?: "course" | "path";
+            };
+            /**
+             * Format: uuid
+             * @description Immutable accepted sale manifest.
+             */
+            release_id: string;
+            /**
+             * Format: uuid
+             * @description Successful original payment.
+             */
+            payment_id: string;
+            /**
+             * Format: uuid
+             * @description Independent permanent grant.
+             */
+            grant_id: string;
+            /**
+             * @description Payment-linked lifecycle, never delete the purchase.
+             * @enum {string}
+             */
+            status: "active" | "refunded" | "chargeback_lost";
+            /**
+             * Format: uuid
+             * @description Latest evidence; retained learner copy follows existing update rules.
+             */
+            evidence_entry_id: string;
+        };
+        /** @description Caller-owned acquisitions, including ended records, ordered by identity. */
+        HoldingsPage: {
+            /** @description Only caller-owned holdings. */
+            items: components["schemas"]["Purchase"][];
+            /** @description Total caller-owned records. */
+            total: number;
+            /** @description Requested page size. */
+            limit: number;
+            /** @description Skipped caller-owned records. */
+            offset: number;
+        };
+        /** @description Teacher balance per currency; no cross-currency conversion or voluntary reserve. */
+        Balance: {
+            /**
+             * Format: uuid
+             * @description Authenticated teacher identity.
+             */
+            teacher_id: string;
+            /** @description Original accounting currency. */
+            currency: string;
+            /** @description Settled earnings available after approved recovery offsets. */
+            available_minor: number;
+            /** @description Earned but unsettled amount. */
+            pending_minor: number;
+            /** @description Unrecovered prior teacher earnings to offset against future earnings. */
+            recovery_due_minor: number;
+            /**
+             * Format: date-time
+             * @description Authoritative reconciliation instant.
+             */
+            as_of: string;
+        };
+        /** @description Caller-only teacher balances. */
+        BalanceList: {
+            /** @description One row per currency. */
+            items: components["schemas"]["Balance"][];
+        };
+        /** @description The current selling terms a teacher prices against (MOT-130). Derived from the promoted configuration without its reason, identity or history. */
+        TeacherSellingTerms: {
+            /** @description Promoted configuration revision these terms come from. */
+            configuration_revision: number;
+            /** @description Enabled selling currency. */
+            currency: string;
+            /** @description Lowest teacher price. */
+            teacher_minimum: components["schemas"]["PositiveMoney"];
+            /** @description Highest teacher price. */
+            teacher_maximum: components["schemas"]["PositiveMoney"];
+            /** @description Platform commission on each sale; it also covers embedded MotifPath premium exercises. */
+            commission_basis_points: number;
+            /** @description Teacher share of actual provider sale fees; the exact fee is known only per sale. */
+            teacher_fee_basis_points: number;
+        };
+        /** @description Recovery of one refunded sale's earnings, in the earnings currency (MOT-130). Recovery only offsets future earnings and never exceeds the original earnings; the teacher never pays MotifPath back directly. */
+        SaleRecovery: {
+            /**
+             * @description nothing_due = refunded before the earnings were transferred, so they were cancelled and due_minor is 0; outstanding = recovered_minor is below due_minor; recovered = recovered_minor equals due_minor.
+             * @enum {string}
+             */
+            status: "nothing_due" | "outstanding" | "recovered";
+            /** @description Transferred earnings to take back, at most the original earnings. */
+            due_minor: number;
+            /** @description Amount already deducted from later settlements, at most due_minor. */
+            recovered_minor: number;
+            /** @description Later settlements that deducted part of this recovery, oldest first. */
+            settlement_ids: string[];
+        };
+        /** @description One sale of the caller's own course or path (MOT-130). Never identifies the buyer or their payment method. */
+        TeacherSale: {
+            /**
+             * Format: uuid
+             * @description Original sale payment, as referenced by settlements.
+             */
+            sale_payment_id: string;
+            /** @description The course or path sold. */
+            content: components["schemas"]["ContentRef"];
+            /**
+             * Format: date-time
+             * @description Verified payment time.
+             */
+            sold_at: string;
+            /** @description Accepted offer price the buyer paid. */
+            price: components["schemas"]["PositiveMoney"];
+            /** @description Teacher earnings after commission and the allocated fee share, as originally posted. */
+            earnings: components["schemas"]["Money"];
+            /**
+             * @description pending = earned, not yet available; available = settled by the provider and payable; transferred = included in a settlement; refunded = fully refunded, with recovery shown on the balance when already paid.
+             * @enum {string}
+             */
+            status: "pending" | "available" | "transferred" | "refunded";
+            /** @description Time the full refund succeeded; required when refunded. */
+            refunded_at: string | null;
+            /** @description Settlement that included these earnings, if any. */
+            settlement_id: string | null;
+            /** @description How the refunded earnings are taken back; required when refunded, null otherwise. */
+            recovery: components["schemas"]["SaleRecovery"] | null;
+        } & unknown;
+        /** @description Totals of the caller's sales sold in the requested period, in one currency (MOT-130). */
+        TeacherSalesSummary: {
+            /** @description Original accounting currency. */
+            currency: string;
+            /** @description Sales sold in the period, including those later refunded. */
+            sales_count: number;
+            /** @description Sales sold in the period that were later fully refunded. */
+            refunded_count: number;
+            /** @description Posted earnings of the period's sales that were not refunded. */
+            earned_minor: number;
+        };
+        /** @description Caller's own sales in the requested period, newest first. */
+        TeacherSalePage: {
+            /** @description Sales. */
+            items: components["schemas"]["TeacherSale"][];
+            /** @description Matching records. */
+            total: number;
+            /** @description Requested page size. */
+            limit: number;
+            /** @description Skipped records. */
+            offset: number;
+            /** @description Totals for every sale in the requested period, not just this page; one row per currency. */
+            summary: components["schemas"]["TeacherSalesSummary"][];
+        };
+        /** @description The caller's payout account readiness (MOT-130). No bank details, identity documents or provider identifiers. */
+        PayoutAccount: {
+            /**
+             * @description not_started = never onboarded; checking = submitted, provider not yet verified; verified = transfers and new sales allowed; action_required = the provider needs more from the teacher. Unknown provider outcomes stay checking.
+             * @enum {string}
+             */
+            status: "not_started" | "checking" | "verified" | "action_required";
+            /** @description False when teacher_settlement denies new onboarding for the caller. */
+            onboarding_available: boolean;
+            /**
+             * Format: date-time
+             * @description Last reconciled provider state.
+             */
+            updated_at: string;
+        };
+        /** @description Short-lived link to provider-hosted onboarding; return URLs are configured server-side. */
+        PayoutOnboardingLink: {
+            /**
+             * Format: uri
+             * @description Provider-hosted onboarding page.
+             */
+            url: string;
+            /**
+             * Format: date-time
+             * @description When the link stops working.
+             */
+            expires_at: string;
+        };
+        /** @description Short-lived single-use link to the provider-hosted payout dashboard, where the teacher manages bank details and sees bank payouts (MOT-130). */
+        PayoutDashboardLink: {
+            /**
+             * Format: uri
+             * @description Provider-hosted dashboard login page.
+             */
+            url: string;
+            /**
+             * Format: date-time
+             * @description When the link stops working.
+             */
+            expires_at: string;
+        };
+        /** @description Immutable platform commercial configuration; invalid or missing values disable new sales. */
+        ConfigurationInput: {
+            /** @description Explicitly approved merchant currencies; no implicit USD. */
+            enabled_currencies: "BRL"[];
+            /** @description Strictly positive teacher price bound. */
+            teacher_minimum: components["schemas"]["PositiveMoney"];
+            /** @description Strictly positive teacher price bound. */
+            teacher_maximum: components["schemas"]["PositiveMoney"];
+            /** @description Platform share of gross before separately recorded fees; denominator 10000. */
+            commission_basis_points: number;
+            /** @description Configured teacher share of actual provider sale fees; refund processing fees remain MotifPath cost. */
+            teacher_fee_basis_points: number;
+            /** @description Admin configuration-change reason. */
+            reason: string;
+            /** @description Current configuration revision; zero only before first configuration. */
+            expected_revision: number;
+        };
+        /** @description Restricted CMS notification hint; never authoritative commercial state. */
+        SyncHint: {
+            /** @description CMS document identity mapped to a registered core content identity. */
+            source_document_id: string;
+            /**
+             * Format: uuid
+             * @description Adapter-generated durable notification identity.
+             */
+            event_id: string;
+            /**
+             * @description Editorial change hint only.
+             * @enum {string}
+             */
+            event_kind: "changed" | "published" | "withdrawn" | "deleted";
+            /**
+             * Format: date-time
+             * @description Untrusted source time, retained as evidence rather than ordering authority.
+             */
+            occurred_at: string;
+        };
+        /** @description Durable hint receipt; does not assert synchronized rights or grant access. */
+        SyncReceipt: {
+            /**
+             * Format: uuid
+             * @description Internal environment/source/event receipt identity.
+             */
+            receipt_id: string;
+        };
+        /** @description Current commercial evaluation only; never a bearer capability or full learning authorization. */
+        CommercialAccessDecision: {
+            /**
+             * Format: uuid
+             * @description Server-issued unique evaluation identity linked to attributable evidence and the trusted learner.
+             */
+            decision_id: string;
+            /**
+             * Format: uuid
+             * @description Caller-owned copy used to resolve authoritative commercial coverage.
+             */
+            student_path_id: string;
+            /**
+             * Format: uuid
+             * @description Lesson member of that copy evaluated for commercial access.
+             */
+            content_node_id: string;
+            /**
+             * Format: date-time
+             * @description Trusted server instant of evaluation, not an authorization expiry or client-selected time.
+             */
+            evaluated_at: string;
+            /** @description Immutable revision of the approved policy applied to this evaluation. */
+            policy_revision: string;
+            /**
+             * @description Whether the commercial boundary permits the lesson; learning prerequisites are separate.
+             * @enum {string}
+             */
+            status: "allowed" | "blocked";
+            /** @description All established applicable access bases, or no_valid_grant when every applicable basis is absent. */
+            reasons: ("free_content" | "paid_subscription" | "renewal_grace" | "permanent_purchase" | "completed_lesson_retention" | "no_valid_grant")[];
+        } & unknown;
+        /**
+         * @description Allowlisted commercial fields for the resource/action, including relevant version and
+         *     offer references. Null means no authoritative state was available (for example a denied
+         *     attempt before resource resolution), not a guessed empty state. Before/after evidence
+         *     must distinguish an unchanged attempt from an applied change. Never include secrets,
+         *     credentials, payment instrument data, raw provider envelopes or unrelated personal data.
+         *     Resource/action allowlists cover only commercial provenance/owner, sale/release/offer/config
+         *     references, grant scope/source/status/validity, subscription billing/renewal, safe payment/refund
+         *     facts and settlement allocations/movements. Unknown fields require
+         *     schema review rather than blind serialization.
+         */
+        CommercialState: {
+            [key: string]: unknown;
+        } | null;
+        AuditEntry: {
+            /**
+             * Format: uuid
+             * @description Globally unique server-assigned identity of this immutable evidence entry.
+             */
+            audit_entry_id: string;
+            /**
+             * Format: uuid
+             * @description Logical operation UUID qualified by environment, trusted actor, action and resource.
+             */
+            operation_id: string;
+            /**
+             * Format: uuid
+             * @description Server-assigned attempt identity; retries have distinct attempts within one operation.
+             */
+            attempt_id: string;
+            /**
+             * @description Trusted initiating identity category, never taken from unverified caller metadata.
+             * @enum {string}
+             */
+            actor_kind: "user" | "service" | "provider";
+            /** @description Authenticated user or verified service/integration identity for this operation. */
+            actor_id: string;
+            /** @description Trusted deployment identity separating financial operation namespaces. */
+            environment: string;
+            /**
+             * Format: date-time
+             * @description Time of the evidenced action; does not determine traversal order.
+             */
+            occurred_at: string;
+            /**
+             * Format: date-time
+             * @description Time this evidence was durably appended.
+             */
+            recorded_at: string;
+            /** @description Stable domain action, such as content.price_changed or subscription.refunded. */
+            action: string;
+            /** @description Stable category of the affected business resource. */
+            resource_kind: string;
+            /** @description Stable identity of the affected business resource. */
+            resource_id: string;
+            /** @description Sanitized business reason, refusal cause or automated trigger. */
+            reason: string;
+            /**
+             * @description Evidenced attempt outcome; uncertain never implies external failure or success.
+             * @enum {string}
+             */
+            outcome: "applied" | "failed" | "denied" | "duplicate" | "uncertain";
+            before_state: components["schemas"]["CommercialState"];
+            after_state: components["schemas"]["CommercialState"];
+            /** @description Immutable applicable business policy revision. */
+            policy_revision: string;
+            /** @description Immutable applicable commercial configuration revision. */
+            configuration_revision: string;
+            /**
+             * Format: uuid
+             * @description Trusted correlation identity propagated across related asynchronous operations.
+             */
+            correlation_id: string;
+            /** @description Preceding audit entry identities establishing causation, empty for root actions. */
+            caused_by_entry_ids: string[];
+            /** @description Safe opaque transaction/event references; empty when no provider participated. */
+            provider_references: string[];
+        };
+        AuditPage: {
+            /** @description Immutable entries in stable append order within the selected snapshot. */
+            items: components["schemas"]["AuditEntry"][];
+            /** @description Opaque continuation, or null after the last page. */
+            next_cursor: string | null;
+        };
+        /**
+         * @description Registered commercial activation flag, without the monetization. prefix.
+         * @enum {string}
+         */
+        FlagName: "content_ownership" | "content_versions" | "strapi_rights" | "commercial_validation" | "entitlement_resolution" | "access_grants" | "progress_retention" | "authorization_enforcement" | "plus_catalog" | "plus_webhooks" | "plus_billing" | "plus_checkout" | "teacher_paid_paths" | "path_purchase" | "motifpath_purchase" | "teacher_settlement" | "private_beta";
+        /** @description Allowlist entry, one of user:<core user UUID>, group:<group slug> or service:<service name>. A group entry allows every user who is a member of that group. */
+        SubjectId: string;
+        /** @description One flag's configured and effective activation in this environment. */
+        FlagState: {
+            /** @description Registered flag. */
+            flag: components["schemas"]["FlagName"];
+            /** @description Configured switch. Starts false in every environment. */
+            enabled: boolean;
+            /** @description When true and enabled, every authenticated user is allowed. Services are never covered by it and must still be listed. Starts false in every environment. */
+            all_users: boolean;
+            /** @description Users, groups and services allowed when enabled. With all_users false, an empty list allows no one; there is no wildcard entry. */
+            subject_ids: components["schemas"]["SubjectId"][];
+            /** @description Flags that must also allow the operation's subject before this flag allows it. */
+            prerequisites: components["schemas"]["FlagName"][];
+            /** @description True when enabled and every prerequisite is effective. The audience still applies. */
+            effective: boolean;
+            /**
+             * Format: date-time
+             * @description When this flag last changed, or null if it never has.
+             */
+            updated_at: string | null;
+            /**
+             * Format: uuid
+             * @description Administrator who last changed it, or null if it never has.
+             */
+            updated_by: string | null;
+        };
+        /** @description Every registered flag's activation in the trusted environment, at one revision. */
+        CommercialRollout: {
+            /** @description Environment-wide activation revision; 0 before the first change, plus one per applied change. */
+            revision: number;
+            /** @description One entry per registered flag, in registry order. */
+            flags: components["schemas"]["FlagState"][];
+        };
+        /** @description Turn every flag OFF at once, keeping each flag's audience. */
+        KillSwitch: {
+            /** @description Why everything is turned off; recorded in the audit evidence. */
+            reason: string;
+        };
+        /** @description Durable receipt for an activation change. */
+        RolloutCommand: {
+            /**
+             * Format: uuid
+             * @description Durable scoped logical identity of the change.
+             */
+            operation_id: string;
+            /**
+             * @description Activation changes commit atomically, so they are applied or not recorded.
+             * @enum {string}
+             */
+            status: "applied";
+            /** @description Activation revision produced by this change. */
+            revision: number;
+            /**
+             * Format: uuid
+             * @description Audit evidence committed with the change.
+             */
+            evidence_entry_id: string;
+        };
+        /** @description Replace one flag's switch and audience. */
+        FlagChange: {
+            /** @description Activation revision the administrator observed. */
+            expected_revision: number;
+            /** @description New switch value. */
+            enabled: boolean;
+            /** @description New all-users value. Must be sent explicitly, so opening a flag to everyone is never a default. */
+            all_users: boolean;
+            /** @description New complete allowlist; replaces the previous one. Every group entry must name an existing group. */
+            subject_ids: components["schemas"]["SubjectId"][];
+            /** @description Why the change is made; recorded in the audit evidence. */
+            reason: string;
+        };
+        /** @description Stable identifier of a rollout group, such as beta or friends-and-family. */
+        GroupSlug: string;
+        /** @description A named set of users that flags can allow as one allowlist entry. */
+        CommercialGroup: {
+            /** @description Stable identifier; referenced from allowlists as group:<slug>. */
+            slug: components["schemas"]["GroupSlug"];
+            /** @description Display name for administrators. */
+            name: string;
+            /** @description Core user ids of the members. A group holds users only; groups do not nest. */
+            member_ids: string[];
+            /**
+             * Format: date-time
+             * @description When the group or its membership last changed.
+             */
+            updated_at: string;
+            /**
+             * Format: uuid
+             * @description Administrator who last changed it.
+             */
+            updated_by: string;
+        };
+        /** @description Every rollout group in the trusted environment, at one activation revision. */
+        CommercialGroups: {
+            /** @description Environment-wide activation revision, shared with flag changes. */
+            revision: number;
+            /** @description Every group, ordered by slug. Empty before the first group is created. */
+            groups: components["schemas"]["CommercialGroup"][];
+        };
+        /** @description Create a group, or rename an existing one. Membership is unchanged. */
+        GroupChange: {
+            /** @description Display name. */
+            name: string;
+            /** @description Why the change is made; recorded in the audit evidence. */
+            reason: string;
+        };
+        /** @description Add and remove group members in one change. Adding a current member or removing a non-member is not an error; the result is the requested membership. */
+        MembershipChange: {
+            /** @description Core user ids to make members. */
+            add: string[];
+            /** @description Core user ids to remove. A user may not appear in both lists. */
+            remove: string[];
+            /** @description Why the change is made; recorded in the audit evidence. */
+            reason: string;
+        } | {
+            add?: unknown;
+        } | {
+            remove?: unknown;
+        };
+        /** @description Acquire one authoritative subscription offer; caller identity, price and return destinations are server-controlled. */
+        CreateSubscriptionCheckout: {
+            /**
+             * Format: uuid
+             * @description Current eligible monthly/annual offer revision for the platform subscription.
+             */
+            offer_id: string;
+        };
+        /** @description Durable acquisition intent, distinct from proof of paid access; only the owning user can read it. */
+        SubscriptionCheckout: {
+            /**
+             * Format: uuid
+             * @description Stable MotifPath checkout identity, independent of external session identifiers.
+             */
+            checkout_id: string;
+            /**
+             * Format: uuid
+             * @description Caller operation identity retained across retries, restart and provider reconciliation.
+             */
+            operation_id: string;
+            /** @description Immutable accepted offer snapshot; replays do not replace it with a later price revision. */
+            offer: components["schemas"]["SubscriptionOffer"];
+            /**
+             * Format: date-time
+             * @description Time the intent and its initial attributable audit evidence were durably accepted.
+             */
+            created_at: string;
+            /**
+             * @description pending includes uncertain external creation; ready has a usable session; paid requires verified successful payment, not a browser return. failed requires a definitive reconciled failure.
+             * @enum {string}
+             */
+            status: "pending" | "ready" | "paid" | "expired" | "failed";
+            /**
+             * @description Whether verified payment has produced the intended subscription-period grant; payment receipt alone is not usable access.
+             * @enum {string}
+             */
+            fulfillment_status: "not_started" | "pending" | "applied";
+            /**
+             * Format: uri
+             * @description Stripe-provided session destination after confirmation, exposed only while ready; never copied from user input.
+             */
+            checkout_url?: string;
+            /**
+             * Format: date-time
+             * @description Confirmed external session expiry, present while ready; expiration does not prove absence of an uncertain payment.
+             */
+            expires_at?: string;
+        } & (unknown & unknown);
+        /** @description Durable transport receipt only; no financial or entitlement completion is asserted. */
+        StripeReceipt: {
+            /**
+             * Format: uuid
+             * @description Stable internal receipt for the verified environment/account/event identity; duplicates return the existing identity.
+             */
+            receipt_id: string;
+        };
+        /** @description Request a full refund of a caller-owned payment; no owner, amount or currency may be supplied. */
+        CreateRefundRequest: {
+            /**
+             * Format: uuid
+             * @description Stable MotifPath identity of a successful payment owned by the caller.
+             */
+            payment_id: string;
+            /** @description Customer explanation retained with the attributable request; secrets must not be included. */
+            reason: string;
+        };
+        /** @description Purchasable offer revisions for one exact scope and one enabled currency; at most one per billing period. */
+        subscriptions_OfferList: {
+            /** @description Available monthly and annual offers in that order; empty if new acquisition is disabled or the scope is not on sale. */
+            items: components["schemas"]["SubscriptionOffer"][];
+        };
+        /** @description Caller-owned billing state; this is not a complete access decision or a substitute for independent grants. */
+        Subscription: {
+            /**
+             * Format: uuid
+             * @description Stable identity of this subscription lifecycle; refund history also persists across rejoining its scope.
+             */
+            subscription_id: string;
+            /** @description Increasing state revision used to refuse stale commercial commands. */
+            revision: number;
+            /** @description Coverage of this subscription. */
+            scope: components["schemas"]["SubscriptionScope"];
+            /** @description Immutable price snapshot of the current or most recently paid period, with the same scope and billing period as the subscription. */
+            current_offer: components["schemas"]["SubscriptionOffer"];
+            /**
+             * @description Current billing period; a scheduled change does not replace it before renewal.
+             * @enum {string}
+             */
+            billing_period: "monthly" | "annual";
+            /**
+             * @description Paid-period lifecycle only. Refunds, disputes and other grants can independently affect access.
+             * @enum {string}
+             */
+            billing_status: "paid" | "renewal_grace" | "expired";
+            /** @description Whether another period is scheduled to renew automatically; false does not truncate the paid period. */
+            renewal_enabled: boolean;
+            /**
+             * Format: date-time
+             * @description End of access from the paid period before any separate refund, dispute or valid independent grant is considered.
+             */
+            paid_until: string;
+            /**
+             * Format: date-time
+             * @description First time paid access became available for this learner and scope; never reset by renewal, rejoining or a billing-period change.
+             */
+            first_access_at: string;
+            /**
+             * Format: date-time
+             * @description End of the seven-day unpaid-renewal grace period, present only during renewal_grace.
+             */
+            renewal_grace_until?: string;
+            /** @description Offer revision selected when scheduling annual renewal, not a price guarantee; renewal uses then-applicable authoritative terms. Absent when no change is scheduled. */
+            scheduled_annual_offer?: components["schemas"]["SubscriptionOffer"];
+        } & unknown;
+        /** @description Caller-owned subscriptions ordered by subscription identifier for stable page ordering. */
+        SubscriptionPage: {
+            /** @description Subscriptions belonging to the authenticated caller only. */
+            items: components["schemas"]["Subscription"][];
+            /** @description Total number of the caller's subscriptions before pagination. */
+            total: number;
+            /** @description Requested maximum page size. */
+            limit: number;
+            /** @description Number of matching subscriptions skipped. */
+            offset: number;
+        };
+        /** @description Cancel only the caller's next renewal; no refund or progress deletion is requested. */
+        CancelSubscriptionRequest: {
+            /** @description Subscription revision observed by the caller before requesting cancellation. */
+            expected_revision: number;
+        };
+        /** @description Durable command receipt. Pending means recorded, not that a provider-side change has already succeeded. */
+        SubscriptionCommand: {
+            /**
+             * Format: uuid
+             * @description Durable idempotency and audit correlation identity, supplied as the Idempotency-Key.
+             */
+            operation_id: string;
+            /**
+             * Format: uuid
+             * @description Caller-owned subscription targeted by the command.
+             */
+            subscription_id: string;
+            /**
+             * @description Commercial action recorded for this operation.
+             * @enum {string}
+             */
+            action: "cancel_renewal" | "resume_renewal" | "schedule_annual";
+            /**
+             * @description Current command outcome; failed commands require reconciliation before any new external attempt.
+             * @enum {string}
+             */
+            status: "pending" | "applied" | "failed";
+        };
+        /** @description Turn the caller's stopped renewal back on before paid_until; nothing is charged now. */
+        ResumeRenewalRequest: {
+            /** @description Subscription revision observed by the caller before resuming renewal. */
+            expected_revision: number;
+        };
+        /** @description Short-lived provider-hosted page for updating the payment method only; not proof of payment. */
+        PaymentMethodSession: {
+            /**
+             * Format: uri
+             * @description Provider-hosted URL to open; never stored or reused after expires_at.
+             */
+            session_url: string;
+            /**
+             * Format: date-time
+             * @description Instant after which the session can no longer be opened.
+             */
+            expires_at: string;
+        };
+        /** @description Schedule monthly-to-annual renewal using an approved offer; no caller-provided price or mid-period adjustment is accepted. */
+        ScheduleAnnualRequest: {
+            /** @description Subscription revision observed before scheduling the change. */
+            expected_revision: number;
+            /**
+             * Format: uuid
+             * @description Annual offer revision for the identical scope and currency, currently eligible for the caller.
+             */
+            target_offer_id: string;
+        };
         /**
          * @description Who chose a session's subjects. suggested = the composer picked them for Today's mix;
          *     chosen = the student chose the one subject the session holds.
@@ -7847,13 +10414,13 @@ export interface components {
          *       head: picking the chord for the numeral, or the numeral for the chord.
          *     - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
          *       the function of its chord, or its chord for the function.
-         *     - chart_progression:<progression key> — a progression of the progression catalog read
-         *       as a chart: picking the progression for four chords, or its chart for the progression.
+         *     - chart_progression:<progression key> — a drill progression read
+         *       as a chart: picking the progression for its chords, or its chart for the progression.
          *       The key is picked each time it is asked, so one item covers every key.
          *     - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
          *       picked each time.
-         *     - heard_progression:<progression key> — a progression recognised by ear. The key is
-         *       picked each time.
+         *     - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+         *       ear. The key is picked each time.
          *     - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
          *     - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
          *       layout, cleanly, untimed.
@@ -7871,7 +10438,8 @@ export interface components {
          *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
          *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
          *     same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-         *     (major); <progression key> is a key of the progression catalog.
+         *     (major); <progression key> is the key of a drill progression: a catalog handle such as
+         *     I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
          *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
@@ -7969,13 +10537,16 @@ export interface components {
          */
         GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name";
         /**
-         * @description A major key. In a response, the key a question was asked in or a take was played in when
+         * @description A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+         *     are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+         *     progression is asked and played only in minor keys, a major one only in major keys. In a
+         *     response, the key a question was asked in or a take was played in when
          *     its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
          *     tone or a progression key tour; absent in a response to any other item. A planned question
          *     always names its key.
          * @enum {string}
          */
-        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B";
+        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B" | "Cm" | "Dbm" | "Dm" | "Ebm" | "Em" | "Fm" | "F#m" | "Gm" | "Abm" | "Am" | "Bbm" | "Bm";
         /**
          * @description A scale degree's chord in a major key, as a roman numeral: upper case for a major triad,
          *     lower case for a minor one, and viio for the diminished triad on the seventh degree (vii°).
@@ -7991,9 +10562,9 @@ export interface components {
         /**
          * @description How the question draws its chords, in the stimulus and in the options. chord_boxes = a
          *     chord box per chord, unnamed until answered, from the voicing the plan names (guitar,
-         *     four-bar charts); chord_symbols = the chord symbol (bass, and every 12-bar chart). A 12-bar
-         *     chart is laid out in three lines of four bars. A session in the head reads chords the way
-         *     of the student's fretboard layout: guitar or bass, taking turns from one session in the
+         *     charts of up to four bars); chord_symbols = the chord symbol (bass, and every chart of more
+         *     than four bars). A chart of more than four bars is laid out in lines of four bars. A
+         *     session in the head reads chords the way of the student's fretboard layout: guitar or bass, taking turns from one session in the
          *     head to the next for a student who plays both, and chord symbols for a student who plays
          *     neither. Every generated harmony question of a session reads them the same way.
          * @enum {string}
@@ -8007,10 +10578,15 @@ export interface components {
          */
         GeneratedChoicePlayback: {
             /**
-             * @description The tempo it starts at, in quarter notes per minute, set by the student's level on the
-             *     item: 70 while new or learning, 90 once accurate, 110 once fluent.
+             * @description The tempo it starts at, in beats per minute before note_value's speed factor: 70 for
+             *     every question, whatever the student's level on the item.
              */
             tempo_bpm: number;
+            /**
+             * @description The note value it starts in: eighths for every question, two chords a bar, as fast as
+             *     140 BPM in quarters.
+             */
+            note_value: components["schemas"]["practice_NoteValue"];
             /**
              * @description True when the session reads chords on electric-bass: each chord's root plays under it in
              *     the bass voice, on every beat of its bar. False otherwise.
@@ -8025,7 +10601,7 @@ export interface components {
             /**
              * @description The bars in the order they play. cadence_then_chord: the cadence I IV V I with their
              *     numerals, or only I with its numeral once the student is accurate on the item, then the
-             *     asked chord with no numeral. progression_by_number: the progression's four bars, none
+             *     asked chord with no numeral. progression_by_number: the progression's bars, 2 to 4, none
              *     with a numeral.
              */
             bars: {
@@ -8065,13 +10641,13 @@ export interface components {
             function: components["schemas"]["ChordFunction"] | null;
             /** @description The progression asked for, for numbers_to_chart. Null for every other way. */
             progression: {
-                /** @description The progression's key in the progression catalog, such as I-V-vi-IV. */
+                /** @description The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I. */
                 key: string;
                 /** @description The progression's name in the student's language, such as "I–V–vi–IV (pop)". */
                 name: string;
             } | null;
             /**
-             * @description The chart the question shows, one chord symbol per bar (four or twelve), for
+             * @description The chart the question shows, one chord symbol per bar (2 to 16), for
              *     chart_to_numbers. Empty for every other way.
              */
             chart: string[];
@@ -8079,9 +10655,13 @@ export interface components {
             /**
              * @description The options in the order to show them, already shuffled; all seven numerals come in scale
              *     order instead, since where one sits then says nothing. Different from one another,
-             *     each a possible answer to the way, the right one among them: four, two for a 12-bar
-             *     progression, and all seven numerals for a heard chord once the student is fluent on it.
-             *     Which are offered follows the drill catalog's harmony and ear rules.
+             *     each a possible answer to the way, the right one among them: four, two for a progression
+             *     of more than four bars, and all seven numerals for a heard chord once the student is
+             *     fluent on it. Which are offered follows the drill catalog's harmony and ear rules: a
+             *     progression's wrong answers are drill progressions of its length and mode, then, when
+             *     those are too few, progressions the server makes up by changing one of its bars. A
+             *     made-up one is offered as the progression it would be if an admin created it: its key,
+             *     its name (its numerals joined by –) and its chart.
              */
             options: {
                 /**
@@ -8244,14 +10824,15 @@ export interface components {
             layout_instrument_id: string;
             /** @description The progression played. */
             progression: {
-                /** @description The progression's key in the progression catalog, such as I-V-vi-IV. */
+                /** @description The progression's key, such as I-V-vi-IV or major/I-bVII-IV-I. */
                 key: string;
                 /** @description The progression's name in the student's language, such as "I–V–vi–IV (pop)". */
                 name: string;
             };
             /**
-             * @description How many times one take plays the progression after its bar of count-in: 4 for a
-             *     four-bar progression, 1 for a 12-bar blues.
+             * @description How many times one take plays the progression after its bar of count-in: as many whole
+             *     times as fit in 16 bars, at least once (8 for a two-bar progression, 4 for a four-bar
+             *     one, 1 for a 12-bar blues).
              */
             times_through: number;
             /** @description The most takes of the tour this session plays. */
@@ -8324,7 +10905,7 @@ export interface components {
             layout_instrument_id: string;
             /** @description The progression played. */
             progression: {
-                /** @description The progression's key in the progression catalog, such as ii-V-I. */
+                /** @description The progression's key, such as ii-V-I or major/I-bVII-IV-I. */
                 key: string;
                 /** @description The progression's name in the student's language, such as "ii–V–I". */
                 name: string;
@@ -8332,8 +10913,13 @@ export interface components {
             music_key: components["schemas"]["MusicKey"];
             /**
              * @description The chord tone asked of every chord: 3 = its third, until the student is accurate on the
-             *     item; 7 = its seventh in the key from then on (the major seventh of I and IV, the minor
-             *     seventh of every other chord and of a dominant seventh).
+             *     item; 7 = its seventh from then on:
+             *     a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+             *     diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+             *     progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+             *     a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+             *     maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+             *     numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
              * @enum {string}
              */
             tone: "3" | "7";
@@ -8353,7 +10939,7 @@ export interface components {
             fret_window: components["schemas"]["FretWindow"];
             /** @description Every bar of the progression, in order, played once a take. */
             bars: {
-                /** @description The bar's numeral in the progression catalog; a 7 marks a dominant seventh. */
+                /** @description The bar's numeral as the progression stores it; viio is vii° in the catalog's spelling. */
                 numeral: string;
                 /**
                  * @description The bar's chord symbol in music_key, spelled as the chord catalog spells roots. It
@@ -8395,7 +10981,7 @@ export interface components {
             /** @description The performer or composer the song is known by. */
             artist: string;
             /**
-             * @description The key, in the progression catalog, of the progression the chart plays that practises
+             * @description The key of the progression the chart plays that practises
              *     the session's subject, shown as why this song was picked.
              */
             progression_key: string;
@@ -8412,7 +10998,98 @@ export interface components {
             plays: "chords" | "roots";
         };
     };
-    responses: never;
+    responses: {
+        /** @description Malformed parameters, missing idempotency identity or invalid request shape. */
+        InvalidRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ValidationError"];
+            };
+        };
+        /** @description Missing/invalid authentication or unregistered MotifPath identity. */
+        Unauthenticated: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["UnauthorizedError"];
+            };
+        };
+        /** @description Resource does not exist or is not owned by the caller. */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["NotFoundError"];
+            };
+        };
+        /** @description Stale revision, conflicting idempotency intent, offer mismatch or invalid lifecycle transition. */
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ConflictError"];
+            };
+        };
+        /** @description Required authoritative state, durable audit storage or external billing reconciliation is unavailable; no untraceable effect may be committed. */
+        Unavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["CommercialUnavailable"];
+            };
+        };
+        /** @description Durable caller-owned checkout and verified payment/fulfillment progress, not a browser assertion of access. */
+        CheckoutResponse: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["SubscriptionCheckout"];
+            };
+        };
+        /** @description New commercial action is unavailable to this caller under server rollout decisions. */
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ForbiddenError"];
+            };
+        };
+        /** @description Current durable case state; requested/processing is not proof of financial refund success. */
+        CaseResponse: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["RefundRequest"];
+            };
+        };
+        /** @description Unsuccessful payment, changed idempotency intent, stale revision or an ineligible/conflicting execution state. */
+        refunds_Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ConflictError"];
+            };
+        };
+        /** @description Durable command identity and current outcome, including pending reconciliation. */
+        CommandReceipt: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["SubscriptionCommand"];
+            };
+        };
+    };
     parameters: {
         /** @description The Monday the week starts on, in São Paulo time (e.g. 2026-10-12). Defaults to the running week. A date that is not a Monday, or a week after the running one, is rejected. */
         AlphaWeek: string;
@@ -8430,6 +11107,30 @@ export interface components {
         ConceptIds: string[];
         /** @description The ID of the song chart. */
         SongChartId: string;
+        /** @description UUID of one logical acquisition, scoped by trusted environment and authenticated caller/action. Fingerprint the offer intent. Retain it durably beyond provider-key retention and reconcile unknown outcomes before any resubmission. */
+        CheckoutIdempotencyKey: string;
+        /**
+         * @description UUID for one logical request or execution, scoped by trusted environment, authenticated
+         *     actor and action. Fingerprint complete intent, including payment/case, reason and observed
+         *     revision. Same key with changed intent returns 409; same intent returns the original
+         *     request/execution's current case without repeating effects after concurrency or restart.
+         *     Separate business uniqueness prevents two refunds for one payment across different actors
+         *     or keys. Durable identity and attempts remain traceable after transient cache expiry.
+         */
+        IdempotencyKey: string;
+        /** @description Stable refund case identity, visible only to its payment owner or an admin. */
+        RefundRequestID: string;
+        /** @description Subscription owned by the authenticated MotifPath user. */
+        SubscriptionID: string;
+        /**
+         * @description Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+         *     authenticated user, action and subscription; fingerprint the complete request intent.
+         *     Same key and intent returns the same operation identity with its current recorded status,
+         *     without repeating effects, even after a restart or revision change. A conflicting
+         *     fingerprint returns 409. Concurrent submissions must converge on one operation.
+         *     Never discard operation identity merely because a transient retry cache expires.
+         */
+        subscriptions_IdempotencyKey: string;
     };
     requestBodies: never;
     headers: never;
@@ -8585,6 +11286,15 @@ export type SchemaPracticeSubjectList = components['schemas']['PracticeSubjectLi
 export type SchemaPracticeSubjectGroup = components['schemas']['PracticeSubjectGroup'];
 export type SchemaPracticeSubject = components['schemas']['PracticeSubject'];
 export type SchemaProgression = components['schemas']['Progression'];
+export type SchemaProgressionKey = components['schemas']['ProgressionKey'];
+export type SchemaProgressionNumeral = components['schemas']['ProgressionNumeral'];
+export type SchemaProgressionInput = components['schemas']['ProgressionInput'];
+export type SchemaProgressionNicknamesInput = components['schemas']['ProgressionNicknamesInput'];
+export type SchemaProgressionDrillsInput = components['schemas']['ProgressionDrillsInput'];
+export type SchemaProgressionExistsError = components['schemas']['ProgressionExistsError'];
+export type SchemaProgressionNotAddableError = components['schemas']['ProgressionNotAddableError'];
+export type SchemaProgressionInUseError = components['schemas']['ProgressionInUseError'];
+export type SchemaProgressionUse = components['schemas']['ProgressionUse'];
 export type SchemaPracticeSessionItem = components['schemas']['PracticeSessionItem'];
 export type SchemaPracticeSummary = components['schemas']['PracticeSummary'];
 export type SchemaFretboardMap = components['schemas']['FretboardMap'];
@@ -8616,6 +11326,79 @@ export type SchemaValidationError = components['schemas']['ValidationError'];
 export type SchemaUnauthorizedError = components['schemas']['UnauthorizedError'];
 export type SchemaConflictError = components['schemas']['ConflictError'];
 export type SchemaNotFoundError = components['schemas']['NotFoundError'];
+export type SchemaMoney = components['schemas']['Money'];
+export type SchemaPositiveMoney = components['schemas']['PositiveMoney'];
+export type SchemaConfiguration = components['schemas']['Configuration'];
+export type SchemaCommercialUnavailable = components['schemas']['CommercialUnavailable'];
+export type SchemaPayment = components['schemas']['Payment'];
+export type SchemaPaymentPage = components['schemas']['PaymentPage'];
+export type SchemaContentRef = components['schemas']['ContentRef'];
+export type SchemaCopiedFrom = components['schemas']['CopiedFrom'];
+export type SchemaOwnership = components['schemas']['Ownership'];
+export type SchemaDependency = components['schemas']['Dependency'];
+export type SchemaRelease = components['schemas']['Release'];
+export type SchemaExecuteRefundRequest = components['schemas']['ExecuteRefundRequest'];
+export type SchemaRefundRequest = components['schemas']['RefundRequest'];
+export type SchemaOwnershipCommand = components['schemas']['OwnershipCommand'];
+export type SchemaCommand = components['schemas']['Command'];
+export type SchemaPublishRelease = components['schemas']['PublishRelease'];
+export type SchemaSubscriptionScope = components['schemas']['SubscriptionScope'];
+export type SchemaSubscriptionOffer = components['schemas']['SubscriptionOffer'];
+export type SchemaSubscriptionOfferConfig = components['schemas']['SubscriptionOfferConfig'];
+export type SchemaReviewedRefund = components['schemas']['ReviewedRefund'];
+export type SchemaSettlement = components['schemas']['Settlement'];
+export type SchemaSettlementPage = components['schemas']['SettlementPage'];
+export type SchemaSaleBlocker = components['schemas']['SaleBlocker'];
+export type SchemaCommercialContent = components['schemas']['CommercialContent'];
+export type SchemaChangeSale = components['schemas']['ChangeSale'];
+export type SchemaCreateOffer = components['schemas']['CreateOffer'];
+export type SchemaOffer = components['schemas']['Offer'];
+export type SchemaOfferList = components['schemas']['OfferList'];
+export type SchemaCheckoutRequest = components['schemas']['CheckoutRequest'];
+export type SchemaCheckout = components['schemas']['Checkout'];
+export type SchemaPurchase = components['schemas']['Purchase'];
+export type SchemaHoldingsPage = components['schemas']['HoldingsPage'];
+export type SchemaBalance = components['schemas']['Balance'];
+export type SchemaBalanceList = components['schemas']['BalanceList'];
+export type SchemaTeacherSellingTerms = components['schemas']['TeacherSellingTerms'];
+export type SchemaSaleRecovery = components['schemas']['SaleRecovery'];
+export type SchemaTeacherSale = components['schemas']['TeacherSale'];
+export type SchemaTeacherSalesSummary = components['schemas']['TeacherSalesSummary'];
+export type SchemaTeacherSalePage = components['schemas']['TeacherSalePage'];
+export type SchemaPayoutAccount = components['schemas']['PayoutAccount'];
+export type SchemaPayoutOnboardingLink = components['schemas']['PayoutOnboardingLink'];
+export type SchemaPayoutDashboardLink = components['schemas']['PayoutDashboardLink'];
+export type SchemaConfigurationInput = components['schemas']['ConfigurationInput'];
+export type SchemaSyncHint = components['schemas']['SyncHint'];
+export type SchemaSyncReceipt = components['schemas']['SyncReceipt'];
+export type SchemaCommercialAccessDecision = components['schemas']['CommercialAccessDecision'];
+export type SchemaCommercialState = components['schemas']['CommercialState'];
+export type SchemaAuditEntry = components['schemas']['AuditEntry'];
+export type SchemaAuditPage = components['schemas']['AuditPage'];
+export type SchemaFlagName = components['schemas']['FlagName'];
+export type SchemaSubjectId = components['schemas']['SubjectId'];
+export type SchemaFlagState = components['schemas']['FlagState'];
+export type SchemaCommercialRollout = components['schemas']['CommercialRollout'];
+export type SchemaKillSwitch = components['schemas']['KillSwitch'];
+export type SchemaRolloutCommand = components['schemas']['RolloutCommand'];
+export type SchemaFlagChange = components['schemas']['FlagChange'];
+export type SchemaGroupSlug = components['schemas']['GroupSlug'];
+export type SchemaCommercialGroup = components['schemas']['CommercialGroup'];
+export type SchemaCommercialGroups = components['schemas']['CommercialGroups'];
+export type SchemaGroupChange = components['schemas']['GroupChange'];
+export type SchemaMembershipChange = components['schemas']['MembershipChange'];
+export type SchemaCreateSubscriptionCheckout = components['schemas']['CreateSubscriptionCheckout'];
+export type SchemaSubscriptionCheckout = components['schemas']['SubscriptionCheckout'];
+export type SchemaStripeReceipt = components['schemas']['StripeReceipt'];
+export type SchemaCreateRefundRequest = components['schemas']['CreateRefundRequest'];
+export type SchemaSubscriptionsOfferList = components['schemas']['subscriptions_OfferList'];
+export type SchemaSubscription = components['schemas']['Subscription'];
+export type SchemaSubscriptionPage = components['schemas']['SubscriptionPage'];
+export type SchemaCancelSubscriptionRequest = components['schemas']['CancelSubscriptionRequest'];
+export type SchemaSubscriptionCommand = components['schemas']['SubscriptionCommand'];
+export type SchemaResumeRenewalRequest = components['schemas']['ResumeRenewalRequest'];
+export type SchemaPaymentMethodSession = components['schemas']['PaymentMethodSession'];
+export type SchemaScheduleAnnualRequest = components['schemas']['ScheduleAnnualRequest'];
 export type SchemaPracticeFocusSource = components['schemas']['PracticeFocusSource'];
 export type SchemaPracticeRung = components['schemas']['PracticeRung'];
 export type SchemaKnowledgeLevel = components['schemas']['KnowledgeLevel'];
@@ -8643,6 +11426,16 @@ export type SchemaPlannedRootChange = components['schemas']['PlannedRootChange']
 export type SchemaPlannedProgressionKeys = components['schemas']['PlannedProgressionKeys'];
 export type SchemaPlannedGuideTone = components['schemas']['PlannedGuideTone'];
 export type SchemaPlannedSong = components['schemas']['PlannedSong'];
+export type ResponseInvalidRequest = components['responses']['InvalidRequest'];
+export type ResponseUnauthenticated = components['responses']['Unauthenticated'];
+export type ResponseNotFound = components['responses']['NotFound'];
+export type ResponseConflict = components['responses']['Conflict'];
+export type ResponseUnavailable = components['responses']['Unavailable'];
+export type ResponseCheckoutResponse = components['responses']['CheckoutResponse'];
+export type ResponseForbidden = components['responses']['Forbidden'];
+export type ResponseCaseResponse = components['responses']['CaseResponse'];
+export type ResponseRefundsConflict = components['responses']['refunds_Conflict'];
+export type ResponseCommandReceipt = components['responses']['CommandReceipt'];
 export type ParameterAlphaWeek = components['parameters']['AlphaWeek'];
 export type ParameterLimit = components['parameters']['Limit'];
 export type ParameterOffset = components['parameters']['Offset'];
@@ -8651,8 +11444,1633 @@ export type ParameterAuthoringSort = components['parameters']['AuthoringSort'];
 export type ParameterSkillIds = components['parameters']['SkillIds'];
 export type ParameterConceptIds = components['parameters']['ConceptIds'];
 export type ParameterSongChartId = components['parameters']['SongChartId'];
+export type ParameterCheckoutIdempotencyKey = components['parameters']['CheckoutIdempotencyKey'];
+export type ParameterIdempotencyKey = components['parameters']['IdempotencyKey'];
+export type ParameterRefundRequestId = components['parameters']['RefundRequestID'];
+export type ParameterSubscriptionId = components['parameters']['SubscriptionID'];
+export type ParameterSubscriptionsIdempotencyKey = components['parameters']['subscriptions_IdempotencyKey'];
 export type $defs = Record<string, never>;
 export interface operations {
+    getCurrentCommercialConfiguration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Configuration"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listMyCommercialPayments: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative caller-visible records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentPage"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getCommercialRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Immutable commercial manifest identity. */
+                release_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative caller-visible records. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    retryFailedFullRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Existing admin-handled refund case. */
+                refund_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecuteRefundRequest"];
+            };
+        };
+        responses: {
+            /** @description Authoritative recorded result; pending never claims external success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequest"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    correctCommercialOwnership: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Existing core content kind. */
+                content_kind: "course" | "path" | "content_node" | "exercise";
+                /** @description Stable core content identity. */
+                content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnershipCommand"];
+            };
+        };
+        responses: {
+            /** @description Authoritative recorded result; pending never claims external success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Command"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    publishCommercialRelease: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Existing core content kind. */
+                content_kind: "course" | "path" | "content_node" | "exercise";
+                /** @description Stable core content identity. */
+                content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishRelease"];
+            };
+        };
+        responses: {
+            /** @description Authoritative recorded result; pending never claims external success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getCurrentSubscriptionOffer: {
+        parameters: {
+            query: {
+                /** @description Exact coverage kind. */
+                scope_kind: "platform";
+                /** @description Exact recurring interval. */
+                billing_period: "monthly" | "annual";
+                /** @description Enabled original currency. */
+                currency: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Promoted immutable offer; offer_id is required for a replacement command. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOffer"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createSubscriptionOfferRevision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionOfferConfig"];
+            };
+        };
+        responses: {
+            /** @description Authoritative recorded result; pending never claims external success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOffer"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    reviewFullRefundEligibility: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Existing admin-handled refund case. */
+                refund_request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewedRefund"];
+            };
+        };
+        responses: {
+            /** @description Authoritative recorded result; pending never claims external success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Command"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listMyCommercialSettlements: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Inclusive start of the period, as an instant the client computes in the teacher's time zone (MOT-130). Filters on created_at. Optional; when one is given, both are required. */
+                created_from?: string;
+                /** @description Exclusive end of the period; must be after created_from and at most 366 days later, otherwise 400. Filters on created_at. */
+                created_before?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative recorded result; pending never claims external success. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementPage"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not a backend-resolved teacher. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getCommercialContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Existing core content kind. */
+                content_kind: "course" | "path" | "content_node" | "exercise";
+                /** @description Stable core content identity. */
+                content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommercialContent"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    changeCommercialSaleState: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Existing core content kind. */
+                content_kind: "course" | "path";
+                /** @description Stable core content identity. */
+                content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeSale"];
+            };
+        };
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Command"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createCommercialOffer: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Existing core content kind. */
+                content_kind: "course" | "path";
+                /** @description Stable core content identity. */
+                content_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOffer"];
+            };
+        };
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Offer"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listCommercialOffers: {
+        parameters: {
+            query: {
+                /** @description Requested one-time product family. */
+                kind: "path_purchase" | "course_purchase";
+                /** @description Target course or path, matching kind. */
+                content_id: string;
+                /** @description Enabled currency. */
+                currency: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createMyCommercialCheckout: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Checkout"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getMyCommercialCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Caller-owned checkout identity. */
+                checkout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Checkout"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listMyCommercialHoldings: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingsPage"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listMyCommercialBalances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not a backend-resolved teacher. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getMyTeacherSellingTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherSellingTerms"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not a backend-resolved teacher. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listMyTeacherSales: {
+        parameters: {
+            query: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+                /** @description Inclusive start of the period, as an instant the client computes in the teacher's time zone (MOT-130). Filters on sold_at. */
+                sold_from: string;
+                /** @description Exclusive end of the period; must be after sold_from and at most 366 days later, otherwise 400. Filters on sold_at. */
+                sold_before: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherSalePage"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not a backend-resolved teacher. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getMyPayoutAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccount"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not a backend-resolved teacher. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createMyPayoutOnboardingLink: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor and action. A replay within the link's lifetime returns the same link. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutOnboardingLink"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not a backend-resolved teacher. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createMyPayoutDashboardLink: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor and action. A replay within the link's lifetime returns the same link. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutDashboardLink"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not a backend-resolved teacher. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createCommercialConfiguration: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, actor, action and resource. Fingerprint canonical full intent. Same identity/intent returns recorded status before stale-revision checks; conflicting intent returns 409. Persist identity and attempts beyond provider cache lifetime; concurrent business uniqueness spans keys and actors. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigurationInput"];
+            };
+        };
+        responses: {
+            /** @description Authoritative result; command pending is not completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Configuration"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller lacks the authoritative role/ownership or new action is disabled. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    receiveCMSCommercialHint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncHint"];
+            };
+        };
+        responses: {
+            /** @description Durable transport receipt, not synchronization completion. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncReceipt"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getMyLessonCommercialAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Existing StudentPath held by the authenticated learner. */
+                student_path_id: string;
+                /** @description Lesson content node present in that exact learner copy. */
+                content_node_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current commercial decision, including a legitimate blocked result. */
+            200: {
+                headers: {
+                    /** @description Do not store personalized commercial decisions in shared or local caches. */
+                    "Cache-Control"?: "no-store";
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommercialAccessDecision"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listCommercialAuditEntries: {
+        parameters: {
+            query?: {
+                /** @description Logical operation UUID; matches retain their complete trusted namespace. */
+                operation_id?: string;
+                /** @description Stable commercial resource category, paired with resource_id. */
+                resource_kind?: string;
+                /** @description Stable business resource identity, paired with resource_kind. */
+                resource_id?: string;
+                /** @description Opaque continuation; repeat the original filters and limit. */
+                cursor?: string;
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fixed snapshot page; next_cursor is null when traversal is complete. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Authoritative identity does not have administrator permission. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getCommercialRollout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current activation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommercialRollout"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not an administrator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    turnOffAllCommercialFlags: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, administrator and action. Fingerprint the full request intent. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KillSwitch"];
+            };
+        };
+        responses: {
+            /** @description Recorded change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutCommand"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not an administrator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    changeCommercialFlag: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, administrator, action and flag. Fingerprint the full request intent. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Registered flag. */
+                flag: components["schemas"]["FlagName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FlagChange"];
+            };
+        };
+        responses: {
+            /** @description Recorded change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutCommand"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not an administrator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listCommercialGroups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current groups. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommercialGroups"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not an administrator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    saveCommercialGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, administrator, action and group. Fingerprint the full request intent. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Group slug. */
+                slug: components["schemas"]["GroupSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupChange"];
+            };
+        };
+        responses: {
+            /** @description Recorded change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutCommand"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not an administrator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    changeCommercialGroupMembers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID scoped by trusted environment, administrator, action and group. Fingerprint the full request intent. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                /** @description Group slug. */
+                slug: components["schemas"]["GroupSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MembershipChange"];
+            };
+        };
+        responses: {
+            /** @description Recorded change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutCommand"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not an administrator. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createMySubscriptionCheckout: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID of one logical acquisition, scoped by trusted environment and authenticated caller/action. Fingerprint the offer intent. Retain it durably beyond provider-key retention and reconcile unknown outcomes before any resubmission. */
+                "Idempotency-Key": components["parameters"]["CheckoutIdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubscriptionCheckout"];
+            };
+        };
+        responses: {
+            200: components["responses"]["CheckoutResponse"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Conflicting intent, stale/ineligible offer or duplicate caller/scope acquisition. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getMySubscriptionCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Stable MotifPath checkout identity owned by the authenticated caller. */
+                checkout_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["CheckoutResponse"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    receiveStripePaymentEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Stripe's immutable event identity, scoped by the trusted receiving environment and account. */
+                    id: string;
+                    /** @description Native provider event kind; unfamiliar values are retained for reconciliation without issuing rights. */
+                    type: string;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Verified event durably received or previously received; downstream processing may still be pending. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StripeReceipt"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            /** @description Missing, invalid or stale Stripe signature; bearer credentials cannot replace it. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    requestMyPaymentRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description UUID for one logical request or execution, scoped by trusted environment, authenticated
+                 *     actor and action. Fingerprint complete intent, including payment/case, reason and observed
+                 *     revision. Same key with changed intent returns 409; same intent returns the original
+                 *     request/execution's current case without repeating effects after concurrency or restart.
+                 *     Separate business uniqueness prevents two refunds for one payment across different actors
+                 *     or keys. Durable identity and attempts remain traceable after transient cache expiry.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRefundRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["CaseResponse"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["refunds_Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    getRefundRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Stable refund case identity, visible only to its payment owner or an admin. */
+                refund_request_id: components["parameters"]["RefundRequestID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["CaseResponse"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    executeFullPaymentRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description UUID for one logical request or execution, scoped by trusted environment, authenticated
+                 *     actor and action. Fingerprint complete intent, including payment/case, reason and observed
+                 *     revision. Same key with changed intent returns 409; same intent returns the original
+                 *     request/execution's current case without repeating effects after concurrency or restart.
+                 *     Separate business uniqueness prevents two refunds for one payment across different actors
+                 *     or keys. Durable identity and attempts remain traceable after transient cache expiry.
+                 */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Stable refund case identity, visible only to its payment owner or an admin. */
+                refund_request_id: components["parameters"]["RefundRequestID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecuteRefundRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["CaseResponse"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            /** @description Caller is not an admin; no financial execution is authorized. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["refunds_Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listSubscriptionOffers: {
+        parameters: {
+            query: {
+                /** @description Coverage of the requested subscription offers. */
+                scope_kind: "platform";
+                /** @description Explicit enabled currency; no automatic currency conversion is performed. */
+                currency: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Available offer revisions for the exact requested scope and currency. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["subscriptions_OfferList"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    listMySubscriptions: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of items to return in this page (ADR-031). */
+                limit?: components["parameters"]["Limit"];
+                /** @description Number of matching items to skip before this page (ADR-031). */
+                offset?: components["parameters"]["Offset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Caller-owned subscriptions ordered by identifier; an empty page is valid. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionPage"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    cancelMySubscriptionRenewal: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+                 *     authenticated user, action and subscription; fingerprint the complete request intent.
+                 *     Same key and intent returns the same operation identity with its current recorded status,
+                 *     without repeating effects, even after a restart or revision change. A conflicting
+                 *     fingerprint returns 409. Concurrent submissions must converge on one operation.
+                 *     Never discard operation identity merely because a transient retry cache expires.
+                 */
+                "Idempotency-Key": components["parameters"]["subscriptions_IdempotencyKey"];
+            };
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelSubscriptionRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["CommandReceipt"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    resumeMySubscriptionRenewal: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+                 *     authenticated user, action and subscription; fingerprint the complete request intent.
+                 *     Same key and intent returns the same operation identity with its current recorded status,
+                 *     without repeating effects, even after a restart or revision change. A conflicting
+                 *     fingerprint returns 409. Concurrent submissions must converge on one operation.
+                 *     Never discard operation identity merely because a transient retry cache expires.
+                 */
+                "Idempotency-Key": components["parameters"]["subscriptions_IdempotencyKey"];
+            };
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResumeRenewalRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["CommandReceipt"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    createMyPaymentMethodSession: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+                 *     authenticated user, action and subscription; fingerprint the complete request intent.
+                 *     Same key and intent returns the same operation identity with its current recorded status,
+                 *     without repeating effects, even after a restart or revision change. A conflicting
+                 *     fingerprint returns 409. Concurrent submissions must converge on one operation.
+                 *     Never discard operation identity merely because a transient retry cache expires.
+                 */
+                "Idempotency-Key": components["parameters"]["subscriptions_IdempotencyKey"];
+            };
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider-hosted session to open in the browser. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodSession"];
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
+    scheduleMyAnnualSubscription: {
+        parameters: {
+            query?: never;
+            header: {
+                /**
+                 * @description Caller-generated UUID identifying one logical command. Scoped by trusted environment,
+                 *     authenticated user, action and subscription; fingerprint the complete request intent.
+                 *     Same key and intent returns the same operation identity with its current recorded status,
+                 *     without repeating effects, even after a restart or revision change. A conflicting
+                 *     fingerprint returns 409. Concurrent submissions must converge on one operation.
+                 *     Never discard operation identity merely because a transient retry cache expires.
+                 */
+                "Idempotency-Key": components["parameters"]["subscriptions_IdempotencyKey"];
+            };
+            path: {
+                /** @description Subscription owned by the authenticated MotifPath user. */
+                subscription_id: components["parameters"]["SubscriptionID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleAnnualRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["CommandReceipt"];
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["Unavailable"];
+        };
+    };
     registerUser: {
         parameters: {
             query?: never;
@@ -11431,7 +15849,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every progression of the catalog. */
+            /** @description Every progression. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -11447,6 +15865,346 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+        };
+    };
+    createProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionInput"];
+            };
+        };
+        responses: {
+            /** @description The progression was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Progression"];
+                };
+            };
+            /**
+             * @description The body is invalid: a bar that isn't a numeral (the error's field names the bar,
+             *     such as /bars/2), fewer than 1 or more than 16 bars, an unknown mode, or in_drills
+             *     true with no skill or concept.
+             */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins create progressions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /**
+             * @description A progression with the same mode and numerals already exists; the error returns it,
+             *     so the client can tag it instead. Also returned, with no progression, when in_drills
+             *     is true and the progression can't be added to the drills; the reasons say why.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionExistsError"] | components["schemas"]["ProgressionNotAddableError"];
+                };
+            };
+        };
+    };
+    deleteProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The progression was deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The identifier isn't a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins remove progressions. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /**
+             * @description The progression is still tagged in a chart's draft or latest published revision
+             *     (reason in_use, with the sections), or it is in the drills (reason in_drills).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionInUseError"];
+                };
+            };
+        };
+    };
+    updateProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionNicknamesInput"];
+            };
+        };
+        responses: {
+            /** @description The progression with its new name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Progression"];
+                };
+            };
+            /** @description The body is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins change a nickname. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The progression is one of the catalog's, whose names don't change. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    getProgressionUses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression's identifier. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sections that tag it; empty when no chart does. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionUse"][];
+                };
+            };
+            /** @description The identifier isn't a UUID. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins read where a progression is used. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+        };
+    };
+    addProgressionToDrills: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The progression to add. */
+                progression_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressionDrillsInput"];
+            };
+        };
+        responses: {
+            /** @description The progression, now in the drills. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Progression"];
+                };
+            };
+            /** @description The body is invalid, such as no skill and no concept, or a skill or concept that doesn't exist. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Missing or invalid Bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Only admins add progressions to the drills. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenError"];
+                };
+            };
+            /** @description No progression has this identifier. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description The progression can't be added to the drills; the reasons say why. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionNotAddableError"];
                 };
             };
         };

@@ -34,4 +34,14 @@ describe('SwitchRow', () => {
 
     expect(wrapper.emitted('update:modelValue')).toEqual([[to]])
   })
+
+  it('does nothing while disabled, and says so', async () => {
+    const wrapper = mount(SwitchRow, { props: { ...props, modelValue: false, disabled: true } })
+
+    const row = wrapper.get('[role="switch"]')
+    expect(row.attributes('disabled')).toBeDefined()
+    await row.trigger('click')
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
 })

@@ -11,6 +11,7 @@
     "diagrams": "Diagramas",
     "knowledgeMap": "Mapa de conhecimento",
     "songCharts": "Cifras",
+    "progressions": "Progressões",
     "engagement": "Engajamento",
     "myPath": "Trilha",
     "learning": "Aprender",
@@ -554,6 +555,18 @@
     "Ab": "Lá♭",
     "A": "Lá",
     "Bb": "Si♭",
-    "B": "Si"
+    "B": "Si",
+    "Cm": "Dó menor",
+    "Dbm": "Ré♭ menor",
+    "Dm": "Ré menor",
+    "Ebm": "Mi♭ menor",
+    "Em": "Mi menor",
+    "Fm": "Fá menor",
+    "Fsharpm": "Fá♯ menor",
+    "Gm": "Sol menor",
+    "Abm": "Lá♭ menor",
+    "Am": "Lá menor",
+    "Bbm": "Si♭ menor",
+    "Bm": "Si menor"
   }
 }

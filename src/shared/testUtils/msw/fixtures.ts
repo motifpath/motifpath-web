@@ -215,6 +215,6 @@ export const alphaStudents: Schemas['UserRef'][] = [
 ]
 
 export const progressions: Schemas['Progression'][] = [
-  { progression_id: 'progression-i-iv-i-v', key: 'I-IV-I-V', bars: ['I', 'IV', 'I', 'V'], confusable: [], names: { en: 'I–IV–I–V', 'pt-BR': 'I–IV–I–V' } },
-  { progression_id: 'progression-ii-v-i', key: 'ii-V-I', bars: ['ii', 'V', 'I'], confusable: [], names: { en: 'ii–V–I', 'pt-BR': 'ii–V–I' } },
+  { progression_id: 'progression-i-iv-i-v', key: 'I-IV-I-V', bars: ['I', 'IV', 'I', 'V'], mode: 'major', borrowed_bars: [], in_drills: true, song_chart_count: 0, created_by: null, created_at: null, confusable: [], names: { en: 'I–IV–I–V', 'pt-BR': 'I–IV–I–V' } },
+  { progression_id: 'progression-ii-v-i', key: 'ii-V-I', bars: ['ii', 'V', 'I'], mode: 'major', borrowed_bars: [], in_drills: true, song_chart_count: 0, created_by: null, created_at: null, confusable: [], names: { en: 'ii–V–I', 'pt-BR': 'ii–V–I' } },
 ]

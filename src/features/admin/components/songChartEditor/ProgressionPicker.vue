@@ -3,12 +3,14 @@
  * The progression catalog to tag a section with: every progression by the name learners see, a
  * search, and a check on the ones the section is tagged with. Picking one tags the section with
  * it, or untags it. Nothing is suggested from the chords: the author knows what a section is
- * built on.
+ * built on. A progression the drills don't use is marked. A search that finds nothing offers to
+ * create it. Removing a progression happens only in Admin › Progressions, never here.
  */
-import { Check, Search } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { Check, Plus, Search } from 'lucide-vue-next'
+import { computed } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
+import { barsLabel, numeralsOf, progressionMatches } from '@/features/admin/utils/progressionDraft'
 import { useLocalizedName } from '@/shared/composables/useLocalizedName'
 import { useTypedT } from '@/shared/composables/useTypedT'
 
@@ -19,19 +21,21 @@ const props = defineProps<{
   /** The keys the section is tagged with. */
   tagged: string[]
 }>()
-const emit = defineEmits<{ toggle: [key: string] }>()
+const emit = defineEmits<{ toggle: [key: string]; create: [numerals: string] }>()
 
 const { t } = useTypedT()
 const { localizedName } = useLocalizedName()
 
-const query = ref('')
+const query = defineModel<string>('query', { default: '' })
 
-/** Typed numerals match the key, and any word matches the name, whatever the case. */
-const shown = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  const named = props.progressions.map((p) => ({ key: p.key, name: localizedName(p.names) }))
-  return q ? named.filter((p) => p.key.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) : named
-})
+const typedNumerals = computed(() => numeralsOf(query.value))
+
+const shown = computed(() =>
+  props.progressions
+    .map((p) => ({ progression: p, name: localizedName(p.names) }))
+    .filter(({ progression, name }) => progressionMatches(progression, name, query.value))
+    .map(({ progression, name }) => ({ key: progression.key, name, inDrills: progression.in_drills })),
+)
 </script>
 
 <template>
@@ -58,10 +62,29 @@ const shown = computed(() => {
           @click="emit('toggle', p.key)"
         >
           {{ p.name }}
-          <Check v-if="tagged.includes(p.key)" :size="18" class="shrink-0" aria-hidden="true" />
+          <span class="flex shrink-0 items-center gap-2">
+            <span v-if="!p.inDrills" data-test="chart-only" class="rounded-full bg-surface-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted">{{ t('songChartEditor.chartOnly') }}</span>
+            <Check v-if="tagged.includes(p.key)" :size="18" aria-hidden="true" />
+          </span>
         </button>
       </li>
     </ul>
-    <p v-if="!shown.length" data-test="no-progression" class="px-2 py-3 text-sm text-ink-muted">{{ t('songChartEditor.noProgression', { query: query.trim() }) }}</p>
+    <template v-if="!shown.length">
+      <p data-test="no-progression" class="px-2 py-3 text-sm text-ink-muted">
+        {{ typedNumerals ? t('songChartEditor.noProgressionYet', { numerals: barsLabel(typedNumerals) }) : t('songChartEditor.noProgression', { query: query.trim() }) }}
+      </p>
+      <button
+        type="button"
+        data-test="create-progression"
+        class="flex min-h-11 w-full items-center gap-2 rounded-lg bg-accent-muted px-2 text-left text-base font-semibold text-accent-text"
+        @click="emit('create', typedNumerals ? query.trim() : '')"
+      >
+        <Plus :size="18" class="shrink-0" aria-hidden="true" />
+        {{ typedNumerals ? t('songChartEditor.createNumerals', { numerals: barsLabel(typedNumerals) }) : t('songChartEditor.createProgression') }}
+      </button>
+      <p v-if="typedNumerals" data-test="create-progression-hint" class="px-2 py-1 text-xs text-ink-muted">
+        {{ t('songChartEditor.readAsNumerals', { numerals: typedNumerals.join(' · ') }) }}
+      </p>
+    </template>
   </div>
 </template>

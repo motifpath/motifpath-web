@@ -557,13 +557,13 @@ export interface components {
          *       head: picking the chord for the numeral, or the numeral for the chord.
          *     - chord_function:<key>:<numeral> — a numeral's harmonic function in a major key: picking
          *       the function of its chord, or its chord for the function.
-         *     - chart_progression:<progression key> — a progression of the progression catalog read
-         *       as a chart: picking the progression for four chords, or its chart for the progression.
+         *     - chart_progression:<progression key> — a drill progression read
+         *       as a chart: picking the progression for its chords, or its chart for the progression.
          *       The key is picked each time it is asked, so one item covers every key.
          *     - heard_chord:<numeral> — a numeral recognised by ear in a key a cadence sets. The key is
          *       picked each time.
-         *     - heard_progression:<progression key> — a progression recognised by ear. The key is
-         *       picked each time.
+         *     - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
+         *       ear. The key is picked each time.
          *     - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
          *     - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
          *       layout, cleanly, untimed.
@@ -581,7 +581,8 @@ export interface components {
          *     In these keys, <key> is a major key spelled as one of C Db D Eb E F F# G Ab A Bb B;
          *     <numeral> is one of I ii iii IV V vi viio (viio is vii°); <chord> is a root spelled the
          *     same way, followed by m (minor), dim (diminished), 7 (dominant seventh) or nothing
-         *     (major); <progression key> is a key of the progression catalog.
+         *     (major); <progression key> is the key of a drill progression: a catalog handle such as
+         *     I-V-vi-IV, or a created progression's mode and ASCII numerals such as major/I-bVII-IV-I.
          *
          *     Item kinds are an open set: a new kind adds its own prefix and key scheme here, a
          *     grader, and its golden cases.
@@ -720,13 +721,16 @@ export interface components {
          */
         NoteValue: "halves" | "quarters" | "eighths" | "triplets" | "sixteenths" | "quintuplets" | "sextuplets" | "thirty_seconds";
         /**
-         * @description A major key. In a response, the key a question was asked in or a take was played in when
+         * @description A major key, written as its tonic (C), or a minor key, written as its tonic chord (Am). Roots
+         *     are spelled as the chord catalog spells them, in minor keys too (Dbm, not C#m). A minor
+         *     progression is asked and played only in minor keys, a major one only in major keys. In a
+         *     response, the key a question was asked in or a take was played in when
          *     its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
          *     tone or a progression key tour; absent in a response to any other item. A planned question
          *     always names its key.
          * @enum {string}
          */
-        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B";
+        MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B" | "Cm" | "Dbm" | "Dm" | "Ebm" | "Em" | "Fm" | "F#m" | "Gm" | "Abm" | "Am" | "Bbm" | "Bm";
         /**
          * @description The student's own rating of a take they played: a play-along at a tempo, chord changes
          *     counted over a minute, one chord played cleanly, a progression in one key of its tour, or a
@@ -850,7 +854,9 @@ export interface components {
              *     chord symbol (a root, then m, dim or nothing: G, Em, F#dim) for numeral_to_chord and
              *     function_to_chord; a numeral (I ii iii IV V vi viio) for chord_to_numeral,
              *     cadence_then_chord and see_then_name; tonic, subdominant or dominant for chord_to_function; a progression
-             *     key for chart_to_numbers and progression_by_number; a chart, the progression's chord
+             *     key for chart_to_numbers and progression_by_number (a drill progression's, or the key a
+             *     wrong answer the server made up would have if an admin created it, such as
+             *     major/I-ii-IV-V); a chart, the progression's chord
              *     symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart. A
              *     chord's root may be spelled either way (F# or Gb).
              */
@@ -895,8 +901,13 @@ export interface components {
             response_type: "timed_taps";
             music_key: components["schemas"]["MusicKey"];
             /**
-             * @description The chord tone asked for every chord: 3 = its third; 7 = its seventh in the key (the
-             *     major seventh of I and IV, the minor seventh of every other chord).
+             * @description The chord tone asked for every chord: 3 = its third; 7 = its seventh:
+             *     a written suffix decides (maj7 is the major seventh, 7 and ø7 the minor seventh, °7 the
+             *     diminished seventh); a chord with no written seventh takes its key's seventh. In a major
+             *     progression, the major seventh on I and IV and the minor seventh on any other numeral. In
+             *     a minor progression, the seventh natural minor gives it: m7 on i, iv and v, ø7 on ii°,
+             *     maj7 on ♭III and ♭VI, 7 on ♭VII; 7 on V and °7 on vii°, from harmonic minor; on any other
+             *     numeral, maj7 on a major chord, m7 on a minor one and ø7 on a diminished one.
              * @enum {string}
              */
             tone: "3" | "7";

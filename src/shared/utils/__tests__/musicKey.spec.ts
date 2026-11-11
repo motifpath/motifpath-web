@@ -18,8 +18,19 @@ describe('musicKeyMessage', () => {
     expect(name('pt-BR', key)).toBe(pt)
   })
 
+  it.each([
+    ['Am', 'A minor', 'Lá menor'],
+    ['F#m', 'F♯ minor', 'Fá♯ menor'],
+    ['Dbm', 'D♭ minor', 'Ré♭ menor'],
+  ])('names the minor key %s by its tonic and mode', (key, en, pt) => {
+    expect(name('en', key)).toBe(en)
+    expect(name('pt-BR', key)).toBe(pt)
+  })
+
   it('names every key a question can be asked in', () => {
-    for (const key of ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']) {
+    const majors = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
+    for (const key of [...majors, ...majors.map((tonic) => `${tonic}m`)]) {
+      expect(name('en', key)).not.toContain('musicKeys')
       expect(name('pt-BR', key)).not.toContain('musicKeys')
     }
   })

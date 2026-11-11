@@ -67,11 +67,11 @@ describe('SongChartSectionHeading', () => {
     )
   })
 
-  it('says progressions are found in a major key when the song is in a minor one', async () => {
+  it('says the chords never come in a row in a minor key too, and offers changing them', async () => {
     const wrapper = await mountHeading({ unplayed: ['I-IV-I-V'], concertKey: 'F#m' })
 
-    expect(wrapper.get('[data-test="not-played"]').text()).toBe(
-      'Not played in this verse: progressions are found in a major key, and the song is in F#m. Remove the tag.',
+    expect(wrapper.get('[data-test="not-played"]').text()).toEqual(
+      expect.stringMatching(/^Not played in this verse: its chords never come .* in a row in F#m\. Change the chords or remove the tag\.$/),
     )
   })
 })

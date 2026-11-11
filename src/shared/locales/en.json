@@ -11,6 +11,7 @@
     "diagrams": "Diagrams",
     "knowledgeMap": "Knowledge map",
     "songCharts": "Song charts",
+    "progressions": "Progressions",
     "engagement": "Engagement",
     "myPath": "My path",
     "learning": "Learning",
@@ -554,6 +555,18 @@
     "Ab": "A♭",
     "A": "A",
     "Bb": "B♭",
-    "B": "B"
+    "B": "B",
+    "Cm": "C minor",
+    "Dbm": "D♭ minor",
+    "Dm": "D minor",
+    "Ebm": "E♭ minor",
+    "Em": "E minor",
+    "Fm": "F minor",
+    "Fsharpm": "F♯ minor",
+    "Gm": "G minor",
+    "Abm": "A♭ minor",
+    "Am": "A minor",
+    "Bbm": "B♭ minor",
+    "Bm": "B minor"
   }
 }
