@@ -164,7 +164,7 @@ const SessionRootFifthStub = defineComponent({
 
 const SessionChordChangeStub = defineComponent({
   name: 'SessionChordChange',
-  props: { item: { type: Object, required: true }, tuning: { type: Array, default: undefined }, instrumentName: { type: String, default: undefined } },
+  props: { item: { type: Object, required: true }, bass: { type: Object, default: undefined }, instrumentName: { type: String, default: undefined } },
   emits: ['save', 'skip'],
   setup() {
     return () => h('div', { 'data-test': 'chord-change' })
@@ -815,7 +815,7 @@ describe('PracticeSessionView', () => {
         expect.objectContaining({ item_key: `root_fifth:${BASS}:G`, response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 70 } }),
       ])
 
-      expect(wrapper.getComponent(SessionChordChangeStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
+      expect(wrapper.getComponent(SessionChordChangeStub).props('bass')).toMatchObject({ instrument_id: BASS, tuning: ['E1', 'A1', 'D2', 'G2'] })
     })
 
     it('sends a chord that can’t be shown as not answered and moves on', async () => {

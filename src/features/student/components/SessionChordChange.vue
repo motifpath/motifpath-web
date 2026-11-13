@@ -9,8 +9,9 @@
  * tap, both hands being on the instrument, but Restart: it throws the take away and is ready again
  * at the same tempo. Leaving the session also ends it early; either way nothing is sent. When the
  * tenth cycle ends the metronome stops and four buttons ask what share of the changes rang clean;
- * picking one sends the tempo played and the share. A chord that can't be drawn here can only be
- * skipped, as not answered.
+ * picking one sends the tempo played and the share. On bass the take sounds each root on its beat
+ * in the bass's own voice, never a chord, with the click. A chord that can't be drawn here, or a
+ * bass that isn't known, can only be skipped, as not answered.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 
@@ -20,7 +21,7 @@ import { useChordBoxes } from '@/features/student/composables/useChordBoxes'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import { CLEAN_SHARES } from '@/features/student/utils/changeShare'
 import type { CleanShare } from '@/features/student/utils/changeShare'
-import { boardFretsFor } from '@/features/student/utils/chordPlaces'
+import { bassWindow, boardFretsFor } from '@/features/student/utils/chordPlaces'
 import AppButton from '@/shared/components/AppButton.vue'
 import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
@@ -32,16 +33,20 @@ import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import { useMetronome } from '@/shared/composables/useMetronome'
+import { useProgressionPlayback } from '@/shared/composables/useProgressionPlayback'
+import type { ProgressionSource } from '@/shared/composables/useProgressionPlayback'
 import { useTypedT } from '@/shared/composables/useTypedT'
+import { frettedPitch } from '@/shared/utils/pitch'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
 
 type Item = components['schemas']['PracticeSessionItem']
+type Instrument = components['schemas']['Instrument']
 
 const props = defineProps<{
   /** A chord_change item, or a root_change item on bass. */
   item: Item
-  /** The open-string pitches of a bass item's layout, lowest first. */
-  tuning?: string[]
+  /** The bass a root change is on: its tuning draws the board, its voice sounds the roots. */
+  bass?: Instrument
   /** The instrument the item is on, named only in a session mixing instruments. */
   instrumentName?: string
 }>()
@@ -79,8 +84,12 @@ const roots = computed<MarkedPlace[]>(() => {
   ]
 })
 
+const tuning = computed(() => props.bass?.tuning ?? null)
+const window = computed(() => (props.item.root_change ? bassWindow(props.item.root_change.window_start_fret) : null))
+const boardFrets = computed(() => Math.max(boardFretsFor(roots.value), window.value?.to ?? 0))
+
 const status = computed(() => {
-  if (onBass.value) return props.tuning ? 'ready' : 'unavailable'
+  if (onBass.value) return tuning.value ? 'ready' : 'unavailable'
   return chords.status.value
 })
 
@@ -100,6 +109,26 @@ const beatsPlayed = ref(0)
 
 const totalBeats = computed(() => take.value.cycles * BEATS_PER_CYCLE)
 const cyclesLeft = computed(() => Math.max(0, take.value.cycles - Math.floor(beatsPlayed.value / BEATS_PER_CYCLE)))
+
+/** On bass, the take's sound: each root on its beat, from → to, after a bar of count-in, in the bass's voice. */
+const rootsSource = computed<ProgressionSource | null>(() => {
+  const roots = props.item.root_change
+  if (!roots || !props.bass || !tuning.value) return null
+  const from = frettedPitch(tuning.value, roots.from_root.string, roots.from_root.fret)
+  const to = frettedPitch(tuning.value, roots.to_root.string, roots.to_root.fret)
+  if (from === null || to === null) return null
+  const bars = Math.ceil(totalBeats.value / COUNT_IN_BEATS)
+  return {
+    chords: [],
+    chordInstrument: null,
+    bass: { instrument: props.bass, bars: Array.from({ length: bars }, () => [from, to, from, to]) },
+    tempoBpm: tempo.value,
+    countInBars: 1,
+  }
+})
+const player = useProgressionPlayback(rootsSource)
+/** Whether the bass's player keeps the take's beat: its click and roots on one clock. */
+const playsRoots = computed(() => rootsSource.value !== null)
 
 let timer: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
@@ -125,7 +154,13 @@ function tick() {
 
 function startTake() {
   // Inside the tap: browsers only let audio start from one.
-  metronome.start()
+  if (playsRoots.value) {
+    metronome.stop()
+    player.metronome.value = true
+    player.toggle()
+  } else {
+    metronome.start()
+  }
   phase.value = 'counting_in'
   countIn.value = COUNT_IN_BEATS
   beatsPlayed.value = 0
@@ -138,6 +173,7 @@ function startTake() {
 function restartTake() {
   stopTimer()
   metronome.stop()
+  if (playsRoots.value) player.stop()
   countIn.value = 0
   beatsPlayed.value = 0
   phase.value = 'ready'
@@ -146,6 +182,7 @@ function restartTake() {
 function takeOver() {
   stopTimer()
   metronome.stop()
+  if (playsRoots.value) player.stop()
   phase.value = 'share'
 }
 
@@ -162,6 +199,9 @@ function pick(share: CleanShare) {
 }
 
 onBeforeUnmount(stopTimer)
+
+/** The beat the row lights: the bass player's while it plays the take, else the metronome's. */
+const litBeat = computed(() => (playsRoots.value && phase.value !== 'ready' ? player.beat.value : metronome.beat.value))
 
 /** Above the chords: what to do, then once the take is over what to say about it. */
 const meta = computed(() => {
@@ -189,7 +229,7 @@ const meta = computed(() => {
       <p data-test="change-meta" class="text-ink-muted">{{ meta }}</p>
 
       <PracticeBreakout v-if="onBass && tuning">
-        <DrillFretboard :tuning="tuning" :max-fret="boardFretsFor(roots)" :label="t('sessionChord.bassChangeBoard', pair)" :places="roots" />
+        <DrillFretboard :tuning="tuning" :max-fret="boardFrets" :fret-window="window" :label="t('sessionChord.bassChangeBoard', pair)" :places="roots" locked />
       </PracticeBreakout>
       <div v-else-if="chords.instrument.value" class="flex justify-center gap-6">
         <div v-for="box in boxes" :key="box.diagram.diagram_id" data-test="pair-chord" class="flex flex-col items-center gap-1">
@@ -220,7 +260,7 @@ const meta = computed(() => {
       <template v-else>
         <MetronomeRow
           :beats="COUNT_IN_BEATS"
-          :lit="metronome.beat.value"
+          :lit="litBeat"
           :tempo="tempo"
           :slowest="SLOWEST_BPM"
           :goal="take.target_tempo_bpm"

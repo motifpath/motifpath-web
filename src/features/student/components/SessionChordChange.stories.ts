@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 import { expect, waitFor } from 'storybook/test'
 
-import { BASS_TUNING, changeTake, chordChangeItem, chordDiagramHandler, chordInstrumentsHandler, rootChangeItem } from '@/features/student/testing/chordItems'
+import { changeTake, chordChangeItem, chordDiagramHandler, chordInstrumentsHandler, rootChangeItem } from '@/features/student/testing/chordItems'
+import { drillBass } from '@/shared/testUtils/drill'
 import { failing } from '@/shared/testUtils/msw/handlers'
 
 import SessionChordChange from './SessionChordChange.vue'
@@ -29,8 +30,8 @@ export const NeverPlayed: Story = {
   args: { item: chordChangeItem('G', 'D', changeTake({ start_tempo_bpm: 40, best_clean_tempo_bpm: null })) },
 }
 
-/** On bass: both roots marked on the board. */
-export const BassRoots: Story = { args: { item: rootChangeItem(), tuning: BASS_TUNING } }
+/** On bass: both roots marked on the board, in the plan's window; the take sounds them. */
+export const BassRoots: Story = { args: { item: rootChangeItem(), bass: drillBass } }
 
 /** The chords can't be drawn: the change can only be skipped. */
 export const Unavailable: Story = { parameters: { msw: { handlers: { diagram: failing('diagram') } } } }

@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref } from 'vue'
+import { ref, toValue } from 'vue'
+import type { MaybeRefOrGetter } from 'vue'
 
 const GET = vi.fn()
 vi.mock('@/shared/composables/useApi', () => ({
@@ -25,9 +26,30 @@ vi.mock('@/shared/composables/useMetronome', () => ({
   },
 }))
 
+// The bass's player is driven by hand: Start takes the source it was given.
+const player = {
+  state: ref<'idle' | 'loading' | 'playing' | 'error'>('idle'),
+  currentBar: ref<number | null>(null),
+  beat: ref<number | null>(null),
+  metronome: ref(false),
+  toggle: vi.fn(() => {
+    player.state.value = 'playing'
+  }),
+  stop: vi.fn(() => {
+    player.state.value = 'idle'
+  }),
+  source: null as unknown,
+}
+vi.mock('@/shared/composables/useProgressionPlayback', () => ({
+  useProgressionPlayback: (source: unknown) => {
+    player.source = source
+    return { ...player, status: ref('ready'), tempo: ref(0), noteValue: ref('quarters'), lengthMs: ref(0) }
+  },
+}))
+
 import SessionChordChange from '@/features/student/components/SessionChordChange.vue'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
-import { drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
+import { drillBass, drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 import type { components } from '@/api/generated/core-domain'
 
 type Item = components['schemas']['PracticeSessionItem']
@@ -39,7 +61,6 @@ const fail = () => Promise.resolve({ data: undefined, error: { message: 'boom' }
 const AM = drillVoicings.Am.diagram.diagram_id
 const C = drillVoicings.C.diagram.diagram_id
 const BASS = 'instrument-bass'
-const BASS_TUNING = ['E1', 'A1', 'D2', 'G2']
 
 function serve(options: { failing?: boolean } = {}) {
   GET.mockImplementation((path: string, init?: { params?: { path?: { diagram_id?: string } } }) => {
@@ -113,6 +134,10 @@ describe('SessionChordChange', () => {
     startMetronome.mockClear()
     stopMetronome.mockClear()
     toggleMetronome.mockClear()
+    player.state.value = 'idle'
+    player.metronome.value = false
+    player.toggle.mockClear()
+    player.stop.mockClear()
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -270,8 +295,48 @@ describe('SessionChordChange', () => {
   })
 
   describe('on bass', () => {
+    type Source = { chords: unknown[]; chordInstrument: unknown; bass: { instrument: unknown; bars: number[][] }; tempoBpm: number; countInBars: number }
+    const source = () => toValue(player.source as MaybeRefOrGetter<Source | null>)
+
+    it('sounds each root on its beat after the count-in, in the bass’s voice, the click with it, and no chord', async () => {
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+
+      expect(player.toggle).toHaveBeenCalledTimes(1)
+      expect(player.metronome.value).toBe(true)
+      expect(startMetronome).not.toHaveBeenCalled()
+      // Am's root A1 is MIDI 33 on the open A string, C's C2 36 on its third fret: ten cycles, four beats a bar.
+      expect(source()).toMatchObject({
+        chords: [],
+        chordInstrument: null,
+        bass: { instrument: drillBass, bars: Array.from({ length: 5 }, () => [33, 36, 33, 36]) },
+        tempoBpm: 60,
+        countInBars: 1,
+      })
+    })
+
+    it('stops the roots when the take is restarted or over', async () => {
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      await wrapper.get('[data-test="restart-take"]').trigger('click')
+      expect(player.stop).toHaveBeenCalledTimes(1)
+
+      await playTheTake(wrapper, 60)
+      expect(player.stop).toHaveBeenCalledTimes(2)
+    })
+
+    it('can only be skipped when the bass isn’t known', async () => {
+      const wrapper = await mountItem(rootChange())
+
+      await wrapper.get('[data-test="skip-item"]').trigger('click')
+
+      expect(wrapper.emitted('skip')).toEqual([['unavailable']])
+    })
+
     it('marks both roots on the board, named by their chords', async () => {
-      const wrapper = await mountItem(rootChange(), { tuning: BASS_TUNING })
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
 
       expect(wrapper.get('[data-test="item-title"]').text()).toBe('Am and C roots, back and forth')
       const places = wrapper.findAll('[data-test="marked-place"]')
@@ -279,7 +344,7 @@ describe('SessionChordChange', () => {
     })
 
     it('asks how many changes the root rang clean, and sends the share', async () => {
-      const wrapper = await mountItem(rootChange(), { tuning: BASS_TUNING })
+      const wrapper = await mountItem(rootChange(), { bass: drillBass })
 
       await playTheTake(wrapper, 60)
       expect(wrapper.get('[data-test="change-meta"]').text()).toBe('How many changes rang clean, the root sounding?')
@@ -287,6 +352,15 @@ describe('SessionChordChange', () => {
 
       expect(wrapper.emitted('save')).toEqual([[60, 50]])
     })
+  })
+
+  it('on guitar, sounds nothing but the metronome', async () => {
+    const wrapper = await mountItem(chordChange())
+
+    await wrapper.get('[data-test="start-take"]').trigger('click')
+
+    expect(startMetronome).toHaveBeenCalled()
+    expect(player.toggle).not.toHaveBeenCalled()
   })
 
   it('can only be skipped, as unavailable, when a chord can’t be drawn', async () => {

@@ -209,12 +209,6 @@ function fretboardOf(item: Item): string | undefined {
   )
 }
 
-/** The tuning a bass chord item's board is drawn with; none for a chord on guitar, drawn as its box. */
-const currentBassTuning = computed(() => {
-  const layout = current.value?.root_change?.layout_instrument_id
-  return layout ? tuningOf(layout) : undefined
-})
-
 /** The tuning a bass tour marks its chord tones with; null on guitar, whose tour shows boxes. */
 const currentTourTuning = computed(() => {
   const tour = current.value?.progression_keys
@@ -512,7 +506,7 @@ onBeforeUnmount(() => {
         v-else-if="current.chord_change || current.root_change"
         :key="run.index.value"
         :item="current"
-        :tuning="currentBassTuning"
+        :bass="current.root_change ? instrumentOf(current.root_change.layout_instrument_id) : undefined"
         :instrument-name="currentInstrumentName"
         @save="(tempo, share) => run!.saveChangeTake(tempo, share)"
         @skip="run.skip($event)"
