@@ -163,6 +163,12 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
   /** The clicks scheduled, each with its beat of the bar, in time order; a click cancelled leaves it. */
   let clicks: { time: number; beat: number }[] = []
 
+  /** The latest click scheduled at or before `heard`; none before the first. */
+  function lastClickBy(heard: number) {
+    for (let i = clicks.length - 1; i >= 0; i--) if (clicks[i]!.time <= heard) return clicks[i]
+    return undefined
+  }
+
   /** The click sink, keeping each click's time and beat so the beat sounding can be told. */
   function countingClicks(sink: ClickSink): ClickSink {
     let beatOfBar = 0
@@ -204,7 +210,7 @@ export function useProgressionPlayback(source: MaybeRefOrGetter<ProgressionSourc
     }
     const bar = barOfPositionIds(lead.activePositionIds(heard))
     if (bar !== currentBar.value) currentBar.value = bar
-    const sounding = clicks.findLast((c) => c.time <= heard)?.beat ?? null
+    const sounding = lastClickBy(heard)?.beat ?? null
     if (sounding !== beat.value) beat.value = sounding
     frame = requestAnimationFrame(tick)
   }
