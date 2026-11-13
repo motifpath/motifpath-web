@@ -2,7 +2,8 @@ import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
 import type { components as EventComponents } from '@/api/generated/event-ingestion'
-import { changeMinuteRating } from '@/features/student/utils/changeMinute'
+import { changeShareRating } from '@/features/student/utils/changeShare'
+import type { CleanShare } from '@/features/student/utils/changeShare'
 import { afterTake, tourStart, tourTempoIn } from '@/features/student/utils/keyTour'
 import type { TourState } from '@/features/student/utils/keyTour'
 import { ladderFloorIn, nextTempo, speedOf } from '@/features/student/utils/tempoLadder'
@@ -10,6 +11,7 @@ import type { PlayedTempo, RatedTake, TakeRating } from '@/features/student/util
 import { useApi } from '@/shared/composables/useApi'
 import { fetchDiagram } from '@/shared/composables/useEmbeddedDiagram'
 import { useEventTracking } from '@/shared/composables/useEventTracking'
+import { useVisibleTime } from '@/shared/composables/useVisibleTime'
 import { measureExerciseAudio } from '@/shared/utils/exerciseAudio'
 import { isExactMatch } from '@/shared/utils/exerciseOptions'
 import { gradeDiagramShape } from '@/shared/utils/diagramShape'
@@ -136,7 +138,7 @@ export type ItemOutcome =
   | { kind: 'answered'; correct: boolean }
   | { kind: 'played'; takes: RatedTake[] }
   | { kind: 'rated'; rating: TakeRating }
-  | { kind: 'changes'; tempoBpm: number; cleanChanges: number; rating: TakeRating }
+  | { kind: 'changes'; tempoBpm: number; cleanSharePercent: CleanShare; rating: TakeRating }
   /** A progression key tour: its takes, the keys clean when the last was rated, and the tour tempo in quarters. */
   | { kind: 'toured'; takes: RatedTake[]; cleanKeys: number; tourBpm: number }
   /** A guide tone: the bars its best take hit, of its bars, and whether any take hit them all. */
@@ -203,6 +205,8 @@ export interface PracticeSessionRunOptions {
 export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOptions = {}) {
   const { track } = useEventTracking()
   const { coreApi } = useApi()
+  /** The time the session is on screen, which every answer and its end report since the event before. */
+  const visible = useVisibleTime()
 
   const index = ref(0)
   const takes = ref<RatedTake[]>([])
@@ -356,6 +360,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   function start() {
     if (started.value) return
     started.value = true
+    visible.start()
     shownAt = Date.now()
     startedAt = shownAt
     void track({
@@ -374,6 +379,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     void track(
       {
         event_type: 'practice.session_ended',
+        visible_ms: visible.lap(),
         practice_session_id: plan.practice_session_id,
         answered_count: answeredCount.value,
         left_early: leftEarly,
@@ -457,6 +463,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
       markAnswered(item)
       void track({
         event_type: 'practice.item_answered',
+        visible_ms: visible.lap(),
         practice_session_id: plan.practice_session_id,
         item_key: item.item_key,
         response: { response_type: 'self_rating', rating, tempo_bpm: bpm, note_value: played, ...(key ? { music_key: key } : {}) },
@@ -475,18 +482,23 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     else nextItem()
   }
 
-  /** Records the student's rating of a single chord, or of a root and fifth, and moves on. */
-  function rateChord(rating: TakeRating) {
+  /**
+   * Records the student's rating of a single chord, or of a root and fifth with the tempo it was
+   * played at under the metronome, and moves on.
+   */
+  function rateChord(rating: TakeRating, tempoBpm?: number) {
     const item = current.value
     if (!active() || !item || (!item.chord_voicing && !item.root_fifth)) return
+    if (item.root_fifth && tempoBpm === undefined) return
 
     markAnswered(item)
     recordOutcome({ kind: 'rated', rating })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
-      response: { response_type: 'self_rating', rating },
+      response: { response_type: 'self_rating', rating, ...(item.root_fifth ? { tempo_bpm: tempoBpm } : {}) },
     })
     nextItem()
   }
@@ -501,6 +513,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'rated', rating })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { response_type: 'self_rating', rating },
@@ -508,22 +521,23 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
   }
 
   /**
-   * Records a minute of chord or root changes, one change on every beat: the tempo it was played
-   * at and the clean changes counted, rated by their share of the beats, and moves on.
+   * Records a take of chord or root changes, ten cycles with one change on every beat: the tempo it
+   * was played at and the share of its changes the student says rang clean, rated by that share,
+   * and moves on.
    */
-  function saveChangeMinute(tempoBpm: number, cleanChanges: number) {
+  function saveChangeTake(tempoBpm: number, cleanSharePercent: CleanShare) {
     const item = current.value
     if (!active() || !item || (!item.chord_change && !item.root_change)) return
-    if (cleanChanges < 0 || cleanChanges > tempoBpm) return
 
-    const rating = changeMinuteRating(cleanChanges, tempoBpm)
+    const rating = changeShareRating(cleanSharePercent)
     markAnswered(item)
-    recordOutcome({ kind: 'changes', tempoBpm, cleanChanges, rating })
+    recordOutcome({ kind: 'changes', tempoBpm, cleanSharePercent, rating })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
-      response: { response_type: 'self_rating', rating, tempo_bpm: tempoBpm, changes_per_minute: cleanChanges },
+      response: { response_type: 'self_rating', rating, tempo_bpm: tempoBpm, clean_share_percent: cleanSharePercent },
     })
     nextItem()
   }
@@ -560,6 +574,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'tapped', hits: best.hits, bars: planned.bars.length, correct: guideToneTakes.value.some((t) => t.correct) })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: {
@@ -609,6 +624,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     const audio = amongSounds ? undefined : audioMs.get(exercise.exercise_id)
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: {
@@ -636,6 +652,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { ...answer, latency_ms: Date.now() - shownAt },
@@ -660,6 +677,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     recordOutcome({ kind: 'answered', correct })
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { ...answer, latency_ms: Date.now() - shownAt },
@@ -686,12 +704,13 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     const heard = planned.playback ? answer.audioMs : undefined
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: {
         response_type: 'generated_choice',
         way: answer.way,
-        ...(KEYED_BY_THE_QUESTION.includes(item.kind) ? { music_key: planned.music_key } : {}),
+        ...(KEYED_BY_THE_QUESTION.includes(item.kind) && planned.music_key ? { music_key: planned.music_key } : {}),
         options: answer.options,
         choice: answer.choice,
         latency_ms: Date.now() - (planned.playback ? (firstClipStartedAt ?? shownAt) : shownAt),
@@ -711,6 +730,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
 
     void track({
       event_type: 'practice.item_answered',
+      visible_ms: visible.lap(),
       practice_session_id: plan.practice_session_id,
       item_key: item.item_key,
       response: { response_type: 'not_answered', reason },
@@ -758,7 +778,7 @@ export function usePracticeSessionRun(plan: Plan, options: PracticeSessionRunOpt
     rate,
     rateChord,
     rateSong,
-    saveChangeMinute,
+    saveChangeTake,
     tapGuideTone,
     answer,
     clipPlaying,

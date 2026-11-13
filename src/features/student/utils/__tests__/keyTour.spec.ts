@@ -24,7 +24,8 @@ function plan(overrides: Partial<Tour> = {}): Tour {
     start_note_value: 'quarters',
     target_tempo_bpm: 100,
     min_tempo_bpm: 60,
-    keys: TOUR_ORDER.map((key) => ({ music_key: key, clean: false, chart: [], voicings: [], chord_tones: [] })),
+    bass_pattern: null,
+    keys: TOUR_ORDER.map((key) => ({ music_key: key, clean: false, chart: [], voicings: [], window_start_fret: null, chord_tones: [] })),
     ...overrides,
   }
 }

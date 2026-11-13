@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { barOfPositionIds, bassLineSteps, chordSteps } from '@/shared/audio/progressionSteps'
+import { barOfPositionIds, bassLineSteps, bassNoteSteps, chordSteps } from '@/shared/audio/progressionSteps'
 import { drillBass, drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 
 const GUITAR = drillGuitar.tuning!
@@ -54,5 +54,24 @@ describe('barOfPositionIds', () => {
   it('names the bar a run is sounding, or none between bars', () => {
     expect(barOfPositionIds(['bar-2'])).toBe(2)
     expect(barOfPositionIds([])).toBeNull()
+  })
+})
+
+describe('bassNoteSteps', () => {
+  it('splits each bar evenly among the notes it is given, each lit as its bar', () => {
+    const steps = bassNoteSteps([[45, 52], [40], [43, 47, 50, 47]])
+
+    expect(steps.map((step) => step.value)).toEqual([1 / 2, 1 / 2, 1, 1 / 4, 1 / 4, 1 / 4, 1 / 4])
+    expect(steps.map((step) => step.notes.map((note) => note.midi))).toEqual([[45], [52], [40], [43], [47], [50], [47]])
+    expect(steps.map((step) => step.positionIds)).toEqual([['bar-0'], ['bar-0'], ['bar-1'], ['bar-2'], ['bar-2'], ['bar-2'], ['bar-2']])
+  })
+
+  it('rests a bar with no note for the whole bar, so the bars after it stay in time', () => {
+    const steps = bassNoteSteps([[], [40]])
+
+    expect(steps).toEqual([
+      { value: 1, positionIds: ['bar-0'], notes: [] },
+      { value: 1, positionIds: ['bar-1'], notes: [{ positionId: 'bar-1', midi: 40, offset: 0 }] },
+    ])
   })
 })

@@ -31,6 +31,7 @@ const KIND_KEYS = {
   chart_progression: 'sessionPlan.kinds.harmony',
   heard_chord: 'sessionPlan.kinds.ear',
   heard_progression: 'sessionPlan.kinds.ear',
+  heard_chord_quality: 'sessionPlan.kinds.ear',
   chord_voicing: 'sessionPlan.kinds.chord',
   root_fifth: 'sessionPlan.kinds.chord',
   root_change: 'sessionPlan.kinds.chordChange',

@@ -23,7 +23,7 @@ import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import TempoControl from '@/shared/components/TempoControl.vue'
+import MetronomeRow from '@/shared/components/MetronomeRow.vue'
 import { useProgressionPlayback } from '@/shared/composables/useProgressionPlayback'
 import type { ProgressionSource } from '@/shared/composables/useProgressionPlayback'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -40,6 +40,8 @@ type GuideTone = NonNullable<Item['guide_tone']>
 
 /** The slowest tempo a take can be chosen at. */
 const SLOWEST_BPM = 30
+/** Beats in a bar of the progression, a dot each on the metronome row. */
+const BEATS = 4
 
 const props = defineProps<{
   /** A guide_tone item. */
@@ -236,7 +238,9 @@ function rootOf(symbol: string): string {
       />
 
       <template v-if="phase === 'ready'">
-        <TempoControl
+        <MetronomeRow
+          :beats="BEATS"
+          :lit="player.beat.value"
           :tempo="tempo"
           :slowest="SLOWEST_BPM"
           :goal="goalMark"

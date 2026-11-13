@@ -81,6 +81,58 @@ describe('DrillFretboard', () => {
     expect(marked[1]!.get('circle').classes()).toContain('fill-accent')
   })
 
+  it('says whether a third or fifth is above or below the root, a tone below drawn hollow, and marks a seventh as 7', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: {
+        tuning: ['E1', 'A1', 'D2', 'G2'],
+        maxFret: 7,
+        label: 'Bass',
+        places: [
+          { string: 3, fret: 7, role: 'root', chord: 'Em' },
+          { string: 2, fret: 5, role: 'third', position: 'above', chord: 'Em' },
+          { string: 1, fret: 4, role: 'fifth', position: 'above', chord: 'Em' },
+          { string: 4, fret: 3, role: 'third', position: 'below', chord: 'Em' },
+          { string: 4, fret: 7, role: 'fifth', position: 'below', chord: 'Em' },
+          { string: 2, fret: 7, role: 'seventh', chord: 'Em' },
+        ],
+      },
+    })
+
+    const marked = wrapper.findAll('[data-test="marked-place"]')
+    expect(marked.map((place) => place.text())).toEqual(['R', '3', '5', '3', '5', '7'])
+    expect(marked.map((place) => place.attributes('data-position'))).toEqual([undefined, 'above', 'above', 'below', 'below', undefined])
+    expect(marked.map((place) => place.attributes('aria-label'))).toEqual([
+      'Root of Em, string 3, fret 7',
+      'Third above, of Em, string 2, fret 5',
+      'Fifth above, of Em, string 1, fret 4',
+      'Third below, of Em, string 4, fret 3',
+      'Fifth below, of Em, string 4, fret 7',
+      'Seventh of Em, string 2, fret 7',
+    ])
+    expect(marked[1]!.get('circle').classes()).toContain('fill-accent')
+    expect(marked[3]!.get('circle').classes()).toContain('fill-surface')
+    expect(marked[3]!.get('circle').classes()).toContain('stroke-accent')
+  })
+
+  it('names a fifth above or below on its own, with no chord', () => {
+    const wrapper = mount(DrillFretboard, {
+      props: {
+        tuning: ['E1', 'A1', 'D2', 'G2'],
+        maxFret: 7,
+        label: 'Bass',
+        places: [
+          { string: 3, fret: 7, role: 'fifth', position: 'above' },
+          { string: 4, fret: 0, role: 'fifth', position: 'below' },
+        ],
+      },
+    })
+
+    expect(wrapper.findAll('[data-test="marked-place"]').map((place) => place.attributes('aria-label'))).toEqual([
+      'Fifth above, string 3, fret 7',
+      'Fifth below, string 4, open',
+    ])
+  })
+
   it('names an open place as open', () => {
     const wrapper = mount(DrillFretboard, {
       props: { tuning: ['E1', 'A1', 'D2', 'G2'], maxFret: 5, label: 'Bass', places: [{ string: 3, fret: 0, role: 'root' }] },

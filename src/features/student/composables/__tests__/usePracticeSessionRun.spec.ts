@@ -5,6 +5,12 @@ vi.mock('@/shared/composables/useEventTracking', () => ({
   useEventTracking: () => ({ track }),
 }))
 
+/** The visible time each practice event reports, lap by lap: VISIBLE_MS unless a test queues others. */
+const VISIBLE_MS = 30_000
+const laps = vi.hoisted(() => ({ queued: [] as number[], started: 0 }))
+vi.mock('@/shared/composables/useVisibleTime', () => ({
+  useVisibleTime: () => ({ start: () => laps.started++, lap: () => laps.queued.shift() ?? 30_000 }),
+}))
 const measureExerciseAudio = vi.fn()
 vi.mock('@/shared/utils/exerciseAudio', () => ({
   measureExerciseAudio: (exercise: unknown, loadDiagram: unknown) => measureExerciseAudio(exercise, loadDiagram),
@@ -102,8 +108,8 @@ const AM = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
 const C_OPEN = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
 const BASS_ID = '33333333-3333-4333-8333-333333333333'
 
-function minute(fields: Partial<NonNullable<Item['chord_change']>['minute']> = {}): NonNullable<Item['chord_change']>['minute'] {
-  return { start_tempo_bpm: 45, target_changes_per_minute: 60, best_clean_changes_per_minute: null, last_changes_per_minute: null, ...fields }
+function take(fields: Partial<NonNullable<Item['chord_change']>['take']> = {}): NonNullable<Item['chord_change']>['take'] {
+  return { cycles: 10, start_tempo_bpm: 45, target_tempo_bpm: 60, best_clean_tempo_bpm: null, ...fields }
 }
 
 function chordVoicingItem(diagramId: string, symbol: string): Item {
@@ -119,7 +125,7 @@ function chordVoicingItem(diagramId: string, symbol: string): Item {
   }
 }
 
-function chordChangeItem(fields: Partial<NonNullable<Item['chord_change']>['minute']> = {}): Item {
+function chordChangeItem(fields: Partial<NonNullable<Item['chord_change']>['take']> = {}): Item {
   return {
     item_key: `chord_change:${AM}:${C_OPEN}`,
     kind: 'chord_change',
@@ -128,7 +134,7 @@ function chordChangeItem(fields: Partial<NonNullable<Item['chord_change']>['minu
     node_id: null,
     level: 'new',
     estimated_seconds: 90,
-    chord_change: { from_diagram_id: AM, to_diagram_id: C_OPEN, from_chord_symbol: 'Am', to_chord_symbol: 'C', minute: minute(fields) },
+    chord_change: { from_diagram_id: AM, to_diagram_id: C_OPEN, from_chord_symbol: 'Am', to_chord_symbol: 'C', take: take(fields) },
   }
 }
 
@@ -141,7 +147,15 @@ function rootFifthItem(): Item {
     node_id: null,
     level: 'new',
     estimated_seconds: 20,
-    root_fifth: { layout_instrument_id: BASS_ID, chord_symbol: 'Am', root: { string: 3, fret: 0 }, fifth: { string: 2, fret: 2 } },
+    root_fifth: {
+      layout_instrument_id: BASS_ID,
+      chord_symbol: 'Am',
+      root: { string: 3, fret: 0 },
+      fifth: { string: 2, fret: 2 },
+      fifth_below: { string: 4, fret: 0 },
+      window_start_fret: 0,
+      start_tempo_bpm: 60,
+    },
   }
 }
 
@@ -160,7 +174,8 @@ function rootChangeItem(): Item {
       to_chord_symbol: 'C',
       from_root: { string: 3, fret: 0 },
       to_root: { string: 3, fret: 3 },
-      minute: minute(),
+      window_start_fret: 0,
+      take: take(),
     },
   }
 }
@@ -173,6 +188,19 @@ describe('usePracticeSessionRun', () => {
   beforeEach(() => {
     track.mockReset()
     measureExerciseAudio.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('says on every answer and on the end how long the session was visible since the event before', () => {
+    const run = usePracticeSessionRun(twoItems)
+    laps.queued = [95_000, 60_000]
+    run.start()
+    run.nextItem()
+    run.skip('unavailable')
+
+    expect(laps.started).toBeGreaterThan(0)
+    expect(tracked('practice.item_answered').map((event) => event.visible_ms)).toEqual([95_000])
+    expect(tracked('practice.session_ended').map((event) => event.visible_ms)).toEqual([60_000])
+    expect(tracked('practice.session_started')[0]).not.toHaveProperty('visible_ms')
   })
 
   it('sends the plan as practice.session_started when the session starts', () => {
@@ -291,6 +319,7 @@ describe('usePracticeSessionRun', () => {
     expect(tracked('practice.item_answered')).toEqual([
       {
         event_type: 'practice.item_answered',
+        visible_ms: VISIBLE_MS,
         practice_session_id: SESSION_ID,
         item_key: `play_along:${DUE}`,
         response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60, note_value: 'quarters' },
@@ -321,6 +350,7 @@ describe('usePracticeSessionRun', () => {
     expect(tracked('practice.session_ended')).toEqual([
       {
         event_type: 'practice.session_ended',
+        visible_ms: VISIBLE_MS,
         practice_session_id: SESSION_ID,
         answered_count: 1,
         left_early: false,
@@ -629,6 +659,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `exercise:${EXERCISE}`,
           response: { response_type: 'option_choice', option_ids: ['right'], latency_ms: 4200 },
@@ -789,6 +820,7 @@ describe('usePracticeSessionRun', () => {
         expect(tracked('practice.item_answered')).toEqual([
           {
             event_type: 'practice.item_answered',
+            visible_ms: VISIBLE_MS,
             practice_session_id: SESSION_ID,
             item_key: `exercise:${LISTENING}`,
             response: { response_type: 'not_answered', reason: 'failed_to_load' },
@@ -950,6 +982,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `diagram_shape:${CAGED_A}`,
           response: { response_type: 'name_the_shape', shape: 'E', latency_ms: 2600 },
@@ -1070,6 +1103,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: 'diatonic_chord:G:vi',
           response: { response_type: 'generated_choice', way: 'numeral_to_chord', options: ['Em', 'D', 'F#dim', 'C'], choice: 'D', latency_ms: 3100 },
@@ -1093,6 +1127,34 @@ describe('usePracticeSessionRun', () => {
         latency_ms: 0,
       })
       expect(run.generatedAnswer.value?.correct).toBe(true)
+    })
+
+    it('sends a chord quality heard with no key, graded by its quality', () => {
+      const quality: Item = {
+        item_key: 'heard_chord_quality:minor',
+        kind: 'heard_chord_quality',
+        rung: 'hear',
+        reason: 'new',
+        node_id: null,
+        level: 'new',
+        estimated_seconds: 20,
+        generated_choice: { ...BLANK, way: 'chord_quality_by_ear', music_key: null, options: opts('major', 'minor', 'dominant7') },
+      }
+      const run = usePracticeSessionRun(plan([quality], null))
+      run.start()
+      run.answerGenerated(
+        { way: 'chord_quality_by_ear', options: ['major', 'minor', 'dominant7'], choice: 'major' },
+        { question: { way: 'chord_quality_by_ear', key: null, quality: 'minor' }, catalog: {} },
+      )
+
+      expect(tracked('practice.item_answered')[0].response).toEqual({
+        response_type: 'generated_choice',
+        way: 'chord_quality_by_ear',
+        options: ['major', 'minor', 'dominant7'],
+        choice: 'major',
+        latency_ms: 0,
+      })
+      expect(run.generatedAnswer.value).toEqual({ choice: 'major', right: 'minor', correct: false })
     })
 
     it('takes only the first answer, and none asked another way or among options the grader rejects', () => {
@@ -1257,6 +1319,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `fretboard_cell:${LAYOUT}:5:3`,
           response: { response_type: 'name_the_note', note_name: 'C', latency_ms: 1800 },
@@ -1324,6 +1387,7 @@ describe('usePracticeSessionRun', () => {
         expect(tracked('practice.item_answered')).toEqual([
           {
             event_type: 'practice.item_answered',
+            visible_ms: VISIBLE_MS,
             practice_session_id: SESSION_ID,
             item_key: `fretboard_cell:${LAYOUT}:6:3`,
             response: { response_type: 'multi_tap', fret_window: { from_fret: 3 }, cells: taps, latency_ms: 5200 },
@@ -1477,6 +1541,7 @@ describe('usePracticeSessionRun', () => {
         expect(tracked('practice.session_ended')).toEqual([
           {
             event_type: 'practice.session_ended',
+            visible_ms: VISIBLE_MS,
             practice_session_id: SESSION_ID,
             answered_count: 2,
             left_early: false,
@@ -1549,6 +1614,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `chord_voicing:${AM}`,
           response: { response_type: 'self_rating', rating: 'almost' },
@@ -1558,13 +1624,23 @@ describe('usePracticeSessionRun', () => {
       expect(run.answeredCount.value).toBe(1)
     })
 
-    it('sends a root and fifth on bass the same way', () => {
+    it('sends a root and fifth on bass with the tempo it was played at', () => {
+      const run = usePracticeSessionRun(plan([rootFifthItem()], BASS_ID))
+      run.start()
+
+      run.rateChord('clean', 70)
+
+      expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'self_rating', rating: 'clean', tempo_bpm: 70 })
+    })
+
+    it('never sends a root and fifth without its tempo', () => {
       const run = usePracticeSessionRun(plan([rootFifthItem()], BASS_ID))
       run.start()
 
       run.rateChord('clean')
 
-      expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'self_rating', rating: 'clean' })
+      expect(tracked('practice.item_answered')).toEqual([])
+      expect(run.index.value).toBe(0)
     })
 
     it('rates only a single chord or a root and fifth this way', () => {
@@ -1577,18 +1653,19 @@ describe('usePracticeSessionRun', () => {
       expect(run.index.value).toBe(0)
     })
 
-    it('sends a minute of changes with the tempo played, the count and the rating they give', () => {
+    it('sends a take of changes with the tempo played, the share clean and the rating it gives', () => {
       const run = usePracticeSessionRun(plan([chordChangeItem(), exerciseItem('e1', 'due')]))
       run.start()
 
-      run.saveChangeMinute(60, 42)
+      run.saveChangeTake(60, 75)
 
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `chord_change:${AM}:${C_OPEN}`,
-          response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60, changes_per_minute: 42 },
+          response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 60, clean_share_percent: 75 },
         },
       ])
       expect(run.index.value).toBe(1)
@@ -1598,51 +1675,41 @@ describe('usePracticeSessionRun', () => {
       const run = usePracticeSessionRun(plan([chordChangeItem({ start_tempo_bpm: 45 })]))
       run.start()
 
-      run.saveChangeMinute(50, 48)
+      run.saveChangeTake(50, 100)
 
-      expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'self_rating', rating: 'clean', tempo_bpm: 50, changes_per_minute: 48 })
+      expect(tracked('practice.item_answered')[0].response).toEqual({ response_type: 'self_rating', rating: 'clean', tempo_bpm: 50, clean_share_percent: 100 })
     })
 
-    it('sends a minute of root changes on bass the same way', () => {
+    it('sends a take of root changes on bass the same way', () => {
       const run = usePracticeSessionRun(plan([rootChangeItem()], BASS_ID))
       run.start()
 
-      run.saveChangeMinute(30, 30)
+      run.saveChangeTake(30, 50)
 
       expect(tracked('practice.item_answered')[0]).toMatchObject({
         item_key: `root_change:${BASS_ID}:Am:C`,
-        response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 30, changes_per_minute: 30 },
+        response: { response_type: 'self_rating', rating: 'struggled', tempo_bpm: 30, clean_share_percent: 50 },
       })
     })
 
-    it('never sends more clean changes than the minute had beats', () => {
-      const run = usePracticeSessionRun(plan([chordChangeItem()]))
-      run.start()
-
-      run.saveChangeMinute(40, 41)
-
-      expect(tracked('practice.item_answered')).toEqual([])
-      expect(run.index.value).toBe(0)
-    })
-
-    it('saves a minute only for a chord change or a root change', () => {
+    it('saves a take only for a chord change or a root change', () => {
       const run = usePracticeSessionRun(plan([chordVoicingItem(AM, 'Am')]))
       run.start()
 
-      run.saveChangeMinute(40, 20)
+      run.saveChangeTake(40, 100)
 
       expect(tracked('practice.item_answered')).toEqual([])
     })
 
-    it('keeps how a chord went and how many clean changes a minute had, for the summary', () => {
+    it('keeps how a chord went and how much of a take of changes was clean, for the summary', () => {
       const run = usePracticeSessionRun(plan([chordVoicingItem(AM, 'Am'), chordChangeItem()]))
       run.start()
 
       run.rateChord('clean')
-      run.saveChangeMinute(60, 42)
+      run.saveChangeTake(60, 75)
 
       expect(run.outcomes.value.get(0)).toEqual({ kind: 'rated', rating: 'clean' })
-      expect(run.outcomes.value.get(1)).toEqual({ kind: 'changes', tempoBpm: 60, cleanChanges: 42, rating: 'almost' })
+      expect(run.outcomes.value.get(1)).toEqual({ kind: 'changes', tempoBpm: 60, cleanSharePercent: 75, rating: 'almost' })
     })
   })
 
@@ -1729,7 +1796,8 @@ describe('usePracticeSessionRun', () => {
           start_note_value: 'quarters',
           target_tempo_bpm: 100,
           min_tempo_bpm: 60,
-          keys: TOUR_KEYS.map((key) => ({ music_key: key, clean: clean.includes(key), chart: [], voicings: [], chord_tones: [] })),
+          bass_pattern: null,
+          keys: TOUR_KEYS.map((key) => ({ music_key: key, clean: clean.includes(key), chart: [], voicings: [], window_start_fret: null, chord_tones: [] })),
           ...fields,
         },
       }
@@ -1754,6 +1822,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: `progression_keys:${GUITAR_ID}:I-V-vi-IV`,
           response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 85, note_value: 'quarters', music_key: 'A' },
@@ -1852,6 +1921,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: 'guide_tone:guitar:ii-V-I',
           response: { response_type: 'timed_taps', music_key: 'G', tone: '3', tempo_bpm: 60, note_value: 'quarters', taps: EVERY_THIRD_AT_60 },
@@ -1931,6 +2001,7 @@ describe('usePracticeSessionRun', () => {
       expect(tracked('practice.item_answered')).toEqual([
         {
           event_type: 'practice.item_answered',
+          visible_ms: VISIBLE_MS,
           practice_session_id: SESSION_ID,
           item_key: 'song:guitar:chart-amazing-grace',
           response: { response_type: 'self_rating', rating: 'almost' },

@@ -269,26 +269,24 @@
   },
   "sessionChord": {
     "voicingHint": "Fret it, strum once and let it ring.",
-    "rootFifthHint": "Root, then fifth, each note ringing its full length.",
+    "rootFifthHint": "Root, then fifth, a half note each, with the metronome.",
     "bassBoard": "Bass board with the places to play for {chord}",
     "bassChangeBoard": "Bass board with the roots of {from} and {to}",
     "unavailable": "This chord can’t be shown right now. Skip it — it won’t count against you.",
     "skip": "Skip",
-    "everyBeat": "Change on every beat",
-    "everyBeatDetail": "change on every beat",
-    "best": "best {count} clean changes",
-    "noBest": "no clean minute yet",
-    "goal": "Goal {count} changes a minute",
-    "readyHint": "Set the tempo first: the metronome ticks while you try it. Start the minute gives a bar of count-in.",
-    "start": "Start the minute",
+    "goal": "Goal {tempo} BPM, every change clean",
+    "readyHint": "Set the tempo first: the metronome ticks while you try it. Start the take gives a bar of count-in.",
+    "start": "Start the take",
     "restart": "Restart",
-    "runningHint": "Nothing to tap while the minute runs. Keep changing on every beat.",
+    "runningHint": "Nothing to tap while the take runs. Keep changing on every beat.",
     "countIn": "Count-in",
-    "timeUp": "Time is up. Count only the changes where every string rang.",
-    "timeUpBass": "Time is up. Count only the changes where the root rang clean.",
-    "cleanChanges": "clean changes",
-    "cleanChangesBest": "clean changes · best {count}",
-    "save": "Save {count} change | Save {count} changes"
+    "cyclesMeta": "{cycles} cycles · change on every beat",
+    "cyclesLeft": "cycles left",
+    "shareQuestion": "How many changes rang clean, every string sounding?",
+    "shareQuestionBass": "How many changes rang clean, the root sounding?",
+    "share": "{share} %",
+    "shares": "Share of the changes that rang clean",
+    "rootFifthPlaying": "Play along: root, then fifth. The take ends by itself."
   },
   "sessionPlan": {
     "chords": {
@@ -314,7 +312,8 @@
       "chartToNumbers": "Reading charts",
       "numbersToChart": "Picking charts",
       "cadenceThenChord": "Chords by ear",
-      "progressionByNumber": "Progressions by ear"
+      "progressionByNumber": "Progressions by ear",
+      "chordQualityByEar": "Chord qualities by ear"
     },
     "nextUp": {
       "played": "You played {name} up to {tempo}.",
@@ -355,7 +354,7 @@
     "whatYouPractised": "What you practised",
     "played": "up to {tempo} · {rating}",
     "counted": "{right} of {answered} right",
-    "changes": "{count} clean changes at {tempo} BPM · {rating}",
+    "changes": "{share} % clean at {tempo} BPM · {rating}",
     "right": "Right",
     "notQuite": "Not quite",
     "nothingAnswered": "Nothing answered or rated this time. Every session still counts.",
@@ -739,12 +738,21 @@
         "2": "Two chords, in a key you aren’t told",
         "3": "Three chords, in a key you aren’t told",
         "4": "Four chords, in a key you aren’t told"
-      }
+      },
+      "alone": "One chord, alone"
     },
     "chordsOfKey": "All four are chords of {key} major.",
     "keyOf": "Key of {key} major",
     "keyOfMinor": "Key of {key}",
-    "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you."
+    "unavailable": "This question can’t be shown right now. Skip it — it won’t count against you.",
+    "chordQualityByEar": "Which kind of chord is it?",
+    "qualities": {
+      "major": "Major",
+      "minor": "Minor",
+      "dominant7": "With a seventh (7)",
+      "diminished": "Diminished",
+      "augmented": "Augmented"
+    }
   },
   "subjectPicker": {
     "title": "What to practise",
@@ -773,7 +781,13 @@
     "tapForBox": "Tap a chord to see its box.",
     "tapForTones": "Tap a chord to see its root, 3rd and 5th.",
     "tonesOf": "{chord}: root, 3rd and 5th",
-    "unavailable": "This progression can’t be played here right now."
+    "unavailable": "This progression can’t be played here right now.",
+    "patterns": {
+      "root": "Root of each chord",
+      "root_fifth": "Root and 5th of each chord",
+      "root_third_fifth_third": "Root, 3rd, 5th and 3rd of each chord",
+      "root_third_fifth_seventh": "Root, 3rd, 5th and 7th of each chord"
+    }
   },
   "guideTone": {
     "promptThird": "Tap the 3rd of each chord",

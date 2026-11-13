@@ -11,6 +11,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 const player = {
   state: ref<'idle' | 'loading' | 'playing' | 'error'>('idle'),
   currentBar: ref<number | null>(null),
+  beat: ref<number | null>(null),
   metronome: ref(false),
   toggle: vi.fn(() => {
     player.state.value = 'playing'
@@ -31,7 +32,8 @@ import SessionProgressionKeys from '@/features/student/components/SessionProgres
 import type { TourState } from '@/features/student/utils/keyTour'
 import { i18n } from '@/i18n'
 import { clearEmbeddedDiagramCache } from '@/shared/composables/useEmbeddedDiagram'
-import { drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
+import { tourItem } from '@/features/student/testing/tourItems'
+import { drillBass, drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 import type { DrillChordSymbol } from '@/shared/testUtils/drill'
 import type { components } from '@/api/generated/core-domain'
 
@@ -41,7 +43,6 @@ type Source = { chords: unknown[]; tempoBpm: number; noteValue: string; countInB
 const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
 const fail = () => Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
 const boxId = (symbol: DrillChordSymbol) => drillVoicings[symbol].diagram.diagram_id
-const BASS = ['E1', 'A1', 'D2', 'G2']
 
 function serve(failing: string[] = []) {
   GET.mockImplementation((path: string, init?: { params?: { path?: { diagram_id?: string } } }) => {
@@ -53,58 +54,18 @@ function serve(failing: string[] = []) {
   })
 }
 
-const TOUR_KEYS: components['schemas']['MusicKey'][] = ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A', 'D', 'G']
+type BassPattern = components['schemas']['BassPattern']
 
-function tourItem(onBass = false): Item {
-  const charts: Record<string, DrillChordSymbol[]> = { G: ['G', 'D', 'Em', 'C'], C: ['C', 'G', 'Am', 'C'] }
-  return {
-    item_key: 'progression_keys:guitar:I-V-vi-IV',
-    kind: 'progression_keys',
-    rung: 'move',
-    reason: 'new',
-    node_id: null,
-    level: 'new',
-    estimated_seconds: 234,
-    progression_keys: {
-      layout_instrument_id: 'guitar',
-      progression: { key: 'I-V-vi-IV', name: 'I–V–vi–IV (pop)' },
-      times_through: 4,
-      takes: 3,
-      start_music_key: 'G',
-      tour_tempo_bpm: 84,
-      start_note_value: 'quarters',
-      target_tempo_bpm: 100,
-      min_tempo_bpm: 60,
-      keys: TOUR_KEYS.map((music_key) => {
-        const chart = charts[music_key] ?? []
-        return {
-          music_key,
-          clean: false,
-          chart,
-          voicings: [...new Set(chart)].map((chord) => ({ chord, diagram_id: boxId(chord) })),
-          chord_tones:
-            onBass && music_key === 'G'
-              ? [
-                  { chord: 'G', root: { string: 1, fret: 0 }, third: { string: 3, fret: 2 }, fifth: { string: 2, fret: 0 } },
-                  { chord: 'Em', root: { string: 4, fret: 0 }, third: { string: 1, fret: 0 }, fifth: { string: 3, fret: 2 } },
-                ]
-              : [],
-        }
-      }),
-    },
-  }
-}
-
-function mountTour(options: { tour?: TourState; onBass?: boolean } = {}) {
+function mountTour(options: { tour?: TourState; onBass?: boolean; pattern?: BassPattern; item?: Item } = {}) {
   return mount(SessionProgressionKeys, {
     props: {
-      item: tourItem(options.onBass),
+      item: options.item ?? tourItem({ onBass: options.onBass, pattern: options.pattern }),
       tempo: 84,
       noteValue: 'quarters',
       takesLeft: 3,
       takesTotal: 3,
       tour: options.tour ?? { key: 'G', speed: 84, clean: ['C', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'F#', 'B', 'E', 'A'] },
-      tuning: options.onBass ? BASS : null,
+      bass: options.onBass ? drillBass : null,
     },
     global: { plugins: [i18n] },
   })
@@ -216,19 +177,110 @@ describe('SessionProgressionKeys', () => {
     expect(wrapper.findAll('[data-test="tour-bar"]')[2]!.attributes('aria-pressed')).toBe('false')
   })
 
-  it('on bass, marks the chosen chord’s root, third and fifth on the board', async () => {
-    serve()
-    const wrapper = mountTour({ onBass: true })
-    await flushPromises()
+  describe('on bass', () => {
+    type BassSource = { chords: unknown[]; chordInstrument: unknown; bass: { instrument: unknown; bars: number[][] } }
+    const bassSource = () => (player.source as { value: BassSource }).value
 
-    await wrapper.findAll('[data-test="tour-bar"]')[2]!.trigger('click')
+    /** The tour on bass with the pattern given, its chord G changed as `g` says. */
+    function withG(pattern: BassPattern, g: Record<string, unknown>): Item {
+      const item = tourItem({ onBass: true, pattern })
+      const keys = item.progression_keys!.keys.map((key) =>
+        key.music_key === 'G' ? { ...key, chord_tones: key.chord_tones.map((tones) => (tones.chord === 'G' ? { ...tones, ...g } : tones)) } : key,
+      )
+      return { ...item, progression_keys: { ...item.progression_keys!, keys } }
+    }
 
-    const marked = wrapper.findAll('[data-test="marked-place"]')
-    expect(marked.map((place) => [place.attributes('data-role'), place.attributes('data-string'), place.attributes('data-fret')])).toEqual([
-      ['root', '4', '0'],
-      ['third', '1', '0'],
-      ['fifth', '3', '2'],
-    ])
+    it('marks the chosen chord’s root, and its third and fifth above and below, at the places the plan gives', async () => {
+      serve()
+      const wrapper = mountTour({ onBass: true })
+      await flushPromises()
+
+      await wrapper.findAll('[data-test="tour-bar"]')[2]!.trigger('click')
+
+      const marked = wrapper.findAll('[data-test="marked-place"]')
+      expect(marked.map((place) => [place.attributes('data-role'), place.attributes('data-position'), place.attributes('data-string'), place.attributes('data-fret')])).toEqual([
+        ['root', undefined, '3', '7'],
+        ['third', 'above', '2', '5'],
+        ['fifth', 'above', '1', '4'],
+        ['third', 'below', '4', '3'],
+        ['fifth', 'below', '4', '7'],
+      ])
+    })
+
+    it('leaves off a tone no string reaches in the window', async () => {
+      serve()
+      const wrapper = mountTour({ onBass: true })
+      await flushPromises()
+
+      await wrapper.findAll('[data-test="tour-bar"]')[0]!.trigger('click')
+
+      expect(wrapper.findAll('[data-test="marked-place"]').map((place) => place.attributes('data-position'))).toEqual([undefined, 'above', 'above'])
+    })
+
+    it('marks a chord’s seventh when the plan gives one', async () => {
+      serve()
+      const wrapper = mountTour({ onBass: true, item: withG('root_third_fifth_seventh', { seventh: { string: 2, fret: 4 } }) })
+      await flushPromises()
+
+      await wrapper.findAll('[data-test="tour-bar"]')[0]!.trigger('click')
+
+      expect(wrapper.findAll('[data-test="marked-place"]').at(-1)!.attributes('aria-label')).toBe('Seventh, string 2, fret 4')
+    })
+
+    it.each([
+      ['root', 'Root of each chord'],
+      ['root_fifth', 'Root and 5th of each chord'],
+      ['root_third_fifth_third', 'Root, 3rd, 5th and 3rd of each chord'],
+      ['root_third_fifth_seventh', 'Root, 3rd, 5th and 7th of each chord'],
+    ] as const)('names the pattern %s above the chart', async (pattern, line) => {
+      serve()
+      const wrapper = mountTour({ onBass: true, pattern })
+      await flushPromises()
+
+      expect(wrapper.get('[data-test="bass-pattern"]').text()).toBe(line)
+    })
+
+    it('sounds only the pattern’s notes in the bass’s voice, a bar a chord, and never a chord', async () => {
+      serve()
+      const wrapper = mountTour({ onBass: true, pattern: 'root_fifth' })
+      await flushPromises()
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+
+      // G D Em C in the window from the third fret, each root then its fifth above, four times through.
+      const once = [
+        [31, 38],
+        [38, 45],
+        [40, 47],
+        [36, 43],
+      ]
+      expect(bassSource()).toMatchObject({ chords: [], chordInstrument: null, bass: { instrument: drillBass, bars: [...once, ...once, ...once, ...once] } })
+    })
+
+    it('plays root, 3rd, 5th and 3rd, or root, 3rd, 5th and 7th, a quarter each', async () => {
+      serve()
+      const fluent = mountTour({ onBass: true, pattern: 'root_third_fifth_third' })
+      await flushPromises()
+      await fluent.get('[data-test="start-take"]').trigger('click')
+      // G: root G1 31, third above B1 35, fifth above D2 38.
+      expect(bassSource().bass.bars[0]).toEqual([31, 35, 38, 35])
+      fluent.unmount()
+
+      const retained = mountTour({ onBass: true, item: withG('root_third_fifth_seventh', { seventh: { string: 2, fret: 4 } }) })
+      await flushPromises()
+      await retained.get('[data-test="start-take"]').trigger('click')
+      expect(bassSource().bass.bars[0]).toEqual([31, 35, 38, 42])
+    })
+
+    it('sounds the root where the window has no place for a tone of the pattern', async () => {
+      serve()
+      const wrapper = mountTour({ onBass: true, item: withG('root_third_fifth_third', { third_above: null }) })
+      await flushPromises()
+
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+
+      expect(bassSource().bass.bars[0]).toEqual([31, 31, 38, 31])
+    })
   })
 
   it('can only be skipped when its chords can’t be loaded', async () => {

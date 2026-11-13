@@ -269,26 +269,24 @@
   },
   "sessionChord": {
     "voicingHint": "Monte o acorde, toque uma vez e deixe soar.",
-    "rootFifthHint": "Fundamental, depois quinta, cada nota soando até o fim.",
+    "rootFifthHint": "Fundamental, depois quinta, uma mínima cada, com o metrônomo.",
     "bassBoard": "Braço do baixo com as notas a tocar de {chord}",
     "bassChangeBoard": "Braço do baixo com as fundamentais de {from} e {to}",
     "unavailable": "Este acorde não pode ser mostrado agora. Pule — não conta contra você.",
     "skip": "Pular",
-    "everyBeat": "Troque a cada tempo",
-    "everyBeatDetail": "troque a cada tempo",
-    "best": "melhor: {count} trocas limpas",
-    "noBest": "nenhum minuto limpo ainda",
-    "goal": "Meta: {count} trocas por minuto",
-    "readyHint": "Ajuste o andamento primeiro: o metrônomo toca enquanto você testa. Começar o minuto dá um compasso de contagem.",
-    "start": "Começar o minuto",
+    "goal": "Meta: {tempo} BPM, todas as trocas limpas",
+    "readyHint": "Ajuste o andamento primeiro: o metrônomo toca enquanto você testa. Começar a execução dá um compasso de contagem.",
+    "start": "Começar a execução",
     "restart": "Recomeçar",
-    "runningHint": "Nada para tocar na tela enquanto o minuto corre. Continue trocando a cada tempo.",
+    "runningHint": "Nada para tocar na tela durante a execução. Continue trocando a cada tempo.",
     "countIn": "Contagem",
-    "timeUp": "Acabou o tempo. Conte só as trocas em que todas as cordas soaram.",
-    "timeUpBass": "Acabou o tempo. Conte só as trocas em que a fundamental soou limpa.",
-    "cleanChanges": "trocas limpas",
-    "cleanChangesBest": "trocas limpas · melhor {count}",
-    "save": "Salvar {count} troca | Salvar {count} trocas"
+    "cyclesMeta": "{cycles} ciclos · troque a cada tempo",
+    "cyclesLeft": "ciclos restantes",
+    "shareQuestion": "Quantas trocas soaram limpas, com todas as cordas?",
+    "shareQuestionBass": "Quantas trocas soaram limpas, com a fundamental?",
+    "share": "{share} %",
+    "shares": "Parte das trocas que soaram limpas",
+    "rootFifthPlaying": "Toque junto: fundamental, depois quinta. A execução termina sozinha."
   },
   "sessionPlan": {
     "chords": {
@@ -314,7 +312,8 @@
       "chartToNumbers": "Lendo cifras",
       "numbersToChart": "Escolhendo cifras",
       "cadenceThenChord": "Acordes de ouvido",
-      "progressionByNumber": "Progressões de ouvido"
+      "progressionByNumber": "Progressões de ouvido",
+      "chordQualityByEar": "Tipos de acorde de ouvido"
     },
     "nextUp": {
       "played": "Você tocou {name} até {tempo}.",
@@ -355,7 +354,7 @@
     "whatYouPractised": "O que você praticou",
     "played": "até {tempo} · {rating}",
     "counted": "{right} de {answered} certas",
-    "changes": "{count} trocas limpas a {tempo} BPM · {rating}",
+    "changes": "{share} % limpas a {tempo} BPM · {rating}",
     "right": "Certo",
     "notQuite": "Não foi dessa vez",
     "nothingAnswered": "Nada respondido ou avaliado desta vez. Toda sessão conta.",
@@ -739,12 +738,21 @@
         "2": "Dois acordes, num tom que não é dito",
         "3": "Três acordes, num tom que não é dito",
         "4": "Quatro acordes, num tom que não é dito"
-      }
+      },
+      "alone": "Um acorde, sozinho"
     },
     "chordsOfKey": "Os quatro são acordes de {key} maior.",
     "keyOf": "Tom de {key} maior",
     "keyOfMinor": "Tom de {key}",
-    "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você."
+    "unavailable": "Esta pergunta não pode ser mostrada agora. Pule — não conta contra você.",
+    "chordQualityByEar": "Que tipo de acorde é este?",
+    "qualities": {
+      "major": "Maior",
+      "minor": "Menor",
+      "dominant7": "Com sétima (7)",
+      "diminished": "Diminuto",
+      "augmented": "Aumentado"
+    }
   },
   "subjectPicker": {
     "title": "O que praticar",
@@ -773,7 +781,13 @@
     "tapForBox": "Toque num acorde para ver o diagrama.",
     "tapForTones": "Toque num acorde para ver a tônica, a terça e a quinta.",
     "tonesOf": "{chord}: tônica, terça e quinta",
-    "unavailable": "Esta progressão não pode ser tocada aqui agora."
+    "unavailable": "Esta progressão não pode ser tocada aqui agora.",
+    "patterns": {
+      "root": "Fundamental de cada acorde",
+      "root_fifth": "Fundamental e 5ª de cada acorde",
+      "root_third_fifth_third": "Fundamental, 3ª, 5ª e 3ª de cada acorde",
+      "root_third_fifth_seventh": "Fundamental, 3ª, 5ª e 7ª de cada acorde"
+    }
   },
   "guideTone": {
     "promptThird": "Toque a 3ª de cada acorde",

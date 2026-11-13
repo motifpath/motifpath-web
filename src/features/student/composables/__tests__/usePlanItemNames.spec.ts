@@ -192,31 +192,40 @@ describe('usePlanItemNames', () => {
     expect(labelOf(harmony('heard_chord', 'cadence_then_chord'))).toBe('Chords by ear')
     expect(labelOf(harmony('heard_chord', 'see_then_name'))).toBe('Numbers of chords')
     expect(labelOf(harmony('heard_progression', 'progression_by_number'))).toBe('Progressions by ear')
+    expect(labelOf(harmony('heard_chord_quality', 'chord_quality_by_ear'))).toBe('Chord qualities by ear')
   })
 
   it('names a chord item by the chords it plays: they are named, since playing them is the skill', () => {
     const base = { rung: 'play_clean', reason: 'new', node_id: null, level: 'new', estimated_seconds: 20 } as const
-    const minute = { start_tempo_bpm: 40, target_changes_per_minute: 60, best_clean_changes_per_minute: null, last_changes_per_minute: null }
+    const take = { cycles: 10, start_tempo_bpm: 40, target_tempo_bpm: 60, best_clean_tempo_bpm: null } as const
     const voicing: Item = { ...base, item_key: 'chord_voicing:d', kind: 'chord_voicing', chord_voicing: { diagram_id: 'd', chord_symbol: 'D' } }
     const change: Item = {
       ...base,
       item_key: 'chord_change:am:c',
       kind: 'chord_change',
       rung: 'play_in_time',
-      chord_change: { from_diagram_id: 'am', to_diagram_id: 'c', from_chord_symbol: 'Am', to_chord_symbol: 'C', minute },
+      chord_change: { from_diagram_id: 'am', to_diagram_id: 'c', from_chord_symbol: 'Am', to_chord_symbol: 'C', take },
     }
     const rootFifth: Item = {
       ...base,
       item_key: 'root_fifth:bass:G',
       kind: 'root_fifth',
-      root_fifth: { layout_instrument_id: 'bass', chord_symbol: 'G', root: { string: 4, fret: 3 }, fifth: { string: 3, fret: 5 } },
+      root_fifth: {
+        layout_instrument_id: 'bass',
+        chord_symbol: 'G',
+        root: { string: 4, fret: 3 },
+        fifth: { string: 3, fret: 5 },
+        fifth_below: null,
+        window_start_fret: 3,
+        start_tempo_bpm: 60,
+      },
     }
     const rootChange: Item = {
       ...base,
       item_key: 'root_change:bass:Am:C',
       kind: 'root_change',
       rung: 'play_in_time',
-      root_change: { layout_instrument_id: 'bass', from_chord_symbol: 'Am', to_chord_symbol: 'C', from_root: { string: 3, fret: 0 }, to_root: { string: 3, fret: 3 }, minute },
+      root_change: { layout_instrument_id: 'bass', from_chord_symbol: 'Am', to_chord_symbol: 'C', from_root: { string: 3, fret: 0 }, to_root: { string: 3, fret: 3 }, window_start_fret: 0, take },
     }
     const { nameOf, labelOf } = setUp([voicing, change, rootFifth, rootChange])
 
@@ -245,6 +254,7 @@ describe('usePlanItemNames', () => {
         start_note_value: 'quarters',
         target_tempo_bpm: 100,
         min_tempo_bpm: 60,
+        bass_pattern: null,
         keys: [],
       },
     }
