@@ -131,7 +131,7 @@ describe('subjectResults', () => {
     const outcomes = new Map<number, ItemOutcome>([
       [0, { kind: 'played', takes: [{ bpm: 70, rating: 'almost' }, { bpm: 72, rating: 'clean' }] }],
       [1, { kind: 'rated', rating: 'almost' }],
-      [2, { kind: 'changes', tempoBpm: 60, cleanChanges: 55, rating: 'clean' }],
+      [2, { kind: 'changes', tempoBpm: 60, cleanSharePercent: 100, rating: 'clean' }],
     ])
 
     expect(subjectResults(plan(items), outcomes)[0]).toMatchObject({ right: 2, answered: 3 })

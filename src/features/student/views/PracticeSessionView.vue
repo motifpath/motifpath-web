@@ -491,7 +491,7 @@ onBeforeUnmount(() => {
         :item="current"
         :tuning="currentBassTuning"
         :instrument-name="currentInstrumentName"
-        @rate="run.rateChord($event)"
+        @rate="(rating, tempo) => run!.rateChord(rating, tempo)"
         @skip="run.skip($event)"
       />
       <SessionChordChange
@@ -500,7 +500,7 @@ onBeforeUnmount(() => {
         :item="current"
         :tuning="currentBassTuning"
         :instrument-name="currentInstrumentName"
-        @save="(tempo, changes) => run!.saveChangeMinute(tempo, changes)"
+        @save="(tempo, share) => run!.saveChangeTake(tempo, share)"
         @skip="run.skip($event)"
       />
       <SessionProgressionKeys

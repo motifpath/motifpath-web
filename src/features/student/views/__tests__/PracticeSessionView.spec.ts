@@ -389,7 +389,7 @@ function harmonyItem(): Item {
 
 const AM_BOX = 'a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1'
 const C_BOX = 'c1c1c1c1-c1c1-4c1c-8c1c-c1c1c1c1c1c1'
-const chordMinute = { start_tempo_bpm: 45, target_changes_per_minute: 60, best_clean_changes_per_minute: 16, last_changes_per_minute: 18 }
+const chordTake = { cycles: 10, start_tempo_bpm: 45, target_tempo_bpm: 60, best_clean_tempo_bpm: 50 } as const
 const chordBase = { reason: 'new', node_id: null, level: 'new' } as const
 
 function chordVoicingItem(): Item {
@@ -403,7 +403,7 @@ function chordChangeItem(): Item {
     kind: 'chord_change',
     rung: 'play_in_time',
     estimated_seconds: 90,
-    chord_change: { from_diagram_id: AM_BOX, to_diagram_id: C_BOX, from_chord_symbol: 'Am', to_chord_symbol: 'C', minute: chordMinute },
+    chord_change: { from_diagram_id: AM_BOX, to_diagram_id: C_BOX, from_chord_symbol: 'Am', to_chord_symbol: 'C', take: chordTake },
   }
 }
 
@@ -414,7 +414,15 @@ function rootFifthItem(): Item {
     kind: 'root_fifth',
     rung: 'play_clean',
     estimated_seconds: 20,
-    root_fifth: { layout_instrument_id: BASS, chord_symbol: 'G', root: { string: 4, fret: 3 }, fifth: { string: 3, fret: 5 } },
+    root_fifth: {
+      layout_instrument_id: BASS,
+      chord_symbol: 'G',
+      root: { string: 4, fret: 3 },
+      fifth: { string: 3, fret: 5 },
+      fifth_below: null,
+      window_start_fret: 3,
+      start_tempo_bpm: 60,
+    },
   }
 }
 
@@ -425,7 +433,7 @@ function rootChangeItem(): Item {
     kind: 'root_change',
     rung: 'play_in_time',
     estimated_seconds: 90,
-    root_change: { layout_instrument_id: BASS, from_chord_symbol: 'Am', to_chord_symbol: 'C', from_root: { string: 3, fret: 0 }, to_root: { string: 3, fret: 3 }, minute: chordMinute },
+    root_change: { layout_instrument_id: BASS, from_chord_symbol: 'Am', to_chord_symbol: 'C', from_root: { string: 3, fret: 0 }, to_root: { string: 3, fret: 3 }, window_start_fret: 0, take: chordTake },
   }
 }
 
@@ -772,15 +780,15 @@ describe('PracticeSessionView', () => {
       expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
     })
 
-    it('records a minute of changes with the tempo played, the count and the rating they give', async () => {
+    it('records a take of changes with the tempo played, the share clean and the rating it gives', async () => {
       const wrapper = mountView()
       await startSession(wrapper, plan([chordChangeItem(), shapeItem()]))
 
-      wrapper.getComponent(SessionChordChangeStub).vm.$emit('save', 50, 48)
+      wrapper.getComponent(SessionChordChangeStub).vm.$emit('save', 50, 75)
       await flushPromises()
 
       expect(events('practice.item_answered')).toEqual([
-        expect.objectContaining({ response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 50, changes_per_minute: 48 } }),
+        expect.objectContaining({ response: { response_type: 'self_rating', rating: 'almost', tempo_bpm: 50, clean_share_percent: 75 } }),
       ])
       expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
     })
@@ -790,8 +798,12 @@ describe('PracticeSessionView', () => {
       await startSession(wrapper, plan([rootFifthItem(), rootChangeItem()], { instrument_id: BASS }))
 
       expect(wrapper.getComponent(SessionChordVoicingStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
-      wrapper.getComponent(SessionChordVoicingStub).vm.$emit('rate', 'clean')
+      wrapper.getComponent(SessionChordVoicingStub).vm.$emit('rate', 'clean', 70)
       await flushPromises()
+
+      expect(events('practice.item_answered')).toEqual([
+        expect.objectContaining({ item_key: `root_fifth:${BASS}:G`, response: { response_type: 'self_rating', rating: 'clean', tempo_bpm: 70 } }),
+      ])
 
       expect(wrapper.getComponent(SessionChordChangeStub).props('tuning')).toEqual(['E1', 'A1', 'D2', 'G2'])
     })
@@ -807,7 +819,7 @@ describe('PracticeSessionView', () => {
       expect(wrapper.find('[data-test="shape"]').exists()).toBe(true)
     })
 
-    it('sends no answer for a minute of changes when the student leaves the session during it', async () => {
+    it('sends no answer for a take of changes when the student leaves the session during it', async () => {
       const wrapper = mountView()
       await startSession(wrapper, plan([chordChangeItem(), shapeItem()]))
 

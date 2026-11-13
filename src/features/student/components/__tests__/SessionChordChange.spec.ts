@@ -31,7 +31,7 @@ import { drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 import type { components } from '@/api/generated/core-domain'
 
 type Item = components['schemas']['PracticeSessionItem']
-type Minute = components['schemas']['ChangeMinute']
+type Take = components['schemas']['ChangeTake']
 
 const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: { status: 200 } })
 const fail = () => Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
@@ -50,22 +50,22 @@ function serve(options: { failing?: boolean } = {}) {
   })
 }
 
-function minute(fields: Partial<Minute> = {}): Minute {
-  return { start_tempo_bpm: 60, target_changes_per_minute: 60, best_clean_changes_per_minute: null, last_changes_per_minute: null, ...fields }
+function take(fields: Partial<Take> = {}): Take {
+  return { cycles: 10, start_tempo_bpm: 60, target_tempo_bpm: 60, best_clean_tempo_bpm: null, ...fields }
 }
 
 const base = { rung: 'play_in_time', reason: 'new', node_id: null, level: 'new', estimated_seconds: 90 } as const
 
-function chordChange(fields: Partial<Minute> = {}): Item {
+function chordChange(fields: Partial<Take> = {}): Item {
   return {
     ...base,
     item_key: `chord_change:${AM}:${C}`,
     kind: 'chord_change',
-    chord_change: { from_diagram_id: AM, to_diagram_id: C, from_chord_symbol: 'Am', to_chord_symbol: 'C', minute: minute(fields) },
+    chord_change: { from_diagram_id: AM, to_diagram_id: C, from_chord_symbol: 'Am', to_chord_symbol: 'C', take: take(fields) },
   }
 }
 
-function rootChange(fields: Partial<Minute> = {}): Item {
+function rootChange(fields: Partial<Take> = {}): Item {
   return {
     ...base,
     item_key: `root_change:${BASS}:Am:C`,
@@ -76,7 +76,8 @@ function rootChange(fields: Partial<Minute> = {}): Item {
       to_chord_symbol: 'C',
       from_root: { string: 3, fret: 0 },
       to_root: { string: 3, fret: 3 },
-      minute: minute(fields),
+      window_start_fret: 0,
+      take: take(fields),
     },
   }
 }
@@ -93,11 +94,13 @@ async function setTempo(wrapper: Awaited<ReturnType<typeof mountItem>>, bpm: num
   await slider.trigger('change')
 }
 
-/** Starts the minute and plays it through: a bar of count-in at the tempo, then 60 seconds. */
-async function playTheMinute(wrapper: Awaited<ReturnType<typeof mountItem>>, bpm: number) {
-  await wrapper.get('[data-test="start-minute"]').trigger('click')
-  await vi.advanceTimersByTimeAsync((4 * 60_000) / bpm + 60_000 + 500)
+/** Starts the take and plays it through: a bar of count-in at the tempo, then ten cycles, 20 beats. */
+async function playTheTake(wrapper: Awaited<ReturnType<typeof mountItem>>, bpm: number) {
+  await wrapper.get('[data-test="start-take"]').trigger('click')
+  await vi.advanceTimersByTimeAsync(((4 + 20) * 60_000) / bpm + 500)
 }
+
+const shares = (wrapper: Awaited<ReturnType<typeof mountItem>>) => wrapper.findAll('[data-test="clean-share"]')
 
 describe('SessionChordChange', () => {
   beforeEach(() => {
@@ -126,18 +129,22 @@ describe('SessionChordChange', () => {
       expect(chords.map((chord) => chord.get('svg').attributes('aria-label'))).toEqual(['Am', 'C'])
     })
 
-    it('is set to the plan’s tempo, and shows the best clean count', async () => {
-      const wrapper = await mountItem(chordChange({ start_tempo_bpm: 45, best_clean_changes_per_minute: 16 }))
+    it('shows the metronome row at the plan’s tempo, the best clean tempo marked, and ten cycles to play', async () => {
+      const wrapper = await mountItem(chordChange({ start_tempo_bpm: 45, best_clean_tempo_bpm: 50 }))
 
+      expect(wrapper.find('[data-test="metronome-row"]').exists()).toBe(true)
+      expect(wrapper.findAll('[data-test="beat-dot"]')).toHaveLength(4)
       expect(wrapper.get('[data-test="tempo-value"]').text()).toContain('45')
-      expect(wrapper.get('[data-test="change-meta"]').text()).toBe('Change on every beat · best 16 clean changes')
-      expect(wrapper.get('[data-test="timer-time"]').text()).toBe('1:00')
+      expect(wrapper.find('[data-test="tempo-tick-best"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="tempo-tick-goal"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="change-meta"]').text()).toBe('10 cycles · change on every beat')
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('10')
     })
 
-    it('says only to change on every beat when there is no clean minute yet', async () => {
+    it('marks no best clean tempo before the first clean take', async () => {
       const wrapper = await mountItem(chordChange())
 
-      expect(wrapper.get('[data-test="change-meta"]').text()).toBe('Change on every beat')
+      expect(wrapper.find('[data-test="tempo-tick-best"]').exists()).toBe(false)
     })
 
     it('lets the metronome tick while the tempo is tried, at the tempo set', async () => {
@@ -148,138 +155,117 @@ describe('SessionChordChange', () => {
       expect(metronomeSettings[0]).toMatchObject({ bpm: 45, beats: 4 })
     })
 
-    it('sends nothing before the minute is over', async () => {
+    it('sends nothing before the take is over', async () => {
       const wrapper = await mountItem(chordChange())
 
       await setTempo(wrapper, 50)
-      await wrapper.get('[data-test="start-minute"]').trigger('click')
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      await vi.advanceTimersByTimeAsync(10_000)
 
       expect(wrapper.emitted('save')).toBeUndefined()
     })
   })
 
-  describe('the minute', () => {
-    it('counts in one bar at the tempo, then runs 60 seconds, the metronome ticking', async () => {
+  describe('the take', () => {
+    it('counts in one bar at the tempo, then counts the cycles down from 10, two beats each', async () => {
       const wrapper = await mountItem(chordChange({ start_tempo_bpm: 60 }))
 
-      await wrapper.get('[data-test="start-minute"]').trigger('click')
+      await wrapper.get('[data-test="start-take"]').trigger('click')
       expect(startMetronome).toHaveBeenCalledWith(expect.objectContaining({ bpm: 60, beats: 4 }))
       expect(wrapper.get('[data-test="count-in"]').text()).toBe('4')
 
       await vi.advanceTimersByTimeAsync(1_000)
       expect(wrapper.get('[data-test="count-in"]').text()).toBe('3')
-      expect(wrapper.get('[data-test="timer-time"]').text()).toBe('1:00')
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('10')
 
       await vi.advanceTimersByTimeAsync(3_000)
       expect(wrapper.find('[data-test="count-in"]').exists()).toBe(false)
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('10')
 
-      await vi.advanceTimersByTimeAsync(18_000)
-      expect(wrapper.get('[data-test="timer-time"]').text()).toBe('0:42')
+      await vi.advanceTimersByTimeAsync(2_000)
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('9')
+
+      await vi.advanceTimersByTimeAsync(15_000)
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('2')
+      expect(wrapper.emitted('save')).toBeUndefined()
     })
 
     it('leaves nothing to use while it runs but Restart: leaving the session is the other way out', async () => {
       const wrapper = await mountItem(chordChange())
 
-      await wrapper.get('[data-test="start-minute"]').trigger('click')
-      await vi.advanceTimersByTimeAsync(10_000)
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      await vi.advanceTimersByTimeAsync(8_000)
 
-      for (const button of wrapper.findAll('button').filter((b) => b.attributes('data-test') !== 'restart-minute')) {
+      for (const button of wrapper.findAll('button').filter((b) => b.attributes('data-test') !== 'restart-take')) {
         const off = button.attributes('disabled') !== undefined || button.attributes('aria-disabled') === 'true'
         expect(off, button.html()).toBe(true)
       }
-      expect(wrapper.get('[data-test="restart-minute"]').attributes('disabled')).toBeUndefined()
+      expect(wrapper.get('[data-test="restart-take"]').attributes('disabled')).toBeUndefined()
       expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeDefined()
-      expect(wrapper.find('[data-test="start-minute"]').exists()).toBe(false)
+      expect(wrapper.find('[data-test="start-take"]').exists()).toBe(false)
     })
 
     it('can be restarted during the count-in too', async () => {
       const wrapper = await mountItem(chordChange())
 
-      await wrapper.get('[data-test="start-minute"]').trigger('click')
-      await wrapper.get('[data-test="restart-minute"]').trigger('click')
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      await wrapper.get('[data-test="restart-take"]').trigger('click')
 
       expect(wrapper.find('[data-test="count-in"]').exists()).toBe(false)
-      expect(wrapper.find('[data-test="start-minute"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
     })
 
-    it('restarting throws the minute away: ready again at the tempo set, nothing sent', async () => {
+    it('restarting throws the take away: the metronome stops, ready again at the tempo set with 10 cycles, nothing sent', async () => {
       const wrapper = await mountItem(chordChange({ start_tempo_bpm: 45 }))
 
       await setTempo(wrapper, 50)
-      await wrapper.get('[data-test="start-minute"]').trigger('click')
-      await vi.advanceTimersByTimeAsync(20_000)
+      await wrapper.get('[data-test="start-take"]').trigger('click')
+      await vi.advanceTimersByTimeAsync(12_000)
       stopMetronome.mockClear()
-      await wrapper.get('[data-test="restart-minute"]').trigger('click')
+      await wrapper.get('[data-test="restart-take"]').trigger('click')
 
       expect(stopMetronome).toHaveBeenCalled()
-      expect(wrapper.get('[data-test="timer-time"]').text()).toBe('1:00')
+      expect(wrapper.get('[data-test="cycles-left"]').text()).toBe('10')
       expect(wrapper.get('[data-test="tempo-value"]').text()).toContain('50')
       expect(wrapper.get('[data-test="tempo-slider"]').attributes('disabled')).toBeUndefined()
-      expect(wrapper.find('[data-test="start-minute"]').exists()).toBe(true)
+      expect(wrapper.find('[data-test="start-take"]').exists()).toBe(true)
 
       await vi.advanceTimersByTimeAsync(120_000)
-      expect(wrapper.find('[role="spinbutton"]').exists()).toBe(false)
+      expect(shares(wrapper)).toHaveLength(0)
       expect(wrapper.emitted('save')).toBeUndefined()
     })
 
-    it('stops the metronome when the minute is up, and asks for the count', async () => {
+    it('stops the metronome when the tenth cycle ends, and offers four shares of clean changes, none picked', async () => {
       const wrapper = await mountItem(chordChange())
 
-      await playTheMinute(wrapper, 60)
+      await playTheTake(wrapper, 60)
 
       expect(stopMetronome).toHaveBeenCalled()
-      expect(wrapper.get('[data-test="change-meta"]').text()).toBe('Time is up. Count only the changes where every string rang.')
-      expect(wrapper.find('[role="spinbutton"]').exists()).toBe(true)
+      expect(wrapper.get('[data-test="change-meta"]').text()).toBe('How many changes rang clean, every string sounding?')
+      expect(shares(wrapper).map((share) => share.text())).toEqual(['25 %', '50 %', '75 %', '100 %'])
+      expect(shares(wrapper).every((share) => share.attributes('aria-pressed') === 'false')).toBe(true)
+      expect(wrapper.emitted('save')).toBeUndefined()
     })
   })
 
-  describe('the count', () => {
-    it('starts at the item’s last count', async () => {
-      const wrapper = await mountItem(chordChange({ last_changes_per_minute: 18, best_clean_changes_per_minute: 16 }))
-
-      await playTheMinute(wrapper, 60)
-
-      expect(wrapper.get('[role="spinbutton"]').text()).toBe('18')
-      expect(wrapper.get('[data-test="count-label"]').text()).toBe('clean changes · best 16')
-    })
-
-    it('starts at 0 for a change never played', async () => {
+  describe('the share', () => {
+    it('sends the tempo played and the share picked', async () => {
       const wrapper = await mountItem(chordChange())
 
-      await playTheMinute(wrapper, 60)
+      await playTheTake(wrapper, 60)
+      await shares(wrapper)[2]!.trigger('click')
 
-      expect(wrapper.get('[role="spinbutton"]').text()).toBe('0')
-      expect(wrapper.get('[data-test="count-label"]').text()).toBe('clean changes')
+      expect(wrapper.emitted('save')).toEqual([[60, 75]])
     })
 
-    it('can’t go above the tempo, and a last count above it starts at the tempo', async () => {
-      const wrapper = await mountItem(chordChange({ start_tempo_bpm: 40, last_changes_per_minute: 45 }))
-
-      await playTheMinute(wrapper, 40)
-
-      expect(wrapper.get('[role="spinbutton"]').text()).toBe('40')
-      expect(wrapper.get('[data-test="count-more"]').attributes('disabled')).toBeDefined()
-    })
-
-    it('saves the tempo played and the count', async () => {
-      const wrapper = await mountItem(chordChange({ last_changes_per_minute: 40 }))
-
-      await playTheMinute(wrapper, 60)
-      for (let i = 0; i < 2; i++) await wrapper.get('[data-test="count-more"]').trigger('click')
-      expect(wrapper.get('[data-test="save-count"]').text()).toBe('Save 42 changes')
-      await wrapper.get('[data-test="save-count"]').trigger('click')
-
-      expect(wrapper.emitted('save')).toEqual([[60, 42]])
-    })
-
-    it('saves the tempo the student set, not the plan’s', async () => {
-      const wrapper = await mountItem(chordChange({ start_tempo_bpm: 45, last_changes_per_minute: 48 }))
+    it('sends the tempo the student set, not the plan’s', async () => {
+      const wrapper = await mountItem(chordChange({ start_tempo_bpm: 45 }))
 
       await setTempo(wrapper, 50)
-      await playTheMinute(wrapper, 50)
-      await wrapper.get('[data-test="save-count"]').trigger('click')
+      await playTheTake(wrapper, 50)
+      await shares(wrapper)[3]!.trigger('click')
 
-      expect(wrapper.emitted('save')).toEqual([[50, 48]])
+      expect(wrapper.emitted('save')).toEqual([[50, 100]])
     })
   })
 
@@ -292,14 +278,14 @@ describe('SessionChordChange', () => {
       expect(places.map((place) => place.attributes('aria-label'))).toEqual(['Root of Am, string 3, open', 'Root of C, string 3, fret 3'])
     })
 
-    it('asks for the changes where the root rang clean, and saves them', async () => {
-      const wrapper = await mountItem(rootChange({ last_changes_per_minute: 30 }), { tuning: BASS_TUNING })
+    it('asks how many changes the root rang clean, and sends the share', async () => {
+      const wrapper = await mountItem(rootChange(), { tuning: BASS_TUNING })
 
-      await playTheMinute(wrapper, 60)
-      expect(wrapper.get('[data-test="change-meta"]').text()).toBe('Time is up. Count only the changes where the root rang clean.')
-      await wrapper.get('[data-test="save-count"]').trigger('click')
+      await playTheTake(wrapper, 60)
+      expect(wrapper.get('[data-test="change-meta"]').text()).toBe('How many changes rang clean, the root sounding?')
+      await shares(wrapper)[1]!.trigger('click')
 
-      expect(wrapper.emitted('save')).toEqual([[60, 30]])
+      expect(wrapper.emitted('save')).toEqual([[60, 50]])
     })
   })
 
@@ -308,7 +294,7 @@ describe('SessionChordChange', () => {
     serve({ failing: true })
     const wrapper = await mountItem(chordChange())
 
-    expect(wrapper.find('[data-test="start-minute"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="start-take"]').exists()).toBe(false)
     await wrapper.get('[data-test="skip-item"]').trigger('click')
 
     expect(wrapper.emitted('skip')).toEqual([['unavailable']])

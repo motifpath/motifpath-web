@@ -1,16 +1,16 @@
 <script setup lang="ts">
 /**
- * A minute of changes between two chords, back and forth, one change on every beat: on guitar
- * both chord boxes, on bass both roots marked on the board, every chord named.
+ * A take of changes between two chords, back and forth, one change on every beat: on guitar both
+ * chord boxes, on bass both roots marked on the board, every chord named.
  *
- * Ready: the tempo starts at the plan's, and the student may set another, the metronome ticking
- * while they try it. Starting the minute gives a bar of count-in, then 60 seconds with the
- * metronome ticking and nothing to tap, both hands being on the instrument, but Restart: it throws
- * the minute away and is ready again at the same tempo. Leaving the session also ends it early;
- * either way nothing is sent. When the minute is up the metronome stops and
- * the student counts the changes that rang clean, from the item's last count (never more than the
- * minute had beats); saving sends the tempo played and the count. A chord that can't be drawn
- * here can only be skipped, as not answered.
+ * Ready: the metronome row starts at the plan's tempo, its best clean tempo and goal marked, and
+ * the student may set another, the metronome ticking while they try it. Starting the take gives a
+ * bar of count-in, then ten cycles, from → to → from, two beats each, counted down, with nothing to
+ * tap, both hands being on the instrument, but Restart: it throws the take away and is ready again
+ * at the same tempo. Leaving the session also ends it early; either way nothing is sent. When the
+ * tenth cycle ends the metronome stops and four buttons ask what share of the changes rang clean;
+ * picking one sends the tempo played and the share. A chord that can't be drawn here can only be
+ * skipped, as not answered.
  */
 import { computed, onBeforeUnmount, ref } from 'vue'
 
@@ -18,19 +18,19 @@ import type { components } from '@/api/generated/core-domain'
 import type { NotAnsweredReason } from '@/features/student/composables/usePracticeSessionRun'
 import { useChordBoxes } from '@/features/student/composables/useChordBoxes'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
+import { CLEAN_SHARES } from '@/features/student/utils/changeShare'
+import type { CleanShare } from '@/features/student/utils/changeShare'
 import { boardFretsFor } from '@/features/student/utils/chordPlaces'
 import AppButton from '@/shared/components/AppButton.vue'
-import ChangeTimer from '@/shared/components/ChangeTimer.vue'
-import CountStepper from '@/shared/components/CountStepper.vue'
 import ChordBox from '@/shared/components/diagram/ChordBox.vue'
 import DrillFretboard from '@/shared/components/diagram/DrillFretboard.vue'
 import type { MarkedPlace } from '@/shared/components/diagram/DrillFretboard.vue'
 import InlineNotice from '@/shared/components/InlineNotice.vue'
 import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
+import MetronomeRow from '@/shared/components/MetronomeRow.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PracticeBreakout from '@/shared/components/PracticeBreakout.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import TempoControl from '@/shared/components/TempoControl.vue'
 import { useMetronome } from '@/shared/composables/useMetronome'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { MAX_TEMPO_BPM } from '@/shared/utils/sequence'
@@ -46,21 +46,22 @@ const props = defineProps<{
   instrumentName?: string
 }>()
 
-const emit = defineEmits<{ save: [tempoBpm: number, cleanChanges: number]; skip: [reason: NotAnsweredReason] }>()
+const emit = defineEmits<{ save: [tempoBpm: number, cleanSharePercent: CleanShare]; skip: [reason: NotAnsweredReason] }>()
 
 const { t } = useTypedT()
 
-/** The minute, and the bar of count-in before it: one bar of 4/4, a change on every beat. */
-const MINUTE_MS = 60_000
+/** The bar of count-in before the take: one bar of 4/4. */
 const COUNT_IN_BEATS = 4
-/** The slowest tempo a minute is played at, as the ladder never goes below it. */
+/** A cycle is from → to → from: two changes, one a beat. */
+const BEATS_PER_CYCLE = 2
+/** The slowest tempo a take is played at, as the ladder never goes below it. */
 const SLOWEST_BPM = 20
-/** How often the countdown is read while it runs. */
-const TICK_MS = 100
+/** How often the beat is read while the take runs. */
+const TICK_MS = 50
 
 const change = computed(() => props.item.chord_change ?? props.item.root_change!)
 const onBass = computed(() => props.item.root_change !== undefined)
-const minute = computed(() => change.value.minute)
+const take = computed(() => change.value.take)
 const pair = computed(() => ({ from: change.value.from_chord_symbol, to: change.value.to_chord_symbol }))
 const title = computed(() => (onBass.value ? t('sessionPlan.chords.rootChange', pair.value) : t('sessionPlan.chords.change', pair.value)))
 
@@ -83,7 +84,7 @@ const status = computed(() => {
   return chords.status.value
 })
 
-const tempo = ref(clampTempo(minute.value.start_tempo_bpm))
+const tempo = ref(clampTempo(take.value.start_tempo_bpm))
 
 function clampTempo(bpm: number): number {
   return Math.min(MAX_TEMPO_BPM, Math.max(SLOWEST_BPM, Math.round(bpm)))
@@ -91,12 +92,14 @@ function clampTempo(bpm: number): number {
 
 const metronome = useMetronome(() => ({ bpm: tempo.value, beats: COUNT_IN_BEATS, beatValue: 4, noteValue: 'quarters' }))
 
-const phase = ref<'ready' | 'counting_in' | 'running' | 'count'>('ready')
+const phase = ref<'ready' | 'counting_in' | 'running' | 'share'>('ready')
 /** Count-in beats still to come. */
 const countIn = ref(0)
-const remainingMs = ref(MINUTE_MS)
-/** The clean changes the student counts once the minute is up. */
-const count = ref(0)
+/** Beats played since the count-in. */
+const beatsPlayed = ref(0)
+
+const totalBeats = computed(() => take.value.cycles * BEATS_PER_CYCLE)
+const cyclesLeft = computed(() => Math.max(0, take.value.cycles - Math.floor(beatsPlayed.value / BEATS_PER_CYCLE)))
 
 let timer: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
@@ -106,45 +109,44 @@ function stopTimer() {
   timer = undefined
 }
 
-/** Reads the clock: the count-in beat, then the time left, until the minute is up. */
+/** Reads the clock: the count-in beat, then the beats played, until the last cycle ends. */
 function tick() {
-  const elapsed = Date.now() - startedAt
-  const countInMs = (COUNT_IN_BEATS * 60_000) / tempo.value
-  if (elapsed < countInMs) {
-    countIn.value = COUNT_IN_BEATS - Math.floor(elapsed / (60_000 / tempo.value))
+  const beatMs = 60_000 / tempo.value
+  const beats = Math.floor((Date.now() - startedAt) / beatMs)
+  if (beats < COUNT_IN_BEATS) {
+    countIn.value = COUNT_IN_BEATS - beats
     return
   }
   phase.value = 'running'
   countIn.value = 0
-  remainingMs.value = Math.max(0, MINUTE_MS - (elapsed - countInMs))
-  if (remainingMs.value === 0) timeUp()
+  beatsPlayed.value = Math.min(totalBeats.value, beats - COUNT_IN_BEATS)
+  if (beatsPlayed.value >= totalBeats.value) takeOver()
 }
 
-function startMinute() {
+function startTake() {
   // Inside the tap: browsers only let audio start from one.
   metronome.start()
   phase.value = 'counting_in'
   countIn.value = COUNT_IN_BEATS
-  remainingMs.value = MINUTE_MS
+  beatsPlayed.value = 0
   startedAt = Date.now()
   stopTimer()
   timer = setInterval(tick, TICK_MS)
 }
 
-/** Throws the minute away, count-in included, and is ready again at the tempo set. */
-function restartMinute() {
+/** Throws the take away, count-in included, and is ready again at the tempo set. */
+function restartTake() {
   stopTimer()
   metronome.stop()
   countIn.value = 0
-  remainingMs.value = MINUTE_MS
+  beatsPlayed.value = 0
   phase.value = 'ready'
 }
 
-function timeUp() {
+function takeOver() {
   stopTimer()
   metronome.stop()
-  count.value = Math.min(minute.value.last_changes_per_minute ?? 0, tempo.value)
-  phase.value = 'count'
+  phase.value = 'share'
 }
 
 function chooseTempo(bpm: number) {
@@ -155,24 +157,17 @@ function toggleMetronome() {
   if (phase.value === 'ready') metronome.toggle()
 }
 
-function save() {
-  if (phase.value === 'count') emit('save', tempo.value, count.value)
+function pick(share: CleanShare) {
+  if (phase.value === 'share') emit('save', tempo.value, share)
 }
 
 onBeforeUnmount(stopTimer)
 
-const best = computed(() => minute.value.best_clean_changes_per_minute)
-
-/** Above the chords: what to do, then once the minute is up what to count. */
+/** Above the chords: what to do, then once the take is over what to say about it. */
 const meta = computed(() => {
-  if (phase.value === 'count') return onBass.value ? t('sessionChord.timeUpBass') : t('sessionChord.timeUp')
-  const everyBeat = t('sessionChord.everyBeat')
-  return best.value === null ? everyBeat : `${everyBeat} · ${t('sessionChord.best', { count: best.value })}`
+  if (phase.value === 'share') return onBass.value ? t('sessionChord.shareQuestionBass') : t('sessionChord.shareQuestion')
+  return t('sessionChord.cyclesMeta', { cycles: take.value.cycles })
 })
-
-const countLabel = computed(() =>
-  best.value === null ? t('sessionChord.cleanChanges') : t('sessionChord.cleanChangesBest', { count: best.value }),
-)
 </script>
 
 <template>
@@ -203,29 +198,42 @@ const countLabel = computed(() =>
         </div>
       </div>
 
-      <template v-if="phase === 'count'">
-        <CountStepper v-model="count" :label="countLabel" :max="tempo" />
+      <template v-if="phase === 'share'">
         <PracticeActionBar>
-          <PrimaryButton data-test="save-count" data-primary-action class="h-12 w-full" @click="save">
-            {{ t('sessionChord.save', { count }) }}
-          </PrimaryButton>
+          <div role="group" :aria-label="t('sessionChord.shares')" class="grid w-full grid-cols-4 gap-2">
+            <button
+              v-for="(share, index) in CLEAN_SHARES"
+              :key="share"
+              type="button"
+              data-test="clean-share"
+              aria-pressed="false"
+              :aria-keyshortcuts="String(index + 1)"
+              class="flex min-h-12 items-center justify-center rounded-lg border border-border p-3 text-base font-semibold text-ink"
+              @click="pick(share)"
+            >
+              {{ t('sessionChord.share', { share }) }}
+            </button>
+          </div>
         </PracticeActionBar>
       </template>
 
       <template v-else>
-        <TempoControl
+        <MetronomeRow
+          :beats="COUNT_IN_BEATS"
+          :lit="metronome.beat.value"
           :tempo="tempo"
           :slowest="SLOWEST_BPM"
-          :goal="minute.target_changes_per_minute"
-          :goal-label="t('sessionChord.goal', { count: minute.target_changes_per_minute })"
-          :best="best"
+          :goal="take.target_tempo_bpm"
+          :goal-label="t('sessionChord.goal', { tempo: take.target_tempo_bpm })"
+          :best="take.best_clean_tempo_bpm"
           :metronome="metronome.on.value"
           :disabled="phase !== 'ready'"
           @update:metronome="toggleMetronome"
           @tempo="chooseTempo"
         />
-        <div class="relative">
-          <ChangeTimer :remaining-ms="remainingMs" :total-ms="MINUTE_MS" :running="phase === 'running'" :detail="t('sessionChord.everyBeatDetail')" />
+        <div class="relative flex flex-col items-center gap-1 rounded-lg bg-surface-sunken py-4">
+          <span data-test="cycles-left" class="text-4xl font-semibold tabular-nums">{{ cyclesLeft }}</span>
+          <span class="text-sm text-ink-muted">{{ t('sessionChord.cyclesLeft') }}</span>
           <div
             v-if="phase === 'counting_in'"
             data-test="count-in"
@@ -237,7 +245,7 @@ const countLabel = computed(() =>
         <template v-if="phase === 'ready'">
           <p class="text-xs text-ink-muted">{{ t('sessionChord.readyHint') }}</p>
           <PracticeActionBar>
-            <PrimaryButton data-test="start-minute" data-primary-action class="h-12 w-full" @click="startMinute">
+            <PrimaryButton data-test="start-take" data-primary-action class="h-12 w-full" @click="startTake">
               {{ t('sessionChord.start') }}
             </PrimaryButton>
           </PracticeActionBar>
@@ -245,7 +253,7 @@ const countLabel = computed(() =>
         <template v-else>
           <p data-test="running-hint" class="text-sm text-ink-muted">{{ t('sessionChord.runningHint') }}</p>
           <PracticeActionBar>
-            <AppButton data-test="restart-minute" variant="secondary" class="h-12 w-full" @click="restartMinute">
+            <AppButton data-test="restart-take" variant="secondary" class="h-12 w-full" @click="restartTake">
               {{ t('sessionChord.restart') }}
             </AppButton>
           </PracticeActionBar>

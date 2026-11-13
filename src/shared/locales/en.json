@@ -514,17 +514,6 @@
     "folded": "{label} · {name}"
   },
   "drill": {
-    "countStepper": {
-      "more": "One more: {label}",
-      "fewer": "One fewer: {label}",
-      "valueText": "{count} {label}"
-    },
-    "changeTimer": {
-      "left": "left of {total}",
-      "ready": "starts after a bar of count-in",
-      "withDetail": "{caption} · {detail}",
-      "elapsed": "Time gone"
-    },
     "chart": {
       "label": "Chart",
       "bar": "Bar {position}"
