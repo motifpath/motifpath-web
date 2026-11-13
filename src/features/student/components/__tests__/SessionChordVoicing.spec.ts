@@ -17,8 +17,6 @@ const ok = <T>(data: T) => Promise.resolve({ data, error: undefined, response: {
 const fail = () => Promise.resolve({ data: undefined, error: { message: 'boom' }, response: { status: 500 } })
 
 const AM = drillVoicings.Am.diagram.diagram_id
-const BASS = 'instrument-bass'
-const BASS_TUNING = ['E1', 'A1', 'D2', 'G2']
 
 function serve(options: { failing?: boolean } = {}) {
   GET.mockImplementation((path: string) => {
@@ -32,12 +30,6 @@ const base = { rung: 'play_clean', reason: 'new', node_id: null, level: 'new', e
 
 const voicing: Item = { ...base, item_key: `chord_voicing:${AM}`, kind: 'chord_voicing', chord_voicing: { diagram_id: AM, chord_symbol: 'Am' } }
 
-const rootFifth: Item = {
-  ...base,
-  item_key: `root_fifth:${BASS}:G`,
-  kind: 'root_fifth',
-  root_fifth: { layout_instrument_id: BASS, chord_symbol: 'G', root: { string: 4, fret: 3 }, fifth: { string: 3, fret: 5 } },
-}
 
 function mountItem(item: Item, props: Record<string, unknown> = {}) {
   return mount(SessionChordVoicing, { props: { item, ...props }, attachTo: document.body })
@@ -84,36 +76,11 @@ describe('SessionChordVoicing', () => {
     expect(wrapper.emitted('skip')).toEqual([['unavailable']])
   })
 
-  it('on bass, marks the root and the fifth at the places the plan gives', () => {
-    const wrapper = mountItem(rootFifth, { tuning: BASS_TUNING })
+  it('names the instrument in a session mixing instruments', async () => {
+    serve()
+    const wrapper = mountItem(voicing, { instrumentName: 'Guitar' })
+    await flushPromises()
 
-    expect(wrapper.get('[data-test="item-title"]').text()).toBe('Play the root and fifth of G')
-    expect(wrapper.get('[data-test="chord-hint"]').text()).toBe('Root, then fifth, each note ringing its full length.')
-    const places = wrapper.findAll('[data-test="marked-place"]')
-    expect(places.map((place) => [place.attributes('data-role'), place.attributes('data-string'), place.attributes('data-fret')])).toEqual([
-      ['root', '4', '3'],
-      ['fifth', '3', '5'],
-    ])
-  })
-
-  it('on bass, is answered by a self-rating of the chord', async () => {
-    const wrapper = mountItem(rootFifth, { tuning: BASS_TUNING })
-
-    expect(wrapper.get('[data-test="rate-prompt"]').text()).toBe('How did G sound?')
-    await wrapper.get('[data-test="rate-clean"]').trigger('click')
-
-    expect(wrapper.emitted('rate')).toEqual([['clean']])
-  })
-
-  it('on bass, can only be skipped when the board’s tuning isn’t known', async () => {
-    const wrapper = mountItem(rootFifth)
-
-    await wrapper.get('[data-test="skip-item"]').trigger('click')
-
-    expect(wrapper.emitted('skip')).toEqual([['unavailable']])
-  })
-
-  it('names the instrument in a session mixing instruments', () => {
-    expect(mountItem(rootFifth, { tuning: BASS_TUNING, instrumentName: 'Bass' }).get('[data-test="item-instrument"]').text()).toBe('Bass')
+    expect(wrapper.get('[data-test="item-instrument"]').text()).toBe('Guitar')
   })
 })

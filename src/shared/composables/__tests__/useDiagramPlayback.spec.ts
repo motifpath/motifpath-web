@@ -231,6 +231,28 @@ describe('useDiagramPlayback — playing', () => {
     expect(sounding().map((n) => +(n.time - start).toFixed(3))).toEqual([0, 0.333, 0.667, 0.685, 0.703])
   })
 
+  it('says which beat of the bar its click is on while it plays, for the beat dots', async () => {
+    const { player } = setup({ metronome: true })
+    player.tempo.value = 60
+    await play(player)
+    const start = audio.clicks[0]!.time
+
+    frameAt(start + 0.2)
+    expect(player.beat.value).toBe(0)
+    frameAt(start + 1.1)
+    expect(player.beat.value).toBe(1)
+    player.stop()
+    expect(player.beat.value).toBeNull()
+  })
+
+  it('lights no beat without a metronome', async () => {
+    const { player } = setup()
+    await play(player)
+
+    frameAt(audio.played[0]!.time + 1.1)
+    expect(player.beat.value).toBeNull()
+  })
+
   it('plays without a metronome unless asked', async () => {
     const { player } = setup()
     await play(player)

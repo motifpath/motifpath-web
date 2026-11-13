@@ -33,7 +33,7 @@ function resultText(result: SummaryResult): string {
   }
   if (result.kind === 'rated') return t(`playAlongTake.ratings.${result.rating}`)
   if (result.kind === 'changes') {
-    return t('sessionSummary.changes', { count: result.cleanChanges, tempo: result.tempoBpm, rating: t(`playAlongTake.ratings.${result.rating}`) })
+    return t('sessionSummary.changes', { share: result.cleanSharePercent, tempo: result.tempoBpm, rating: t(`playAlongTake.ratings.${result.rating}`) })
   }
   if (result.kind === 'toured') return t('sessionSummary.toured', { count: result.cleanKeys, total: TOUR_ORDER.length, tempo: result.tourBpm })
   if (result.kind === 'tapped') return t('sessionSummary.tapped', { hits: result.hits, total: result.bars })

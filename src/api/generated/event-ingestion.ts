@@ -564,9 +564,11 @@ export interface components {
          *       picked each time.
          *     - heard_progression:<progression key> — a drill progression of 2 to 4 bars recognised by
          *       ear. The key is picked each time.
+         *     - heard_chord_quality:<quality> — a chord's quality recognised by ear, one chord heard
+         *       alone: major, minor, dominant7, diminished or augmented. The root is picked each time.
          *     - chord_voicing:<diagram id> — playing one chord voicing cleanly, untimed.
          *     - root_fifth:<layout instrument id>:<chord> — playing a chord's root and fifth on a bass
-         *       layout, cleanly, untimed.
+         *       layout, cleanly, a half note each at a tempo.
          *     - root_change:<layout instrument id>:<from chord>:<to chord> — changing between two
          *       chords' roots on a bass layout.
          *     - guide_tone:<layout instrument id>:<progression key> — tapping a chord tone of each chord
@@ -727,19 +729,19 @@ export interface components {
          *     response, the key a question was asked in or a take was played in when
          *     its item doesn't fix one: a chart progression, a heard chord, a heard progression, a guide
          *     tone or a progression key tour; absent in a response to any other item. A planned question
-         *     always names its key.
+         *     names its key, except a heard chord quality, asked in none.
          * @enum {string}
          */
         MusicKey: "C" | "Db" | "D" | "Eb" | "E" | "F" | "F#" | "G" | "Ab" | "A" | "Bb" | "B" | "Cm" | "Dbm" | "Dm" | "Ebm" | "Em" | "Fm" | "F#m" | "Gm" | "Abm" | "Am" | "Bbm" | "Bm";
         /**
-         * @description The student's own rating of a take they played: a play-along at a tempo, chord changes
-         *     counted over a minute, one chord played cleanly, a progression in one key of its tour, or a
-         *     whole song. A
-         *     play-along rating carries tempo_bpm and no changes_per_minute, and may carry the note_value
-         *     it was played at (quarters when absent); a progression key tour take carries the same and
-         *     the music_key it was played in; a chord-change or root-change take carries both tempo_bpm and changes_per_minute,
-         *     and its rating is derived from them (see rating); a single chord voicing, a chord's root
-         *     and fifth (play clean) or a song carries neither.
+         * @description The student's own rating of a take they played: a play-along at a tempo, ten cycles of
+         *     chord changes at a tempo, one chord played cleanly, a chord's root and fifth at a tempo, a
+         *     progression in one key of its tour, or a whole song. A play-along rating carries tempo_bpm,
+         *     and may carry the note_value it was played at (quarters when absent); a progression key
+         *     tour take carries the same and the music_key it was played in; a chord-change or
+         *     root-change take carries both tempo_bpm and clean_share_percent, and its rating is derived
+         *     from the share (see rating); a chord's root and fifth carries tempo_bpm only; a single
+         *     chord voicing or a song carries no measure.
          */
         SelfRatingResponse: {
             /**
@@ -750,24 +752,31 @@ export interface components {
             /**
              * @description How the take went, in the student's judgement. struggled = fell apart or needed to
              *     stop; almost = got through with slips; clean = no slips at this measure. For a chord
-             *     change or a root change the rating is not the student's: it follows from the share of
-             *     the minute's beats that changed cleanly (changes_per_minute / tempo_bpm), clean from
-             *     0.9, almost from 0.6, struggled below. The server derives it whatever is sent, and a
-             *     client sends the same.
+             *     change or a root change the rating is not the student's: it follows from
+             *     clean_share_percent, clean at 100, almost at 75, struggled at 50 or 25. The server
+             *     derives it whatever is sent, and a client sends the same.
              * @enum {string}
              */
             rating: "struggled" | "almost" | "clean";
             /**
              * @description The tempo of the take, in beats per minute, as played: the click's tempo. Present for a
-             *     play-along and a progression key tour take, and for a chord change or a root change,
-             *     where the student changes on every
-             *     beat, so it is also the number of changes the minute asked for.
+             *     play-along, a progression key tour take, a chord's root and fifth (a half note each),
+             *     and a chord change or a root change, where the student changes on every beat.
              */
             tempo_bpm?: number;
             note_value?: components["schemas"]["NoteValue"];
             /**
-             * @description The number of chord changes in one minute that rang clean, counted by the student. Present
-             *     for a chord change and a root change, and never more than tempo_bpm.
+             * @description The share of the take's changes that rang clean, picked by the student from four
+             *     buttons once the take's ten cycles (20 changes) are over. Present for a chord change
+             *     and a root change only.
+             * @enum {integer}
+             */
+            clean_share_percent?: 25 | 50 | 75 | 100;
+            /**
+             * @deprecated
+             * @description The clean changes counted over a minute, sent by apps released before a change became
+             *     ten cycles rated by clean_share_percent. Kept so their evidence still reads; a current
+             *     client never sends it, and the server rejects it on a new answer.
              */
             changes_per_minute?: number;
             music_key?: components["schemas"]["MusicKey"];
@@ -825,13 +834,15 @@ export interface components {
          *     numbers_to_chart = a progression and a key are named, pick its chart; cadence_then_chord =
          *     a cadence sets the key and a chord plays, pick its numeral; progression_by_number = a
          *     progression plays, pick it; see_then_name = a key is named and a chord is shown, pick its
-         *     numeral. A diatonic chord is asked numeral_to_chord or
+         *     numeral; chord_quality_by_ear = one chord plays alone, pick its quality. A diatonic chord is
+         *     asked numeral_to_chord or
          *     chord_to_numeral; a chord function chord_to_function or function_to_chord; a chart
          *     progression chart_to_numbers or numbers_to_chart; a heard chord cadence_then_chord or
-         *     see_then_name; a heard progression progression_by_number.
+         *     see_then_name; a heard progression progression_by_number; a heard chord quality
+         *     chord_quality_by_ear.
          * @enum {string}
          */
-        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name";
+        GeneratedChoiceWay: "numeral_to_chord" | "chord_to_numeral" | "chord_to_function" | "function_to_chord" | "chart_to_numbers" | "numbers_to_chart" | "cadence_then_chord" | "progression_by_number" | "see_then_name" | "chord_quality_by_ear";
         /**
          * @description Answer to a generated question asked among options the server planned: a numeral, a
          *     chord, a function or a progression, recognised in the head or by ear. The response sends
@@ -857,7 +868,8 @@ export interface components {
              *     key for chart_to_numbers and progression_by_number (a drill progression's, or the key a
              *     wrong answer the server made up would have if an admin created it, such as
              *     major/I-ii-IV-V); a chart, the progression's chord
-             *     symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart. A
+             *     symbols one per bar separated by single spaces (G D Em C), for numbers_to_chart; a
+             *     quality (major, minor, dominant7, diminished, augmented) for chord_quality_by_ear. A
              *     chord's root may be spelled either way (F# or Gb).
              */
             options: string[];
@@ -870,7 +882,8 @@ export interface components {
             latency_ms: number;
             /**
              * @description Milliseconds of sound the question plays once before it can be answered (the cadence,
-             *     or the tonic chord alone, then the chord; or the progression), at the tempo and note
+             *     or the tonic chord alone, then the chord; the progression; or the one chord whose
+             *     quality is asked), at the tempo and note
              *     value it was played at. It is taken off the
              *     latency before the answer is judged against the drill's fluent time. Present for
              *     questions asked by ear only.
@@ -1008,6 +1021,15 @@ export interface components {
              *     check; absent otherwise. A value sent by a client is ignored.
              */
             readonly tap_ms?: number;
+            /**
+             * @description Milliseconds the session was visible to the student since its previous practice
+             *     event (practice.item_answered or practice.session_ended), or since it started: the
+             *     practice screen in the foreground, the app neither hidden nor in the background.
+             *     Minutes practised are the sum of these. Sent by every current client; absent from
+             *     events sent before it existed, where the gap since the previous event counts
+             *     instead, never more than 2 minutes.
+             */
+            visible_ms?: number;
         } & (unknown | unknown)) & {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -1055,6 +1077,15 @@ export interface components {
              *     timed drills. Empty when the session asked none, or the student skipped them.
              */
             felt_ratings: components["schemas"]["FeltRating"][];
+            /**
+             * @description Milliseconds the session was visible to the student since its previous practice
+             *     event (practice.item_answered or practice.session_ended), or since it started: the
+             *     practice screen in the foreground, the app neither hidden nor in the background.
+             *     Minutes practised are the sum of these. Sent by every current client; absent from
+             *     events sent before it existed, where the gap since the previous event counts
+             *     instead, never more than 2 minutes.
+             */
+            visible_ms?: number;
         } & {
             /**
              * @description discriminator enum property added by openapi-typescript

@@ -299,7 +299,14 @@
     "thirdOf": "Terça de {chord}",
     "fifthOf": "Quinta de {chord}",
     "markedPlace": "{role}, corda {string}, casa {fret}",
-    "markedOpen": "{role}, corda {string}, solta"
+    "markedOpen": "{role}, corda {string}, solta",
+    "thirdAbove": "Terça acima",
+    "thirdBelow": "Terça abaixo",
+    "fifthAbove": "Quinta acima",
+    "fifthBelow": "Quinta abaixo",
+    "seventh": "Sétima",
+    "seventhOf": "Sétima de {chord}",
+    "toneOf": "{tone}, de {chord}"
   },
   "songChart": {
     "key": "Tom {key}",
@@ -514,17 +521,6 @@
     "folded": "{label} · {name}"
   },
   "drill": {
-    "countStepper": {
-      "more": "Mais um: {label}",
-      "fewer": "Menos um: {label}",
-      "valueText": "{count} {label}"
-    },
-    "changeTimer": {
-      "left": "restantes de {total}",
-      "ready": "começa após um compasso de contagem",
-      "withDetail": "{caption} · {detail}",
-      "elapsed": "Tempo passado"
-    },
     "chart": {
       "label": "Cifra",
       "bar": "Compasso {position}"

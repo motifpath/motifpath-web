@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ref, toValue } from 'vue'
+import { nextTick, ref, toValue } from 'vue'
 import type { MaybeRefOrGetter } from 'vue'
 
 const GET = vi.fn()
@@ -13,6 +13,7 @@ vi.mock('@/shared/composables/useApi', () => ({
 const player = {
   state: ref<'idle' | 'loading' | 'playing' | 'error'>('idle'),
   currentBar: ref<number | null>(null),
+  beat: ref<number | null>(null),
   metronome: ref(false),
   clock: null as number | null,
   toggle: vi.fn(() => {
@@ -102,6 +103,16 @@ describe('SessionGuideTone', () => {
     expect(wrapper.findAll('[data-test="guide-tone-bar"]').map((bar) => bar.text())).toEqual(['Am', 'D', 'G', 'G'])
     expect(wrapper.find('[data-test="guide-tone-meta"]').text()).toBe('Guitar · frets 0–5')
     expect(wrapper.find('[data-test="lit-cell"]').exists()).toBe(false)
+  })
+
+  it('shows the Metronome tool’s row, its dots lit by the click', async () => {
+    const wrapper = await shown()
+
+    expect(wrapper.find('[data-test="metronome-row"]').exists()).toBe(true)
+    player.beat.value = 1
+    await nextTick()
+    expect(wrapper.findAll('[data-test="beat-dot"]').map((dot) => dot.attributes('data-lit'))).toEqual(['false', 'true', 'false', 'false'])
+    player.beat.value = null
   })
 
   it('asks the 7th when the plan does', async () => {

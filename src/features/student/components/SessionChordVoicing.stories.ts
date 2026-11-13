@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite'
 
-import { BASS_TUNING, chordDiagramHandler, chordInstrumentsHandler, chordVoicingItem, rootFifthItem } from '@/features/student/testing/chordItems'
+import { chordDiagramHandler, chordInstrumentsHandler, chordVoicingItem } from '@/features/student/testing/chordItems'
 import { failing, pending } from '@/shared/testUtils/msw/handlers'
 
 import SessionChordVoicing from './SessionChordVoicing.vue'
@@ -23,8 +23,6 @@ type Story = StoryObj<typeof meta>
 /** Play a chord clean: the named box, then how it sounded. */
 export const Guitar: Story = {}
 
-/** On bass, the chord's root and fifth marked on the board. */
-export const BassRootAndFifth: Story = { args: { item: rootFifthItem(), tuning: BASS_TUNING } }
 
 export const Loading: Story = { parameters: { msw: { handlers: { diagram: pending('diagram') } } } }
 

@@ -5,7 +5,7 @@ import { drillBass, drillGuitar, drillVoicings } from '@/shared/testUtils/drill'
 import { endpoints } from '@/shared/testUtils/msw/handlers'
 
 type Item = components['schemas']['PracticeSessionItem']
-type Minute = components['schemas']['ChangeMinute']
+type Take = components['schemas']['ChangeTake']
 
 /** The drill voicings' diagrams, each carrying its voicing, as the core API serves them. */
 export const chordDiagramHandler: HttpHandler = http.get(endpoints.diagram, ({ params }) => {
@@ -20,8 +20,8 @@ export const BASS_TUNING = drillBass.tuning ?? []
 
 const base = { reason: 'new', node_id: null, level: 'new' } as const
 
-export function changeMinute(fields: Partial<Minute> = {}): Minute {
-  return { start_tempo_bpm: 60, target_changes_per_minute: 60, best_clean_changes_per_minute: 16, last_changes_per_minute: 18, ...fields }
+export function changeTake(fields: Partial<Take> = {}): Take {
+  return { cycles: 10, start_tempo_bpm: 45, target_tempo_bpm: 60, best_clean_tempo_bpm: 50, ...fields }
 }
 
 export function chordVoicingItem(symbol: keyof typeof drillVoicings): Item {
@@ -29,7 +29,7 @@ export function chordVoicingItem(symbol: keyof typeof drillVoicings): Item {
   return { ...base, item_key: `chord_voicing:${diagramId}`, kind: 'chord_voicing', rung: 'play_clean', estimated_seconds: 20, chord_voicing: { diagram_id: diagramId, chord_symbol: symbol } }
 }
 
-export function chordChangeItem(from: keyof typeof drillVoicings, to: keyof typeof drillVoicings, minute: Minute = changeMinute()): Item {
+export function chordChangeItem(from: keyof typeof drillVoicings, to: keyof typeof drillVoicings, take: Take = changeTake()): Item {
   const [fromId, toId] = [drillVoicings[from].diagram.diagram_id, drillVoicings[to].diagram.diagram_id]
   return {
     ...base,
@@ -37,11 +37,14 @@ export function chordChangeItem(from: keyof typeof drillVoicings, to: keyof type
     kind: 'chord_change',
     rung: 'play_in_time',
     estimated_seconds: 90,
-    chord_change: { from_diagram_id: fromId, to_diagram_id: toId, from_chord_symbol: from, to_chord_symbol: to, minute },
+    chord_change: { from_diagram_id: fromId, to_diagram_id: toId, from_chord_symbol: from, to_chord_symbol: to, take },
   }
 }
 
-/** G's root on the low E string's third fret and its fifth on the A string's fifth, as the plan gives them. */
+/**
+ * G in the window from the third fret: its root on the low E string's third fret and its fifth above
+ * on the A string's fifth; its fifth below is lower than the bass goes.
+ */
 export function rootFifthItem(): Item {
   return {
     ...base,
@@ -49,12 +52,20 @@ export function rootFifthItem(): Item {
     kind: 'root_fifth',
     rung: 'play_clean',
     estimated_seconds: 20,
-    root_fifth: { layout_instrument_id: drillBass.instrument_id, chord_symbol: 'G', root: { string: 4, fret: 3 }, fifth: { string: 3, fret: 5 } },
+    root_fifth: {
+      layout_instrument_id: drillBass.instrument_id,
+      chord_symbol: 'G',
+      root: { string: 4, fret: 3 },
+      fifth: { string: 3, fret: 5 },
+      fifth_below: null,
+      window_start_fret: 3,
+      start_tempo_bpm: 60,
+    },
   }
 }
 
-/** Am's root on the open A string and C's on its third fret. */
-export function rootChangeItem(minute: Minute = changeMinute()): Item {
+/** Am's root on the open A string and C's on its third fret, in the window from the nut. */
+export function rootChangeItem(take: Take = changeTake()): Item {
   return {
     ...base,
     item_key: `root_change:${drillBass.instrument_id}:Am:C`,
@@ -67,7 +78,8 @@ export function rootChangeItem(minute: Minute = changeMinute()): Item {
       to_chord_symbol: 'C',
       from_root: { string: 3, fret: 0 },
       to_root: { string: 3, fret: 3 },
-      minute,
+      window_start_fret: 0,
+      take,
     },
   }
 }

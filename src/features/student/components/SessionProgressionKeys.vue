@@ -7,8 +7,10 @@
  * where the tour stands, the clean ones ticked.
  *
  * On guitar a chord's card shows on demand, as in a song chart, on the voicing the plan gives,
- * which the backing also strums. On bass the board marks a chord's root, third and fifth, so the line shows whether the
- * chord is major or minor. A key whose chords can't be loaded can only be skipped.
+ * which the backing also strums. On bass the board marks a chord's root, and its third and fifth
+ * above and below (its seventh too when the pattern plays it), in the key's five-fret window, and
+ * the take sounds only the pattern the plan names, in the bass's voice, never a chord; the line
+ * above the chart names the pattern. A key whose chords can't be loaded can only be skipped.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Info } from 'lucide-vue-next'
@@ -18,6 +20,7 @@ import { useKeyTourChords } from '@/features/student/composables/useKeyTourChord
 import type { NotAnsweredReason } from '@/features/student/composables/usePracticeSessionRun'
 import ItemHeader from '@/features/student/components/ItemHeader.vue'
 import SelfRating from '@/features/student/components/SelfRating.vue'
+import { bassWindow, boardFretsFor } from '@/features/student/utils/chordPlaces'
 import { tourWindow } from '@/features/student/utils/keyTour'
 import type { TourState } from '@/features/student/utils/keyTour'
 import type { TakeRating } from '@/features/student/utils/tempoLadder'
@@ -29,21 +32,34 @@ import LoadingSkeleton from '@/shared/components/LoadingSkeleton.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
 import ChordCard from '@/shared/components/songChart/ChordCard.vue'
-import TempoControl from '@/shared/components/TempoControl.vue'
+import MetronomeRow from '@/shared/components/MetronomeRow.vue'
 import type { ChordView } from '@/shared/composables/useChordView'
 import { useProgressionPlayback } from '@/shared/composables/useProgressionPlayback'
 import type { ProgressionSource } from '@/shared/composables/useProgressionPlayback'
 import { useTempoAsPlayed } from '@/shared/composables/useTempoAsPlayed'
 import { useTypedT } from '@/shared/composables/useTypedT'
 import { musicKeyMessage } from '@/shared/utils/musicKey'
+import { frettedPitch } from '@/shared/utils/pitch'
 import { SUGGESTED_NOTE_VALUES, speedFactor } from '@/shared/utils/tempoNoteValue'
 import type { TempoNoteValue } from '@/shared/utils/tempoNoteValue'
 
 type Item = components['schemas']['PracticeSessionItem']
 type Tour = NonNullable<Item['progression_keys']>
+type Instrument = components['schemas']['Instrument']
+type ChordTones = components['schemas']['BassChordTones']
+type BassPattern = components['schemas']['BassPattern']
+type Place = components['schemas']['FretPlace']
 
-/** The frets a bass line is marked within: the open string and the first five. */
-const BASS_FRETS = 5
+/** Beats in a bar, a dot each. */
+const BEATS = 4
+
+/** Each pattern's notes in a bar, by which of the chord's tones they are. */
+const PATTERN_TONES: Record<BassPattern, (keyof Pick<ChordTones, 'root' | 'third_above' | 'fifth_above' | 'seventh'>)[]> = {
+  root: ['root'],
+  root_fifth: ['root', 'fifth_above'],
+  root_third_fifth_third: ['root', 'third_above', 'fifth_above', 'third_above'],
+  root_third_fifth_seventh: ['root', 'third_above', 'fifth_above', 'seventh'],
+}
 
 const props = defineProps<{
   /** A progression_keys item. */
@@ -55,8 +71,8 @@ const props = defineProps<{
   takesTotal: number
   /** Where the tour stands: the key the next take is in, and the keys clean. */
   tour: TourState
-  /** The bass's open-string pitches, lowest first, its chord tones are marked on; null on guitar. */
-  tuning: string[] | null
+  /** The bass the tour is on: its tuning marks the chord tones, its voice sounds the pattern; null on guitar. */
+  bass: Instrument | null
 }>()
 
 const emit = defineEmits<{
@@ -72,20 +88,48 @@ const { asPlayed } = useTempoAsPlayed()
 const planned = computed<Tour>(() => props.item.progression_keys!)
 const chords = useKeyTourChords(() => props.item, () => props.tour.key)
 const chart = computed(() => chords.key.value?.chart ?? [])
-const onBass = computed(() => (chords.key.value?.chord_tones.length ?? 0) > 0)
+const tuning = computed(() => props.bass?.tuning ?? null)
+const pattern = computed(() => planned.value.bass_pattern)
+const onBass = computed(() => pattern.value !== null && tuning.value !== null)
+
+/** The pitch played at a place on the bass; null where it can't be read. */
+function pitchAt(place: Place | null): number | null {
+  return place && tuning.value ? frettedPitch(tuning.value, place.string, place.fret) : null
+}
+
+/** A chord's bar of the pattern: each tone at its place, the root sounding where the window has no place for one. */
+function patternBar(chord: string): number[] {
+  const tones = chords.key.value?.chord_tones.find((c) => c.chord === chord)
+  const root = pitchAt(tones?.root ?? null)
+  if (!tones || root === null || !pattern.value) return []
+  return PATTERN_TONES[pattern.value].map((tone) => pitchAt(tones[tone]) ?? root)
+}
 
 const keyName = (key: string) => t(musicKeyMessage(key))
 
 /** Whether a take clicks the beat, the count-in included. */
 const metronome = ref(true)
 
-/** The backing of a take: the chart as many times through as the plan says, after a bar of count-in. */
+/**
+ * The backing of a take, the chart as many times through as the plan says, after a bar of
+ * count-in: on guitar its chords strummed, on bass the pattern's notes of each chord alone.
+ */
 const source = computed<ProgressionSource | null>(() => {
   const instrument = chords.instrument.value
   if (chords.status.value !== 'ready' || !instrument) return null
-  const once = chart.value.map((chord) => chords.diagrams.value[chord]!)
+  const times = <T,>(once: T[]) => Array.from({ length: planned.value.times_through }, () => once).flat()
+  if (onBass.value && props.bass) {
+    return {
+      chords: [],
+      chordInstrument: null,
+      bass: { instrument: props.bass, bars: times(chart.value.map(patternBar)) },
+      tempoBpm: props.tempo,
+      noteValue: props.noteValue,
+      countInBars: 1,
+    }
+  }
   return {
-    chords: Array.from({ length: planned.value.times_through }, () => once).flat(),
+    chords: times(chart.value.map((chord) => chords.diagrams.value[chord]!)),
     chordInstrument: instrument,
     bass: null,
     tempoBpm: props.tempo,
@@ -188,12 +232,23 @@ const shownVoicing = computed(() => shownDiagram.value?.chord_voicing ?? null)
 const shownTones = computed<MarkedPlace[]>(() => {
   const tones = chords.key.value?.chord_tones.find((c) => c.chord === shown.value)
   if (!tones) return []
-  return [
+  const marks: (MarkedPlace | null)[] = [
     { ...tones.root, role: 'root' },
-    { ...tones.third, role: 'third' },
-    { ...tones.fifth, role: 'fifth' },
+    tones.third_above && { ...tones.third_above, role: 'third', position: 'above' },
+    tones.fifth_above && { ...tones.fifth_above, role: 'fifth', position: 'above' },
+    tones.third_below && { ...tones.third_below, role: 'third', position: 'below' },
+    tones.fifth_below && { ...tones.fifth_below, role: 'fifth', position: 'below' },
+    tones.seventh && { ...tones.seventh, role: 'seventh' },
   ]
+  return marks.filter((mark): mark is MarkedPlace => mark !== null)
 })
+
+/** The key's five-fret window, which its chord tones are marked in; null without one. */
+const keyWindow = computed(() => {
+  const start = chords.key.value?.window_start_fret
+  return start === null || start === undefined ? null : bassWindow(start)
+})
+const boardFrets = computed(() => Math.max(boardFretsFor(shownTones.value), keyWindow.value?.to ?? 0))
 
 const slowestTempo = computed(() => Math.ceil(planned.value.min_tempo_bpm / speedFactor(props.noteValue)))
 const goalMark = computed(() => Math.floor(planned.value.target_tempo_bpm / speedFactor(props.noteValue)))
@@ -237,6 +292,8 @@ const infoOpen = ref(false)
       </div>
       <p v-if="infoOpen" id="tour-info" data-test="tour-info" class="text-sm text-ink-muted">{{ t('progressionKeys.info') }}</p>
 
+      <p v-if="onBass && pattern" data-test="bass-pattern" class="text-sm font-medium">{{ t(`progressionKeys.patterns.${pattern}`) }}</p>
+
       <ol data-test="tour-chart" :aria-label="t('progressionKeys.chart', { key: keyName(tour.key) })" class="grid grid-cols-4 gap-1">
         <li v-for="(chord, i) in chart" :key="i">
           <button
@@ -279,11 +336,20 @@ const infoOpen = ref(false)
       />
       <section v-if="shown && onBass && tuning" data-test="tour-tones" class="flex flex-col gap-2">
         <h3 class="text-sm font-semibold">{{ t('progressionKeys.tonesOf', { chord: shown }) }}</h3>
-        <DrillFretboard :tuning="tuning" :max-fret="BASS_FRETS" :label="t('progressionKeys.tonesOf', { chord: shown })" :places="shownTones" locked />
+        <DrillFretboard
+          :tuning="tuning"
+          :max-fret="boardFrets"
+          :fret-window="keyWindow"
+          :label="t('progressionKeys.tonesOf', { chord: shown })"
+          :places="shownTones"
+          locked
+        />
       </section>
       <p v-else-if="!shown" class="text-xs text-ink-muted">{{ t(onBass ? 'progressionKeys.tapForTones' : 'progressionKeys.tapForBox') }}</p>
 
-      <TempoControl
+      <MetronomeRow
+        :beats="BEATS"
+        :lit="player.beat.value"
         :tempo="tempo"
         :slowest="slowestTempo"
         :goal="goalMark"

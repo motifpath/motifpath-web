@@ -9,10 +9,9 @@
 import { computed, ref } from 'vue'
 
 import type { components } from '@/api/generated/core-domain'
-import BeatDots from '@/shared/components/BeatDots.vue'
 import PracticeActionBar from '@/shared/components/PracticeActionBar.vue'
 import PrimaryButton from '@/shared/components/PrimaryButton.vue'
-import TempoControl from '@/shared/components/TempoControl.vue'
+import MetronomeRow from '@/shared/components/MetronomeRow.vue'
 import TimeSignaturePicker from '@/shared/components/TimeSignaturePicker.vue'
 import { useMetronome } from '@/shared/composables/useMetronome'
 import { useTypedT } from '@/shared/composables/useTypedT'
@@ -42,12 +41,9 @@ const label = computed(() => (metronome.on.value ? t('metronomeTool.stop') : t('
 
 <template>
   <div data-test="metronome-tool" class="flex flex-col gap-6 pt-6">
-    <div class="flex items-center justify-center gap-5">
-      <TimeSignaturePicker v-model="signature" />
-      <BeatDots :beats="signature.beats" :lit="metronome.beat.value" />
-    </div>
-
-    <TempoControl
+    <MetronomeRow
+      :beats="signature.beats"
+      :lit="metronome.beat.value"
       :tempo="bpm"
       :slowest="MIN_TEMPO_BPM"
       :goal="null"
@@ -59,7 +55,9 @@ const label = computed(() => (metronome.on.value ? t('metronomeTool.stop') : t('
       @tempo="bpm = $event"
       @update:metronome="metronome.toggle()"
       @update:note-value="noteValue = $event"
-    />
+    >
+      <template #before><TimeSignaturePicker v-model="signature" /></template>
+    </MetronomeRow>
 
     <PracticeActionBar>
       <PrimaryButton data-test="metronome-start" data-primary-action class="h-12 w-full" @click="metronome.toggle()">

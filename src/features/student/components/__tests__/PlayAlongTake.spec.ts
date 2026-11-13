@@ -49,6 +49,7 @@ vi.mock('@/shared/composables/useEmbeddedDiagram', () => ({
 const playback = {
   state: ref<PlaybackState>('idle'),
   activePositionIds: ref<string[]>([]),
+  beat: ref<number | null>(null),
   tempo: ref(0),
   toggle: vi.fn(),
   stop: vi.fn(),
@@ -127,6 +128,17 @@ describe('PlayAlongTake', () => {
 
     expect(wrapper.get('[data-test="take-meta"]').text()).toBe('Take 2 of 4 · Goal 100 BPM · best clean 70')
     expect(wrapper.get('[data-test="tempo-value"]').text()).toBe('70 BPM')
+  })
+
+  it('shows the Metronome tool’s row, a dot a beat of the diagram’s bar, lit by the click', async () => {
+    const wrapper = mountTake()
+
+    expect(wrapper.find('[data-test="metronome-row"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-test="beat-dot"]')).toHaveLength(4)
+    playback.beat.value = 3
+    await nextTick()
+    expect(wrapper.findAll('[data-test="beat-dot"]').map((dot) => dot.attributes('data-lit'))).toEqual(['false', 'false', 'false', 'true'])
+    playback.beat.value = null
   })
 
   it('marks the goal and the best clean tempo on the tempo slider', () => {

@@ -18,6 +18,25 @@ describe('gradeGeneratedChoice', () => {
     expect(gradeGeneratedChoice(vi, catalog, { options: ['Em', 'C', 'Am', 'Bm'], choice: 'em' })).toBeNull()
   })
 
+  it('grades a chord quality heard in no key by the quality the item asks', () => {
+    const minor: GeneratedQuestion = { way: 'chord_quality_by_ear', key: null, quality: 'minor' }
+
+    expect(gradeGeneratedChoice(minor, catalog, { options: ['major', 'minor', 'dominant7'], choice: 'minor' })).toBe(true)
+    expect(gradeGeneratedChoice(minor, catalog, { options: ['major', 'minor', 'dominant7'], choice: 'major' })).toBe(false)
+    expect(rightAnswerOf(minor, catalog)).toBe('minor')
+  })
+
+  it('is no answer for a chord quality among options that aren’t all qualities, or leave the right one out', () => {
+    const diminished: GeneratedQuestion = { way: 'chord_quality_by_ear', key: null, quality: 'diminished' }
+
+    expect(gradeGeneratedChoice(diminished, catalog, { options: ['major', 'minor', 'V'], choice: 'minor' })).toBeNull()
+    expect(gradeGeneratedChoice(diminished, catalog, { options: ['major', 'minor', 'dominant7'], choice: 'minor' })).toBeNull()
+  })
+
+  it('is no answer for a key question asked in no key', () => {
+    expect(gradeGeneratedChoice({ way: 'numeral_to_chord', key: null, numeral: 'vi' }, catalog, { options: ['Em', 'C', 'Am', 'Bm'], choice: 'Em' })).toBeNull()
+  })
+
   it('names the right answer as the catalog spells it', () => {
     expect(rightAnswerOf({ way: 'numeral_to_chord', key: 'Db', numeral: 'IV' }, catalog)).toBe('F#')
   })
@@ -34,6 +53,7 @@ describe('gradeGeneratedChoice against the generated_choice.v2 golden cases', ()
     const [kind = '', first = '', second = ''] = itemKey.split(':')
     if (!isGeneratedWay(way)) return null
     if (KEYED_BY_THE_ITEM.includes(kind)) return { way, key: first, numeral: second }
+    if (kind === 'heard_chord_quality') return musicKey ? null : { way, key: null, quality: first }
     if (!musicKey) return null
     if (kind === 'heard_chord') return { way, key: musicKey, numeral: first }
     return catalog[first] ? { way, key: musicKey, progression: first } : null
